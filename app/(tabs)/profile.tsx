@@ -2,8 +2,9 @@ import RankCard from '@/app/components/rankCard';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { IconSymbol } from '@/components/ui/icon-symbol';
-import { useState, useRef } from 'react';
-import { Modal, ScrollView, StyleSheet, TouchableOpacity, View, Dimensions } from 'react-native';
+import { useRouter } from 'expo-router';
+import { useRef, useState } from 'react';
+import { Dimensions, Modal, ScrollView, StyleSheet, TouchableOpacity, View } from 'react-native';
 
 const userGames = [
   {
@@ -82,8 +83,10 @@ const CARD_GAP = 16;
 const CARD_WIDTH = screenWidth - (CARD_PADDING * 2);
 
 export default function ProfileScreen() {
+  const router = useRouter();
   const [selectedGameIndex, setSelectedGameIndex] = useState(0);
   const [showNotifications, setShowNotifications] = useState(false);
+  const [activeMainTab, setActiveMainTab] = useState<'games' | 'posts'>('games');
   const selectedGame = userGames[selectedGameIndex];
   const scrollViewRef = useRef<ScrollView>(null);
 
@@ -128,7 +131,10 @@ export default function ProfileScreen() {
               </View>
             )}
           </TouchableOpacity>
-          <TouchableOpacity style={styles.headerIconButton}>
+          <TouchableOpacity
+            style={styles.headerIconButton}
+            onPress={() => router.push('/profilePages/settings')}
+          >
             <IconSymbol size={24} name="gearshape.fill" color="#000" />
           </TouchableOpacity>
         </View>
@@ -209,15 +215,17 @@ export default function ProfileScreen() {
 
             {/* Stats Grid */}
             <View style={styles.statsGrid}>
-              <View style={styles.statCard}>
+              <View style={styles.statItem}>
                 <ThemedText style={styles.statValue}>3</ThemedText>
                 <ThemedText style={styles.statLabel}>Games</ThemedText>
               </View>
-              <View style={styles.statCard}>
+              <View style={styles.statDivider} />
+              <View style={styles.statItem}>
                 <ThemedText style={styles.statValue}>156</ThemedText>
                 <ThemedText style={styles.statLabel}>Followers</ThemedText>
               </View>
-              <View style={styles.statCard}>
+              <View style={styles.statDivider} />
+              <View style={styles.statItem}>
                 <ThemedText style={styles.statValue}>89</ThemedText>
                 <ThemedText style={styles.statLabel}>Following</ThemedText>
               </View>
@@ -230,6 +238,27 @@ export default function ProfileScreen() {
           </View>
         </View>
 
+        {/* Main Tabs: Games and Posts */}
+        <View style={styles.mainTabsContainer}>
+          <TouchableOpacity
+            style={[styles.mainTab, activeMainTab === 'games' && styles.mainTabActive]}
+            onPress={() => setActiveMainTab('games')}
+          >
+            <ThemedText style={[styles.mainTabText, activeMainTab === 'games' && styles.mainTabTextActive]}>
+              Games
+            </ThemedText>
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={[styles.mainTab, activeMainTab === 'posts' && styles.mainTabActive]}
+            onPress={() => setActiveMainTab('posts')}
+          >
+            <ThemedText style={[styles.mainTabText, activeMainTab === 'posts' && styles.mainTabTextActive]}>
+              Posts
+            </ThemedText>
+          </TouchableOpacity>
+        </View>
+
+        {activeMainTab === 'games' && (
         <View style={styles.section}>
           {/* Minimal Game Tabs */}
           <ScrollView
@@ -283,6 +312,18 @@ export default function ProfileScreen() {
             ))}
           </ScrollView>
         </View>
+        )}
+
+        {/* Posts Tab Content */}
+        {activeMainTab === 'posts' && (
+          <View style={styles.section}>
+            <View style={styles.postsContainer}>
+              <IconSymbol size={48} name="square.stack.3d.up" color="#ccc" />
+              <ThemedText style={styles.emptyStateText}>No posts yet</ThemedText>
+              <ThemedText style={styles.emptyStateSubtext}>Share your gaming achievements with the community</ThemedText>
+            </View>
+          </View>
+        )}
       </ScrollView>
     </ThemedView>
   );
@@ -412,29 +453,32 @@ const styles = StyleSheet.create({
   },
   statsGrid: {
     flexDirection: 'row',
-    gap: 6,
-    marginBottom: 12,
-  },
-  statCard: {
-    flex: 1,
-    backgroundColor: '#f9f9f9',
-    paddingVertical: 8,
-    paddingHorizontal: 6,
-    borderRadius: 6,
     alignItems: 'center',
+    justifyContent: 'space-around',
+    marginBottom: 20,
+    paddingVertical: 12,
+  },
+  statItem: {
+    alignItems: 'center',
+    flex: 1,
+  },
+  statDivider: {
+    width: 1,
+    height: 32,
+    backgroundColor: '#2a2a2a',
   },
   statValue: {
-    fontSize: 14,
+    fontSize: 18,
     fontWeight: '700',
     color: '#000',
-    marginBottom: 1,
+    marginBottom: 4,
     letterSpacing: -0.5,
   },
   statLabel: {
-    fontSize: 9,
+    fontSize: 11,
     color: '#666',
     fontWeight: '500',
-    letterSpacing: 0.1,
+    letterSpacing: 0.3,
   },
   editProfileButton: {
     width: '100%',
@@ -585,5 +629,50 @@ const styles = StyleSheet.create({
   },
   commentButton: {
     padding: 4,
+  },
+  mainTabsContainer: {
+    flexDirection: 'row',
+    backgroundColor: '#fff',
+    borderBottomWidth: 1,
+    borderBottomColor: '#e5e5e5',
+    paddingHorizontal: 20,
+  },
+  mainTab: {
+    flex: 1,
+    paddingVertical: 16,
+    alignItems: 'center',
+    borderBottomWidth: 2,
+    borderBottomColor: 'transparent',
+  },
+  mainTabActive: {
+    borderBottomColor: '#000',
+  },
+  mainTabText: {
+    fontSize: 15,
+    fontWeight: '500',
+    color: '#666',
+    letterSpacing: -0.2,
+  },
+  mainTabTextActive: {
+    color: '#000',
+    fontWeight: '600',
+  },
+  postsContainer: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 80,
+    gap: 12,
+  },
+  emptyStateText: {
+    fontSize: 17,
+    fontWeight: '600',
+    color: '#000',
+    marginTop: 16,
+  },
+  emptyStateSubtext: {
+    fontSize: 14,
+    color: '#666',
+    textAlign: 'center',
+    paddingHorizontal: 40,
   },
 });

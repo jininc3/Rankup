@@ -66,11 +66,8 @@ export default function DuoFinderScreen() {
   return (
     <ThemedView style={styles.container}>
       <View style={styles.header}>
-        <IconSymbol size={32} name="person.2.fill" color="#3b82f6" />
-        <ThemedText type="title" style={styles.title}>Duo Finder</ThemedText>
+        <ThemedText style={styles.headerTitle}>Duo Finder</ThemedText>
       </View>
-
-      <ThemedText style={styles.subtitle}>Find teammates with similar skill levels</ThemedText>
 
       <View style={styles.filterContainer}>
         <TouchableOpacity style={styles.filterButton}>
@@ -146,26 +143,25 @@ const styles = StyleSheet.create({
   },
   header: {
     flexDirection: 'row',
+    justifyContent: 'space-between',
     alignItems: 'center',
-    gap: 12,
     paddingHorizontal: 20,
     paddingTop: 60,
-    paddingBottom: 8,
+    paddingBottom: 16,
+    backgroundColor: '#fff',
+    borderBottomWidth: 1,
+    borderBottomColor: '#e5e7eb',
   },
-  title: {
-    fontSize: 28,
-    fontWeight: 'bold',
-  },
-  subtitle: {
-    fontSize: 14,
-    color: '#666',
-    paddingHorizontal: 20,
-    paddingBottom: 12,
+  headerTitle: {
+    fontSize: 20,
+    fontWeight: '700',
+    color: '#000',
   },
   filterContainer: {
     flexDirection: 'row',
     gap: 8,
     paddingHorizontal: 20,
+    paddingTop: 16,
     paddingBottom: 16,
   },
   filterButton: {
@@ -174,16 +170,20 @@ const styles = StyleSheet.create({
     gap: 6,
     paddingVertical: 8,
     paddingHorizontal: 14,
-    backgroundColor: '#f3f4f6',
-    borderRadius: 20,
+    backgroundColor: '#f5f5f5',
+    borderRadius: 6,
+    borderWidth: 1,
+    borderColor: '#e5e5e5',
   },
   filterActive: {
-    backgroundColor: '#3b82f6',
+    backgroundColor: '#000',
+    borderColor: '#000',
   },
   filterText: {
-    fontSize: 14,
+    fontSize: 13,
     color: '#666',
     fontWeight: '500',
+    letterSpacing: -0.2,
   },
   filterActiveText: {
     color: '#fff',
@@ -193,12 +193,12 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20,
   },
   duoCard: {
-    backgroundColor: '#f9fafb',
-    padding: 16,
-    borderRadius: 16,
-    marginBottom: 16,
+    backgroundColor: '#fff',
+    padding: 18,
+    borderRadius: 8,
+    marginBottom: 12,
     borderWidth: 1,
-    borderColor: '#e5e7eb',
+    borderColor: '#e5e5e5',
   },
   duoHeader: {
     flexDirection: 'row',
@@ -219,9 +219,9 @@ const styles = StyleSheet.create({
     position: 'absolute',
     bottom: 2,
     right: 2,
-    width: 12,
-    height: 12,
-    borderRadius: 6,
+    width: 10,
+    height: 10,
+    borderRadius: 5,
     borderWidth: 2,
     borderColor: '#fff',
   },
@@ -235,24 +235,30 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   duoName: {
-    fontSize: 18,
-    fontWeight: 'bold',
+    fontSize: 16,
+    fontWeight: '600',
     marginBottom: 2,
+    color: '#000',
+    letterSpacing: -0.3,
   },
   duoRank: {
-    fontSize: 14,
+    fontSize: 13,
     color: '#666',
+    fontWeight: '500',
   },
   matchBadge: {
     alignItems: 'center',
   },
   matchPercentage: {
-    fontSize: 20,
-    fontWeight: 'bold',
+    fontSize: 18,
+    fontWeight: '700',
+    letterSpacing: -0.5,
   },
   matchLabel: {
     fontSize: 11,
     color: '#666',
+    fontWeight: '500',
+    letterSpacing: 0.3,
   },
   duoDetails: {
     gap: 8,
@@ -264,8 +270,9 @@ const styles = StyleSheet.create({
     gap: 8,
   },
   detailText: {
-    fontSize: 13,
+    fontSize: 12,
     color: '#666',
+    fontWeight: '400',
   },
   actionButtons: {
     flexDirection: 'row',
@@ -273,31 +280,33 @@ const styles = StyleSheet.create({
   },
   viewProfileButton: {
     flex: 1,
-    paddingVertical: 10,
+    paddingVertical: 9,
     backgroundColor: '#fff',
-    borderRadius: 8,
+    borderRadius: 6,
     alignItems: 'center',
     borderWidth: 1,
-    borderColor: '#e5e7eb',
+    borderColor: '#e5e5e5',
   },
   viewProfileText: {
-    fontSize: 14,
+    fontSize: 13,
     fontWeight: '600',
     color: '#000',
+    letterSpacing: -0.2,
   },
   inviteButton: {
     flex: 1,
     flexDirection: 'row',
     gap: 6,
-    paddingVertical: 10,
-    backgroundColor: '#3b82f6',
-    borderRadius: 8,
+    paddingVertical: 9,
+    backgroundColor: '#000',
+    borderRadius: 6,
     alignItems: 'center',
     justifyContent: 'center',
   },
   inviteText: {
-    fontSize: 14,
+    fontSize: 13,
     fontWeight: '600',
     color: '#fff',
+    letterSpacing: -0.2,
   },
 });
