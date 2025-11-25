@@ -1,7 +1,7 @@
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { IconSymbol } from '@/components/ui/icon-symbol';
-import { StyleSheet, View, TouchableOpacity, ImageBackground, ScrollView } from 'react-native';
+import { StyleSheet, View, TouchableOpacity, ScrollView, Image } from 'react-native';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 
 interface GameStatsScreenProps {
@@ -23,31 +23,52 @@ export default function GameStatsScreen() {
     );
   }
 
+  // Get game color based on game name
+  const getGameColor = () => {
+    switch (game.name) {
+      case 'Valorant':
+        return '#e8a5a5'; // Dark pastel red
+      case 'League of Legends':
+        return '#b3d9ff'; // Pastel blue
+      case 'Apex Legends':
+        return '#fff4b3'; // Pastel yellow
+      default:
+        return '#e0e0e0'; // Default gray
+    }
+  };
+
+  // Get game image
+  const getGameImage = () => {
+    switch (game.name) {
+      case 'Valorant':
+        return require('@/assets/images/valorant.png');
+      case 'League of Legends':
+        return require('@/assets/images/leagueoflegends.png');
+      case 'Apex Legends':
+        return require('@/assets/images/apex.png');
+      default:
+        return null;
+    }
+  };
+
   return (
     <ScrollView style={styles.container} showsVerticalScrollIndicator={false}>
-      {/* Hero Section with Background */}
-      <ImageBackground
-        source={{ uri: 'https://images.unsplash.com/photo-1542751371-adc38448a05e?w=800' }}
-        style={styles.heroSection}
-        imageStyle={styles.heroImage}
-      >
+      {/* Hero Section with Pastel Background */}
+      <View style={[styles.heroSection, { backgroundColor: getGameColor() }]}>
         {/* Back Button */}
         <TouchableOpacity
           style={styles.backButton}
           onPress={() => router.back()}
         >
-          <IconSymbol size={24} name="chevron.left" color="#fff" />
+          <IconSymbol size={24} name="chevron.left" color="#000" />
         </TouchableOpacity>
 
-        {/* Game Title and Stats */}
+        {/* Game Logo */}
         <View style={styles.heroContent}>
+          <Image source={getGameImage()} style={styles.heroGameImage} resizeMode="contain" />
           <ThemedText style={styles.gameTitle}>{game.name}</ThemedText>
-          <View style={styles.mainStatContainer}>
-            <ThemedText style={styles.mainStatValue}>{game.trophies}</ThemedText>
-            <ThemedText style={styles.mainStatLabel}>Trophies</ThemedText>
-          </View>
         </View>
-      </ImageBackground>
+      </View>
 
       {/* Stats Card */}
       <View style={styles.statsCard}>
@@ -62,54 +83,34 @@ export default function GameStatsScreen() {
 
         <View style={styles.statRow}>
           <View style={styles.statRowIcon}>
-            <IconSymbol size={20} name="clock.fill" color="#666" />
+            <IconSymbol size={20} name="star.fill" color="#666" />
+          </View>
+          <ThemedText style={styles.statRowLabel}>Peak Rank</ThemedText>
+          <ThemedText style={styles.statRowValue}>{game.peakRank || 'Diamond 3'}</ThemedText>
+        </View>
+
+        <View style={styles.statRow}>
+          <View style={styles.statRowIcon}>
+            <IconSymbol size={20} name="chart.line.uptrend.xyaxis" color="#666" />
           </View>
           <ThemedText style={styles.statRowLabel}>Win Rate</ThemedText>
-          <ThemedText style={styles.statRowValue}>{game.winRate}%</ThemedText>
+          <ThemedText style={styles.statRowValue}>{game.winRate}% ({game.wins}W)</ThemedText>
         </View>
 
         <View style={styles.statRow}>
           <View style={styles.statRowIcon}>
-            <IconSymbol size={20} name="flame.fill" color="#666" />
+            <IconSymbol size={20} name="gamecontroller.fill" color="#666" />
           </View>
-          <ThemedText style={styles.statRowLabel}>Wins</ThemedText>
-          <ThemedText style={styles.statRowValue}>{game.wins}</ThemedText>
-        </View>
-
-        <View style={styles.statRow}>
-          <View style={styles.statRowIcon}>
-            <IconSymbol size={20} name="chart.bar.fill" color="#666" />
-          </View>
-          <ThemedText style={styles.statRowLabel}>Total Games</ThemedText>
+          <ThemedText style={styles.statRowLabel}>Games Played</ThemedText>
           <ThemedText style={styles.statRowValue}>{game.wins + game.losses}</ThemedText>
         </View>
-      </View>
 
-      {/* Recent Matches Section */}
-      <View style={styles.section}>
-        <ThemedText style={styles.sectionTitle}>Recent Matches</ThemedText>
-        <View style={styles.recentMatchesContainer}>
-          {game.recentMatches.map((match: string, index: number) => {
-            const isPositive = match.startsWith('+');
-            return (
-              <View
-                key={index}
-                style={[
-                  styles.matchBadge,
-                  isPositive ? styles.matchBadgePositive : styles.matchBadgeNegative
-                ]}
-              >
-                <ThemedText
-                  style={[
-                    styles.matchBadgeText,
-                    isPositive ? styles.matchBadgeTextPositive : styles.matchBadgeTextNegative
-                  ]}
-                >
-                  {match}
-                </ThemedText>
-              </View>
-            );
-          })}
+        <View style={styles.statRow}>
+          <View style={styles.statRowIcon}>
+            <IconSymbol size={20} name="person.fill" color="#666" />
+          </View>
+          <ThemedText style={styles.statRowLabel}>Top {game.name === 'Valorant' ? 'Agent' : game.name === 'League of Legends' ? 'Champion' : 'Character'}</ThemedText>
+          <ThemedText style={styles.statRowValue}>{game.topCharacter || 'Jett'}</ThemedText>
         </View>
       </View>
 
@@ -133,155 +134,156 @@ const styles = StyleSheet.create({
     backgroundColor: '#fff',
   },
   heroSection: {
-    height: 450,
+    height: 240,
     justifyContent: 'space-between',
     paddingTop: 60,
     paddingBottom: 40,
     paddingHorizontal: 24,
   },
-  heroImage: {
-    opacity: 0.8,
-  },
   backButton: {
     width: 40,
     height: 40,
     borderRadius: 20,
-    backgroundColor: 'rgba(0,0,0,0.3)',
+    backgroundColor: 'rgba(255,255,255,0.3)',
     alignItems: 'center',
     justifyContent: 'center',
-    backdropFilter: 'blur(10px)',
+    borderWidth: 1,
+    borderColor: 'rgba(0,0,0,0.1)',
   },
   heroContent: {
     alignItems: 'flex-start',
   },
+  heroGameImage: {
+    width: 60,
+    height: 60,
+    marginBottom: 10,
+  },
   gameTitle: {
-    fontSize: 28,
+    fontSize: 32,
     fontWeight: '700',
-    color: '#fff',
-    marginBottom: 16,
-    textShadowColor: 'rgba(0,0,0,0.3)',
-    textShadowOffset: { width: 0, height: 2 },
-    textShadowRadius: 4,
+    color: '#000',
+    marginBottom: 10,
+    paddingVertical: 7,
+    letterSpacing: -0.5,
   },
   mainStatContainer: {
     alignItems: 'flex-start',
   },
   mainStatValue: {
-    fontSize: 72,
+    fontSize: 56,
     fontWeight: '700',
-    color: '#fff',
+    color: '#000',
     letterSpacing: -2,
-    textShadowColor: 'rgba(0,0,0,0.3)',
-    textShadowOffset: { width: 0, height: 2 },
-    textShadowRadius: 4,
   },
   mainStatLabel: {
-    fontSize: 16,
-    color: '#fff',
-    opacity: 0.9,
+    fontSize: 14,
+    color: '#666',
     fontWeight: '500',
-    textShadowColor: 'rgba(0,0,0,0.3)',
-    textShadowOffset: { width: 0, height: 1 },
-    textShadowRadius: 2,
+    letterSpacing: 0.5,
+    textTransform: 'uppercase',
   },
   statsCard: {
     backgroundColor: '#fff',
-    marginHorizontal: 24,
-    marginTop: -60,
-    borderRadius: 24,
-    padding: 24,
+    marginHorizontal: 20,
+    marginTop: -40,
+    borderRadius: 16,
+    padding: 20,
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.1,
-    shadowRadius: 12,
-    elevation: 5,
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.08,
+    shadowRadius: 8,
+    elevation: 4,
+    borderWidth: 1,
+    borderColor: '#e5e5e5',
   },
   statRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingVertical: 16,
+    paddingVertical: 14,
     borderBottomWidth: 1,
-    borderBottomColor: '#f3f4f6',
+    borderBottomColor: '#f5f5f5',
   },
   statRowIcon: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    backgroundColor: '#f3f4f6',
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: '#f9f9f9',
     alignItems: 'center',
     justifyContent: 'center',
-    marginRight: 16,
+    marginRight: 14,
   },
   statRowLabel: {
     flex: 1,
-    fontSize: 15,
-    color: '#000',
+    fontSize: 14,
+    color: '#666',
     fontWeight: '500',
   },
   statRowValue: {
-    fontSize: 16,
+    fontSize: 15,
     color: '#000',
     fontWeight: '700',
   },
   section: {
-    paddingHorizontal: 24,
-    paddingTop: 32,
+    paddingHorizontal: 20,
+    paddingTop: 28,
   },
   sectionTitle: {
-    fontSize: 20,
-    fontWeight: '700',
+    fontSize: 17,
+    fontWeight: '600',
     color: '#000',
-    marginBottom: 16,
+    marginBottom: 14,
+    letterSpacing: -0.3,
   },
   recentMatchesContainer: {
     flexDirection: 'row',
-    gap: 12,
+    gap: 10,
     flexWrap: 'wrap',
   },
   matchBadge: {
-    paddingVertical: 8,
-    paddingHorizontal: 16,
-    borderRadius: 12,
-    minWidth: 60,
+    paddingVertical: 10,
+    paddingHorizontal: 18,
+    borderRadius: 8,
+    minWidth: 70,
     alignItems: 'center',
   },
   matchBadgePositive: {
-    backgroundColor: '#dcfce7',
+    backgroundColor: '#e8f5e9',
   },
   matchBadgeNegative: {
-    backgroundColor: '#fee2e2',
+    backgroundColor: '#ffebee',
   },
   matchBadgeText: {
-    fontSize: 15,
+    fontSize: 14,
     fontWeight: '700',
   },
   matchBadgeTextPositive: {
-    color: '#16a34a',
+    color: '#2e7d32',
   },
   matchBadgeTextNegative: {
-    color: '#dc2626',
+    color: '#c62828',
   },
   shareButton: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
     backgroundColor: '#000',
-    marginHorizontal: 24,
+    marginHorizontal: 20,
     marginTop: 32,
-    paddingVertical: 16,
+    paddingVertical: 14,
     paddingHorizontal: 24,
-    borderRadius: 16,
-    gap: 12,
+    borderRadius: 12,
+    gap: 10,
   },
   shareButtonText: {
-    fontSize: 16,
-    fontWeight: '700',
+    fontSize: 15,
+    fontWeight: '600',
     color: '#fff',
+    letterSpacing: -0.2,
   },
   shareButtonIcon: {
-    width: 28,
-    height: 28,
-    borderRadius: 14,
+    width: 24,
+    height: 24,
+    borderRadius: 12,
     backgroundColor: 'rgba(255,255,255,0.2)',
     alignItems: 'center',
     justifyContent: 'center',

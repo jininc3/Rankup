@@ -1,6 +1,6 @@
 import { ThemedText } from '@/components/themed-text';
 import { useRouter } from 'expo-router';
-import { StyleSheet, TouchableOpacity, View } from 'react-native';
+import { StyleSheet, TouchableOpacity, View, Image } from 'react-native';
 
 interface Game {
   id: number;
@@ -32,15 +32,43 @@ export default function RankCard({ game, username }: RankCardProps) {
     });
   };
 
+  // Define pastel colors for each game
+  const getGameColor = () => {
+    switch (game.name) {
+      case 'Valorant':
+        return '#e8a5a5'; // Dark pastel red
+      case 'League of Legends':
+        return '#b3d9ff'; // Pastel blue
+      case 'Apex Legends':
+        return '#fff4b3'; // Pastel yellow
+      default:
+        return '#e0e0e0'; // Default gray
+    }
+  };
+
+  // Get game image
+  const getGameImage = () => {
+    switch (game.name) {
+      case 'Valorant':
+        return require('@/assets/images/valorant.png');
+      case 'League of Legends':
+        return require('@/assets/images/leagueoflegends.png');
+      case 'Apex Legends':
+        return require('@/assets/images/apex.png');
+      default:
+        return null;
+    }
+  };
+
   return (
     <TouchableOpacity
-      style={styles.rankCard}
+      style={[styles.rankCard, { backgroundColor: getGameColor() }]}
       onPress={handlePress}
       activeOpacity={0.9}
     >
       <View style={styles.cardFront}>
         <View style={styles.cardHeader}>
-          <ThemedText style={styles.cardGameIcon}>{game.icon}</ThemedText>
+          <Image source={getGameImage()} style={styles.cardGameImage} resizeMode="contain" />
         </View>
 
         <View style={styles.cardMiddle}>
@@ -61,36 +89,38 @@ export default function RankCard({ game, username }: RankCardProps) {
 
 const styles = StyleSheet.create({
   rankCard: {
-    backgroundColor: '#1e1b4b',
-    padding: 30,
-    borderRadius: 24,
+    padding: 20,
+    borderRadius: 16,
     height: 220,
-    shadowColor: '#6366f1',
-    shadowOffset: { width: 0, height: 10 },
-    shadowOpacity: 0.3,
-    shadowRadius: 20,
-    elevation: 12,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.1,
+    shadowRadius: 12,
+    elevation: 4,
     borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.1)',
+    borderColor: 'rgba(0,0,0,0.05)',
   },
   cardFront: {
     flex: 1,
-    justifyContent: 'space-between',
+    justifyContent: 'center',
   },
   cardHeader: {
-    marginBottom: 30,
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    alignItems: 'flex-start',
   },
-  cardGameIcon: {
-    fontSize: 42,
+  cardGameImage: {
+    width: 40,
+    height: 40,
   },
   cardMiddle: {
-    marginBottom: 30,
     alignItems: 'center',
     paddingVertical: 10,
   },
   cardRankLabel: {
     fontSize: 11,
-    color: '#94a3b8',
+    color: '#666',
     letterSpacing: 2,
     fontWeight: '600',
     textTransform: 'uppercase',
@@ -98,29 +128,32 @@ const styles = StyleSheet.create({
   cardRankValue: {
     fontSize: 36,
     fontWeight: '700',
-    color: '#fff',
+    color: '#000',
     letterSpacing: -1,
     paddingVertical: 10,
   },
   cardFooter: {
+    position: 'absolute',
+    bottom: -8,
+    left: 0,
+    right: 0,
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'flex-end',
-    marginTop: -10,
     paddingHorizontal: 5,
-    paddingBottom: 12,
+    paddingBottom: 0,
   },
   cardUserInfo: {
     flex: 1,
   },
   cardUsername: {
     fontSize: 13,
-    color: 'rgba(255,255,255,0.8)',
+    color: '#333',
     fontWeight: '600',
   },
   swipeHint: {
     fontSize: 9,
-    color: 'rgba(255,255,255,0.4)',
+    color: '#999',
     fontStyle: 'italic',
     paddingVertical: 4,
   },

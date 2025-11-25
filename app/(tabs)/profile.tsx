@@ -1,9 +1,9 @@
+import RankCard from '@/app/components/rankCard';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { IconSymbol } from '@/components/ui/icon-symbol';
-import RankCard from '@/app/components/rankCard';
-import { useState } from 'react';
-import { ScrollView, StyleSheet, TouchableOpacity, View, Modal } from 'react-native';
+import { useState, useRef } from 'react';
+import { Modal, ScrollView, StyleSheet, TouchableOpacity, View, Dimensions } from 'react-native';
 
 const userGames = [
   {
@@ -76,27 +76,62 @@ const recentActivity = [
   },
 ];
 
+const { width: screenWidth } = Dimensions.get('window');
+const CARD_PADDING = 20;
+const CARD_GAP = 16;
+const CARD_WIDTH = screenWidth - (CARD_PADDING * 2);
+
 export default function ProfileScreen() {
   const [selectedGameIndex, setSelectedGameIndex] = useState(0);
   const [showNotifications, setShowNotifications] = useState(false);
   const selectedGame = userGames[selectedGameIndex];
+  const scrollViewRef = useRef<ScrollView>(null);
+
+  const handleScroll = (event: any) => {
+    const offsetX = event.nativeEvent.contentOffset.x;
+    const index = Math.round(offsetX / (CARD_WIDTH + CARD_GAP));
+    if (index !== selectedGameIndex && index >= 0 && index < userGames.length) {
+      setSelectedGameIndex(index);
+    }
+  };
+
+  const handleScrollDrag = (event: any) => {
+    const offsetX = event.nativeEvent.contentOffset.x;
+    const index = Math.round(offsetX / (CARD_WIDTH + CARD_GAP));
+    if (index !== selectedGameIndex && index >= 0 && index < userGames.length) {
+      setSelectedGameIndex(index);
+    }
+  };
+
+  const scrollToIndex = (index: number) => {
+    scrollViewRef.current?.scrollTo({
+      x: index * (CARD_WIDTH + CARD_GAP),
+      animated: true,
+    });
+    setSelectedGameIndex(index);
+  };
 
   return (
     <ThemedView style={styles.container}>
-      {/* Header with notification bell */}
+      {/* Header with notification bell and settings */}
       <View style={styles.header}>
         <ThemedText style={styles.headerTitle}>Profile</ThemedText>
-        <TouchableOpacity
-          style={styles.notificationButton}
-          onPress={() => setShowNotifications(true)}
-        >
-          <IconSymbol size={24} name="bell.fill" color="#000" />
-          {recentActivity.length > 0 && (
-            <View style={styles.notificationBadge}>
-              <ThemedText style={styles.notificationBadgeText}>{recentActivity.length}</ThemedText>
-            </View>
-          )}
-        </TouchableOpacity>
+        <View style={styles.headerActions}>
+          <TouchableOpacity
+            style={styles.headerIconButton}
+            onPress={() => setShowNotifications(true)}
+          >
+            <IconSymbol size={24} name="bell.fill" color="#000" />
+            {recentActivity.length > 0 && (
+              <View style={styles.notificationBadge}>
+                <ThemedText style={styles.notificationBadgeText}>{recentActivity.length}</ThemedText>
+              </View>
+            )}
+          </TouchableOpacity>
+          <TouchableOpacity style={styles.headerIconButton}>
+            <IconSymbol size={24} name="gearshape.fill" color="#000" />
+          </TouchableOpacity>
+        </View>
       </View>
 
       {/* Notifications Modal */}
@@ -158,48 +193,45 @@ export default function ProfileScreen() {
       </Modal>
 
       <ScrollView showsVerticalScrollIndicator={false}>
-        <View style={styles.profileHeader}>
-          {/* Top Row: Avatar and Stats */}
-          <View style={styles.topRow}>
-            <View style={styles.avatarContainer}>
-              <IconSymbol size={80} name="person.circle.fill" color="#3b82f6" />
+        {/* Enhanced Profile Header */}
+        <View style={styles.profileHeaderWrapper}>
+          <View style={styles.profileHeader}>
+            {/* Avatar and Username Section */}
+            <View style={styles.profileMainSection}>
+              <View style={styles.avatarCircle}>
+                <ThemedText style={styles.avatarInitial}>Y</ThemedText>
+              </View>
+              <View style={styles.userInfo}>
+                <ThemedText style={styles.username}>your_username</ThemedText>
+                <ThemedText style={styles.bio}>Competitive gamer • Diamond player</ThemedText>
+              </View>
             </View>
 
-            <View style={styles.statsContainer}>
-              <View style={styles.statItem}>
-                <ThemedText style={styles.statValue}>2.5K</ThemedText>
-                <ThemedText style={styles.statLabel}>Trophies</ThemedText>
+            {/* Stats Grid */}
+            <View style={styles.statsGrid}>
+              <View style={styles.statCard}>
+                <ThemedText style={styles.statValue}>3</ThemedText>
+                <ThemedText style={styles.statLabel}>Games</ThemedText>
               </View>
-              <View style={styles.statItem}>
+              <View style={styles.statCard}>
                 <ThemedText style={styles.statValue}>156</ThemedText>
                 <ThemedText style={styles.statLabel}>Followers</ThemedText>
               </View>
-              <View style={styles.statItem}>
+              <View style={styles.statCard}>
                 <ThemedText style={styles.statValue}>89</ThemedText>
                 <ThemedText style={styles.statLabel}>Following</ThemedText>
               </View>
             </View>
+
+            {/* Edit Profile Button */}
+            <TouchableOpacity style={styles.editProfileButton}>
+              <ThemedText style={styles.editProfileText}>Edit Profile</ThemedText>
+            </TouchableOpacity>
           </View>
-
-          {/* Username and Bio */}
-          <ThemedText style={styles.username}>your_username</ThemedText>
-          <ThemedText style={styles.bio}>Competitive gamer 🎮 | Diamond player</ThemedText>
-
-          {/* Edit Profile Button */}
-          <TouchableOpacity style={styles.editProfileButton}>
-            <ThemedText style={styles.editProfileText}>Edit Profile</ThemedText>
-          </TouchableOpacity>
         </View>
 
         <View style={styles.section}>
-          <View style={styles.sectionHeader}>
-            <ThemedText style={styles.sectionTitle}>My Games</ThemedText>
-            <TouchableOpacity>
-              <ThemedText style={styles.addButton}>+ Add Game</ThemedText>
-            </TouchableOpacity>
-          </View>
-
-          {/* Game Tabs */}
+          {/* Minimal Game Tabs */}
           <ScrollView
             horizontal
             showsHorizontalScrollIndicator={false}
@@ -210,9 +242,8 @@ export default function ProfileScreen() {
               <TouchableOpacity
                 key={game.id}
                 style={[styles.gameTab, selectedGameIndex === index && styles.gameTabActive]}
-                onPress={() => setSelectedGameIndex(index)}
+                onPress={() => scrollToIndex(index)}
               >
-                <ThemedText style={styles.gameTabIcon}>{game.icon}</ThemedText>
                 <ThemedText style={[
                   styles.gameTabText,
                   selectedGameIndex === index && styles.gameTabTextActive
@@ -223,14 +254,35 @@ export default function ProfileScreen() {
             ))}
           </ScrollView>
 
-          {/* Credit Card Style Rank Card */}
-          <RankCard game={selectedGame} username="your_username" />
+          {/* Scrollable Rank Cards */}
+          <ScrollView
+            ref={scrollViewRef}
+            horizontal
+            pagingEnabled
+            showsHorizontalScrollIndicator={false}
+            onScroll={handleScrollDrag}
+            onMomentumScrollEnd={handleScroll}
+            scrollEventThrottle={16}
+            snapToInterval={CARD_WIDTH + CARD_GAP}
+            decelerationRate="fast"
+            contentContainerStyle={styles.cardsContainer}
+          >
+            {userGames.map((game, index) => (
+              <View
+                key={game.id}
+                style={[
+                  styles.cardWrapper,
+                  {
+                    width: CARD_WIDTH,
+                    marginRight: index < userGames.length - 1 ? CARD_GAP : 0
+                  }
+                ]}
+              >
+                <RankCard game={game} username="your_username" />
+              </View>
+            ))}
+          </ScrollView>
         </View>
-
-        <TouchableOpacity style={styles.settingsButton}>
-          <IconSymbol size={20} name="gearshape.fill" color="#666" />
-          <ThemedText style={styles.settingsText}>Settings</ThemedText>
-        </TouchableOpacity>
       </ScrollView>
     </ThemedView>
   );
@@ -257,7 +309,12 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     color: '#000',
   },
-  notificationButton: {
+  headerActions: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 16,
+  },
+  headerIconButton: {
     position: 'relative',
   },
   notificationBadge: {
@@ -278,13 +335,13 @@ const styles = StyleSheet.create({
   },
   modalOverlay: {
     flex: 1,
-    backgroundColor: 'rgba(0,0,0,0.5)',
+    backgroundColor: 'rgba(0,0,0,0.7)',
     justifyContent: 'flex-end',
   },
   modalContent: {
-    backgroundColor: '#fff',
-    borderTopLeftRadius: 20,
-    borderTopRightRadius: 20,
+    backgroundColor: '#fafafa',
+    borderTopLeftRadius: 16,
+    borderTopRightRadius: 16,
     maxHeight: '80%',
     paddingBottom: 20,
   },
@@ -294,139 +351,172 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     padding: 20,
     borderBottomWidth: 1,
-    borderBottomColor: '#e5e7eb',
+    borderBottomColor: '#e5e5e5',
   },
   modalTitle: {
-    fontSize: 20,
-    fontWeight: '700',
+    fontSize: 17,
+    fontWeight: '600',
     color: '#000',
+    letterSpacing: -0.3,
   },
   modalScrollView: {
     paddingHorizontal: 20,
+    paddingTop: 12,
+  },
+  profileHeaderWrapper: {
+    backgroundColor: '#fff',
+    borderBottomWidth: 1,
+    borderBottomColor: '#e5e5e5',
   },
   profileHeader: {
-    paddingTop: 60,
-    paddingBottom: 20,
+    paddingTop: 20,
+    paddingBottom: 16,
     paddingHorizontal: 20,
-    backgroundColor: '#fff',
   },
-  topRow: {
+  profileMainSection: {
     flexDirection: 'row',
     alignItems: 'center',
+    gap: 12,
     marginBottom: 16,
   },
-  avatarContainer: {
-    marginRight: 24,
-  },
-  statsContainer: {
-    flex: 1,
-    flexDirection: 'row',
-    justifyContent: 'space-around',
-    backgroundColor: 'transparent',
-  },
-  statItem: {
+  avatarCircle: {
+    width: 56,
+    height: 56,
+    borderRadius: 28,
+    backgroundColor: '#f5f5f5',
     alignItems: 'center',
-    backgroundColor: 'transparent',
+    justifyContent: 'center',
+    borderWidth: 1,
+    borderColor: '#e5e5e5',
   },
-  statValue: {
-    fontSize: 18,
-    fontWeight: '700',
+  avatarInitial: {
+    fontSize: 22,
+    fontWeight: '600',
     color: '#000',
+    letterSpacing: 0,
   },
-  statLabel: {
-    fontSize: 13,
-    color: '#000',
-    marginTop: 2,
+  userInfo: {
+    flex: 1,
   },
   username: {
-    fontSize: 14,
+    fontSize: 16,
     fontWeight: '600',
     color: '#000',
-    marginBottom: 4,
+    marginBottom: 2,
+    letterSpacing: -0.3,
   },
   bio: {
+    fontSize: 12,
+    color: '#666',
+    letterSpacing: 0,
+  },
+  statsGrid: {
+    flexDirection: 'row',
+    gap: 6,
+    marginBottom: 12,
+  },
+  statCard: {
+    flex: 1,
+    backgroundColor: '#f9f9f9',
+    paddingVertical: 8,
+    paddingHorizontal: 6,
+    borderRadius: 6,
+    alignItems: 'center',
+  },
+  statValue: {
     fontSize: 14,
+    fontWeight: '700',
     color: '#000',
-    marginBottom: 16,
-    lineHeight: 18,
+    marginBottom: 1,
+    letterSpacing: -0.5,
+  },
+  statLabel: {
+    fontSize: 9,
+    color: '#666',
+    fontWeight: '500',
+    letterSpacing: 0.1,
   },
   editProfileButton: {
-    backgroundColor: '#efefef',
-    paddingVertical: 8,
-    paddingHorizontal: 16,
-    borderRadius: 8,
+    width: '100%',
+    paddingVertical: 9,
+    paddingHorizontal: 20,
+    borderRadius: 6,
+    borderWidth: 1,
+    borderColor: '#e5e5e5',
     alignItems: 'center',
-    marginBottom: 8,
+    backgroundColor: '#fff',
   },
   editProfileText: {
-    fontSize: 14,
+    fontSize: 13,
     fontWeight: '600',
     color: '#000',
-  },
-  statDivider: {
-    width: 1,
-    height: 30,
-    backgroundColor: '#e5e7eb',
+    letterSpacing: -0.2,
   },
   section: {
     paddingHorizontal: 20,
-    paddingTop: 24,
+    paddingTop: 16,
+    paddingBottom: 8,
   },
   sectionHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: 16,
+    marginBottom: 20,
   },
   sectionTitle: {
-    fontSize: 22,
-    fontWeight: '700',
-    letterSpacing: -0.5,
+    fontSize: 17,
+    fontWeight: '600',
+    letterSpacing: -0.3,
+    color: '#000',
   },
   addButton: {
-    fontSize: 14,
-    color: '#3b82f6',
-    fontWeight: '600',
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    backgroundColor: '#000',
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   gameTabs: {
-    marginBottom: 16,
+    marginBottom: 20,
   },
   gameTabsContent: {
     gap: 10,
+    paddingBottom: 4,
   },
   gameTab: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 10,
-    paddingVertical: 12,
-    paddingHorizontal: 18,
-    backgroundColor: '#f8f9fa',
-    borderRadius: 16,
-    borderWidth: 1,
-    borderColor: '#e5e7eb',
+    paddingVertical: 8,
+    paddingHorizontal: 12,
+    backgroundColor: 'transparent',
+    borderBottomWidth: 2,
+    borderBottomColor: 'transparent',
   },
   gameTabActive: {
-    backgroundColor: '#dbeafe',
-    borderColor: '#3b82f6',
-  },
-  gameTabIcon: {
-    fontSize: 22,
+    borderBottomColor: '#000',
   },
   gameTabText: {
     fontSize: 14,
-    color: '#666',
-    fontWeight: '600',
+    color: '#999',
+    fontWeight: '500',
+    letterSpacing: -0.2,
   },
   gameTabTextActive: {
     color: '#000',
+    fontWeight: '600',
+  },
+  cardsContainer: {
+    paddingBottom: 4,
+  },
+  cardWrapper: {
+    paddingHorizontal: 0,
   },
   activityCard: {
-    backgroundColor: '#f8f9fa',
+    backgroundColor: '#fff',
     padding: 18,
-    borderRadius: 20,
-    marginBottom: 12,
+    borderRadius: 8,
+    marginBottom: 10,
     borderWidth: 1,
-    borderColor: '#e5e7eb',
+    borderColor: '#e5e5e5',
   },
   activityHeader: {
     marginBottom: 14,
@@ -436,27 +526,21 @@ const styles = StyleSheet.create({
     gap: 14,
   },
   activityIcon: {
-    width: 44,
-    height: 44,
-    borderRadius: 22,
+    width: 40,
+    height: 40,
+    borderRadius: 20,
     alignItems: 'center',
     justifyContent: 'center',
-    shadowColor: '#22c55e',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.3,
-    shadowRadius: 8,
-    elevation: 4,
+    backgroundColor: '#0a0a0a',
   },
   rankUpIcon: {
-    backgroundColor: '#22c55e',
+    backgroundColor: '#0a0a0a',
   },
   trophyIcon: {
-    backgroundColor: '#f59e0b',
-    shadowColor: '#f59e0b',
+    backgroundColor: '#0a0a0a',
   },
   achievementIcon: {
-    backgroundColor: '#a855f7',
-    shadowColor: '#a855f7',
+    backgroundColor: '#0a0a0a',
   },
   activityInfo: {
     flex: 1,
@@ -464,57 +548,42 @@ const styles = StyleSheet.create({
   activityGame: {
     fontSize: 11,
     color: '#666',
-    marginBottom: 4,
-    fontWeight: '600',
+    marginBottom: 6,
+    fontWeight: '500',
     textTransform: 'uppercase',
     letterSpacing: 0.5,
   },
   activityMessage: {
     fontSize: 15,
-    fontWeight: '600',
+    fontWeight: '500',
+    color: '#000',
     marginBottom: 6,
     lineHeight: 20,
+    letterSpacing: -0.2,
   },
   activityTime: {
-    fontSize: 13,
+    fontSize: 12,
     color: '#999',
+    fontWeight: '400',
   },
   activityFooter: {
     flexDirection: 'row',
     gap: 20,
     paddingTop: 14,
     borderTopWidth: 1,
-    borderTopColor: '#e5e7eb',
+    borderTopColor: '#f0f0f0',
   },
   likeButton: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 8,
+    gap: 6,
   },
   likeCount: {
-    fontSize: 14,
+    fontSize: 13,
     color: '#666',
-    fontWeight: '600',
+    fontWeight: '500',
   },
   commentButton: {
     padding: 4,
-  },
-  settingsButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 10,
-    marginHorizontal: 20,
-    marginVertical: 24,
-    padding: 18,
-    backgroundColor: '#f8f9fa',
-    borderRadius: 20,
-    borderWidth: 1,
-    borderColor: '#e5e7eb',
-  },
-  settingsText: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: '#666',
   },
 });
