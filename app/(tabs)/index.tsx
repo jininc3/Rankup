@@ -1,98 +1,212 @@
-import { Image } from 'expo-image';
-import { Platform, StyleSheet } from 'react-native';
-
-import { HelloWave } from '@/components/hello-wave';
-import ParallaxScrollView from '@/components/parallax-scroll-view';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
-import { Link } from 'expo-router';
+import { IconSymbol } from '@/components/ui/icon-symbol';
+import { ScrollView, StyleSheet, TouchableOpacity, View, Dimensions } from 'react-native';
+
+const { width } = Dimensions.get('window');
+const postSize = width - 32; // 16px padding on each side
+
+interface Post {
+  id: string;
+  username: string;
+  game: string;
+  type: 'rank_up' | 'achievement' | 'trophy';
+  title: string;
+  details: string;
+  likes: number;
+  time: string;
+  bgColor: string;
+  icon: string;
+}
+
+const mockPosts: Post[] = [
+  {
+    id: '1',
+    username: 'ShadowNinja',
+    game: 'Valorant',
+    type: 'rank_up',
+    title: 'Ranked Up!',
+    details: 'Diamond 2 → Diamond 3',
+    likes: 45,
+    time: '2h ago',
+    bgColor: '#22c55e',
+    icon: 'arrow.up.circle.fill',
+  },
+  {
+    id: '2',
+    username: 'ProGamer_X',
+    game: 'League of Legends',
+    type: 'achievement',
+    title: 'New Achievement',
+    details: '10 Win Streak!',
+    likes: 89,
+    time: '4h ago',
+    bgColor: '#8b5cf6',
+    icon: 'star.fill',
+  },
+  {
+    id: '3',
+    username: 'ElitePlayer',
+    game: 'CS2',
+    type: 'trophy',
+    title: 'Trophy Earned',
+    details: '+250 Trophies',
+    likes: 34,
+    time: '6h ago',
+    bgColor: '#FFD700',
+    icon: 'trophy.fill',
+  },
+  {
+    id: '4',
+    username: 'QuickShot77',
+    game: 'Apex Legends',
+    type: 'rank_up',
+    title: 'Ranked Up!',
+    details: 'Platinum 2 → Platinum 1',
+    likes: 56,
+    time: '8h ago',
+    bgColor: '#22c55e',
+    icon: 'arrow.up.circle.fill',
+  },
+  {
+    id: '5',
+    username: 'ChampionAce',
+    game: 'Valorant',
+    type: 'achievement',
+    title: 'MVP Award',
+    details: 'Team MVP 5 times',
+    likes: 72,
+    time: '12h ago',
+    bgColor: '#8b5cf6',
+    icon: 'star.fill',
+  },
+];
 
 export default function HomeScreen() {
   return (
-    <ParallaxScrollView
-      headerBackgroundColor={{ light: '#A1CEDC', dark: '#1D3D47' }}
-      headerImage={
-        <Image
-          source={require('@/assets/images/partial-react-logo.png')}
-          style={styles.reactLogo}
-        />
-      }>
-      <ThemedView style={styles.titleContainer}>
-        <ThemedText type="title">Welcome!</ThemedText>
-        <HelloWave />
-      </ThemedView>
-      <ThemedView style={styles.stepContainer}>
-        <ThemedText type="subtitle">Step 1: Try it</ThemedText>
-        <ThemedText>
-          Edit <ThemedText type="defaultSemiBold">app/(tabs)/index.tsx</ThemedText> to see changes.
-          Press{' '}
-          <ThemedText type="defaultSemiBold">
-            {Platform.select({
-              ios: 'cmd + d',
-              android: 'cmd + m',
-              web: 'F12',
-            })}
-          </ThemedText>{' '}
-          to open developer tools.
-        </ThemedText>
-      </ThemedView>
-      <ThemedView style={styles.stepContainer}>
-        <Link href="/modal">
-          <Link.Trigger>
-            <ThemedText type="subtitle">Step 2: Explore</ThemedText>
-          </Link.Trigger>
-          <Link.Preview />
-          <Link.Menu>
-            <Link.MenuAction title="Action" icon="cube" onPress={() => alert('Action pressed')} />
-            <Link.MenuAction
-              title="Share"
-              icon="square.and.arrow.up"
-              onPress={() => alert('Share pressed')}
-            />
-            <Link.Menu title="More" icon="ellipsis">
-              <Link.MenuAction
-                title="Delete"
-                icon="trash"
-                destructive
-                onPress={() => alert('Delete pressed')}
-              />
-            </Link.Menu>
-          </Link.Menu>
-        </Link>
+    <ThemedView style={styles.container}>
+      <ScrollView style={styles.scrollView} showsVerticalScrollIndicator={false}>
+        {mockPosts.map((post) => (
+          <View key={post.id} style={styles.postCard}>
+            {/* User Header */}
+            <View style={styles.postHeader}>
+              <View style={styles.userInfo}>
+                <IconSymbol size={32} name="person.circle.fill" color="#3b82f6" />
+                <View>
+                  <ThemedText style={styles.username}>{post.username}</ThemedText>
+                  <ThemedText style={styles.game}>{post.game}</ThemedText>
+                </View>
+              </View>
+              <ThemedText style={styles.time}>{post.time}</ThemedText>
+            </View>
 
-        <ThemedText>
-          {`Tap the Explore tab to learn more about what's included in this starter app.`}
-        </ThemedText>
-      </ThemedView>
-      <ThemedView style={styles.stepContainer}>
-        <ThemedText type="subtitle">Step 3: Get a fresh start</ThemedText>
-        <ThemedText>
-          {`When you're ready, run `}
-          <ThemedText type="defaultSemiBold">npm run reset-project</ThemedText> to get a fresh{' '}
-          <ThemedText type="defaultSemiBold">app</ThemedText> directory. This will move the current{' '}
-          <ThemedText type="defaultSemiBold">app</ThemedText> to{' '}
-          <ThemedText type="defaultSemiBold">app-example</ThemedText>.
-        </ThemedText>
-      </ThemedView>
-    </ParallaxScrollView>
+            {/* Square Post Content */}
+            <View style={[styles.postContent, { backgroundColor: post.bgColor }]}>
+              <IconSymbol size={80} name={post.icon} color="#fff" />
+              <ThemedText style={styles.postTitle}>{post.title}</ThemedText>
+              <ThemedText style={styles.postDetails}>{post.details}</ThemedText>
+            </View>
+
+            {/* Post Footer */}
+            <View style={styles.postFooter}>
+              <TouchableOpacity style={styles.likeButton}>
+                <IconSymbol size={20} name="heart.fill" color="#ef4444" />
+                <ThemedText style={styles.likeCount}>{post.likes}</ThemedText>
+              </TouchableOpacity>
+              <TouchableOpacity style={styles.commentButton}>
+                <IconSymbol size={20} name="bubble.left" color="#666" />
+              </TouchableOpacity>
+              <TouchableOpacity style={styles.shareButton}>
+                <IconSymbol size={20} name="paperplane" color="#666" />
+              </TouchableOpacity>
+            </View>
+          </View>
+        ))}
+      </ScrollView>
+    </ThemedView>
   );
 }
 
 const styles = StyleSheet.create({
-  titleContainer: {
+  container: {
+    flex: 1,
+    backgroundColor: '#fff',
+  },
+  scrollView: {
+    flex: 1,
+  },
+  postCard: {
+    marginHorizontal: 16,
+    marginTop: 16,
+    backgroundColor: '#f9fafb',
+    borderRadius: 16,
+    overflow: 'hidden',
+    borderWidth: 1,
+    borderColor: '#e5e7eb',
+  },
+  postHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    padding: 12,
+    backgroundColor: '#fff',
+  },
+  userInfo: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 8,
+    gap: 10,
   },
-  stepContainer: {
-    gap: 8,
-    marginBottom: 8,
+  username: {
+    fontSize: 15,
+    fontWeight: '600',
+    color: '#000',
   },
-  reactLogo: {
-    height: 178,
-    width: 290,
-    bottom: 0,
-    left: 0,
-    position: 'absolute',
+  game: {
+    fontSize: 12,
+    color: '#666',
+  },
+  time: {
+    fontSize: 12,
+    color: '#999',
+  },
+  postContent: {
+    width: postSize,
+    height: postSize,
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 12,
+  },
+  postTitle: {
+    fontSize: 24,
+    fontWeight: 'bold',
+    color: '#fff',
+  },
+  postDetails: {
+    fontSize: 18,
+    fontWeight: '600',
+    color: '#fff',
+  },
+  postFooter: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 16,
+    padding: 12,
+    backgroundColor: '#fff',
+  },
+  likeButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+  },
+  likeCount: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#000',
+  },
+  commentButton: {
+    padding: 4,
+  },
+  shareButton: {
+    padding: 4,
   },
 });
