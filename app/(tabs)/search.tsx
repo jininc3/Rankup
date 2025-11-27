@@ -17,12 +17,12 @@ const mockUsers = [
 
 export default function SearchScreen() {
   const [searchQuery, setSearchQuery] = useState('');
-  const [filteredUsers, setFilteredUsers] = useState(mockUsers);
+  const [filteredUsers, setFilteredUsers] = useState<typeof mockUsers>([]);
 
   const handleSearch = (text: string) => {
     setSearchQuery(text);
     if (text.trim() === '') {
-      setFilteredUsers(mockUsers);
+      setFilteredUsers([]);
     } else {
       const filtered = mockUsers.filter(user =>
         user.username.toLowerCase().includes(text.toLowerCase())
@@ -55,7 +55,13 @@ export default function SearchScreen() {
       </View>
 
       <ScrollView style={styles.scrollView} showsVerticalScrollIndicator={false}>
-        {filteredUsers.length > 0 ? (
+        {searchQuery.trim() === '' ? (
+          <View style={styles.emptyState}>
+            <IconSymbol size={64} name="magnifyingglass" color="#ccc" />
+            <ThemedText style={styles.emptyText}>Search user profiles</ThemedText>
+            <ThemedText style={styles.emptySubtext}>Enter a username to search</ThemedText>
+          </View>
+        ) : filteredUsers.length > 0 ? (
           filteredUsers.map((user) => (
             <TouchableOpacity key={user.id} style={styles.userCard}>
               <View style={styles.userLeft}>
@@ -94,6 +100,9 @@ const styles = StyleSheet.create({
     backgroundColor: '#fff',
   },
   header: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
     paddingHorizontal: 20,
     paddingTop: 60,
     paddingBottom: 16,
@@ -102,10 +111,9 @@ const styles = StyleSheet.create({
     borderBottomColor: '#e5e7eb',
   },
   headerTitle: {
-    fontSize: 28,
+    fontSize: 20,
     fontWeight: '700',
     color: '#000',
-    letterSpacing: -0.5,
   },
   searchContainer: {
     flexDirection: 'row',

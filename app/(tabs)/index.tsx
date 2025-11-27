@@ -1,123 +1,184 @@
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { IconSymbol } from '@/components/ui/icon-symbol';
-import { ScrollView, StyleSheet, TouchableOpacity, View, Dimensions } from 'react-native';
+import { Dimensions, ScrollView, StyleSheet, TouchableOpacity, View } from 'react-native';
+import { useState } from 'react';
 
 const { width } = Dimensions.get('window');
-const postSize = width - 32; // 16px padding on each side
 
 interface Post {
   id: string;
   username: string;
   game: string;
-  type: 'rank_up' | 'achievement' | 'trophy';
-  title: string;
-  details: string;
+  caption: string;
   likes: number;
-  time: string;
-  bgColor: string;
-  icon: string;
+  comments: number;
+  mediaColor: string; // Placeholder color for media content
+  userIcon: string;
+  isFollowing?: boolean;
 }
 
-const mockPosts: Post[] = [
+const forYouPosts: Post[] = [
   {
     id: '1',
-    username: 'ShadowNinja',
-    game: 'Valorant',
-    type: 'rank_up',
-    title: 'Ranked Up!',
-    details: 'Diamond 2 → Diamond 3',
-    likes: 45,
-    time: '2h ago',
-    bgColor: '#22c55e',
-    icon: 'arrow.up.circle.fill',
+    username: 'Takashii 1',
+    game: 'League of Legends',
+    caption: 'He was just standing there, waiting menacingly',
+    likes: 28,
+    comments: 1,
+    mediaColor: '#4a5568',
+    userIcon: 'person.circle.fill',
+    isFollowing: false,
   },
   {
     id: '2',
-    username: 'ProGamer_X',
-    game: 'League of Legends',
-    type: 'achievement',
-    title: 'New Achievement',
-    details: '10 Win Streak!',
-    likes: 89,
-    time: '4h ago',
-    bgColor: '#8b5cf6',
-    icon: 'star.fill',
+    username: 'Chaos18',
+    game: 'Valorant',
+    caption: 'If I had a nickel...',
+    likes: 45,
+    comments: 3,
+    mediaColor: '#718096',
+    userIcon: 'person.circle.fill',
+    isFollowing: false,
   },
   {
     id: '3',
-    username: 'ElitePlayer',
-    game: 'CS2',
-    type: 'trophy',
-    title: 'Trophy Earned',
-    details: '+250 Trophies',
-    likes: 34,
-    time: '6h ago',
-    bgColor: '#FFD700',
-    icon: 'trophy.fill',
+    username: 'ShadowNinja',
+    game: 'Valorant',
+    caption: 'Diamond 2 → Diamond 3 Ranked Up!',
+    likes: 89,
+    comments: 12,
+    mediaColor: '#22c55e',
+    userIcon: 'person.circle.fill',
+    isFollowing: true,
   },
   {
     id: '4',
-    username: 'QuickShot77',
-    game: 'Apex Legends',
-    type: 'rank_up',
-    title: 'Ranked Up!',
-    details: 'Platinum 2 → Platinum 1',
+    username: 'ProGamer_X',
+    game: 'League of Legends',
+    caption: '10 Win Streak! New Achievement Unlocked',
     likes: 56,
-    time: '8h ago',
-    bgColor: '#22c55e',
-    icon: 'arrow.up.circle.fill',
+    comments: 8,
+    mediaColor: '#8b5cf6',
+    userIcon: 'person.circle.fill',
+    isFollowing: false,
+  },
+];
+
+const followingPosts: Post[] = [
+  {
+    id: '3',
+    username: 'ShadowNinja',
+    game: 'Valorant',
+    caption: 'Diamond 2 → Diamond 3 Ranked Up!',
+    likes: 89,
+    comments: 12,
+    mediaColor: '#22c55e',
+    userIcon: 'person.circle.fill',
+    isFollowing: true,
   },
   {
     id: '5',
-    username: 'ChampionAce',
-    game: 'Valorant',
-    type: 'achievement',
-    title: 'MVP Award',
-    details: 'Team MVP 5 times',
-    likes: 72,
-    time: '12h ago',
-    bgColor: '#8b5cf6',
-    icon: 'star.fill',
+    username: 'ElitePlayer',
+    game: 'CS2',
+    caption: 'Just got a crazy ace clutch!',
+    likes: 112,
+    comments: 15,
+    mediaColor: '#f59e0b',
+    userIcon: 'person.circle.fill',
+    isFollowing: true,
+  },
+  {
+    id: '6',
+    username: 'QuickShot77',
+    game: 'Apex Legends',
+    caption: 'New season looking fire',
+    likes: 67,
+    comments: 5,
+    mediaColor: '#ec4899',
+    userIcon: 'person.circle.fill',
+    isFollowing: true,
   },
 ];
 
 export default function HomeScreen() {
+  const [activeTab, setActiveTab] = useState<'forYou' | 'following'>('forYou');
+  const currentPosts = activeTab === 'forYou' ? forYouPosts : followingPosts;
+
   return (
     <ThemedView style={styles.container}>
+      <View style={styles.header}>
+        <ThemedText style={styles.headerTitle}>Home</ThemedText>
+      </View>
+
+      {/* Tabs */}
+      <View style={styles.tabContainer}>
+        <TouchableOpacity
+          style={[styles.tab, activeTab === 'following' && styles.tabActive]}
+          onPress={() => setActiveTab('following')}
+        >
+          <ThemedText style={[styles.tabText, activeTab === 'following' && styles.tabTextActive]}>
+            Following
+          </ThemedText>
+        </TouchableOpacity>
+        <TouchableOpacity
+          style={[styles.tab, activeTab === 'forYou' && styles.tabActive]}
+          onPress={() => setActiveTab('forYou')}
+        >
+          <ThemedText style={[styles.tabText, activeTab === 'forYou' && styles.tabTextActive]}>
+            For You
+          </ThemedText>
+        </TouchableOpacity>
+      </View>
+
       <ScrollView style={styles.scrollView} showsVerticalScrollIndicator={false}>
-        {mockPosts.map((post) => (
+        {currentPosts.map((post) => (
           <View key={post.id} style={styles.postCard}>
             {/* User Header */}
             <View style={styles.postHeader}>
               <View style={styles.userInfo}>
-                <IconSymbol size={32} name="person.circle.fill" color="#3b82f6" />
-                <View>
+                <IconSymbol size={40} name={post.userIcon} color="#666" />
+                <View style={styles.userTextInfo}>
                   <ThemedText style={styles.username}>{post.username}</ThemedText>
-                  <ThemedText style={styles.game}>{post.game}</ThemedText>
+                  {!post.isFollowing && (
+                    <TouchableOpacity style={styles.followButton}>
+                      <ThemedText style={styles.followText}>Follow</ThemedText>
+                    </TouchableOpacity>
+                  )}
                 </View>
               </View>
-              <ThemedText style={styles.time}>{post.time}</ThemedText>
             </View>
 
-            {/* Square Post Content */}
-            <View style={[styles.postContent, { backgroundColor: post.bgColor }]}>
-              <IconSymbol size={80} name={post.icon} color="#fff" />
-              <ThemedText style={styles.postTitle}>{post.title}</ThemedText>
-              <ThemedText style={styles.postDetails}>{post.details}</ThemedText>
+            {/* Caption */}
+            <View style={styles.captionContainer}>
+              <ThemedText style={styles.caption}>{post.caption}</ThemedText>
+            </View>
+
+            {/* Media Content (placeholder) */}
+            <View style={[styles.mediaContent, { backgroundColor: post.mediaColor }]}>
+              <IconSymbol size={60} name="play.circle.fill" color="rgba(255,255,255,0.8)" />
+            </View>
+
+            {/* Game Badge */}
+            <View style={styles.gameBadgeContainer}>
+              <View style={styles.gameBadge}>
+                <IconSymbol size={20} name="gamecontroller.fill" color="#fff" />
+                <ThemedText style={styles.gameBadgeText}>{post.game}</ThemedText>
+              </View>
             </View>
 
             {/* Post Footer */}
             <View style={styles.postFooter}>
               <TouchableOpacity style={styles.likeButton}>
-                <IconSymbol size={20} name="heart.fill" color="#ef4444" />
-                <ThemedText style={styles.likeCount}>{post.likes}</ThemedText>
+                <IconSymbol size={28} name="heart" color="#000" />
+                <ThemedText style={styles.actionCount}>{post.likes}</ThemedText>
               </TouchableOpacity>
               <TouchableOpacity style={styles.commentButton}>
-                <IconSymbol size={20} name="bubble.left" color="#666" />
+                <IconSymbol size={28} name="bubble.left" color="#000" />
+                <ThemedText style={styles.actionCount}>{post.comments}</ThemedText>
               </TouchableOpacity>
               <TouchableOpacity style={styles.shareButton}>
-                <IconSymbol size={20} name="paperplane" color="#666" />
+                <IconSymbol size={28} name="paperplane" color="#000" />
               </TouchableOpacity>
             </View>
           </View>
@@ -132,81 +193,145 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: '#fff',
   },
+  header: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingHorizontal: 20,
+    paddingTop: 60,
+    paddingBottom: 16,
+    backgroundColor: '#fff',
+    borderBottomWidth: 1,
+    borderBottomColor: '#e5e7eb',
+  },
+  headerTitle: {
+    fontSize: 20,
+    fontWeight: '700',
+    color: '#000',
+  },
+  tabContainer: {
+    flexDirection: 'row',
+    backgroundColor: '#fff',
+    borderBottomWidth: 1,
+    borderBottomColor: '#e5e7eb',
+  },
+  tab: {
+    flex: 1,
+    paddingVertical: 12,
+    alignItems: 'center',
+    borderBottomWidth: 2,
+    borderBottomColor: 'transparent',
+  },
+  tabActive: {
+    borderBottomColor: '#000',
+  },
+  tabText: {
+    fontSize: 15,
+    fontWeight: '600',
+    color: '#666',
+  },
+  tabTextActive: {
+    color: '#000',
+  },
   scrollView: {
     flex: 1,
   },
   postCard: {
-    marginHorizontal: 16,
-    marginTop: 16,
-    backgroundColor: '#f9fafb',
-    borderRadius: 16,
-    overflow: 'hidden',
-    borderWidth: 1,
-    borderColor: '#e5e7eb',
+    marginBottom: 24,
+    backgroundColor: '#fff',
   },
   postHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    padding: 12,
-    backgroundColor: '#fff',
+    paddingHorizontal: 16,
+    paddingVertical: 12,
   },
   userInfo: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 10,
+    gap: 12,
+  },
+  userTextInfo: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
   },
   username: {
     fontSize: 15,
     fontWeight: '600',
     color: '#000',
   },
-  game: {
-    fontSize: 12,
-    color: '#666',
+  followButton: {
+    paddingHorizontal: 16,
+    paddingVertical: 6,
+    borderRadius: 6,
+    borderWidth: 1,
+    borderColor: '#e5e7eb',
+    backgroundColor: 'transparent',
   },
-  time: {
-    fontSize: 12,
-    color: '#999',
+  followText: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: '#000',
   },
-  postContent: {
-    width: postSize,
-    height: postSize,
+  captionContainer: {
+    paddingHorizontal: 16,
+    paddingBottom: 12,
+  },
+  caption: {
+    fontSize: 15,
+    color: '#000',
+    lineHeight: 20,
+  },
+  mediaContent: {
+    width: width,
+    height: width * 0.6, // Reduced height
     alignItems: 'center',
     justifyContent: 'center',
-    gap: 12,
   },
-  postTitle: {
-    fontSize: 24,
-    fontWeight: 'bold',
-    color: '#fff',
+  gameBadgeContainer: {
+    position: 'absolute',
+    bottom: 60,
+    left: 16,
   },
-  postDetails: {
-    fontSize: 18,
+  gameBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 20,
+    backgroundColor: 'rgba(0,0,0,0.7)',
+  },
+  gameBadgeText: {
+    fontSize: 13,
     fontWeight: '600',
     color: '#fff',
   },
   postFooter: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 16,
-    padding: 12,
-    backgroundColor: '#fff',
+    gap: 20,
+    paddingHorizontal: 16,
+    paddingVertical: 12,
   },
   likeButton: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 6,
   },
-  likeCount: {
+  commentButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+  },
+  shareButton: {
+    marginLeft: 'auto',
+  },
+  actionCount: {
     fontSize: 14,
     fontWeight: '600',
     color: '#000',
-  },
-  commentButton: {
-    padding: 4,
-  },
-  shareButton: {
-    padding: 4,
   },
 });

@@ -48,17 +48,6 @@ export default function LeaderboardView({
       </View>
 
       <ScrollView style={styles.scrollView} showsVerticalScrollIndicator={false}>
-        {/* Leaderboard Info */}
-        <View style={styles.infoSection}>
-          <View style={styles.leaderboardIcon}>
-            <ThemedText style={styles.leaderboardIconText}>{leaderboardIcon}</ThemedText>
-          </View>
-          <View style={styles.infoDetails}>
-            <ThemedText style={styles.gameName}>{game}</ThemedText>
-            <ThemedText style={styles.memberCount}>{members} members</ThemedText>
-          </View>
-        </View>
-
         {/* Column Headers */}
         <View style={styles.columnHeaders}>
           <ThemedText style={[styles.columnHeaderText, { width: 60 }]}>Rank</ThemedText>
@@ -145,7 +134,7 @@ const styles = StyleSheet.create({
   header: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    alignItems: 'center',
+    alignItems: 'flex-end',
     paddingHorizontal: 20,
     paddingTop: 60,
     paddingBottom: 16,
@@ -155,6 +144,7 @@ const styles = StyleSheet.create({
   },
   backButton: {
     padding: 4,
+    marginBottom: 2,
   },
   headerTitle: {
     fontSize: 20,
@@ -166,41 +156,6 @@ const styles = StyleSheet.create({
   },
   scrollView: {
     flex: 1,
-  },
-  infoSection: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: 20,
-    paddingVertical: 20,
-    gap: 16,
-    borderBottomWidth: 1,
-    borderBottomColor: '#e5e7eb',
-  },
-  leaderboardIcon: {
-    width: 56,
-    height: 56,
-    borderRadius: 28,
-    backgroundColor: '#f5f5f5',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  leaderboardIconText: {
-    fontSize: 32,
-  },
-  infoDetails: {
-    flex: 1,
-  },
-  gameName: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: '#000',
-    marginBottom: 4,
-    letterSpacing: -0.3,
-  },
-  memberCount: {
-    fontSize: 13,
-    color: '#666',
-    fontWeight: '400',
   },
   columnHeaders: {
     flexDirection: 'row',

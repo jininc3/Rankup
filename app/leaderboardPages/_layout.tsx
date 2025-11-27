@@ -4,7 +4,7 @@ export default function LeaderboardPagesLayout() {
   return (
     <Stack>
       <Stack.Screen
-        name="[id]"
+        name="leaderboardDetail"
         options={{
           headerShown: false,
         }}
