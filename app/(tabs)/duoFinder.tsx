@@ -2,73 +2,14 @@ import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { IconSymbol } from '@/components/ui/icon-symbol';
 import DuoCard from '@/app/components/duoCard';
+import { users } from '@/app/data/userData';
 import { useState } from 'react';
 import { Dimensions, Modal, ScrollView, StyleSheet, TouchableOpacity, View, Image } from 'react-native';
 
 const { width } = Dimensions.get('window');
 
-const potentialDuos = [
-  {
-    id: 1,
-    name: 'ShadowNinja',
-    status: 'Online',
-    matchPercentage: 95,
-    currentRank: 'Diamond 2',
-    peakRank: 'Immortal 1',
-    favoriteAgent: 'Jett',
-    favoriteRole: 'Duelist',
-    winRate: 58,
-    gamesPlayed: 342,
-  },
-  {
-    id: 2,
-    name: 'StealthGamer',
-    status: 'Online',
-    matchPercentage: 89,
-    currentRank: 'Diamond 1',
-    peakRank: 'Diamond 3',
-    favoriteAgent: 'Sage',
-    favoriteRole: 'Sentinel',
-    winRate: 54,
-    gamesPlayed: 278,
-  },
-  {
-    id: 3,
-    name: 'QuickShot77',
-    status: 'Offline',
-    matchPercentage: 87,
-    currentRank: 'Platinum 3',
-    peakRank: 'Diamond 2',
-    favoriteAgent: 'Reyna',
-    favoriteRole: 'Duelist',
-    winRate: 52,
-    gamesPlayed: 456,
-  },
-  {
-    id: 4,
-    name: 'TeamPlayer99',
-    status: 'Online',
-    matchPercentage: 84,
-    currentRank: 'Diamond 3',
-    peakRank: 'Immortal 2',
-    favoriteAgent: 'Sova',
-    favoriteRole: 'Initiator',
-    winRate: 61,
-    gamesPlayed: 512,
-  },
-  {
-    id: 5,
-    name: 'ProCarry_XD',
-    status: 'Offline',
-    matchPercentage: 81,
-    currentRank: 'Platinum 2',
-    peakRank: 'Platinum 3',
-    favoriteAgent: 'Phoenix',
-    favoriteRole: 'Duelist',
-    winRate: 49,
-    gamesPlayed: 189,
-  },
-];
+// Filter users to get potential duos (excluding current user)
+const potentialDuos = users.slice(0, 5);
 
 const games = [
   { id: 1, name: 'Valorant', icon: require('@/assets/images/valorant.png'), color: '#FF4655' },

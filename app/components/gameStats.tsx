@@ -162,7 +162,7 @@ const styles = StyleSheet.create({
     fontSize: 32,
     fontWeight: '700',
     color: '#000',
-    marginBottom: 10,
+    marginBottom: 16,
     paddingVertical: 7,
     letterSpacing: -0.5,
   },
@@ -185,7 +185,7 @@ const styles = StyleSheet.create({
   statsCard: {
     backgroundColor: '#fff',
     marginHorizontal: 20,
-    marginTop: -40,
+    marginTop: -30,
     borderRadius: 16,
     padding: 20,
     shadowColor: '#000',

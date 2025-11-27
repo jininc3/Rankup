@@ -1,4 +1,5 @@
 import RankCard from '@/app/components/rankCard';
+import { currentUser } from '@/app/data/userData';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { IconSymbol } from '@/components/ui/icon-symbol';
@@ -10,34 +11,34 @@ const userGames = [
   {
     id: 1,
     name: 'Valorant',
-    rank: 'Diamond 2',
+    rank: currentUser.gamesPlayed.valorant.currentRank,
     trophies: 1245,
     icon: '🎯',
-    wins: 234,
-    losses: 189,
-    winRate: 55,
+    wins: Math.floor(currentUser.gamesPlayed.valorant.gamesPlayed * (currentUser.gamesPlayed.valorant.winRate / 100)),
+    losses: currentUser.gamesPlayed.valorant.gamesPlayed - Math.floor(currentUser.gamesPlayed.valorant.gamesPlayed * (currentUser.gamesPlayed.valorant.winRate / 100)),
+    winRate: currentUser.gamesPlayed.valorant.winRate,
     recentMatches: ['+25', '+18', '-12', '+22', '+19'],
   },
   {
     id: 2,
     name: 'League of Legends',
-    rank: 'Platinum 1',
+    rank: currentUser.gamesPlayed.league.currentRank,
     trophies: 876,
     icon: '⚔️',
-    wins: 189,
-    losses: 165,
-    winRate: 53,
+    wins: Math.floor(currentUser.gamesPlayed.league.gamesPlayed * (currentUser.gamesPlayed.league.winRate / 100)),
+    losses: currentUser.gamesPlayed.league.gamesPlayed - Math.floor(currentUser.gamesPlayed.league.gamesPlayed * (currentUser.gamesPlayed.league.winRate / 100)),
+    winRate: currentUser.gamesPlayed.league.winRate,
     recentMatches: ['+15', '-18', '+20', '+17', '-14'],
   },
   {
     id: 3,
     name: 'Apex Legends',
-    rank: 'Diamond 3',
+    rank: currentUser.gamesPlayed.apex.currentRank,
     trophies: 422,
     icon: '🎮',
-    wins: 156,
-    losses: 144,
-    winRate: 52,
+    wins: Math.floor(currentUser.gamesPlayed.apex.gamesPlayed * (currentUser.gamesPlayed.apex.winRate / 100)),
+    losses: currentUser.gamesPlayed.apex.gamesPlayed - Math.floor(currentUser.gamesPlayed.apex.gamesPlayed * (currentUser.gamesPlayed.apex.winRate / 100)),
+    winRate: currentUser.gamesPlayed.apex.winRate,
     recentMatches: ['+28', '+22', '-16', '-19', '+25'],
   },
 ];
@@ -47,7 +48,7 @@ const recentActivity = [
     id: 1,
     type: 'rank_up',
     game: 'Valorant',
-    message: 'Ranked up to Diamond 2',
+    message: `Ranked up to ${currentUser.gamesPlayed.valorant.currentRank}`,
     time: '2 hours ago',
     likes: 24,
   },
@@ -63,7 +64,7 @@ const recentActivity = [
     id: 3,
     type: 'rank_up',
     game: 'Apex Legends',
-    message: 'Promoted to Diamond 3',
+    message: `Promoted to ${currentUser.gamesPlayed.apex.currentRank}`,
     time: '1 day ago',
     likes: 31,
   },
@@ -118,24 +119,13 @@ export default function ProfileScreen() {
     <ThemedView style={styles.container}>
       {/* Header with notification bell and settings */}
       <View style={styles.header}>
-        <ThemedText style={styles.headerTitle}>Profile</ThemedText>
+        <View style={styles.headerSpacer} />
         <View style={styles.headerActions}>
-          <TouchableOpacity
-            style={styles.headerIconButton}
-            onPress={() => setShowNotifications(true)}
-          >
-            <IconSymbol size={24} name="bell.fill" color="#000" />
-            {recentActivity.length > 0 && (
-              <View style={styles.notificationBadge}>
-                <ThemedText style={styles.notificationBadgeText}>{recentActivity.length}</ThemedText>
-              </View>
-            )}
-          </TouchableOpacity>
           <TouchableOpacity
             style={styles.headerIconButton}
             onPress={() => router.push('/profilePages/settings')}
           >
-            <IconSymbol size={24} name="gearshape.fill" color="#000" />
+            <IconSymbol size={28} name="gearshape.fill" color="#fff" />
           </TouchableOpacity>
         </View>
       </View>
@@ -199,42 +189,66 @@ export default function ProfileScreen() {
       </Modal>
 
       <ScrollView showsVerticalScrollIndicator={false}>
-        {/* Enhanced Profile Header */}
-        <View style={styles.profileHeaderWrapper}>
-          <View style={styles.profileHeader}>
-            {/* Avatar and Username Section */}
-            <View style={styles.profileMainSection}>
-              <View style={styles.avatarCircle}>
-                <ThemedText style={styles.avatarInitial}>Y</ThemedText>
-              </View>
-              <View style={styles.userInfo}>
-                <ThemedText style={styles.username}>your_username</ThemedText>
-                <ThemedText style={styles.bio}>Competitive gamer • Diamond player</ThemedText>
-              </View>
+        {/* Cover Photo */}
+        <View style={styles.coverPhotoContainer}>
+          <View style={styles.coverPhoto}>
+            {/* Placeholder gradient or color */}
+          </View>
+        </View>
+
+        {/* Profile Content */}
+        <View style={styles.profileContentWrapper}>
+          {/* Avatar on the left, overlapping cover */}
+          <View style={styles.avatarContainer}>
+            <View style={styles.avatarCircle}>
+              <ThemedText style={styles.avatarInitial}>{currentUser.avatar}</ThemedText>
+            </View>
+          </View>
+
+          {/* Profile Info */}
+          <View style={styles.profileInfo}>
+            {/* Username */}
+            <ThemedText style={styles.username}>{currentUser.username}</ThemedText>
+
+            {/* Stats in One Line */}
+            <View style={styles.statsRow}>
+              <ThemedText style={styles.statText}>0 Clips</ThemedText>
+              <ThemedText style={styles.statDividerText}> | </ThemedText>
+              <ThemedText style={styles.statText}>{currentUser.followersCount} Followers</ThemedText>
+              <ThemedText style={styles.statDividerText}> | </ThemedText>
+              <ThemedText style={styles.statText}>{currentUser.followingCount} Following</ThemedText>
             </View>
 
-            {/* Stats Grid */}
-            <View style={styles.statsGrid}>
-              <View style={styles.statItem}>
-                <ThemedText style={styles.statValue}>3</ThemedText>
-                <ThemedText style={styles.statLabel}>Games</ThemedText>
+            {/* Social Links */}
+            {(currentUser.socials.discord || currentUser.socials.instagram) && (
+              <View style={styles.socialsContainer}>
+                {currentUser.socials.discord && (
+                  <View style={styles.socialLink}>
+                    <IconSymbol size={14} name="link" color="#5865F2" />
+                    <ThemedText style={styles.socialText}>{currentUser.socials.discord}</ThemedText>
+                  </View>
+                )}
+                {currentUser.socials.instagram && (
+                  <View style={styles.socialLink}>
+                    <IconSymbol size={14} name="link" color="#E4405F" />
+                    <ThemedText style={styles.socialText}>{currentUser.socials.instagram}</ThemedText>
+                  </View>
+                )}
               </View>
-              <View style={styles.statDivider} />
-              <View style={styles.statItem}>
-                <ThemedText style={styles.statValue}>156</ThemedText>
-                <ThemedText style={styles.statLabel}>Followers</ThemedText>
-              </View>
-              <View style={styles.statDivider} />
-              <View style={styles.statItem}>
-                <ThemedText style={styles.statValue}>89</ThemedText>
-                <ThemedText style={styles.statLabel}>Following</ThemedText>
-              </View>
-            </View>
+            )}
 
-            {/* Edit Profile Button */}
-            <TouchableOpacity style={styles.editProfileButton}>
-              <ThemedText style={styles.editProfileText}>Edit Profile</ThemedText>
-            </TouchableOpacity>
+            {/* Action Buttons */}
+            <View style={styles.actionButtons}>
+              <TouchableOpacity
+                style={styles.editProfileButton}
+                onPress={() => router.push('/profilePages/editProfile')}
+              >
+                <ThemedText style={styles.editProfileText}>Edit Profile</ThemedText>
+              </TouchableOpacity>
+              <TouchableOpacity style={styles.shareProfileButton}>
+                <ThemedText style={styles.shareProfileText}>Share Profile</ThemedText>
+              </TouchableOpacity>
+            </View>
           </View>
         </View>
 
@@ -307,7 +321,7 @@ export default function ProfileScreen() {
                   }
                 ]}
               >
-                <RankCard game={game} username="your_username" />
+                <RankCard game={game} username={currentUser.username} />
               </View>
             ))}
           </ScrollView>
@@ -335,15 +349,21 @@ const styles = StyleSheet.create({
     backgroundColor: '#fff',
   },
   header: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
     paddingHorizontal: 20,
     paddingTop: 60,
     paddingBottom: 16,
-    backgroundColor: '#fff',
-    borderBottomWidth: 1,
-    borderBottomColor: '#e5e7eb',
+    backgroundColor: 'transparent',
+    zIndex: 10,
+  },
+  headerSpacer: {
+    width: 32,
   },
   headerTitle: {
     fontSize: 20,
@@ -404,94 +424,114 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20,
     paddingTop: 12,
   },
-  profileHeaderWrapper: {
+  coverPhotoContainer: {
+    width: '100%',
+    height: 240,
+    backgroundColor: '#f5f5f5',
+  },
+  coverPhoto: {
+    width: '100%',
+    height: '100%',
+    backgroundColor: '#667eea',
+  },
+  profileContentWrapper: {
     backgroundColor: '#fff',
-    borderBottomWidth: 1,
-    borderBottomColor: '#e5e5e5',
-  },
-  profileHeader: {
-    paddingTop: 20,
-    paddingBottom: 16,
     paddingHorizontal: 20,
+    paddingTop: 0,
+    paddingBottom: 24,
   },
-  profileMainSection: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 12,
+  avatarContainer: {
+    marginTop: -40,
     marginBottom: 16,
   },
   avatarCircle: {
-    width: 56,
-    height: 56,
-    borderRadius: 28,
+    width: 80,
+    height: 80,
+    borderRadius: 40,
     backgroundColor: '#f5f5f5',
     alignItems: 'center',
     justifyContent: 'center',
-    borderWidth: 1,
-    borderColor: '#e5e5e5',
+    borderWidth: 3,
+    borderColor: '#fff',
   },
   avatarInitial: {
-    fontSize: 22,
-    fontWeight: '600',
-    color: '#000',
-    letterSpacing: 0,
+    fontSize: 40,
   },
-  userInfo: {
-    flex: 1,
+  profileInfo: {
+    width: '100%',
   },
   username: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: '#000',
-    marginBottom: 2,
-    letterSpacing: -0.3,
-  },
-  bio: {
-    fontSize: 12,
-    color: '#666',
-    letterSpacing: 0,
-  },
-  statsGrid: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-around',
-    marginBottom: 20,
-    paddingVertical: 12,
-  },
-  statItem: {
-    alignItems: 'center',
-    flex: 1,
-  },
-  statDivider: {
-    width: 1,
-    height: 32,
-    backgroundColor: '#2a2a2a',
-  },
-  statValue: {
-    fontSize: 18,
+    fontSize: 20,
     fontWeight: '700',
     color: '#000',
-    marginBottom: 4,
+    marginBottom: 12,
     letterSpacing: -0.5,
   },
-  statLabel: {
-    fontSize: 11,
+  statsRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 20,
+  },
+  statText: {
+    fontSize: 14,
     color: '#666',
+    fontWeight: '400',
+  },
+  statDividerText: {
+    fontSize: 14,
+    color: '#999',
+    fontWeight: '400',
+  },
+  socialsContainer: {
+    flexDirection: 'row',
+    gap: 12,
+    marginBottom: 20,
+  },
+  socialLink: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    backgroundColor: '#f5f5f5',
+    paddingVertical: 4,
+    paddingHorizontal: 10,
+    borderRadius: 6,
+  },
+  socialText: {
+    fontSize: 12,
+    color: '#000',
     fontWeight: '500',
-    letterSpacing: 0.3,
+  },
+  actionButtons: {
+    flexDirection: 'row',
+    width: '100%',
+    gap: 12,
   },
   editProfileButton: {
-    width: '100%',
-    paddingVertical: 9,
-    paddingHorizontal: 20,
-    borderRadius: 6,
-    borderWidth: 1,
-    borderColor: '#e5e5e5',
+    flex: 1,
+    paddingVertical: 10,
+    paddingHorizontal: 16,
+    borderRadius: 8,
     alignItems: 'center',
-    backgroundColor: '#fff',
+    backgroundColor: '#000',
   },
   editProfileText: {
-    fontSize: 13,
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#fff',
+    letterSpacing: -0.2,
+  },
+  shareProfileButton: {
+    flex: 1,
+    paddingVertical: 10,
+    paddingHorizontal: 16,
+    borderRadius: 8,
+    alignItems: 'center',
+    backgroundColor: '#fff',
+    borderWidth: 1,
+    borderColor: '#e5e5e5',
+  },
+  shareProfileText: {
+    fontSize: 14,
     fontWeight: '600',
     color: '#000',
     letterSpacing: -0.2,

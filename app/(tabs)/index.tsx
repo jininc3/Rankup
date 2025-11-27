@@ -1,105 +1,15 @@
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { IconSymbol } from '@/components/ui/icon-symbol';
+import { posts } from '@/app/data/userData';
 import { Dimensions, ScrollView, StyleSheet, TouchableOpacity, View } from 'react-native';
 import { useState } from 'react';
 
 const { width } = Dimensions.get('window');
 
-interface Post {
-  id: string;
-  username: string;
-  game: string;
-  caption: string;
-  likes: number;
-  comments: number;
-  mediaColor: string; // Placeholder color for media content
-  userIcon: string;
-  isFollowing?: boolean;
-}
-
-const forYouPosts: Post[] = [
-  {
-    id: '1',
-    username: 'Takashii 1',
-    game: 'League of Legends',
-    caption: 'He was just standing there, waiting menacingly',
-    likes: 28,
-    comments: 1,
-    mediaColor: '#4a5568',
-    userIcon: 'person.circle.fill',
-    isFollowing: false,
-  },
-  {
-    id: '2',
-    username: 'Chaos18',
-    game: 'Valorant',
-    caption: 'If I had a nickel...',
-    likes: 45,
-    comments: 3,
-    mediaColor: '#718096',
-    userIcon: 'person.circle.fill',
-    isFollowing: false,
-  },
-  {
-    id: '3',
-    username: 'ShadowNinja',
-    game: 'Valorant',
-    caption: 'Diamond 2 → Diamond 3 Ranked Up!',
-    likes: 89,
-    comments: 12,
-    mediaColor: '#22c55e',
-    userIcon: 'person.circle.fill',
-    isFollowing: true,
-  },
-  {
-    id: '4',
-    username: 'ProGamer_X',
-    game: 'League of Legends',
-    caption: '10 Win Streak! New Achievement Unlocked',
-    likes: 56,
-    comments: 8,
-    mediaColor: '#8b5cf6',
-    userIcon: 'person.circle.fill',
-    isFollowing: false,
-  },
-];
-
-const followingPosts: Post[] = [
-  {
-    id: '3',
-    username: 'ShadowNinja',
-    game: 'Valorant',
-    caption: 'Diamond 2 → Diamond 3 Ranked Up!',
-    likes: 89,
-    comments: 12,
-    mediaColor: '#22c55e',
-    userIcon: 'person.circle.fill',
-    isFollowing: true,
-  },
-  {
-    id: '5',
-    username: 'ElitePlayer',
-    game: 'CS2',
-    caption: 'Just got a crazy ace clutch!',
-    likes: 112,
-    comments: 15,
-    mediaColor: '#f59e0b',
-    userIcon: 'person.circle.fill',
-    isFollowing: true,
-  },
-  {
-    id: '6',
-    username: 'QuickShot77',
-    game: 'Apex Legends',
-    caption: 'New season looking fire',
-    likes: 67,
-    comments: 5,
-    mediaColor: '#ec4899',
-    userIcon: 'person.circle.fill',
-    isFollowing: true,
-  },
-];
+// Separate posts into forYou (all posts) and following (only posts from followed users)
+const forYouPosts = posts;
+const followingPosts = posts.filter(post => post.isFollowing);
 
 export default function HomeScreen() {
   const [activeTab, setActiveTab] = useState<'forYou' | 'following'>('forYou');
@@ -137,7 +47,7 @@ export default function HomeScreen() {
             {/* User Header */}
             <View style={styles.postHeader}>
               <View style={styles.userInfo}>
-                <IconSymbol size={40} name={post.userIcon} color="#666" />
+                <ThemedText style={styles.userAvatar}>{post.userIcon}</ThemedText>
                 <View style={styles.userTextInfo}>
                   <ThemedText style={styles.username}>{post.username}</ThemedText>
                   {!post.isFollowing && (
@@ -251,6 +161,9 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 12,
+  },
+  userAvatar: {
+    fontSize: 32,
   },
   userTextInfo: {
     flexDirection: 'row',

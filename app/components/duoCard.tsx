@@ -32,7 +32,7 @@ export default function DuoCard({ duo }: DuoCardProps) {
   return (
     <View style={styles.duoCard}>
       <View style={styles.duoHeader}>
-        <View style={styles.duoLeft}>
+        <TouchableOpacity style={styles.duoLeft}>
           <View style={styles.avatarContainer}>
             <IconSymbol size={40} name="person.circle.fill" color="#3b82f6" />
             <View style={[styles.statusDot, duo.status === 'Online' ? styles.onlineDot : styles.offlineDot]} />
@@ -40,7 +40,7 @@ export default function DuoCard({ duo }: DuoCardProps) {
           <View style={styles.duoInfo}>
             <ThemedText style={styles.duoName}>{duo.name}</ThemedText>
           </View>
-        </View>
+        </TouchableOpacity>
 
         <View style={styles.matchBadge}>
           <ThemedText style={[styles.matchPercentage, { color: getMatchColor(duo.matchPercentage) }]}>
@@ -85,15 +85,10 @@ export default function DuoCard({ duo }: DuoCardProps) {
         </View>
       </View>
 
-      <View style={styles.actionButtons}>
-        <TouchableOpacity style={styles.viewProfileButton}>
-          <ThemedText style={styles.viewProfileText}>View Profile</ThemedText>
-        </TouchableOpacity>
-        <TouchableOpacity style={styles.inviteButton}>
-          <IconSymbol size={16} name="paperplane.fill" color="#fff" />
-          <ThemedText style={styles.inviteText}>Invite</ThemedText>
-        </TouchableOpacity>
-      </View>
+      <TouchableOpacity style={styles.inviteButton}>
+        <IconSymbol size={16} name="paperplane.fill" color="#fff" />
+        <ThemedText style={styles.inviteText}>Invite</ThemedText>
+      </TouchableOpacity>
     </View>
   );
 }
@@ -210,30 +205,10 @@ const styles = StyleSheet.create({
     color: '#000',
     fontWeight: '600',
   },
-  actionButtons: {
-    flexDirection: 'row',
-    gap: 8,
-  },
-  viewProfileButton: {
-    flex: 1,
-    paddingVertical: 8,
-    backgroundColor: '#fff',
-    borderRadius: 6,
-    alignItems: 'center',
-    borderWidth: 1,
-    borderColor: '#e5e5e5',
-  },
-  viewProfileText: {
-    fontSize: 12,
-    fontWeight: '600',
-    color: '#000',
-    letterSpacing: -0.2,
-  },
   inviteButton: {
-    flex: 1,
     flexDirection: 'row',
     gap: 6,
-    paddingVertical: 8,
+    paddingVertical: 10,
     backgroundColor: '#000',
     borderRadius: 6,
     alignItems: 'center',

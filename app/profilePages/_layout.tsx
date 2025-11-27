@@ -9,6 +9,12 @@ export default function ProfilePagesLayout() {
           headerShown: false,
         }}
       />
+      <Stack.Screen
+        name="editProfile"
+        options={{
+          headerShown: false,
+        }}
+      />
     </Stack>
   );
 }

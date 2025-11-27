@@ -1,19 +1,18 @@
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { IconSymbol } from '@/components/ui/icon-symbol';
+import { users, currentUser } from '@/app/data/userData';
 import { useState } from 'react';
 import { ScrollView, StyleSheet, TextInput, TouchableOpacity, View } from 'react-native';
 
-const mockUsers = [
-  { id: 1, username: 'ProGamer_X', rank: 'Diamond 2', trophies: 95240, avatar: '🎮' },
-  { id: 2, username: 'ShadowNinja', rank: 'Diamond 1', trophies: 87650, avatar: '🥷' },
-  { id: 3, username: 'QuickShot77', rank: 'Platinum 3', trophies: 76320, avatar: '🎯' },
-  { id: 4, username: 'ElitePlayer', rank: 'Diamond 3', trophies: 65430, avatar: '⚡' },
-  { id: 5, username: 'NightHawk', rank: 'Platinum 1', trophies: 58920, avatar: '🦅' },
-  { id: 6, username: 'ChampionAce', rank: 'Diamond 2', trophies: 78487, avatar: '🏆' },
-  { id: 7, username: 'DiamondKing', rank: 'Diamond 1', trophies: 72401, avatar: '💎' },
-  { id: 8, username: 'LegendaryOne', rank: 'Platinum 2', trophies: 68356, avatar: '⭐' },
-];
+// Map users to search format with some mock trophies
+const mockUsers = users.map((user, index) => ({
+  id: user.id,
+  username: user.username,
+  rank: user.currentRank,
+  trophies: 95240 - (index * 5000), // Mock trophy count
+  avatar: user.avatar,
+}));
 
 export default function SearchScreen() {
   const [searchQuery, setSearchQuery] = useState('');
