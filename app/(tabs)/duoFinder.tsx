@@ -123,33 +123,33 @@ export default function DuoFinderScreen() {
         </TouchableOpacity>
       </Modal>
 
-      <ScrollView style={styles.scrollView} showsVerticalScrollIndicator={false}>
-        {!selectedGame ? (
-          // Game Selection Cards
-          <View style={styles.gameCardsContainer}>
-            {games.map((game, index) => (
-              <View key={game.id}>
-                <TouchableOpacity
-                  style={styles.gameCard}
-                  onPress={() => handleGameSelect(game.name)}
-                >
-                  <View style={[styles.gameIconContainer, { backgroundColor: game.color }]}>
-                    <Image source={game.icon} style={styles.gameIconImage} />
-                  </View>
-                  <View style={styles.gameCardInfo}>
-                    <ThemedText style={styles.gameName}>{game.name}</ThemedText>
-                    <ThemedText style={styles.gameSubtext}>Find your duo partner and team up</ThemedText>
-                  </View>
-                </TouchableOpacity>
-                {index < games.length - 1 && <View style={styles.divider} />}
-              </View>
-            ))}
-          </View>
-        ) : (
-          // Duo Cards
-          potentialDuos.map((duo) => <DuoCard key={duo.id} duo={duo} />)
-        )}
-      </ScrollView>
+      {!selectedGame ? (
+        // Game Selection Cards
+        <View style={styles.gameCardsContainer}>
+          {games.map((game, index) => (
+            <View key={game.id} style={{ flex: 1 }}>
+              <TouchableOpacity
+                style={styles.gameCard}
+                onPress={() => handleGameSelect(game.name)}
+              >
+                <View style={[styles.gameIconContainer, { backgroundColor: game.color }]}>
+                  <Image source={game.icon} style={styles.gameIconImage} />
+                </View>
+                <View style={styles.gameCardInfo}>
+                  <ThemedText style={styles.gameName}>{game.name}</ThemedText>
+                  <ThemedText style={styles.gameSubtext}>Find your duo partner and team up</ThemedText>
+                </View>
+              </TouchableOpacity>
+              {index < games.length - 1 && <View style={styles.divider} />}
+            </View>
+          ))}
+        </View>
+      ) : (
+        // Duo Cards
+        <ScrollView style={styles.scrollView} showsVerticalScrollIndicator={false}>
+          {potentialDuos.map((duo) => <DuoCard key={duo.id} duo={duo} />)}
+        </ScrollView>
+      )}
     </ThemedView>
   );
 }
@@ -189,13 +189,14 @@ const styles = StyleSheet.create({
     padding: 4,
   },
   gameCardsContainer: {
-    paddingTop: 20,
-    paddingBottom: 20,
+    flex: 1,
+    justifyContent: 'space-evenly',
+    paddingVertical: 20,
   },
   gameCard: {
     flexDirection: 'row',
     backgroundColor: 'transparent',
-    padding: 16,
+    padding: 20,
     gap: 16,
     alignItems: 'center',
   },

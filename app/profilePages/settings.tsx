@@ -2,7 +2,8 @@ import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { IconSymbol } from '@/components/ui/icon-symbol';
 import { useRouter } from 'expo-router';
-import { ScrollView, StyleSheet, TouchableOpacity, View } from 'react-native';
+import { ScrollView, StyleSheet, TouchableOpacity, View, Alert } from 'react-native';
+import { useAuth } from '@/contexts/AuthContext';
 
 const settingsData = [
   {
@@ -57,6 +58,33 @@ const settingsData = [
 
 export default function SettingsScreen() {
   const router = useRouter();
+  const { signOut, user } = useAuth();
+
+  const handleSignOut = () => {
+    Alert.alert(
+      'Sign Out',
+      'Are you sure you want to sign out?',
+      [
+        {
+          text: 'Cancel',
+          style: 'cancel',
+        },
+        {
+          text: 'Sign Out',
+          style: 'destructive',
+          onPress: async () => {
+            try {
+              await signOut();
+              router.replace('/(auth)/login');
+            } catch (error) {
+              Alert.alert('Error', 'Failed to sign out');
+              console.error(error);
+            }
+          },
+        },
+      ]
+    );
+  };
 
   return (
     <ThemedView style={styles.container}>
@@ -108,6 +136,45 @@ export default function SettingsScreen() {
             </View>
           </View>
         ))}
+
+        {/* Account Info & Sign Out */}
+        {user && (
+          <View style={styles.section}>
+            <ThemedText style={styles.sectionTitle}>Account</ThemedText>
+            <View style={styles.settingsGroup}>
+              <View style={styles.settingItem}>
+                <View style={styles.settingLeft}>
+                  <View style={styles.iconContainer}>
+                    <IconSymbol size={22} name="person.circle" color="#000" />
+                  </View>
+                  <View style={styles.settingTextContainer}>
+                    <ThemedText style={styles.settingTitle}>{user.username}</ThemedText>
+                    <ThemedText style={styles.settingSubtitle}>
+                      Signed in with {user.provider}
+                    </ThemedText>
+                  </View>
+                </View>
+              </View>
+            </View>
+          </View>
+        )}
+
+        {/* Sign Out Button */}
+        <View style={styles.section}>
+          <View style={styles.settingsGroup}>
+            <TouchableOpacity
+              style={[styles.settingItem, styles.settingItemLast, styles.signOutButton]}
+              onPress={handleSignOut}
+            >
+              <View style={styles.settingLeft}>
+                <View style={styles.iconContainer}>
+                  <IconSymbol size={22} name="rectangle.portrait.and.arrow.right" color="#ef4444" />
+                </View>
+                <ThemedText style={[styles.settingTitle, styles.signOutText]}>Sign Out</ThemedText>
+              </View>
+            </TouchableOpacity>
+          </View>
+        </View>
 
         {/* Bottom Spacing */}
         <View style={styles.bottomSpacer} />
@@ -214,5 +281,12 @@ const styles = StyleSheet.create({
   },
   bottomSpacer: {
     height: 40,
+  },
+  signOutButton: {
+    backgroundColor: '#fff',
+  },
+  signOutText: {
+    color: '#ef4444',
+    fontWeight: '600',
   },
 });
