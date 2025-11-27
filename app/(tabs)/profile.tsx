@@ -6,6 +6,7 @@ import { IconSymbol } from '@/components/ui/icon-symbol';
 import { useRouter } from 'expo-router';
 import { useRef, useState } from 'react';
 import { Dimensions, Image, Modal, ScrollView, StyleSheet, TouchableOpacity, View } from 'react-native';
+import { useAuth } from '@/contexts/AuthContext';
 
 const userGames = [
   {
@@ -85,6 +86,7 @@ const CARD_WIDTH = screenWidth - (CARD_PADDING * 2);
 
 export default function ProfileScreen() {
   const router = useRouter();
+  const { user } = useAuth();
   const [selectedGameIndex, setSelectedGameIndex] = useState(0);
   const [showNotifications, setShowNotifications] = useState(false);
   const [activeMainTab, setActiveMainTab] = useState<'games' | 'posts'>('games');
@@ -197,9 +199,9 @@ export default function ProfileScreen() {
         </View>
 
         {/* Social Icons - positioned on the right below cover */}
-        {(currentUser.socials.discord || currentUser.socials.instagram) && (
+        {(user?.discordLink || user?.instagramLink) && (
           <View style={styles.socialIconsContainer}>
-            {currentUser.socials.discord && (
+            {user?.discordLink && (
               <TouchableOpacity style={styles.socialIconButton}>
                 <Image
                   source={require('@/assets/images/discord.png')}
@@ -208,7 +210,7 @@ export default function ProfileScreen() {
                 />
               </TouchableOpacity>
             )}
-            {currentUser.socials.instagram && (
+            {user?.instagramLink && (
               <TouchableOpacity style={styles.socialIconButton}>
                 <Image
                   source={require('@/assets/images/instagram.png')}
@@ -225,23 +227,36 @@ export default function ProfileScreen() {
           {/* Avatar on the left, overlapping cover */}
           <View style={styles.avatarContainer}>
             <View style={styles.avatarCircle}>
-              <ThemedText style={styles.avatarInitial}>{currentUser.avatar}</ThemedText>
+              {user?.avatar && user.avatar.startsWith('http') ? (
+                <Image source={{ uri: user.avatar }} style={styles.avatarImage} />
+              ) : (
+                <ThemedText style={styles.avatarInitial}>
+                  {user?.avatar || user?.username?.[0]?.toUpperCase() || 'U'}
+                </ThemedText>
+              )}
             </View>
           </View>
 
           {/* Profile Info */}
           <View style={styles.profileInfo}>
             {/* Username */}
-            <ThemedText style={styles.username}>{currentUser.username}</ThemedText>
+            <ThemedText style={styles.username}>{user?.username || 'User'}</ThemedText>
 
             {/* Stats in One Line */}
             <View style={styles.statsRow}>
               <ThemedText style={styles.statText}>0 Clips</ThemedText>
               <ThemedText style={styles.statDividerText}> | </ThemedText>
-              <ThemedText style={styles.statText}>{currentUser.followersCount} Followers</ThemedText>
+              <ThemedText style={styles.statText}>0 Followers</ThemedText>
               <ThemedText style={styles.statDividerText}> | </ThemedText>
-              <ThemedText style={styles.statText}>{currentUser.followingCount} Following</ThemedText>
+              <ThemedText style={styles.statText}>0 Following</ThemedText>
             </View>
+
+            {/* Bio */}
+            {user?.bio && (
+              <View style={styles.bioContainer}>
+                <ThemedText style={styles.bioText}>{user.bio}</ThemedText>
+              </View>
+            )}
 
             {/* Action Buttons */}
             <View style={styles.actionButtons}>
@@ -327,7 +342,7 @@ export default function ProfileScreen() {
                   }
                 ]}
               >
-                <RankCard game={game} username={currentUser.username} />
+                <RankCard game={game} username={user?.username || 'User'} />
               </View>
             ))}
           </ScrollView>
@@ -463,6 +478,11 @@ const styles = StyleSheet.create({
   avatarInitial: {
     fontSize: 40,
   },
+  avatarImage: {
+    width: '100%',
+    height: '100%',
+    borderRadius: 40,
+  },
   profileInfo: {
     width: '100%',
   },
@@ -476,7 +496,7 @@ const styles = StyleSheet.create({
   statsRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginBottom: 20,
+    marginBottom: 12,
   },
   statText: {
     fontSize: 14,
@@ -486,6 +506,15 @@ const styles = StyleSheet.create({
   statDividerText: {
     fontSize: 14,
     color: '#999',
+    fontWeight: '400',
+  },
+  bioContainer: {
+    marginBottom: 20,
+  },
+  bioText: {
+    fontSize: 14,
+    color: '#333',
+    lineHeight: 20,
     fontWeight: '400',
   },
   socialIconsContainer: {

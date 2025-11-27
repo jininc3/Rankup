@@ -9,6 +9,9 @@ interface User {
   username: string;
   email: string;
   avatar?: string;
+  bio?: string;
+  discordLink?: string;
+  instagramLink?: string;
   provider: 'email' | 'google' | 'discord' | 'instagram';
 }
 
@@ -16,6 +19,7 @@ interface AuthContextType {
   user: User | null;
   isLoading: boolean;
   setUser: (user: User | null) => void;
+  refreshUser: () => Promise<void>;
   signOut: () => Promise<void>;
   isAuthenticated: boolean;
 }
@@ -40,6 +44,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
               username: userProfile.username,
               email: userProfile.email,
               avatar: userProfile.avatar,
+              bio: userProfile.bio,
+              discordLink: userProfile.discordLink,
+              instagramLink: userProfile.instagramLink,
               provider: userProfile.provider,
             });
           } else {
@@ -67,6 +74,29 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     return () => unsubscribe();
   }, []);
 
+  const refreshUser = async () => {
+    const currentUser = auth.currentUser;
+    if (!currentUser) return;
+
+    try {
+      const userProfile = await getUserProfile(currentUser.uid);
+      if (userProfile) {
+        setUser({
+          id: userProfile.id,
+          username: userProfile.username,
+          email: userProfile.email,
+          avatar: userProfile.avatar,
+          bio: userProfile.bio,
+          discordLink: userProfile.discordLink,
+          instagramLink: userProfile.instagramLink,
+          provider: userProfile.provider,
+        });
+      }
+    } catch (error) {
+      console.error('Error refreshing user profile:', error);
+    }
+  };
+
   const handleSignOut = async () => {
     try {
       await authSignOut();
@@ -83,6 +113,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         user,
         isLoading,
         setUser,
+        refreshUser,
         signOut: handleSignOut,
         isAuthenticated: !!user,
       }}

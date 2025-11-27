@@ -7,7 +7,7 @@ import {
   signInWithCredential,
   User as FirebaseUser,
 } from 'firebase/auth';
-import { doc, setDoc, getDoc } from 'firebase/firestore';
+import { doc, setDoc, getDoc, updateDoc } from 'firebase/firestore';
 import { auth, db } from '@/config/firebase';
 
 export interface UserProfile {
@@ -15,6 +15,9 @@ export interface UserProfile {
   email: string;
   username: string;
   avatar?: string;
+  bio?: string;
+  discordLink?: string;
+  instagramLink?: string;
   provider: 'email' | 'google';
   createdAt: Date;
   updatedAt: Date;
@@ -43,6 +46,9 @@ export async function signUpWithEmail(
       id: user.uid,
       email: user.email!,
       username,
+      bio: '',
+      discordLink: '',
+      instagramLink: '',
       provider: 'email',
       createdAt: new Date(),
       updatedAt: new Date(),
@@ -77,6 +83,9 @@ export async function signInWithEmail(
         id: user.uid,
         email: user.email!,
         username: user.displayName || user.email!.split('@')[0],
+        bio: '',
+        discordLink: '',
+        instagramLink: '',
         provider: 'email',
         createdAt: new Date(),
         updatedAt: new Date(),
@@ -115,6 +124,9 @@ export async function signInWithGoogleCredential(idToken: string): Promise<UserP
         email: user.email!,
         username: user.displayName || user.email!.split('@')[0],
         avatar: user.photoURL || undefined,
+        bio: '',
+        discordLink: '',
+        instagramLink: '',
         provider: 'google',
         createdAt: new Date(),
         updatedAt: new Date(),
@@ -172,6 +184,32 @@ export async function getUserProfile(userId: string): Promise<UserProfile | null
   } catch (error) {
     console.error('Get user profile error:', error);
     return null;
+  }
+}
+
+/**
+ * Update user profile with additional information
+ */
+export async function updateUserProfile(
+  userId: string,
+  data: {
+    username?: string;
+    bio?: string;
+    discordLink?: string;
+    instagramLink?: string;
+    avatar?: string;
+  }
+): Promise<void> {
+  try {
+    const userRef = doc(db, 'users', userId);
+
+    await updateDoc(userRef, {
+      ...data,
+      updatedAt: new Date(),
+    });
+  } catch (error: any) {
+    console.error('Update user profile error:', error);
+    throw new Error('Failed to update profile');
   }
 }
 

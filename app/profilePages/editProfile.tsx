@@ -1,34 +1,195 @@
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { IconSymbol } from '@/components/ui/icon-symbol';
-import { currentUser } from '@/app/data/userData';
 import { useRouter } from 'expo-router';
-import { useState } from 'react';
-import { ScrollView, StyleSheet, TextInput, TouchableOpacity, View } from 'react-native';
+import { useState, useEffect } from 'react';
+import { ScrollView, StyleSheet, TextInput, TouchableOpacity, View, Alert, ActivityIndicator, Image } from 'react-native';
+import { useAuth } from '@/contexts/AuthContext';
+import { updateUserProfile } from '@/services/authService';
+import { uploadProfilePicture } from '@/services/storageService';
+import * as ImagePicker from 'expo-image-picker';
 
 export default function EditProfileScreen() {
   const router = useRouter();
-  const [username, setUsername] = useState(currentUser.username);
-  const [bio, setBio] = useState(currentUser.bio);
-  const [avatar, setAvatar] = useState(currentUser.avatar);
-  const [discord, setDiscord] = useState(currentUser.socials.discord);
-  const [instagram, setInstagram] = useState(currentUser.socials.instagram);
+  const { user, refreshUser } = useAuth();
 
-  const handleSave = () => {
-    // TODO: Save profile changes
-    router.back();
+  const [username, setUsername] = useState(user?.username || '');
+  const [bio, setBio] = useState(user?.bio || '');
+  const [avatar, setAvatar] = useState(user?.avatar || user?.username?.[0] || 'U');
+  const [profileImage, setProfileImage] = useState<string | null>(user?.avatar || null);
+  const [discord, setDiscord] = useState(user?.discordLink || '');
+  const [instagram, setInstagram] = useState(user?.instagramLink || '');
+  const [isLoading, setIsLoading] = useState(false);
+  const [isUploadingImage, setIsUploadingImage] = useState(false);
+
+  useEffect(() => {
+    if (user) {
+      setUsername(user.username || '');
+      setBio(user.bio || '');
+      setAvatar(user.avatar || user.username?.[0] || 'U');
+      setProfileImage(user.avatar || null);
+      setDiscord(user.discordLink || '');
+      setInstagram(user.instagramLink || '');
+    }
+  }, [user]);
+
+  const showImageOptions = () => {
+    Alert.alert(
+      'Change Profile Picture',
+      'Choose an option',
+      [
+        {
+          text: 'Take Photo',
+          onPress: () => takePhoto(),
+        },
+        {
+          text: 'Choose from Library',
+          onPress: () => pickImage(),
+        },
+        {
+          text: 'Cancel',
+          style: 'cancel',
+        },
+      ],
+      { cancelable: true }
+    );
+  };
+
+  const takePhoto = async () => {
+    try {
+      // Request camera permission
+      const permissionResult = await ImagePicker.requestCameraPermissionsAsync();
+
+      if (!permissionResult.granted) {
+        Alert.alert('Permission Required', 'Please allow access to your camera');
+        return;
+      }
+
+      // Launch camera
+      const result = await ImagePicker.launchCameraAsync({
+        allowsEditing: true,
+        aspect: [1, 1],
+        quality: 0.8,
+      });
+
+      if (!result.canceled && result.assets[0]) {
+        await uploadImage(result.assets[0].uri);
+      }
+    } catch (error: any) {
+      console.error('Camera error:', error);
+      Alert.alert('Error', 'Failed to take photo');
+    }
+  };
+
+  const pickImage = async () => {
+    try {
+      // Request permission
+      const permissionResult = await ImagePicker.requestMediaLibraryPermissionsAsync();
+
+      if (!permissionResult.granted) {
+        Alert.alert('Permission Required', 'Please allow access to your photo library');
+        return;
+      }
+
+      // Launch image picker
+      const result = await ImagePicker.launchImageLibraryAsync({
+        mediaTypes: ImagePicker.MediaTypeOptions.Images,
+        allowsEditing: true,
+        aspect: [1, 1],
+        quality: 0.8,
+      });
+
+      if (!result.canceled && result.assets[0]) {
+        await uploadImage(result.assets[0].uri);
+      }
+    } catch (error: any) {
+      console.error('Image picker error:', error);
+      Alert.alert('Error', 'Failed to pick image');
+    }
+  };
+
+  const uploadImage = async (uri: string) => {
+    try {
+      setIsUploadingImage(true);
+
+      // Upload to Firebase Storage
+      if (user) {
+        const downloadURL = await uploadProfilePicture(user.id, uri);
+        setProfileImage(downloadURL);
+
+        // Update user profile with new avatar URL
+        await updateUserProfile(user.id, { avatar: downloadURL });
+        await refreshUser();
+
+        Alert.alert('Success', 'Profile picture updated!');
+      }
+    } catch (error: any) {
+      console.error('Upload error:', error);
+      Alert.alert('Error', 'Failed to upload image');
+    } finally {
+      setIsUploadingImage(false);
+    }
+  };
+
+  const handleSave = async () => {
+    if (!user) {
+      Alert.alert('Error', 'You must be logged in to update your profile');
+      return;
+    }
+
+    if (!username.trim()) {
+      Alert.alert('Error', 'Username is required');
+      return;
+    }
+
+    if (bio.length > 150) {
+      Alert.alert('Error', 'Bio must be 150 characters or less');
+      return;
+    }
+
+    try {
+      setIsLoading(true);
+
+      await updateUserProfile(user.id, {
+        username: username.trim(),
+        bio: bio.trim(),
+        discordLink: discord.trim(),
+        instagramLink: instagram.trim(),
+      });
+
+      // Refresh user data to reflect changes
+      await refreshUser();
+
+      Alert.alert('Success', 'Profile updated successfully!', [
+        {
+          text: 'OK',
+          onPress: () => router.back(),
+        },
+      ]);
+    } catch (error: any) {
+      console.error('Profile update error:', error);
+      Alert.alert('Error', error.message || 'Failed to update profile');
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   return (
     <ThemedView style={styles.container}>
       {/* Header */}
       <View style={styles.header}>
-        <TouchableOpacity onPress={() => router.back()}>
-          <ThemedText style={styles.cancelButton}>Cancel</ThemedText>
+        <TouchableOpacity onPress={() => router.back()} disabled={isLoading}>
+          <ThemedText style={[styles.cancelButton, isLoading && styles.disabledText]}>
+            Cancel
+          </ThemedText>
         </TouchableOpacity>
         <ThemedText style={styles.headerTitle}>Edit Profile</ThemedText>
-        <TouchableOpacity onPress={handleSave}>
-          <ThemedText style={styles.saveButton}>Save</ThemedText>
+        <TouchableOpacity onPress={handleSave} disabled={isLoading}>
+          {isLoading ? (
+            <ActivityIndicator size="small" color="#000" />
+          ) : (
+            <ThemedText style={styles.saveButton}>Save</ThemedText>
+          )}
         </TouchableOpacity>
       </View>
 
@@ -47,10 +208,22 @@ export default function EditProfileScreen() {
         <View style={styles.profilePictureSection}>
           <View style={styles.avatarContainer}>
             <View style={styles.avatarCircle}>
-              <ThemedText style={styles.avatarInitial}>{avatar}</ThemedText>
+              {profileImage ? (
+                <Image source={{ uri: profileImage }} style={styles.avatarImage} />
+              ) : (
+                <ThemedText style={styles.avatarInitial}>{avatar}</ThemedText>
+              )}
             </View>
-            <TouchableOpacity style={styles.editAvatarButton}>
-              <IconSymbol size={20} name="camera.fill" color="#fff" />
+            <TouchableOpacity
+              style={styles.editAvatarButton}
+              onPress={showImageOptions}
+              disabled={isUploadingImage}
+            >
+              {isUploadingImage ? (
+                <ActivityIndicator size="small" color="#fff" />
+              ) : (
+                <IconSymbol size={20} name="camera.fill" color="#fff" />
+              )}
             </TouchableOpacity>
           </View>
         </View>
@@ -148,6 +321,9 @@ const styles = StyleSheet.create({
     color: '#666',
     fontWeight: '400',
   },
+  disabledText: {
+    opacity: 0.4,
+  },
   headerTitle: {
     fontSize: 18,
     fontWeight: '700',
@@ -208,6 +384,11 @@ const styles = StyleSheet.create({
   },
   avatarInitial: {
     fontSize: 40,
+  },
+  avatarImage: {
+    width: '100%',
+    height: '100%',
+    borderRadius: 40,
   },
   editAvatarButton: {
     position: 'absolute',
