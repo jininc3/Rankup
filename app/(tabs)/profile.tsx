@@ -5,7 +5,7 @@ import { ThemedView } from '@/components/themed-view';
 import { IconSymbol } from '@/components/ui/icon-symbol';
 import { useRouter } from 'expo-router';
 import { useRef, useState } from 'react';
-import { Dimensions, Modal, ScrollView, StyleSheet, TouchableOpacity, View } from 'react-native';
+import { Dimensions, Image, Modal, ScrollView, StyleSheet, TouchableOpacity, View } from 'react-native';
 
 const userGames = [
   {
@@ -196,6 +196,30 @@ export default function ProfileScreen() {
           </View>
         </View>
 
+        {/* Social Icons - positioned on the right below cover */}
+        {(currentUser.socials.discord || currentUser.socials.instagram) && (
+          <View style={styles.socialIconsContainer}>
+            {currentUser.socials.discord && (
+              <TouchableOpacity style={styles.socialIconButton}>
+                <Image
+                  source={require('@/assets/images/discord.png')}
+                  style={styles.socialIcon}
+                  resizeMode="contain"
+                />
+              </TouchableOpacity>
+            )}
+            {currentUser.socials.instagram && (
+              <TouchableOpacity style={styles.socialIconButton}>
+                <Image
+                  source={require('@/assets/images/instagram.png')}
+                  style={styles.socialIcon}
+                  resizeMode="contain"
+                />
+              </TouchableOpacity>
+            )}
+          </View>
+        )}
+
         {/* Profile Content */}
         <View style={styles.profileContentWrapper}>
           {/* Avatar on the left, overlapping cover */}
@@ -219,24 +243,6 @@ export default function ProfileScreen() {
               <ThemedText style={styles.statText}>{currentUser.followingCount} Following</ThemedText>
             </View>
 
-            {/* Social Links */}
-            {(currentUser.socials.discord || currentUser.socials.instagram) && (
-              <View style={styles.socialsContainer}>
-                {currentUser.socials.discord && (
-                  <View style={styles.socialLink}>
-                    <IconSymbol size={14} name="link" color="#5865F2" />
-                    <ThemedText style={styles.socialText}>{currentUser.socials.discord}</ThemedText>
-                  </View>
-                )}
-                {currentUser.socials.instagram && (
-                  <View style={styles.socialLink}>
-                    <IconSymbol size={14} name="link" color="#E4405F" />
-                    <ThemedText style={styles.socialText}>{currentUser.socials.instagram}</ThemedText>
-                  </View>
-                )}
-              </View>
-            )}
-
             {/* Action Buttons */}
             <View style={styles.actionButtons}>
               <TouchableOpacity
@@ -246,7 +252,7 @@ export default function ProfileScreen() {
                 <ThemedText style={styles.editProfileText}>Edit Profile</ThemedText>
               </TouchableOpacity>
               <TouchableOpacity style={styles.shareProfileButton}>
-                <ThemedText style={styles.shareProfileText}>Share Profile</ThemedText>
+                <IconSymbol size={20} name="square.and.arrow.up" color="#000" />
               </TouchableOpacity>
             </View>
           </View>
@@ -482,24 +488,24 @@ const styles = StyleSheet.create({
     color: '#999',
     fontWeight: '400',
   },
-  socialsContainer: {
+  socialIconsContainer: {
+    position: 'absolute',
+    top: 240,
+    right: 10,
     flexDirection: 'row',
-    gap: 12,
-    marginBottom: 20,
-  },
-  socialLink: {
-    flexDirection: 'row',
-    alignItems: 'center',
     gap: 4,
-    backgroundColor: '#f5f5f5',
-    paddingVertical: 4,
-    paddingHorizontal: 10,
-    borderRadius: 6,
+    zIndex: 5,
   },
-  socialText: {
-    fontSize: 12,
-    color: '#000',
-    fontWeight: '500',
+  socialIconButton: {
+    width: 40,
+    height: 40,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: 'transparent',
+  },
+  socialIcon: {
+    width: 28,
+    height: 28,
   },
   actionButtons: {
     flexDirection: 'row',
@@ -521,11 +527,11 @@ const styles = StyleSheet.create({
     letterSpacing: -0.2,
   },
   shareProfileButton: {
-    flex: 1,
-    paddingVertical: 10,
-    paddingHorizontal: 16,
+    width: 44,
+    height: 44,
     borderRadius: 8,
     alignItems: 'center',
+    justifyContent: 'center',
     backgroundColor: '#fff',
     borderWidth: 1,
     borderColor: '#e5e5e5',

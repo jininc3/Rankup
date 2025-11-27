@@ -7,7 +7,7 @@ const cardHeight = width * 1.0;
 
 interface Duo {
   id: number;
-  name: string;
+  username: string;
   status: string;
   matchPercentage: number;
   currentRank: string;
@@ -38,7 +38,7 @@ export default function DuoCard({ duo }: DuoCardProps) {
             <View style={[styles.statusDot, duo.status === 'Online' ? styles.onlineDot : styles.offlineDot]} />
           </View>
           <View style={styles.duoInfo}>
-            <ThemedText style={styles.duoName}>{duo.name}</ThemedText>
+            <ThemedText style={styles.duoName}>{duo.username}</ThemedText>
           </View>
         </TouchableOpacity>
 
