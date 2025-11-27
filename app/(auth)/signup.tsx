@@ -13,84 +13,35 @@ import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { IconSymbol } from '@/components/ui/icon-symbol';
 import { useRouter } from 'expo-router';
-import { useAuth } from '@/contexts/AuthContext';
-import { useDiscordAuth } from '@/hooks/useDiscordAuth';
-import { useInstagramAuth } from '@/hooks/useInstagramAuth';
+import { signUpWithEmail, signInWithGoogleCredential } from '@/services/authService';
+import { useGoogleAuth } from '@/hooks/useGoogleAuth';
 
 export default function SignupScreen() {
   const router = useRouter();
-  const { signIn } = useAuth();
   const [username, setUsername] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [isLoading, setIsLoading] = useState(false);
-
-  const discordAuth = useDiscordAuth();
-  const instagramAuth = useInstagramAuth();
+  const googleAuth = useGoogleAuth();
 
   useEffect(() => {
-    if (discordAuth.response?.type === 'success') {
-      handleDiscordSuccess(discordAuth.response);
+    if (googleAuth.response?.type === 'success') {
+      handleGoogleSuccess(googleAuth.response);
     }
-  }, [discordAuth.response]);
+  }, [googleAuth.response]);
 
-  useEffect(() => {
-    if (instagramAuth.response?.type === 'success') {
-      handleInstagramSuccess(instagramAuth.response);
-    }
-  }, [instagramAuth.response]);
-
-  const handleDiscordSuccess = async (response: any) => {
+  const handleGoogleSuccess = async (response: any) => {
     try {
       setIsLoading(true);
-      const { authentication } = response;
+      const { id_token } = response.params;
 
-      if (authentication?.accessToken) {
-        const userData = await discordAuth.getUserInfo(authentication.accessToken);
-
-        if (userData) {
-          await signIn({
-            id: userData.id,
-            username: userData.username,
-            email: userData.email,
-            avatar: userData.avatar
-              ? `https://cdn.discordapp.com/avatars/${userData.id}/${userData.avatar}.png`
-              : undefined,
-            provider: 'discord',
-          });
-
-          router.replace('/(tabs)');
-        }
+      if (id_token) {
+        await signInWithGoogleCredential(id_token);
+        // Router navigation is handled by AuthContext automatically
       }
-    } catch (error) {
-      Alert.alert('Error', 'Failed to sign up with Discord');
-      console.error(error);
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  const handleInstagramSuccess = async (response: any) => {
-    try {
-      setIsLoading(true);
-      const { authentication } = response;
-
-      if (authentication?.accessToken) {
-        const userData = await instagramAuth.getUserInfo(authentication.accessToken);
-
-        if (userData) {
-          await signIn({
-            id: userData.id,
-            username: userData.username,
-            provider: 'instagram',
-          });
-
-          router.replace('/(tabs)');
-        }
-      }
-    } catch (error) {
-      Alert.alert('Error', 'Failed to sign up with Instagram');
+    } catch (error: any) {
+      Alert.alert('Google Sign Up Failed', error.message);
       console.error(error);
     } finally {
       setIsLoading(false);
@@ -115,37 +66,21 @@ export default function SignupScreen() {
 
     try {
       setIsLoading(true);
-
-      await signIn({
-        id: Date.now().toString(),
-        username,
-        email,
-        provider: 'email',
-      });
-
-      router.replace('/(tabs)');
-    } catch (error) {
-      Alert.alert('Error', 'Failed to create account');
+      await signUpWithEmail(email.trim(), password, username.trim());
+      // Router navigation is handled by AuthContext automatically
+    } catch (error: any) {
+      Alert.alert('Sign Up Failed', error.message);
       console.error(error);
     } finally {
       setIsLoading(false);
     }
   };
 
-  const handleDiscordSignup = async () => {
+  const handleGoogleSignup = async () => {
     try {
-      await discordAuth.promptAsync();
-    } catch (error) {
-      Alert.alert('Error', 'Failed to initiate Discord signup');
-      console.error(error);
-    }
-  };
-
-  const handleInstagramSignup = async () => {
-    try {
-      await instagramAuth.promptAsync();
-    } catch (error) {
-      Alert.alert('Error', 'Failed to initiate Instagram signup');
+      await googleAuth.promptAsync();
+    } catch (error: any) {
+      Alert.alert('Google Sign Up Failed', error.message);
       console.error(error);
     }
   };
@@ -235,24 +170,13 @@ export default function SignupScreen() {
               </View>
 
               <TouchableOpacity
-                style={[styles.socialButton, styles.discordButton, isLoading && styles.buttonDisabled]}
-                onPress={handleDiscordSignup}
-                disabled={!discordAuth.request || isLoading}
+                style={[styles.socialButton, styles.googleButton, isLoading && styles.buttonDisabled]}
+                onPress={handleGoogleSignup}
+                disabled={!googleAuth.request || isLoading}
               >
-                <IconSymbol name="bubble.left.fill" size={20} color="#fff" />
+                <IconSymbol name="globe" size={20} color="#fff" />
                 <ThemedText style={styles.socialButtonText}>
-                  Continue with Discord
-                </ThemedText>
-              </TouchableOpacity>
-
-              <TouchableOpacity
-                style={[styles.socialButton, styles.instagramButton, isLoading && styles.buttonDisabled]}
-                onPress={handleInstagramSignup}
-                disabled={!instagramAuth.request || isLoading}
-              >
-                <IconSymbol name="camera.fill" size={20} color="#fff" />
-                <ThemedText style={styles.socialButtonText}>
-                  Continue with Instagram
+                  Continue with Google
                 </ThemedText>
               </TouchableOpacity>
             </View>
@@ -353,11 +277,8 @@ const styles = StyleSheet.create({
     marginBottom: 12,
     gap: 8,
   },
-  discordButton: {
-    backgroundColor: '#5865F2',
-  },
-  instagramButton: {
-    backgroundColor: '#E4405F',
+  googleButton: {
+    backgroundColor: '#4285F4',
   },
   socialButtonText: {
     color: '#fff',

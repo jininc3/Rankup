@@ -1,18 +1,21 @@
 import React, { createContext, useState, useContext, useEffect } from 'react';
-import AsyncStorage from '@react-native-async-storage/async-storage';
+import { onAuthStateChanged } from 'firebase/auth';
+import { auth } from '@/config/firebase';
+import { getUserProfile, signOut as authSignOut } from '@/services/authService';
+import type { UserProfile } from '@/services/authService';
 
 interface User {
   id: string;
   username: string;
-  email?: string;
+  email: string;
   avatar?: string;
-  provider: 'discord' | 'instagram' | 'email';
+  provider: 'email' | 'google' | 'discord' | 'instagram';
 }
 
 interface AuthContextType {
   user: User | null;
   isLoading: boolean;
-  signIn: (user: User) => Promise<void>;
+  setUser: (user: User | null) => void;
   signOut: () => Promise<void>;
   isAuthenticated: boolean;
 }
@@ -24,35 +27,49 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
-    loadUser();
+    // Listen to Firebase auth state changes
+    const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
+      if (firebaseUser) {
+        // User is signed in, get their profile
+        try {
+          const userProfile = await getUserProfile(firebaseUser.uid);
+
+          if (userProfile) {
+            setUser({
+              id: userProfile.id,
+              username: userProfile.username,
+              email: userProfile.email,
+              avatar: userProfile.avatar,
+              provider: userProfile.provider,
+            });
+          } else {
+            // Fallback if profile doesn't exist
+            setUser({
+              id: firebaseUser.uid,
+              username: firebaseUser.displayName || firebaseUser.email?.split('@')[0] || 'User',
+              email: firebaseUser.email || '',
+              avatar: firebaseUser.photoURL || undefined,
+              provider: 'email',
+            });
+          }
+        } catch (error) {
+          console.error('Error loading user profile:', error);
+          setUser(null);
+        }
+      } else {
+        // User is signed out
+        setUser(null);
+      }
+      setIsLoading(false);
+    });
+
+    // Cleanup subscription on unmount
+    return () => unsubscribe();
   }, []);
 
-  const loadUser = async () => {
+  const handleSignOut = async () => {
     try {
-      const userData = await AsyncStorage.getItem('user');
-      if (userData) {
-        setUser(JSON.parse(userData));
-      }
-    } catch (error) {
-      console.error('Failed to load user:', error);
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  const signIn = async (userData: User) => {
-    try {
-      await AsyncStorage.setItem('user', JSON.stringify(userData));
-      setUser(userData);
-    } catch (error) {
-      console.error('Failed to sign in:', error);
-      throw error;
-    }
-  };
-
-  const signOut = async () => {
-    try {
-      await AsyncStorage.removeItem('user');
+      await authSignOut();
       setUser(null);
     } catch (error) {
       console.error('Failed to sign out:', error);
@@ -65,8 +82,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       value={{
         user,
         isLoading,
-        signIn,
-        signOut,
+        setUser,
+        signOut: handleSignOut,
         isAuthenticated: !!user,
       }}
     >
