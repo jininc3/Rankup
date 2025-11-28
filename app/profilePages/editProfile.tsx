@@ -37,23 +37,35 @@ export default function EditProfileScreen() {
   }, [user]);
 
   const showImageOptions = () => {
+    const options: any[] = [
+      {
+        text: 'Take Photo',
+        onPress: () => takePhoto(),
+      },
+      {
+        text: 'Choose from Library',
+        onPress: () => pickImage(),
+      },
+    ];
+
+    // Add remove option if user has a profile picture
+    if (profileImage) {
+      options.push({
+        text: 'Remove Photo',
+        style: 'destructive',
+        onPress: () => removeProfilePicture(),
+      });
+    }
+
+    options.push({
+      text: 'Cancel',
+      style: 'cancel',
+    });
+
     Alert.alert(
       'Change Profile Picture',
       'Choose an option',
-      [
-        {
-          text: 'Take Photo',
-          onPress: () => takePhoto(),
-        },
-        {
-          text: 'Choose from Library',
-          onPress: () => pickImage(),
-        },
-        {
-          text: 'Cancel',
-          style: 'cancel',
-        },
-      ],
+      options,
       { cancelable: true }
     );
   };
@@ -135,23 +147,35 @@ export default function EditProfileScreen() {
   };
 
   const showCoverPhotoOptions = () => {
+    const options: any[] = [
+      {
+        text: 'Take Photo',
+        onPress: () => takeCoverPhoto(),
+      },
+      {
+        text: 'Choose from Library',
+        onPress: () => pickCoverPhoto(),
+      },
+    ];
+
+    // Add remove option if user has a cover photo
+    if (coverPhoto) {
+      options.push({
+        text: 'Remove Photo',
+        style: 'destructive',
+        onPress: () => removeCoverPhoto(),
+      });
+    }
+
+    options.push({
+      text: 'Cancel',
+      style: 'cancel',
+    });
+
     Alert.alert(
       'Change Cover Photo',
       'Choose an option',
-      [
-        {
-          text: 'Take Photo',
-          onPress: () => takeCoverPhoto(),
-        },
-        {
-          text: 'Choose from Library',
-          onPress: () => pickCoverPhoto(),
-        },
-        {
-          text: 'Cancel',
-          style: 'cancel',
-        },
-      ],
+      options,
       { cancelable: true }
     );
   };
@@ -223,6 +247,89 @@ export default function EditProfileScreen() {
       Alert.alert('Error', 'Failed to upload cover photo');
     } finally {
       setIsUploadingCover(false);
+    }
+  };
+
+  const removeProfilePicture = async () => {
+    try {
+      if (!user) return;
+
+      Alert.alert(
+        'Remove Profile Picture',
+        'Are you sure you want to remove your profile picture?',
+        [
+          {
+            text: 'Cancel',
+            style: 'cancel',
+          },
+          {
+            text: 'Remove',
+            style: 'destructive',
+            onPress: async () => {
+              try {
+                setIsUploadingImage(true);
+
+                // Remove from Firestore (set to empty string)
+                await updateUserProfile(user.id, { avatar: '' });
+                setProfileImage(null);
+                setAvatar(user.username?.[0] || 'U');
+
+                await refreshUser();
+
+                Alert.alert('Success', 'Profile picture removed');
+              } catch (error: any) {
+                console.error('Remove error:', error);
+                Alert.alert('Error', 'Failed to remove profile picture');
+              } finally {
+                setIsUploadingImage(false);
+              }
+            },
+          },
+        ]
+      );
+    } catch (error: any) {
+      console.error('Remove profile picture error:', error);
+    }
+  };
+
+  const removeCoverPhoto = async () => {
+    try {
+      if (!user) return;
+
+      Alert.alert(
+        'Remove Cover Photo',
+        'Are you sure you want to remove your cover photo?',
+        [
+          {
+            text: 'Cancel',
+            style: 'cancel',
+          },
+          {
+            text: 'Remove',
+            style: 'destructive',
+            onPress: async () => {
+              try {
+                setIsUploadingCover(true);
+
+                // Remove from Firestore (set to empty string)
+                await updateUserProfile(user.id, { coverPhoto: '' });
+                setCoverPhoto(null);
+
+                await refreshUser();
+
+                Alert.alert('Success', 'Cover photo removed');
+              } catch (error: any) {
+                console.error('Remove error:', error);
+                Alert.alert('Error', 'Failed to remove cover photo');
+              } finally {
+                setIsUploadingCover(false);
+              }
+            },
+          },
+        ]
+      );
+    } catch (error: any) {
+      console.error('Remove cover photo error:', error);
     }
   };
 
