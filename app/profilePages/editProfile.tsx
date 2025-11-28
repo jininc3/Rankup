@@ -6,7 +6,7 @@ import { useState, useEffect } from 'react';
 import { ScrollView, StyleSheet, TextInput, TouchableOpacity, View, Alert, ActivityIndicator, Image } from 'react-native';
 import { useAuth } from '@/contexts/AuthContext';
 import { updateUserProfile } from '@/services/authService';
-import { uploadProfilePicture } from '@/services/storageService';
+import { uploadProfilePicture, uploadCoverPhoto } from '@/services/storageService';
 import * as ImagePicker from 'expo-image-picker';
 
 export default function EditProfileScreen() {
@@ -17,10 +17,12 @@ export default function EditProfileScreen() {
   const [bio, setBio] = useState(user?.bio || '');
   const [avatar, setAvatar] = useState(user?.avatar || user?.username?.[0] || 'U');
   const [profileImage, setProfileImage] = useState<string | null>(user?.avatar || null);
+  const [coverPhoto, setCoverPhoto] = useState<string | null>(user?.coverPhoto || null);
   const [discord, setDiscord] = useState(user?.discordLink || '');
   const [instagram, setInstagram] = useState(user?.instagramLink || '');
   const [isLoading, setIsLoading] = useState(false);
   const [isUploadingImage, setIsUploadingImage] = useState(false);
+  const [isUploadingCover, setIsUploadingCover] = useState(false);
 
   useEffect(() => {
     if (user) {
@@ -28,6 +30,7 @@ export default function EditProfileScreen() {
       setBio(user.bio || '');
       setAvatar(user.avatar || user.username?.[0] || 'U');
       setProfileImage(user.avatar || null);
+      setCoverPhoto(user.coverPhoto || null);
       setDiscord(user.discordLink || '');
       setInstagram(user.instagramLink || '');
     }
@@ -131,6 +134,98 @@ export default function EditProfileScreen() {
     }
   };
 
+  const showCoverPhotoOptions = () => {
+    Alert.alert(
+      'Change Cover Photo',
+      'Choose an option',
+      [
+        {
+          text: 'Take Photo',
+          onPress: () => takeCoverPhoto(),
+        },
+        {
+          text: 'Choose from Library',
+          onPress: () => pickCoverPhoto(),
+        },
+        {
+          text: 'Cancel',
+          style: 'cancel',
+        },
+      ],
+      { cancelable: true }
+    );
+  };
+
+  const takeCoverPhoto = async () => {
+    try {
+      const permissionResult = await ImagePicker.requestCameraPermissionsAsync();
+
+      if (!permissionResult.granted) {
+        Alert.alert('Permission Required', 'Please allow access to your camera');
+        return;
+      }
+
+      const result = await ImagePicker.launchCameraAsync({
+        allowsEditing: true,
+        aspect: [16, 9],
+        quality: 0.8,
+      });
+
+      if (!result.canceled && result.assets[0]) {
+        await uploadCoverImage(result.assets[0].uri);
+      }
+    } catch (error: any) {
+      console.error('Camera error:', error);
+      Alert.alert('Error', 'Failed to take photo');
+    }
+  };
+
+  const pickCoverPhoto = async () => {
+    try {
+      const permissionResult = await ImagePicker.requestMediaLibraryPermissionsAsync();
+
+      if (!permissionResult.granted) {
+        Alert.alert('Permission Required', 'Please allow access to your photo library');
+        return;
+      }
+
+      const result = await ImagePicker.launchImageLibraryAsync({
+        mediaTypes: ImagePicker.MediaTypeOptions.Images,
+        allowsEditing: true,
+        aspect: [16, 9],
+        quality: 0.8,
+      });
+
+      if (!result.canceled && result.assets[0]) {
+        await uploadCoverImage(result.assets[0].uri);
+      }
+    } catch (error: any) {
+      console.error('Image picker error:', error);
+      Alert.alert('Error', 'Failed to pick image');
+    }
+  };
+
+  const uploadCoverImage = async (uri: string) => {
+    try {
+      setIsUploadingCover(true);
+
+      if (user) {
+        const downloadURL = await uploadCoverPhoto(user.id, uri);
+        setCoverPhoto(downloadURL);
+
+        await updateUserProfile(user.id, { coverPhoto: downloadURL });
+        await refreshUser();
+
+        Alert.alert('Success', 'Cover photo updated!');
+      }
+    } catch (error: any) {
+      console.error('Upload error:', error);
+      Alert.alert('Error', 'Failed to upload cover photo');
+    } finally {
+      setIsUploadingCover(false);
+    }
+  };
+
   const handleSave = async () => {
     if (!user) {
       Alert.alert('Error', 'You must be logged in to update your profile');
@@ -197,9 +292,22 @@ export default function EditProfileScreen() {
         {/* Cover Photo Section */}
         <View style={styles.coverPhotoSection}>
           <View style={styles.coverPhoto}>
-            <TouchableOpacity style={styles.editCoverButton}>
-              <IconSymbol size={24} name="camera.fill" color="#fff" />
-              <ThemedText style={styles.editCoverText}>Edit Cover Photo</ThemedText>
+            {coverPhoto ? (
+              <Image source={{ uri: coverPhoto }} style={styles.coverPhotoImage} />
+            ) : null}
+            <TouchableOpacity
+              style={styles.editCoverButton}
+              onPress={showCoverPhotoOptions}
+              disabled={isUploadingCover}
+            >
+              {isUploadingCover ? (
+                <ActivityIndicator size="small" color="#fff" />
+              ) : (
+                <>
+                  <IconSymbol size={24} name="camera.fill" color="#fff" />
+                  <ThemedText style={styles.editCoverText}>Edit Cover Photo</ThemedText>
+                </>
+              )}
             </TouchableOpacity>
           </View>
         </View>
@@ -347,6 +455,11 @@ const styles = StyleSheet.create({
     backgroundColor: '#667eea',
     alignItems: 'center',
     justifyContent: 'center',
+  },
+  coverPhotoImage: {
+    position: 'absolute',
+    width: '100%',
+    height: '100%',
   },
   editCoverButton: {
     flexDirection: 'row',

@@ -194,7 +194,9 @@ export default function ProfileScreen() {
         {/* Cover Photo */}
         <View style={styles.coverPhotoContainer}>
           <View style={styles.coverPhoto}>
-            {/* Placeholder gradient or color */}
+            {user?.coverPhoto ? (
+              <Image source={{ uri: user.coverPhoto }} style={styles.coverPhotoImage} />
+            ) : null}
           </View>
         </View>
 
@@ -454,6 +456,10 @@ const styles = StyleSheet.create({
     width: '100%',
     height: '100%',
     backgroundColor: '#667eea',
+  },
+  coverPhotoImage: {
+    width: '100%',
+    height: '100%',
   },
   profileContentWrapper: {
     backgroundColor: '#fff',

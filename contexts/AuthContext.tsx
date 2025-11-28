@@ -9,6 +9,7 @@ interface User {
   username: string;
   email: string;
   avatar?: string;
+  coverPhoto?: string;
   bio?: string;
   discordLink?: string;
   instagramLink?: string;
@@ -44,6 +45,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
               username: userProfile.username,
               email: userProfile.email,
               avatar: userProfile.avatar,
+              coverPhoto: userProfile.coverPhoto,
               bio: userProfile.bio,
               discordLink: userProfile.discordLink,
               instagramLink: userProfile.instagramLink,
@@ -86,6 +88,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           username: userProfile.username,
           email: userProfile.email,
           avatar: userProfile.avatar,
+          coverPhoto: userProfile.coverPhoto,
           bio: userProfile.bio,
           discordLink: userProfile.discordLink,
           instagramLink: userProfile.instagramLink,

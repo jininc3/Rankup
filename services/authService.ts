@@ -15,6 +15,7 @@ export interface UserProfile {
   email: string;
   username: string;
   avatar?: string;
+  coverPhoto?: string;
   bio?: string;
   discordLink?: string;
   instagramLink?: string;
