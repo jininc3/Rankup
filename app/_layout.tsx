@@ -13,7 +13,7 @@ export const unstable_settings = {
 
 function RootLayoutNav() {
   const colorScheme = useColorScheme();
-  const { isAuthenticated, isLoading } = useAuth();
+  const { isAuthenticated, isLoading, needsUsernameSetup } = useAuth();
   const segments = useSegments();
   const router = useRouter();
 
@@ -21,13 +21,30 @@ function RootLayoutNav() {
     if (isLoading) return;
 
     const inAuthGroup = segments[0] === '(auth)';
+    const onUsernameSetup = segments[1] === 'createUsername';
+
+    console.log('Routing check:', {
+      isAuthenticated,
+      needsUsernameSetup,
+      inAuthGroup,
+      onUsernameSetup,
+      segments
+    });
 
     if (!isAuthenticated && !inAuthGroup) {
+      // Not authenticated, redirect to login
+      console.log('Redirecting to login');
       router.replace('/(auth)/login');
-    } else if (isAuthenticated && inAuthGroup) {
+    } else if (isAuthenticated && needsUsernameSetup && !onUsernameSetup) {
+      // Authenticated but needs username setup
+      console.log('Redirecting to createUsername');
+      router.replace('/(auth)/createUsername');
+    } else if (isAuthenticated && !needsUsernameSetup && inAuthGroup) {
+      // Authenticated with username set, redirect to main app
+      console.log('Redirecting to tabs');
       router.replace('/(tabs)');
     }
-  }, [isAuthenticated, segments, isLoading]);
+  }, [isAuthenticated, segments, isLoading, needsUsernameSetup]);
 
   return (
     <ThemeProvider value={colorScheme === 'dark' ? DarkTheme : DefaultTheme}>

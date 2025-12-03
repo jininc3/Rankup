@@ -23,6 +23,7 @@ export interface UserProfile {
   postsCount?: number;
   followersCount?: number;
   followingCount?: number;
+  needsUsernameSetup?: boolean;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -128,7 +129,7 @@ export async function signInWithGoogleCredential(idToken: string): Promise<UserP
     let userProfile = await getUserProfile(user.uid);
 
     if (!userProfile) {
-      // Create new user profile
+      // Create new user profile - mark as needing username setup
       userProfile = {
         id: user.uid,
         email: user.email!,
@@ -141,6 +142,7 @@ export async function signInWithGoogleCredential(idToken: string): Promise<UserP
         postsCount: 0,
         followersCount: 0,
         followingCount: 0,
+        needsUsernameSetup: true,
         createdAt: new Date(),
         updatedAt: new Date(),
       };

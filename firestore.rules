@@ -6,7 +6,52 @@ service cloud.firestore {
     // Users collection - users can read all profiles but only write their own
     match /users/{userId} {
       allow read: if true;
+
+      // Allow users to write their own profile
       allow write: if request.auth != null && request.auth.uid == userId;
+
+      // Allow updating follower/following counts when someone follows/unfollows
+      allow update: if request.auth != null
+                    && (
+                      // User updating their own profile
+                      request.auth.uid == userId
+                      // OR incrementing/decrementing follower counts only
+                      || (request.resource.data.diff(resource.data).affectedKeys().hasOnly(['followersCount', 'followingCount', 'postsCount']))
+                    );
+
+      // Followers subcollection - who follows this user
+      match /followers/{followerId} {
+        // Anyone can read followers
+        allow read: if true;
+
+        // Only the follower can create their follow relationship
+        allow create: if request.auth != null
+                      && request.auth.uid == followerId
+                      && request.resource.data.followerId == followerId
+                      && request.resource.data.followerUsername is string
+                      && request.resource.data.createdAt is timestamp;
+
+        // Allow the follower to delete their own follow
+        allow delete: if request.auth != null
+                      && request.auth.uid == followerId;
+      }
+
+      // Following subcollection - who this user follows
+      match /following/{followingId} {
+        // Anyone can read following
+        allow read: if true;
+
+        // Only the user themselves can create their following relationships
+        allow create: if request.auth != null
+                      && request.auth.uid == userId
+                      && request.resource.data.followingId == followingId
+                      && request.resource.data.followingUsername is string
+                      && request.resource.data.createdAt is timestamp;
+
+        // Allow the user to delete their own following
+        allow delete: if request.auth != null
+                      && request.auth.uid == userId;
+      }
     }
 
     // Posts collection

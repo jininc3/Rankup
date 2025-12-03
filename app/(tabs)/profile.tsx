@@ -469,9 +469,13 @@ export default function ProfileScreen() {
               <View style={styles.statsRow}>
                 <ThemedText style={styles.statText}>{posts.length} Posts</ThemedText>
                 <ThemedText style={styles.statDividerText}> | </ThemedText>
-                <ThemedText style={styles.statText}>{user?.followersCount || 0} Followers</ThemedText>
+                <TouchableOpacity onPress={() => router.push('/profilePages/followers')}>
+                  <ThemedText style={styles.statText}>{user?.followersCount || 0} Followers</ThemedText>
+                </TouchableOpacity>
                 <ThemedText style={styles.statDividerText}> | </ThemedText>
-                <ThemedText style={styles.statText}>{user?.followingCount || 0} Following</ThemedText>
+                <TouchableOpacity onPress={() => router.push('/profilePages/following')}>
+                  <ThemedText style={styles.statText}>{user?.followingCount || 0} Following</ThemedText>
+                </TouchableOpacity>
               </View>
             </View>
           </View>

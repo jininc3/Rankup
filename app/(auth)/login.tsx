@@ -15,10 +15,12 @@ import { IconSymbol } from '@/components/ui/icon-symbol';
 import { useRouter } from 'expo-router';
 import { signInWithEmail, signInWithGoogleCredential } from '@/services/authService';
 import { useGoogleAuth } from '@/hooks/useGoogleAuth';
+import { collection, query, where, getDocs } from 'firebase/firestore';
+import { db } from '@/config/firebase';
 
 export default function LoginScreen() {
   const router = useRouter();
-  const [email, setEmail] = useState('');
+  const [emailOrUsername, setEmailOrUsername] = useState('');
   const [password, setPassword] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const googleAuth = useGoogleAuth();
@@ -46,15 +48,66 @@ export default function LoginScreen() {
     }
   };
 
+  const isEmail = (input: string): boolean => {
+    // Simple email validation
+    return input.includes('@');
+  };
+
+  const getEmailFromUsername = async (username: string): Promise<{ email: string; provider: string } | null> => {
+    try {
+      const usersRef = collection(db, 'users');
+      const q = query(usersRef, where('username', '==', username));
+      const querySnapshot = await getDocs(q);
+
+      if (!querySnapshot.empty) {
+        const userDoc = querySnapshot.docs[0];
+        const userData = userDoc.data();
+        return {
+          email: userData.email,
+          provider: userData.provider
+        };
+      }
+      return null;
+    } catch (error) {
+      console.error('Error fetching user by username:', error);
+      return null;
+    }
+  };
+
   const handleEmailLogin = async () => {
-    if (!email || !password) {
-      Alert.alert('Error', 'Please enter both email and password');
+    if (!emailOrUsername || !password) {
+      Alert.alert('Error', 'Please enter both email/username and password');
       return;
     }
 
     try {
       setIsLoading(true);
-      await signInWithEmail(email.trim(), password);
+      const input = emailOrUsername.trim();
+      let email = input;
+
+      // If input is not an email, try to find user by username
+      if (!isEmail(input)) {
+        const userInfo = await getEmailFromUsername(input);
+        if (!userInfo) {
+          Alert.alert('Sign In Failed', 'No account found with this username');
+          setIsLoading(false);
+          return;
+        }
+
+        // Check if user signed up with Google
+        if (userInfo.provider === 'google') {
+          Alert.alert(
+            'Google Account',
+            'This account uses Google sign-in. Please use the "Continue with Google" button below.'
+          );
+          setIsLoading(false);
+          return;
+        }
+
+        email = userInfo.email;
+      }
+
+      await signInWithEmail(email, password);
       // Router navigation is handled by AuthContext automatically
     } catch (error: any) {
       Alert.alert('Sign In Failed', error.message);
@@ -95,12 +148,11 @@ export default function LoginScreen() {
               <View style={styles.inputContainer}>
                 <TextInput
                   style={styles.input}
-                  placeholder="Email"
+                  placeholder="Email or Username"
                   placeholderTextColor="#999"
-                  value={email}
-                  onChangeText={setEmail}
+                  value={emailOrUsername}
+                  onChangeText={setEmailOrUsername}
                   autoCapitalize="none"
-                  keyboardType="email-address"
                   editable={!isLoading}
                 />
               </View>

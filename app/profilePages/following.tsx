@@ -1,0 +1,233 @@
+import { ThemedText } from '@/components/themed-text';
+import { ThemedView } from '@/components/themed-view';
+import { IconSymbol } from '@/components/ui/icon-symbol';
+import { useRouter } from 'expo-router';
+import { useState, useEffect } from 'react';
+import { ScrollView, StyleSheet, TouchableOpacity, View, Image, Alert, ActivityIndicator } from 'react-native';
+import { useAuth } from '@/contexts/AuthContext';
+import { getFollowing, unfollowUser, FollowingData } from '@/services/followService';
+
+interface Following {
+  id: string;
+  username: string;
+  avatar?: string;
+}
+
+export default function FollowingScreen() {
+  const router = useRouter();
+  const { user } = useAuth();
+  const [following, setFollowing] = useState<Following[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    fetchFollowing();
+  }, [user?.id]);
+
+  const fetchFollowing = async () => {
+    if (!user?.id) return;
+
+    try {
+      setLoading(true);
+      const followingData = await getFollowing(user.id);
+      console.log('Fetched following data:', followingData);
+      console.log('Number of following:', followingData.length);
+
+      const followingList = followingData.map((followingUser: FollowingData) => ({
+        id: followingUser.followingId,
+        username: followingUser.followingUsername,
+        avatar: followingUser.followingAvatar,
+      }));
+
+      setFollowing(followingList);
+    } catch (error) {
+      console.error('Error fetching following:', error);
+      Alert.alert('Error', 'Failed to load following');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleUnfollow = async (userId: string) => {
+    if (!user?.id) return;
+
+    try {
+      await unfollowUser(user.id, userId);
+      setFollowing(prev => prev.filter(f => f.id !== userId));
+    } catch (error) {
+      console.error('Error unfollowing user:', error);
+      Alert.alert('Error', 'Failed to unfollow user');
+    }
+  };
+
+  return (
+    <ThemedView style={styles.container}>
+      {/* Header */}
+      <View style={styles.header}>
+        <TouchableOpacity
+          style={styles.backButton}
+          onPress={() => router.back()}
+        >
+          <IconSymbol size={24} name="chevron.left" color="#000" />
+          <ThemedText style={styles.backText}>Back</ThemedText>
+        </TouchableOpacity>
+        <ThemedText style={styles.headerTitle}>Following</ThemedText>
+        <View style={styles.headerSpacer} />
+      </View>
+
+      <ScrollView showsVerticalScrollIndicator={false}>
+        {loading ? (
+          <View style={styles.emptyState}>
+            <ActivityIndicator size="large" color="#000" />
+            <ThemedText style={styles.loadingText}>Loading following...</ThemedText>
+          </View>
+        ) : following.length > 0 ? (
+          <View style={styles.listContainer}>
+            {following.map((user) => (
+              <View key={user.id} style={styles.userItem}>
+                <TouchableOpacity style={styles.userLeft}>
+                  <View style={styles.avatar}>
+                    {user.avatar && user.avatar.startsWith('http') ? (
+                      <Image source={{ uri: user.avatar }} style={styles.avatarImage} />
+                    ) : (
+                      <ThemedText style={styles.avatarInitial}>
+                        {user.username[0].toUpperCase()}
+                      </ThemedText>
+                    )}
+                  </View>
+                  <ThemedText style={styles.username}>{user.username}</ThemedText>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  style={styles.followingButton}
+                  onPress={() => handleUnfollow(user.id)}
+                >
+                  <ThemedText style={styles.followingButtonText}>Following</ThemedText>
+                </TouchableOpacity>
+              </View>
+            ))}
+          </View>
+        ) : (
+          <View style={styles.emptyState}>
+            <IconSymbol size={64} name="person.2" color="#ccc" />
+            <ThemedText style={styles.emptyStateText}>Not following anyone yet</ThemedText>
+            <ThemedText style={styles.emptyStateSubtext}>
+              When you follow people, they'll appear here
+            </ThemedText>
+          </View>
+        )}
+      </ScrollView>
+    </ThemedView>
+  );
+}
+
+const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+    backgroundColor: '#fff',
+  },
+  header: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingHorizontal: 20,
+    paddingTop: 60,
+    paddingBottom: 16,
+    backgroundColor: '#fff',
+    borderBottomWidth: 1,
+    borderBottomColor: '#e5e7eb',
+  },
+  backButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    flex: 1,
+  },
+  backText: {
+    fontSize: 17,
+    color: '#000',
+    fontWeight: '400',
+  },
+  headerTitle: {
+    fontSize: 17,
+    fontWeight: '600',
+    color: '#000',
+    flex: 1,
+    textAlign: 'center',
+  },
+  headerSpacer: {
+    flex: 1,
+  },
+  listContainer: {
+    paddingVertical: 8,
+  },
+  userItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: 20,
+    paddingVertical: 12,
+  },
+  userLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    flex: 1,
+  },
+  avatar: {
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    backgroundColor: '#f5f5f5',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  avatarImage: {
+    width: '100%',
+    height: '100%',
+    borderRadius: 24,
+  },
+  avatarInitial: {
+    fontSize: 20,
+    fontWeight: '600',
+  },
+  username: {
+    fontSize: 16,
+    fontWeight: '500',
+    color: '#000',
+  },
+  followingButton: {
+    paddingHorizontal: 24,
+    paddingVertical: 8,
+    backgroundColor: '#fff',
+    borderWidth: 1,
+    borderColor: '#e5e5e5',
+    borderRadius: 8,
+  },
+  followingButtonText: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#000',
+  },
+  emptyState: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 100,
+    paddingHorizontal: 40,
+    gap: 12,
+  },
+  emptyStateText: {
+    fontSize: 20,
+    fontWeight: '600',
+    color: '#000',
+    marginTop: 16,
+  },
+  emptyStateSubtext: {
+    fontSize: 14,
+    color: '#666',
+    textAlign: 'center',
+  },
+  loadingText: {
+    fontSize: 14,
+    color: '#666',
+    marginTop: 12,
+  },
+});

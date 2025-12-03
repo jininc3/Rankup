@@ -21,6 +21,18 @@ export default function ProfilePagesLayout() {
           headerShown: false,
         }}
       />
+      <Stack.Screen
+        name="followers"
+        options={{
+          headerShown: false,
+        }}
+      />
+      <Stack.Screen
+        name="following"
+        options={{
+          headerShown: false,
+        }}
+      />
     </Stack>
   );
 }

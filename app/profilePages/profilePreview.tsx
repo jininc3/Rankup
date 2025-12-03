@@ -3,14 +3,29 @@ import { currentUser } from '@/app/data/userData';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { IconSymbol } from '@/components/ui/icon-symbol';
-import { useRouter } from 'expo-router';
+import { useRouter, useLocalSearchParams } from 'expo-router';
 import { useRef, useState, useEffect, useCallback } from 'react';
-import { Dimensions, Image, Modal, ScrollView, StyleSheet, TouchableOpacity, View, ActivityIndicator } from 'react-native';
+import { Dimensions, Image, Modal, ScrollView, StyleSheet, TouchableOpacity, View, ActivityIndicator, Alert } from 'react-native';
 import { useAuth } from '@/contexts/AuthContext';
 import { useFocusEffect } from '@react-navigation/native';
 import { Video, ResizeMode } from 'expo-av';
 import { db } from '@/config/firebase';
-import { collection, query, where, orderBy, getDocs, Timestamp } from 'firebase/firestore';
+import { collection, query, where, orderBy, getDocs, Timestamp, doc, getDoc, setDoc, deleteDoc, updateDoc, increment } from 'firebase/firestore';
+import { followUser, unfollowUser, isFollowing as checkIsFollowing } from '@/services/followService';
+
+interface ViewedUser {
+  id: string;
+  username: string;
+  email: string;
+  avatar?: string;
+  coverPhoto?: string;
+  bio?: string;
+  discordLink?: string;
+  instagramLink?: string;
+  postsCount?: number;
+  followersCount?: number;
+  followingCount?: number;
+}
 
 const userGames = [
   {
@@ -68,15 +83,23 @@ interface Post {
 
 export default function ProfilePreviewScreen() {
   const router = useRouter();
-  const { user } = useAuth();
+  const params = useLocalSearchParams();
+  const { user: currentUser, refreshUser } = useAuth();
+  const [viewedUser, setViewedUser] = useState<ViewedUser | null>(null);
+  const [loadingUser, setLoadingUser] = useState(true);
   const [selectedGameIndex, setSelectedGameIndex] = useState(0);
   const [activeMainTab, setActiveMainTab] = useState<'games' | 'posts'>('games');
   const [posts, setPosts] = useState<Post[]>([]);
   const [loadingPosts, setLoadingPosts] = useState(false);
   const [selectedPost, setSelectedPost] = useState<Post | null>(null);
   const [showPostViewer, setShowPostViewer] = useState(false);
+  const [isFollowing, setIsFollowing] = useState(false);
+  const [followLoading, setFollowLoading] = useState(false);
   const selectedGame = userGames[selectedGameIndex];
   const scrollViewRef = useRef<ScrollView>(null);
+
+  // Get userId from params, or use current user's id
+  const userId = params.userId as string || currentUser?.id;
 
   const handleScroll = (event: any) => {
     const offsetX = event.nativeEvent.contentOffset.x;
@@ -102,15 +125,45 @@ export default function ProfilePreviewScreen() {
     setSelectedGameIndex(index);
   };
 
+  // Fetch viewed user's profile data
+  const fetchUserProfile = async () => {
+    if (!userId) return;
+
+    setLoadingUser(true);
+    try {
+      const userDoc = await getDoc(doc(db, 'users', userId));
+      if (userDoc.exists()) {
+        const data = userDoc.data();
+        setViewedUser({
+          id: userDoc.id,
+          username: data.username,
+          email: data.email,
+          avatar: data.avatar,
+          coverPhoto: data.coverPhoto,
+          bio: data.bio,
+          discordLink: data.discordLink,
+          instagramLink: data.instagramLink,
+          postsCount: data.postsCount || 0,
+          followersCount: data.followersCount || 0,
+          followingCount: data.followingCount || 0,
+        });
+      }
+    } catch (error) {
+      console.error('Error fetching user profile:', error);
+    } finally {
+      setLoadingUser(false);
+    }
+  };
+
   // Fetch user's posts from Firestore
   const fetchPosts = async () => {
-    if (!user?.id) return;
+    if (!userId) return;
 
     setLoadingPosts(true);
     try {
       const postsQuery = query(
         collection(db, 'posts'),
-        where('userId', '==', user.id),
+        where('userId', '==', userId),
         orderBy('createdAt', 'desc')
       );
 
@@ -128,20 +181,22 @@ export default function ProfilePreviewScreen() {
     }
   };
 
-  // Fetch posts when component mounts to show correct count
+  // Fetch user profile and posts when component mounts
   useEffect(() => {
-    if (user?.id) {
+    if (userId) {
+      fetchUserProfile();
       fetchPosts();
     }
-  }, [user?.id]);
+  }, [userId]);
 
-  // Refetch posts when screen comes into focus
+  // Refetch when screen comes into focus
   useFocusEffect(
     useCallback(() => {
-      if (user?.id) {
+      if (userId) {
+        fetchUserProfile();
         fetchPosts();
       }
-    }, [user?.id])
+    }, [userId])
   );
 
   const handlePostPress = (post: Post) => {
@@ -153,6 +208,76 @@ export default function ProfilePreviewScreen() {
     setShowPostViewer(false);
     setSelectedPost(null);
   };
+
+  // Check if current user is following this profile
+  const checkFollowStatus = async () => {
+    if (!currentUser?.id || !userId) return;
+
+    try {
+      const following = await checkIsFollowing(currentUser.id, userId);
+      setIsFollowing(following);
+    } catch (error) {
+      console.error('Error checking follow status:', error);
+    }
+  };
+
+  // Follow/Unfollow handler
+  const handleFollowToggle = async () => {
+    if (!currentUser?.id) {
+      Alert.alert('Error', 'You must be logged in to follow users');
+      return;
+    }
+
+    if (!userId || !viewedUser) return;
+
+    setFollowLoading(true);
+
+    try {
+      if (isFollowing) {
+        // Unfollow
+        await unfollowUser(currentUser.id, userId);
+
+        setIsFollowing(false);
+
+        // Update local viewed user state
+        setViewedUser({
+          ...viewedUser,
+          followersCount: (viewedUser.followersCount || 0) - 1,
+        });
+      } else {
+        // Follow
+        await followUser(
+          currentUser.id,
+          currentUser.username || currentUser.email?.split('@')[0] || 'User',
+          currentUser.avatar,
+          userId,
+          viewedUser.username,
+          viewedUser.avatar
+        );
+
+        setIsFollowing(true);
+
+        // Update local viewed user state
+        setViewedUser({
+          ...viewedUser,
+          followersCount: (viewedUser.followersCount || 0) + 1,
+        });
+      }
+
+      // Refresh current user data
+      await refreshUser();
+    } catch (error) {
+      console.error('Error toggling follow:', error);
+      Alert.alert('Error', 'Failed to update follow status');
+    } finally {
+      setFollowLoading(false);
+    }
+  };
+
+  // Check follow status on mount
+  useEffect(() => {
+    checkFollowStatus();
+  }, [currentUser?.id, userId]);
 
   return (
     <ThemedView style={styles.container}>
@@ -170,16 +295,16 @@ export default function ProfilePreviewScreen() {
         {/* Cover Photo */}
         <View style={styles.coverPhotoContainer}>
           <View style={styles.coverPhoto}>
-            {user?.coverPhoto ? (
-              <Image source={{ uri: user.coverPhoto }} style={styles.coverPhotoImage} />
+            {viewedUser?.coverPhoto ? (
+              <Image source={{ uri: viewedUser.coverPhoto }} style={styles.coverPhotoImage} />
             ) : null}
           </View>
         </View>
 
         {/* Social Icons - positioned on the right below cover */}
-        {(user?.discordLink || user?.instagramLink) && (
+        {(viewedUser?.discordLink || viewedUser?.instagramLink) && (
           <View style={styles.socialIconsContainer}>
-            {user?.discordLink && (
+            {viewedUser?.discordLink && (
               <TouchableOpacity style={styles.socialIconButton}>
                 <Image
                   source={require('@/assets/images/discord.png')}
@@ -188,7 +313,7 @@ export default function ProfilePreviewScreen() {
                 />
               </TouchableOpacity>
             )}
-            {user?.instagramLink && (
+            {viewedUser?.instagramLink && (
               <TouchableOpacity style={styles.socialIconButton}>
                 <Image
                   source={require('@/assets/images/instagram.png')}
@@ -207,11 +332,11 @@ export default function ProfilePreviewScreen() {
             {/* Avatar on the left, overlapping cover */}
             <View style={styles.avatarContainer}>
               <View style={styles.avatarCircle}>
-                {user?.avatar && user.avatar.startsWith('http') ? (
-                  <Image source={{ uri: user.avatar }} style={styles.avatarImage} />
+                {viewedUser?.avatar && viewedUser.avatar.startsWith('http') ? (
+                  <Image source={{ uri: viewedUser.avatar }} style={styles.avatarImage} />
                 ) : (
                   <ThemedText style={styles.avatarInitial}>
-                    {user?.avatar || user?.username?.[0]?.toUpperCase() || 'U'}
+                    {viewedUser?.avatar || viewedUser?.username?.[0]?.toUpperCase() || 'U'}
                   </ThemedText>
                 )}
               </View>
@@ -220,24 +345,37 @@ export default function ProfilePreviewScreen() {
             {/* Username and Stats on the right */}
             <View style={styles.profileInfoRight}>
               {/* Username */}
-              <ThemedText style={styles.username}>{user?.username || 'User'}</ThemedText>
+              <ThemedText style={styles.username}>{viewedUser?.username || 'User'}</ThemedText>
 
               {/* Stats in One Line */}
               <View style={styles.statsRow}>
-                <ThemedText style={styles.statText}>{posts.length} Posts</ThemedText>
+                <ThemedText style={styles.statText}>{viewedUser?.postsCount || 0} Posts</ThemedText>
                 <ThemedText style={styles.statDividerText}> | </ThemedText>
-                <ThemedText style={styles.statText}>{user?.followersCount || 0} Followers</ThemedText>
+                <ThemedText style={styles.statText}>{viewedUser?.followersCount || 0} Followers</ThemedText>
                 <ThemedText style={styles.statDividerText}> | </ThemedText>
-                <ThemedText style={styles.statText}>{user?.followingCount || 0} Following</ThemedText>
+                <ThemedText style={styles.statText}>{viewedUser?.followingCount || 0} Following</ThemedText>
               </View>
             </View>
           </View>
 
           {/* Bio */}
-          {user?.bio && (
+          {viewedUser?.bio && (
             <View style={styles.bioContainer}>
-              <ThemedText style={styles.bioText}>{user.bio}</ThemedText>
+              <ThemedText style={styles.bioText}>{viewedUser.bio}</ThemedText>
             </View>
+          )}
+
+          {/* Follow Button - Only show when viewing other users */}
+          {userId !== currentUser?.id && (
+            <TouchableOpacity
+              style={[styles.followButton, isFollowing && styles.unfollowButton]}
+              onPress={handleFollowToggle}
+              disabled={followLoading}
+            >
+              <ThemedText style={[styles.followButtonText, isFollowing && styles.unfollowButtonText]}>
+                {followLoading ? 'Loading...' : isFollowing ? 'Unfollow' : 'Follow'}
+              </ThemedText>
+            </TouchableOpacity>
           )}
         </View>
 
@@ -310,7 +448,7 @@ export default function ProfilePreviewScreen() {
                   }
                 ]}
               >
-                <RankCard game={game} username={user?.username || 'User'} />
+                <RankCard game={game} username={viewedUser?.username || 'User'} />
               </View>
             ))}
           </ScrollView>
@@ -405,11 +543,11 @@ export default function ProfilePreviewScreen() {
                   <View style={styles.postViewerHeader}>
                     <View style={styles.postViewerUserInfo}>
                       <View style={styles.postViewerAvatar}>
-                        {user?.avatar && user.avatar.startsWith('http') ? (
-                          <Image source={{ uri: user.avatar }} style={styles.postViewerAvatarImage} />
+                        {viewedUser?.avatar && viewedUser.avatar.startsWith('http') ? (
+                          <Image source={{ uri: viewedUser.avatar }} style={styles.postViewerAvatarImage} />
                         ) : (
                           <ThemedText style={styles.postViewerAvatarInitial}>
-                            {user?.username?.[0]?.toUpperCase() || 'U'}
+                            {viewedUser?.username?.[0]?.toUpperCase() || 'U'}
                           </ThemedText>
                         )}
                       </View>
@@ -575,6 +713,27 @@ const styles = StyleSheet.create({
     color: '#333',
     lineHeight: 20,
     fontWeight: '400',
+  },
+  followButton: {
+    width: '100%',
+    paddingVertical: 12,
+    borderRadius: 8,
+    alignItems: 'center',
+    backgroundColor: '#000',
+    marginTop: 12,
+  },
+  unfollowButton: {
+    backgroundColor: '#fff',
+    borderWidth: 1,
+    borderColor: '#e5e5e5',
+  },
+  followButtonText: {
+    fontSize: 15,
+    fontWeight: '600',
+    color: '#fff',
+  },
+  unfollowButtonText: {
+    color: '#000',
   },
   socialIconsContainer: {
     position: 'absolute',

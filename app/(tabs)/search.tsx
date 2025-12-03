@@ -1,32 +1,75 @@
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { IconSymbol } from '@/components/ui/icon-symbol';
-import { users, currentUser } from '@/app/data/userData';
 import { useState } from 'react';
-import { ScrollView, StyleSheet, TextInput, TouchableOpacity, View } from 'react-native';
+import { ScrollView, StyleSheet, TextInput, TouchableOpacity, View, Image, ActivityIndicator } from 'react-native';
+import { useRouter } from 'expo-router';
+import { collection, query, where, getDocs, orderBy, limit } from 'firebase/firestore';
+import { db } from '@/config/firebase';
+import { useAuth } from '@/contexts/AuthContext';
 
-// Map users to search format with some mock trophies
-const mockUsers = users.map((user, index) => ({
-  id: user.id,
-  username: user.username,
-  rank: user.currentRank,
-  trophies: 95240 - (index * 5000), // Mock trophy count
-  avatar: user.avatar,
-}));
+interface SearchUser {
+  id: string;
+  username: string;
+  avatar?: string;
+  bio?: string;
+  followersCount?: number;
+  followingCount?: number;
+  postsCount?: number;
+}
 
 export default function SearchScreen() {
+  const router = useRouter();
+  const { user: currentUser } = useAuth();
   const [searchQuery, setSearchQuery] = useState('');
-  const [filteredUsers, setFilteredUsers] = useState<typeof mockUsers>([]);
+  const [searchResults, setSearchResults] = useState<SearchUser[]>([]);
+  const [searching, setSearching] = useState(false);
 
-  const handleSearch = (text: string) => {
+  const handleSearch = async (text: string) => {
     setSearchQuery(text);
+
     if (text.trim() === '') {
-      setFilteredUsers([]);
-    } else {
-      const filtered = mockUsers.filter(user =>
-        user.username.toLowerCase().includes(text.toLowerCase())
+      setSearchResults([]);
+      return;
+    }
+
+    setSearching(true);
+
+    try {
+      // Search for users whose username starts with the search query
+      const usersRef = collection(db, 'users');
+      const q = query(
+        usersRef,
+        where('username', '>=', text),
+        where('username', '<=', text + '\uf8ff'),
+        limit(20)
       );
-      setFilteredUsers(filtered);
+
+      const querySnapshot = await getDocs(q);
+      const users: SearchUser[] = [];
+
+      querySnapshot.forEach((doc) => {
+        const data = doc.data();
+        // Don't show current user in search results
+        if (doc.id !== currentUser?.id) {
+          users.push({
+            id: doc.id,
+            username: data.username,
+            avatar: data.avatar,
+            bio: data.bio,
+            followersCount: data.followersCount || 0,
+            followingCount: data.followingCount || 0,
+            postsCount: data.postsCount || 0,
+          });
+        }
+      });
+
+      setSearchResults(users);
+    } catch (error) {
+      console.error('Error searching users:', error);
+      setSearchResults([]);
+    } finally {
+      setSearching(false);
     }
   };
 
@@ -60,25 +103,41 @@ export default function SearchScreen() {
             <ThemedText style={styles.emptyText}>Search user profiles</ThemedText>
             <ThemedText style={styles.emptySubtext}>Enter a username to search</ThemedText>
           </View>
-        ) : filteredUsers.length > 0 ? (
-          filteredUsers.map((user) => (
-            <TouchableOpacity key={user.id} style={styles.userCard}>
+        ) : searching ? (
+          <View style={styles.loadingState}>
+            <ActivityIndicator size="large" color="#000" />
+            <ThemedText style={styles.loadingText}>Searching...</ThemedText>
+          </View>
+        ) : searchResults.length > 0 ? (
+          searchResults.map((user) => (
+            <TouchableOpacity
+              key={user.id}
+              style={styles.userCard}
+              onPress={() => router.push(`/profilePages/profilePreview?userId=${user.id}`)}
+            >
               <View style={styles.userLeft}>
                 <View style={styles.avatar}>
-                  <ThemedText style={styles.avatarEmoji}>{user.avatar}</ThemedText>
+                  {user.avatar && user.avatar.startsWith('http') ? (
+                    <Image source={{ uri: user.avatar }} style={styles.avatarImage} />
+                  ) : (
+                    <ThemedText style={styles.avatarInitial}>
+                      {user.username[0].toUpperCase()}
+                    </ThemedText>
+                  )}
                 </View>
                 <View style={styles.userInfo}>
                   <ThemedText style={styles.username}>{user.username}</ThemedText>
-                  <ThemedText style={styles.userRank}>{user.rank}</ThemedText>
+                  <ThemedText style={styles.userStats}>
+                    {user.postsCount} Posts • {user.followersCount} Followers
+                  </ThemedText>
+                  {user.bio && (
+                    <ThemedText style={styles.userBio} numberOfLines={1}>
+                      {user.bio}
+                    </ThemedText>
+                  )}
                 </View>
               </View>
-              <View style={styles.userRight}>
-                <View style={styles.trophyContainer}>
-                  <IconSymbol size={16} name="trophy.fill" color="#FFD700" />
-                  <ThemedText style={styles.trophyCount}>{user.trophies.toLocaleString()}</ThemedText>
-                </View>
-                <IconSymbol size={20} name="chevron.right" color="#666" />
-              </View>
+              <IconSymbol size={20} name="chevron.right" color="#666" />
             </TouchableOpacity>
           ))
         ) : (
@@ -161,8 +220,14 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
-  avatarEmoji: {
-    fontSize: 24,
+  avatarImage: {
+    width: '100%',
+    height: '100%',
+    borderRadius: 25,
+  },
+  avatarInitial: {
+    fontSize: 20,
+    fontWeight: '600',
   },
   userInfo: {
     flex: 1,
@@ -171,25 +236,26 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: '600',
     color: '#000',
-    marginBottom: 4,
+    marginBottom: 2,
   },
-  userRank: {
+  userStats: {
     fontSize: 13,
     color: '#666',
+    marginBottom: 2,
   },
-  userRight: {
-    flexDirection: 'row',
+  userBio: {
+    fontSize: 13,
+    color: '#999',
+    marginTop: 2,
+  },
+  loadingState: {
     alignItems: 'center',
+    justifyContent: 'center',
+    paddingTop: 100,
     gap: 12,
   },
-  trophyContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 4,
-  },
-  trophyCount: {
-    fontSize: 14,
-    fontWeight: '600',
+  loadingText: {
+    fontSize: 16,
     color: '#666',
   },
   emptyState: {

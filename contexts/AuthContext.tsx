@@ -16,6 +16,7 @@ interface User {
   postsCount?: number;
   followersCount?: number;
   followingCount?: number;
+  needsUsernameSetup?: boolean;
   provider: 'email' | 'google' | 'discord' | 'instagram';
 }
 
@@ -26,6 +27,7 @@ interface AuthContextType {
   refreshUser: () => Promise<void>;
   signOut: () => Promise<void>;
   isAuthenticated: boolean;
+  needsUsernameSetup: boolean;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -43,6 +45,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           const userProfile = await getUserProfile(firebaseUser.uid);
 
           if (userProfile) {
+            console.log('User profile loaded:', {
+              username: userProfile.username,
+              needsUsernameSetup: userProfile.needsUsernameSetup,
+              provider: userProfile.provider
+            });
             setUser({
               id: userProfile.id,
               username: userProfile.username,
@@ -55,16 +62,20 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
               postsCount: userProfile.postsCount || 0,
               followersCount: userProfile.followersCount || 0,
               followingCount: userProfile.followingCount || 0,
+              needsUsernameSetup: userProfile.needsUsernameSetup || false,
               provider: userProfile.provider,
             });
           } else {
-            // Fallback if profile doesn't exist
+            // Fallback if profile doesn't exist (new user or race condition)
+            const isGoogleUser = firebaseUser.providerData.some(p => p.providerId === 'google.com');
+            console.log('Using fallback user, isGoogle:', isGoogleUser);
             setUser({
               id: firebaseUser.uid,
               username: firebaseUser.displayName || firebaseUser.email?.split('@')[0] || 'User',
               email: firebaseUser.email || '',
               avatar: firebaseUser.photoURL || undefined,
-              provider: 'email',
+              needsUsernameSetup: isGoogleUser, // New Google users need username setup
+              provider: isGoogleUser ? 'google' : 'email',
             });
           }
         } catch (error) {
@@ -101,6 +112,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           postsCount: userProfile.postsCount || 0,
           followersCount: userProfile.followersCount || 0,
           followingCount: userProfile.followingCount || 0,
+          needsUsernameSetup: userProfile.needsUsernameSetup || false,
           provider: userProfile.provider,
         });
       }
@@ -128,6 +140,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         refreshUser,
         signOut: handleSignOut,
         isAuthenticated: !!user,
+        needsUsernameSetup: !!user?.needsUsernameSetup,
       }}
     >
       {children}
