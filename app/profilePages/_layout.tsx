@@ -15,6 +15,12 @@ export default function ProfilePagesLayout() {
           headerShown: false,
         }}
       />
+      <Stack.Screen
+        name="profilePreview"
+        options={{
+          headerShown: false,
+        }}
+      />
     </Stack>
   );
 }

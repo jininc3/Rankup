@@ -128,20 +128,20 @@ export default function ProfilePreviewScreen() {
     }
   };
 
-  // Fetch posts when component mounts or when switching to Posts tab
+  // Fetch posts when component mounts to show correct count
   useEffect(() => {
-    if (activeMainTab === 'posts') {
+    if (user?.id) {
       fetchPosts();
     }
-  }, [activeMainTab, user?.id]);
+  }, [user?.id]);
 
   // Refetch posts when screen comes into focus
   useFocusEffect(
     useCallback(() => {
-      if (activeMainTab === 'posts' && user?.id) {
+      if (user?.id) {
         fetchPosts();
       }
-    }, [activeMainTab, user?.id])
+    }, [user?.id])
   );
 
   const handlePostPress = (post: Post) => {
@@ -164,8 +164,6 @@ export default function ProfilePreviewScreen() {
         >
           <IconSymbol size={24} name="chevron.left" color="#fff" />
         </TouchableOpacity>
-        <ThemedText style={styles.headerTitle}>Profile Preview</ThemedText>
-        <View style={styles.headerSpacer} />
       </View>
 
       <ScrollView showsVerticalScrollIndicator={false}>
@@ -204,40 +202,43 @@ export default function ProfilePreviewScreen() {
 
         {/* Profile Content */}
         <View style={styles.profileContentWrapper}>
-          {/* Avatar on the left, overlapping cover */}
-          <View style={styles.avatarContainer}>
-            <View style={styles.avatarCircle}>
-              {user?.avatar && user.avatar.startsWith('http') ? (
-                <Image source={{ uri: user.avatar }} style={styles.avatarImage} />
-              ) : (
-                <ThemedText style={styles.avatarInitial}>
-                  {user?.avatar || user?.username?.[0]?.toUpperCase() || 'U'}
-                </ThemedText>
-              )}
-            </View>
-          </View>
-
-          {/* Profile Info */}
-          <View style={styles.profileInfo}>
-            {/* Username */}
-            <ThemedText style={styles.username}>{user?.username || 'User'}</ThemedText>
-
-            {/* Stats in One Line */}
-            <View style={styles.statsRow}>
-              <ThemedText style={styles.statText}>{posts.length} Posts</ThemedText>
-              <ThemedText style={styles.statDividerText}> | </ThemedText>
-              <ThemedText style={styles.statText}>{user?.followersCount || 0} Followers</ThemedText>
-              <ThemedText style={styles.statDividerText}> | </ThemedText>
-              <ThemedText style={styles.statText}>{user?.followingCount || 0} Following</ThemedText>
-            </View>
-
-            {/* Bio */}
-            {user?.bio && (
-              <View style={styles.bioContainer}>
-                <ThemedText style={styles.bioText}>{user.bio}</ThemedText>
+          {/* Top Row: Avatar and Username/Stats */}
+          <View style={styles.profileTopRow}>
+            {/* Avatar on the left, overlapping cover */}
+            <View style={styles.avatarContainer}>
+              <View style={styles.avatarCircle}>
+                {user?.avatar && user.avatar.startsWith('http') ? (
+                  <Image source={{ uri: user.avatar }} style={styles.avatarImage} />
+                ) : (
+                  <ThemedText style={styles.avatarInitial}>
+                    {user?.avatar || user?.username?.[0]?.toUpperCase() || 'U'}
+                  </ThemedText>
+                )}
               </View>
-            )}
+            </View>
+
+            {/* Username and Stats on the right */}
+            <View style={styles.profileInfoRight}>
+              {/* Username */}
+              <ThemedText style={styles.username}>{user?.username || 'User'}</ThemedText>
+
+              {/* Stats in One Line */}
+              <View style={styles.statsRow}>
+                <ThemedText style={styles.statText}>{posts.length} Posts</ThemedText>
+                <ThemedText style={styles.statDividerText}> | </ThemedText>
+                <ThemedText style={styles.statText}>{user?.followersCount || 0} Followers</ThemedText>
+                <ThemedText style={styles.statDividerText}> | </ThemedText>
+                <ThemedText style={styles.statText}>{user?.followingCount || 0} Following</ThemedText>
+              </View>
+            </View>
           </View>
+
+          {/* Bio */}
+          {user?.bio && (
+            <View style={styles.bioContainer}>
+              <ThemedText style={styles.bioText}>{user.bio}</ThemedText>
+            </View>
+          )}
         </View>
 
         {/* Main Tabs: Games and Posts */}
@@ -489,7 +490,7 @@ const styles = StyleSheet.create({
   },
   coverPhotoContainer: {
     width: '100%',
-    height: 240,
+    height: 180,
     backgroundColor: '#f5f5f5',
   },
   coverPhoto: {
@@ -507,9 +508,14 @@ const styles = StyleSheet.create({
     paddingTop: 0,
     paddingBottom: 8,
   },
+  profileTopRow: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: 16,
+    marginBottom: 8,
+  },
   avatarContainer: {
     marginTop: -40,
-    marginBottom: 16,
   },
   avatarCircle: {
     width: 80,
@@ -532,6 +538,13 @@ const styles = StyleSheet.create({
   profileInfo: {
     width: '100%',
   },
+  profileInfoRight: {
+    flex: 1,
+    justifyContent: 'center',
+    paddingTop: 8,
+    paddingRight: 4,
+    alignItems: 'flex-start',
+  },
   username: {
     fontSize: 20,
     fontWeight: '700',
@@ -542,7 +555,7 @@ const styles = StyleSheet.create({
   statsRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginBottom: 12,
+    marginBottom: 4,
   },
   statText: {
     fontSize: 14,
@@ -565,7 +578,7 @@ const styles = StyleSheet.create({
   },
   socialIconsContainer: {
     position: 'absolute',
-    top: 240,
+    top: 180,
     right: 10,
     flexDirection: 'row',
     gap: 4,
