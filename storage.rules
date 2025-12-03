@@ -1,0 +1,74 @@
+rules_version = '2';
+
+service firebase.storage {
+  match /b/{bucket}/o {
+
+    // Posts: users can only upload to their own folder and read all posts
+    match /posts/{userId}/{fileName} {
+      // Anyone can read posts
+      allow read: if true;
+
+      // Only authenticated users can create/update to their own folder
+      // Limit file size to 50MB and validate content type
+      allow create, update: if request.auth != null
+                            && request.auth.uid == userId
+                            && request.resource.size < 50 * 1024 * 1024
+                            && (request.resource.contentType.matches('image/.*')
+                                || request.resource.contentType.matches('video/.*'));
+
+      // Allow users to delete their own posts
+      allow delete: if request.auth != null
+                    && request.auth.uid == userId;
+    }
+
+    // Profile images: users can only upload to their own folder
+    match /profiles/{userId}/{fileName} {
+      allow read: if true;
+
+      // Limit profile images to 10MB and only images
+      allow create, update: if request.auth != null
+                            && request.auth.uid == userId
+                            && request.resource.size < 10 * 1024 * 1024
+                            && request.resource.contentType.matches('image/.*');
+
+      // Allow users to delete their own profile images
+      allow delete: if request.auth != null
+                    && request.auth.uid == userId;
+    }
+
+    // Profile pictures: users can only upload to their own folder
+    match /profile-pictures/{userId}/{fileName} {
+      allow read: if true;
+
+      // Limit profile pictures to 10MB and only images
+      allow create, update: if request.auth != null
+                            && request.auth.uid == userId
+                            && request.resource.size < 10 * 1024 * 1024
+                            && request.resource.contentType.matches('image/.*');
+
+      // Allow users to delete their own profile pictures
+      allow delete: if request.auth != null
+                    && request.auth.uid == userId;
+    }
+
+    // Cover photos: users can only upload to their own folder
+    match /cover-photos/{userId}/{fileName} {
+      allow read: if true;
+
+      // Limit cover photos to 10MB and only images
+      allow create, update: if request.auth != null
+                            && request.auth.uid == userId
+                            && request.resource.size < 10 * 1024 * 1024
+                            && request.resource.contentType.matches('image/.*');
+
+      // Allow users to delete their own cover photos
+      allow delete: if request.auth != null
+                    && request.auth.uid == userId;
+    }
+
+    // Default: deny all other access
+    match /{allPaths=**} {
+      allow read, write: if false;
+    }
+  }
+}

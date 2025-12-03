@@ -20,6 +20,9 @@ export interface UserProfile {
   discordLink?: string;
   instagramLink?: string;
   provider: 'email' | 'google';
+  postsCount?: number;
+  followersCount?: number;
+  followingCount?: number;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -51,6 +54,9 @@ export async function signUpWithEmail(
       discordLink: '',
       instagramLink: '',
       provider: 'email',
+      postsCount: 0,
+      followersCount: 0,
+      followingCount: 0,
       createdAt: new Date(),
       updatedAt: new Date(),
     };
@@ -88,6 +94,9 @@ export async function signInWithEmail(
         discordLink: '',
         instagramLink: '',
         provider: 'email',
+        postsCount: 0,
+        followersCount: 0,
+        followingCount: 0,
         createdAt: new Date(),
         updatedAt: new Date(),
       };
@@ -129,6 +138,9 @@ export async function signInWithGoogleCredential(idToken: string): Promise<UserP
         discordLink: '',
         instagramLink: '',
         provider: 'google',
+        postsCount: 0,
+        followersCount: 0,
+        followingCount: 0,
         createdAt: new Date(),
         updatedAt: new Date(),
       };

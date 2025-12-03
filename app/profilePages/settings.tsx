@@ -11,6 +11,13 @@ const settingsData = [
     title: 'Account',
     items: [
       {
+        id: 1,
+        icon: 'person.circle',
+        title: 'View Profile Preview',
+        hasChevron: true,
+        route: '/profilePages/profilePreview',
+      },
+      {
         id: 2,
         icon: 'gearshape',
         title: 'Account Settings',
@@ -116,6 +123,7 @@ export default function SettingsScreen() {
                     styles.settingItem,
                     index === section.items.length - 1 && styles.settingItemLast,
                   ]}
+                  onPress={() => item.route && router.push(item.route)}
                 >
                   <View style={styles.settingLeft}>
                     <View style={styles.iconContainer}>

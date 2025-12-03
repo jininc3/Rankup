@@ -90,3 +90,43 @@ export async function deleteCoverPhoto(userId: string): Promise<void> {
     }
   }
 }
+
+/**
+ * Delete a post media file from Firebase Storage
+ * @param mediaUrl - The full download URL of the media
+ */
+export async function deletePostMedia(mediaUrl: string): Promise<void> {
+  try {
+    // Extract the path from the URL
+    // Firebase Storage URLs are in format: https://firebasestorage.googleapis.com/v0/b/{bucket}/o/{path}?alt=media&token={token}
+    const url = new URL(mediaUrl);
+
+    // Get the pathname and remove /v0/b/{bucket}/o/ prefix
+    const pathMatch = url.pathname.match(/\/o\/(.+)/);
+
+    if (!pathMatch || !pathMatch[1]) {
+      console.error('Could not extract path from URL:', mediaUrl);
+      throw new Error('Invalid storage URL');
+    }
+
+    // Decode the path (Firebase encodes paths with %2F for /)
+    const encodedPath = pathMatch[1];
+    const filePath = decodeURIComponent(encodedPath);
+
+    console.log('Attempting to delete file at path:', filePath);
+
+    const storageRef = ref(storage, filePath);
+    await deleteObject(storageRef);
+
+    console.log('Successfully deleted file:', filePath);
+  } catch (error: any) {
+    console.error('Delete post media error:', error);
+    console.error('Error code:', error.code);
+    console.error('Media URL:', mediaUrl);
+
+    // Don't throw error if file doesn't exist
+    if (error.code !== 'storage/object-not-found') {
+      throw new Error('Failed to delete post media');
+    }
+  }
+}

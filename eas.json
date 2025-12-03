@@ -2,16 +2,19 @@
   "build": {
     "development": {
       "developmentClient": true,
-      "distribution": "internal"
+      "distribution": "internal",
+      "node": "22.14.0"
     },
     "internal": {
       "distribution": "internal",
+      "node": "22.14.0",
       "ios": {
         "simulator": false
       }
     },
     "production": {
-      "distribution": "store"
+      "distribution": "store",
+      "node": "22.14.0"
     }
   }
 }

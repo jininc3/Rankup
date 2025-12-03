@@ -3,11 +3,27 @@ import { ThemedView } from '@/components/themed-view';
 import { IconSymbol } from '@/components/ui/icon-symbol';
 import { useRouter } from 'expo-router';
 import { useState, useEffect } from 'react';
-import { ScrollView, StyleSheet, TextInput, TouchableOpacity, View, Alert, ActivityIndicator, Image } from 'react-native';
+import { ScrollView, StyleSheet, TextInput, TouchableOpacity, View, Alert, ActivityIndicator, Image, Dimensions } from 'react-native';
 import { useAuth } from '@/contexts/AuthContext';
 import { updateUserProfile } from '@/services/authService';
-import { uploadProfilePicture, uploadCoverPhoto } from '@/services/storageService';
+import { uploadProfilePicture, uploadCoverPhoto, deletePostMedia } from '@/services/storageService';
 import * as ImagePicker from 'expo-image-picker';
+import { db } from '@/config/firebase';
+import { collection, query, where, orderBy, getDocs, deleteDoc, doc, updateDoc, Timestamp } from 'firebase/firestore';
+
+interface Post {
+  id: string;
+  userId: string;
+  username: string;
+  mediaUrl: string;
+  mediaType: 'image' | 'video';
+  caption?: string;
+  createdAt: Timestamp;
+  likes: number;
+  order?: number;
+}
+
+const { width: screenWidth } = Dimensions.get('window');
 
 export default function EditProfileScreen() {
   const router = useRouter();
@@ -23,6 +39,8 @@ export default function EditProfileScreen() {
   const [isLoading, setIsLoading] = useState(false);
   const [isUploadingImage, setIsUploadingImage] = useState(false);
   const [isUploadingCover, setIsUploadingCover] = useState(false);
+  const [posts, setPosts] = useState<Post[]>([]);
+  const [loadingPosts, setLoadingPosts] = useState(false);
 
   useEffect(() => {
     if (user) {
@@ -35,6 +53,36 @@ export default function EditProfileScreen() {
       setInstagram(user.instagramLink || '');
     }
   }, [user]);
+
+  // Fetch user's posts
+  useEffect(() => {
+    fetchPosts();
+  }, [user?.id]);
+
+  const fetchPosts = async () => {
+    if (!user?.id) return;
+
+    setLoadingPosts(true);
+    try {
+      const postsQuery = query(
+        collection(db, 'posts'),
+        where('userId', '==', user.id),
+        orderBy('createdAt', 'desc')
+      );
+
+      const querySnapshot = await getDocs(postsQuery);
+      const fetchedPosts: Post[] = querySnapshot.docs.map(doc => ({
+        id: doc.id,
+        ...doc.data()
+      } as Post));
+
+      setPosts(fetchedPosts);
+    } catch (error) {
+      console.error('Error fetching posts:', error);
+    } finally {
+      setLoadingPosts(false);
+    }
+  };
 
   const showImageOptions = () => {
     const options: any[] = [
@@ -333,6 +381,40 @@ export default function EditProfileScreen() {
     }
   };
 
+  const handlePostLongPress = (post: Post) => {
+    Alert.alert(
+      'Delete Post',
+      'Are you sure you want to delete this post? This action cannot be undone.',
+      [
+        {
+          text: 'Cancel',
+          style: 'cancel',
+        },
+        {
+          text: 'Delete',
+          style: 'destructive',
+          onPress: async () => {
+            try {
+              // Delete from Storage
+              await deletePostMedia(post.mediaUrl);
+
+              // Delete from Firestore
+              await deleteDoc(doc(db, 'posts', post.id));
+
+              // Update local state
+              setPosts(posts.filter(p => p.id !== post.id));
+
+              Alert.alert('Success', 'Post deleted successfully');
+            } catch (error: any) {
+              console.error('Delete post error:', error);
+              Alert.alert('Error', 'Failed to delete post');
+            }
+          },
+        },
+      ]
+    );
+  };
+
   const handleSave = async () => {
     if (!user) {
       Alert.alert('Error', 'You must be logged in to update your profile');
@@ -378,26 +460,24 @@ export default function EditProfileScreen() {
 
   return (
     <ThemedView style={styles.container}>
-      {/* Header */}
+      {/* Header - positioned absolutely like profile.tsx */}
       <View style={styles.header}>
         <TouchableOpacity onPress={() => router.back()} disabled={isLoading}>
-          <ThemedText style={[styles.cancelButton, isLoading && styles.disabledText]}>
-            Cancel
-          </ThemedText>
+          <IconSymbol size={28} name="chevron.left" color="#fff" />
         </TouchableOpacity>
         <ThemedText style={styles.headerTitle}>Edit Profile</ThemedText>
         <TouchableOpacity onPress={handleSave} disabled={isLoading}>
           {isLoading ? (
-            <ActivityIndicator size="small" color="#000" />
+            <ActivityIndicator size="small" color="#fff" />
           ) : (
-            <ThemedText style={styles.saveButton}>Save</ThemedText>
+            <IconSymbol size={28} name="checkmark" color="#fff" />
           )}
         </TouchableOpacity>
       </View>
 
-      <ScrollView style={styles.scrollView} showsVerticalScrollIndicator={false}>
-        {/* Cover Photo Section */}
-        <View style={styles.coverPhotoSection}>
+      <ScrollView showsVerticalScrollIndicator={false}>
+        {/* Cover Photo Container - matches profile.tsx */}
+        <View style={styles.coverPhotoContainer}>
           <View style={styles.coverPhoto}>
             {coverPhoto ? (
               <Image source={{ uri: coverPhoto }} style={styles.coverPhotoImage} />
@@ -410,17 +490,47 @@ export default function EditProfileScreen() {
               {isUploadingCover ? (
                 <ActivityIndicator size="small" color="#fff" />
               ) : (
-                <>
-                  <IconSymbol size={24} name="camera.fill" color="#fff" />
-                  <ThemedText style={styles.editCoverText}>Edit Cover Photo</ThemedText>
-                </>
+                <IconSymbol size={24} name="camera.fill" color="#fff" />
               )}
             </TouchableOpacity>
           </View>
         </View>
 
-        {/* Profile Picture Section */}
-        <View style={styles.profilePictureSection}>
+        {/* Social Icons - positioned on the right below cover */}
+        <View style={styles.socialIconsContainer}>
+          <View style={styles.socialIconInputWrapper}>
+            <Image
+              source={require('@/assets/images/discord.png')}
+              style={styles.socialIcon}
+              resizeMode="contain"
+            />
+            <TextInput
+              style={styles.socialInput}
+              value={discord}
+              onChangeText={setDiscord}
+              placeholder="Discord"
+              placeholderTextColor="#999"
+            />
+          </View>
+          <View style={styles.socialIconInputWrapper}>
+            <Image
+              source={require('@/assets/images/instagram.png')}
+              style={styles.socialIcon}
+              resizeMode="contain"
+            />
+            <TextInput
+              style={styles.socialInput}
+              value={instagram}
+              onChangeText={setInstagram}
+              placeholder="Instagram"
+              placeholderTextColor="#999"
+            />
+          </View>
+        </View>
+
+        {/* Profile Content - matches profile.tsx */}
+        <View style={styles.profileContentWrapper}>
+          {/* Avatar on the left, overlapping cover */}
           <View style={styles.avatarContainer}>
             <View style={styles.avatarCircle}>
               {profileImage ? (
@@ -441,75 +551,90 @@ export default function EditProfileScreen() {
               )}
             </TouchableOpacity>
           </View>
-        </View>
 
-        {/* Form Section */}
-        <View style={styles.formSection}>
-          {/* Username Field */}
-          <View style={styles.formField}>
-            <ThemedText style={styles.fieldLabel}>Username</ThemedText>
+          {/* Profile Info */}
+          <View style={styles.profileInfo}>
+            {/* Editable Username */}
             <TextInput
-              style={styles.textInput}
+              style={styles.usernameInput}
               value={username}
               onChangeText={setUsername}
-              placeholder="Enter username"
+              placeholder="Username"
               placeholderTextColor="#999"
             />
-          </View>
 
-          {/* Bio Field */}
-          <View style={styles.formField}>
-            <ThemedText style={styles.fieldLabel}>Bio</ThemedText>
-            <TextInput
-              style={[styles.textInput, styles.bioInput]}
-              value={bio}
-              onChangeText={setBio}
-              placeholder="Tell us about yourself"
-              placeholderTextColor="#999"
-              multiline
-              numberOfLines={4}
-              textAlignVertical="top"
-            />
-            <ThemedText style={styles.characterCount}>{bio.length}/150</ThemedText>
-          </View>
-
-          {/* Socials Section */}
-          <View style={styles.socialsSection}>
-            <ThemedText style={styles.sectionTitle}>Social Links</ThemedText>
-
-            {/* Discord Field */}
-            <View style={styles.socialField}>
-              <View style={styles.socialHeader}>
-                <IconSymbol size={20} name="link" color="#5865F2" />
-                <ThemedText style={styles.socialLabel}>Discord</ThemedText>
-              </View>
-              <TextInput
-                style={styles.textInput}
-                value={discord}
-                onChangeText={setDiscord}
-                placeholder="username#0000"
-                placeholderTextColor="#999"
-              />
+            {/* Stats Row - non-editable display */}
+            <View style={styles.statsRow}>
+              <ThemedText style={styles.statText}>0 Clips</ThemedText>
+              <ThemedText style={styles.statDividerText}> | </ThemedText>
+              <ThemedText style={styles.statText}>0 Followers</ThemedText>
+              <ThemedText style={styles.statDividerText}> | </ThemedText>
+              <ThemedText style={styles.statText}>0 Following</ThemedText>
             </View>
 
-            {/* Instagram Field */}
-            <View style={styles.socialField}>
-              <View style={styles.socialHeader}>
-                <IconSymbol size={20} name="link" color="#E4405F" />
-                <ThemedText style={styles.socialLabel}>Instagram</ThemedText>
-              </View>
+            {/* Editable Bio */}
+            <View style={styles.bioContainer}>
               <TextInput
-                style={styles.textInput}
-                value={instagram}
-                onChangeText={setInstagram}
-                placeholder="@username"
+                style={styles.bioInput}
+                value={bio}
+                onChangeText={setBio}
+                placeholder="Add a bio..."
                 placeholderTextColor="#999"
+                multiline
+                numberOfLines={3}
+                maxLength={150}
               />
+              <ThemedText style={styles.characterCount}>{bio.length}/150</ThemedText>
             </View>
           </View>
         </View>
 
-        <View style={styles.bottomSpacer} />
+        {/* Posts Tab */}
+        <View style={styles.mainTabsContainer}>
+          <View style={styles.mainTab}>
+            <ThemedText style={styles.mainTabTextActive}>Posts</ThemedText>
+          </View>
+        </View>
+
+        {/* Posts Content */}
+        <View style={styles.section}>
+          {loadingPosts ? (
+            <View style={styles.postsContainer}>
+              <ActivityIndicator size="large" color="#000" />
+              <ThemedText style={styles.loadingText}>Loading posts...</ThemedText>
+            </View>
+          ) : posts.length > 0 ? (
+            <View style={styles.postsGrid}>
+              {posts.map((post) => (
+                <TouchableOpacity
+                  key={post.id}
+                  style={styles.postItem}
+                  onLongPress={() => handlePostLongPress(post)}
+                  delayLongPress={500}
+                >
+                  <Image
+                    source={{ uri: post.mediaUrl }}
+                    style={styles.postImage}
+                    resizeMode="cover"
+                  />
+                  {post.mediaType === 'video' && (
+                    <View style={styles.videoIndicator}>
+                      <IconSymbol size={24} name="play.fill" color="#fff" />
+                    </View>
+                  )}
+                </TouchableOpacity>
+              ))}
+            </View>
+          ) : (
+            <View style={styles.postsContainer}>
+              <IconSymbol size={48} name="square.stack.3d.up" color="#ccc" />
+              <ThemedText style={styles.emptyStateText}>No posts yet</ThemedText>
+              <ThemedText style={styles.emptyStateSubtext}>
+                Share your gaming moments from your profile
+              </ThemedText>
+            </View>
+          )}
+        </View>
       </ScrollView>
     </ThemedView>
   );
@@ -521,40 +646,28 @@ const styles = StyleSheet.create({
     backgroundColor: '#fff',
   },
   header: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
     paddingHorizontal: 20,
     paddingTop: 60,
     paddingBottom: 16,
-    backgroundColor: '#fff',
-    borderBottomWidth: 1,
-    borderBottomColor: '#e5e7eb',
-  },
-  cancelButton: {
-    fontSize: 16,
-    color: '#666',
-    fontWeight: '400',
-  },
-  disabledText: {
-    opacity: 0.4,
+    backgroundColor: 'transparent',
+    zIndex: 10,
   },
   headerTitle: {
     fontSize: 18,
     fontWeight: '700',
-    color: '#000',
+    color: '#fff',
   },
-  saveButton: {
-    fontSize: 16,
-    color: '#000',
-    fontWeight: '600',
-  },
-  scrollView: {
-    flex: 1,
-  },
-  coverPhotoSection: {
+  coverPhotoContainer: {
     width: '100%',
-    height: 180,
+    height: 240,
+    backgroundColor: '#f5f5f5',
   },
   coverPhoto: {
     width: '100%',
@@ -564,30 +677,54 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   coverPhotoImage: {
-    position: 'absolute',
     width: '100%',
     height: '100%',
   },
   editCoverButton: {
+    position: 'absolute',
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    backgroundColor: 'rgba(0, 0, 0, 0.6)',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  socialIconsContainer: {
+    position: 'absolute',
+    top: 240,
+    right: 10,
+    flexDirection: 'column',
+    gap: 8,
+    zIndex: 5,
+  },
+  socialIconInputWrapper: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 8,
-    paddingVertical: 10,
-    paddingHorizontal: 16,
-    backgroundColor: 'rgba(0,0,0,0.4)',
-    borderRadius: 8,
+    backgroundColor: 'rgba(255, 255, 255, 0.9)',
+    borderRadius: 20,
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    gap: 6,
   },
-  editCoverText: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: '#fff',
+  socialIcon: {
+    width: 24,
+    height: 24,
   },
-  profilePictureSection: {
+  socialInput: {
+    fontSize: 12,
+    color: '#000',
+    width: 100,
+    padding: 0,
+  },
+  profileContentWrapper: {
+    backgroundColor: '#fff',
     paddingHorizontal: 20,
-    marginTop: -40,
-    marginBottom: 20,
+    paddingTop: 0,
+    paddingBottom: 24,
   },
   avatarContainer: {
+    marginTop: -40,
+    marginBottom: 16,
     position: 'relative',
     width: 80,
     height: 80,
@@ -623,31 +760,42 @@ const styles = StyleSheet.create({
     borderWidth: 2,
     borderColor: '#fff',
   },
-  formSection: {
-    paddingHorizontal: 20,
+  profileInfo: {
+    width: '100%',
   },
-  formField: {
-    marginBottom: 24,
+  usernameInput: {
+    fontSize: 20,
+    fontWeight: '700',
+    color: '#000',
+    marginBottom: 12,
+    letterSpacing: -0.5,
+    padding: 0,
   },
-  fieldLabel: {
+  statsRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 12,
+  },
+  statText: {
     fontSize: 14,
-    fontWeight: '600',
-    color: '#000',
-    marginBottom: 8,
+    color: '#666',
+    fontWeight: '400',
   },
-  textInput: {
-    borderWidth: 1,
-    borderColor: '#e5e5e5',
-    borderRadius: 8,
-    paddingVertical: 12,
-    paddingHorizontal: 16,
-    fontSize: 15,
-    color: '#000',
-    backgroundColor: '#fafafa',
+  statDividerText: {
+    fontSize: 14,
+    color: '#999',
+    fontWeight: '400',
+  },
+  bioContainer: {
+    marginBottom: 20,
   },
   bioInput: {
-    height: 100,
-    paddingTop: 12,
+    fontSize: 14,
+    color: '#333',
+    lineHeight: 20,
+    fontWeight: '400',
+    padding: 0,
+    textAlignVertical: 'top',
   },
   characterCount: {
     fontSize: 12,
@@ -655,30 +803,77 @@ const styles = StyleSheet.create({
     marginTop: 4,
     textAlign: 'right',
   },
-  socialsSection: {
+  mainTabsContainer: {
+    flexDirection: 'row',
+    backgroundColor: '#fff',
+    borderBottomWidth: 1,
+    borderBottomColor: '#e5e5e5',
+    paddingHorizontal: 20,
+  },
+  mainTab: {
+    paddingVertical: 16,
+    borderBottomWidth: 2,
+    borderBottomColor: '#000',
+  },
+  mainTabTextActive: {
+    fontSize: 15,
+    fontWeight: '600',
+    color: '#000',
+    letterSpacing: -0.2,
+  },
+  section: {
+    paddingHorizontal: 20,
+    paddingTop: 16,
+    paddingBottom: 80,
+  },
+  postsContainer: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 80,
+    gap: 12,
+  },
+  loadingText: {
+    fontSize: 14,
+    color: '#666',
+    marginTop: 12,
+  },
+  emptyStateText: {
+    fontSize: 17,
+    fontWeight: '600',
+    color: '#000',
     marginTop: 16,
   },
-  sectionTitle: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: '#000',
-    marginBottom: 16,
-  },
-  socialField: {
-    marginBottom: 20,
-  },
-  socialHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-    marginBottom: 8,
-  },
-  socialLabel: {
+  emptyStateSubtext: {
     fontSize: 14,
-    fontWeight: '600',
-    color: '#000',
+    color: '#666',
+    textAlign: 'center',
+    paddingHorizontal: 40,
   },
-  bottomSpacer: {
-    height: 40,
+  postsGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 2,
+    marginTop: 16,
+  },
+  postItem: {
+    width: (screenWidth - 44) / 3,
+    height: (screenWidth - 44) / 3,
+    backgroundColor: '#f5f5f5',
+    position: 'relative',
+  },
+  postImage: {
+    width: '100%',
+    height: '100%',
+  },
+  videoIndicator: {
+    position: 'absolute',
+    top: 8,
+    right: 8,
+    backgroundColor: 'rgba(0, 0, 0, 0.6)',
+    borderRadius: 12,
+    width: 32,
+    height: 32,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
 });

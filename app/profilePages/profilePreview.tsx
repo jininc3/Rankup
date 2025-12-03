@@ -5,15 +5,12 @@ import { ThemedView } from '@/components/themed-view';
 import { IconSymbol } from '@/components/ui/icon-symbol';
 import { useRouter } from 'expo-router';
 import { useRef, useState, useEffect, useCallback } from 'react';
-import { Dimensions, Image, Modal, ScrollView, StyleSheet, TouchableOpacity, View, Alert, ActivityIndicator, TextInput } from 'react-native';
+import { Dimensions, Image, Modal, ScrollView, StyleSheet, TouchableOpacity, View, ActivityIndicator } from 'react-native';
 import { useAuth } from '@/contexts/AuthContext';
 import { useFocusEffect } from '@react-navigation/native';
-import * as ImagePicker from 'expo-image-picker';
 import { Video, ResizeMode } from 'expo-av';
-import * as VideoThumbnails from 'expo-video-thumbnails';
-import { storage, db } from '@/config/firebase';
-import { ref, uploadBytesResumable, getDownloadURL } from 'firebase/storage';
-import { collection, addDoc, query, where, orderBy, getDocs, Timestamp, doc, updateDoc, increment } from 'firebase/firestore';
+import { db } from '@/config/firebase';
+import { collection, query, where, orderBy, getDocs, Timestamp } from 'firebase/firestore';
 
 const userGames = [
   {
@@ -51,41 +48,6 @@ const userGames = [
   },
 ];
 
-const recentActivity = [
-  {
-    id: 1,
-    type: 'rank_up',
-    game: 'Valorant',
-    message: `Ranked up to ${currentUser.gamesPlayed.valorant.currentRank}`,
-    time: '2 hours ago',
-    likes: 24,
-  },
-  {
-    id: 2,
-    type: 'trophy',
-    game: 'League of Legends',
-    message: 'Earned 50 trophies',
-    time: '5 hours ago',
-    likes: 12,
-  },
-  {
-    id: 3,
-    type: 'rank_up',
-    game: 'Apex Legends',
-    message: `Promoted to ${currentUser.gamesPlayed.apex.currentRank}`,
-    time: '1 day ago',
-    likes: 31,
-  },
-  {
-    id: 4,
-    type: 'achievement',
-    game: 'Valorant',
-    message: 'Won 10 matches in a row',
-    time: '2 days ago',
-    likes: 45,
-  },
-];
-
 const { width: screenWidth } = Dimensions.get('window');
 const CARD_PADDING = 20;
 const CARD_GAP = 16;
@@ -104,20 +66,15 @@ interface Post {
   likes: number;
 }
 
-export default function ProfileScreen() {
+export default function ProfilePreviewScreen() {
   const router = useRouter();
-  const { user, refreshUser } = useAuth();
+  const { user } = useAuth();
   const [selectedGameIndex, setSelectedGameIndex] = useState(0);
-  const [showNotifications, setShowNotifications] = useState(false);
   const [activeMainTab, setActiveMainTab] = useState<'games' | 'posts'>('games');
-  const [uploading, setUploading] = useState(false);
   const [posts, setPosts] = useState<Post[]>([]);
   const [loadingPosts, setLoadingPosts] = useState(false);
   const [selectedPost, setSelectedPost] = useState<Post | null>(null);
   const [showPostViewer, setShowPostViewer] = useState(false);
-  const [showPostPreview, setShowPostPreview] = useState(false);
-  const [selectedMedia, setSelectedMedia] = useState<ImagePicker.ImagePickerAsset | null>(null);
-  const [caption, setCaption] = useState('');
   const selectedGame = userGames[selectedGameIndex];
   const scrollViewRef = useRef<ScrollView>(null);
 
@@ -166,7 +123,6 @@ export default function ProfileScreen() {
       setPosts(fetchedPosts);
     } catch (error) {
       console.error('Error fetching posts:', error);
-      Alert.alert('Error', 'Failed to load posts');
     } finally {
       setLoadingPosts(false);
     }
@@ -179,7 +135,7 @@ export default function ProfileScreen() {
     }
   }, [activeMainTab, user?.id]);
 
-  // Refetch posts when screen comes into focus (e.g., returning from edit profile)
+  // Refetch posts when screen comes into focus
   useFocusEffect(
     useCallback(() => {
       if (activeMainTab === 'posts' && user?.id) {
@@ -187,144 +143,6 @@ export default function ProfileScreen() {
       }
     }, [activeMainTab, user?.id])
   );
-
-  const handleAddPost = async () => {
-    if (!user?.id) {
-      Alert.alert('Error', 'You must be logged in to create a post');
-      return;
-    }
-
-    // Request permissions
-    const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
-
-    if (status !== 'granted') {
-      Alert.alert(
-        'Permission Required',
-        'Sorry, we need camera roll permissions to upload images and videos.',
-        [{ text: 'OK' }]
-      );
-      return;
-    }
-
-    // Launch image picker
-    const result = await ImagePicker.launchImageLibraryAsync({
-      mediaTypes: ['images', 'videos'],
-      allowsEditing: true,
-      aspect: [4, 3],
-      quality: 1,
-      videoMaxDuration: 60, // 60 seconds max for videos
-    });
-
-    if (!result.canceled && result.assets && result.assets.length > 0) {
-      setSelectedMedia(result.assets[0]);
-      setCaption('');
-      setShowPostPreview(true);
-    }
-  };
-
-  const handleSharePost = async () => {
-    if (!user?.id || !selectedMedia) return;
-
-    setUploading(true);
-
-    try {
-      // Create a unique filename
-      const timestamp = Date.now();
-      const fileExtension = selectedMedia.uri.split('.').pop() || 'jpg';
-      const fileName = `posts/${user.id}/${timestamp}.${fileExtension}`;
-
-      // Create a reference to Firebase Storage
-      const storageRef = ref(storage, fileName);
-
-      // Fetch the file from the local URI
-      const response = await fetch(selectedMedia.uri);
-      const blob = await response.blob();
-
-      // Generate thumbnail for videos
-      let thumbnailUrl: string | undefined;
-      if (selectedMedia.type === 'video') {
-        try {
-          const { uri } = await VideoThumbnails.getThumbnailAsync(
-            selectedMedia.uri,
-            {
-              time: 1000, // Get thumbnail at 1 second
-            }
-          );
-
-          // Upload thumbnail to Firebase Storage
-          const thumbnailFileName = `posts/${user.id}/${timestamp}_thumb.jpg`;
-          const thumbnailRef = ref(storage, thumbnailFileName);
-          const thumbnailResponse = await fetch(uri);
-          const thumbnailBlob = await thumbnailResponse.blob();
-          const thumbnailUploadTask = await uploadBytesResumable(thumbnailRef, thumbnailBlob);
-          thumbnailUrl = await getDownloadURL(thumbnailUploadTask.ref);
-        } catch (thumbError) {
-          console.error('Error generating thumbnail:', thumbError);
-          // Continue without thumbnail if generation fails
-        }
-      }
-
-      // Upload the file
-      const uploadTask = uploadBytesResumable(storageRef, blob);
-
-      uploadTask.on(
-        'state_changed',
-        (snapshot) => {
-          const progress = (snapshot.bytesTransferred / snapshot.totalBytes) * 100;
-          console.log('Upload is ' + progress + '% done');
-        },
-        (error) => {
-          console.error('Upload error:', error);
-          setUploading(false);
-          Alert.alert('Upload Failed', 'Failed to upload media. Please try again.');
-        },
-        async () => {
-          // Upload completed successfully, get download URL
-          const downloadURL = await getDownloadURL(uploadTask.snapshot.ref);
-
-          // Save post metadata to Firestore
-          const postData: any = {
-            userId: user.id,
-            username: user.username || user.email?.split('@')[0] || 'User',
-            mediaUrl: downloadURL,
-            mediaType: selectedMedia.type || 'image',
-            createdAt: Timestamp.now(),
-            likes: 0,
-          };
-
-          // Only add optional fields if they have values
-          if (thumbnailUrl) {
-            postData.thumbnailUrl = thumbnailUrl;
-          }
-          if (caption && caption.trim()) {
-            postData.caption = caption.trim();
-          }
-
-          await addDoc(collection(db, 'posts'), postData);
-
-          // Increment user's post count in Firestore
-          const userRef = doc(db, 'users', user.id);
-          await updateDoc(userRef, {
-            postsCount: increment(1),
-          });
-
-          setUploading(false);
-          setShowPostPreview(false);
-          setSelectedMedia(null);
-          setCaption('');
-          Alert.alert('Success', 'Post uploaded successfully!');
-
-          // Refresh user data and posts list
-          await refreshUser();
-          fetchPosts();
-        }
-      );
-    } catch (error) {
-      console.error('Error uploading post:', error);
-      setUploading(false);
-      Alert.alert('Error', 'Failed to create post. Please try again.');
-    }
-  };
 
   const handlePostPress = (post: Post) => {
     setSelectedPost(post);
@@ -338,76 +156,17 @@ export default function ProfileScreen() {
 
   return (
     <ThemedView style={styles.container}>
-      {/* Header with notification bell and settings */}
+      {/* Header with back button */}
       <View style={styles.header}>
+        <TouchableOpacity
+          style={styles.backButton}
+          onPress={() => router.back()}
+        >
+          <IconSymbol size={24} name="chevron.left" color="#fff" />
+        </TouchableOpacity>
+        <ThemedText style={styles.headerTitle}>Profile Preview</ThemedText>
         <View style={styles.headerSpacer} />
-        <View style={styles.headerActions}>
-          <TouchableOpacity
-            style={styles.headerIconButton}
-            onPress={() => router.push('/profilePages/settings')}
-          >
-            <IconSymbol size={28} name="gearshape.fill" color="#fff" />
-          </TouchableOpacity>
-        </View>
       </View>
-
-      {/* Notifications Modal */}
-      <Modal
-        visible={showNotifications}
-        animationType="slide"
-        transparent={true}
-        onRequestClose={() => setShowNotifications(false)}
-      >
-        <View style={styles.modalOverlay}>
-          <View style={styles.modalContent}>
-            <View style={styles.modalHeader}>
-              <ThemedText style={styles.modalTitle}>Recent Activity</ThemedText>
-              <TouchableOpacity onPress={() => setShowNotifications(false)}>
-                <IconSymbol size={24} name="xmark" color="#000" />
-              </TouchableOpacity>
-            </View>
-            <ScrollView style={styles.modalScrollView}>
-              {recentActivity.map((activity) => (
-                <View key={activity.id} style={styles.activityCard}>
-                  <View style={styles.activityHeader}>
-                    <View style={styles.activityLeft}>
-                      <View style={[styles.activityIcon,
-                        activity.type === 'rank_up' ? styles.rankUpIcon :
-                        activity.type === 'trophy' ? styles.trophyIcon :
-                        styles.achievementIcon
-                      ]}>
-                        <IconSymbol
-                          size={16}
-                          name={
-                            activity.type === 'rank_up' ? 'arrow.up' :
-                            activity.type === 'trophy' ? 'trophy.fill' :
-                            'star.fill'
-                          }
-                          color="#fff"
-                        />
-                      </View>
-                      <View style={styles.activityInfo}>
-                        <ThemedText style={styles.activityGame}>{activity.game}</ThemedText>
-                        <ThemedText style={styles.activityMessage}>{activity.message}</ThemedText>
-                        <ThemedText style={styles.activityTime}>{activity.time}</ThemedText>
-                      </View>
-                    </View>
-                  </View>
-                  <View style={styles.activityFooter}>
-                    <TouchableOpacity style={styles.likeButton}>
-                      <IconSymbol size={16} name="heart" color="#ef4444" />
-                      <ThemedText style={styles.likeCount}>{activity.likes}</ThemedText>
-                    </TouchableOpacity>
-                    <TouchableOpacity style={styles.commentButton}>
-                      <IconSymbol size={16} name="bubble.left" color="#666" />
-                    </TouchableOpacity>
-                  </View>
-                </View>
-              ))}
-            </ScrollView>
-          </View>
-        </View>
-      </Modal>
 
       <ScrollView showsVerticalScrollIndicator={false}>
         {/* Cover Photo */}
@@ -478,19 +237,6 @@ export default function ProfileScreen() {
                 <ThemedText style={styles.bioText}>{user.bio}</ThemedText>
               </View>
             )}
-
-            {/* Action Buttons */}
-            <View style={styles.actionButtons}>
-              <TouchableOpacity
-                style={styles.editProfileButton}
-                onPress={() => router.push('/profilePages/editProfile')}
-              >
-                <ThemedText style={styles.editProfileText}>Edit Profile</ThemedText>
-              </TouchableOpacity>
-              <TouchableOpacity style={styles.shareProfileButton}>
-                <IconSymbol size={20} name="square.and.arrow.up" color="#000" />
-              </TouchableOpacity>
-            </View>
           </View>
         </View>
 
@@ -604,34 +350,11 @@ export default function ProfileScreen() {
               <View style={styles.postsContainer}>
                 <IconSymbol size={48} name="square.stack.3d.up" color="#ccc" />
                 <ThemedText style={styles.emptyStateText}>No posts yet</ThemedText>
-                <ThemedText style={styles.emptyStateSubtext}>Share your gaming achievements with the community</ThemedText>
               </View>
             )}
           </View>
         )}
       </ScrollView>
-
-      {/* Floating Add Post Button - only visible on Posts tab */}
-      {activeMainTab === 'posts' && (
-        <TouchableOpacity
-          style={styles.fabButton}
-          onPress={handleAddPost}
-          activeOpacity={0.8}
-          disabled={uploading}
-        >
-          <IconSymbol size={28} name="plus" color="#fff" />
-        </TouchableOpacity>
-      )}
-
-      {/* Upload Loading Overlay */}
-      {uploading && (
-        <View style={styles.uploadingOverlay}>
-          <View style={styles.uploadingContainer}>
-            <ActivityIndicator size="large" color="#fff" />
-            <ThemedText style={styles.uploadingText}>Uploading post...</ThemedText>
-          </View>
-        </View>
-      )}
 
       {/* Post Viewer Modal */}
       <Modal
@@ -727,96 +450,6 @@ export default function ProfileScreen() {
           </View>
         </View>
       </Modal>
-
-      {/* Post Preview Modal */}
-      <Modal
-        visible={showPostPreview}
-        animationType="slide"
-        transparent={false}
-        onRequestClose={() => setShowPostPreview(false)}
-      >
-        <View style={styles.postPreviewContainer}>
-          {/* Header */}
-          <View style={styles.postPreviewHeader}>
-            <TouchableOpacity
-              style={styles.postPreviewBackButton}
-              onPress={() => setShowPostPreview(false)}
-            >
-              <IconSymbol size={28} name="chevron.left" color="#000" />
-            </TouchableOpacity>
-            <ThemedText style={styles.postPreviewTitle}>New Post</ThemedText>
-            <TouchableOpacity
-              style={styles.postPreviewShareButton}
-              onPress={handleSharePost}
-              disabled={uploading}
-            >
-              <ThemedText style={[styles.postPreviewShareText, uploading && styles.postPreviewShareTextDisabled]}>
-                {uploading ? 'Sharing...' : 'Share'}
-              </ThemedText>
-            </TouchableOpacity>
-          </View>
-
-          <ScrollView style={styles.postPreviewContent} showsVerticalScrollIndicator={false}>
-            {/* Media Preview */}
-            <View style={styles.postPreviewMediaContainer}>
-              {selectedMedia && (
-                <>
-                  {selectedMedia.type === 'video' ? (
-                    <Video
-                      source={{ uri: selectedMedia.uri }}
-                      style={styles.postPreviewMedia}
-                      useNativeControls
-                      resizeMode={ResizeMode.CONTAIN}
-                      shouldPlay={false}
-                    />
-                  ) : (
-                    <Image
-                      source={{ uri: selectedMedia.uri }}
-                      style={styles.postPreviewMedia}
-                      resizeMode="cover"
-                    />
-                  )}
-                </>
-              )}
-            </View>
-
-            {/* Caption Input */}
-            <View style={styles.postPreviewCaptionSection}>
-              <View style={styles.postPreviewUserInfo}>
-                <View style={styles.postPreviewAvatar}>
-                  {user?.avatar && user.avatar.startsWith('http') ? (
-                    <Image source={{ uri: user.avatar }} style={styles.postPreviewAvatarImage} />
-                  ) : (
-                    <ThemedText style={styles.postPreviewAvatarInitial}>
-                      {user?.username?.[0]?.toUpperCase() || 'U'}
-                    </ThemedText>
-                  )}
-                </View>
-                <ThemedText style={styles.postPreviewUsername}>{user?.username || 'User'}</ThemedText>
-              </View>
-
-              <TextInput
-                style={styles.postPreviewCaptionInput}
-                placeholder="Write a caption..."
-                placeholderTextColor="#999"
-                multiline
-                value={caption}
-                onChangeText={setCaption}
-                maxLength={500}
-              />
-            </View>
-
-            {/* Tag People Button */}
-            <TouchableOpacity style={styles.postPreviewOptionButton}>
-              <View style={styles.postPreviewOptionLeft}>
-                <IconSymbol size={24} name="person.2.fill" color="#000" />
-                <ThemedText style={styles.postPreviewOptionText}>Tag People</ThemedText>
-              </View>
-              <IconSymbol size={20} name="chevron.right" color="#999" />
-            </TouchableOpacity>
-          </ScrollView>
-        </View>
-      </Modal>
     </ThemedView>
   );
 }
@@ -840,67 +473,19 @@ const styles = StyleSheet.create({
     backgroundColor: 'transparent',
     zIndex: 10,
   },
-  headerSpacer: {
-    width: 32,
+  backButton: {
+    padding: 4,
   },
   headerTitle: {
-    fontSize: 20,
-    fontWeight: '700',
-    color: '#000',
-  },
-  headerActions: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 16,
-  },
-  headerIconButton: {
-    position: 'relative',
-  },
-  notificationBadge: {
-    position: 'absolute',
-    top: -4,
-    right: -4,
-    backgroundColor: '#ef4444',
-    borderRadius: 10,
-    width: 20,
-    height: 20,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  notificationBadgeText: {
-    fontSize: 10,
-    fontWeight: '700',
-    color: '#fff',
-  },
-  modalOverlay: {
-    flex: 1,
-    backgroundColor: 'rgba(0,0,0,0.7)',
-    justifyContent: 'flex-end',
-  },
-  modalContent: {
-    backgroundColor: '#fafafa',
-    borderTopLeftRadius: 16,
-    borderTopRightRadius: 16,
-    maxHeight: '80%',
-    paddingBottom: 20,
-  },
-  modalHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    padding: 20,
-    borderBottomWidth: 1,
-    borderBottomColor: '#e5e5e5',
-  },
-  modalTitle: {
-    fontSize: 17,
+    fontSize: 16,
     fontWeight: '600',
-    color: '#000',
-    letterSpacing: -0.3,
+    color: '#fff',
+    textShadowColor: 'rgba(0, 0, 0, 0.3)',
+    textShadowOffset: { width: 0, height: 1 },
+    textShadowRadius: 3,
   },
-  modalScrollView: {
-    paddingHorizontal: 20,
-    paddingTop: 12,
+  headerSpacer: {
+    width: 32,
   },
   coverPhotoContainer: {
     width: '100%',
@@ -920,7 +505,7 @@ const styles = StyleSheet.create({
     backgroundColor: '#fff',
     paddingHorizontal: 20,
     paddingTop: 0,
-    paddingBottom: 24,
+    paddingBottom: 8,
   },
   avatarContainer: {
     marginTop: -40,
@@ -970,7 +555,7 @@ const styles = StyleSheet.create({
     fontWeight: '400',
   },
   bioContainer: {
-    marginBottom: 20,
+    marginBottom: 0,
   },
   bioText: {
     fontSize: 14,
@@ -997,41 +582,6 @@ const styles = StyleSheet.create({
     width: 28,
     height: 28,
   },
-  actionButtons: {
-    flexDirection: 'row',
-    width: '100%',
-    gap: 12,
-  },
-  editProfileButton: {
-    flex: 1,
-    paddingVertical: 10,
-    paddingHorizontal: 16,
-    borderRadius: 8,
-    alignItems: 'center',
-    backgroundColor: '#000',
-  },
-  editProfileText: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: '#fff',
-    letterSpacing: -0.2,
-  },
-  shareProfileButton: {
-    width: 44,
-    height: 44,
-    borderRadius: 8,
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: '#fff',
-    borderWidth: 1,
-    borderColor: '#e5e5e5',
-  },
-  shareProfileText: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: '#000',
-    letterSpacing: -0.2,
-  },
   section: {
     paddingHorizontal: 20,
     paddingTop: 16,
@@ -1042,25 +592,32 @@ const styles = StyleSheet.create({
     paddingTop: 0,
     paddingBottom: 8,
   },
-  sectionHeader: {
+  mainTabsContainer: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 20,
+    backgroundColor: '#fff',
+    borderBottomWidth: 1,
+    borderBottomColor: '#e5e5e5',
+    paddingHorizontal: 20,
   },
-  sectionTitle: {
-    fontSize: 17,
-    fontWeight: '600',
-    letterSpacing: -0.3,
+  mainTab: {
+    flex: 1,
+    paddingVertical: 16,
+    alignItems: 'center',
+    borderBottomWidth: 2,
+    borderBottomColor: 'transparent',
+  },
+  mainTabActive: {
+    borderBottomColor: '#000',
+  },
+  mainTabText: {
+    fontSize: 15,
+    fontWeight: '500',
+    color: '#666',
+    letterSpacing: -0.2,
+  },
+  mainTabTextActive: {
     color: '#000',
-  },
-  addButton: {
-    width: 32,
-    height: 32,
-    borderRadius: 16,
-    backgroundColor: '#000',
-    alignItems: 'center',
-    justifyContent: 'center',
+    fontWeight: '600',
   },
   gameTabs: {
     marginBottom: 20,
@@ -1095,109 +652,6 @@ const styles = StyleSheet.create({
   cardWrapper: {
     paddingHorizontal: 0,
   },
-  activityCard: {
-    backgroundColor: '#fff',
-    padding: 18,
-    borderRadius: 8,
-    marginBottom: 10,
-    borderWidth: 1,
-    borderColor: '#e5e5e5',
-  },
-  activityHeader: {
-    marginBottom: 14,
-  },
-  activityLeft: {
-    flexDirection: 'row',
-    gap: 14,
-  },
-  activityIcon: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: '#0a0a0a',
-  },
-  rankUpIcon: {
-    backgroundColor: '#0a0a0a',
-  },
-  trophyIcon: {
-    backgroundColor: '#0a0a0a',
-  },
-  achievementIcon: {
-    backgroundColor: '#0a0a0a',
-  },
-  activityInfo: {
-    flex: 1,
-  },
-  activityGame: {
-    fontSize: 11,
-    color: '#666',
-    marginBottom: 6,
-    fontWeight: '500',
-    textTransform: 'uppercase',
-    letterSpacing: 0.5,
-  },
-  activityMessage: {
-    fontSize: 15,
-    fontWeight: '500',
-    color: '#000',
-    marginBottom: 6,
-    lineHeight: 20,
-    letterSpacing: -0.2,
-  },
-  activityTime: {
-    fontSize: 12,
-    color: '#999',
-    fontWeight: '400',
-  },
-  activityFooter: {
-    flexDirection: 'row',
-    gap: 20,
-    paddingTop: 14,
-    borderTopWidth: 1,
-    borderTopColor: '#f0f0f0',
-  },
-  likeButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-  },
-  likeCount: {
-    fontSize: 13,
-    color: '#666',
-    fontWeight: '500',
-  },
-  commentButton: {
-    padding: 4,
-  },
-  mainTabsContainer: {
-    flexDirection: 'row',
-    backgroundColor: '#fff',
-    borderBottomWidth: 1,
-    borderBottomColor: '#e5e5e5',
-    paddingHorizontal: 20,
-  },
-  mainTab: {
-    flex: 1,
-    paddingVertical: 16,
-    alignItems: 'center',
-    borderBottomWidth: 2,
-    borderBottomColor: 'transparent',
-  },
-  mainTabActive: {
-    borderBottomColor: '#000',
-  },
-  mainTabText: {
-    fontSize: 15,
-    fontWeight: '500',
-    color: '#666',
-    letterSpacing: -0.2,
-  },
-  mainTabTextActive: {
-    color: '#000',
-    fontWeight: '600',
-  },
   postsContainer: {
     alignItems: 'center',
     justifyContent: 'center',
@@ -1211,12 +665,6 @@ const styles = StyleSheet.create({
     color: '#000',
     marginTop: 16,
   },
-  emptyStateSubtext: {
-    fontSize: 14,
-    color: '#666',
-    textAlign: 'center',
-    paddingHorizontal: 40,
-  },
   loadingText: {
     fontSize: 14,
     color: '#666',
@@ -1229,8 +677,8 @@ const styles = StyleSheet.create({
     marginTop: 0,
   },
   postItem: {
-    width: (screenWidth - 2) / 3, // 3 columns, only account for 2 gaps (1px each)
-    height: ((screenWidth - 2) / 3) * 1.25, // 4:5 aspect ratio (taller like Instagram)
+    width: (screenWidth - 2) / 3,
+    height: ((screenWidth - 2) / 3) * 1.25,
     backgroundColor: '#f5f5f5',
     position: 'relative',
   },
@@ -1248,48 +696,6 @@ const styles = StyleSheet.create({
     height: 32,
     alignItems: 'center',
     justifyContent: 'center',
-  },
-  fabButton: {
-    position: 'absolute',
-    bottom: 24,
-    right: 24,
-    width: 60,
-    height: 60,
-    borderRadius: 30,
-    backgroundColor: '#000',
-    alignItems: 'center',
-    justifyContent: 'center',
-    shadowColor: '#000',
-    shadowOffset: {
-      width: 0,
-      height: 4,
-    },
-    shadowOpacity: 0.3,
-    shadowRadius: 4.65,
-    elevation: 8,
-  },
-  uploadingOverlay: {
-    position: 'absolute',
-    top: 0,
-    left: 0,
-    right: 0,
-    bottom: 0,
-    backgroundColor: 'rgba(0, 0, 0, 0.7)',
-    alignItems: 'center',
-    justifyContent: 'center',
-    zIndex: 1000,
-  },
-  uploadingContainer: {
-    backgroundColor: 'rgba(0, 0, 0, 0.9)',
-    borderRadius: 16,
-    padding: 32,
-    alignItems: 'center',
-    gap: 16,
-  },
-  uploadingText: {
-    fontSize: 16,
-    color: '#fff',
-    fontWeight: '600',
   },
   postViewerOverlay: {
     flex: 1,
@@ -1387,114 +793,6 @@ const styles = StyleSheet.create({
   postViewerActionText: {
     fontSize: 15,
     color: '#fff',
-    fontWeight: '500',
-  },
-  postPreviewContainer: {
-    flex: 1,
-    backgroundColor: '#fff',
-  },
-  postPreviewHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingHorizontal: 16,
-    paddingTop: 60,
-    paddingBottom: 16,
-    borderBottomWidth: 1,
-    borderBottomColor: '#e5e5e5',
-    backgroundColor: '#fff',
-  },
-  postPreviewBackButton: {
-    padding: 4,
-  },
-  postPreviewTitle: {
-    fontSize: 18,
-    fontWeight: '600',
-    color: '#000',
-  },
-  postPreviewShareButton: {
-    paddingVertical: 8,
-    paddingHorizontal: 16,
-    backgroundColor: '#000',
-    borderRadius: 8,
-  },
-  postPreviewShareText: {
-    fontSize: 15,
-    fontWeight: '600',
-    color: '#fff',
-  },
-  postPreviewShareTextDisabled: {
-    opacity: 0.5,
-  },
-  postPreviewContent: {
-    flex: 1,
-  },
-  postPreviewMediaContainer: {
-    width: '100%',
-    height: 400,
-    backgroundColor: '#f5f5f5',
-  },
-  postPreviewMedia: {
-    width: '100%',
-    height: '100%',
-  },
-  postPreviewCaptionSection: {
-    padding: 20,
-    borderBottomWidth: 1,
-    borderBottomColor: '#e5e5e5',
-  },
-  postPreviewUserInfo: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginBottom: 16,
-    gap: 12,
-  },
-  postPreviewAvatar: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    backgroundColor: '#f5f5f5',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  postPreviewAvatarImage: {
-    width: '100%',
-    height: '100%',
-    borderRadius: 20,
-  },
-  postPreviewAvatarInitial: {
-    fontSize: 18,
-    fontWeight: '600',
-  },
-  postPreviewUsername: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: '#000',
-  },
-  postPreviewCaptionInput: {
-    fontSize: 15,
-    color: '#000',
-    minHeight: 100,
-    textAlignVertical: 'top',
-    paddingTop: 0,
-  },
-  postPreviewOptionButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingHorizontal: 20,
-    paddingVertical: 16,
-    borderBottomWidth: 1,
-    borderBottomColor: '#e5e5e5',
-  },
-  postPreviewOptionLeft: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 12,
-  },
-  postPreviewOptionText: {
-    fontSize: 16,
-    color: '#000',
     fontWeight: '500',
   },
 });

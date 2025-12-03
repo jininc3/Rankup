@@ -13,6 +13,9 @@ interface User {
   bio?: string;
   discordLink?: string;
   instagramLink?: string;
+  postsCount?: number;
+  followersCount?: number;
+  followingCount?: number;
   provider: 'email' | 'google' | 'discord' | 'instagram';
 }
 
@@ -49,6 +52,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
               bio: userProfile.bio,
               discordLink: userProfile.discordLink,
               instagramLink: userProfile.instagramLink,
+              postsCount: userProfile.postsCount || 0,
+              followersCount: userProfile.followersCount || 0,
+              followingCount: userProfile.followingCount || 0,
               provider: userProfile.provider,
             });
           } else {
@@ -92,6 +98,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           bio: userProfile.bio,
           discordLink: userProfile.discordLink,
           instagramLink: userProfile.instagramLink,
+          postsCount: userProfile.postsCount || 0,
+          followersCount: userProfile.followersCount || 0,
+          followingCount: userProfile.followingCount || 0,
           provider: userProfile.provider,
         });
       }
