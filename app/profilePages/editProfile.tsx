@@ -496,38 +496,6 @@ export default function EditProfileScreen() {
           </View>
         </View>
 
-        {/* Social Icons - positioned on the right below cover */}
-        <View style={styles.socialIconsContainer}>
-          <View style={styles.socialIconInputWrapper}>
-            <Image
-              source={require('@/assets/images/discord.png')}
-              style={styles.socialIcon}
-              resizeMode="contain"
-            />
-            <TextInput
-              style={styles.socialInput}
-              value={discord}
-              onChangeText={setDiscord}
-              placeholder="Discord"
-              placeholderTextColor="#999"
-            />
-          </View>
-          <View style={styles.socialIconInputWrapper}>
-            <Image
-              source={require('@/assets/images/instagram.png')}
-              style={styles.socialIcon}
-              resizeMode="contain"
-            />
-            <TextInput
-              style={styles.socialInput}
-              value={instagram}
-              onChangeText={setInstagram}
-              placeholder="Instagram"
-              placeholderTextColor="#999"
-            />
-          </View>
-        </View>
-
         {/* Profile Content - matches profile.tsx */}
         <View style={styles.profileContentWrapper}>
           {/* Avatar on the left, overlapping cover */}
@@ -585,6 +553,27 @@ export default function EditProfileScreen() {
                 maxLength={150}
               />
               <ThemedText style={styles.characterCount}>{bio.length}/150</ThemedText>
+            </View>
+
+            {/* Socials Section */}
+            <View style={styles.socialsSection}>
+              <ThemedText style={styles.socialsSectionTitle}>Socials</ThemedText>
+              <View style={styles.socialsIconsRow}>
+                <TouchableOpacity style={styles.socialLinkButton}>
+                  <Image
+                    source={require('@/assets/images/instagram.png')}
+                    style={styles.socialLinkIcon}
+                    resizeMode="contain"
+                  />
+                </TouchableOpacity>
+                <TouchableOpacity style={styles.socialLinkButton}>
+                  <Image
+                    source={require('@/assets/images/discord.png')}
+                    style={styles.socialLinkIcon}
+                    resizeMode="contain"
+                  />
+                </TouchableOpacity>
+              </View>
             </View>
           </View>
         </View>
@@ -689,33 +678,6 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
-  socialIconsContainer: {
-    position: 'absolute',
-    top: 240,
-    right: 10,
-    flexDirection: 'column',
-    gap: 8,
-    zIndex: 5,
-  },
-  socialIconInputWrapper: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: 'rgba(255, 255, 255, 0.9)',
-    borderRadius: 20,
-    paddingHorizontal: 10,
-    paddingVertical: 6,
-    gap: 6,
-  },
-  socialIcon: {
-    width: 24,
-    height: 24,
-  },
-  socialInput: {
-    fontSize: 12,
-    color: '#000',
-    width: 100,
-    padding: 0,
-  },
   profileContentWrapper: {
     backgroundColor: '#fff',
     paddingHorizontal: 20,
@@ -802,6 +764,34 @@ const styles = StyleSheet.create({
     color: '#999',
     marginTop: 4,
     textAlign: 'right',
+  },
+  socialsSection: {
+    marginTop: 8,
+  },
+  socialsSectionTitle: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#000',
+    marginBottom: 8,
+    letterSpacing: -0.2,
+  },
+  socialsIconsRow: {
+    flexDirection: 'row',
+    gap: 12,
+  },
+  socialLinkButton: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    backgroundColor: '#f5f5f5',
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 1,
+    borderColor: '#e5e5e5',
+  },
+  socialLinkIcon: {
+    width: 24,
+    height: 24,
   },
   mainTabsContainer: {
     flexDirection: 'row',

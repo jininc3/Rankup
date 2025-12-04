@@ -1,13 +1,14 @@
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { IconSymbol } from '@/components/ui/icon-symbol';
-import { Dimensions, ScrollView, StyleSheet, TouchableOpacity, View, Image, ActivityIndicator } from 'react-native';
-import { useState, useEffect } from 'react';
-import { useAuth } from '@/contexts/AuthContext';
-import { collection, query, where, getDocs, orderBy, Timestamp } from 'firebase/firestore';
 import { db } from '@/config/firebase';
-import { Video, ResizeMode } from 'expo-av';
+import { useAuth } from '@/contexts/AuthContext';
 import { getFollowing } from '@/services/followService';
+import { ResizeMode, Video } from 'expo-av';
+import { collection, getDocs, orderBy, query, Timestamp } from 'firebase/firestore';
+import { useEffect, useRef, useState } from 'react';
+import { ActivityIndicator, Dimensions, Image, ScrollView, StyleSheet, TouchableOpacity, View } from 'react-native';
+import { useRouter } from 'expo-router';
 
 const { width } = Dimensions.get('window');
 
@@ -25,12 +26,16 @@ interface Post {
 }
 
 export default function HomeScreen() {
+  const router = useRouter();
   const { user: currentUser } = useAuth();
   const [activeTab, setActiveTab] = useState<'forYou' | 'following'>('following');
   const [followingPosts, setFollowingPosts] = useState<Post[]>([]);
   const [forYouPosts, setForYouPosts] = useState<Post[]>([]);
   const [loading, setLoading] = useState(true);
   const [followingUserIds, setFollowingUserIds] = useState<string[]>([]);
+  const [playingVideoId, setPlayingVideoId] = useState<string | null>(null);
+  const postRefs = useRef<{ [key: string]: View | null }>({});
+  const scrollViewRef = useRef<ScrollView>(null);
 
   const currentPosts = activeTab === 'forYou' ? forYouPosts : followingPosts;
 
@@ -95,6 +100,51 @@ export default function HomeScreen() {
     }
   }, [currentUser?.id, followingUserIds, activeTab]);
 
+  const handleVideoClick = (postId: string) => {
+    setPlayingVideoId(playingVideoId === postId ? null : postId);
+  };
+
+  // Check which video is in viewport
+  const checkVideoInView = () => {
+    const videoPosts = currentPosts.filter(post => post.mediaType === 'video');
+
+    videoPosts.forEach(post => {
+      const ref = postRefs.current[post.id];
+      if (ref) {
+        ref.measureInWindow((x, y, width, height) => {
+          const windowHeight = Dimensions.get('window').height;
+          const headerHeight = 150; // Approximate height of header + tabs
+
+          // Check if video is at least 50% visible in viewport
+          const isVisible =
+            y + height > headerHeight &&
+            y < windowHeight &&
+            (y + height / 2) > headerHeight &&
+            (y + height / 2) < windowHeight;
+
+          if (isVisible && playingVideoId !== post.id) {
+            setPlayingVideoId(post.id);
+          } else if (!isVisible && playingVideoId === post.id) {
+            setPlayingVideoId(null);
+          }
+        });
+      }
+    });
+  };
+
+  const handleScroll = () => {
+    checkVideoInView();
+  };
+
+  const handleUserPress = (userId: string) => {
+    // Check if clicking on own profile
+    if (userId === currentUser?.id) {
+      router.push('/(tabs)/profile');
+    } else {
+      router.push(`/profilePages/profileView?userId=${userId}`);
+    }
+  };
+
   return (
     <ThemedView style={styles.container}>
       <View style={styles.header}>
@@ -121,7 +171,13 @@ export default function HomeScreen() {
         </TouchableOpacity>
       </View>
 
-      <ScrollView style={styles.scrollView} showsVerticalScrollIndicator={false}>
+      <ScrollView
+        ref={scrollViewRef}
+        style={styles.scrollView}
+        showsVerticalScrollIndicator={false}
+        onScroll={handleScroll}
+        scrollEventThrottle={200}
+      >
         {loading ? (
           <View style={styles.loadingContainer}>
             <ActivityIndicator size="large" color="#000" />
@@ -129,10 +185,19 @@ export default function HomeScreen() {
           </View>
         ) : currentPosts.length > 0 ? (
           currentPosts.map((post) => (
-            <View key={post.id} style={styles.postCard}>
+            <View
+              key={post.id}
+              style={styles.postCard}
+              ref={(ref) => (postRefs.current[post.id] = ref)}
+              collapsable={false}
+            >
               {/* User Header */}
               <View style={styles.postHeader}>
-                <View style={styles.userInfo}>
+                <TouchableOpacity
+                  style={styles.userInfo}
+                  onPress={() => handleUserPress(post.userId)}
+                  activeOpacity={0.7}
+                >
                   <View style={styles.avatarContainer}>
                     {post.avatar && post.avatar.startsWith('http') ? (
                       <Image source={{ uri: post.avatar }} style={styles.avatarImage} />
@@ -143,7 +208,7 @@ export default function HomeScreen() {
                     )}
                   </View>
                   <ThemedText style={styles.username}>{post.username}</ThemedText>
-                </View>
+                </TouchableOpacity>
               </View>
 
               {/* Caption */}
@@ -154,32 +219,28 @@ export default function HomeScreen() {
               )}
 
               {/* Media Content */}
-              <View style={styles.mediaContent}>
+              <View style={post.mediaType === 'video' ? styles.mediaContentVideo : styles.mediaContentImage}>
                 {post.mediaType === 'video' ? (
-                  post.thumbnailUrl ? (
-                    <Image
-                      source={{ uri: post.thumbnailUrl }}
-                      style={styles.mediaImage}
-                      resizeMode="cover"
-                    />
-                  ) : (
-                    <Image
-                      source={{ uri: post.mediaUrl }}
-                      style={styles.mediaImage}
-                      resizeMode="cover"
-                    />
-                  )
+                  <Video
+                    source={{ uri: post.mediaUrl }}
+                    style={styles.mediaImage}
+                    useNativeControls
+                    resizeMode={ResizeMode.CONTAIN}
+                    shouldPlay={playingVideoId === post.id}
+                    isLooping
+                    onPlaybackStatusUpdate={(status) => {
+                      // Handle video end
+                      if (status.isLoaded && status.didJustFinish) {
+                        // Video will loop automatically due to isLooping prop
+                      }
+                    }}
+                  />
                 ) : (
                   <Image
                     source={{ uri: post.mediaUrl }}
                     style={styles.mediaImage}
                     resizeMode="cover"
                   />
-                )}
-                {post.mediaType === 'video' && (
-                  <View style={styles.playIconOverlay}>
-                    <IconSymbol size={60} name="play.circle.fill" color="rgba(255,255,255,0.9)" />
-                  </View>
                 )}
               </View>
 
@@ -241,27 +302,30 @@ const styles = StyleSheet.create({
   },
   tabContainer: {
     flexDirection: 'row',
+    justifyContent: 'center',
     backgroundColor: '#fff',
-    borderBottomWidth: 1,
-    borderBottomColor: '#e5e7eb',
+    paddingHorizontal: 20,
   },
   tab: {
-    flex: 1,
     paddingVertical: 12,
+    paddingHorizontal: 20,
     alignItems: 'center',
-    borderBottomWidth: 2,
-    borderBottomColor: 'transparent',
+    borderBottomWidth: 0,
+    marginHorizontal: 8,
+    position: 'relative',
   },
   tabActive: {
+    borderBottomWidth: 2,
     borderBottomColor: '#000',
   },
   tabText: {
     fontSize: 15,
-    fontWeight: '600',
-    color: '#666',
+    fontWeight: '500',
+    color: '#999',
   },
   tabTextActive: {
     color: '#000',
+    fontWeight: '600',
   },
   scrollView: {
     flex: 1,
@@ -327,9 +391,15 @@ const styles = StyleSheet.create({
     color: '#000',
     lineHeight: 20,
   },
-  mediaContent: {
+  mediaContentImage: {
     width: width,
-    height: width * 1.25,
+    height: width, // 1:1 square aspect ratio for images
+    backgroundColor: '#000',
+    position: 'relative',
+  },
+  mediaContentVideo: {
+    width: width,
+    height: width * 0.5625, // 16:9 landscape aspect ratio (9/16 = 0.5625) for videos
     backgroundColor: '#000',
     position: 'relative',
   },
@@ -399,5 +469,9 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: '#999',
     textAlign: 'center',
+  },
+  videoThumbnailContainer: {
+    width: '100%',
+    height: '100%',
   },
 });

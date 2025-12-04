@@ -230,32 +230,22 @@ export default function SearchScreen() {
           searchResults.map((user) => (
             <TouchableOpacity
               key={user.id}
-              style={styles.userCard}
+              style={styles.historyCard}
               onPress={() => handleUserClick(user)}
+              activeOpacity={0.7}
             >
-              <View style={styles.userLeft}>
-                <View style={styles.avatar}>
+              <View style={styles.historyLeft}>
+                <View style={styles.historyAvatar}>
                   {user.avatar && user.avatar.startsWith('http') ? (
-                    <Image source={{ uri: user.avatar }} style={styles.avatarImage} />
+                    <Image source={{ uri: user.avatar }} style={styles.historyAvatarImage} />
                   ) : (
-                    <ThemedText style={styles.avatarInitial}>
+                    <ThemedText style={styles.historyAvatarInitial}>
                       {user.username[0].toUpperCase()}
                     </ThemedText>
                   )}
                 </View>
-                <View style={styles.userInfo}>
-                  <ThemedText style={styles.username}>{user.username}</ThemedText>
-                  <ThemedText style={styles.userStats}>
-                    {user.postsCount} Posts • {user.followersCount} Followers
-                  </ThemedText>
-                  {user.bio && (
-                    <ThemedText style={styles.userBio} numberOfLines={1}>
-                      {user.bio}
-                    </ThemedText>
-                  )}
-                </View>
+                <ThemedText style={styles.historyUsername}>{user.username}</ThemedText>
               </View>
-              <IconSymbol size={20} name="chevron.right" color="#666" />
             </TouchableOpacity>
           ))
         ) : (

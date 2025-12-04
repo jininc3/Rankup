@@ -29,17 +29,6 @@ interface ViewedUser {
 
 const userGames = [
   {
-    id: 1,
-    name: 'Valorant',
-    rank: currentUser.gamesPlayed.valorant.currentRank,
-    trophies: 1245,
-    icon: '🎯',
-    wins: Math.floor(currentUser.gamesPlayed.valorant.gamesPlayed * (currentUser.gamesPlayed.valorant.winRate / 100)),
-    losses: currentUser.gamesPlayed.valorant.gamesPlayed - Math.floor(currentUser.gamesPlayed.valorant.gamesPlayed * (currentUser.gamesPlayed.valorant.winRate / 100)),
-    winRate: currentUser.gamesPlayed.valorant.winRate,
-    recentMatches: ['+25', '+18', '-12', '+22', '+19'],
-  },
-  {
     id: 2,
     name: 'League of Legends',
     rank: currentUser.gamesPlayed.league.currentRank,
@@ -49,17 +38,6 @@ const userGames = [
     losses: currentUser.gamesPlayed.league.gamesPlayed - Math.floor(currentUser.gamesPlayed.league.gamesPlayed * (currentUser.gamesPlayed.league.winRate / 100)),
     winRate: currentUser.gamesPlayed.league.winRate,
     recentMatches: ['+15', '-18', '+20', '+17', '-14'],
-  },
-  {
-    id: 3,
-    name: 'Apex Legends',
-    rank: currentUser.gamesPlayed.apex.currentRank,
-    trophies: 422,
-    icon: '🎮',
-    wins: Math.floor(currentUser.gamesPlayed.apex.gamesPlayed * (currentUser.gamesPlayed.apex.winRate / 100)),
-    losses: currentUser.gamesPlayed.apex.gamesPlayed - Math.floor(currentUser.gamesPlayed.apex.gamesPlayed * (currentUser.gamesPlayed.apex.winRate / 100)),
-    winRate: currentUser.gamesPlayed.apex.winRate,
-    recentMatches: ['+28', '+22', '-16', '-19', '+25'],
   },
 ];
 
@@ -721,8 +699,8 @@ const styles = StyleSheet.create({
   },
   followButton: {
     width: '100%',
-    paddingVertical: 12,
-    borderRadius: 8,
+    paddingVertical: 6,
+    borderRadius: 6,
     alignItems: 'center',
     backgroundColor: '#000',
     marginTop: 12,
@@ -733,7 +711,7 @@ const styles = StyleSheet.create({
     borderColor: '#e5e5e5',
   },
   followButtonText: {
-    fontSize: 15,
+    fontSize: 13,
     fontWeight: '600',
     color: '#fff',
   },
