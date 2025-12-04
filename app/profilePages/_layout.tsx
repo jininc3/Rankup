@@ -33,6 +33,12 @@ export default function ProfilePagesLayout() {
           headerShown: false,
         }}
       />
+      <Stack.Screen
+        name="profileView"
+        options={{
+          headerShown: false,
+        }}
+      />
     </Stack>
   );
 }

@@ -42,6 +42,7 @@ export default function HomeScreen() {
       try {
         const followingData = await getFollowing(currentUser.id);
         const userIds = followingData.map(follow => follow.followingId);
+        console.log('Following user IDs:', userIds);
         setFollowingUserIds(userIds);
       } catch (error) {
         console.error('Error fetching following:', error);
@@ -76,6 +77,9 @@ export default function HomeScreen() {
         const followingPostsFiltered = allPosts.filter(post =>
           followingUserIds.includes(post.userId) && post.userId !== currentUser.id
         );
+        console.log('All posts count:', allPosts.length);
+        console.log('Following posts count:', followingPostsFiltered.length);
+        console.log('Following posts:', followingPostsFiltered);
         setFollowingPosts(followingPostsFiltered);
       } catch (error) {
         console.error('Error fetching posts:', error);
