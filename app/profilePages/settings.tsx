@@ -7,25 +7,6 @@ import { useAuth } from '@/contexts/AuthContext';
 
 const settingsData = [
   {
-    id: 'account',
-    title: 'Account',
-    items: [
-      {
-        id: 1,
-        icon: 'person.circle',
-        title: 'View Profile Preview',
-        hasChevron: true,
-        route: '/profilePages/profilePreview',
-      },
-      {
-        id: 2,
-        icon: 'gearshape',
-        title: 'Account Settings',
-        hasChevron: true,
-      },
-    ],
-  },
-  {
     id: 'preferences',
     title: 'Preferences',
     items: [
@@ -34,12 +15,14 @@ const settingsData = [
         icon: 'bell',
         title: 'Notifications & Preferences',
         hasChevron: true,
+        route: '/profilePages/notificationsPreferences',
       },
       {
         id: 5,
         icon: 'lock.shield',
         title: 'Privacy & Safety',
         hasChevron: true,
+        route: '/profilePages/privacySafety',
       },
     ],
   },
@@ -109,7 +92,60 @@ export default function SettingsScreen() {
       </View>
 
       <ScrollView showsVerticalScrollIndicator={false}>
-        {/* Settings Sections */}
+        {/* Account Section with merged user info */}
+        {user && (
+          <View style={styles.section}>
+            <ThemedText style={styles.sectionTitle}>Account</ThemedText>
+            <View style={styles.settingsGroup}>
+              {/* User Info - Centered */}
+              <View style={[styles.settingItem, styles.userInfoItem]}>
+                <View style={styles.userInfoContent}>
+                  <View style={styles.userInfoRow}>
+                    <IconSymbol size={28} name="person.circle" color="#000" />
+                    <ThemedText style={styles.userInfoTitle}>{user.username}</ThemedText>
+                  </View>
+                  <ThemedText style={styles.userInfoSubtitle}>
+                    Signed in with {user.provider}
+                  </ThemedText>
+                </View>
+              </View>
+
+              {/* View Profile Preview */}
+              <TouchableOpacity
+                style={styles.settingItem}
+                onPress={() => router.push('/profilePages/profilePreview')}
+              >
+                <View style={styles.settingLeft}>
+                  <View style={styles.iconContainer}>
+                    <IconSymbol size={22} name="eye" color="#000" />
+                  </View>
+                  <View style={styles.settingTextContainer}>
+                    <ThemedText style={styles.settingTitle}>View Profile Preview</ThemedText>
+                  </View>
+                </View>
+                <IconSymbol size={20} name="chevron.right" color="#666" />
+              </TouchableOpacity>
+
+              {/* Account Settings */}
+              <TouchableOpacity
+                style={[styles.settingItem, styles.settingItemLast]}
+                onPress={() => router.push('/profilePages/accountSettings')}
+              >
+                <View style={styles.settingLeft}>
+                  <View style={styles.iconContainer}>
+                    <IconSymbol size={22} name="gearshape" color="#000" />
+                  </View>
+                  <View style={styles.settingTextContainer}>
+                    <ThemedText style={styles.settingTitle}>Account Settings</ThemedText>
+                  </View>
+                </View>
+                <IconSymbol size={20} name="chevron.right" color="#666" />
+              </TouchableOpacity>
+            </View>
+          </View>
+        )}
+
+        {/* Other Settings Sections */}
         {settingsData.map((section) => (
           <View key={section.id} style={styles.section}>
             {section.title && (
@@ -144,28 +180,6 @@ export default function SettingsScreen() {
             </View>
           </View>
         ))}
-
-        {/* Account Info & Sign Out */}
-        {user && (
-          <View style={styles.section}>
-            <ThemedText style={styles.sectionTitle}>Account</ThemedText>
-            <View style={styles.settingsGroup}>
-              <View style={styles.settingItem}>
-                <View style={styles.settingLeft}>
-                  <View style={styles.iconContainer}>
-                    <IconSymbol size={22} name="person.circle" color="#000" />
-                  </View>
-                  <View style={styles.settingTextContainer}>
-                    <ThemedText style={styles.settingTitle}>{user.username}</ThemedText>
-                    <ThemedText style={styles.settingSubtitle}>
-                      Signed in with {user.provider}
-                    </ThemedText>
-                  </View>
-                </View>
-              </View>
-            </View>
-          </View>
-        )}
 
         {/* Sign Out Button */}
         <View style={styles.section}>
@@ -296,5 +310,28 @@ const styles = StyleSheet.create({
   signOutText: {
     color: '#ef4444',
     fontWeight: '600',
+  },
+  userInfoItem: {
+    justifyContent: 'center',
+    paddingVertical: 24,
+  },
+  userInfoContent: {
+    alignItems: 'center',
+    gap: 8,
+  },
+  userInfoRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+  },
+  userInfoTitle: {
+    fontSize: 18,
+    fontWeight: '600',
+    color: '#000',
+  },
+  userInfoSubtitle: {
+    fontSize: 13,
+    color: '#666',
+    textAlign: 'center',
   },
 });

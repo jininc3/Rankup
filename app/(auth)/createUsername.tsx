@@ -1,17 +1,21 @@
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { useState } from 'react';
-import { StyleSheet, TextInput, TouchableOpacity, View, Alert, ActivityIndicator } from 'react-native';
+import { StyleSheet, TextInput, TouchableOpacity, View, Alert, ActivityIndicator, Image } from 'react-native';
 import { useAuth } from '@/contexts/AuthContext';
 import { useRouter } from 'expo-router';
 import { doc, updateDoc, getDoc, query, collection, where, getDocs } from 'firebase/firestore';
-import { db } from '@/config/firebase';
+import { db, storage } from '@/config/firebase';
+import * as ImagePicker from 'expo-image-picker';
+import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
+import { IconSymbol } from '@/components/ui/icon-symbol';
 
 export default function CreateUsernameScreen() {
   const { user, refreshUser } = useAuth();
   const router = useRouter();
   const [username, setUsername] = useState('');
   const [loading, setLoading] = useState(false);
+  const [profileImage, setProfileImage] = useState<string | null>(null);
 
   const validateUsername = (text: string): boolean => {
     // Username should be 3-20 characters, alphanumeric and underscores only
@@ -29,6 +33,39 @@ export default function CreateUsernameScreen() {
       console.error('Error checking username availability:', error);
       return false;
     }
+  };
+
+  const pickImage = async () => {
+    const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
+
+    if (status !== 'granted') {
+      Alert.alert('Permission Required', 'Please allow access to your photo library');
+      return;
+    }
+
+    const result = await ImagePicker.launchImageLibraryAsync({
+      mediaTypes: ImagePicker.MediaTypeOptions.Images,
+      allowsEditing: true,
+      aspect: [1, 1],
+      quality: 0.8,
+    });
+
+    if (!result.canceled && result.assets[0]) {
+      setProfileImage(result.assets[0].uri);
+    }
+  };
+
+  const uploadProfileImage = async (imageUri: string): Promise<string> => {
+    const response = await fetch(imageUri);
+    const blob = await response.blob();
+
+    const filename = `profile_${user?.id}_${Date.now()}.jpg`;
+    const storageRef = ref(storage, `profile-pictures/${user?.id}/${filename}`);
+
+    await uploadBytes(storageRef, blob);
+    const downloadURL = await getDownloadURL(storageRef);
+
+    return downloadURL;
   };
 
   const handleContinue = async () => {
@@ -57,13 +94,30 @@ export default function CreateUsernameScreen() {
         return;
       }
 
+      // Upload profile image if selected
+      let profileImageUrl = null;
+      if (profileImage) {
+        try {
+          profileImageUrl = await uploadProfileImage(profileImage);
+        } catch (error) {
+          console.error('Error uploading profile image:', error);
+          Alert.alert('Warning', 'Failed to upload profile picture, but continuing with setup');
+        }
+      }
+
       // Update user profile in Firestore
       if (user?.id) {
-        await updateDoc(doc(db, 'users', user.id), {
+        const updateData: any = {
           username: username,
           needsUsernameSetup: false,
           updatedAt: new Date(),
-        });
+        };
+
+        if (profileImageUrl) {
+          updateData.avatar = profileImageUrl;
+        }
+
+        await updateDoc(doc(db, 'users', user.id), updateData);
 
         // Refresh user data in context
         await refreshUser();
@@ -90,6 +144,25 @@ export default function CreateUsernameScreen() {
         </View>
 
         <View style={styles.form}>
+          {/* Profile Picture Section */}
+          <View style={styles.profilePicContainer}>
+            <ThemedText style={styles.label}>Profile Picture (Optional)</ThemedText>
+            <TouchableOpacity
+              style={styles.profilePicButton}
+              onPress={pickImage}
+              disabled={loading}
+            >
+              {profileImage ? (
+                <Image source={{ uri: profileImage }} style={styles.profilePicImage} />
+              ) : (
+                <View style={styles.profilePicPlaceholder}>
+                  <IconSymbol size={48} name="person.circle" color="#999" />
+                  <ThemedText style={styles.profilePicText}>Tap to add photo</ThemedText>
+                </View>
+              )}
+            </TouchableOpacity>
+          </View>
+
           <View style={styles.inputContainer}>
             <ThemedText style={styles.label}>Username</ThemedText>
             <TextInput
@@ -192,5 +265,36 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: '600',
     color: '#fff',
+  },
+  profilePicContainer: {
+    alignItems: 'center',
+    marginBottom: 32,
+  },
+  profilePicButton: {
+    marginTop: 16,
+  },
+  profilePicImage: {
+    width: 120,
+    height: 120,
+    borderRadius: 60,
+    borderWidth: 3,
+    borderColor: '#e5e5e5',
+  },
+  profilePicPlaceholder: {
+    width: 120,
+    height: 120,
+    borderRadius: 60,
+    backgroundColor: '#f5f5f5',
+    borderWidth: 2,
+    borderColor: '#e5e5e5',
+    borderStyle: 'dashed',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+  },
+  profilePicText: {
+    fontSize: 13,
+    color: '#999',
+    marginTop: 4,
   },
 });

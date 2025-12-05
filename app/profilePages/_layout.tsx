@@ -39,6 +39,24 @@ export default function ProfilePagesLayout() {
           headerShown: false,
         }}
       />
+      <Stack.Screen
+        name="accountSettings"
+        options={{
+          headerShown: false,
+        }}
+      />
+      <Stack.Screen
+        name="notificationsPreferences"
+        options={{
+          headerShown: false,
+        }}
+      />
+      <Stack.Screen
+        name="privacySafety"
+        options={{
+          headerShown: false,
+        }}
+      />
     </Stack>
   );
 }

@@ -4,11 +4,10 @@ import { IconSymbol } from '@/components/ui/icon-symbol';
 import { useState, useCallback } from 'react';
 import { ScrollView, StyleSheet, TextInput, TouchableOpacity, View, Image, ActivityIndicator } from 'react-native';
 import { useRouter } from 'expo-router';
-import { collection, query, where, getDocs, orderBy, limit } from 'firebase/firestore';
+import { collection, query, where, getDocs, orderBy, limit, doc, setDoc, deleteDoc, getDoc, Timestamp } from 'firebase/firestore';
 import { db } from '@/config/firebase';
 import { useAuth } from '@/contexts/AuthContext';
 import { useFocusEffect } from '@react-navigation/native';
-import AsyncStorage from '@react-native-async-storage/async-storage';
 
 interface SearchUser {
   id: string;
@@ -20,7 +19,6 @@ interface SearchUser {
   postsCount?: number;
 }
 
-const SEARCH_HISTORY_KEY = '@search_history';
 const MAX_HISTORY_ITEMS = 10;
 
 export default function SearchScreen() {
@@ -31,43 +29,72 @@ export default function SearchScreen() {
   const [searching, setSearching] = useState(false);
   const [searchHistory, setSearchHistory] = useState<SearchUser[]>([]);
 
-  // Load search history from AsyncStorage
+  // Load search history from Firestore
   const loadSearchHistory = async () => {
+    if (!currentUser?.id) return;
+
     try {
-      const historyJson = await AsyncStorage.getItem(`${SEARCH_HISTORY_KEY}_${currentUser?.id}`);
-      if (historyJson) {
-        const history = JSON.parse(historyJson);
-        setSearchHistory(history);
-      }
+      const historyRef = collection(db, 'users', currentUser.id, 'searchHistory');
+      const q = query(historyRef, orderBy('searchedAt', 'desc'), limit(MAX_HISTORY_ITEMS));
+      const querySnapshot = await getDocs(q);
+
+      const history: SearchUser[] = [];
+      querySnapshot.forEach((doc) => {
+        const data = doc.data();
+        history.push({
+          id: doc.id,
+          username: data.username,
+          avatar: data.avatar,
+          bio: data.bio,
+          followersCount: data.followersCount,
+          followingCount: data.followingCount,
+          postsCount: data.postsCount,
+        });
+      });
+
+      setSearchHistory(history);
     } catch (error) {
       console.error('Error loading search history:', error);
     }
   };
 
-  // Save search history to AsyncStorage
+  // Save search to Firestore
   const saveToHistory = async (user: SearchUser) => {
+    if (!currentUser?.id) return;
+
     try {
-      // Remove user if already in history
-      const filteredHistory = searchHistory.filter(item => item.id !== user.id);
+      // Save to Firestore with user ID as document ID
+      const searchDocRef = doc(db, 'users', currentUser.id, 'searchHistory', user.id);
+      await setDoc(searchDocRef, {
+        username: user.username,
+        avatar: user.avatar || null,
+        bio: user.bio || null,
+        followersCount: user.followersCount || 0,
+        followingCount: user.followingCount || 0,
+        postsCount: user.postsCount || 0,
+        searchedAt: Timestamp.now(),
+      });
 
-      // Add to beginning of history
-      const newHistory = [user, ...filteredHistory].slice(0, MAX_HISTORY_ITEMS);
-
-      setSearchHistory(newHistory);
-      await AsyncStorage.setItem(
-        `${SEARCH_HISTORY_KEY}_${currentUser?.id}`,
-        JSON.stringify(newHistory)
-      );
+      // Reload history to update UI
+      await loadSearchHistory();
     } catch (error) {
       console.error('Error saving search history:', error);
     }
   };
 
-  // Clear search history
+  // Clear all search history
   const clearHistory = async () => {
+    if (!currentUser?.id) return;
+
     try {
+      const historyRef = collection(db, 'users', currentUser.id, 'searchHistory');
+      const querySnapshot = await getDocs(historyRef);
+
+      // Delete all documents in the searchHistory subcollection
+      const deletePromises = querySnapshot.docs.map((doc) => deleteDoc(doc.ref));
+      await Promise.all(deletePromises);
+
       setSearchHistory([]);
-      await AsyncStorage.removeItem(`${SEARCH_HISTORY_KEY}_${currentUser?.id}`);
     } catch (error) {
       console.error('Error clearing search history:', error);
     }
@@ -76,13 +103,16 @@ export default function SearchScreen() {
   // Remove single item from history
   const removeFromHistory = async (userId: string, event: any) => {
     event.stopPropagation(); // Prevent navigation when clicking delete
+
+    if (!currentUser?.id) return;
+
     try {
+      const searchDocRef = doc(db, 'users', currentUser.id, 'searchHistory', userId);
+      await deleteDoc(searchDocRef);
+
+      // Update local state
       const newHistory = searchHistory.filter(item => item.id !== userId);
       setSearchHistory(newHistory);
-      await AsyncStorage.setItem(
-        `${SEARCH_HISTORY_KEY}_${currentUser?.id}`,
-        JSON.stringify(newHistory)
-      );
     } catch (error) {
       console.error('Error removing from history:', error);
     }

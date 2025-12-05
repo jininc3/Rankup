@@ -8,6 +8,7 @@ import {
   KeyboardAvoidingView,
   Platform,
   ScrollView,
+  Image,
 } from 'react-native';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
@@ -15,14 +16,21 @@ import { IconSymbol } from '@/components/ui/icon-symbol';
 import { useRouter } from 'expo-router';
 import { signUpWithEmail, signInWithGoogleCredential } from '@/services/authService';
 import { useGoogleAuth } from '@/hooks/useGoogleAuth';
+import { useAuth } from '@/contexts/AuthContext';
+import * as ImagePicker from 'expo-image-picker';
+import { storage, db } from '@/config/firebase';
+import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
+import { doc, updateDoc } from 'firebase/firestore';
 
 export default function SignupScreen() {
   const router = useRouter();
+  const { refreshUser } = useAuth();
   const [username, setUsername] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [isLoading, setIsLoading] = useState(false);
+  const [profileImage, setProfileImage] = useState<string | null>(null);
   const googleAuth = useGoogleAuth();
 
   useEffect(() => {
@@ -30,6 +38,39 @@ export default function SignupScreen() {
       handleGoogleSuccess(googleAuth.response);
     }
   }, [googleAuth.response]);
+
+  const pickImage = async () => {
+    const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
+
+    if (status !== 'granted') {
+      Alert.alert('Permission Required', 'Please allow access to your photo library');
+      return;
+    }
+
+    const result = await ImagePicker.launchImageLibraryAsync({
+      mediaTypes: ImagePicker.MediaTypeOptions.Images,
+      allowsEditing: true,
+      aspect: [1, 1],
+      quality: 0.8,
+    });
+
+    if (!result.canceled && result.assets[0]) {
+      setProfileImage(result.assets[0].uri);
+    }
+  };
+
+  const uploadProfileImage = async (imageUri: string, userId: string): Promise<string> => {
+    const response = await fetch(imageUri);
+    const blob = await response.blob();
+
+    const filename = `profile_${userId}_${Date.now()}.jpg`;
+    const storageRef = ref(storage, `profile-pictures/${userId}/${filename}`);
+
+    await uploadBytes(storageRef, blob);
+    const downloadURL = await getDownloadURL(storageRef);
+
+    return downloadURL;
+  };
 
   const handleGoogleSuccess = async (response: any) => {
     try {
@@ -66,7 +107,24 @@ export default function SignupScreen() {
 
     try {
       setIsLoading(true);
-      await signUpWithEmail(email.trim(), password, username.trim());
+      const user = await signUpWithEmail(email.trim(), password, username.trim());
+
+      // Upload profile picture if selected
+      if (profileImage && user?.id) {
+        try {
+          const profileImageUrl = await uploadProfileImage(profileImage, user.id);
+          await updateDoc(doc(db, 'users', user.id), {
+            avatar: profileImageUrl,
+          });
+
+          // Refresh user data to include the avatar
+          await refreshUser();
+        } catch (error) {
+          console.error('Error uploading profile image:', error);
+          // Don't block signup if profile picture upload fails
+        }
+      }
+
       // Router navigation is handled by AuthContext automatically
     } catch (error: any) {
       Alert.alert('Sign Up Failed', error.message);
@@ -104,6 +162,24 @@ export default function SignupScreen() {
             </View>
 
             <View style={styles.form}>
+              {/* Profile Picture Section */}
+              <View style={styles.profilePicContainer}>
+                <TouchableOpacity
+                  style={styles.profilePicButton}
+                  onPress={pickImage}
+                  disabled={isLoading}
+                >
+                  {profileImage ? (
+                    <Image source={{ uri: profileImage }} style={styles.profilePicImage} />
+                  ) : (
+                    <View style={styles.profilePicPlaceholder}>
+                      <IconSymbol size={40} name="person.circle" color="#999" />
+                      <ThemedText style={styles.profilePicText}>Add Photo</ThemedText>
+                    </View>
+                  )}
+                </TouchableOpacity>
+              </View>
+
               <View style={styles.inputContainer}>
                 <TextInput
                   style={styles.input}
@@ -298,5 +374,36 @@ const styles = StyleSheet.create({
     color: '#000',
     fontSize: 14,
     fontWeight: '600',
+  },
+  profilePicContainer: {
+    alignItems: 'center',
+    marginBottom: 24,
+  },
+  profilePicButton: {
+    alignItems: 'center',
+  },
+  profilePicImage: {
+    width: 100,
+    height: 100,
+    borderRadius: 50,
+    borderWidth: 3,
+    borderColor: '#e5e5e5',
+  },
+  profilePicPlaceholder: {
+    width: 100,
+    height: 100,
+    borderRadius: 50,
+    backgroundColor: '#f5f5f5',
+    borderWidth: 2,
+    borderColor: '#e5e5e5',
+    borderStyle: 'dashed',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 4,
+  },
+  profilePicText: {
+    fontSize: 12,
+    color: '#999',
+    marginTop: 4,
   },
 });
