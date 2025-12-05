@@ -2,8 +2,8 @@ import { ThemedText } from '@/components/themed-text';
 import { IconSymbol } from '@/components/ui/icon-symbol';
 import { ResizeMode, Video } from 'expo-av';
 import { Timestamp } from 'firebase/firestore';
-import { useRef, useState } from 'react';
-import { Animated, Dimensions, Image, Modal, PanResponder, ScrollView, StyleSheet, TouchableOpacity, View } from 'react-native';
+import { useEffect, useRef, useState } from 'react';
+import { Animated, Dimensions, FlatList, Image, Modal, PanResponder, StyleSheet, TouchableOpacity, View } from 'react-native';
 
 const { width: screenWidth, height: screenHeight } = Dimensions.get('window');
 
@@ -32,451 +32,480 @@ interface PostViewerModalProps {
   onNavigate?: (index: number) => void;
 }
 
-export default function PostViewerModal({ visible, post, posts = [], currentIndex = 0, userAvatar, onClose, onNavigate }: PostViewerModalProps) {
-  const [viewerMediaIndex, setViewerMediaIndex] = useState(0);
-  const translateY = useRef(new Animated.Value(0)).current;
+export default function PostViewerModal({
+  visible,
+  post,
+  posts = [],
+  currentIndex = 0,
+  userAvatar,
+  onClose,
+  onNavigate
+}: PostViewerModalProps) {
+  const flatListRef = useRef<FlatList>(null);
   const translateX = useRef(new Animated.Value(0)).current;
-  const contentTranslateY = useRef(new Animated.Value(0)).current;
+  const opacity = useRef(new Animated.Value(0)).current;
+  const [isScrolling, setIsScrolling] = useState(false);
 
-  // Swipe gestures: right to close, up/down to navigate posts
-  const panResponder = PanResponder.create({
-    onStartShouldSetPanResponder: () => true,
-    onMoveShouldSetPanResponder: (_, gestureState) => {
-      return Math.abs(gestureState.dy) > 5 || Math.abs(gestureState.dx) > 5;
-    },
-    onPanResponderMove: (_, gestureState) => {
-      // Horizontal swipe right to close
-      if (gestureState.dx > 0 && Math.abs(gestureState.dx) > Math.abs(gestureState.dy)) {
-        translateX.setValue(gestureState.dx);
-      }
-      // Vertical swipe to navigate posts
-      else {
-        contentTranslateY.setValue(gestureState.dy);
-      }
-    },
-    onPanResponderRelease: (_, gestureState) => {
-      // Swipe right to close
-      if (gestureState.dx > 100 && Math.abs(gestureState.dx) > Math.abs(gestureState.dy)) {
-        onClose();
-        return;
-      }
+  // Handle opening animation
+  useEffect(() => {
+    if (visible) {
+      // Fade in when opening
+      opacity.setValue(0);
+      Animated.timing(opacity, {
+        toValue: 1,
+        duration: 200,
+        useNativeDriver: true,
+      }).start();
+    }
+  }, [visible]);
 
-      // Swipe down to see previous post (older)
-      if (gestureState.dy > 100 && onNavigate && posts.length > 0 && currentIndex < posts.length - 1) {
-        onNavigate(currentIndex + 1);
-        Animated.spring(contentTranslateY, {
-          toValue: 0,
-          useNativeDriver: true,
-        }).start();
-      }
-      // Swipe up to see next post (newer)
-      else if (gestureState.dy < -100 && onNavigate && currentIndex > 0) {
-        onNavigate(currentIndex - 1);
-        Animated.spring(contentTranslateY, {
-          toValue: 0,
-          useNativeDriver: true,
-        }).start();
-      }
-      // Reset if swipe wasn't far enough
-      else {
-        Animated.parallel([
-          Animated.spring(contentTranslateY, {
-            toValue: 0,
-            useNativeDriver: true,
-          }),
-          Animated.spring(translateX, {
-            toValue: 0,
-            useNativeDriver: true,
-          }),
-        ]).start();
-      }
-    },
-  });
+  // Scroll to initial post when modal opens
+  useEffect(() => {
+    if (visible && posts.length > 0 && flatListRef.current && currentIndex > 0) {
+      // Delay to ensure FlatList is fully mounted and measured
+      setTimeout(() => {
+        flatListRef.current?.scrollToIndex({
+          index: currentIndex,
+          animated: false,
+          viewPosition: 0,
+        });
+      }, 300);
+    }
+  }, [visible]);
 
-  if (!post) return null;
+  // Pan responder for swipe-to-dismiss (edge swipe)
+  const edgePanResponder = useRef(
+    PanResponder.create({
+      onStartShouldSetPanResponder: () => true,
+      onMoveShouldSetPanResponder: (_, gestureState) => {
+        // Trigger on right swipe
+        return gestureState.dx > 5;
+      },
+      onPanResponderGrant: () => {
+        // Grant the gesture immediately
+      },
+      onPanResponderMove: (_, gestureState) => {
+        // Only allow right swipes (positive dx)
+        if (gestureState.dx > 0) {
+          translateX.setValue(gestureState.dx);
+          // Calculate opacity based on swipe distance (fade out as we swipe)
+          const opacityValue = Math.max(0, 1 - gestureState.dx / screenWidth);
+          opacity.setValue(opacityValue);
+        }
+      },
+      onPanResponderRelease: (_, gestureState) => {
+        // If swiped more than 80px to the right or has good velocity, close
+        const shouldClose = gestureState.dx > 80 || gestureState.vx > 0.3;
+
+        if (shouldClose) {
+          Animated.parallel([
+            Animated.timing(translateX, {
+              toValue: screenWidth,
+              duration: 200,
+              useNativeDriver: true,
+            }),
+            Animated.timing(opacity, {
+              toValue: 0,
+              duration: 200,
+              useNativeDriver: true,
+            })
+          ]).start(() => {
+            onClose();
+            // Reset after closing
+            translateX.setValue(0);
+            opacity.setValue(1);
+          });
+        } else {
+          // Reset to original position
+          Animated.parallel([
+            Animated.spring(translateX, {
+              toValue: 0,
+              useNativeDriver: true,
+              friction: 8,
+            }),
+            Animated.spring(opacity, {
+              toValue: 1,
+              useNativeDriver: true,
+              friction: 8,
+            })
+          ]).start();
+        }
+      },
+    })
+  ).current;
+
+  if (!post || posts.length === 0) return null;
+
+  const renderPost = ({ item, index }: { item: Post; index: number }) => {
+    return <PostItem post={item} userAvatar={userAvatar} />;
+  };
 
   return (
     <Modal
       visible={visible}
-      animationType="slide"
-      presentationStyle="pageSheet"
-      onRequestClose={onClose}
+      animationType="none"
+      presentationStyle="overFullScreen"
       transparent={true}
+      onRequestClose={onClose}
     >
-      <Animated.View style={[styles.postViewerContainer, { transform: [{ translateX }] }]}>
-        {/* Drag Indicator */}
-        <View style={styles.dragIndicatorContainer} {...panResponder.panHandlers}>
-          <View style={styles.dragIndicator} />
-        </View>
-
-        {/* Header with Back Button */}
-        <View style={styles.postViewerHeader}>
-          <TouchableOpacity
-            style={styles.postViewerBackButton}
-            onPress={onClose}
-          >
-            <IconSymbol size={24} name="chevron.left" color="#fff" />
+      <Animated.View
+        style={[
+          styles.container,
+          {
+            transform: [{ translateX }],
+            opacity: opacity
+          }
+        ]}
+      >
+        {/* Header */}
+        <View style={styles.header}>
+          <TouchableOpacity style={styles.backButton} onPress={onClose}>
+            <IconSymbol size={28} name="chevron.left" color="#000" />
           </TouchableOpacity>
-          <ThemedText style={styles.headerTitle}>
-            {posts.length > 0 ? `${currentIndex + 1} / ${posts.length}` : 'Post'}
-          </ThemedText>
-          <View style={styles.postViewerBackButton} />
+          <ThemedText style={styles.headerTitle}>Posts</ThemedText>
+          <View style={styles.backButton} />
         </View>
 
-        <Animated.View style={{ flex: 1, transform: [{ translateY: contentTranslateY }] }} {...panResponder.panHandlers}>
-          <ScrollView
-            style={styles.scrollContent}
-            showsVerticalScrollIndicator={false}
-            bounces={false}
-          >
-          {/* Media with Swipe Support */}
-          <View style={styles.postViewerMediaContainer}>
-            {post.mediaUrls && post.mediaUrls.length > 1 ? (
-              <>
-                <ScrollView
-                  horizontal
-                  pagingEnabled
-                  showsHorizontalScrollIndicator={false}
-                  onMomentumScrollEnd={(event) => {
-                    const offsetX = event.nativeEvent.contentOffset.x;
-                    const index = Math.round(offsetX / screenWidth);
-                    setViewerMediaIndex(index);
-                  }}
-                  scrollEventThrottle={16}
-                >
-                  {post.mediaUrls.map((url, index) => {
-                    const mediaType = post.mediaTypes?.[index] || 'image';
-                    return (
-                      <View key={index} style={{ width: screenWidth, height: screenWidth, justifyContent: 'center', alignItems: 'center' }}>
-                        {mediaType === 'video' ? (
-                          <Video
-                            source={{ uri: url }}
-                            style={styles.postViewerImage}
-                            useNativeControls
-                            resizeMode={ResizeMode.COVER}
-                            shouldPlay={viewerMediaIndex === index}
-                          />
-                        ) : (
-                          <Image
-                            source={{ uri: url }}
-                            style={styles.postViewerImage}
-                            resizeMode="cover"
-                          />
-                        )}
-                      </View>
-                    );
-                  })}
-                </ScrollView>
+        {/* Left Edge Swipe Area - Invisible touch target (below header) */}
+        <View
+          style={styles.leftEdgeSwipeArea}
+          {...edgePanResponder.panHandlers}
+        />
 
-                {/* Dot Indicators for Post Viewer */}
-                <View style={styles.postViewerDotContainer}>
-                  {post.mediaUrls.map((_, index) => (
-                    <View
-                      key={index}
-                      style={[
-                        styles.postViewerDot,
-                        index === viewerMediaIndex && styles.postViewerDotActive
-                      ]}
-                    />
-                  ))}
-                </View>
-              </>
-            ) : (
-              // Single media
-              <View style={{ width: screenWidth, height: screenWidth }}>
-                {post.mediaType === 'video' ? (
-                  <Video
-                    source={{ uri: post.mediaUrl }}
-                    style={styles.postViewerImage}
-                    useNativeControls
-                    resizeMode={ResizeMode.COVER}
-                    shouldPlay
-                  />
-                ) : (
-                  <Image
-                    source={{ uri: post.mediaUrl }}
-                    style={styles.postViewerImage}
-                    resizeMode="cover"
-                  />
-                )}
-              </View>
-            )}
-          </View>
-
-          {/* Post Info Section */}
-          <View style={styles.postViewerInfo}>
-            {/* Action Buttons Row */}
-            <View style={styles.postViewerActions}>
-              <View style={styles.leftActions}>
-                <TouchableOpacity style={styles.postViewerActionButton}>
-                  <IconSymbol size={26} name="heart" color="#fff" />
-                </TouchableOpacity>
-                <TouchableOpacity style={styles.postViewerActionButton}>
-                  <IconSymbol size={26} name="bubble.left" color="#fff" />
-                </TouchableOpacity>
-                <TouchableOpacity style={styles.postViewerActionButton}>
-                  <IconSymbol size={26} name="paperplane" color="#fff" />
-                </TouchableOpacity>
-              </View>
-            </View>
-
-            {/* Likes Count */}
-            <TouchableOpacity style={styles.likesContainer}>
-              <ThemedText style={styles.likesText}>
-                {post.likes.toLocaleString()} {post.likes === 1 ? 'like' : 'likes'}
-              </ThemedText>
-            </TouchableOpacity>
-
-            {/* User Info and Caption */}
-            <View style={styles.postViewerInfoHeader}>
-              <View style={styles.postViewerUserInfo}>
-                <View style={styles.postViewerAvatar}>
-                  {userAvatar && userAvatar.startsWith('http') ? (
-                    <Image source={{ uri: userAvatar }} style={styles.postViewerAvatarImage} />
-                  ) : (
-                    <ThemedText style={styles.postViewerAvatarInitial}>
-                      {post.username?.[0]?.toUpperCase() || 'U'}
-                    </ThemedText>
-                  )}
-                </View>
-                <View style={styles.usernameContainer}>
-                  <View style={styles.usernameRow}>
-                    <ThemedText style={styles.postViewerUsername}>
-                      {post.username}
-                    </ThemedText>
-                    {post.caption && (
-                      <ThemedText style={styles.postViewerCaption} numberOfLines={2}>
-                        {' '}
-                        {post.caption}
-                      </ThemedText>
-                    )}
-                  </View>
-                  <ThemedText style={styles.postViewerDate}>
-                    {post.createdAt?.toDate().toLocaleDateString('en-US', { 
-                      year: 'numeric', 
-                      month: 'short', 
-                      day: 'numeric' 
-                    })}
-                  </ThemedText>
-                </View>
-              </View>
-            </View>
-
-            {/* View all comments */}
-            <TouchableOpacity style={styles.viewCommentsButton}>
-              <ThemedText style={styles.viewCommentsText}>
-                View all comments
-              </ThemedText>
-            </TouchableOpacity>
-
-            {/* Add a comment */}
-            <View style={styles.addCommentSection}>
-              <View style={styles.postViewerAvatarSmall}>
-                {userAvatar && userAvatar.startsWith('http') ? (
-                  <Image source={{ uri: userAvatar }} style={styles.postViewerAvatarImageSmall} />
-                ) : (
-                  <ThemedText style={styles.postViewerAvatarInitialSmall}>
-                    {post.username?.[0]?.toUpperCase() || 'U'}
-                  </ThemedText>
-                )}
-              </View>
-              <ThemedText style={styles.addCommentPlaceholder}>
-                Add a comment...
-              </ThemedText>
-            </View>
-          </View>
-          </ScrollView>
-        </Animated.View>
+        {/* Scrollable Post Feed */}
+        <FlatList
+          ref={flatListRef}
+          data={posts}
+          renderItem={renderPost}
+          keyExtractor={(item) => item.id}
+          showsVerticalScrollIndicator={false}
+          onScrollBeginDrag={() => setIsScrolling(true)}
+          onScrollEndDrag={() => setIsScrolling(false)}
+          removeClippedSubviews={false}
+          scrollEventThrottle={16}
+          onScrollToIndexFailed={(info) => {
+            // Wait for list to finish measuring, then try again
+            setTimeout(() => {
+              flatListRef.current?.scrollToIndex({
+                index: info.index,
+                animated: false,
+                viewPosition: 0,
+              });
+            }, 500);
+          }}
+        />
       </Animated.View>
     </Modal>
   );
 }
 
+// Individual Post Item Component
+function PostItem({ post, userAvatar }: { post: Post; userAvatar?: string }) {
+  const [activeMediaIndex, setActiveMediaIndex] = useState(0);
+  const [mediaHeight, setMediaHeight] = useState(screenWidth);
+  const mediaFlatListRef = useRef<FlatList>(null);
+
+  // Calculate media height based on aspect ratio
+  useEffect(() => {
+    if (post.mediaUrl) {
+      Image.getSize(
+        post.mediaUrl,
+        (width, height) => {
+          const aspectRatio = height / width;
+          setMediaHeight(screenWidth * aspectRatio);
+        },
+        (error) => {
+          console.log('Error getting image size:', error);
+          setMediaHeight(screenWidth); // Default to square
+        }
+      );
+    }
+  }, [post.mediaUrl]);
+
+  const hasMultipleMedia = post.mediaUrls && post.mediaUrls.length > 1;
+
+  return (
+    <View style={styles.postContainer}>
+      {/* User Header */}
+      <View style={styles.postHeader}>
+        <View style={styles.userInfo}>
+          <View style={styles.avatar}>
+            {userAvatar && userAvatar.startsWith('http') ? (
+              <Image source={{ uri: userAvatar }} style={styles.avatarImage} />
+            ) : (
+              <ThemedText style={styles.avatarInitial}>
+                {post.username?.[0]?.toUpperCase() || 'U'}
+              </ThemedText>
+            )}
+          </View>
+          <ThemedText style={styles.username}>{post.username}</ThemedText>
+        </View>
+      </View>
+
+      {/* Media Content */}
+      <View style={[styles.mediaContainer, { height: mediaHeight }]}>
+        {hasMultipleMedia ? (
+          <>
+            <FlatList
+              ref={mediaFlatListRef}
+              data={post.mediaUrls}
+              horizontal
+              pagingEnabled
+              showsHorizontalScrollIndicator={false}
+              keyExtractor={(_, index) => `media-${index}`}
+              onMomentumScrollEnd={(event) => {
+                const offsetX = event.nativeEvent.contentOffset.x;
+                const index = Math.round(offsetX / screenWidth);
+                setActiveMediaIndex(index);
+              }}
+              renderItem={({ item: url, index }) => {
+                const mediaType = post.mediaTypes?.[index] || 'image';
+                return (
+                  <View style={[styles.mediaItem, { width: screenWidth, height: mediaHeight }]}>
+                    {mediaType === 'video' ? (
+                      <Video
+                        source={{ uri: url }}
+                        style={styles.media}
+                        useNativeControls
+                        resizeMode={ResizeMode.COVER}
+                        shouldPlay={activeMediaIndex === index}
+                      />
+                    ) : (
+                      <Image
+                        source={{ uri: url }}
+                        style={styles.media}
+                        resizeMode="cover"
+                      />
+                    )}
+                  </View>
+                );
+              }}
+            />
+            {/* Media Indicators */}
+            <View style={styles.indicatorContainer}>
+              {post.mediaUrls.map((_, index) => (
+                <View
+                  key={index}
+                  style={[
+                    styles.indicator,
+                    index === activeMediaIndex && styles.indicatorActive
+                  ]}
+                />
+              ))}
+            </View>
+          </>
+        ) : (
+          <View style={[styles.mediaItem, { width: screenWidth, height: mediaHeight }]}>
+            {post.mediaType === 'video' ? (
+              <Video
+                source={{ uri: post.mediaUrl }}
+                style={styles.media}
+                useNativeControls
+                resizeMode={ResizeMode.COVER}
+                shouldPlay
+              />
+            ) : (
+              <Image
+                source={{ uri: post.mediaUrl }}
+                style={styles.media}
+                resizeMode="cover"
+              />
+            )}
+          </View>
+        )}
+      </View>
+
+      {/* Post Actions */}
+      <View style={styles.actionsContainer}>
+        <View style={styles.leftActions}>
+          <TouchableOpacity style={styles.actionButton}>
+            <IconSymbol size={28} name="heart" color="#000" />
+          </TouchableOpacity>
+          <TouchableOpacity style={styles.actionButton}>
+            <IconSymbol size={28} name="bubble.left" color="#000" />
+          </TouchableOpacity>
+          <TouchableOpacity style={styles.actionButton}>
+            <IconSymbol size={28} name="paperplane" color="#000" />
+          </TouchableOpacity>
+        </View>
+      </View>
+
+      {/* Likes Count */}
+      <View style={styles.likesContainer}>
+        <ThemedText style={styles.likesText}>
+          {post.likes.toLocaleString()} {post.likes === 1 ? 'like' : 'likes'}
+        </ThemedText>
+      </View>
+
+      {/* Caption */}
+      {post.caption && (
+        <View style={styles.captionContainer}>
+          <ThemedText style={styles.username}>{post.username}</ThemedText>
+          <ThemedText style={styles.caption}> {post.caption}</ThemedText>
+        </View>
+      )}
+
+      {/* Date */}
+      <View style={styles.dateContainer}>
+        <ThemedText style={styles.dateText}>
+          {post.createdAt?.toDate().toLocaleDateString('en-US', {
+            year: 'numeric',
+            month: 'long',
+            day: 'numeric'
+          })}
+        </ThemedText>
+      </View>
+    </View>
+  );
+}
+
 const styles = StyleSheet.create({
-  postViewerContainer: {
+  container: {
     flex: 1,
-    backgroundColor: '#000',
-    paddingTop: 60,
+    backgroundColor: '#fff',
   },
-  dragIndicatorContainer: {
-    width: '100%',
-    alignItems: 'center',
-    paddingTop: 8,
-    paddingBottom: 4,
+  leftEdgeSwipeArea: {
+    position: 'absolute',
+    left: 0,
+    top: 95, // Start below header (60px paddingTop + 12px paddingBottom + ~23px content)
+    bottom: 0,
+    width: 50,
+    zIndex: 1000,
+    backgroundColor: 'transparent',
   },
-  dragIndicator: {
-    width: 36,
-    height: 4,
-    backgroundColor: 'rgba(255, 255, 255, 0.3)',
-    borderRadius: 2,
-  },
-  postViewerHeader: {
+  header: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
     paddingHorizontal: 8,
-    paddingVertical: 8,
-    backgroundColor: '#000',
-    borderBottomWidth: 0.5,
-    borderBottomColor: 'rgba(255, 255, 255, 0.1)',
+    paddingTop: 60,
+    paddingBottom: 12,
+    backgroundColor: '#fff',
+    borderBottomWidth: 1,
+    borderBottomColor: '#e5e7eb',
   },
-  postViewerBackButton: {
+  backButton: {
     width: 44,
     height: 44,
     alignItems: 'center',
     justifyContent: 'center',
   },
   headerTitle: {
-    fontSize: 16,
+    fontSize: 18,
     fontWeight: '600',
-    color: '#fff',
+    color: '#000',
   },
-  scrollContent: {
-    flex: 1,
+  postContainer: {
+    backgroundColor: '#fff',
+    marginBottom: 16,
   },
-  postViewerMediaContainer: {
+  postHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+  },
+  userInfo: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+  },
+  avatar: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    backgroundColor: '#f0f0f0',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  avatarImage: {
     width: '100%',
+    height: '100%',
+    borderRadius: 16,
+  },
+  avatarInitial: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#000',
+  },
+  username: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#000',
+  },
+  mediaContainer: {
+    width: screenWidth,
     backgroundColor: '#000',
     position: 'relative',
   },
-  postViewerImage: {
+  mediaItem: {
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  media: {
     width: '100%',
     height: '100%',
   },
-  postViewerDotContainer: {
+  indicatorContainer: {
     position: 'absolute',
     bottom: 12,
     left: 0,
     right: 0,
     flexDirection: 'row',
-    alignItems: 'center',
     justifyContent: 'center',
     gap: 6,
   },
-  postViewerDot: {
+  indicator: {
     width: 6,
     height: 6,
     borderRadius: 3,
-    backgroundColor: 'rgba(255, 255, 255, 0.4)',
+    backgroundColor: 'rgba(255, 255, 255, 0.5)',
   },
-  postViewerDotActive: {
+  indicatorActive: {
     backgroundColor: '#fff',
-    width: 7,
-    height: 7,
-    borderRadius: 3.5,
   },
-  postViewerInfo: {
-    paddingHorizontal: 16,
-    paddingTop: 12,
-    paddingBottom: 32,
-    backgroundColor: '#000',
-  },
-  postViewerActions: {
+  actionsContainer: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: 8,
+    paddingHorizontal: 16,
+    paddingTop: 8,
   },
   leftActions: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 16,
   },
-  postViewerActionButton: {
+  actionButton: {
     padding: 4,
   },
   likesContainer: {
-    marginBottom: 12,
+    paddingHorizontal: 16,
+    paddingTop: 8,
   },
   likesText: {
     fontSize: 14,
     fontWeight: '600',
-    color: '#fff',
+    color: '#000',
   },
-  postViewerInfoHeader: {
-    marginBottom: 8,
-  },
-  postViewerUserInfo: {
+  captionContainer: {
     flexDirection: 'row',
-    alignItems: 'flex-start',
-    gap: 12,
+    paddingHorizontal: 16,
+    paddingTop: 8,
   },
-  postViewerAvatar: {
-    width: 32,
-    height: 32,
-    borderRadius: 16,
-    backgroundColor: '#333',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  postViewerAvatarImage: {
-    width: '100%',
-    height: '100%',
-    borderRadius: 16,
-  },
-  postViewerAvatarInitial: {
+  caption: {
     fontSize: 14,
-    fontWeight: '600',
-    color: '#fff',
-  },
-  usernameContainer: {
-    flex: 1,
-  },
-  usernameRow: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    marginBottom: 4,
-  },
-  postViewerUsername: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: '#fff',
-  },
-  postViewerCaption: {
-    fontSize: 14,
-    color: '#fff',
+    color: '#000',
     lineHeight: 18,
-    flex: 1,
   },
-  postViewerDate: {
+  dateContainer: {
+    paddingHorizontal: 16,
+    paddingTop: 8,
+    paddingBottom: 16,
+  },
+  dateText: {
     fontSize: 12,
-    color: '#999',
-  },
-  viewCommentsButton: {
-    marginBottom: 12,
-  },
-  viewCommentsText: {
-    fontSize: 14,
-    color: '#999',
-  },
-  addCommentSection: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 12,
-    paddingTop: 12,
-    borderTopWidth: 0.5,
-    borderTopColor: 'rgba(255, 255, 255, 0.1)',
-  },
-  postViewerAvatarSmall: {
-    width: 28,
-    height: 28,
-    borderRadius: 14,
-    backgroundColor: '#333',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  postViewerAvatarImageSmall: {
-    width: '100%',
-    height: '100%',
-    borderRadius: 14,
-  },
-  postViewerAvatarInitialSmall: {
-    fontSize: 12,
-    fontWeight: '600',
-    color: '#fff',
-  },
-  addCommentPlaceholder: {
-    fontSize: 14,
     color: '#999',
   },
 });
