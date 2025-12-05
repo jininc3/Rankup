@@ -1,11 +1,11 @@
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { IconSymbol } from '@/components/ui/icon-symbol';
-import { useRouter } from 'expo-router';
-import { useState, useEffect } from 'react';
-import { ScrollView, StyleSheet, TouchableOpacity, View, Image, Alert, ActivityIndicator } from 'react-native';
 import { useAuth } from '@/contexts/AuthContext';
-import { getFollowers, followUser, unfollowUser, isFollowing, FollowerData } from '@/services/followService';
+import { FollowerData, followUser, getFollowers, isFollowing, unfollowUser } from '@/services/followService';
+import { useRouter } from 'expo-router';
+import { useEffect, useState } from 'react';
+import { ActivityIndicator, Alert, Image, ScrollView, StyleSheet, TouchableOpacity, View } from 'react-native';
 
 interface Follower {
   id: string;
@@ -112,7 +112,11 @@ export default function FollowersScreen() {
           <View style={styles.listContainer}>
             {followers.map((follower) => (
               <View key={follower.id} style={styles.followerItem}>
-                <TouchableOpacity style={styles.followerLeft}>
+                <TouchableOpacity
+                  style={styles.followerLeft}
+                  onPress={() => router.push(`/profilePages/profileView?userId=${follower.id}`)}
+                  activeOpacity={0.7}
+                >
                   <View style={styles.avatar}>
                     {follower.avatar && follower.avatar.startsWith('http') ? (
                       <Image source={{ uri: follower.avatar }} style={styles.avatarImage} />
@@ -167,7 +171,7 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     alignItems: 'center',
     paddingHorizontal: 20,
-    paddingTop: 60,
+    paddingTop: 70,
     paddingBottom: 16,
     backgroundColor: '#fff',
     borderBottomWidth: 1,
@@ -201,19 +205,24 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    paddingHorizontal: 20,
-    paddingVertical: 12,
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    marginHorizontal: 16,
+    marginVertical: 4,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: '#e5e5e5',
   },
   followerLeft: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 12,
+    gap: 10,
     flex: 1,
   },
   avatar: {
-    width: 48,
-    height: 48,
-    borderRadius: 24,
+    width: 36,
+    height: 36,
+    borderRadius: 18,
     backgroundColor: '#f5f5f5',
     alignItems: 'center',
     justifyContent: 'center',
@@ -221,22 +230,26 @@ const styles = StyleSheet.create({
   avatarImage: {
     width: '100%',
     height: '100%',
-    borderRadius: 24,
+    borderRadius: 18,
   },
   avatarInitial: {
-    fontSize: 20,
+    fontSize: 16,
     fontWeight: '600',
   },
   username: {
-    fontSize: 16,
+    fontSize: 15,
     fontWeight: '500',
     color: '#000',
   },
   followButton: {
-    paddingHorizontal: 24,
-    paddingVertical: 8,
+    paddingHorizontal: 20,
+    paddingVertical: 6,
     backgroundColor: '#000',
-    borderRadius: 8,
+    borderRadius: 6,
+    width: 110,
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: '#000',
   },
   followingButton: {
     backgroundColor: '#fff',
@@ -244,7 +257,7 @@ const styles = StyleSheet.create({
     borderColor: '#e5e5e5',
   },
   followButtonText: {
-    fontSize: 14,
+    fontSize: 13,
     fontWeight: '600',
     color: '#fff',
   },

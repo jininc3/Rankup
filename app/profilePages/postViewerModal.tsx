@@ -2,10 +2,23 @@ import { ThemedText } from '@/components/themed-text';
 import { IconSymbol } from '@/components/ui/icon-symbol';
 import { ResizeMode, Video } from 'expo-av';
 import { Timestamp } from 'firebase/firestore';
-import { useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { Animated, Dimensions, FlatList, Image, Modal, PanResponder, StyleSheet, TouchableOpacity, View } from 'react-native';
 
 const { width: screenWidth, height: screenHeight } = Dimensions.get('window');
+
+// Game data
+const gameData: { [key: string]: { name: string; icon: string } } = {
+  valorant: { name: 'Valorant', icon: '🎯' },
+  league: { name: 'League of Legends', icon: '⚔️' },
+  apex: { name: 'Apex Legends', icon: '🎮' },
+  fortnite: { name: 'Fortnite', icon: '🏆' },
+  csgo: { name: 'CS:GO', icon: '🔫' },
+  overwatch: { name: 'Overwatch', icon: '🦸' },
+};
+
+const getGameIcon = (gameId: string) => gameData[gameId]?.icon || '🎮';
+const getGameName = (gameId: string) => gameData[gameId]?.name || gameId;
 
 interface Post {
   id: string;
@@ -18,6 +31,7 @@ interface Post {
   thumbnailUrl?: string;
   caption?: string;
   taggedPeople?: string[];
+  taggedGame?: string;
   createdAt: Timestamp;
   likes: number;
 }
@@ -45,6 +59,8 @@ export default function PostViewerModal({
   const translateX = useRef(new Animated.Value(0)).current;
   const opacity = useRef(new Animated.Value(0)).current;
   const [isScrolling, setIsScrolling] = useState(false);
+  const [playingVideoId, setPlayingVideoId] = useState<string | null>(null);
+  const postRefs = useRef<{ [key: string]: View | null }>({});
 
   // Handle opening animation
   useEffect(() => {
@@ -134,10 +150,68 @@ export default function PostViewerModal({
     })
   ).current;
 
+  // Check which video is in viewport
+  const checkVideoInView = useCallback(() => {
+    const videoPosts = posts.filter(post => post.mediaType === 'video');
+    let foundVisibleVideo = false;
+
+    videoPosts.forEach(post => {
+      const ref = postRefs.current[post.id];
+      if (ref) {
+        ref.measureInWindow((x, y, width, height) => {
+          const windowHeight = Dimensions.get('window').height;
+          const headerHeight = 95; // Header height in modal
+
+          // Check if video is at least 50% visible in viewport
+          const isVisible =
+            y + height > headerHeight &&
+            y < windowHeight &&
+            (y + height / 2) > headerHeight &&
+            (y + height / 2) < windowHeight;
+
+          if (isVisible && !foundVisibleVideo) {
+            foundVisibleVideo = true;
+            if (playingVideoId !== post.id) {
+              setPlayingVideoId(post.id);
+            }
+          } else if (!isVisible && playingVideoId === post.id) {
+            setPlayingVideoId(null);
+          }
+        });
+      }
+    });
+  }, [posts, playingVideoId]);
+
+  // Check for visible videos when posts load
+  useEffect(() => {
+    if (visible && posts.length > 0) {
+      // Delay to ensure refs are set
+      setTimeout(() => {
+        checkVideoInView();
+      }, 100);
+    } else {
+      // If modal not visible, clear playing video
+      setPlayingVideoId(null);
+    }
+  }, [visible, posts, checkVideoInView]);
+
+  const handleScroll = () => {
+    requestAnimationFrame(() => {
+      checkVideoInView();
+    });
+  };
+
   if (!post || posts.length === 0) return null;
 
   const renderPost = ({ item, index }: { item: Post; index: number }) => {
-    return <PostItem post={item} userAvatar={userAvatar} />;
+    return (
+      <PostItem
+        post={item}
+        userAvatar={userAvatar}
+        playingVideoId={playingVideoId}
+        postRefs={postRefs}
+      />
+    );
   };
 
   return (
@@ -179,10 +253,15 @@ export default function PostViewerModal({
           renderItem={renderPost}
           keyExtractor={(item) => item.id}
           showsVerticalScrollIndicator={false}
+          onScroll={handleScroll}
           onScrollBeginDrag={() => setIsScrolling(true)}
-          onScrollEndDrag={() => setIsScrolling(false)}
+          onScrollEndDrag={() => {
+            setIsScrolling(false);
+            handleScroll();
+          }}
+          onMomentumScrollEnd={handleScroll}
           removeClippedSubviews={false}
-          scrollEventThrottle={16}
+          scrollEventThrottle={100}
           onScrollToIndexFailed={(info) => {
             // Wait for list to finish measuring, then try again
             setTimeout(() => {
@@ -200,14 +279,26 @@ export default function PostViewerModal({
 }
 
 // Individual Post Item Component
-function PostItem({ post, userAvatar }: { post: Post; userAvatar?: string }) {
+function PostItem({
+  post,
+  userAvatar,
+  playingVideoId,
+  postRefs
+}: {
+  post: Post;
+  userAvatar?: string;
+  playingVideoId: string | null;
+  postRefs: React.MutableRefObject<{ [key: string]: View | null }>;
+}) {
   const [activeMediaIndex, setActiveMediaIndex] = useState(0);
-  const [mediaHeight, setMediaHeight] = useState(screenWidth);
+  const [mediaHeight, setMediaHeight] = useState(
+    post.mediaType === 'video' ? screenWidth * 0.5625 : screenWidth
+  );
   const mediaFlatListRef = useRef<FlatList>(null);
 
-  // Calculate media height based on aspect ratio
+  // Calculate media height based on aspect ratio (only for images)
   useEffect(() => {
-    if (post.mediaUrl) {
+    if (post.mediaUrl && post.mediaType === 'image') {
       Image.getSize(
         post.mediaUrl,
         (width, height) => {
@@ -219,13 +310,20 @@ function PostItem({ post, userAvatar }: { post: Post; userAvatar?: string }) {
           setMediaHeight(screenWidth); // Default to square
         }
       );
+    } else if (post.mediaType === 'video') {
+      // Set fixed 16:9 aspect ratio for videos (same as index.tsx)
+      setMediaHeight(screenWidth * 0.5625);
     }
-  }, [post.mediaUrl]);
+  }, [post.mediaUrl, post.mediaType]);
 
   const hasMultipleMedia = post.mediaUrls && post.mediaUrls.length > 1;
 
   return (
-    <View style={styles.postContainer}>
+    <View
+      style={styles.postContainer}
+      ref={(ref) => (postRefs.current[post.id] = ref)}
+      collapsable={false}
+    >
       {/* User Header */}
       <View style={styles.postHeader}>
         <View style={styles.userInfo}>
@@ -240,6 +338,13 @@ function PostItem({ post, userAvatar }: { post: Post; userAvatar?: string }) {
           </View>
           <ThemedText style={styles.username}>{post.username}</ThemedText>
         </View>
+        {post.taggedGame && (
+          <View style={styles.gameTag}>
+            <ThemedText style={styles.gameTagText}>
+              {getGameIcon(post.taggedGame)} {getGameName(post.taggedGame)}
+            </ThemedText>
+          </View>
+        )}
       </View>
 
       {/* Media Content */}
@@ -267,8 +372,8 @@ function PostItem({ post, userAvatar }: { post: Post; userAvatar?: string }) {
                         source={{ uri: url }}
                         style={styles.media}
                         useNativeControls
-                        resizeMode={ResizeMode.COVER}
-                        shouldPlay={activeMediaIndex === index}
+                        resizeMode={ResizeMode.CONTAIN}
+                        shouldPlay={playingVideoId === post.id && activeMediaIndex === index}
                       />
                     ) : (
                       <Image
@@ -301,8 +406,8 @@ function PostItem({ post, userAvatar }: { post: Post; userAvatar?: string }) {
                 source={{ uri: post.mediaUrl }}
                 style={styles.media}
                 useNativeControls
-                resizeMode={ResizeMode.COVER}
-                shouldPlay
+                resizeMode={ResizeMode.CONTAIN}
+                shouldPlay={playingVideoId === post.id}
               />
             ) : (
               <Image
@@ -433,6 +538,17 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: '600',
     color: '#000',
+  },
+  gameTag: {
+    backgroundColor: '#f0f0f0',
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 12,
+  },
+  gameTagText: {
+    fontSize: 12,
+    fontWeight: '500',
+    color: '#666',
   },
   mediaContainer: {
     width: screenWidth,

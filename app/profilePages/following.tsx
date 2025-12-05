@@ -84,7 +84,11 @@ export default function FollowingScreen() {
           <View style={styles.listContainer}>
             {following.map((user) => (
               <View key={user.id} style={styles.userItem}>
-                <TouchableOpacity style={styles.userLeft}>
+                <TouchableOpacity
+                  style={styles.userLeft}
+                  onPress={() => router.push(`/profilePages/profileView?userId=${user.id}`)}
+                  activeOpacity={0.7}
+                >
                   <View style={styles.avatar}>
                     {user.avatar && user.avatar.startsWith('http') ? (
                       <Image source={{ uri: user.avatar }} style={styles.avatarImage} />
@@ -129,7 +133,7 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     alignItems: 'center',
     paddingHorizontal: 20,
-    paddingTop: 60,
+    paddingTop: 70,
     paddingBottom: 16,
     backgroundColor: '#fff',
     borderBottomWidth: 1,
@@ -163,19 +167,24 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    paddingHorizontal: 20,
-    paddingVertical: 12,
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    marginHorizontal: 16,
+    marginVertical: 4,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: '#e5e5e5',
   },
   userLeft: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 12,
+    gap: 10,
     flex: 1,
   },
   avatar: {
-    width: 48,
-    height: 48,
-    borderRadius: 24,
+    width: 36,
+    height: 36,
+    borderRadius: 18,
     backgroundColor: '#f5f5f5',
     alignItems: 'center',
     justifyContent: 'center',
@@ -183,27 +192,29 @@ const styles = StyleSheet.create({
   avatarImage: {
     width: '100%',
     height: '100%',
-    borderRadius: 24,
+    borderRadius: 18,
   },
   avatarInitial: {
-    fontSize: 20,
+    fontSize: 16,
     fontWeight: '600',
   },
   username: {
-    fontSize: 16,
+    fontSize: 15,
     fontWeight: '500',
     color: '#000',
   },
   followingButton: {
-    paddingHorizontal: 24,
-    paddingVertical: 8,
+    paddingHorizontal: 20,
+    paddingVertical: 6,
     backgroundColor: '#fff',
     borderWidth: 1,
     borderColor: '#e5e5e5',
-    borderRadius: 8,
+    borderRadius: 6,
+    minWidth: 90,
+    alignItems: 'center',
   },
   followingButtonText: {
-    fontSize: 14,
+    fontSize: 13,
     fontWeight: '600',
     color: '#000',
   },

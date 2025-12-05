@@ -6,11 +6,25 @@ import { useAuth } from '@/contexts/AuthContext';
 import { getFollowing } from '@/services/followService';
 import { ResizeMode, Video } from 'expo-av';
 import { collection, getDocs, orderBy, query, Timestamp } from 'firebase/firestore';
-import { useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { ActivityIndicator, Dimensions, Image, ScrollView, StyleSheet, TouchableOpacity, View } from 'react-native';
 import { useRouter } from 'expo-router';
+import { useFocusEffect } from '@react-navigation/native';
 
 const { width } = Dimensions.get('window');
+
+// Game data
+const gameData: { [key: string]: { name: string; icon: string } } = {
+  valorant: { name: 'Valorant', icon: '🎯' },
+  league: { name: 'League of Legends', icon: '⚔️' },
+  apex: { name: 'Apex Legends', icon: '🎮' },
+  fortnite: { name: 'Fortnite', icon: '🏆' },
+  csgo: { name: 'CS:GO', icon: '🔫' },
+  overwatch: { name: 'Overwatch', icon: '🦸' },
+};
+
+const getGameIcon = (gameId: string) => gameData[gameId]?.icon || '🎮';
+const getGameName = (gameId: string) => gameData[gameId]?.name || gameId;
 
 interface Post {
   id: string;
@@ -21,6 +35,7 @@ interface Post {
   mediaType: 'image' | 'video';
   thumbnailUrl?: string;
   caption?: string;
+  taggedGame?: string;
   createdAt: Timestamp;
   likes: number;
 }
@@ -100,13 +115,37 @@ export default function HomeScreen() {
     }
   }, [currentUser?.id, followingUserIds, activeTab]);
 
+  // Pause video when navigating away from this screen
+  useFocusEffect(
+    useCallback(() => {
+      return () => {
+        // Pause video when screen loses focus
+        setPlayingVideoId(null);
+      };
+    }, [])
+  );
+
+  // Check for visible videos when posts load or tab changes
+  useEffect(() => {
+    if (currentPosts.length > 0 && !loading) {
+      // Delay to ensure refs are set
+      setTimeout(() => {
+        checkVideoInView();
+      }, 100);
+    } else {
+      // If no posts, clear playing video
+      setPlayingVideoId(null);
+    }
+  }, [currentPosts, loading, checkVideoInView]);
+
   const handleVideoClick = (postId: string) => {
     setPlayingVideoId(playingVideoId === postId ? null : postId);
   };
 
   // Check which video is in viewport
-  const checkVideoInView = () => {
+  const checkVideoInView = useCallback(() => {
     const videoPosts = currentPosts.filter(post => post.mediaType === 'video');
+    let foundVisibleVideo = false;
 
     videoPosts.forEach(post => {
       const ref = postRefs.current[post.id];
@@ -122,18 +161,24 @@ export default function HomeScreen() {
             (y + height / 2) > headerHeight &&
             (y + height / 2) < windowHeight;
 
-          if (isVisible && playingVideoId !== post.id) {
-            setPlayingVideoId(post.id);
+          if (isVisible && !foundVisibleVideo) {
+            foundVisibleVideo = true;
+            if (playingVideoId !== post.id) {
+              setPlayingVideoId(post.id);
+            }
           } else if (!isVisible && playingVideoId === post.id) {
             setPlayingVideoId(null);
           }
         });
       }
     });
-  };
+  }, [currentPosts, playingVideoId]);
 
   const handleScroll = () => {
-    checkVideoInView();
+    // Use requestAnimationFrame for smoother checking
+    requestAnimationFrame(() => {
+      checkVideoInView();
+    });
   };
 
   const handleUserPress = (userId: string) => {
@@ -176,7 +221,9 @@ export default function HomeScreen() {
         style={styles.scrollView}
         showsVerticalScrollIndicator={false}
         onScroll={handleScroll}
-        scrollEventThrottle={200}
+        scrollEventThrottle={100}
+        onScrollEndDrag={handleScroll}
+        onMomentumScrollEnd={handleScroll}
       >
         {loading ? (
           <View style={styles.loadingContainer}>
@@ -209,6 +256,13 @@ export default function HomeScreen() {
                   </View>
                   <ThemedText style={styles.username}>{post.username}</ThemedText>
                 </TouchableOpacity>
+                {post.taggedGame && (
+                  <View style={styles.gameTag}>
+                    <ThemedText style={styles.gameTagText}>
+                      {getGameIcon(post.taggedGame)} {getGameName(post.taggedGame)}
+                    </ThemedText>
+                  </View>
+                )}
               </View>
 
               {/* Caption */}
@@ -368,6 +422,17 @@ const styles = StyleSheet.create({
     fontSize: 15,
     fontWeight: '600',
     color: '#000',
+  },
+  gameTag: {
+    backgroundColor: '#f0f0f0',
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 12,
+  },
+  gameTagText: {
+    fontSize: 12,
+    fontWeight: '500',
+    color: '#666',
   },
   followButton: {
     paddingHorizontal: 16,

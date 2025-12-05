@@ -77,6 +77,7 @@ interface Post {
   thumbnailUrl?: string;
   caption?: string;
   taggedPeople?: string[];
+  taggedGame?: string;
   createdAt: Timestamp;
   likes: number;
 }
