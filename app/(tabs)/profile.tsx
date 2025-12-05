@@ -97,6 +97,7 @@ interface Post {
   taggedGame?: string;
   createdAt: Timestamp;
   likes: number;
+  commentsCount?: number;
 }
 
 export default function ProfileScreen() {
@@ -865,6 +866,20 @@ export default function ProfileScreen() {
                         <IconSymbol size={20} name="square.on.square" color="#fff" />
                       </View>
                     )}
+
+                    {/* Likes and Comments Stats */}
+                    <View style={styles.postStats}>
+                      <View style={styles.statItem}>
+                        <IconSymbol size={16} name="heart.fill" color="#fff" />
+                        <ThemedText style={styles.statText}>{post.likes}</ThemedText>
+                      </View>
+                      {(post.commentsCount ?? 0) > 0 && (
+                        <View style={styles.statItem}>
+                          <IconSymbol size={16} name="bubble.left.fill" color="#fff" />
+                          <ThemedText style={styles.statText}>{post.commentsCount}</ThemedText>
+                        </View>
+                      )}
+                    </View>
                   </TouchableOpacity>
                 ))}
               </View>
@@ -1650,6 +1665,27 @@ const styles = StyleSheet.create({
     height: 28,
     alignItems: 'center',
     justifyContent: 'center',
+  },
+  postStats: {
+    position: 'absolute',
+    top: 8,
+    left: 8,
+    flexDirection: 'row',
+    gap: 8,
+  },
+  statItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    backgroundColor: 'rgba(0, 0, 0, 0.6)',
+    borderRadius: 12,
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+  },
+  statText: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: '#fff',
   },
   fabButton: {
     position: 'absolute',

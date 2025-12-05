@@ -1,0 +1,409 @@
+import { ThemedText } from '@/components/themed-text';
+import { ThemedView } from '@/components/themed-view';
+import { IconSymbol } from '@/components/ui/icon-symbol';
+import { useState, useEffect, useCallback } from 'react';
+import { ScrollView, StyleSheet, TouchableOpacity, View, Image, ActivityIndicator } from 'react-native';
+import { useRouter } from 'expo-router';
+import { collection, query, orderBy, limit, onSnapshot, doc, updateDoc, deleteDoc, where, Timestamp, getDocs, writeBatch } from 'firebase/firestore';
+import { db } from '@/config/firebase';
+import { useAuth } from '@/contexts/AuthContext';
+import { useFocusEffect } from '@react-navigation/native';
+
+interface Notification {
+  id: string;
+  type: 'follow' | 'like' | 'comment';
+  fromUserId: string;
+  fromUsername: string;
+  fromUserAvatar?: string;
+  postId?: string;
+  postThumbnail?: string;
+  commentText?: string;
+  read: boolean;
+  createdAt: Timestamp;
+}
+
+export default function NotificationsScreen() {
+  const router = useRouter();
+  const { user: currentUser } = useAuth();
+  const [notifications, setNotifications] = useState<Notification[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  // Load and listen to notifications in real-time
+  useEffect(() => {
+    if (!currentUser?.id) return;
+
+    setLoading(true);
+
+    // Set up real-time listener for notifications
+    const notificationsRef = collection(db, 'users', currentUser.id, 'notifications');
+    const q = query(notificationsRef, orderBy('createdAt', 'desc'), limit(10));
+
+    const unsubscribe = onSnapshot(q, (snapshot) => {
+      const notifs: Notification[] = [];
+      snapshot.forEach((doc) => {
+        const data = doc.data();
+        notifs.push({
+          id: doc.id,
+          type: data.type,
+          fromUserId: data.fromUserId,
+          fromUsername: data.fromUsername,
+          fromUserAvatar: data.fromUserAvatar,
+          read: data.read,
+          createdAt: data.createdAt,
+        });
+      });
+      setNotifications(notifs);
+      setLoading(false);
+    });
+
+    // Clean up old notifications (30 days) on load
+    cleanupOldNotifications();
+
+    return () => unsubscribe();
+  }, [currentUser?.id]);
+
+  // Mark all notifications as read when screen comes into focus
+  useFocusEffect(
+    useCallback(() => {
+      if (currentUser?.id && notifications.length > 0) {
+        markAllAsRead();
+      }
+    }, [currentUser?.id, notifications])
+  );
+
+  // Mark all notifications as read
+  const markAllAsRead = async () => {
+    if (!currentUser?.id) return;
+
+    try {
+      const batch = writeBatch(db);
+      const unreadNotifications = notifications.filter(n => !n.read);
+
+      unreadNotifications.forEach((notification) => {
+        const notifRef = doc(db, 'users', currentUser.id, 'notifications', notification.id);
+        batch.update(notifRef, { read: true });
+      });
+
+      await batch.commit();
+    } catch (error) {
+      console.error('Error marking notifications as read:', error);
+    }
+  };
+
+  // Delete a single notification
+  const deleteNotification = async (notificationId: string, event: any) => {
+    event.stopPropagation();
+
+    if (!currentUser?.id) return;
+
+    try {
+      await deleteDoc(doc(db, 'users', currentUser.id, 'notifications', notificationId));
+    } catch (error) {
+      console.error('Error deleting notification:', error);
+    }
+  };
+
+  // Clear all notifications
+  const clearAllNotifications = async () => {
+    if (!currentUser?.id) return;
+
+    try {
+      const batch = writeBatch(db);
+      notifications.forEach((notification) => {
+        const notifRef = doc(db, 'users', currentUser.id, 'notifications', notification.id);
+        batch.delete(notifRef);
+      });
+      await batch.commit();
+    } catch (error) {
+      console.error('Error clearing notifications:', error);
+    }
+  };
+
+  // Clean up notifications older than 30 days
+  const cleanupOldNotifications = async () => {
+    if (!currentUser?.id) return;
+
+    try {
+      const thirtyDaysAgo = new Date();
+      thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+      const cutoffTimestamp = Timestamp.fromDate(thirtyDaysAgo);
+
+      const notificationsRef = collection(db, 'users', currentUser.id, 'notifications');
+      const q = query(notificationsRef, where('createdAt', '<', cutoffTimestamp));
+      const querySnapshot = await getDocs(q);
+
+      if (querySnapshot.empty) return;
+
+      const batch = writeBatch(db);
+      querySnapshot.forEach((doc) => {
+        batch.delete(doc.ref);
+      });
+      await batch.commit();
+    } catch (error) {
+      console.error('Error cleaning up old notifications:', error);
+    }
+  };
+
+  // Navigate to appropriate page based on notification type
+  const handleNotificationPress = (notification: Notification) => {
+    if (notification.type === 'follow') {
+      // Navigate to user profile for follow notifications
+      router.push(`/profilePages/profileView?userId=${notification.fromUserId}`);
+    } else if (notification.type === 'like' || notification.type === 'comment') {
+      // Navigate to post for like/comment notifications
+      // For now, navigate to the user's profile who liked/commented
+      // TODO: Implement post view modal/page
+      router.push(`/profilePages/profileView?userId=${notification.fromUserId}`);
+    }
+  };
+
+  // Format time ago
+  const getTimeAgo = (timestamp: Timestamp): string => {
+    const now = new Date();
+    const notificationDate = timestamp.toDate();
+    const diffInSeconds = Math.floor((now.getTime() - notificationDate.getTime()) / 1000);
+
+    if (diffInSeconds < 60) return 'just now';
+    if (diffInSeconds < 3600) return `${Math.floor(diffInSeconds / 60)}m ago`;
+    if (diffInSeconds < 86400) return `${Math.floor(diffInSeconds / 3600)}h ago`;
+    if (diffInSeconds < 604800) return `${Math.floor(diffInSeconds / 86400)}d ago`;
+    return notificationDate.toLocaleDateString();
+  };
+
+  return (
+    <ThemedView style={styles.container}>
+      {/* Header */}
+      <View style={styles.header}>
+        <TouchableOpacity
+          style={styles.backButton}
+          onPress={() => router.back()}
+        >
+          <IconSymbol size={24} name="chevron.left" color="#000" />
+        </TouchableOpacity>
+        <ThemedText style={styles.headerTitle}>Notifications</ThemedText>
+        {notifications.length > 0 && (
+          <TouchableOpacity onPress={clearAllNotifications}>
+            <ThemedText style={styles.clearAllButton}>Clear All</ThemedText>
+          </TouchableOpacity>
+        )}
+        {notifications.length === 0 && <View style={styles.headerSpacer} />}
+      </View>
+
+      <ScrollView style={styles.scrollView} showsVerticalScrollIndicator={false}>
+        {loading ? (
+          <View style={styles.loadingContainer}>
+            <ActivityIndicator size="large" color="#000" />
+            <ThemedText style={styles.loadingText}>Loading notifications...</ThemedText>
+          </View>
+        ) : notifications.length > 0 ? (
+          notifications.map((notification) => (
+            <TouchableOpacity
+              key={notification.id}
+              style={[styles.notificationCard, !notification.read && styles.unreadNotification]}
+              onPress={() => handleNotificationPress(notification)}
+              activeOpacity={0.7}
+            >
+              <View style={styles.notificationLeft}>
+                {/* Avatar */}
+                <View style={styles.avatar}>
+                  {notification.fromUserAvatar && notification.fromUserAvatar.startsWith('http') ? (
+                    <Image source={{ uri: notification.fromUserAvatar }} style={styles.avatarImage} />
+                  ) : (
+                    <ThemedText style={styles.avatarInitial}>
+                      {notification.fromUsername[0].toUpperCase()}
+                    </ThemedText>
+                  )}
+                </View>
+
+                {/* Notification content */}
+                <View style={styles.notificationContent}>
+                  <ThemedText style={styles.notificationText}>
+                    <ThemedText style={styles.usernameText}>{notification.fromUsername}</ThemedText>
+                    {notification.type === 'follow' && ' started following you'}
+                    {notification.type === 'like' && ' liked your post'}
+                    {notification.type === 'comment' && ' commented: '}
+                    {notification.type === 'comment' && notification.commentText && (
+                      <ThemedText style={styles.commentPreview}>
+                        "{notification.commentText.length > 30
+                          ? notification.commentText.substring(0, 30) + '...'
+                          : notification.commentText}"
+                      </ThemedText>
+                    )}
+                  </ThemedText>
+                  <ThemedText style={styles.timeText}>{getTimeAgo(notification.createdAt)}</ThemedText>
+                </View>
+
+                {/* Post thumbnail for like/comment notifications */}
+                {(notification.type === 'like' || notification.type === 'comment') && notification.postThumbnail && (
+                  <Image source={{ uri: notification.postThumbnail }} style={styles.postThumbnail} />
+                )}
+              </View>
+
+              {/* Delete button */}
+              <TouchableOpacity
+                onPress={(e) => deleteNotification(notification.id, e)}
+                style={styles.deleteButton}
+                hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+              >
+                <IconSymbol size={18} name="xmark" color="#999" />
+              </TouchableOpacity>
+
+              {/* Unread indicator */}
+              {!notification.read && <View style={styles.unreadDot} />}
+            </TouchableOpacity>
+          ))
+        ) : (
+          <View style={styles.emptyState}>
+            <IconSymbol size={64} name="bell" color="#ccc" />
+            <ThemedText style={styles.emptyText}>No notifications yet</ThemedText>
+            <ThemedText style={styles.emptySubtext}>
+              When someone follows you, you'll see it here
+            </ThemedText>
+          </View>
+        )}
+      </ScrollView>
+    </ThemedView>
+  );
+}
+
+const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+    backgroundColor: '#fff',
+  },
+  header: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingHorizontal: 20,
+    paddingTop: 60,
+    paddingBottom: 16,
+    backgroundColor: '#fff',
+    borderBottomWidth: 1,
+    borderBottomColor: '#e5e7eb',
+  },
+  backButton: {
+    padding: 4,
+  },
+  headerTitle: {
+    fontSize: 20,
+    fontWeight: '700',
+    color: '#000',
+  },
+  headerSpacer: {
+    width: 60,
+  },
+  clearAllButton: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#ef4444',
+  },
+  scrollView: {
+    flex: 1,
+  },
+  loadingContainer: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingTop: 100,
+    gap: 12,
+  },
+  loadingText: {
+    fontSize: 16,
+    color: '#666',
+  },
+  notificationCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingVertical: 16,
+    paddingHorizontal: 20,
+    borderBottomWidth: 1,
+    borderBottomColor: '#f5f5f5',
+    backgroundColor: '#fff',
+    position: 'relative',
+  },
+  unreadNotification: {
+    backgroundColor: '#f8f9ff',
+  },
+  notificationLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    flex: 1,
+    gap: 12,
+  },
+  avatar: {
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    backgroundColor: '#f0f0f0',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  avatarImage: {
+    width: '100%',
+    height: '100%',
+    borderRadius: 24,
+  },
+  avatarInitial: {
+    fontSize: 20,
+    fontWeight: '600',
+  },
+  notificationContent: {
+    flex: 1,
+  },
+  notificationText: {
+    fontSize: 15,
+    color: '#000',
+    lineHeight: 20,
+    marginBottom: 4,
+  },
+  usernameText: {
+    fontWeight: '600',
+  },
+  timeText: {
+    fontSize: 13,
+    color: '#999',
+  },
+  deleteButton: {
+    padding: 8,
+  },
+  unreadDot: {
+    position: 'absolute',
+    top: 24,
+    right: 60,
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+    backgroundColor: '#3b82f6',
+  },
+  emptyState: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingTop: 120,
+    paddingHorizontal: 40,
+  },
+  emptyText: {
+    fontSize: 18,
+    fontWeight: '600',
+    color: '#666',
+    marginTop: 16,
+    marginBottom: 8,
+  },
+  emptySubtext: {
+    fontSize: 14,
+    color: '#999',
+    textAlign: 'center',
+    lineHeight: 20,
+  },
+  postThumbnail: {
+    width: 48,
+    height: 48,
+    borderRadius: 8,
+    backgroundColor: '#f0f0f0',
+    marginLeft: 8,
+  },
+  commentPreview: {
+    fontStyle: 'italic',
+    color: '#666',
+  },
+});

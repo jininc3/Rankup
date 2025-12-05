@@ -1,0 +1,415 @@
+import { ThemedText } from '@/components/themed-text';
+import { IconSymbol } from '@/components/ui/icon-symbol';
+import { useAuth } from '@/contexts/AuthContext';
+import { addComment, deleteComment, getComments, CommentData } from '@/services/commentService';
+import React, { useEffect, useState } from 'react';
+import {
+  View,
+  StyleSheet,
+  Modal,
+  TouchableOpacity,
+  ScrollView,
+  TextInput,
+  Image,
+  ActivityIndicator,
+  Alert,
+  KeyboardAvoidingView,
+  Platform,
+} from 'react-native';
+
+interface CommentModalProps {
+  visible: boolean;
+  postId: string;
+  postOwnerId: string;
+  postThumbnail?: string;
+  onClose: () => void;
+  onCommentAdded?: () => void;
+}
+
+export default function CommentModal({
+  visible,
+  postId,
+  postOwnerId,
+  postThumbnail,
+  onClose,
+  onCommentAdded,
+}: CommentModalProps) {
+  const { user: currentUser } = useAuth();
+  const [comments, setComments] = useState<CommentData[]>([]);
+  const [commentText, setCommentText] = useState('');
+  const [loading, setLoading] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
+
+  // Fetch comments when modal opens
+  useEffect(() => {
+    if (visible && postId) {
+      fetchComments();
+    }
+  }, [visible, postId]);
+
+  const fetchComments = async () => {
+    setLoading(true);
+    try {
+      const fetchedComments = await getComments(postId);
+      setComments(fetchedComments);
+    } catch (error) {
+      console.error('Error fetching comments:', error);
+      Alert.alert('Error', 'Failed to load comments');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleAddComment = async () => {
+    if (!currentUser?.id) {
+      Alert.alert('Error', 'You must be logged in to comment');
+      return;
+    }
+
+    const trimmedText = commentText.trim();
+    if (!trimmedText) {
+      Alert.alert('Error', 'Comment cannot be empty');
+      return;
+    }
+
+    if (trimmedText.length > 500) {
+      Alert.alert('Error', 'Comment is too long (max 500 characters)');
+      return;
+    }
+
+    setSubmitting(true);
+
+    try {
+      await addComment(
+        currentUser.id,
+        currentUser.username || currentUser.email?.split('@')[0] || 'User',
+        currentUser.avatar,
+        postId,
+        postOwnerId,
+        trimmedText,
+        postThumbnail
+      );
+
+      // Clear input and refresh comments
+      setCommentText('');
+      await fetchComments();
+
+      // Notify parent component
+      if (onCommentAdded) {
+        onCommentAdded();
+      }
+    } catch (error) {
+      console.error('Error adding comment:', error);
+      Alert.alert('Error', 'Failed to add comment. Please try again.');
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  const handleDeleteComment = async (commentId: string) => {
+    Alert.alert(
+      'Delete Comment',
+      'Are you sure you want to delete this comment?',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Delete',
+          style: 'destructive',
+          onPress: async () => {
+            try {
+              await deleteComment(commentId, postId);
+              await fetchComments();
+
+              // Notify parent component
+              if (onCommentAdded) {
+                onCommentAdded();
+              }
+            } catch (error) {
+              console.error('Error deleting comment:', error);
+              Alert.alert('Error', 'Failed to delete comment');
+            }
+          },
+        },
+      ]
+    );
+  };
+
+  const formatTimeAgo = (timestamp: any): string => {
+    const now = new Date();
+    const commentDate = timestamp.toDate();
+    const diffInSeconds = Math.floor((now.getTime() - commentDate.getTime()) / 1000);
+
+    if (diffInSeconds < 60) return 'just now';
+    if (diffInSeconds < 3600) return `${Math.floor(diffInSeconds / 60)}m ago`;
+    if (diffInSeconds < 86400) return `${Math.floor(diffInSeconds / 3600)}h ago`;
+    if (diffInSeconds < 604800) return `${Math.floor(diffInSeconds / 86400)}d ago`;
+    return commentDate.toLocaleDateString();
+  };
+
+  return (
+    <Modal
+      visible={visible}
+      animationType="slide"
+      presentationStyle="pageSheet"
+      onRequestClose={onClose}
+    >
+      <KeyboardAvoidingView
+        style={styles.container}
+        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+        keyboardVerticalOffset={0}
+      >
+        {/* Header */}
+        <View style={styles.header}>
+          <TouchableOpacity onPress={onClose} style={styles.closeButton}>
+            <IconSymbol size={24} name="xmark" color="#000" />
+          </TouchableOpacity>
+          <ThemedText style={styles.headerTitle}>Comments</ThemedText>
+          <View style={styles.headerSpacer} />
+        </View>
+
+        {/* Comments List */}
+        <ScrollView
+          style={styles.commentsList}
+          contentContainerStyle={styles.commentsListContent}
+          keyboardShouldPersistTaps="handled"
+        >
+          {loading ? (
+            <View style={styles.loadingContainer}>
+              <ActivityIndicator size="large" color="#000" />
+              <ThemedText style={styles.loadingText}>Loading comments...</ThemedText>
+            </View>
+          ) : comments.length > 0 ? (
+            comments.map((comment) => (
+              <View key={comment.id} style={styles.commentItem}>
+                <View style={styles.commentAvatar}>
+                  {comment.userAvatar && comment.userAvatar.startsWith('http') ? (
+                    <Image source={{ uri: comment.userAvatar }} style={styles.avatarImage} />
+                  ) : (
+                    <ThemedText style={styles.avatarInitial}>
+                      {comment.username[0].toUpperCase()}
+                    </ThemedText>
+                  )}
+                </View>
+
+                <View style={styles.commentContent}>
+                  <View style={styles.commentHeader}>
+                    <ThemedText style={styles.commentUsername}>{comment.username}</ThemedText>
+                    <ThemedText style={styles.commentTime}>{formatTimeAgo(comment.createdAt)}</ThemedText>
+                  </View>
+                  <ThemedText style={styles.commentText}>{comment.text}</ThemedText>
+
+                  {/* Delete button (only for own comments) */}
+                  {currentUser?.id === comment.userId && (
+                    <TouchableOpacity
+                      style={styles.deleteCommentButton}
+                      onPress={() => handleDeleteComment(comment.id)}
+                    >
+                      <ThemedText style={styles.deleteCommentText}>Delete</ThemedText>
+                    </TouchableOpacity>
+                  )}
+                </View>
+              </View>
+            ))
+          ) : (
+            <View style={styles.emptyState}>
+              <IconSymbol size={64} name="bubble.left" color="#ccc" />
+              <ThemedText style={styles.emptyText}>No comments yet</ThemedText>
+              <ThemedText style={styles.emptySubtext}>Be the first to comment!</ThemedText>
+            </View>
+          )}
+        </ScrollView>
+
+        {/* Comment Input */}
+        <View style={styles.inputContainer}>
+          <View style={styles.inputAvatar}>
+            {currentUser?.avatar && currentUser.avatar.startsWith('http') ? (
+              <Image source={{ uri: currentUser.avatar }} style={styles.inputAvatarImage} />
+            ) : (
+              <ThemedText style={styles.inputAvatarInitial}>
+                {currentUser?.username?.[0]?.toUpperCase() || 'U'}
+              </ThemedText>
+            )}
+          </View>
+          <TextInput
+            style={styles.input}
+            placeholder="Add a comment..."
+            placeholderTextColor="#999"
+            value={commentText}
+            onChangeText={setCommentText}
+            multiline
+            maxLength={500}
+            editable={!submitting}
+          />
+          <TouchableOpacity
+            style={[styles.sendButton, (!commentText.trim() || submitting) && styles.sendButtonDisabled]}
+            onPress={handleAddComment}
+            disabled={!commentText.trim() || submitting}
+          >
+            {submitting ? (
+              <ActivityIndicator size="small" color="#007AFF" />
+            ) : (
+              <IconSymbol size={24} name="paperplane.fill" color={commentText.trim() ? "#007AFF" : "#ccc"} />
+            )}
+          </TouchableOpacity>
+        </View>
+      </KeyboardAvoidingView>
+    </Modal>
+  );
+}
+
+const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+    backgroundColor: '#fff',
+  },
+  header: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingHorizontal: 16,
+    paddingTop: 60,
+    paddingBottom: 16,
+    borderBottomWidth: 1,
+    borderBottomColor: '#e5e5e5',
+  },
+  closeButton: {
+    padding: 4,
+  },
+  headerTitle: {
+    fontSize: 18,
+    fontWeight: '600',
+    color: '#000',
+  },
+  headerSpacer: {
+    width: 32,
+  },
+  commentsList: {
+    flex: 1,
+  },
+  commentsListContent: {
+    padding: 16,
+  },
+  loadingContainer: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 60,
+    gap: 12,
+  },
+  loadingText: {
+    fontSize: 14,
+    color: '#666',
+  },
+  commentItem: {
+    flexDirection: 'row',
+    marginBottom: 20,
+    gap: 12,
+  },
+  commentAvatar: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: '#f0f0f0',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  avatarImage: {
+    width: '100%',
+    height: '100%',
+    borderRadius: 18,
+  },
+  avatarInitial: {
+    fontSize: 16,
+    fontWeight: '600',
+  },
+  commentContent: {
+    flex: 1,
+  },
+  commentHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    marginBottom: 4,
+  },
+  commentUsername: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#000',
+  },
+  commentTime: {
+    fontSize: 12,
+    color: '#999',
+  },
+  commentText: {
+    fontSize: 14,
+    color: '#000',
+    lineHeight: 20,
+  },
+  deleteCommentButton: {
+    marginTop: 8,
+  },
+  deleteCommentText: {
+    fontSize: 13,
+    color: '#ef4444',
+    fontWeight: '500',
+  },
+  emptyState: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 80,
+  },
+  emptyText: {
+    fontSize: 18,
+    fontWeight: '600',
+    color: '#666',
+    marginTop: 16,
+  },
+  emptySubtext: {
+    fontSize: 14,
+    color: '#999',
+    marginTop: 8,
+  },
+  inputContainer: {
+    flexDirection: 'row',
+    alignItems: 'flex-end',
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    borderTopWidth: 1,
+    borderTopColor: '#e5e5e5',
+    backgroundColor: '#fff',
+    gap: 12,
+  },
+  inputAvatar: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    backgroundColor: '#f0f0f0',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  inputAvatarImage: {
+    width: '100%',
+    height: '100%',
+    borderRadius: 16,
+  },
+  inputAvatarInitial: {
+    fontSize: 14,
+    fontWeight: '600',
+  },
+  input: {
+    flex: 1,
+    maxHeight: 100,
+    minHeight: 36,
+    backgroundColor: '#f5f5f5',
+    borderRadius: 18,
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    fontSize: 15,
+    color: '#000',
+  },
+  sendButton: {
+    padding: 6,
+  },
+  sendButtonDisabled: {
+    opacity: 0.5,
+  },
+});

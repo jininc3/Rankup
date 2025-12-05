@@ -4,10 +4,12 @@ import { IconSymbol } from '@/components/ui/icon-symbol';
 import { db } from '@/config/firebase';
 import { useAuth } from '@/contexts/AuthContext';
 import { getFollowing } from '@/services/followService';
+import { likePost, unlikePost, isPostLiked } from '@/services/likeService';
+import CommentModal from '@/components/CommentModal';
 import { ResizeMode, Video } from 'expo-av';
-import { collection, getDocs, orderBy, query, Timestamp } from 'firebase/firestore';
+import { collection, getDocs, orderBy, query, Timestamp, where, onSnapshot } from 'firebase/firestore';
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { ActivityIndicator, Dimensions, Image, Modal, ScrollView, StyleSheet, TouchableOpacity, View } from 'react-native';
+import { ActivityIndicator, Dimensions, Image, Modal, ScrollView, StyleSheet, TouchableOpacity, View, Alert } from 'react-native';
 import { useRouter } from 'expo-router';
 import { useFocusEffect } from '@react-navigation/native';
 
@@ -48,6 +50,7 @@ interface Post {
   taggedGame?: string;
   createdAt: Timestamp;
   likes: number;
+  commentsCount?: number;
 }
 
 export default function HomeScreen() {
@@ -63,8 +66,27 @@ export default function HomeScreen() {
   const scrollViewRef = useRef<ScrollView>(null);
   const [showFilterMenu, setShowFilterMenu] = useState(false);
   const [selectedGameFilter, setSelectedGameFilter] = useState<string | null>(null);
+  const [unreadNotificationCount, setUnreadNotificationCount] = useState(0);
+  const [likedPosts, setLikedPosts] = useState<Set<string>>(new Set());
+  const [likingInProgress, setLikingInProgress] = useState<Set<string>>(new Set());
+  const [commentingPost, setCommentingPost] = useState<Post | null>(null);
+  const [showCommentModal, setShowCommentModal] = useState(false);
 
   const currentPosts = activeTab === 'forYou' ? forYouPosts : followingPosts;
+
+  // Listen for unread notifications count in real-time
+  useEffect(() => {
+    if (!currentUser?.id) return;
+
+    const notificationsRef = collection(db, 'users', currentUser.id, 'notifications');
+    const q = query(notificationsRef, where('read', '==', false));
+
+    const unsubscribe = onSnapshot(q, (snapshot) => {
+      setUnreadNotificationCount(snapshot.size);
+    });
+
+    return () => unsubscribe();
+  }, [currentUser?.id]);
 
   // Fetch users that current user is following
   useEffect(() => {
@@ -132,6 +154,160 @@ export default function HomeScreen() {
       setLoading(false);
     }
   }, [currentUser?.id, followingUserIds, activeTab, selectedGameFilter]);
+
+  // Check which posts are liked by the current user
+  useEffect(() => {
+    const checkLikedPosts = async () => {
+      if (!currentUser?.id || currentPosts.length === 0) return;
+
+      try {
+        const likedPostIds = new Set<string>();
+        await Promise.all(
+          currentPosts.map(async (post) => {
+            const isLiked = await isPostLiked(currentUser.id, post.id);
+            if (isLiked) {
+              likedPostIds.add(post.id);
+            }
+          })
+        );
+        setLikedPosts(likedPostIds);
+      } catch (error) {
+        console.error('Error checking liked posts:', error);
+      }
+    };
+
+    checkLikedPosts();
+  }, [currentPosts, currentUser?.id]);
+
+  // Handle like/unlike toggle
+  const handleLikeToggle = async (post: Post) => {
+    if (!currentUser?.id) {
+      Alert.alert('Error', 'You must be logged in to like posts');
+      return;
+    }
+
+    // Prevent multiple clicks while processing
+    if (likingInProgress.has(post.id)) return;
+
+    // Add to in-progress set
+    const newInProgress = new Set(likingInProgress);
+    newInProgress.add(post.id);
+    setLikingInProgress(newInProgress);
+
+    const isCurrentlyLiked = likedPosts.has(post.id);
+
+    // Optimistic update
+    const newLikedPosts = new Set(likedPosts);
+    if (isCurrentlyLiked) {
+      newLikedPosts.delete(post.id);
+    } else {
+      newLikedPosts.add(post.id);
+    }
+    setLikedPosts(newLikedPosts);
+
+    // Update local post count optimistically
+    const updatePostLikes = (posts: Post[]) =>
+      posts.map((p) =>
+        p.id === post.id
+          ? { ...p, likes: p.likes + (isCurrentlyLiked ? -1 : 1) }
+          : p
+      );
+
+    if (activeTab === 'following') {
+      setFollowingPosts(updatePostLikes(followingPosts));
+    } else {
+      setForYouPosts(updatePostLikes(forYouPosts));
+    }
+
+    try {
+      if (isCurrentlyLiked) {
+        await unlikePost(currentUser.id, post.id);
+      } else {
+        const postThumbnail = post.mediaType === 'video' && post.thumbnailUrl
+          ? post.thumbnailUrl
+          : post.mediaUrl;
+
+        await likePost(
+          currentUser.id,
+          currentUser.username || currentUser.email?.split('@')[0] || 'User',
+          currentUser.avatar,
+          post.id,
+          post.userId,
+          postThumbnail
+        );
+      }
+    } catch (error) {
+      console.error('Error toggling like:', error);
+      Alert.alert('Error', 'Failed to update like. Please try again.');
+
+      // Revert optimistic update on error
+      setLikedPosts(isCurrentlyLiked ? newLikedPosts : new Set(Array.from(newLikedPosts).filter(id => id !== post.id)));
+
+      if (activeTab === 'following') {
+        setFollowingPosts(updatePostLikes(followingPosts).map((p) =>
+          p.id === post.id ? { ...p, likes: p.likes + (isCurrentlyLiked ? 1 : -1) } : p
+        ));
+      } else {
+        setForYouPosts(updatePostLikes(forYouPosts).map((p) =>
+          p.id === post.id ? { ...p, likes: p.likes + (isCurrentlyLiked ? 1 : -1) } : p
+        ));
+      }
+    } finally {
+      // Remove from in-progress set
+      const updatedInProgress = new Set(likingInProgress);
+      updatedInProgress.delete(post.id);
+      setLikingInProgress(updatedInProgress);
+    }
+  };
+
+  // Handle opening comment modal
+  const handleOpenComments = (post: Post) => {
+    setCommentingPost(post);
+    setShowCommentModal(true);
+  };
+
+  // Handle closing comment modal
+  const handleCloseComments = () => {
+    setShowCommentModal(false);
+    setCommentingPost(null);
+  };
+
+  // Refresh posts when a comment is added
+  const handleCommentAdded = () => {
+    // Refetch posts to get updated comment count
+    if (followingUserIds.length > 0 || activeTab === 'forYou') {
+      // Re-trigger the fetch posts effect
+      const fetchPosts = async () => {
+        if (!currentUser?.id) return;
+
+        try {
+          const allPostsQuery = query(
+            collection(db, 'posts'),
+            orderBy('createdAt', 'desc')
+          );
+          const allPostsSnapshot = await getDocs(allPostsQuery);
+          const allPosts: Post[] = allPostsSnapshot.docs.map(doc => ({
+            id: doc.id,
+            ...doc.data()
+          } as Post));
+
+          let followingPostsFiltered = allPosts.filter(post =>
+            followingUserIds.includes(post.userId) && post.userId !== currentUser.id
+          );
+
+          if (selectedGameFilter) {
+            followingPostsFiltered = followingPostsFiltered.filter(post => post.taggedGame === selectedGameFilter);
+          }
+
+          setFollowingPosts(followingPostsFiltered);
+        } catch (error) {
+          console.error('Error refreshing posts:', error);
+        }
+      };
+
+      fetchPosts();
+    }
+  };
 
   // Pause video when navigating away from this screen
   useFocusEffect(
@@ -212,6 +388,19 @@ export default function HomeScreen() {
     <ThemedView style={styles.container}>
       <View style={styles.header}>
         <ThemedText style={styles.headerTitle}>Home</ThemedText>
+        <TouchableOpacity
+          style={styles.notificationButton}
+          onPress={() => router.push('/notifications')}
+        >
+          <IconSymbol size={24} name="bell" color="#000" />
+          {unreadNotificationCount > 0 && (
+            <View style={styles.notificationBadge}>
+              <ThemedText style={styles.notificationBadgeText}>
+                {unreadNotificationCount > 9 ? '9+' : unreadNotificationCount}
+              </ThemedText>
+            </View>
+          )}
+        </TouchableOpacity>
       </View>
 
       {/* Tabs */}
@@ -326,12 +515,26 @@ export default function HomeScreen() {
 
               {/* Post Footer */}
               <View style={styles.postFooter}>
-                <TouchableOpacity style={styles.likeButton}>
-                  <IconSymbol size={28} name="heart" color="#000" />
+                <TouchableOpacity
+                  style={styles.likeButton}
+                  onPress={() => handleLikeToggle(post)}
+                  disabled={likingInProgress.has(post.id)}
+                >
+                  <IconSymbol
+                    size={28}
+                    name={likedPosts.has(post.id) ? "heart.fill" : "heart"}
+                    color={likedPosts.has(post.id) ? "#ef4444" : "#000"}
+                  />
                   <ThemedText style={styles.actionCount}>{post.likes}</ThemedText>
                 </TouchableOpacity>
-                <TouchableOpacity style={styles.commentButton}>
+                <TouchableOpacity
+                  style={styles.commentButton}
+                  onPress={() => handleOpenComments(post)}
+                >
                   <IconSymbol size={28} name="bubble.left" color="#000" />
+                  {(post.commentsCount ?? 0) > 0 && (
+                    <ThemedText style={styles.actionCount}>{post.commentsCount}</ThemedText>
+                  )}
                 </TouchableOpacity>
                 <TouchableOpacity style={styles.shareButton}>
                   <IconSymbol size={28} name="paperplane" color="#000" />
@@ -425,6 +628,22 @@ export default function HomeScreen() {
           </View>
         </TouchableOpacity>
       </Modal>
+
+      {/* Comment Modal */}
+      {commentingPost && (
+        <CommentModal
+          visible={showCommentModal}
+          postId={commentingPost.id}
+          postOwnerId={commentingPost.userId}
+          postThumbnail={
+            commentingPost.mediaType === 'video' && commentingPost.thumbnailUrl
+              ? commentingPost.thumbnailUrl
+              : commentingPost.mediaUrl
+          }
+          onClose={handleCloseComments}
+          onCommentAdded={handleCommentAdded}
+        />
+      )}
     </ThemedView>
   );
 }
@@ -449,6 +668,27 @@ const styles = StyleSheet.create({
     fontSize: 20,
     fontWeight: '700',
     color: '#000',
+  },
+  notificationButton: {
+    position: 'relative',
+    padding: 4,
+  },
+  notificationBadge: {
+    position: 'absolute',
+    top: 0,
+    right: 0,
+    backgroundColor: '#ef4444',
+    borderRadius: 10,
+    minWidth: 20,
+    height: 20,
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: 4,
+  },
+  notificationBadgeText: {
+    fontSize: 11,
+    fontWeight: '700',
+    color: '#fff',
   },
   tabContainer: {
     flexDirection: 'row',

@@ -4,6 +4,8 @@ import { ResizeMode, Video } from 'expo-av';
 import { Timestamp } from 'firebase/firestore';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { Animated, Dimensions, FlatList, Image, Modal, PanResponder, StyleSheet, TouchableOpacity, View } from 'react-native';
+import { getComments, CommentData } from '@/services/commentService';
+import CommentModal from '@/components/CommentModal';
 
 const { width: screenWidth, height: screenHeight } = Dimensions.get('window');
 
@@ -34,6 +36,7 @@ interface Post {
   taggedGame?: string;
   createdAt: Timestamp;
   likes: number;
+  commentsCount?: number;
 }
 
 interface PostViewerModalProps {
@@ -44,6 +47,7 @@ interface PostViewerModalProps {
   userAvatar?: string;
   onClose: () => void;
   onNavigate?: (index: number) => void;
+  onCommentAdded?: () => void;
 }
 
 export default function PostViewerModal({
@@ -53,7 +57,8 @@ export default function PostViewerModal({
   currentIndex = 0,
   userAvatar,
   onClose,
-  onNavigate
+  onNavigate,
+  onCommentAdded
 }: PostViewerModalProps) {
   const flatListRef = useRef<FlatList>(null);
   const translateX = useRef(new Animated.Value(0)).current;
@@ -61,6 +66,8 @@ export default function PostViewerModal({
   const [isScrolling, setIsScrolling] = useState(false);
   const [playingVideoId, setPlayingVideoId] = useState<string | null>(null);
   const postRefs = useRef<{ [key: string]: View | null }>({});
+  const [recentComments, setRecentComments] = useState<CommentData[]>([]);
+  const [showCommentModal, setShowCommentModal] = useState(false);
 
   // Handle opening animation
   useEffect(() => {
@@ -88,6 +95,25 @@ export default function PostViewerModal({
       }, 300);
     }
   }, [visible]);
+
+  // Fetch recent comments when post changes
+  useEffect(() => {
+    const fetchRecentComments = async () => {
+      if (!post?.id) return;
+
+      try {
+        const allComments = await getComments(post.id);
+        // Get the 2 most recent comments
+        setRecentComments(allComments.slice(0, 2));
+      } catch (error) {
+        console.error('Error fetching comments:', error);
+      }
+    };
+
+    if (visible && post) {
+      fetchRecentComments();
+    }
+  }, [visible, post?.id]);
 
   // Pan responder for swipe-to-dismiss (edge swipe)
   const edgePanResponder = useRef(
@@ -201,6 +227,43 @@ export default function PostViewerModal({
     });
   };
 
+  // Format time ago for comments
+  const formatTimeAgo = (timestamp: any): string => {
+    const now = new Date();
+    const commentDate = timestamp.toDate();
+    const diffInSeconds = Math.floor((now.getTime() - commentDate.getTime()) / 1000);
+
+    if (diffInSeconds < 60) return 'just now';
+    if (diffInSeconds < 3600) return `${Math.floor(diffInSeconds / 60)}m`;
+    if (diffInSeconds < 86400) return `${Math.floor(diffInSeconds / 3600)}h`;
+    if (diffInSeconds < 604800) return `${Math.floor(diffInSeconds / 86400)}d`;
+    if (diffInSeconds < 2592000) return `${Math.floor(diffInSeconds / 604800)}w`;
+    return commentDate.toLocaleDateString();
+  };
+
+  // Handle opening comment modal
+  const handleOpenComments = () => {
+    setShowCommentModal(true);
+  };
+
+  // Handle comment added
+  const handleCommentAdded = async () => {
+    // Refresh comments
+    if (post?.id) {
+      try {
+        const allComments = await getComments(post.id);
+        setRecentComments(allComments.slice(0, 2));
+      } catch (error) {
+        console.error('Error refreshing comments:', error);
+      }
+    }
+
+    // Notify parent
+    if (onCommentAdded) {
+      onCommentAdded();
+    }
+  };
+
   if (!post || posts.length === 0) return null;
 
   const renderPost = ({ item, index }: { item: Post; index: number }) => {
@@ -215,6 +278,7 @@ export default function PostViewerModal({
   };
 
   return (
+    <>
     <Modal
       visible={visible}
       animationType="none"
@@ -275,6 +339,23 @@ export default function PostViewerModal({
         />
       </Animated.View>
     </Modal>
+
+    {/* Comment Modal */}
+    {post && (
+      <CommentModal
+        visible={showCommentModal}
+        postId={post.id}
+        postOwnerId={post.userId}
+        postThumbnail={
+          post.mediaType === 'video' && post.thumbnailUrl
+            ? post.thumbnailUrl
+            : post.mediaUrl
+        }
+        onClose={() => setShowCommentModal(false)}
+        onCommentAdded={handleCommentAdded}
+      />
+    )}
+  </>
   );
 }
 
@@ -426,7 +507,10 @@ function PostItem({
           <TouchableOpacity style={styles.actionButton}>
             <IconSymbol size={28} name="heart" color="#000" />
           </TouchableOpacity>
-          <TouchableOpacity style={styles.actionButton}>
+          <TouchableOpacity
+            style={styles.actionButton}
+            onPress={handleOpenComments}
+          >
             <IconSymbol size={28} name="bubble.left" color="#000" />
           </TouchableOpacity>
           <TouchableOpacity style={styles.actionButton}>
@@ -435,11 +519,19 @@ function PostItem({
         </View>
       </View>
 
-      {/* Likes Count */}
+      {/* Likes and Comments Count */}
       <View style={styles.likesContainer}>
         <ThemedText style={styles.likesText}>
           {post.likes.toLocaleString()} {post.likes === 1 ? 'like' : 'likes'}
         </ThemedText>
+        {(post.commentsCount ?? 0) > 0 && (
+          <>
+            <ThemedText style={styles.dotSeparator}> • </ThemedText>
+            <ThemedText style={styles.commentsText}>
+              {post.commentsCount!.toLocaleString()} {post.commentsCount === 1 ? 'comment' : 'comments'}
+            </ThemedText>
+          </>
+        )}
       </View>
 
       {/* Caption */}
@@ -447,6 +539,37 @@ function PostItem({
         <View style={styles.captionContainer}>
           <ThemedText style={styles.username}>{post.username}</ThemedText>
           <ThemedText style={styles.caption}> {post.caption}</ThemedText>
+        </View>
+      )}
+
+      {/* View All Comments Link */}
+      {(post.commentsCount ?? 0) > 2 && (
+        <TouchableOpacity
+          style={styles.viewAllCommentsContainer}
+          onPress={handleOpenComments}
+          activeOpacity={0.7}
+        >
+          <ThemedText style={styles.viewAllCommentsText}>
+            View all {post.commentsCount} comments
+          </ThemedText>
+        </TouchableOpacity>
+      )}
+
+      {/* Recent Comments */}
+      {recentComments.length > 0 && (
+        <View style={styles.recentCommentsContainer}>
+          {recentComments.map((comment) => (
+            <TouchableOpacity
+              key={comment.id}
+              style={styles.commentItem}
+              onPress={handleOpenComments}
+              activeOpacity={0.7}
+            >
+              <ThemedText style={styles.commentUsername}>{comment.username}</ThemedText>
+              <ThemedText style={styles.commentText}> {comment.text}</ThemedText>
+              <ThemedText style={styles.commentTime}>{formatTimeAgo(comment.createdAt)}</ThemedText>
+            </TouchableOpacity>
+          ))}
         </View>
       )}
 
@@ -597,10 +720,21 @@ const styles = StyleSheet.create({
     padding: 4,
   },
   likesContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
     paddingHorizontal: 16,
     paddingTop: 8,
   },
   likesText: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#000',
+  },
+  dotSeparator: {
+    fontSize: 14,
+    color: '#999',
+  },
+  commentsText: {
     fontSize: 14,
     fontWeight: '600',
     color: '#000',
@@ -623,5 +757,40 @@ const styles = StyleSheet.create({
   dateText: {
     fontSize: 12,
     color: '#999',
+  },
+  viewAllCommentsContainer: {
+    paddingHorizontal: 16,
+    paddingTop: 8,
+  },
+  viewAllCommentsText: {
+    fontSize: 14,
+    color: '#999',
+    fontWeight: '500',
+  },
+  recentCommentsContainer: {
+    paddingHorizontal: 16,
+    paddingTop: 4,
+  },
+  commentItem: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    alignItems: 'center',
+    paddingVertical: 4,
+  },
+  commentUsername: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#000',
+  },
+  commentText: {
+    fontSize: 14,
+    color: '#000',
+    lineHeight: 18,
+    flex: 1,
+  },
+  commentTime: {
+    fontSize: 12,
+    color: '#999',
+    marginLeft: 8,
   },
 });

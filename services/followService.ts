@@ -82,6 +82,17 @@ export const followUser = async (
   await updateDoc(currentUserRef, {
     followingCount: increment(1),
   });
+
+  // Create notification for the target user
+  const notificationDocRef = doc(db, `users/${targetUserId}/notifications/${currentUserId}_follow_${Date.now()}`);
+  await setDoc(notificationDocRef, {
+    type: 'follow',
+    fromUserId: currentUserId,
+    fromUsername: currentUsername,
+    fromUserAvatar: currentUserAvatar || null,
+    read: false,
+    createdAt: now,
+  });
 };
 
 /**

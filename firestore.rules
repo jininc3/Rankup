@@ -61,6 +61,23 @@ service cloud.firestore {
         // Only the user can write to their own search history
         allow write: if request.auth != null && request.auth.uid == userId;
       }
+
+      // Notifications subcollection - user's notifications
+      match /notifications/{notificationId} {
+        // Only the user can read their own notifications
+        allow read: if request.auth != null && request.auth.uid == userId;
+
+        // Only the user can update/delete their own notifications
+        allow update, delete: if request.auth != null && request.auth.uid == userId;
+
+        // Any authenticated user can create notifications (for others)
+        allow create: if request.auth != null
+                      && request.resource.data.type in ['follow', 'like', 'comment']
+                      && request.resource.data.fromUserId is string
+                      && request.resource.data.fromUsername is string
+                      && request.resource.data.read is bool
+                      && request.resource.data.createdAt is timestamp;
+      }
     }
 
     // Posts collection
@@ -76,15 +93,56 @@ service cloud.firestore {
                     && request.resource.data.likes is number
                     && request.resource.data.createdAt is timestamp;
 
-      // Only the post owner can update or delete their posts
-      // Prevent changing userId or createdAt
+      // Allow owner to update their posts OR anyone to update likes/commentsCount
       allow update: if request.auth != null
-                    && resource.data.userId == request.auth.uid
-                    && request.resource.data.userId == resource.data.userId
-                    && request.resource.data.createdAt == resource.data.createdAt;
+                    && (
+                      // Owner can edit their post
+                      (resource.data.userId == request.auth.uid
+                       && request.resource.data.userId == resource.data.userId
+                       && request.resource.data.createdAt == resource.data.createdAt)
+                      // Anyone can increment/decrement likes or commentsCount
+                      || request.resource.data.diff(resource.data)
+                         .affectedKeys().hasOnly(['likes', 'commentsCount'])
+                    );
 
       allow delete: if request.auth != null
                     && resource.data.userId == request.auth.uid;
+
+      // Likes subcollection
+      match /likes/{userId} {
+        // Anyone can read likes
+        allow read: if true;
+
+        // Only the user can create their own like
+        allow create: if request.auth != null
+                      && request.auth.uid == userId
+                      && request.resource.data.userId == userId
+                      && request.resource.data.username is string
+                      && request.resource.data.likedAt is timestamp;
+
+        // Only the user can delete their own like
+        allow delete: if request.auth != null
+                      && request.auth.uid == userId;
+      }
+
+      // Comments subcollection
+      match /comments/{commentId} {
+        // Anyone can read comments
+        allow read: if true;
+
+        // Any authenticated user can create a comment
+        allow create: if request.auth != null
+                      && request.resource.data.userId == request.auth.uid
+                      && request.resource.data.username is string
+                      && request.resource.data.text is string
+                      && request.resource.data.text.size() > 0
+                      && request.resource.data.text.size() <= 500
+                      && request.resource.data.createdAt is timestamp;
+
+        // Only the comment author can delete their own comment
+        allow delete: if request.auth != null
+                      && request.auth.uid == resource.data.userId;
+      }
     }
 
     // Default: deny all other access
