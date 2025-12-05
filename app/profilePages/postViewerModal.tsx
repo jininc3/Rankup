@@ -66,7 +66,7 @@ export default function PostViewerModal({
   const [isScrolling, setIsScrolling] = useState(false);
   const [playingVideoId, setPlayingVideoId] = useState<string | null>(null);
   const postRefs = useRef<{ [key: string]: View | null }>({});
-  const [recentComments, setRecentComments] = useState<CommentData[]>([]);
+  const [selectedPostForComments, setSelectedPostForComments] = useState<Post | null>(null);
   const [showCommentModal, setShowCommentModal] = useState(false);
 
   // Handle opening animation
@@ -96,24 +96,6 @@ export default function PostViewerModal({
     }
   }, [visible]);
 
-  // Fetch recent comments when post changes
-  useEffect(() => {
-    const fetchRecentComments = async () => {
-      if (!post?.id) return;
-
-      try {
-        const allComments = await getComments(post.id);
-        // Get the 2 most recent comments
-        setRecentComments(allComments.slice(0, 2));
-      } catch (error) {
-        console.error('Error fetching comments:', error);
-      }
-    };
-
-    if (visible && post) {
-      fetchRecentComments();
-    }
-  }, [visible, post?.id]);
 
   // Pan responder for swipe-to-dismiss (edge swipe)
   const edgePanResponder = useRef(
@@ -241,24 +223,15 @@ export default function PostViewerModal({
     return commentDate.toLocaleDateString();
   };
 
-  // Handle opening comment modal
-  const handleOpenComments = () => {
+  // Handle opening comment modal for a specific post
+  const handleOpenComments = (postToView: Post) => {
+    setSelectedPostForComments(postToView);
     setShowCommentModal(true);
   };
 
   // Handle comment added
   const handleCommentAdded = async () => {
-    // Refresh comments
-    if (post?.id) {
-      try {
-        const allComments = await getComments(post.id);
-        setRecentComments(allComments.slice(0, 2));
-      } catch (error) {
-        console.error('Error refreshing comments:', error);
-      }
-    }
-
-    // Notify parent
+    // Notify parent to refresh post data
     if (onCommentAdded) {
       onCommentAdded();
     }
@@ -273,6 +246,8 @@ export default function PostViewerModal({
         userAvatar={userAvatar}
         playingVideoId={playingVideoId}
         postRefs={postRefs}
+        onOpenComments={handleOpenComments}
+        formatTimeAgo={formatTimeAgo}
       />
     );
   };
@@ -341,17 +316,20 @@ export default function PostViewerModal({
     </Modal>
 
     {/* Comment Modal */}
-    {post && (
+    {selectedPostForComments && (
       <CommentModal
         visible={showCommentModal}
-        postId={post.id}
-        postOwnerId={post.userId}
+        postId={selectedPostForComments.id}
+        postOwnerId={selectedPostForComments.userId}
         postThumbnail={
-          post.mediaType === 'video' && post.thumbnailUrl
-            ? post.thumbnailUrl
-            : post.mediaUrl
+          selectedPostForComments.mediaType === 'video' && selectedPostForComments.thumbnailUrl
+            ? selectedPostForComments.thumbnailUrl
+            : selectedPostForComments.mediaUrl
         }
-        onClose={() => setShowCommentModal(false)}
+        onClose={() => {
+          setShowCommentModal(false);
+          setSelectedPostForComments(null);
+        }}
         onCommentAdded={handleCommentAdded}
       />
     )}
@@ -364,18 +342,40 @@ function PostItem({
   post,
   userAvatar,
   playingVideoId,
-  postRefs
+  postRefs,
+  onOpenComments,
+  formatTimeAgo
 }: {
   post: Post;
   userAvatar?: string;
   playingVideoId: string | null;
   postRefs: React.MutableRefObject<{ [key: string]: View | null }>;
+  onOpenComments: (post: Post) => void;
+  formatTimeAgo: (timestamp: any) => string;
 }) {
   const [activeMediaIndex, setActiveMediaIndex] = useState(0);
   const [mediaHeight, setMediaHeight] = useState(
     post.mediaType === 'video' ? screenWidth * 0.5625 : screenWidth
   );
   const mediaFlatListRef = useRef<FlatList>(null);
+  const [recentComments, setRecentComments] = useState<CommentData[]>([]);
+
+  // Fetch recent comments for this post
+  useEffect(() => {
+    const fetchRecentComments = async () => {
+      if (!post?.id) return;
+
+      try {
+        const allComments = await getComments(post.id);
+        // Get the 2 most recent comments
+        setRecentComments(allComments.slice(0, 2));
+      } catch (error) {
+        console.error('Error fetching comments:', error);
+      }
+    };
+
+    fetchRecentComments();
+  }, [post.id]);
 
   // Calculate media height based on aspect ratio (only for images)
   useEffect(() => {
@@ -509,7 +509,7 @@ function PostItem({
           </TouchableOpacity>
           <TouchableOpacity
             style={styles.actionButton}
-            onPress={handleOpenComments}
+            onPress={() => onOpenComments(post)}
           >
             <IconSymbol size={28} name="bubble.left" color="#000" />
           </TouchableOpacity>
@@ -546,7 +546,7 @@ function PostItem({
       {(post.commentsCount ?? 0) > 2 && (
         <TouchableOpacity
           style={styles.viewAllCommentsContainer}
-          onPress={handleOpenComments}
+          onPress={() => onOpenComments(post)}
           activeOpacity={0.7}
         >
           <ThemedText style={styles.viewAllCommentsText}>
@@ -562,7 +562,7 @@ function PostItem({
             <TouchableOpacity
               key={comment.id}
               style={styles.commentItem}
-              onPress={handleOpenComments}
+              onPress={() => onOpenComments(post)}
               activeOpacity={0.7}
             >
               <ThemedText style={styles.commentUsername}>{comment.username}</ThemedText>

@@ -4,10 +4,11 @@ import { IconSymbol } from '@/components/ui/icon-symbol';
 import { useState, useEffect, useCallback } from 'react';
 import { ScrollView, StyleSheet, TouchableOpacity, View, Image, ActivityIndicator } from 'react-native';
 import { useRouter } from 'expo-router';
-import { collection, query, orderBy, limit, onSnapshot, doc, updateDoc, deleteDoc, where, Timestamp, getDocs, writeBatch } from 'firebase/firestore';
+import { collection, query, orderBy, limit, onSnapshot, doc, updateDoc, deleteDoc, where, Timestamp, getDocs, writeBatch, getDoc } from 'firebase/firestore';
 import { db } from '@/config/firebase';
 import { useAuth } from '@/contexts/AuthContext';
 import { useFocusEffect } from '@react-navigation/native';
+import PostViewerModal from '@/app/profilePages/postViewerModal';
 
 interface Notification {
   id: string;
@@ -22,11 +23,31 @@ interface Notification {
   createdAt: Timestamp;
 }
 
+interface Post {
+  id: string;
+  userId: string;
+  username: string;
+  mediaUrl: string;
+  mediaUrls?: string[];
+  mediaType: 'image' | 'video';
+  mediaTypes?: string[];
+  thumbnailUrl?: string;
+  caption?: string;
+  taggedPeople?: string[];
+  taggedGame?: string;
+  createdAt: Timestamp;
+  likes: number;
+  commentsCount?: number;
+}
+
 export default function NotificationsScreen() {
   const router = useRouter();
   const { user: currentUser } = useAuth();
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [loading, setLoading] = useState(true);
+  const [selectedPost, setSelectedPost] = useState<Post | null>(null);
+  const [showPostViewer, setShowPostViewer] = useState(false);
+  const [loadingPost, setLoadingPost] = useState(false);
 
   // Load and listen to notifications in real-time
   useEffect(() => {
@@ -48,6 +69,9 @@ export default function NotificationsScreen() {
           fromUserId: data.fromUserId,
           fromUsername: data.fromUsername,
           fromUserAvatar: data.fromUserAvatar,
+          postId: data.postId,
+          postThumbnail: data.postThumbnail,
+          commentText: data.commentText,
           read: data.read,
           createdAt: data.createdAt,
         });
@@ -144,16 +168,55 @@ export default function NotificationsScreen() {
     }
   };
 
+  // Fetch post data and show post viewer
+  const fetchAndShowPost = async (postId: string) => {
+    setLoadingPost(true);
+    try {
+      const postRef = doc(db, 'posts', postId);
+      const postSnap = await getDoc(postRef);
+
+      if (postSnap.exists()) {
+        const postData = postSnap.data();
+        const post: Post = {
+          id: postSnap.id,
+          userId: postData.userId,
+          username: postData.username,
+          mediaUrl: postData.mediaUrl,
+          mediaUrls: postData.mediaUrls,
+          mediaType: postData.mediaType,
+          mediaTypes: postData.mediaTypes,
+          thumbnailUrl: postData.thumbnailUrl,
+          caption: postData.caption,
+          taggedPeople: postData.taggedPeople,
+          taggedGame: postData.taggedGame,
+          createdAt: postData.createdAt,
+          likes: postData.likes || 0,
+          commentsCount: postData.commentsCount || 0,
+        };
+        setSelectedPost(post);
+        setShowPostViewer(true);
+      }
+    } catch (error) {
+      console.error('Error fetching post:', error);
+    } finally {
+      setLoadingPost(false);
+    }
+  };
+
+  // Navigate to user profile
+  const handleUserPress = (userId: string, event: any) => {
+    event.stopPropagation();
+    router.push(`/profilePages/profileView?userId=${userId}`);
+  };
+
   // Navigate to appropriate page based on notification type
   const handleNotificationPress = (notification: Notification) => {
     if (notification.type === 'follow') {
       // Navigate to user profile for follow notifications
       router.push(`/profilePages/profileView?userId=${notification.fromUserId}`);
-    } else if (notification.type === 'like' || notification.type === 'comment') {
-      // Navigate to post for like/comment notifications
-      // For now, navigate to the user's profile who liked/commented
-      // TODO: Implement post view modal/page
-      router.push(`/profilePages/profileView?userId=${notification.fromUserId}`);
+    } else if ((notification.type === 'like' || notification.type === 'comment') && notification.postId) {
+      // Show post viewer for like/comment notifications
+      fetchAndShowPost(notification.postId);
     }
   };
 
@@ -205,7 +268,11 @@ export default function NotificationsScreen() {
             >
               <View style={styles.notificationLeft}>
                 {/* Avatar */}
-                <View style={styles.avatar}>
+                <TouchableOpacity
+                  style={styles.avatar}
+                  onPress={(e) => handleUserPress(notification.fromUserId, e)}
+                  activeOpacity={0.7}
+                >
                   {notification.fromUserAvatar && notification.fromUserAvatar.startsWith('http') ? (
                     <Image source={{ uri: notification.fromUserAvatar }} style={styles.avatarImage} />
                   ) : (
@@ -213,12 +280,17 @@ export default function NotificationsScreen() {
                       {notification.fromUsername[0].toUpperCase()}
                     </ThemedText>
                   )}
-                </View>
+                </TouchableOpacity>
 
                 {/* Notification content */}
                 <View style={styles.notificationContent}>
                   <ThemedText style={styles.notificationText}>
-                    <ThemedText style={styles.usernameText}>{notification.fromUsername}</ThemedText>
+                    <ThemedText
+                      style={styles.usernameText}
+                      onPress={(e) => handleUserPress(notification.fromUserId, e)}
+                    >
+                      {notification.fromUsername}
+                    </ThemedText>
                     {notification.type === 'follow' && ' started following you'}
                     {notification.type === 'like' && ' liked your post'}
                     {notification.type === 'comment' && ' commented: '}
@@ -262,6 +334,24 @@ export default function NotificationsScreen() {
           </View>
         )}
       </ScrollView>
+
+      {/* Post Viewer Modal */}
+      {selectedPost && (
+        <PostViewerModal
+          visible={showPostViewer}
+          post={selectedPost}
+          posts={[selectedPost]}
+          currentIndex={0}
+          userAvatar={currentUser?.avatar}
+          onClose={() => {
+            setShowPostViewer(false);
+            setSelectedPost(null);
+          }}
+          onCommentAdded={() => {
+            // Optionally refresh data if needed
+          }}
+        />
+      )}
     </ThemedView>
   );
 }
