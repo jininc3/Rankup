@@ -19,7 +19,7 @@ interface SearchUser {
   postsCount?: number;
 }
 
-const MAX_HISTORY_ITEMS = 10;
+const MAX_HISTORY_ITEMS = 7;
 
 export default function SearchScreen() {
   const router = useRouter();
@@ -28,6 +28,7 @@ export default function SearchScreen() {
   const [searchResults, setSearchResults] = useState<SearchUser[]>([]);
   const [searching, setSearching] = useState(false);
   const [searchHistory, setSearchHistory] = useState<SearchUser[]>([]);
+  const [showHistory, setShowHistory] = useState(false);
 
   // Load search history from Firestore
   const loadSearchHistory = async () => {
@@ -125,6 +126,7 @@ export default function SearchScreen() {
       // Clear search query when returning to search page
       setSearchQuery('');
       setSearchResults([]);
+      setShowHistory(true);
     }, [currentUser?.id])
   );
 
@@ -133,9 +135,11 @@ export default function SearchScreen() {
 
     if (text.trim() === '') {
       setSearchResults([]);
+      setShowHistory(true);
       return;
     }
 
+    setShowHistory(false);
     setSearching(true);
 
     try {
@@ -195,62 +199,64 @@ export default function SearchScreen() {
           placeholderTextColor="#999"
           value={searchQuery}
           onChangeText={handleSearch}
+          onFocus={() => setShowHistory(true)}
           autoCapitalize="none"
         />
         {searchQuery.length > 0 && (
-          <TouchableOpacity onPress={() => handleSearch('')}>
+          <TouchableOpacity onPress={() => {
+            handleSearch('');
+            setShowHistory(true);
+          }}>
             <IconSymbol size={20} name="xmark.circle.fill" color="#666" />
           </TouchableOpacity>
         )}
       </View>
 
       <ScrollView style={styles.scrollView} showsVerticalScrollIndicator={false}>
-        {searchQuery.trim() === '' ? (
-          searchHistory.length > 0 ? (
-            <View>
-              <View style={styles.historyHeader}>
-                <ThemedText style={styles.historyTitle}>Recent Searches</ThemedText>
-                <TouchableOpacity onPress={clearHistory}>
-                  <ThemedText style={styles.clearButton}>Clear All</ThemedText>
-                </TouchableOpacity>
-              </View>
-              {searchHistory.map((user) => (
-                <TouchableOpacity
-                  key={user.id}
-                  style={styles.historyCard}
-                  onPress={() => handleUserClick(user)}
-                  activeOpacity={0.7}
-                >
-                  <View style={styles.historyLeft}>
-                    <IconSymbol size={16} name="clock" color="#999" />
-                    <View style={styles.historyAvatar}>
-                      {user.avatar && user.avatar.startsWith('http') ? (
-                        <Image source={{ uri: user.avatar }} style={styles.historyAvatarImage} />
-                      ) : (
-                        <ThemedText style={styles.historyAvatarInitial}>
-                          {user.username[0].toUpperCase()}
-                        </ThemedText>
-                      )}
-                    </View>
-                    <ThemedText style={styles.historyUsername}>{user.username}</ThemedText>
+        {showHistory && searchHistory.length > 0 ? (
+          <View>
+            <View style={styles.historyHeader}>
+              <ThemedText style={styles.historyTitle}>Recent Searches</ThemedText>
+              <TouchableOpacity onPress={clearHistory}>
+                <ThemedText style={styles.clearButton}>Clear All</ThemedText>
+              </TouchableOpacity>
+            </View>
+            {searchHistory.map((user) => (
+              <TouchableOpacity
+                key={user.id}
+                style={styles.historyCard}
+                onPress={() => handleUserClick(user)}
+                activeOpacity={0.7}
+              >
+                <View style={styles.historyLeft}>
+                  <IconSymbol size={16} name="clock" color="#999" />
+                  <View style={styles.historyAvatar}>
+                    {user.avatar && user.avatar.startsWith('http') ? (
+                      <Image source={{ uri: user.avatar }} style={styles.historyAvatarImage} />
+                    ) : (
+                      <ThemedText style={styles.historyAvatarInitial}>
+                        {user.username[0].toUpperCase()}
+                      </ThemedText>
+                    )}
                   </View>
-                  <TouchableOpacity
-                    onPress={(e) => removeFromHistory(user.id, e)}
-                    style={styles.deleteButton}
-                    hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
-                  >
-                    <IconSymbol size={16} name="xmark" color="#999" />
-                  </TouchableOpacity>
+                  <ThemedText style={styles.historyUsername}>{user.username}</ThemedText>
+                </View>
+                <TouchableOpacity
+                  onPress={(e) => removeFromHistory(user.id, e)}
+                  style={styles.deleteButton}
+                  hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+                >
+                  <IconSymbol size={16} name="xmark" color="#999" />
                 </TouchableOpacity>
-              ))}
-            </View>
-          ) : (
-            <View style={styles.emptyState}>
-              <IconSymbol size={64} name="magnifyingglass" color="#ccc" />
-              <ThemedText style={styles.emptyText}>Search user profiles</ThemedText>
-              <ThemedText style={styles.emptySubtext}>Enter a username to search</ThemedText>
-            </View>
-          )
+              </TouchableOpacity>
+            ))}
+          </View>
+        ) : showHistory && searchHistory.length === 0 && searchQuery.trim() === '' ? (
+          <View style={styles.emptyState}>
+            <IconSymbol size={64} name="magnifyingglass" color="#ccc" />
+            <ThemedText style={styles.emptyText}>Search user profiles</ThemedText>
+            <ThemedText style={styles.emptySubtext}>Enter a username to search</ThemedText>
+          </View>
         ) : searching ? (
           <View style={styles.loadingState}>
             <ActivityIndicator size="large" color="#000" />
