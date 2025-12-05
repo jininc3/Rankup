@@ -189,6 +189,12 @@ export default function SearchScreen() {
     <ThemedView style={styles.container}>
       <View style={styles.header}>
         <ThemedText style={styles.headerTitle}>Search Users</ThemedText>
+        <TouchableOpacity
+          style={styles.headerIconButton}
+          onPress={() => router.push('/notifications')}
+        >
+          <IconSymbol size={24} name="bell.fill" color="#000" />
+        </TouchableOpacity>
       </View>
 
       <View style={styles.searchContainer}>
@@ -316,6 +322,14 @@ const styles = StyleSheet.create({
     fontSize: 20,
     fontWeight: '700',
     color: '#000',
+  },
+  headerActions: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 16,
+  },
+  headerIconButton: {
+    padding: 4,
   },
   searchContainer: {
     flexDirection: 'row',

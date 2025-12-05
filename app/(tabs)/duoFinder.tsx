@@ -5,6 +5,7 @@ import DuoCard from '@/app/components/duoCard';
 import { users } from '@/app/data/userData';
 import { useState } from 'react';
 import { Dimensions, Modal, ScrollView, StyleSheet, TouchableOpacity, View, Image } from 'react-native';
+import { useRouter } from 'expo-router';
 
 const { width } = Dimensions.get('window');
 
@@ -18,6 +19,7 @@ const games = [
 ];
 
 export default function DuoFinderScreen() {
+  const router = useRouter();
   const [sortModalVisible, setSortModalVisible] = useState(false);
   const [sortBy, setSortBy] = useState<'rank' | 'online'>('rank');
   const [activeFilter, setActiveFilter] = useState<'all' | 'followers'>('all');
@@ -47,12 +49,19 @@ export default function DuoFinderScreen() {
         <ThemedText style={[styles.headerTitle, selectedGame && styles.headerTitleWithBack]}>
           {selectedGame || 'Duo Finder'}
         </ThemedText>
-        {selectedGame && (
+        {selectedGame ? (
           <TouchableOpacity
             style={styles.sortIconButton}
             onPress={() => setSortModalVisible(true)}
           >
             <IconSymbol size={22} name="arrow.up.arrow.down" color="#000" />
+          </TouchableOpacity>
+        ) : (
+          <TouchableOpacity
+            style={styles.headerIconButton}
+            onPress={() => router.push('/notifications')}
+          >
+            <IconSymbol size={24} name="bell.fill" color="#000" />
           </TouchableOpacity>
         )}
       </View>
@@ -177,6 +186,14 @@ const styles = StyleSheet.create({
   },
   headerTitleWithBack: {
     marginLeft: 40,
+  },
+  headerActions: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 16,
+  },
+  headerIconButton: {
+    padding: 4,
   },
   backButton: {
     padding: 4,

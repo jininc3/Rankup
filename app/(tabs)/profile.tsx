@@ -418,6 +418,12 @@ export default function ProfileScreen() {
           >
             <IconSymbol size={28} name="gearshape.fill" color="#fff" />
           </TouchableOpacity>
+          <TouchableOpacity
+            style={styles.headerIconButton}
+            onPress={() => router.push('/notifications')}
+          >
+            <IconSymbol size={28} name="bell.fill" color="#fff" />
+          </TouchableOpacity>
         </View>
       </View>
 

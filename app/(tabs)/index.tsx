@@ -5,6 +5,7 @@ import { db } from '@/config/firebase';
 import { useAuth } from '@/contexts/AuthContext';
 import { getFollowing } from '@/services/followService';
 import { likePost, unlikePost, isPostLiked } from '@/services/likeService';
+import { createOrGetChat } from '@/services/chatService';
 import CommentModal from '@/components/CommentModal';
 import { ResizeMode, Video } from 'expo-av';
 import { collection, getDocs, orderBy, query, Timestamp, where, onSnapshot } from 'firebase/firestore';
@@ -384,23 +385,69 @@ export default function HomeScreen() {
     }
   };
 
+  // Handle direct message
+  const handleDirectMessage = async (post: Post) => {
+    if (!currentUser?.id) {
+      Alert.alert('Error', 'You must be logged in to send messages');
+      return;
+    }
+
+    // Prevent messaging yourself
+    if (post.userId === currentUser.id) {
+      Alert.alert('Notice', 'You cannot message yourself');
+      return;
+    }
+
+    try {
+      const chatId = await createOrGetChat(
+        currentUser.id,
+        currentUser.username || currentUser.email?.split('@')[0] || 'User',
+        currentUser.avatar,
+        post.userId,
+        post.username,
+        post.avatar
+      );
+
+      router.push({
+        pathname: '/chatPages/chatScreen',
+        params: {
+          chatId,
+          otherUserId: post.userId,
+          otherUsername: post.username,
+          otherUserAvatar: post.avatar || '',
+        },
+      });
+    } catch (error) {
+      console.error('Error creating chat:', error);
+      Alert.alert('Error', 'Failed to start chat');
+    }
+  };
+
   return (
     <ThemedView style={styles.container}>
       <View style={styles.header}>
         <ThemedText style={styles.headerTitle}>Home</ThemedText>
-        <TouchableOpacity
-          style={styles.notificationButton}
-          onPress={() => router.push('/notifications')}
-        >
-          <IconSymbol size={24} name="bell" color="#000" />
-          {unreadNotificationCount > 0 && (
-            <View style={styles.notificationBadge}>
-              <ThemedText style={styles.notificationBadgeText}>
-                {unreadNotificationCount > 9 ? '9+' : unreadNotificationCount}
-              </ThemedText>
-            </View>
-          )}
-        </TouchableOpacity>
+        <View style={styles.headerActions}>
+          <TouchableOpacity
+            style={styles.headerIconButton}
+            onPress={() => router.push('/chatPages/chatList')}
+          >
+            <IconSymbol size={24} name="message.fill" color="#000" />
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={styles.headerIconButton}
+            onPress={() => router.push('/notifications')}
+          >
+            <IconSymbol size={24} name="bell.fill" color="#000" />
+            {unreadNotificationCount > 0 && (
+              <View style={styles.notificationBadge}>
+                <ThemedText style={styles.notificationBadgeText}>
+                  {unreadNotificationCount > 9 ? '9+' : unreadNotificationCount}
+                </ThemedText>
+              </View>
+            )}
+          </TouchableOpacity>
+        </View>
       </View>
 
       {/* Tabs */}
@@ -536,7 +583,10 @@ export default function HomeScreen() {
                     <ThemedText style={styles.actionCount}>{post.commentsCount}</ThemedText>
                   )}
                 </TouchableOpacity>
-                <TouchableOpacity style={styles.shareButton}>
+                <TouchableOpacity
+                  style={styles.shareButton}
+                  onPress={() => handleDirectMessage(post)}
+                >
                   <IconSymbol size={28} name="paperplane" color="#000" />
                 </TouchableOpacity>
               </View>
@@ -669,7 +719,12 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     color: '#000',
   },
-  notificationButton: {
+  headerActions: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 16,
+  },
+  headerIconButton: {
     position: 'relative',
     padding: 4,
   },

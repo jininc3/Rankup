@@ -3,9 +3,12 @@ import { IconSymbol } from '@/components/ui/icon-symbol';
 import { ResizeMode, Video } from 'expo-av';
 import { Timestamp } from 'firebase/firestore';
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { Animated, Dimensions, FlatList, Image, Modal, PanResponder, StyleSheet, TouchableOpacity, View } from 'react-native';
+import { Animated, Dimensions, FlatList, Image, Modal, PanResponder, StyleSheet, TouchableOpacity, View, Alert } from 'react-native';
 import { getComments, CommentData } from '@/services/commentService';
+import { createOrGetChat } from '@/services/chatService';
 import CommentModal from '@/components/CommentModal';
+import { useAuth } from '@/contexts/AuthContext';
+import { useRouter } from 'expo-router';
 
 const { width: screenWidth, height: screenHeight } = Dimensions.get('window');
 
@@ -60,6 +63,8 @@ export default function PostViewerModal({
   onNavigate,
   onCommentAdded
 }: PostViewerModalProps) {
+  const router = useRouter();
+  const { user: currentUser } = useAuth();
   const flatListRef = useRef<FlatList>(null);
   const translateX = useRef(new Animated.Value(0)).current;
   const opacity = useRef(new Animated.Value(0)).current;
@@ -237,6 +242,48 @@ export default function PostViewerModal({
     }
   };
 
+  // Handle direct message
+  const handleDirectMessage = async (post: Post) => {
+    if (!currentUser?.id) {
+      Alert.alert('Error', 'You must be logged in to send messages');
+      return;
+    }
+
+    // Prevent messaging yourself
+    if (post.userId === currentUser.id) {
+      Alert.alert('Notice', 'You cannot message yourself');
+      return;
+    }
+
+    try {
+      const chatId = await createOrGetChat(
+        currentUser.id,
+        currentUser.username || currentUser.email?.split('@')[0] || 'User',
+        currentUser.avatar,
+        post.userId,
+        post.username,
+        post.avatar
+      );
+
+      // Close the modal first
+      onClose();
+
+      // Then navigate to chat
+      router.push({
+        pathname: '/chatPages/chatScreen',
+        params: {
+          chatId,
+          otherUserId: post.userId,
+          otherUsername: post.username,
+          otherUserAvatar: post.avatar || '',
+        },
+      });
+    } catch (error) {
+      console.error('Error creating chat:', error);
+      Alert.alert('Error', 'Failed to start chat');
+    }
+  };
+
   if (!post || posts.length === 0) return null;
 
   const renderPost = ({ item, index }: { item: Post; index: number }) => {
@@ -247,6 +294,7 @@ export default function PostViewerModal({
         playingVideoId={playingVideoId}
         postRefs={postRefs}
         onOpenComments={handleOpenComments}
+        onDirectMessage={handleDirectMessage}
         formatTimeAgo={formatTimeAgo}
       />
     );
@@ -344,6 +392,7 @@ function PostItem({
   playingVideoId,
   postRefs,
   onOpenComments,
+  onDirectMessage,
   formatTimeAgo
 }: {
   post: Post;
@@ -351,6 +400,7 @@ function PostItem({
   playingVideoId: string | null;
   postRefs: React.MutableRefObject<{ [key: string]: View | null }>;
   onOpenComments: (post: Post) => void;
+  onDirectMessage: (post: Post) => void;
   formatTimeAgo: (timestamp: any) => string;
 }) {
   const [activeMediaIndex, setActiveMediaIndex] = useState(0);
@@ -513,7 +563,10 @@ function PostItem({
           >
             <IconSymbol size={28} name="bubble.left" color="#000" />
           </TouchableOpacity>
-          <TouchableOpacity style={styles.actionButton}>
+          <TouchableOpacity
+            style={styles.actionButton}
+            onPress={() => onDirectMessage(post)}
+          >
             <IconSymbol size={28} name="paperplane" color="#000" />
           </TouchableOpacity>
         </View>

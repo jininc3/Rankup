@@ -12,6 +12,7 @@ import { Video, ResizeMode } from 'expo-av';
 import { db } from '@/config/firebase';
 import { collection, query, where, orderBy, getDocs, Timestamp, doc, getDoc, setDoc, deleteDoc, updateDoc, increment } from 'firebase/firestore';
 import { followUser, unfollowUser, isFollowing as checkIsFollowing } from '@/services/followService';
+import { createOrGetChat } from '@/services/chatService';
 
 interface ViewedUser {
   id: string;
@@ -266,6 +267,38 @@ export default function ProfileViewScreen() {
     checkFollowStatus();
   }, [currentUser?.id, userId]);
 
+  // Handle message button
+  const handleMessage = async () => {
+    if (!currentUser?.id || !viewedUser) {
+      Alert.alert('Error', 'Unable to start chat');
+      return;
+    }
+
+    try {
+      const chatId = await createOrGetChat(
+        currentUser.id,
+        currentUser.username || currentUser.email?.split('@')[0] || 'User',
+        currentUser.avatar,
+        viewedUser.id,
+        viewedUser.username,
+        viewedUser.avatar
+      );
+
+      router.push({
+        pathname: '/chatPages/chatScreen',
+        params: {
+          chatId,
+          otherUserId: viewedUser.id,
+          otherUsername: viewedUser.username,
+          otherUserAvatar: viewedUser.avatar || '',
+        },
+      });
+    } catch (error) {
+      console.error('Error creating chat:', error);
+      Alert.alert('Error', 'Failed to start chat');
+    }
+  };
+
   return (
     <ThemedView style={styles.container}>
       {/* Header with back button */}
@@ -352,16 +385,22 @@ export default function ProfileViewScreen() {
             </View>
           )}
 
-          {/* Follow Button - Always show since this is for viewing other users */}
-          <TouchableOpacity
-            style={[styles.followButton, isFollowing && styles.unfollowButton]}
-            onPress={handleFollowToggle}
-            disabled={followLoading}
-          >
-            <ThemedText style={[styles.followButtonText, isFollowing && styles.unfollowButtonText]}>
-              {followLoading ? 'Loading...' : isFollowing ? 'Unfollow' : 'Follow'}
-            </ThemedText>
-          </TouchableOpacity>
+          {/* Action Buttons */}
+          <View style={styles.actionButtonsContainer}>
+            <TouchableOpacity
+              style={[styles.followButton, isFollowing && styles.unfollowButton]}
+              onPress={handleFollowToggle}
+              disabled={followLoading}
+            >
+              <ThemedText style={[styles.followButtonText, isFollowing && styles.unfollowButtonText]}>
+                {followLoading ? 'Loading...' : isFollowing ? 'Unfollow' : 'Follow'}
+              </ThemedText>
+            </TouchableOpacity>
+
+            <TouchableOpacity style={styles.messageButton} onPress={handleMessage}>
+              <IconSymbol size={18} name="bubble.left.fill" color="#000" />
+            </TouchableOpacity>
+          </View>
         </View>
 
         {/* Main Tabs: Games and Posts */}
@@ -718,13 +757,18 @@ const styles = StyleSheet.create({
     lineHeight: 20,
     fontWeight: '400',
   },
-  followButton: {
+  actionButtonsContainer: {
+    flexDirection: 'row',
+    gap: 8,
+    marginTop: 12,
     width: '100%',
+  },
+  followButton: {
+    flex: 1,
     paddingVertical: 6,
     borderRadius: 6,
     alignItems: 'center',
     backgroundColor: '#000',
-    marginTop: 12,
   },
   unfollowButton: {
     backgroundColor: '#fff',
@@ -738,6 +782,16 @@ const styles = StyleSheet.create({
   },
   unfollowButtonText: {
     color: '#000',
+  },
+  messageButton: {
+    width: 40,
+    height: 32,
+    borderRadius: 6,
+    backgroundColor: '#fff',
+    borderWidth: 1,
+    borderColor: '#e5e5e5',
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   socialIconsContainer: {
     position: 'absolute',

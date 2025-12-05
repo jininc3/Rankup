@@ -145,6 +145,53 @@ service cloud.firestore {
       }
     }
 
+    // Chats collection
+    match /chats/{chatId} {
+      // Allow read if user is a participant
+      allow read: if request.auth != null
+                     && request.auth.uid in resource.data.participants;
+
+      // Allow create if user is one of the participants
+      allow create: if request.auth != null
+                       && request.auth.uid in request.resource.data.participants
+                       && request.resource.data.participants.size() == 2
+                       && request.resource.data.keys().hasAll(['participants', 'participantDetails', 'lastMessage', 'lastMessageTimestamp', 'lastMessageSenderId', 'unreadCount', 'createdAt'])
+                       && request.resource.data.createdAt is timestamp;
+
+      // Allow update if user is a participant (for updating last message, unread counts)
+      allow update: if request.auth != null
+                       && request.auth.uid in resource.data.participants;
+
+      // Allow delete if user is a participant
+      allow delete: if request.auth != null
+                       && request.auth.uid in resource.data.participants;
+
+      // Messages subcollection
+      match /messages/{messageId} {
+        // Allow read if user is a participant of the chat
+        allow read: if request.auth != null
+                       && request.auth.uid in get(/databases/$(database)/documents/chats/$(chatId)).data.participants;
+
+        // Allow create if user is a participant and is the sender
+        allow create: if request.auth != null
+                         && request.auth.uid in get(/databases/$(database)/documents/chats/$(chatId)).data.participants
+                         && request.auth.uid == request.resource.data.senderId
+                         && request.resource.data.text is string
+                         && request.resource.data.text.size() > 0
+                         && request.resource.data.text.size() <= 500
+                         && request.resource.data.timestamp is timestamp
+                         && request.resource.data.read is bool;
+
+        // Allow update if user is a participant (for marking messages as read)
+        allow update: if request.auth != null
+                         && request.auth.uid in get(/databases/$(database)/documents/chats/$(chatId)).data.participants;
+
+        // Allow delete if user is the sender
+        allow delete: if request.auth != null
+                         && request.auth.uid == resource.data.senderId;
+      }
+    }
+
     // Default: deny all other access
     match /{document=**} {
       allow read, write: if false;
