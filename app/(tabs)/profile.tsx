@@ -18,11 +18,24 @@ import PostViewerModal from '@/app/profilePages/postViewerModal';
 
 const userGames = [
   {
+    id: 1,
+    name: 'Valorant',
+    rank: currentUser.gamesPlayed.valorant.currentRank,
+    trophies: 1243,
+    icon: '🎯',
+    image: require('@/assets/images/valorant.png'),
+    wins: Math.floor(currentUser.gamesPlayed.valorant.gamesPlayed * (currentUser.gamesPlayed.valorant.winRate / 100)),
+    losses: currentUser.gamesPlayed.valorant.gamesPlayed - Math.floor(currentUser.gamesPlayed.valorant.gamesPlayed * (currentUser.gamesPlayed.valorant.winRate / 100)),
+    winRate: currentUser.gamesPlayed.valorant.winRate,
+    recentMatches: ['+20', '+18', '-15', '+22', '+19'],
+  },
+  {
     id: 2,
     name: 'League of Legends',
     rank: currentUser.gamesPlayed.league.currentRank,
     trophies: 876,
     icon: '⚔️',
+    image: require('@/assets/images/leagueoflegends.png'),
     wins: Math.floor(currentUser.gamesPlayed.league.gamesPlayed * (currentUser.gamesPlayed.league.winRate / 100)),
     losses: currentUser.gamesPlayed.league.gamesPlayed - Math.floor(currentUser.gamesPlayed.league.gamesPlayed * (currentUser.gamesPlayed.league.winRate / 100)),
     winRate: currentUser.gamesPlayed.league.winRate,
@@ -104,6 +117,9 @@ export default function ProfileScreen() {
   const [caption, setCaption] = useState('');
   const [selectedPostGame, setSelectedPostGame] = useState<string | null>(null);
   const [showGamePicker, setShowGamePicker] = useState(false);
+  const [showFilterMenu, setShowFilterMenu] = useState(false);
+  const [selectedFilter, setSelectedFilter] = useState<'newest' | 'oldest' | 'most_viewed' | 'most_liked'>('newest');
+  const [selectedGameFilter, setSelectedGameFilter] = useState<string | null>(null); // null means "All Games"
   const selectedGame = userGames[selectedGameIndex];
 
   // Available games for tagging
@@ -147,17 +163,34 @@ export default function ProfileScreen() {
 
     setLoadingPosts(true);
     try {
+      // Fetch all posts with just the where clause (no orderBy in query to avoid index requirement)
       const postsQuery = query(
         collection(db, 'posts'),
-        where('userId', '==', user.id),
-        orderBy('createdAt', 'desc')
+        where('userId', '==', user.id)
       );
 
       const querySnapshot = await getDocs(postsQuery);
-      const fetchedPosts: Post[] = querySnapshot.docs.map(doc => ({
+      let fetchedPosts: Post[] = querySnapshot.docs.map(doc => ({
         id: doc.id,
         ...doc.data()
       } as Post));
+
+      // Filter by game if a game filter is selected
+      if (selectedGameFilter) {
+        fetchedPosts = fetchedPosts.filter(post => post.taggedGame === selectedGameFilter);
+      }
+
+      // Sort client-side based on selected filter
+      if (selectedFilter === 'newest') {
+        fetchedPosts = fetchedPosts.sort((a, b) => b.createdAt.toMillis() - a.createdAt.toMillis());
+      } else if (selectedFilter === 'oldest') {
+        fetchedPosts = fetchedPosts.sort((a, b) => a.createdAt.toMillis() - b.createdAt.toMillis());
+      } else if (selectedFilter === 'most_liked') {
+        fetchedPosts = fetchedPosts.sort((a, b) => b.likes - a.likes);
+      } else if (selectedFilter === 'most_viewed') {
+        // Placeholder: would need a views field in the future
+        fetchedPosts = fetchedPosts.sort((a, b) => b.likes - a.likes);
+      }
 
       setPosts(fetchedPosts);
     } catch (error) {
@@ -174,6 +207,13 @@ export default function ProfileScreen() {
       fetchPosts();
     }
   }, [user?.id]);
+
+  // Refetch posts when filter or game filter changes
+  useEffect(() => {
+    if (user?.id) {
+      fetchPosts();
+    }
+  }, [selectedFilter, selectedGameFilter]);
 
   // Refetch posts when screen comes into focus (e.g., returning from edit profile)
   useFocusEffect(
@@ -438,6 +478,157 @@ export default function ProfileScreen() {
         </View>
       </Modal>
 
+      {/* Filter Menu Modal */}
+      <Modal
+        visible={showFilterMenu}
+        animationType="slide"
+        transparent={true}
+        onRequestClose={() => setShowFilterMenu(false)}
+      >
+        <TouchableOpacity
+          style={styles.filterModalOverlay}
+          activeOpacity={1}
+          onPress={() => setShowFilterMenu(false)}
+        >
+          <View style={styles.filterModalContent}>
+            <View style={styles.filterModalHeader}>
+              <ThemedText style={styles.filterModalTitle}>Sort & Filter Posts</ThemedText>
+              <TouchableOpacity onPress={() => setShowFilterMenu(false)}>
+                <IconSymbol size={24} name="xmark" color="#000" />
+              </TouchableOpacity>
+            </View>
+            <ScrollView
+              style={styles.filterModalScroll}
+              showsVerticalScrollIndicator={false}
+            >
+              <View style={styles.filterOptionsContainer}>
+              <TouchableOpacity
+                style={[styles.filterOption, selectedFilter === 'newest' && styles.filterOptionActive]}
+                onPress={() => {
+                  setSelectedFilter('newest');
+                  setShowFilterMenu(false);
+                }}
+              >
+                <View style={styles.filterOptionLeft}>
+                  <IconSymbol size={22} name="calendar.badge.clock" color={selectedFilter === 'newest' ? '#007AFF' : '#000'} />
+                  <ThemedText style={[styles.filterOptionText, selectedFilter === 'newest' && styles.filterOptionTextActive]}>
+                    Newest
+                  </ThemedText>
+                </View>
+                {selectedFilter === 'newest' && (
+                  <IconSymbol size={22} name="checkmark" color="#007AFF" />
+                )}
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                style={[styles.filterOption, selectedFilter === 'oldest' && styles.filterOptionActive]}
+                onPress={() => {
+                  setSelectedFilter('oldest');
+                  setShowFilterMenu(false);
+                }}
+              >
+                <View style={styles.filterOptionLeft}>
+                  <IconSymbol size={22} name="clock.arrow.circlepath" color={selectedFilter === 'oldest' ? '#007AFF' : '#000'} />
+                  <ThemedText style={[styles.filterOptionText, selectedFilter === 'oldest' && styles.filterOptionTextActive]}>
+                    Oldest
+                  </ThemedText>
+                </View>
+                {selectedFilter === 'oldest' && (
+                  <IconSymbol size={22} name="checkmark" color="#007AFF" />
+                )}
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                style={[styles.filterOption, selectedFilter === 'most_viewed' && styles.filterOptionActive]}
+                onPress={() => {
+                  setSelectedFilter('most_viewed');
+                  setShowFilterMenu(false);
+                }}
+              >
+                <View style={styles.filterOptionLeft}>
+                  <IconSymbol size={22} name="eye.fill" color={selectedFilter === 'most_viewed' ? '#007AFF' : '#999'} />
+                  <ThemedText style={[styles.filterOptionText, styles.filterOptionTextDisabled, selectedFilter === 'most_viewed' && styles.filterOptionTextActive]}>
+                    Most Viewed
+                  </ThemedText>
+                  <ThemedText style={styles.comingSoonBadge}>Coming Soon</ThemedText>
+                </View>
+                {selectedFilter === 'most_viewed' && (
+                  <IconSymbol size={22} name="checkmark" color="#007AFF" />
+                )}
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                style={[styles.filterOption, selectedFilter === 'most_liked' && styles.filterOptionActive]}
+                onPress={() => {
+                  setSelectedFilter('most_liked');
+                  setShowFilterMenu(false);
+                }}
+              >
+                <View style={styles.filterOptionLeft}>
+                  <IconSymbol size={22} name="heart.fill" color={selectedFilter === 'most_liked' ? '#007AFF' : '#999'} />
+                  <ThemedText style={[styles.filterOptionText, styles.filterOptionTextDisabled, selectedFilter === 'most_liked' && styles.filterOptionTextActive]}>
+                    Most Liked
+                  </ThemedText>
+                  <ThemedText style={styles.comingSoonBadge}>Coming Soon</ThemedText>
+                </View>
+                {selectedFilter === 'most_liked' && (
+                  <IconSymbol size={22} name="checkmark" color="#007AFF" />
+                )}
+              </TouchableOpacity>
+            </View>
+
+            {/* Game Filter Section */}
+            <View style={styles.filterSectionDivider} />
+            <View style={styles.filterSectionHeader}>
+              <ThemedText style={styles.filterSectionTitle}>Filter by Game</ThemedText>
+            </View>
+            <View style={styles.filterOptionsContainer}>
+              {/* All Games option */}
+              <TouchableOpacity
+                style={[styles.filterOption, selectedGameFilter === null && styles.filterOptionActive]}
+                onPress={() => {
+                  setSelectedGameFilter(null);
+                  setShowFilterMenu(false);
+                }}
+              >
+                <View style={styles.filterOptionLeft}>
+                  <IconSymbol size={22} name="square.grid.2x2" color={selectedGameFilter === null ? '#007AFF' : '#000'} />
+                  <ThemedText style={[styles.filterOptionText, selectedGameFilter === null && styles.filterOptionTextActive]}>
+                    All Games
+                  </ThemedText>
+                </View>
+                {selectedGameFilter === null && (
+                  <IconSymbol size={22} name="checkmark" color="#007AFF" />
+                )}
+              </TouchableOpacity>
+
+              {/* Individual game options */}
+              {availableGames.map((game) => (
+                <TouchableOpacity
+                  key={game.id}
+                  style={[styles.filterOption, selectedGameFilter === game.id && styles.filterOptionActive]}
+                  onPress={() => {
+                    setSelectedGameFilter(game.id);
+                    setShowFilterMenu(false);
+                  }}
+                >
+                  <View style={styles.filterOptionLeft}>
+                    <ThemedText style={styles.gameFilterIcon}>{game.icon}</ThemedText>
+                    <ThemedText style={[styles.filterOptionText, selectedGameFilter === game.id && styles.filterOptionTextActive]}>
+                      {game.name}
+                    </ThemedText>
+                  </View>
+                  {selectedGameFilter === game.id && (
+                    <IconSymbol size={22} name="checkmark" color="#007AFF" />
+                  )}
+                </TouchableOpacity>
+              ))}
+            </View>
+            </ScrollView>
+          </View>
+        </TouchableOpacity>
+      </Modal>
+
       <ScrollView showsVerticalScrollIndicator={false}>
         {/* Cover Photo */}
         <View style={styles.coverPhotoContainer}>
@@ -553,45 +744,60 @@ export default function ProfileScreen() {
 
         {/* Main Tabs: Games and Posts */}
         <View style={styles.mainTabsContainer}>
-          <TouchableOpacity
-            style={[styles.mainTab, activeMainTab === 'games' && styles.mainTabActive]}
-            onPress={() => setActiveMainTab('games')}
-          >
-            <ThemedText style={[styles.mainTabText, activeMainTab === 'games' && styles.mainTabTextActive]}>
-              Games
-            </ThemedText>
-          </TouchableOpacity>
-          <TouchableOpacity
-            style={[styles.mainTab, activeMainTab === 'posts' && styles.mainTabActive]}
-            onPress={() => setActiveMainTab('posts')}
-          >
-            <ThemedText style={[styles.mainTabText, activeMainTab === 'posts' && styles.mainTabTextActive]}>
-              Posts
-            </ThemedText>
-          </TouchableOpacity>
+          <View style={styles.mainTabsLeft}>
+            <TouchableOpacity
+              style={[styles.mainTab, activeMainTab === 'games' && styles.mainTabActive]}
+              onPress={() => setActiveMainTab('games')}
+            >
+              <ThemedText style={[styles.mainTabText, activeMainTab === 'games' && styles.mainTabTextActive]}>
+                Games
+              </ThemedText>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={[styles.mainTab, activeMainTab === 'posts' && styles.mainTabActive]}
+              onPress={() => setActiveMainTab('posts')}
+            >
+              <ThemedText style={[styles.mainTabText, activeMainTab === 'posts' && styles.mainTabTextActive]}>
+                Posts
+              </ThemedText>
+            </TouchableOpacity>
+          </View>
+          {activeMainTab === 'posts' && (
+            <TouchableOpacity
+              style={styles.filterButton}
+              onPress={() => setShowFilterMenu(true)}
+            >
+              <IconSymbol size={20} name="line.3.horizontal.decrease.circle" color="#000" />
+            </TouchableOpacity>
+          )}
         </View>
 
         {activeMainTab === 'games' && (
         <View style={styles.section}>
-          {/* Minimal Game Tabs */}
+          {/* Game Icon Selector */}
           <ScrollView
             horizontal
             showsHorizontalScrollIndicator={false}
-            style={styles.gameTabs}
-            contentContainerStyle={styles.gameTabsContent}
+            style={styles.gameIconScroller}
+            contentContainerStyle={styles.gameIconScrollerContent}
           >
             {userGames.map((game, index) => (
               <TouchableOpacity
                 key={game.id}
-                style={[styles.gameTab, selectedGameIndex === index && styles.gameTabActive]}
+                style={styles.gameIconContainer}
                 onPress={() => scrollToIndex(index)}
+                activeOpacity={0.7}
               >
-                <ThemedText style={[
-                  styles.gameTabText,
-                  selectedGameIndex === index && styles.gameTabTextActive
+                <View style={[
+                  styles.gameIconCircle,
+                  selectedGameIndex === index && styles.gameIconCircleActive
                 ]}>
-                  {game.name}
-                </ThemedText>
+                  <Image
+                    source={game.image}
+                    style={styles.gameIconImage}
+                    resizeMode="contain"
+                  />
+                </View>
               </TouchableOpacity>
             ))}
           </ScrollView>
@@ -1236,32 +1442,34 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
-  gameTabs: {
+  gameIconScroller: {
     marginBottom: 20,
   },
-  gameTabsContent: {
-    gap: 10,
-    paddingBottom: 4,
-  },
-  gameTab: {
+  gameIconScrollerContent: {
     paddingVertical: 8,
-    paddingHorizontal: 12,
-    backgroundColor: 'transparent',
-    borderBottomWidth: 2,
-    borderBottomColor: 'transparent',
+    gap: 20,
   },
-  gameTabActive: {
-    borderBottomColor: '#000',
+  gameIconContainer: {
+    alignItems: 'center',
   },
-  gameTabText: {
-    fontSize: 14,
-    color: '#999',
-    fontWeight: '500',
-    letterSpacing: -0.2,
+  gameIconCircle: {
+    width: 64,
+    height: 64,
+    borderRadius: 32,
+    backgroundColor: '#f5f5f5',
+    borderWidth: 3,
+    borderColor: 'transparent',
+    alignItems: 'center',
+    justifyContent: 'center',
+    overflow: 'hidden',
   },
-  gameTabTextActive: {
-    color: '#000',
-    fontWeight: '600',
+  gameIconCircleActive: {
+    borderColor: '#000',
+    backgroundColor: '#fff',
+  },
+  gameIconImage: {
+    width: 44,
+    height: 44,
   },
   cardsContainer: {
     paddingBottom: 4,
@@ -1347,10 +1555,15 @@ const styles = StyleSheet.create({
   },
   mainTabsContainer: {
     flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
     backgroundColor: '#fff',
     paddingHorizontal: 20,
     borderBottomWidth: 1,
     borderBottomColor: '#e5e5e5',
+  },
+  mainTabsLeft: {
+    flexDirection: 'row',
   },
   mainTab: {
     paddingVertical: 12,
@@ -1372,6 +1585,9 @@ const styles = StyleSheet.create({
   mainTabTextActive: {
     color: '#000',
     fontWeight: '600',
+  },
+  filterButton: {
+    padding: 8,
   },
   postsContainer: {
     alignItems: 'center',
@@ -1731,5 +1947,97 @@ const styles = StyleSheet.create({
     fontSize: 17,
     color: '#000',
     fontWeight: '500',
+  },
+  filterModalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.5)',
+    justifyContent: 'flex-end',
+  },
+  filterModalContent: {
+    backgroundColor: '#fff',
+    borderTopLeftRadius: 20,
+    borderTopRightRadius: 20,
+    paddingBottom: 40,
+    maxHeight: '80%',
+  },
+  filterModalHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingHorizontal: 20,
+    paddingVertical: 20,
+    borderBottomWidth: 1,
+    borderBottomColor: '#e5e5e5',
+  },
+  filterModalScroll: {
+    maxHeight: 500,
+  },
+  filterModalTitle: {
+    fontSize: 18,
+    fontWeight: '600',
+    color: '#000',
+  },
+  filterOptionsContainer: {
+    paddingVertical: 8,
+  },
+  filterOption: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: 20,
+    paddingVertical: 16,
+    borderBottomWidth: 1,
+    borderBottomColor: '#f5f5f5',
+  },
+  filterOptionActive: {
+    backgroundColor: '#f8f9fa',
+  },
+  filterOptionLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+  },
+  filterOptionText: {
+    fontSize: 16,
+    color: '#000',
+    fontWeight: '500',
+  },
+  filterOptionTextActive: {
+    color: '#007AFF',
+    fontWeight: '600',
+  },
+  filterOptionTextDisabled: {
+    color: '#999',
+  },
+  comingSoonBadge: {
+    fontSize: 11,
+    color: '#999',
+    backgroundColor: '#f0f0f0',
+    paddingHorizontal: 8,
+    paddingVertical: 2,
+    borderRadius: 8,
+    fontWeight: '600',
+    marginLeft: 4,
+  },
+  filterSectionDivider: {
+    height: 8,
+    backgroundColor: '#f5f5f5',
+  },
+  filterSectionHeader: {
+    paddingHorizontal: 20,
+    paddingVertical: 12,
+    backgroundColor: '#f8f9fa',
+    borderBottomWidth: 1,
+    borderBottomColor: '#e5e5e5',
+  },
+  filterSectionTitle: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: '#666',
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
+  },
+  gameFilterIcon: {
+    fontSize: 20,
   },
 });

@@ -7,7 +7,7 @@ import { getFollowing } from '@/services/followService';
 import { ResizeMode, Video } from 'expo-av';
 import { collection, getDocs, orderBy, query, Timestamp } from 'firebase/firestore';
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { ActivityIndicator, Dimensions, Image, ScrollView, StyleSheet, TouchableOpacity, View } from 'react-native';
+import { ActivityIndicator, Dimensions, Image, Modal, ScrollView, StyleSheet, TouchableOpacity, View } from 'react-native';
 import { useRouter } from 'expo-router';
 import { useFocusEffect } from '@react-navigation/native';
 
@@ -25,6 +25,16 @@ const gameData: { [key: string]: { name: string; icon: string } } = {
 
 const getGameIcon = (gameId: string) => gameData[gameId]?.icon || '🎮';
 const getGameName = (gameId: string) => gameData[gameId]?.name || gameId;
+
+// Available games for filtering
+const availableGames = [
+  { id: 'valorant', name: 'Valorant', icon: '🎯' },
+  { id: 'league', name: 'League of Legends', icon: '⚔️' },
+  { id: 'apex', name: 'Apex Legends', icon: '🎮' },
+  { id: 'fortnite', name: 'Fortnite', icon: '🏆' },
+  { id: 'csgo', name: 'CS:GO', icon: '🔫' },
+  { id: 'overwatch', name: 'Overwatch', icon: '🦸' },
+];
 
 interface Post {
   id: string;
@@ -51,6 +61,8 @@ export default function HomeScreen() {
   const [playingVideoId, setPlayingVideoId] = useState<string | null>(null);
   const postRefs = useRef<{ [key: string]: View | null }>({});
   const scrollViewRef = useRef<ScrollView>(null);
+  const [showFilterMenu, setShowFilterMenu] = useState(false);
+  const [selectedGameFilter, setSelectedGameFilter] = useState<string | null>(null);
 
   const currentPosts = activeTab === 'forYou' ? forYouPosts : followingPosts;
 
@@ -94,9 +106,15 @@ export default function HomeScreen() {
         } as Post));
 
         // Filter posts from followed users only (exclude current user's own posts)
-        const followingPostsFiltered = allPosts.filter(post =>
+        let followingPostsFiltered = allPosts.filter(post =>
           followingUserIds.includes(post.userId) && post.userId !== currentUser.id
         );
+
+        // Apply game filter if selected
+        if (selectedGameFilter) {
+          followingPostsFiltered = followingPostsFiltered.filter(post => post.taggedGame === selectedGameFilter);
+        }
+
         console.log('All posts count:', allPosts.length);
         console.log('Following posts count:', followingPostsFiltered.length);
         console.log('Following posts:', followingPostsFiltered);
@@ -113,7 +131,7 @@ export default function HomeScreen() {
     } else {
       setLoading(false);
     }
-  }, [currentUser?.id, followingUserIds, activeTab]);
+  }, [currentUser?.id, followingUserIds, activeTab, selectedGameFilter]);
 
   // Pause video when navigating away from this screen
   useFocusEffect(
@@ -198,21 +216,29 @@ export default function HomeScreen() {
 
       {/* Tabs */}
       <View style={styles.tabContainer}>
+        <View style={styles.tabsLeft}>
+          <TouchableOpacity
+            style={[styles.tab, activeTab === 'forYou' && styles.tabActive]}
+            onPress={() => setActiveTab('forYou')}
+          >
+            <ThemedText style={[styles.tabText, activeTab === 'forYou' && styles.tabTextActive]}>
+              For You
+            </ThemedText>
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={[styles.tab, activeTab === 'following' && styles.tabActive]}
+            onPress={() => setActiveTab('following')}
+          >
+            <ThemedText style={[styles.tabText, activeTab === 'following' && styles.tabTextActive]}>
+              Following
+            </ThemedText>
+          </TouchableOpacity>
+        </View>
         <TouchableOpacity
-          style={[styles.tab, activeTab === 'forYou' && styles.tabActive]}
-          onPress={() => setActiveTab('forYou')}
+          style={styles.filterButton}
+          onPress={() => setShowFilterMenu(true)}
         >
-          <ThemedText style={[styles.tabText, activeTab === 'forYou' && styles.tabTextActive]}>
-            For You
-          </ThemedText>
-        </TouchableOpacity>
-        <TouchableOpacity
-          style={[styles.tab, activeTab === 'following' && styles.tabActive]}
-          onPress={() => setActiveTab('following')}
-        >
-          <ThemedText style={[styles.tabText, activeTab === 'following' && styles.tabTextActive]}>
-            Following
-          </ThemedText>
+          <IconSymbol size={20} name="line.3.horizontal.decrease.circle" color="#000" />
         </TouchableOpacity>
       </View>
 
@@ -329,6 +355,76 @@ export default function HomeScreen() {
           </View>
         )}
       </ScrollView>
+
+      {/* Filter Menu Modal */}
+      <Modal
+        visible={showFilterMenu}
+        animationType="slide"
+        transparent={true}
+        onRequestClose={() => setShowFilterMenu(false)}
+      >
+        <TouchableOpacity
+          style={styles.filterModalOverlay}
+          activeOpacity={1}
+          onPress={() => setShowFilterMenu(false)}
+        >
+          <View style={styles.filterModalContent}>
+            <View style={styles.filterModalHeader}>
+              <ThemedText style={styles.filterModalTitle}>Filter by Game</ThemedText>
+              <TouchableOpacity onPress={() => setShowFilterMenu(false)}>
+                <IconSymbol size={24} name="xmark" color="#000" />
+              </TouchableOpacity>
+            </View>
+            <ScrollView
+              style={styles.filterModalScroll}
+              showsVerticalScrollIndicator={false}
+            >
+              <View style={styles.filterOptionsContainer}>
+                {/* All Games option */}
+                <TouchableOpacity
+                  style={[styles.filterOption, selectedGameFilter === null && styles.filterOptionActive]}
+                  onPress={() => {
+                    setSelectedGameFilter(null);
+                    setShowFilterMenu(false);
+                  }}
+                >
+                  <View style={styles.filterOptionLeft}>
+                    <IconSymbol size={22} name="square.grid.2x2" color={selectedGameFilter === null ? '#007AFF' : '#000'} />
+                    <ThemedText style={[styles.filterOptionText, selectedGameFilter === null && styles.filterOptionTextActive]}>
+                      All Games
+                    </ThemedText>
+                  </View>
+                  {selectedGameFilter === null && (
+                    <IconSymbol size={22} name="checkmark" color="#007AFF" />
+                  )}
+                </TouchableOpacity>
+
+                {/* Individual game options */}
+                {availableGames.map((game) => (
+                  <TouchableOpacity
+                    key={game.id}
+                    style={[styles.filterOption, selectedGameFilter === game.id && styles.filterOptionActive]}
+                    onPress={() => {
+                      setSelectedGameFilter(game.id);
+                      setShowFilterMenu(false);
+                    }}
+                  >
+                    <View style={styles.filterOptionLeft}>
+                      <ThemedText style={styles.gameFilterIcon}>{game.icon}</ThemedText>
+                      <ThemedText style={[styles.filterOptionText, selectedGameFilter === game.id && styles.filterOptionTextActive]}>
+                        {game.name}
+                      </ThemedText>
+                    </View>
+                    {selectedGameFilter === game.id && (
+                      <IconSymbol size={22} name="checkmark" color="#007AFF" />
+                    )}
+                  </TouchableOpacity>
+                ))}
+              </View>
+            </ScrollView>
+          </View>
+        </TouchableOpacity>
+      </Modal>
     </ThemedView>
   );
 }
@@ -356,9 +452,13 @@ const styles = StyleSheet.create({
   },
   tabContainer: {
     flexDirection: 'row',
-    justifyContent: 'center',
+    alignItems: 'center',
+    justifyContent: 'space-between',
     backgroundColor: '#fff',
     paddingHorizontal: 20,
+  },
+  tabsLeft: {
+    flexDirection: 'row',
   },
   tab: {
     paddingVertical: 12,
@@ -380,6 +480,9 @@ const styles = StyleSheet.create({
   tabTextActive: {
     color: '#000',
     fontWeight: '600',
+  },
+  filterButton: {
+    padding: 8,
   },
   scrollView: {
     flex: 1,
@@ -538,5 +641,66 @@ const styles = StyleSheet.create({
   videoThumbnailContainer: {
     width: '100%',
     height: '100%',
+  },
+  filterModalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.5)',
+    justifyContent: 'flex-end',
+  },
+  filterModalContent: {
+    backgroundColor: '#fff',
+    borderTopLeftRadius: 20,
+    borderTopRightRadius: 20,
+    paddingBottom: 40,
+    maxHeight: '80%',
+  },
+  filterModalHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingHorizontal: 20,
+    paddingVertical: 20,
+    borderBottomWidth: 1,
+    borderBottomColor: '#e5e5e5',
+  },
+  filterModalScroll: {
+    maxHeight: 500,
+  },
+  filterModalTitle: {
+    fontSize: 18,
+    fontWeight: '600',
+    color: '#000',
+  },
+  filterOptionsContainer: {
+    paddingVertical: 8,
+  },
+  filterOption: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: 20,
+    paddingVertical: 16,
+    borderBottomWidth: 1,
+    borderBottomColor: '#f5f5f5',
+  },
+  filterOptionActive: {
+    backgroundColor: '#f8f9fa',
+  },
+  filterOptionLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+  },
+  filterOptionText: {
+    fontSize: 16,
+    color: '#000',
+    fontWeight: '500',
+  },
+  filterOptionTextActive: {
+    color: '#007AFF',
+    fontWeight: '600',
+  },
+  gameFilterIcon: {
+    fontSize: 20,
   },
 });
