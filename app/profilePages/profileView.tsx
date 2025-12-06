@@ -5,14 +5,14 @@ import { ThemedView } from '@/components/themed-view';
 import { IconSymbol } from '@/components/ui/icon-symbol';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { useRef, useState, useEffect, useCallback } from 'react';
-import { Dimensions, Image, Modal, ScrollView, StyleSheet, TouchableOpacity, View, ActivityIndicator, Alert } from 'react-native';
+import { Dimensions, Image, ScrollView, StyleSheet, TouchableOpacity, View, ActivityIndicator, Alert } from 'react-native';
 import { useAuth } from '@/contexts/AuthContext';
 import { useFocusEffect } from '@react-navigation/native';
-import { Video, ResizeMode } from 'expo-av';
 import { db } from '@/config/firebase';
 import { collection, query, where, orderBy, getDocs, Timestamp, doc, getDoc, setDoc, deleteDoc, updateDoc, increment } from 'firebase/firestore';
 import { followUser, unfollowUser, isFollowing as checkIsFollowing } from '@/services/followService';
 import { createOrGetChat } from '@/services/chatService';
+import PostViewerModal from './postViewerModal';
 
 interface ViewedUser {
   id: string;
@@ -51,6 +51,7 @@ interface Post {
   id: string;
   userId: string;
   username: string;
+  avatar?: string;
   mediaUrl: string;
   mediaType: 'image' | 'video';
   thumbnailUrl?: string;
@@ -73,6 +74,7 @@ export default function ProfileViewScreen() {
   const [posts, setPosts] = useState<Post[]>([]);
   const [loadingPosts, setLoadingPosts] = useState(false);
   const [selectedPost, setSelectedPost] = useState<Post | null>(null);
+  const [selectedPostIndex, setSelectedPostIndex] = useState(0);
   const [showPostViewer, setShowPostViewer] = useState(false);
   const [isFollowing, setIsFollowing] = useState(false);
   const [followLoading, setFollowLoading] = useState(false);
@@ -187,8 +189,9 @@ export default function ProfileViewScreen() {
     }, [userId])
   );
 
-  const handlePostPress = (post: Post) => {
+  const handlePostPress = (post: Post, index: number) => {
     setSelectedPost(post);
+    setSelectedPostIndex(index);
     setShowPostViewer(true);
   };
 
@@ -489,11 +492,11 @@ export default function ProfileViewScreen() {
               </View>
             ) : posts.length > 0 ? (
               <View style={styles.postsGrid}>
-                {posts.map((post) => (
+                {posts.map((post, index) => (
                   <TouchableOpacity
                     key={post.id}
                     style={styles.postItem}
-                    onPress={() => handlePostPress(post)}
+                    onPress={() => handlePostPress(post, index)}
                     activeOpacity={0.7}
                   >
                     <Image
@@ -520,104 +523,15 @@ export default function ProfileViewScreen() {
       </ScrollView>
 
       {/* Post Viewer Modal */}
-      <Modal
+      <PostViewerModal
         visible={showPostViewer}
-        animationType="fade"
-        transparent={true}
-        onRequestClose={closePostViewer}
-      >
-        <View style={styles.postViewerOverlay}>
-          <TouchableOpacity
-            style={styles.postViewerCloseArea}
-            activeOpacity={1}
-            onPress={closePostViewer}
-          />
-          <View style={styles.postViewerContent}>
-            {/* Close Button */}
-            <TouchableOpacity
-              style={styles.postViewerCloseButton}
-              onPress={closePostViewer}
-            >
-              <IconSymbol size={28} name="xmark.circle.fill" color="#fff" />
-            </TouchableOpacity>
-
-            {selectedPost && (
-              <>
-                {/* Media */}
-                <View style={styles.postViewerMediaContainer}>
-                  {selectedPost.mediaType === 'video' ? (
-                    <Video
-                      source={{ uri: selectedPost.mediaUrl }}
-                      style={styles.postViewerImage}
-                      useNativeControls
-                      resizeMode={ResizeMode.CONTAIN}
-                      shouldPlay
-                    />
-                  ) : (
-                    <Image
-                      source={{ uri: selectedPost.mediaUrl }}
-                      style={styles.postViewerImage}
-                      resizeMode="contain"
-                    />
-                  )}
-                </View>
-
-                {/* Post Info */}
-                <View style={styles.postViewerInfo}>
-                  <View style={styles.postViewerHeader}>
-                    <View style={styles.postViewerUserInfo}>
-                      <View style={styles.postViewerAvatar}>
-                        {viewedUser?.avatar && viewedUser.avatar.startsWith('http') ? (
-                          <Image source={{ uri: viewedUser.avatar }} style={styles.postViewerAvatarImage} />
-                        ) : (
-                          <ThemedText style={styles.postViewerAvatarInitial}>
-                            {viewedUser?.username?.[0]?.toUpperCase() || 'U'}
-                          </ThemedText>
-                        )}
-                      </View>
-                      <ThemedText style={styles.postViewerUsername}>
-                        {selectedPost.username}
-                      </ThemedText>
-                    </View>
-                    <ThemedText style={styles.postViewerDate}>
-                      {selectedPost.createdAt?.toDate().toLocaleDateString()}
-                    </ThemedText>
-                  </View>
-
-                  {selectedPost.caption && (
-                    <View style={styles.postViewerCaptionContainer}>
-                      <ThemedText style={styles.postViewerCaption}>
-                        {selectedPost.caption}
-                      </ThemedText>
-                    </View>
-                  )}
-
-                  {/* Action Buttons */}
-                  <View style={styles.postViewerActions}>
-                    <TouchableOpacity style={styles.postViewerActionButton}>
-                      <IconSymbol size={28} name="heart" color="#fff" />
-                      <ThemedText style={styles.postViewerActionText}>
-                        {selectedPost.likes}
-                      </ThemedText>
-                    </TouchableOpacity>
-                    <TouchableOpacity style={styles.postViewerActionButton}>
-                      <IconSymbol size={28} name="bubble.left" color="#fff" />
-                      {(selectedPost.commentsCount ?? 0) > 0 && (
-                        <ThemedText style={styles.postViewerActionText}>
-                          {selectedPost.commentsCount}
-                        </ThemedText>
-                      )}
-                    </TouchableOpacity>
-                    <TouchableOpacity style={styles.postViewerActionButton}>
-                      <IconSymbol size={28} name="paperplane" color="#fff" />
-                    </TouchableOpacity>
-                  </View>
-                </View>
-              </>
-            )}
-          </View>
-        </View>
-      </Modal>
+        post={selectedPost}
+        posts={posts}
+        currentIndex={selectedPostIndex}
+        userAvatar={viewedUser?.avatar}
+        onClose={closePostViewer}
+        onCommentAdded={fetchPosts}
+      />
     </ThemedView>
   );
 }
@@ -912,103 +826,5 @@ const styles = StyleSheet.create({
     height: 32,
     alignItems: 'center',
     justifyContent: 'center',
-  },
-  postViewerOverlay: {
-    flex: 1,
-    backgroundColor: 'rgba(0, 0, 0, 0.95)',
-  },
-  postViewerCloseArea: {
-    position: 'absolute',
-    top: 0,
-    left: 0,
-    right: 0,
-    bottom: 0,
-  },
-  postViewerContent: {
-    flex: 1,
-    justifyContent: 'center',
-  },
-  postViewerCloseButton: {
-    position: 'absolute',
-    top: 60,
-    right: 20,
-    zIndex: 100,
-  },
-  postViewerMediaContainer: {
-    width: '100%',
-    height: '60%',
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  postViewerImage: {
-    width: '100%',
-    height: '100%',
-  },
-  postViewerInfo: {
-    paddingHorizontal: 20,
-    paddingVertical: 20,
-  },
-  postViewerHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 16,
-  },
-  postViewerUserInfo: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 12,
-  },
-  postViewerAvatar: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    backgroundColor: '#333',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  postViewerAvatarImage: {
-    width: '100%',
-    height: '100%',
-    borderRadius: 20,
-  },
-  postViewerAvatarInitial: {
-    fontSize: 18,
-    fontWeight: '600',
-    color: '#fff',
-  },
-  postViewerUsername: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: '#fff',
-  },
-  postViewerDate: {
-    fontSize: 14,
-    color: '#999',
-  },
-  postViewerCaptionContainer: {
-    marginBottom: 20,
-  },
-  postViewerCaption: {
-    fontSize: 15,
-    color: '#fff',
-    lineHeight: 22,
-  },
-  postViewerActions: {
-    flexDirection: 'row',
-    gap: 24,
-    paddingTop: 12,
-    borderTopWidth: 1,
-    borderTopColor: '#333',
-  },
-  postViewerActionButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-  },
-  postViewerActionText: {
-    fontSize: 15,
-    color: '#fff',
-    fontWeight: '500',
   },
 });

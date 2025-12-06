@@ -29,6 +29,7 @@ interface Post {
   id: string;
   userId: string;
   username: string;
+  avatar?: string;
   mediaUrl: string;
   mediaUrls?: string[];
   mediaType: 'image' | 'video';
@@ -459,8 +460,8 @@ function PostItem({
       <View style={styles.postHeader}>
         <View style={styles.userInfo}>
           <View style={styles.avatar}>
-            {userAvatar && userAvatar.startsWith('http') ? (
-              <Image source={{ uri: userAvatar }} style={styles.avatarImage} />
+            {(post.avatar || userAvatar) && (post.avatar || userAvatar)!.startsWith('http') ? (
+              <Image source={{ uri: post.avatar || userAvatar }} style={styles.avatarImage} />
             ) : (
               <ThemedText style={styles.avatarInitial}>
                 {post.username?.[0]?.toUpperCase() || 'U'}
