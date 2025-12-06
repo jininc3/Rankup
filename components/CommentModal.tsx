@@ -150,22 +150,27 @@ export default function CommentModal({
     <Modal
       visible={visible}
       animationType="slide"
-      presentationStyle="pageSheet"
+      transparent={true}
       onRequestClose={onClose}
     >
-      <KeyboardAvoidingView
-        style={styles.container}
-        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-        keyboardVerticalOffset={0}
-      >
-        {/* Header */}
-        <View style={styles.header}>
-          <TouchableOpacity onPress={onClose} style={styles.closeButton}>
-            <IconSymbol size={24} name="xmark" color="#000" />
-          </TouchableOpacity>
-          <ThemedText style={styles.headerTitle}>Comments</ThemedText>
-          <View style={styles.headerSpacer} />
-        </View>
+      <View style={styles.modalOverlay}>
+        <View style={styles.modalContent}>
+          <KeyboardAvoidingView
+            style={styles.container}
+            behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+            keyboardVerticalOffset={0}
+          >
+            {/* Drag Handle */}
+            <View style={styles.dragHandle} />
+
+            {/* Header */}
+            <View style={styles.header}>
+              <TouchableOpacity onPress={onClose} style={styles.closeButton}>
+                <IconSymbol size={24} name="xmark" color="#000" />
+              </TouchableOpacity>
+              <ThemedText style={styles.headerTitle}>Comments</ThemedText>
+              <View style={styles.headerSpacer} />
+            </View>
 
         {/* Comments List */}
         <ScrollView
@@ -252,22 +257,42 @@ export default function CommentModal({
             )}
           </TouchableOpacity>
         </View>
-      </KeyboardAvoidingView>
+          </KeyboardAvoidingView>
+        </View>
+      </View>
     </Modal>
   );
 }
 
 const styles = StyleSheet.create({
+  modalOverlay: {
+    flex: 1,
+    justifyContent: 'flex-end',
+  },
+  modalContent: {
+    backgroundColor: '#fff',
+    borderTopLeftRadius: 20,
+    borderTopRightRadius: 20,
+    height: '70%',
+  },
   container: {
     flex: 1,
-    backgroundColor: '#fff',
+  },
+  dragHandle: {
+    width: 36,
+    height: 4,
+    backgroundColor: '#d1d5db',
+    borderRadius: 2,
+    alignSelf: 'center',
+    marginTop: 12,
+    marginBottom: 8,
   },
   header: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
     paddingHorizontal: 16,
-    paddingTop: 60,
+    paddingTop: 8,
     paddingBottom: 16,
     borderBottomWidth: 1,
     borderBottomColor: '#e5e5e5',
@@ -372,7 +397,8 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'flex-end',
     paddingHorizontal: 16,
-    paddingVertical: 12,
+    paddingTop: 12,
+    paddingBottom: 40,
     borderTopWidth: 1,
     borderTopColor: '#e5e5e5',
     backgroundColor: '#fff',

@@ -6,6 +6,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { getFollowing } from '@/services/followService';
 import { likePost, unlikePost, isPostLiked } from '@/services/likeService';
 import { createOrGetChat } from '@/services/chatService';
+import { getComments, CommentData } from '@/services/commentService';
 import CommentModal from '@/components/CommentModal';
 import { ResizeMode, Video } from 'expo-av';
 import { collection, getDocs, orderBy, query, Timestamp, where, onSnapshot } from 'firebase/firestore';
@@ -28,6 +29,28 @@ const gameData: { [key: string]: { name: string; icon: string } } = {
 
 const getGameIcon = (gameId: string) => gameData[gameId]?.icon || '🎮';
 const getGameName = (gameId: string) => gameData[gameId]?.name || gameId;
+
+// Format timestamp for comments
+const formatTimeAgo = (timestamp: Timestamp): string => {
+  const now = new Date();
+  const date = timestamp.toDate();
+  const diffInSeconds = Math.floor((now.getTime() - date.getTime()) / 1000);
+
+  if (diffInSeconds < 60) {
+    return 'just now';
+  } else if (diffInSeconds < 3600) {
+    const minutes = Math.floor(diffInSeconds / 60);
+    return `${minutes}m`;
+  } else if (diffInSeconds < 86400) {
+    const hours = Math.floor(diffInSeconds / 3600);
+    return `${hours}h`;
+  } else if (diffInSeconds < 604800) {
+    const days = Math.floor(diffInSeconds / 86400);
+    return `${days}d`;
+  } else {
+    return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+  }
+};
 
 // Available games for filtering
 const availableGames = [
@@ -72,6 +95,7 @@ export default function HomeScreen() {
   const [likingInProgress, setLikingInProgress] = useState<Set<string>>(new Set());
   const [commentingPost, setCommentingPost] = useState<Post | null>(null);
   const [showCommentModal, setShowCommentModal] = useState(false);
+  const [postComments, setPostComments] = useState<{ [postId: string]: CommentData[] }>({});
 
   const currentPosts = activeTab === 'forYou' ? forYouPosts : followingPosts;
 
@@ -142,6 +166,9 @@ export default function HomeScreen() {
         console.log('Following posts count:', followingPostsFiltered.length);
         console.log('Following posts:', followingPostsFiltered);
         setFollowingPosts(followingPostsFiltered);
+
+        // Fetch recent comments for the posts
+        await fetchRecentCommentsForPosts(followingPostsFiltered);
       } catch (error) {
         console.error('Error fetching posts:', error);
       } finally {
@@ -273,6 +300,25 @@ export default function HomeScreen() {
     setCommentingPost(null);
   };
 
+  // Fetch recent comments for posts
+  const fetchRecentCommentsForPosts = async (posts: Post[]) => {
+    const commentsMap: { [postId: string]: CommentData[] } = {};
+
+    await Promise.all(
+      posts.map(async (post) => {
+        try {
+          const comments = await getComments(post.id);
+          commentsMap[post.id] = comments.slice(0, 2); // Get 2 most recent
+        } catch (error) {
+          console.error(`Error fetching comments for post ${post.id}:`, error);
+          commentsMap[post.id] = [];
+        }
+      })
+    );
+
+    setPostComments(commentsMap);
+  };
+
   // Refresh posts when a comment is added
   const handleCommentAdded = () => {
     // Refetch posts to get updated comment count
@@ -301,6 +347,9 @@ export default function HomeScreen() {
           }
 
           setFollowingPosts(followingPostsFiltered);
+
+          // Fetch recent comments for the updated posts
+          await fetchRecentCommentsForPosts(followingPostsFiltered);
         } catch (error) {
           console.error('Error refreshing posts:', error);
         }
@@ -590,6 +639,39 @@ export default function HomeScreen() {
                   <IconSymbol size={28} name="paperplane" color="#000" />
                 </TouchableOpacity>
               </View>
+
+              {/* Recent Comments */}
+              {postComments[post.id] && postComments[post.id].length > 0 && (
+                <View style={styles.commentsPreviewContainer}>
+                  {postComments[post.id].map((comment) => (
+                    <TouchableOpacity
+                      key={comment.id}
+                      style={styles.commentPreview}
+                      onPress={() => handleOpenComments(post)}
+                      activeOpacity={0.7}
+                    >
+                      <ThemedText style={styles.commentUsername}>{comment.username}</ThemedText>
+                      <ThemedText style={styles.commentText} numberOfLines={1}>
+                        {comment.text}
+                      </ThemedText>
+                      <ThemedText style={styles.commentTime}>
+                        {formatTimeAgo(comment.createdAt)}
+                      </ThemedText>
+                    </TouchableOpacity>
+                  ))}
+                  {(post.commentsCount ?? 0) > 2 && (
+                    <TouchableOpacity
+                      style={styles.viewAllCommentsButton}
+                      onPress={() => handleOpenComments(post)}
+                      activeOpacity={0.7}
+                    >
+                      <ThemedText style={styles.viewAllCommentsText}>
+                        View all {post.commentsCount} comments
+                      </ThemedText>
+                    </TouchableOpacity>
+                  )}
+                </View>
+              )}
             </View>
           ))
         ) : (
@@ -997,5 +1079,40 @@ const styles = StyleSheet.create({
   },
   gameFilterIcon: {
     fontSize: 20,
+  },
+  commentsPreviewContainer: {
+    paddingHorizontal: 16,
+    paddingTop: 4,
+    paddingBottom: 8,
+    gap: 4,
+  },
+  commentPreview: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    paddingVertical: 2,
+  },
+  commentUsername: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: '#000',
+  },
+  commentText: {
+    fontSize: 13,
+    color: '#333',
+    flex: 1,
+  },
+  commentTime: {
+    fontSize: 11,
+    color: '#999',
+    marginLeft: 'auto',
+  },
+  viewAllCommentsButton: {
+    paddingVertical: 4,
+  },
+  viewAllCommentsText: {
+    fontSize: 13,
+    color: '#666',
+    fontWeight: '500',
   },
 });
