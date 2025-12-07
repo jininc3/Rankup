@@ -297,6 +297,7 @@ export default function PostViewerModal({
         onOpenComments={handleOpenComments}
         onDirectMessage={handleDirectMessage}
         formatTimeAgo={formatTimeAgo}
+        currentUserId={currentUser?.id}
       />
     );
   };
@@ -394,7 +395,8 @@ function PostItem({
   postRefs,
   onOpenComments,
   onDirectMessage,
-  formatTimeAgo
+  formatTimeAgo,
+  currentUserId
 }: {
   post: Post;
   userAvatar?: string;
@@ -403,6 +405,7 @@ function PostItem({
   onOpenComments: (post: Post) => void;
   onDirectMessage: (post: Post) => void;
   formatTimeAgo: (timestamp: any) => string;
+  currentUserId?: string;
 }) {
   const [activeMediaIndex, setActiveMediaIndex] = useState(0);
   const [mediaHeight, setMediaHeight] = useState(
@@ -556,21 +559,23 @@ function PostItem({
       <View style={styles.actionsContainer}>
         <View style={styles.leftActions}>
           <TouchableOpacity style={styles.actionButton}>
-            <IconSymbol size={28} name="heart" color="#000" />
+            <IconSymbol size={24} name="heart" color="#000" />
           </TouchableOpacity>
           <TouchableOpacity
             style={styles.actionButton}
             onPress={() => onOpenComments(post)}
           >
-            <IconSymbol size={28} name="bubble.left" color="#000" />
-          </TouchableOpacity>
-          <TouchableOpacity
-            style={styles.actionButton}
-            onPress={() => onDirectMessage(post)}
-          >
-            <IconSymbol size={28} name="paperplane" color="#000" />
+            <IconSymbol size={24} name="bubble.left" color="#000" />
           </TouchableOpacity>
         </View>
+        {post.userId !== currentUserId && (
+          <TouchableOpacity
+            style={styles.shareButton}
+            onPress={() => onDirectMessage(post)}
+          >
+            <IconSymbol size={24} name="paperplane" color="#000" />
+          </TouchableOpacity>
+        )}
       </View>
 
       {/* Likes and Comments Count */}
@@ -580,7 +585,7 @@ function PostItem({
         </ThemedText>
         {(post.commentsCount ?? 0) > 0 && (
           <>
-            <ThemedText style={styles.dotSeparator}> • </ThemedText>
+            <ThemedText style={styles.dotSeparator}>•</ThemedText>
             <ThemedText style={styles.commentsText}>
               {post.commentsCount!.toLocaleString()} {post.commentsCount === 1 ? 'comment' : 'comments'}
             </ThemedText>
@@ -763,33 +768,38 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     alignItems: 'center',
     paddingHorizontal: 16,
-    paddingTop: 8,
+    paddingTop: 6,
   },
   leftActions: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 16,
+    gap: 8,
   },
   actionButton: {
-    padding: 4,
+    padding: 2,
+  },
+  shareButton: {
+    marginLeft: 'auto',
+    padding: 2,
   },
   likesContainer: {
     flexDirection: 'row',
     alignItems: 'center',
     paddingHorizontal: 16,
-    paddingTop: 8,
+    paddingTop: 4,
   },
   likesText: {
-    fontSize: 14,
+    fontSize: 13,
     fontWeight: '600',
     color: '#000',
   },
   dotSeparator: {
-    fontSize: 14,
+    fontSize: 13,
     color: '#999',
+    marginHorizontal: 4,
   },
   commentsText: {
-    fontSize: 14,
+    fontSize: 13,
     fontWeight: '600',
     color: '#000',
   },

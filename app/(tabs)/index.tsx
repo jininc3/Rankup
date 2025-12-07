@@ -617,7 +617,7 @@ export default function HomeScreen() {
                   disabled={likingInProgress.has(post.id)}
                 >
                   <IconSymbol
-                    size={28}
+                    size={24}
                     name={likedPosts.has(post.id) ? "heart.fill" : "heart"}
                     color={likedPosts.has(post.id) ? "#ef4444" : "#000"}
                   />
@@ -627,7 +627,7 @@ export default function HomeScreen() {
                   style={styles.commentButton}
                   onPress={() => handleOpenComments(post)}
                 >
-                  <IconSymbol size={28} name="bubble.left" color="#000" />
+                  <IconSymbol size={24} name="bubble.left" color="#000" />
                   {(post.commentsCount ?? 0) > 0 && (
                     <ThemedText style={styles.actionCount}>{post.commentsCount}</ThemedText>
                   )}
@@ -636,7 +636,7 @@ export default function HomeScreen() {
                   style={styles.shareButton}
                   onPress={() => handleDirectMessage(post)}
                 >
-                  <IconSymbol size={28} name="paperplane" color="#000" />
+                  <IconSymbol size={24} name="paperplane" color="#000" />
                 </TouchableOpacity>
               </View>
 
@@ -964,25 +964,25 @@ const styles = StyleSheet.create({
   postFooter: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 20,
+    gap: 12,
     paddingHorizontal: 16,
-    paddingVertical: 12,
+    paddingVertical: 10,
   },
   likeButton: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 6,
+    gap: 4,
   },
   commentButton: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 6,
+    gap: 4,
   },
   shareButton: {
     marginLeft: 'auto',
   },
   actionCount: {
-    fontSize: 14,
+    fontSize: 13,
     fontWeight: '600',
     color: '#000',
   },

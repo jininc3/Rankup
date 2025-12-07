@@ -2,8 +2,10 @@ import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { IconSymbol } from '@/components/ui/icon-symbol';
 import { useRouter } from 'expo-router';
-import { ScrollView, StyleSheet, TouchableOpacity, View } from 'react-native';
+import { ScrollView, StyleSheet, TouchableOpacity, View, Alert, TextInput, Modal } from 'react-native';
 import { useAuth } from '@/contexts/AuthContext';
+import { deleteUserAccount } from '@/services/deleteAccountService';
+import { useState } from 'react';
 
 const accountSettingsData = [
   {
@@ -86,6 +88,67 @@ const accountSettingsData = [
 export default function AccountSettingsScreen() {
   const router = useRouter();
   const { user } = useAuth();
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [deleteConfirmText, setDeleteConfirmText] = useState('');
+  const [isDeleting, setIsDeleting] = useState(false);
+
+  const handleDeleteAccountPress = () => {
+    Alert.alert(
+      'Delete Account',
+      'This action cannot be undone. All your data will be permanently deleted.',
+      [
+        {
+          text: 'Cancel',
+          style: 'cancel',
+        },
+        {
+          text: 'Continue',
+          style: 'destructive',
+          onPress: () => setShowDeleteModal(true),
+        },
+      ]
+    );
+  };
+
+  const handleConfirmDelete = async () => {
+    if (deleteConfirmText.toUpperCase() !== 'DELETE') {
+      Alert.alert('Error', 'Please type DELETE to confirm');
+      return;
+    }
+
+    if (!user?.id) {
+      Alert.alert('Error', 'User not found');
+      return;
+    }
+
+    setIsDeleting(true);
+
+    try {
+      await deleteUserAccount(user.id);
+
+      // Close modal and navigate to login
+      setShowDeleteModal(false);
+      Alert.alert(
+        'Account Deleted',
+        'Your account has been permanently deleted.',
+        [
+          {
+            text: 'OK',
+            onPress: () => router.replace('/(auth)/login'),
+          },
+        ],
+        { cancelable: false }
+      );
+    } catch (error) {
+      console.error('Error deleting account:', error);
+      Alert.alert(
+        'Error',
+        'Failed to delete account. Please try again or contact support.'
+      );
+    } finally {
+      setIsDeleting(false);
+    }
+  };
 
   return (
     <ThemedView style={styles.container}>
@@ -117,6 +180,12 @@ export default function AccountSettingsScreen() {
                     styles.settingItem,
                     index === section.items.length - 1 && styles.settingItemLast,
                   ]}
+                  onPress={() => {
+                    if (item.id === 8) {
+                      // Delete Account
+                      handleDeleteAccountPress();
+                    }
+                  }}
                 >
                   <View style={styles.settingLeft}>
                     <View style={styles.iconContainer}>
@@ -150,6 +219,91 @@ export default function AccountSettingsScreen() {
         {/* Bottom Spacing */}
         <View style={styles.bottomSpacer} />
       </ScrollView>
+
+      {/* Delete Account Confirmation Modal */}
+      <Modal
+        visible={showDeleteModal}
+        animationType="fade"
+        transparent={true}
+        onRequestClose={() => !isDeleting && setShowDeleteModal(false)}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalContent}>
+            <View style={styles.modalHeader}>
+              <IconSymbol size={48} name="exclamationmark.triangle.fill" color="#ef4444" />
+              <ThemedText style={styles.modalTitle}>Delete Account</ThemedText>
+              <ThemedText style={styles.modalDescription}>
+                This will permanently delete:
+              </ThemedText>
+            </View>
+
+            <View style={styles.deleteListContainer}>
+              <View style={styles.deleteListItem}>
+                <IconSymbol size={16} name="checkmark" color="#666" />
+                <ThemedText style={styles.deleteListText}>All your posts and media</ThemedText>
+              </View>
+              <View style={styles.deleteListItem}>
+                <IconSymbol size={16} name="checkmark" color="#666" />
+                <ThemedText style={styles.deleteListText}>Your profile and photos</ThemedText>
+              </View>
+              <View style={styles.deleteListItem}>
+                <IconSymbol size={16} name="checkmark" color="#666" />
+                <ThemedText style={styles.deleteListText}>All comments and likes</ThemedText>
+              </View>
+              <View style={styles.deleteListItem}>
+                <IconSymbol size={16} name="checkmark" color="#666" />
+                <ThemedText style={styles.deleteListText}>Your followers and following</ThemedText>
+              </View>
+              <View style={styles.deleteListItem}>
+                <IconSymbol size={16} name="checkmark" color="#666" />
+                <ThemedText style={styles.deleteListText}>All chat messages</ThemedText>
+              </View>
+            </View>
+
+            <View style={styles.confirmInputContainer}>
+              <ThemedText style={styles.confirmInputLabel}>
+                Type DELETE to confirm:
+              </ThemedText>
+              <TextInput
+                style={styles.confirmInput}
+                value={deleteConfirmText}
+                onChangeText={setDeleteConfirmText}
+                placeholder="DELETE"
+                placeholderTextColor="#999"
+                autoCapitalize="characters"
+                editable={!isDeleting}
+              />
+            </View>
+
+            <View style={styles.modalButtons}>
+              <TouchableOpacity
+                style={styles.modalCancelButton}
+                onPress={() => {
+                  setShowDeleteModal(false);
+                  setDeleteConfirmText('');
+                }}
+                disabled={isDeleting}
+              >
+                <ThemedText style={styles.modalCancelText}>Cancel</ThemedText>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                style={[
+                  styles.modalDeleteButton,
+                  (deleteConfirmText.toUpperCase() !== 'DELETE' || isDeleting) &&
+                    styles.modalDeleteButtonDisabled,
+                ]}
+                onPress={handleConfirmDelete}
+                disabled={deleteConfirmText.toUpperCase() !== 'DELETE' || isDeleting}
+              >
+                <ThemedText style={styles.modalDeleteText}>
+                  {isDeleting ? 'Deleting...' : 'Delete Forever'}
+                </ThemedText>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
     </ThemedView>
   );
 }
@@ -255,5 +409,102 @@ const styles = StyleSheet.create({
   },
   bottomSpacer: {
     height: 40,
+  },
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.7)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 20,
+  },
+  modalContent: {
+    backgroundColor: '#fff',
+    borderRadius: 16,
+    padding: 24,
+    width: '100%',
+    maxWidth: 400,
+  },
+  modalHeader: {
+    alignItems: 'center',
+    marginBottom: 24,
+  },
+  modalTitle: {
+    fontSize: 22,
+    fontWeight: '700',
+    color: '#000',
+    marginTop: 12,
+    marginBottom: 8,
+  },
+  modalDescription: {
+    fontSize: 15,
+    color: '#666',
+    textAlign: 'center',
+  },
+  deleteListContainer: {
+    backgroundColor: '#f9fafb',
+    borderRadius: 12,
+    padding: 16,
+    marginBottom: 24,
+    gap: 12,
+  },
+  deleteListItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+  },
+  deleteListText: {
+    fontSize: 14,
+    color: '#333',
+    flex: 1,
+  },
+  confirmInputContainer: {
+    marginBottom: 24,
+  },
+  confirmInputLabel: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#000',
+    marginBottom: 8,
+  },
+  confirmInput: {
+    borderWidth: 1,
+    borderColor: '#e5e7eb',
+    borderRadius: 8,
+    padding: 12,
+    fontSize: 16,
+    color: '#000',
+    backgroundColor: '#fff',
+  },
+  modalButtons: {
+    flexDirection: 'row',
+    gap: 12,
+  },
+  modalCancelButton: {
+    flex: 1,
+    paddingVertical: 12,
+    borderRadius: 8,
+    backgroundColor: '#f3f4f6',
+    alignItems: 'center',
+  },
+  modalCancelText: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#000',
+  },
+  modalDeleteButton: {
+    flex: 1,
+    paddingVertical: 12,
+    borderRadius: 8,
+    backgroundColor: '#ef4444',
+    alignItems: 'center',
+  },
+  modalDeleteButtonDisabled: {
+    backgroundColor: '#fca5a5',
+    opacity: 0.5,
+  },
+  modalDeleteText: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#fff',
   },
 });

@@ -13,7 +13,7 @@ import * as VideoThumbnails from 'expo-video-thumbnails';
 import { addDoc, collection, doc, getDocs, increment, orderBy, query, Timestamp, updateDoc, where } from 'firebase/firestore';
 import { getDownloadURL, ref, uploadBytesResumable } from 'firebase/storage';
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { ActivityIndicator, Alert, Dimensions, Image, Modal, ScrollView, StyleSheet, TextInput, TouchableOpacity, View } from 'react-native';
+import { ActivityIndicator, Alert, Dimensions, Image, Linking, Modal, RefreshControl, ScrollView, StyleSheet, TextInput, TouchableOpacity, View } from 'react-native';
 import PostViewerModal from '@/app/profilePages/postViewerModal';
 
 const userGames = [
@@ -121,6 +121,7 @@ export default function ProfileScreen() {
   const [showFilterMenu, setShowFilterMenu] = useState(false);
   const [selectedFilter, setSelectedFilter] = useState<'newest' | 'oldest' | 'most_viewed' | 'most_liked'>('newest');
   const [selectedGameFilter, setSelectedGameFilter] = useState<string | null>(null); // null means "All Games"
+  const [refreshing, setRefreshing] = useState(false);
   const selectedGame = userGames[selectedGameIndex];
 
   // Available games for tagging
@@ -216,14 +217,13 @@ export default function ProfileScreen() {
     }
   }, [selectedFilter, selectedGameFilter]);
 
-  // Refetch posts when screen comes into focus (e.g., returning from edit profile)
-  useFocusEffect(
-    useCallback(() => {
-      if (user?.id) {
-        fetchPosts();
-      }
-    }, [user?.id])
-  );
+  // Handle pull-to-refresh
+  const onRefresh = useCallback(async () => {
+    setRefreshing(true);
+    await refreshUser(); // Refresh user data from AuthContext
+    await fetchPosts(); // Refresh posts
+    setRefreshing(false);
+  }, [user?.id]);
 
   const handleAddPost = () => {
     if (!user?.id) {
@@ -636,7 +636,17 @@ export default function ProfileScreen() {
         </TouchableOpacity>
       </Modal>
 
-      <ScrollView showsVerticalScrollIndicator={false}>
+      <ScrollView
+        showsVerticalScrollIndicator={false}
+        refreshControl={
+          <RefreshControl
+            refreshing={refreshing}
+            onRefresh={onRefresh}
+            tintColor="#000"
+            colors={['#000']}
+          />
+        }
+      >
         {/* Cover Photo */}
         <View style={styles.coverPhotoContainer}>
           <View style={styles.coverPhoto}>
@@ -646,33 +656,9 @@ export default function ProfileScreen() {
           </View>
         </View>
 
-        {/* Social Icons - positioned on the right below cover */}
-        {(user?.discordLink || user?.instagramLink) && (
-          <View style={styles.socialIconsContainer}>
-            {user?.discordLink && (
-              <TouchableOpacity style={styles.socialIconButton}>
-                <Image
-                  source={require('@/assets/images/discord.png')}
-                  style={styles.socialIcon}
-                  resizeMode="contain"
-                />
-              </TouchableOpacity>
-            )}
-            {user?.instagramLink && (
-              <TouchableOpacity style={styles.socialIconButton}>
-                <Image
-                  source={require('@/assets/images/instagram.png')}
-                  style={styles.socialIcon}
-                  resizeMode="contain"
-                />
-              </TouchableOpacity>
-            )}
-          </View>
-        )}
-
         {/* Profile Content */}
         <View style={styles.profileContentWrapper}>
-          {/* Top Row: Avatar and Username/Stats */}
+          {/* Top Row: Avatar and Username */}
           <View style={styles.profileTopRow}>
             {/* Avatar on the left, overlapping cover */}
             <View style={styles.avatarContainer}>
@@ -687,50 +673,92 @@ export default function ProfileScreen() {
               </View>
             </View>
 
-            {/* Username and Stats on the right */}
+            {/* Username on the right */}
             <View style={styles.profileInfoRight}>
-              {/* Username */}
               <ThemedText style={styles.username}>{user?.username || 'User'}</ThemedText>
-
-              {/* Stats in One Line */}
-              <View style={styles.statsRow}>
-                <ThemedText style={styles.statText}>{posts.length} Posts</ThemedText>
-                <ThemedText style={styles.statDividerText}> | </ThemedText>
-                <TouchableOpacity onPress={() => router.push('/profilePages/followers')}>
-                  <ThemedText style={styles.statText}>{user?.followersCount || 0} Followers</ThemedText>
-                </TouchableOpacity>
-                <ThemedText style={styles.statDividerText}> | </ThemedText>
-                <TouchableOpacity onPress={() => router.push('/profilePages/following')}>
-                  <ThemedText style={styles.statText}>{user?.followingCount || 0} Following</ThemedText>
-                </TouchableOpacity>
-              </View>
             </View>
           </View>
 
-          {/* Bio */}
-          {user?.bio && (
-            <View style={styles.bioContainer}>
-              <ThemedText style={styles.bioText}>{user.bio}</ThemedText>
-            </View>
-          )}
+          {/* Stats Row - aligned with bio */}
+          <View style={styles.statsRow}>
+            <ThemedText style={styles.statText}>{posts.length} Posts</ThemedText>
+            <ThemedText style={styles.statDividerText}> | </ThemedText>
+            <TouchableOpacity onPress={() => router.push('/profilePages/followers')}>
+              <ThemedText style={styles.statText}>{user?.followersCount || 0} Followers</ThemedText>
+            </TouchableOpacity>
+            <ThemedText style={styles.statDividerText}> | </ThemedText>
+            <TouchableOpacity onPress={() => router.push('/profilePages/following')}>
+              <ThemedText style={styles.statText}>{user?.followingCount || 0} Following</ThemedText>
+            </TouchableOpacity>
+          </View>
 
-          {/* Socials Section */}
-          <View style={styles.socialsSection}>
-            <ThemedText style={styles.socialsSectionTitle}>Socials</ThemedText>
+          {/* Bio & Socials Section */}
+          <View style={styles.bioSocialsContainer}>
+            {/* Bio */}
+            {user?.bio ? (
+              <ThemedText style={styles.bioText}>{user.bio}</ThemedText>
+            ) : (
+              <ThemedText style={styles.emptyBioText}>No bio added yet</ThemedText>
+            )}
+
+            {/* Socials below bio */}
             <View style={styles.socialsIconsRow}>
-              <TouchableOpacity style={styles.socialLinkButton}>
-                <Image
-                  source={require('@/assets/images/instagram.png')}
-                  style={styles.socialLinkIcon}
-                  resizeMode="contain"
-                />
+              <TouchableOpacity
+                style={styles.socialLinkButton}
+                onPress={async () => {
+                  // Open Instagram link or show not configured message
+                  if (user?.instagramLink) {
+                    const url = user.instagramLink.startsWith('http')
+                      ? user.instagramLink
+                      : `https://instagram.com/${user.instagramLink}`;
+                    const canOpen = await Linking.canOpenURL(url);
+                    if (canOpen) {
+                      await Linking.openURL(url);
+                    } else {
+                      Alert.alert('Error', 'Cannot open Instagram link');
+                    }
+                  } else {
+                    Alert.alert('Not Configured', 'Add your Instagram link in Edit Profile');
+                  }
+                }}
+                activeOpacity={0.7}
+              >
+                <View style={[styles.instagramGradient, !user?.instagramLink && styles.socialNotConfigured]}>
+                  <Image
+                    source={require('@/assets/images/instagram.png')}
+                    style={[styles.socialLinkIcon, !user?.instagramLink && styles.socialIconNotConfigured]}
+                    resizeMode="contain"
+                  />
+                </View>
               </TouchableOpacity>
-              <TouchableOpacity style={styles.socialLinkButton}>
-                <Image
-                  source={require('@/assets/images/discord.png')}
-                  style={styles.socialLinkIcon}
-                  resizeMode="contain"
-                />
+
+              <TouchableOpacity
+                style={styles.socialLinkButton}
+                onPress={async () => {
+                  // Open Discord link or show not configured message
+                  if (user?.discordLink) {
+                    const url = user.discordLink.startsWith('http')
+                      ? user.discordLink
+                      : `https://discord.com/users/${user.discordLink}`;
+                    const canOpen = await Linking.canOpenURL(url);
+                    if (canOpen) {
+                      await Linking.openURL(url);
+                    } else {
+                      Alert.alert('Error', 'Cannot open Discord link');
+                    }
+                  } else {
+                    Alert.alert('Not Configured', 'Add your Discord link in Edit Profile');
+                  }
+                }}
+                activeOpacity={0.7}
+              >
+                <View style={[styles.discordBackground, !user?.discordLink && styles.socialNotConfigured]}>
+                  <Image
+                    source={require('@/assets/images/discord.png')}
+                    style={[styles.socialLinkIcon, !user?.discordLink && styles.socialIconNotConfigured]}
+                    resizeMode="contain"
+                  />
+                </View>
               </TouchableOpacity>
             </View>
           </View>
@@ -1309,13 +1337,12 @@ const styles = StyleSheet.create({
     fontSize: 20,
     fontWeight: '700',
     color: '#000',
-    marginBottom: 12,
     letterSpacing: -0.5,
   },
   statsRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginBottom: 4,
+    marginBottom: 12,
   },
   statText: {
     fontSize: 14,
@@ -1327,7 +1354,7 @@ const styles = StyleSheet.create({
     color: '#999',
     fontWeight: '400',
   },
-  bioContainer: {
+  bioSocialsContainer: {
     marginBottom: 20,
   },
   bioText: {
@@ -1335,54 +1362,58 @@ const styles = StyleSheet.create({
     color: '#333',
     lineHeight: 20,
     fontWeight: '400',
+    marginBottom: 10,
   },
-  socialIconsContainer: {
-    position: 'absolute',
-    top: 180,
-    right: 10,
-    flexDirection: 'row',
-    gap: 4,
-    zIndex: 5,
-  },
-  socialIconButton: {
-    width: 40,
-    height: 40,
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: 'transparent',
-  },
-  socialIcon: {
-    width: 28,
-    height: 28,
-  },
-  socialsSection: {
-    marginBottom: 16,
-    marginTop: 8,
-  },
-  socialsSectionTitle: {
+  emptyBioText: {
     fontSize: 14,
-    fontWeight: '600',
-    color: '#000',
-    marginBottom: 8,
-    letterSpacing: -0.2,
+    color: '#999',
+    fontStyle: 'italic',
+    marginBottom: 10,
   },
   socialsIconsRow: {
     flexDirection: 'row',
-    gap: 12,
+    gap: 10,
   },
   socialLinkButton: {
-    width: 44,
-    height: 44,
-    borderRadius: 22,
-    backgroundColor: '#f5f5f5',
+    shadowColor: '#000',
+    shadowOffset: {
+      width: 0,
+      height: 1,
+    },
+    shadowOpacity: 0.08,
+    shadowRadius: 2,
+    elevation: 2,
+  },
+  instagramGradient: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: '#fff',
     alignItems: 'center',
     justifyContent: 'center',
-    borderWidth: 1,
-    borderColor: '#e5e5e5',
+    borderWidth: 1.5,
+    borderColor: '#E4405F',
+  },
+  discordBackground: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: '#fff',
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 1.5,
+    borderColor: '#5865F2',
   },
   socialLinkIcon: {
-    width: 24,
-    height: 24,
+    width: 22,
+    height: 22,
+  },
+  socialNotConfigured: {
+    borderColor: '#e5e5e5',
+    opacity: 0.5,
+  },
+  socialIconNotConfigured: {
+    opacity: 0.4,
   },
   actionButtons: {
     flexDirection: 'row',
@@ -1450,21 +1481,21 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   gameIconScroller: {
-    marginBottom: 20,
+    marginBottom: 16,
   },
   gameIconScrollerContent: {
-    paddingVertical: 8,
-    gap: 20,
+    paddingVertical: 6,
+    gap: 12,
   },
   gameIconContainer: {
     alignItems: 'center',
   },
   gameIconCircle: {
-    width: 64,
-    height: 64,
-    borderRadius: 32,
+    width: 48,
+    height: 48,
+    borderRadius: 24,
     backgroundColor: '#f5f5f5',
-    borderWidth: 3,
+    borderWidth: 2,
     borderColor: 'transparent',
     alignItems: 'center',
     justifyContent: 'center',
@@ -1475,8 +1506,8 @@ const styles = StyleSheet.create({
     backgroundColor: '#fff',
   },
   gameIconImage: {
-    width: 44,
-    height: 44,
+    width: 32,
+    height: 32,
   },
   cardsContainer: {
     paddingBottom: 4,

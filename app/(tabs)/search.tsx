@@ -126,7 +126,7 @@ export default function SearchScreen() {
       // Clear search query when returning to search page
       setSearchQuery('');
       setSearchResults([]);
-      setShowHistory(true);
+      setShowHistory(false); // Don't show history until user clicks search bar
     }, [currentUser?.id])
   );
 
@@ -135,7 +135,7 @@ export default function SearchScreen() {
 
     if (text.trim() === '') {
       setSearchResults([]);
-      setShowHistory(true);
+      // Don't automatically show history when clearing - only show when focused
       return;
     }
 
@@ -206,12 +206,16 @@ export default function SearchScreen() {
           value={searchQuery}
           onChangeText={handleSearch}
           onFocus={() => setShowHistory(true)}
+          onBlur={() => {
+            // Hide history when user clicks off the search bar
+            setTimeout(() => setShowHistory(false), 100);
+          }}
           autoCapitalize="none"
         />
         {searchQuery.length > 0 && (
           <TouchableOpacity onPress={() => {
             handleSearch('');
-            setShowHistory(true);
+            setShowHistory(false); // Don't show history when clearing search
           }}>
             <IconSymbol size={20} name="xmark.circle.fill" color="#666" />
           </TouchableOpacity>
@@ -257,11 +261,17 @@ export default function SearchScreen() {
               </TouchableOpacity>
             ))}
           </View>
-        ) : showHistory && searchHistory.length === 0 && searchQuery.trim() === '' ? (
+        ) : !showHistory && searchQuery.trim() === '' && searchResults.length === 0 ? (
           <View style={styles.emptyState}>
             <IconSymbol size={64} name="magnifyingglass" color="#ccc" />
             <ThemedText style={styles.emptyText}>Search user profiles</ThemedText>
-            <ThemedText style={styles.emptySubtext}>Enter a username to search</ThemedText>
+            <ThemedText style={styles.emptySubtext}>Tap the search bar to begin</ThemedText>
+          </View>
+        ) : showHistory && searchHistory.length === 0 && searchQuery.trim() === '' ? (
+          <View style={styles.emptyState}>
+            <IconSymbol size={64} name="magnifyingglass" color="#ccc" />
+            <ThemedText style={styles.emptyText}>No recent searches</ThemedText>
+            <ThemedText style={styles.emptySubtext}>Your search history will appear here</ThemedText>
           </View>
         ) : searching ? (
           <View style={styles.loadingState}>

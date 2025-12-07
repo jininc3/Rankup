@@ -317,7 +317,7 @@ export default function NotificationsScreen() {
                 style={styles.deleteButton}
                 hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
               >
-                <IconSymbol size={18} name="xmark" color="#999" />
+                <IconSymbol size={16} name="xmark" color="#999" />
               </TouchableOpacity>
 
               {/* Unread indicator */}
@@ -405,8 +405,8 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    paddingVertical: 16,
-    paddingHorizontal: 20,
+    paddingVertical: 10,
+    paddingHorizontal: 16,
     borderBottomWidth: 1,
     borderBottomColor: '#f5f5f5',
     backgroundColor: '#fff',
@@ -419,12 +419,12 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     flex: 1,
-    gap: 12,
+    gap: 10,
   },
   avatar: {
-    width: 48,
-    height: 48,
-    borderRadius: 24,
+    width: 36,
+    height: 36,
+    borderRadius: 18,
     backgroundColor: '#f0f0f0',
     alignItems: 'center',
     justifyContent: 'center',
@@ -432,38 +432,38 @@ const styles = StyleSheet.create({
   avatarImage: {
     width: '100%',
     height: '100%',
-    borderRadius: 24,
+    borderRadius: 18,
   },
   avatarInitial: {
-    fontSize: 20,
+    fontSize: 16,
     fontWeight: '600',
   },
   notificationContent: {
     flex: 1,
   },
   notificationText: {
-    fontSize: 15,
+    fontSize: 13,
     color: '#000',
-    lineHeight: 20,
-    marginBottom: 4,
+    lineHeight: 18,
+    marginBottom: 2,
   },
   usernameText: {
     fontWeight: '600',
   },
   timeText: {
-    fontSize: 13,
+    fontSize: 11,
     color: '#999',
   },
   deleteButton: {
-    padding: 8,
+    padding: 6,
   },
   unreadDot: {
     position: 'absolute',
-    top: 24,
-    right: 60,
-    width: 8,
-    height: 8,
-    borderRadius: 4,
+    top: 16,
+    right: 48,
+    width: 6,
+    height: 6,
+    borderRadius: 3,
     backgroundColor: '#3b82f6',
   },
   emptyState: {
@@ -486,11 +486,11 @@ const styles = StyleSheet.create({
     lineHeight: 20,
   },
   postThumbnail: {
-    width: 48,
-    height: 48,
-    borderRadius: 8,
+    width: 36,
+    height: 36,
+    borderRadius: 6,
     backgroundColor: '#f0f0f0',
-    marginLeft: 8,
+    marginLeft: 6,
   },
   commentPreview: {
     fontStyle: 'italic',

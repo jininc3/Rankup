@@ -31,9 +31,9 @@ service cloud.firestore {
                       && request.resource.data.followerUsername is string
                       && request.resource.data.createdAt is timestamp;
 
-        // Allow the follower to delete their own follow
+        // Allow the follower to delete their own follow OR the user to delete from their own followers list
         allow delete: if request.auth != null
-                      && request.auth.uid == followerId;
+                      && (request.auth.uid == followerId || request.auth.uid == userId);
       }
 
       // Following subcollection - who this user follows
@@ -48,9 +48,9 @@ service cloud.firestore {
                       && request.resource.data.followingUsername is string
                       && request.resource.data.createdAt is timestamp;
 
-        // Allow the user to delete their own following
+        // Allow the user to delete their own following OR the followed user to remove them
         allow delete: if request.auth != null
-                      && request.auth.uid == userId;
+                      && (request.auth.uid == userId || request.auth.uid == followingId);
       }
 
       // Search history subcollection - user's recent searches
@@ -120,9 +120,9 @@ service cloud.firestore {
                       && request.resource.data.username is string
                       && request.resource.data.likedAt is timestamp;
 
-        // Only the user can delete their own like
+        // Allow the user to delete their own like OR the post owner to delete any like on their post
         allow delete: if request.auth != null
-                      && request.auth.uid == userId;
+                      && (request.auth.uid == userId || request.auth.uid == get(/databases/$(database)/documents/posts/$(postId)).data.userId);
       }
 
       // Comments subcollection
@@ -139,9 +139,9 @@ service cloud.firestore {
                       && request.resource.data.text.size() <= 500
                       && request.resource.data.createdAt is timestamp;
 
-        // Only the comment author can delete their own comment
+        // Allow the comment author to delete their own comment OR the post owner to delete any comment on their post
         allow delete: if request.auth != null
-                      && request.auth.uid == resource.data.userId;
+                      && (request.auth.uid == resource.data.userId || request.auth.uid == get(/databases/$(database)/documents/posts/$(postId)).data.userId);
       }
     }
 

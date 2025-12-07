@@ -1,7 +1,7 @@
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { IconSymbol } from '@/components/ui/icon-symbol';
-import { useRouter } from 'expo-router';
+import { useRouter, useNavigation } from 'expo-router';
 import { useState, useEffect } from 'react';
 import { ScrollView, StyleSheet, TextInput, TouchableOpacity, View, Alert, ActivityIndicator, Image, Dimensions } from 'react-native';
 import { useAuth } from '@/contexts/AuthContext';
@@ -27,6 +27,7 @@ const { width: screenWidth } = Dimensions.get('window');
 
 export default function EditProfileScreen() {
   const router = useRouter();
+  const navigation = useNavigation();
   const { user, refreshUser } = useAuth();
 
   const [username, setUsername] = useState(user?.username || '');
@@ -37,10 +38,14 @@ export default function EditProfileScreen() {
   const [discord, setDiscord] = useState(user?.discordLink || '');
   const [instagram, setInstagram] = useState(user?.instagramLink || '');
   const [isLoading, setIsLoading] = useState(false);
-  const [isUploadingImage, setIsUploadingImage] = useState(false);
-  const [isUploadingCover, setIsUploadingCover] = useState(false);
   const [posts, setPosts] = useState<Post[]>([]);
   const [loadingPosts, setLoadingPosts] = useState(false);
+
+  // Pending changes (not saved until "Save Changes" is pressed)
+  const [pendingProfileImageUri, setPendingProfileImageUri] = useState<string | null>(null);
+  const [pendingCoverPhotoUri, setPendingCoverPhotoUri] = useState<string | null>(null);
+  const [pendingRemoveProfileImage, setPendingRemoveProfileImage] = useState(false);
+  const [pendingRemoveCoverPhoto, setPendingRemoveCoverPhoto] = useState(false);
 
   useEffect(() => {
     if (user) {
@@ -58,6 +63,58 @@ export default function EditProfileScreen() {
   useEffect(() => {
     fetchPosts();
   }, [user?.id]);
+
+  // Intercept back navigation (including swipe gestures)
+  useEffect(() => {
+    const beforeRemoveListener = (e: any) => {
+      // Check if any field has changed from original user data
+      const changesExist =
+        username !== (user?.username || '') ||
+        bio !== (user?.bio || '') ||
+        discord !== (user?.discordLink || '') ||
+        instagram !== (user?.instagramLink || '') ||
+        pendingProfileImageUri !== null ||
+        pendingCoverPhotoUri !== null ||
+        pendingRemoveProfileImage ||
+        pendingRemoveCoverPhoto;
+
+      if (!changesExist) {
+        // If no changes, allow navigation
+        return;
+      }
+
+      // Prevent default behavior of leaving the screen
+      e.preventDefault();
+
+      // Show confirmation dialog
+      Alert.alert(
+        'Discard Changes?',
+        'You have unsaved changes. Are you sure you want to go back?',
+        [
+          {
+            text: 'Cancel',
+            style: 'cancel',
+          },
+          {
+            text: 'Discard',
+            style: 'destructive',
+            onPress: () => {
+              // Allow navigation to proceed
+              navigation.dispatch(e.data.action);
+            },
+          },
+        ]
+      );
+    };
+
+    // Add the listener
+    navigation.addListener('beforeRemove', beforeRemoveListener);
+
+    // Clean up
+    return () => {
+      navigation.removeListener('beforeRemove', beforeRemoveListener);
+    };
+  }, [navigation, username, bio, discord, instagram, pendingProfileImageUri, pendingCoverPhotoUri, pendingRemoveProfileImage, pendingRemoveCoverPhoto, user]);
 
   const fetchPosts = async () => {
     if (!user?.id) return;
@@ -136,7 +193,9 @@ export default function EditProfileScreen() {
       });
 
       if (!result.canceled && result.assets[0]) {
-        await uploadImage(result.assets[0].uri);
+        // Store the URI locally - don't upload until save
+        setPendingProfileImageUri(result.assets[0].uri);
+        setPendingRemoveProfileImage(false);
       }
     } catch (error: any) {
       console.error('Camera error:', error);
@@ -163,34 +222,13 @@ export default function EditProfileScreen() {
       });
 
       if (!result.canceled && result.assets[0]) {
-        await uploadImage(result.assets[0].uri);
+        // Store the URI locally - don't upload until save
+        setPendingProfileImageUri(result.assets[0].uri);
+        setPendingRemoveProfileImage(false);
       }
     } catch (error: any) {
       console.error('Image picker error:', error);
       Alert.alert('Error', 'Failed to pick image');
-    }
-  };
-
-  const uploadImage = async (uri: string) => {
-    try {
-      setIsUploadingImage(true);
-
-      // Upload to Firebase Storage
-      if (user) {
-        const downloadURL = await uploadProfilePicture(user.id, uri);
-        setProfileImage(downloadURL);
-
-        // Update user profile with new avatar URL
-        await updateUserProfile(user.id, { avatar: downloadURL });
-        await refreshUser();
-
-        Alert.alert('Success', 'Profile picture updated!');
-      }
-    } catch (error: any) {
-      console.error('Upload error:', error);
-      Alert.alert('Error', 'Failed to upload image');
-    } finally {
-      setIsUploadingImage(false);
     }
   };
 
@@ -244,7 +282,9 @@ export default function EditProfileScreen() {
       });
 
       if (!result.canceled && result.assets[0]) {
-        await uploadCoverImage(result.assets[0].uri);
+        // Store the URI locally - don't upload until save
+        setPendingCoverPhotoUri(result.assets[0].uri);
+        setPendingRemoveCoverPhoto(false);
       }
     } catch (error: any) {
       console.error('Camera error:', error);
@@ -269,7 +309,9 @@ export default function EditProfileScreen() {
       });
 
       if (!result.canceled && result.assets[0]) {
-        await uploadCoverImage(result.assets[0].uri);
+        // Store the URI locally - don't upload until save
+        setPendingCoverPhotoUri(result.assets[0].uri);
+        setPendingRemoveCoverPhoto(false);
       }
     } catch (error: any) {
       console.error('Image picker error:', error);
@@ -277,108 +319,48 @@ export default function EditProfileScreen() {
     }
   };
 
-  const uploadCoverImage = async (uri: string) => {
-    try {
-      setIsUploadingCover(true);
-
-      if (user) {
-        const downloadURL = await uploadCoverPhoto(user.id, uri);
-        setCoverPhoto(downloadURL);
-
-        await updateUserProfile(user.id, { coverPhoto: downloadURL });
-        await refreshUser();
-
-        Alert.alert('Success', 'Cover photo updated!');
-      }
-    } catch (error: any) {
-      console.error('Upload error:', error);
-      Alert.alert('Error', 'Failed to upload cover photo');
-    } finally {
-      setIsUploadingCover(false);
-    }
+  const removeProfilePicture = () => {
+    Alert.alert(
+      'Remove Profile Picture',
+      'This will be applied when you press "Save Changes"',
+      [
+        {
+          text: 'Cancel',
+          style: 'cancel',
+        },
+        {
+          text: 'Remove',
+          style: 'destructive',
+          onPress: () => {
+            // Mark for removal - don't actually remove until save
+            setPendingRemoveProfileImage(true);
+            setPendingProfileImageUri(null);
+          },
+        },
+      ]
+    );
   };
 
-  const removeProfilePicture = async () => {
-    try {
-      if (!user) return;
-
-      Alert.alert(
-        'Remove Profile Picture',
-        'Are you sure you want to remove your profile picture?',
-        [
-          {
-            text: 'Cancel',
-            style: 'cancel',
+  const removeCoverPhoto = () => {
+    Alert.alert(
+      'Remove Cover Photo',
+      'This will be applied when you press "Save Changes"',
+      [
+        {
+          text: 'Cancel',
+          style: 'cancel',
+        },
+        {
+          text: 'Remove',
+          style: 'destructive',
+          onPress: () => {
+            // Mark for removal - don't actually remove until save
+            setPendingRemoveCoverPhoto(true);
+            setPendingCoverPhotoUri(null);
           },
-          {
-            text: 'Remove',
-            style: 'destructive',
-            onPress: async () => {
-              try {
-                setIsUploadingImage(true);
-
-                // Remove from Firestore (set to empty string)
-                await updateUserProfile(user.id, { avatar: '' });
-                setProfileImage(null);
-                setAvatar(user.username?.[0] || 'U');
-
-                await refreshUser();
-
-                Alert.alert('Success', 'Profile picture removed');
-              } catch (error: any) {
-                console.error('Remove error:', error);
-                Alert.alert('Error', 'Failed to remove profile picture');
-              } finally {
-                setIsUploadingImage(false);
-              }
-            },
-          },
-        ]
-      );
-    } catch (error: any) {
-      console.error('Remove profile picture error:', error);
-    }
-  };
-
-  const removeCoverPhoto = async () => {
-    try {
-      if (!user) return;
-
-      Alert.alert(
-        'Remove Cover Photo',
-        'Are you sure you want to remove your cover photo?',
-        [
-          {
-            text: 'Cancel',
-            style: 'cancel',
-          },
-          {
-            text: 'Remove',
-            style: 'destructive',
-            onPress: async () => {
-              try {
-                setIsUploadingCover(true);
-
-                // Remove from Firestore (set to empty string)
-                await updateUserProfile(user.id, { coverPhoto: '' });
-                setCoverPhoto(null);
-
-                await refreshUser();
-
-                Alert.alert('Success', 'Cover photo removed');
-              } catch (error: any) {
-                console.error('Remove error:', error);
-                Alert.alert('Error', 'Failed to remove cover photo');
-              } finally {
-                setIsUploadingCover(false);
-              }
-            },
-          },
-        ]
-      );
-    } catch (error: any) {
-      console.error('Remove cover photo error:', error);
-    }
+        },
+      ]
+    );
   };
 
   const handlePostLongPress = (post: Post) => {
@@ -415,6 +397,41 @@ export default function EditProfileScreen() {
     );
   };
 
+  const hasChanges = () => {
+    // Check if any field has changed from original user data
+    if (username !== (user?.username || '')) return true;
+    if (bio !== (user?.bio || '')) return true;
+    if (discord !== (user?.discordLink || '')) return true;
+    if (instagram !== (user?.instagramLink || '')) return true;
+    if (pendingProfileImageUri !== null) return true;
+    if (pendingCoverPhotoUri !== null) return true;
+    if (pendingRemoveProfileImage) return true;
+    if (pendingRemoveCoverPhoto) return true;
+    return false;
+  };
+
+  const handleBack = () => {
+    if (hasChanges()) {
+      Alert.alert(
+        'Discard Changes?',
+        'You have unsaved changes. Are you sure you want to go back?',
+        [
+          {
+            text: 'Cancel',
+            style: 'cancel',
+          },
+          {
+            text: 'Discard',
+            style: 'destructive',
+            onPress: () => router.back(),
+          },
+        ]
+      );
+    } else {
+      router.back();
+    }
+  };
+
   const handleSave = async () => {
     if (!user) {
       Alert.alert('Error', 'You must be logged in to update your profile');
@@ -434,22 +451,42 @@ export default function EditProfileScreen() {
     try {
       setIsLoading(true);
 
-      await updateUserProfile(user.id, {
+      // Prepare update data
+      const updateData: any = {
         username: username.trim(),
         bio: bio.trim(),
         discordLink: discord.trim(),
         instagramLink: instagram.trim(),
-      });
+      };
+
+      // Handle profile image changes
+      if (pendingRemoveProfileImage) {
+        // User wants to remove profile picture
+        updateData.avatar = '';
+      } else if (pendingProfileImageUri) {
+        // User selected a new profile picture - upload it
+        const avatarUrl = await uploadProfilePicture(user.id, pendingProfileImageUri);
+        updateData.avatar = avatarUrl;
+      }
+
+      // Handle cover photo changes
+      if (pendingRemoveCoverPhoto) {
+        // User wants to remove cover photo
+        updateData.coverPhoto = '';
+      } else if (pendingCoverPhotoUri) {
+        // User selected a new cover photo - upload it
+        const coverUrl = await uploadCoverPhoto(user.id, pendingCoverPhotoUri);
+        updateData.coverPhoto = coverUrl;
+      }
+
+      // Save all changes at once
+      await updateUserProfile(user.id, updateData);
 
       // Refresh user data to reflect changes
       await refreshUser();
 
-      Alert.alert('Success', 'Profile updated successfully!', [
-        {
-          text: 'OK',
-          onPress: () => router.back(),
-        },
-      ]);
+      // Navigate back to profile immediately after saving
+      router.back();
     } catch (error: any) {
       console.error('Profile update error:', error);
       Alert.alert('Error', error.message || 'Failed to update profile');
@@ -460,38 +497,30 @@ export default function EditProfileScreen() {
 
   return (
     <ThemedView style={styles.container}>
-      {/* Header - positioned absolutely like profile.tsx */}
+      {/* Header with back button */}
       <View style={styles.header}>
-        <TouchableOpacity onPress={() => router.back()} disabled={isLoading}>
-          <IconSymbol size={28} name="chevron.left" color="#fff" />
+        <TouchableOpacity onPress={handleBack} style={styles.backButton}>
+          <IconSymbol size={28} name="chevron.left" color="#000" />
         </TouchableOpacity>
         <ThemedText style={styles.headerTitle}>Edit Profile</ThemedText>
-        <TouchableOpacity onPress={handleSave} disabled={isLoading}>
-          {isLoading ? (
-            <ActivityIndicator size="small" color="#fff" />
-          ) : (
-            <IconSymbol size={28} name="checkmark" color="#fff" />
-          )}
-        </TouchableOpacity>
+        <View style={styles.headerPlaceholder} />
       </View>
 
-      <ScrollView showsVerticalScrollIndicator={false}>
+      <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.scrollContent}>
         {/* Cover Photo Container - matches profile.tsx */}
         <View style={styles.coverPhotoContainer}>
           <View style={styles.coverPhoto}>
-            {coverPhoto ? (
+            {pendingRemoveCoverPhoto ? null : pendingCoverPhotoUri ? (
+              <Image source={{ uri: pendingCoverPhotoUri }} style={styles.coverPhotoImage} />
+            ) : coverPhoto ? (
               <Image source={{ uri: coverPhoto }} style={styles.coverPhotoImage} />
             ) : null}
             <TouchableOpacity
               style={styles.editCoverButton}
               onPress={showCoverPhotoOptions}
-              disabled={isUploadingCover}
+              disabled={isLoading}
             >
-              {isUploadingCover ? (
-                <ActivityIndicator size="small" color="#fff" />
-              ) : (
-                <IconSymbol size={24} name="camera.fill" color="#fff" />
-              )}
+              <IconSymbol size={24} name="camera.fill" color="#fff" />
             </TouchableOpacity>
           </View>
         </View>
@@ -501,7 +530,11 @@ export default function EditProfileScreen() {
           {/* Avatar on the left, overlapping cover */}
           <View style={styles.avatarContainer}>
             <View style={styles.avatarCircle}>
-              {profileImage ? (
+              {pendingRemoveProfileImage ? (
+                <ThemedText style={styles.avatarInitial}>{user?.username?.[0] || 'U'}</ThemedText>
+              ) : pendingProfileImageUri ? (
+                <Image source={{ uri: pendingProfileImageUri }} style={styles.avatarImage} />
+              ) : profileImage ? (
                 <Image source={{ uri: profileImage }} style={styles.avatarImage} />
               ) : (
                 <ThemedText style={styles.avatarInitial}>{avatar}</ThemedText>
@@ -510,13 +543,9 @@ export default function EditProfileScreen() {
             <TouchableOpacity
               style={styles.editAvatarButton}
               onPress={showImageOptions}
-              disabled={isUploadingImage}
+              disabled={isLoading}
             >
-              {isUploadingImage ? (
-                <ActivityIndicator size="small" color="#fff" />
-              ) : (
-                <IconSymbol size={20} name="camera.fill" color="#fff" />
-              )}
+              <IconSymbol size={20} name="camera.fill" color="#fff" />
             </TouchableOpacity>
           </View>
 
@@ -625,6 +654,21 @@ export default function EditProfileScreen() {
           )}
         </View>
       </ScrollView>
+
+      {/* Fixed Save Button at Bottom */}
+      <View style={styles.saveButtonContainer}>
+        <TouchableOpacity
+          style={[styles.saveButton, isLoading && styles.saveButtonDisabled]}
+          onPress={handleSave}
+          disabled={isLoading}
+        >
+          {isLoading ? (
+            <ActivityIndicator size="small" color="#fff" />
+          ) : (
+            <ThemedText style={styles.saveButtonText}>Save Changes</ThemedText>
+          )}
+        </TouchableOpacity>
+      </View>
     </ThemedView>
   );
 }
@@ -635,27 +679,37 @@ const styles = StyleSheet.create({
     backgroundColor: '#fff',
   },
   header: {
-    position: 'absolute',
-    top: 0,
-    left: 0,
-    right: 0,
     flexDirection: 'row',
-    justifyContent: 'space-between',
     alignItems: 'center',
-    paddingHorizontal: 20,
+    justifyContent: 'space-between',
+    paddingHorizontal: 16,
     paddingTop: 60,
     paddingBottom: 16,
-    backgroundColor: 'transparent',
-    zIndex: 10,
+    backgroundColor: '#fff',
+    borderBottomWidth: 1,
+    borderBottomColor: '#e5e5e5',
+  },
+  backButton: {
+    width: 40,
+    height: 40,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   headerTitle: {
-    fontSize: 18,
-    fontWeight: '700',
-    color: '#fff',
+    fontSize: 17,
+    fontWeight: '600',
+    color: '#000',
+    letterSpacing: -0.4,
+  },
+  headerPlaceholder: {
+    width: 40,
+  },
+  scrollContent: {
+    paddingBottom: 100,
   },
   coverPhotoContainer: {
     width: '100%',
-    height: 240,
+    height: 180,
     backgroundColor: '#f5f5f5',
   },
   coverPhoto: {
@@ -814,7 +868,7 @@ const styles = StyleSheet.create({
   section: {
     paddingHorizontal: 20,
     paddingTop: 16,
-    paddingBottom: 80,
+    paddingBottom: 20,
   },
   postsContainer: {
     alignItems: 'center',
@@ -865,5 +919,40 @@ const styles = StyleSheet.create({
     height: 32,
     alignItems: 'center',
     justifyContent: 'center',
+  },
+  saveButtonContainer: {
+    position: 'absolute',
+    bottom: 0,
+    left: 0,
+    right: 0,
+    backgroundColor: '#fff',
+    paddingHorizontal: 20,
+    paddingVertical: 16,
+    paddingBottom: 32,
+    borderTopWidth: 1,
+    borderTopColor: '#e5e5e5',
+    shadowColor: '#000',
+    shadowOffset: {
+      width: 0,
+      height: -2,
+    },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 5,
+  },
+  saveButton: {
+    backgroundColor: '#000',
+    paddingVertical: 16,
+    borderRadius: 12,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  saveButtonDisabled: {
+    backgroundColor: '#999',
+  },
+  saveButtonText: {
+    color: '#fff',
+    fontSize: 16,
+    fontWeight: '700',
   },
 });
