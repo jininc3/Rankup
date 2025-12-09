@@ -157,8 +157,8 @@ export default function CommentModal({
         <View style={styles.modalContent}>
           <KeyboardAvoidingView
             style={styles.container}
-            behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-            keyboardVerticalOffset={0}
+            behavior="padding"
+            keyboardVerticalOffset={Platform.OS === 'ios' ? -30 : -10}
           >
             {/* Drag Handle */}
             <View style={styles.dragHandle} />
@@ -273,7 +273,7 @@ const styles = StyleSheet.create({
     backgroundColor: '#fff',
     borderTopLeftRadius: 20,
     borderTopRightRadius: 20,
-    height: '70%',
+    height: '100%',
   },
   container: {
     flex: 1,
