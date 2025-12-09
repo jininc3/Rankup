@@ -245,20 +245,21 @@ export default function CommentModal({
 
                 <View style={styles.commentContent}>
                   <View style={styles.commentHeader}>
-                    <ThemedText style={styles.commentUsername}>{comment.username}</ThemedText>
-                    <ThemedText style={styles.commentTime}>{formatTimeAgo(comment.createdAt)}</ThemedText>
+                    <View style={styles.commentHeaderLeft}>
+                      <ThemedText style={styles.commentUsername}>{comment.username}</ThemedText>
+                      <ThemedText style={styles.commentTime}>{formatTimeAgo(comment.createdAt)}</ThemedText>
+                    </View>
+                    {/* Delete button (only for own comments) */}
+                    {currentUser?.id === comment.userId && (
+                      <TouchableOpacity
+                        style={styles.deleteCommentButton}
+                        onPress={() => handleDeleteComment(comment.id)}
+                      >
+                        <ThemedText style={styles.deleteCommentText}>Delete</ThemedText>
+                      </TouchableOpacity>
+                    )}
                   </View>
                   <ThemedText style={styles.commentText}>{comment.text}</ThemedText>
-
-                  {/* Delete button (only for own comments) */}
-                  {currentUser?.id === comment.userId && (
-                    <TouchableOpacity
-                      style={styles.deleteCommentButton}
-                      onPress={() => handleDeleteComment(comment.id)}
-                    >
-                      <ThemedText style={styles.deleteCommentText}>Delete</ThemedText>
-                    </TouchableOpacity>
-                  )}
                 </View>
               </View>
             ))
@@ -399,8 +400,13 @@ const styles = StyleSheet.create({
   commentHeader: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 8,
+    justifyContent: 'space-between',
     marginBottom: 4,
+  },
+  commentHeaderLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
   },
   commentUsername: {
     fontSize: 14,
@@ -417,7 +423,7 @@ const styles = StyleSheet.create({
     lineHeight: 20,
   },
   deleteCommentButton: {
-    marginTop: 8,
+    padding: 4,
   },
   deleteCommentText: {
     fontSize: 13,

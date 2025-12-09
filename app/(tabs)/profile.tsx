@@ -10,11 +10,12 @@ import { ResizeMode, Video } from 'expo-av';
 import * as ImagePicker from 'expo-image-picker';
 import { useRouter } from 'expo-router';
 import * as VideoThumbnails from 'expo-video-thumbnails';
-import { addDoc, collection, doc, getDocs, increment, orderBy, query, Timestamp, updateDoc, where } from 'firebase/firestore';
+import { addDoc, collection, doc, getDocs, increment, orderBy, query, setDoc, Timestamp, updateDoc, where } from 'firebase/firestore';
 import { getDownloadURL, ref, uploadBytesResumable } from 'firebase/storage';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { ActivityIndicator, Alert, Dimensions, Image, KeyboardAvoidingView, Linking, Modal, Platform, RefreshControl, ScrollView, StyleSheet, TextInput, TouchableOpacity, View } from 'react-native';
 import PostViewerModal from '@/app/profilePages/postViewerModal';
+import TagUsersModal, { TaggedUser } from '@/components/TagUsersModal';
 
 const userGames = [
   {
@@ -93,7 +94,7 @@ interface Post {
   mediaTypes?: string[];
   thumbnailUrl?: string;
   caption?: string;
-  taggedPeople?: string[];
+  taggedUsers?: TaggedUser[];
   taggedGame?: string;
   createdAt: Timestamp;
   likes: number;
@@ -119,6 +120,8 @@ export default function ProfileScreen() {
   const [selectedPostGame, setSelectedPostGame] = useState<string | null>(null);
   const [showGamePicker, setShowGamePicker] = useState(false);
   const [showFilterMenu, setShowFilterMenu] = useState(false);
+  const [taggedUsers, setTaggedUsers] = useState<TaggedUser[]>([]);
+  const [showTagUsersModal, setShowTagUsersModal] = useState(false);
   const [selectedFilter, setSelectedFilter] = useState<'newest' | 'oldest' | 'most_viewed' | 'most_liked'>('newest');
   const [selectedGameFilter, setSelectedGameFilter] = useState<string | null>(null); // null means "All Games"
   const [refreshing, setRefreshing] = useState(false);
@@ -234,6 +237,7 @@ export default function ProfileScreen() {
     setCurrentMediaIndex(0);
     setCaption('');
     setSelectedPostGame(null);
+    setTaggedUsers([]);
     setShowPostPreview(true);
   };
 
@@ -359,8 +363,17 @@ export default function ProfileScreen() {
       if (selectedPostGame) {
         postData.taggedGame = selectedPostGame;
       }
+      if (taggedUsers.length > 0) {
+        // Store tagged users as plain objects (not class instances)
+        postData.taggedUsers = taggedUsers.map(user => ({
+          userId: user.userId,
+          username: user.username,
+          avatar: user.avatar || null
+        }));
+      }
 
-      await addDoc(collection(db, 'posts'), postData);
+      const postDocRef = await addDoc(collection(db, 'posts'), postData);
+      const newPostId = postDocRef.id;
 
       // Increment user's post count in Firestore
       const userRef = doc(db, 'users', user.id);
@@ -368,12 +381,47 @@ export default function ProfileScreen() {
         postsCount: increment(1),
       });
 
+      // Send notifications to tagged users
+      if (taggedUsers.length > 0) {
+        try {
+          const now = Timestamp.now();
+          const notificationPromises = taggedUsers.map(async (taggedUser) => {
+            // Don't notify yourself
+            if (taggedUser.userId !== user.id) {
+              try {
+                const notificationDocRef = doc(
+                  db,
+                  `users/${taggedUser.userId}/notifications/${user.id}_tag_${newPostId}_${Date.now()}`
+                );
+                await setDoc(notificationDocRef, {
+                  type: 'tag',
+                  fromUserId: user.id,
+                  fromUsername: user.username || user.email?.split('@')[0] || 'User',
+                  fromUserAvatar: user.avatar || null,
+                  postId: newPostId,
+                  postThumbnail: thumbnailUrl || uploadedMediaUrls[0] || null,
+                  read: false,
+                  createdAt: now,
+                });
+              } catch (notifError) {
+                console.log('Could not send notification to user:', taggedUser.username, notifError);
+              }
+            }
+          });
+          await Promise.all(notificationPromises);
+        } catch (error) {
+          console.log('Error sending notifications to tagged users:', error);
+          // Don't fail the post creation if notifications fail
+        }
+      }
+
       setUploading(false);
       setShowPostPreview(false);
       setSelectedMedia([]);
       setCurrentMediaIndex(0);
       setCaption('');
       setSelectedPostGame(null);
+      setTaggedUsers([]);
       Alert.alert('Success', 'Post shared successfully!');
 
       // Refresh user data and posts list
@@ -1138,12 +1186,28 @@ export default function ProfileScreen() {
             </TouchableOpacity>
 
             {/* Tag People Button */}
-            <TouchableOpacity style={styles.postPreviewOptionButton}>
+            <TouchableOpacity
+              style={styles.postPreviewOptionButton}
+              onPress={() => setShowTagUsersModal(true)}
+              activeOpacity={0.7}
+            >
               <View style={styles.postPreviewOptionLeft}>
                 <IconSymbol size={24} name="person.2.fill" color="#000" />
-                <ThemedText style={styles.postPreviewOptionText}>Tag People</ThemedText>
+                <ThemedText style={styles.postPreviewOptionText}>
+                  {taggedUsers.length > 0
+                    ? `${taggedUsers.length} ${taggedUsers.length === 1 ? 'Person' : 'People'} Tagged`
+                    : 'Tag People'}
+                </ThemedText>
               </View>
-              <IconSymbol size={20} name="chevron.right" color="#999" />
+              <View style={styles.postPreviewOptionRight}>
+                {taggedUsers.length > 0 && (
+                  <ThemedText style={styles.taggedUsersPreview}>
+                    {taggedUsers.slice(0, 2).map(u => `@${u.username}`).join(', ')}
+                    {taggedUsers.length > 2 && '...'}
+                  </ThemedText>
+                )}
+                <IconSymbol size={20} name="chevron.right" color="#999" />
+              </View>
             </TouchableOpacity>
           </ScrollView>
 
@@ -1222,6 +1286,14 @@ export default function ProfileScreen() {
               </ScrollView>
             </View>
           </Modal>
+
+          {/* Tag Users Modal - Nested inside Post Preview Modal */}
+          <TagUsersModal
+            visible={showTagUsersModal}
+            onClose={() => setShowTagUsersModal(false)}
+            onTagsSelected={(users) => setTaggedUsers(users)}
+            initialSelectedUsers={taggedUsers}
+          />
         </KeyboardAvoidingView>
       </Modal>
     </ThemedView>
@@ -1956,6 +2028,11 @@ const styles = StyleSheet.create({
   },
   selectedGameIcon: {
     fontSize: 20,
+  },
+  taggedUsersPreview: {
+    fontSize: 13,
+    color: '#666',
+    marginRight: 8,
   },
   gamePickerContainer: {
     flex: 1,

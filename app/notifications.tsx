@@ -12,7 +12,7 @@ import PostViewerModal from '@/app/profilePages/postViewerModal';
 
 interface Notification {
   id: string;
-  type: 'follow' | 'like' | 'comment';
+  type: 'follow' | 'like' | 'comment' | 'tag';
   fromUserId: string;
   fromUsername: string;
   fromUserAvatar?: string;
@@ -214,8 +214,8 @@ export default function NotificationsScreen() {
     if (notification.type === 'follow') {
       // Navigate to user profile for follow notifications
       router.push(`/profilePages/profileView?userId=${notification.fromUserId}`);
-    } else if ((notification.type === 'like' || notification.type === 'comment') && notification.postId) {
-      // Show post viewer for like/comment notifications
+    } else if ((notification.type === 'like' || notification.type === 'comment' || notification.type === 'tag') && notification.postId) {
+      // Show post viewer for like/comment/tag notifications
       fetchAndShowPost(notification.postId);
     }
   };
@@ -293,6 +293,7 @@ export default function NotificationsScreen() {
                     </ThemedText>
                     {notification.type === 'follow' && ' started following you'}
                     {notification.type === 'like' && ' liked your post'}
+                    {notification.type === 'tag' && ' tagged you in a post'}
                     {notification.type === 'comment' && ' commented: '}
                     {notification.type === 'comment' && notification.commentText && (
                       <ThemedText style={styles.commentPreview}>
@@ -305,8 +306,8 @@ export default function NotificationsScreen() {
                   <ThemedText style={styles.timeText}>{getTimeAgo(notification.createdAt)}</ThemedText>
                 </View>
 
-                {/* Post thumbnail for like/comment notifications */}
-                {(notification.type === 'like' || notification.type === 'comment') && notification.postThumbnail && (
+                {/* Post thumbnail for like/comment/tag notifications */}
+                {(notification.type === 'like' || notification.type === 'comment' || notification.type === 'tag') && notification.postThumbnail && (
                   <Image source={{ uri: notification.postThumbnail }} style={styles.postThumbnail} />
                 )}
               </View>

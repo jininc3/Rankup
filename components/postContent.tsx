@@ -5,6 +5,7 @@ import { Timestamp } from 'firebase/firestore';
 import { useEffect, useState, useRef } from 'react';
 import { Dimensions, FlatList, Image, StyleSheet, TouchableOpacity, View } from 'react-native';
 import { getComments, CommentData } from '@/services/commentService';
+import { TaggedUser } from '@/components/TagUsersModal';
 
 const { width: screenWidth } = Dimensions.get('window');
 
@@ -74,7 +75,7 @@ interface Post {
   mediaTypes?: string[];
   thumbnailUrl?: string;
   caption?: string;
-  taggedPeople?: string[];
+  taggedUsers?: TaggedUser[];
   taggedGame?: string;
   createdAt: Timestamp;
   likes: number;
@@ -321,6 +322,33 @@ export default function PostContent({
         )}
       </View>
 
+      {/* Caption */}
+      {post.caption && (
+        <View style={styles.captionContainer}>
+          <ThemedText style={styles.captionUsername}>{post.username}</ThemedText>
+          <ThemedText style={styles.captionText}>{post.caption}</ThemedText>
+        </View>
+      )}
+
+      {/* Tagged Users */}
+      {post.taggedUsers && post.taggedUsers.length > 0 && (
+        <View style={styles.taggedUsersContainer}>
+          <ThemedText style={styles.taggedUsersLabel}>with </ThemedText>
+          {post.taggedUsers.map((user, index) => (
+            <TouchableOpacity
+              key={user.userId}
+              onPress={() => onUserPress && onUserPress(user.userId)}
+              activeOpacity={0.7}
+            >
+              <ThemedText style={styles.taggedUsername}>
+                @{user.username}
+                {index < post.taggedUsers!.length - 1 && ', '}
+              </ThemedText>
+            </TouchableOpacity>
+          ))}
+        </View>
+      )}
+
       {/* Recent Comments Preview */}
       {showRecentComments && recentComments.length > 0 && (
         <View style={styles.commentsPreviewContainer}>
@@ -484,6 +512,38 @@ const styles = StyleSheet.create({
   commentsText: {
     fontSize: 13,
     color: '#666',
+  },
+  captionContainer: {
+    flexDirection: 'row',
+    paddingHorizontal: 16,
+    paddingTop: 8,
+    gap: 6,
+  },
+  captionUsername: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#000',
+  },
+  captionText: {
+    fontSize: 14,
+    color: '#000',
+    flex: 1,
+  },
+  taggedUsersContainer: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    paddingHorizontal: 16,
+    paddingTop: 4,
+    alignItems: 'center',
+  },
+  taggedUsersLabel: {
+    fontSize: 13,
+    color: '#666',
+  },
+  taggedUsername: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: '#000',
   },
   commentsPreviewContainer: {
     paddingHorizontal: 16,

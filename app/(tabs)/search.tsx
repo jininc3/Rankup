@@ -181,8 +181,18 @@ export default function SearchScreen() {
   };
 
   const handleUserClick = async (user: SearchUser) => {
+    // Hide history immediately when clicking
+    setShowHistory(false);
+
+    // Save to history and navigate
     await saveToHistory(user);
-    router.push(`/profilePages/profileView?userId=${user.id}`);
+
+    // Navigate to profile
+    if (user.id === currentUser?.id) {
+      router.push('/(tabs)/profile');
+    } else {
+      router.push(`/profilePages/profileView?userId=${user.id}`);
+    }
   };
 
   return (
@@ -208,7 +218,8 @@ export default function SearchScreen() {
           onFocus={() => setShowHistory(true)}
           onBlur={() => {
             // Hide history when user clicks off the search bar
-            setTimeout(() => setShowHistory(false), 100);
+            // Longer timeout to allow clicks to register
+            setTimeout(() => setShowHistory(false), 200);
           }}
           autoCapitalize="none"
         />

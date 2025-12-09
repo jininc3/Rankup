@@ -563,6 +563,7 @@ export default function HomeScreen() {
       <ScrollView
         ref={scrollViewRef}
         style={styles.scrollView}
+        contentContainerStyle={styles.scrollViewContent}
         showsVerticalScrollIndicator={false}
         onScroll={handleScroll}
         scrollEventThrottle={100}
@@ -792,6 +793,9 @@ const styles = StyleSheet.create({
   scrollView: {
     flex: 1,
   },
+  scrollViewContent: {
+    paddingBottom: 100,
+  },
   loadingContainer: {
     alignItems: 'center',
     justifyContent: 'center',
@@ -823,7 +827,7 @@ const styles = StyleSheet.create({
   },
   filterModalOverlay: {
     flex: 1,
-    backgroundColor: 'rgba(0,0,0,0.5)',
+    backgroundColor: 'transparent',
     justifyContent: 'flex-end',
   },
   filterModalContent: {
