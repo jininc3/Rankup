@@ -14,9 +14,9 @@ import { useRouter } from 'expo-router';
 const { width: screenWidth, height: screenHeight } = Dimensions.get('window');
 
 // Game data
-const gameData: { [key: string]: { name: string; icon: string } } = {
-  valorant: { name: 'Valorant', icon: '🎯' },
-  league: { name: 'League of Legends', icon: '⚔️' },
+const gameData: { [key: string]: { name: string; icon?: string; image?: any } } = {
+  valorant: { name: 'Valorant', image: require('@/assets/images/valorantText.png') },
+  league: { name: 'League of Legends', image: require('@/assets/images/leagueoflegends.png') },
   apex: { name: 'Apex Legends', icon: '🎮' },
   fortnite: { name: 'Fortnite', icon: '🏆' },
   csgo: { name: 'CS:GO', icon: '🔫' },
@@ -25,6 +25,7 @@ const gameData: { [key: string]: { name: string; icon: string } } = {
 
 const getGameIcon = (gameId: string) => gameData[gameId]?.icon || '🎮';
 const getGameName = (gameId: string) => gameData[gameId]?.name || gameId;
+const getGameImage = (gameId: string) => gameData[gameId]?.image || null;
 
 interface Post {
   id: string;
@@ -606,9 +607,17 @@ function PostItem({
         </View>
         {post.taggedGame && (
           <View style={styles.gameTag}>
-            <ThemedText style={styles.gameTagText}>
-              {getGameIcon(post.taggedGame)} {getGameName(post.taggedGame)}
-            </ThemedText>
+            {getGameImage(post.taggedGame) ? (
+              <Image
+                source={getGameImage(post.taggedGame)}
+                style={styles.gameTagImage}
+                resizeMode="contain"
+              />
+            ) : (
+              <ThemedText style={styles.gameTagText}>
+                {getGameIcon(post.taggedGame)} {getGameName(post.taggedGame)}
+              </ThemedText>
+            )}
           </View>
         )}
       </View>
@@ -886,6 +895,10 @@ const styles = StyleSheet.create({
     fontSize: 12,
     fontWeight: '500',
     color: '#666',
+  },
+  gameTagImage: {
+    height: 28,
+    width: 100,
   },
   mediaContainer: {
     width: screenWidth,

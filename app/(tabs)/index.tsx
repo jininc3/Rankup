@@ -8,7 +8,7 @@ import { likePost, unlikePost, isPostLiked } from '@/services/likeService';
 import { createOrGetChat } from '@/services/chatService';
 import { getComments, CommentData } from '@/services/commentService';
 import CommentModal from '@/components/CommentModal';
-import { ResizeMode, Video } from 'expo-av';
+import { VideoView, useVideoPlayer } from 'expo-video';
 import { collection, getDocs, orderBy, query, Timestamp, where, onSnapshot } from 'firebase/firestore';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { ActivityIndicator, Dimensions, Image, Modal, ScrollView, StyleSheet, TouchableOpacity, View, Alert } from 'react-native';
@@ -18,9 +18,9 @@ import { useFocusEffect } from '@react-navigation/native';
 const { width } = Dimensions.get('window');
 
 // Game data
-const gameData: { [key: string]: { name: string; icon: string } } = {
-  valorant: { name: 'Valorant', icon: '🎯' },
-  league: { name: 'League of Legends', icon: '⚔️' },
+const gameData: { [key: string]: { name: string; icon?: string; image?: any } } = {
+  valorant: { name: 'Valorant', image: require('@/assets/images/valorantText.png') },
+  league: { name: 'League of Legends', image: require('@/assets/images/leagueoflegends.png') },
   apex: { name: 'Apex Legends', icon: '🎮' },
   fortnite: { name: 'Fortnite', icon: '🏆' },
   csgo: { name: 'CS:GO', icon: '🔫' },
@@ -29,6 +29,48 @@ const gameData: { [key: string]: { name: string; icon: string } } = {
 
 const getGameIcon = (gameId: string) => gameData[gameId]?.icon || '🎮';
 const getGameName = (gameId: string) => gameData[gameId]?.name || gameId;
+const getGameImage = (gameId: string) => gameData[gameId]?.image || null;
+
+// Video Player Component for expo-video
+const VideoPlayerComponent = ({
+  postId,
+  mediaUrl,
+  isPlaying,
+  onPlayerReady
+}: {
+  postId: string;
+  mediaUrl: string;
+  isPlaying: boolean;
+  onPlayerReady: (postId: string, player: any) => void;
+}) => {
+  const player = useVideoPlayer(mediaUrl, (player) => {
+    player.loop = true;
+    player.muted = false;
+  });
+
+  useEffect(() => {
+    onPlayerReady(postId, player);
+  }, [player, postId, onPlayerReady]);
+
+  useEffect(() => {
+    if (isPlaying) {
+      player.play();
+    } else {
+      player.pause();
+    }
+  }, [isPlaying, player]);
+
+  return (
+    <VideoView
+      player={player}
+      style={styles.mediaImage}
+      allowsFullscreen
+      allowsPictureInPicture={false}
+      nativeControls
+      contentFit="contain"
+    />
+  );
+};
 
 // Format timestamp for comments
 const formatTimeAgo = (timestamp: Timestamp): string => {
@@ -54,12 +96,8 @@ const formatTimeAgo = (timestamp: Timestamp): string => {
 
 // Available games for filtering
 const availableGames = [
-  { id: 'valorant', name: 'Valorant', icon: '🎯' },
-  { id: 'league', name: 'League of Legends', icon: '⚔️' },
-  { id: 'apex', name: 'Apex Legends', icon: '🎮' },
-  { id: 'fortnite', name: 'Fortnite', icon: '🏆' },
-  { id: 'csgo', name: 'CS:GO', icon: '🔫' },
-  { id: 'overwatch', name: 'Overwatch', icon: '🦸' },
+  { id: 'valorant', name: 'Valorant', image: require('@/assets/images/valorantText.png') },
+  { id: 'league', name: 'League of Legends', image: require('@/assets/images/leagueoflegends.png') },
 ];
 
 interface Post {
@@ -87,6 +125,7 @@ export default function HomeScreen() {
   const [followingUserIds, setFollowingUserIds] = useState<string[]>([]);
   const [playingVideoId, setPlayingVideoId] = useState<string | null>(null);
   const postRefs = useRef<{ [key: string]: View | null }>({});
+  const videoPlayers = useRef<{ [key: string]: any }>({});
   const scrollViewRef = useRef<ScrollView>(null);
   const [showFilterMenu, setShowFilterMenu] = useState(false);
   const [selectedGameFilter, setSelectedGameFilter] = useState<string | null>(null);
@@ -98,6 +137,11 @@ export default function HomeScreen() {
   const [postComments, setPostComments] = useState<{ [postId: string]: CommentData[] }>({});
 
   const currentPosts = activeTab === 'forYou' ? forYouPosts : followingPosts;
+
+  // Callback to register video players
+  const handlePlayerReady = useCallback((postId: string, player: any) => {
+    videoPlayers.current[postId] = player;
+  }, []);
 
   // Listen for unread notifications count in real-time
   useEffect(() => {
@@ -152,8 +196,39 @@ export default function HomeScreen() {
           ...doc.data()
         } as Post));
 
+        // Fetch user avatars for posts that don't have them
+        const postsWithAvatars = await Promise.all(
+          allPosts.map(async (post) => {
+            // If post already has an avatar, return as is
+            if (post.avatar) {
+              return post;
+            }
+
+            // Otherwise, fetch the user's avatar from the users collection
+            try {
+              const userQuery = query(
+                collection(db, 'users'),
+                where('__name__', '==', post.userId)
+              );
+              const userSnapshot = await getDocs(userQuery);
+
+              if (!userSnapshot.empty) {
+                const userData = userSnapshot.docs[0].data();
+                return {
+                  ...post,
+                  avatar: userData.avatar || null
+                };
+              }
+            } catch (error) {
+              console.error(`Error fetching avatar for user ${post.userId}:`, error);
+            }
+
+            return post;
+          })
+        );
+
         // Filter posts from followed users only (exclude current user's own posts)
-        let followingPostsFiltered = allPosts.filter(post =>
+        let followingPostsFiltered = postsWithAvatars.filter(post =>
           followingUserIds.includes(post.userId) && post.userId !== currentUser.id
         );
 
@@ -162,7 +237,7 @@ export default function HomeScreen() {
           followingPostsFiltered = followingPostsFiltered.filter(post => post.taggedGame === selectedGameFilter);
         }
 
-        console.log('All posts count:', allPosts.length);
+        console.log('All posts count:', postsWithAvatars.length);
         console.log('Following posts count:', followingPostsFiltered.length);
         console.log('Following posts:', followingPostsFiltered);
         setFollowingPosts(followingPostsFiltered);
@@ -363,8 +438,17 @@ export default function HomeScreen() {
   useFocusEffect(
     useCallback(() => {
       return () => {
-        // Pause video when screen loses focus
+        // Pause all videos when screen loses focus
         setPlayingVideoId(null);
+        Object.values(videoPlayers.current).forEach((player) => {
+          if (player) {
+            try {
+              player.pause();
+            } catch (error) {
+              console.log('Error pausing video:', error);
+            }
+          }
+        });
       };
     }, [])
   );
@@ -425,7 +509,25 @@ export default function HomeScreen() {
     });
   };
 
-  const handleUserPress = (userId: string) => {
+  const handleUserPress = async (userId: string) => {
+    // Stop all videos immediately by setting state
+    setPlayingVideoId(null);
+
+    // Pause all videos before navigating
+    try {
+      Object.values(videoPlayers.current).forEach((player) => {
+        if (player) {
+          try {
+            player.pause();
+          } catch (error) {
+            console.log('Error pausing video:', error);
+          }
+        }
+      });
+    } catch (error) {
+      console.log('Error in video cleanup:', error);
+    }
+
     // Check if clicking on own profile
     if (userId === currentUser?.id) {
       router.push('/(tabs)/profile');
@@ -569,9 +671,17 @@ export default function HomeScreen() {
                 </TouchableOpacity>
                 {post.taggedGame && (
                   <View style={styles.gameTag}>
-                    <ThemedText style={styles.gameTagText}>
-                      {getGameIcon(post.taggedGame)} {getGameName(post.taggedGame)}
-                    </ThemedText>
+                    {getGameImage(post.taggedGame) ? (
+                      <Image
+                        source={getGameImage(post.taggedGame)}
+                        style={styles.gameTagImage}
+                        resizeMode="contain"
+                      />
+                    ) : (
+                      <ThemedText style={styles.gameTagText}>
+                        {getGameIcon(post.taggedGame)} {getGameName(post.taggedGame)}
+                      </ThemedText>
+                    )}
                   </View>
                 )}
               </View>
@@ -586,19 +696,11 @@ export default function HomeScreen() {
               {/* Media Content */}
               <View style={post.mediaType === 'video' ? styles.mediaContentVideo : styles.mediaContentImage}>
                 {post.mediaType === 'video' ? (
-                  <Video
-                    source={{ uri: post.mediaUrl }}
-                    style={styles.mediaImage}
-                    useNativeControls
-                    resizeMode={ResizeMode.CONTAIN}
-                    shouldPlay={playingVideoId === post.id}
-                    isLooping
-                    onPlaybackStatusUpdate={(status) => {
-                      // Handle video end
-                      if (status.isLoaded && status.didJustFinish) {
-                        // Video will loop automatically due to isLooping prop
-                      }
-                    }}
+                  <VideoPlayerComponent
+                    postId={post.id}
+                    mediaUrl={post.mediaUrl}
+                    isPlaying={playingVideoId === post.id}
+                    onPlayerReady={handlePlayerReady}
                   />
                 ) : (
                   <Image
@@ -745,7 +847,15 @@ export default function HomeScreen() {
                     }}
                   >
                     <View style={styles.filterOptionLeft}>
-                      <ThemedText style={styles.gameFilterIcon}>{game.icon}</ThemedText>
+                      {game.image ? (
+                        <Image
+                          source={game.image}
+                          style={styles.gameFilterImage}
+                          resizeMode="contain"
+                        />
+                      ) : (
+                        <ThemedText style={styles.gameFilterIcon}>{game.icon}</ThemedText>
+                      )}
                       <ThemedText style={[styles.filterOptionText, selectedGameFilter === game.id && styles.filterOptionTextActive]}>
                         {game.name}
                       </ThemedText>
@@ -914,6 +1024,10 @@ const styles = StyleSheet.create({
     fontWeight: '500',
     color: '#666',
   },
+  gameTagImage: {
+    height: 28,
+    width: 100,
+  },
   followButton: {
     paddingHorizontal: 16,
     paddingVertical: 6,
@@ -1079,6 +1193,11 @@ const styles = StyleSheet.create({
   },
   gameFilterIcon: {
     fontSize: 20,
+  },
+  gameFilterImage: {
+    height: 24,
+    width: 80,
+    marginRight: 8,
   },
   commentsPreviewContainer: {
     paddingHorizontal: 16,

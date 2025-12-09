@@ -126,12 +126,8 @@ export default function ProfileScreen() {
 
   // Available games for tagging
   const availableGames = [
-    { id: 'valorant', name: 'Valorant', icon: '🎯' },
-    { id: 'league', name: 'League of Legends', icon: '⚔️' },
-    { id: 'apex', name: 'Apex Legends', icon: '🎮' },
-    { id: 'fortnite', name: 'Fortnite', icon: '🏆' },
-    { id: 'csgo', name: 'CS:GO', icon: '🔫' },
-    { id: 'overwatch', name: 'Overwatch', icon: '🦸' },
+    { id: 'valorant', name: 'Valorant', image: require('@/assets/images/valorantText.png') },
+    { id: 'league', name: 'League of Legends', image: require('@/assets/images/leagueoflegends.png') },
   ];
   const scrollViewRef = useRef<ScrollView>(null);
   const postPreviewScrollRef = useRef<ScrollView>(null);
@@ -344,6 +340,7 @@ export default function ProfileScreen() {
       const postData: any = {
         userId: user.id,
         username: user.username || user.email?.split('@')[0] || 'User',
+        avatar: user.avatar || null,
         mediaUrl: uploadedMediaUrls[0], // First media as primary
         mediaUrls: uploadedMediaUrls, // All media URLs
         mediaType: mediaTypes[0], // First media type as primary
@@ -634,7 +631,15 @@ export default function ProfileScreen() {
                   }}
                 >
                   <View style={styles.filterOptionLeft}>
-                    <ThemedText style={styles.gameFilterIcon}>{game.icon}</ThemedText>
+                    {game.image ? (
+                      <Image
+                        source={game.image}
+                        style={styles.gameFilterImage}
+                        resizeMode="contain"
+                      />
+                    ) : (
+                      <ThemedText style={styles.gameFilterIcon}>{game.icon}</ThemedText>
+                    )}
                     <ThemedText style={[styles.filterOptionText, selectedGameFilter === game.id && styles.filterOptionTextActive]}>
                       {game.name}
                     </ThemedText>
@@ -1198,7 +1203,15 @@ export default function ProfileScreen() {
                     onPress={() => setSelectedPostGame(game.id)}
                   >
                     <View style={styles.gamePickerItemLeft}>
-                      <ThemedText style={styles.gamePickerItemIcon}>{game.icon}</ThemedText>
+                      {game.image ? (
+                        <Image
+                          source={game.image}
+                          style={styles.gamePickerItemImage}
+                          resizeMode="contain"
+                        />
+                      ) : (
+                        <ThemedText style={styles.gamePickerItemIcon}>{game.icon}</ThemedText>
+                      )}
                       <ThemedText style={styles.gamePickerItemName}>{game.name}</ThemedText>
                     </View>
                     {selectedPostGame === game.id && (
@@ -1980,6 +1993,7 @@ const styles = StyleSheet.create({
   },
   gamePickerContent: {
     flex: 1,
+    overflow: 'visible',
   },
   gamePickerItem: {
     flexDirection: 'row',
@@ -1989,6 +2003,7 @@ const styles = StyleSheet.create({
     paddingVertical: 16,
     borderBottomWidth: 1,
     borderBottomColor: '#f0f0f0',
+    overflow: 'visible',
   },
   gamePickerItemSelected: {
     backgroundColor: '#f8f9fa',
@@ -2000,11 +2015,25 @@ const styles = StyleSheet.create({
   },
   gamePickerItemIcon: {
     fontSize: 28,
+    lineHeight: 36,
+  },
+  gamePickerItemImage: {
+    height: 32,
+    width: 100,
+    marginRight: 4,
+  },
+  gamePickerNoneIcon: {
+    height: 32,
+    width: 100,
+    marginRight: 4,
+    justifyContent: 'center',
+    alignItems: 'flex-start',
   },
   gamePickerItemName: {
     fontSize: 17,
     color: '#000',
     fontWeight: '500',
+    lineHeight: 24,
   },
   filterModalOverlay: {
     flex: 1,
@@ -2097,5 +2126,10 @@ const styles = StyleSheet.create({
   },
   gameFilterIcon: {
     fontSize: 20,
+  },
+  gameFilterImage: {
+    height: 24,
+    width: 80,
+    marginRight: 8,
   },
 });
