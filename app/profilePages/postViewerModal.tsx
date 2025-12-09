@@ -266,14 +266,8 @@ export default function PostViewerModal({
   // Handle opening comment modal for a specific post
   const handleOpenComments = (postToView: Post) => {
     console.log('Opening comments for post:', postToView.id);
-    console.log('Post details:', {
-      id: postToView.id,
-      userId: postToView.userId,
-      mediaUrl: postToView.mediaUrl
-    });
     setSelectedPostForComments(postToView);
     setShowCommentModal(true);
-    console.log('Comment modal state set to true');
   };
 
   // Handle comment added
@@ -479,27 +473,27 @@ export default function PostViewerModal({
             }, 500);
           }}
         />
+
+        {/* Comment Modal */}
+        {selectedPostForComments && (
+          <CommentModal
+            visible={showCommentModal}
+            postId={selectedPostForComments.id}
+            postOwnerId={selectedPostForComments.userId}
+            postThumbnail={
+              selectedPostForComments.mediaType === 'video' && selectedPostForComments.thumbnailUrl
+                ? selectedPostForComments.thumbnailUrl
+                : selectedPostForComments.mediaUrl
+            }
+            onClose={() => {
+              setShowCommentModal(false);
+              setSelectedPostForComments(null);
+            }}
+            onCommentAdded={handleCommentAdded}
+          />
+        )}
       </Animated.View>
     </Modal>
-
-    {/* Comment Modal */}
-    {selectedPostForComments && (
-      <CommentModal
-        visible={showCommentModal}
-        postId={selectedPostForComments.id}
-        postOwnerId={selectedPostForComments.userId}
-        postThumbnail={
-          selectedPostForComments.mediaType === 'video' && selectedPostForComments.thumbnailUrl
-            ? selectedPostForComments.thumbnailUrl
-            : selectedPostForComments.mediaUrl
-        }
-        onClose={() => {
-          setShowCommentModal(false);
-          setSelectedPostForComments(null);
-        }}
-        onCommentAdded={handleCommentAdded}
-      />
-    )}
   </>
   );
 }
