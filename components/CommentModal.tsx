@@ -215,11 +215,7 @@ export default function CommentModal({
 
               {/* Header */}
               <View style={styles.header}>
-                <TouchableOpacity onPress={onClose} style={styles.closeButton}>
-                  <IconSymbol size={24} name="xmark" color="#000" />
-                </TouchableOpacity>
                 <ThemedText style={styles.headerTitle}>Comments</ThemedText>
-                <View style={styles.headerSpacer} />
               </View>
             </View>
 
@@ -341,8 +337,6 @@ const styles = StyleSheet.create({
     marginBottom: 8,
   },
   header: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
     alignItems: 'center',
     paddingHorizontal: 16,
     paddingTop: 8,
