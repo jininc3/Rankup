@@ -5,8 +5,8 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { Animated, Dimensions, FlatList, Modal, PanResponder, StyleSheet, TouchableOpacity, View, Alert } from 'react-native';
 import { createOrGetChat } from '@/services/chatService';
 import { likePost, unlikePost, isPostLiked } from '@/services/likeService';
-import CommentModal from '@/components/CommentModal';
-import PostContent from '@/components/postContent';
+import CommentModal from '@/app/components/commentModal';
+import PostContent from '@/app/components/postContent';
 import { useAuth } from '@/contexts/AuthContext';
 import { useRouter } from 'expo-router';
 

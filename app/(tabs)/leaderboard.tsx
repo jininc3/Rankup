@@ -45,12 +45,6 @@ export default function LeaderboardScreen() {
       {/* Header */}
       <View style={styles.header}>
         <ThemedText style={styles.headerTitle}>Leaderboards</ThemedText>
-        <TouchableOpacity
-          style={styles.headerIconButton}
-          onPress={() => router.push('/notifications')}
-        >
-          <IconSymbol size={24} name="bell.fill" color="#000" />
-        </TouchableOpacity>
       </View>
 
       <ScrollView style={styles.scrollView} showsVerticalScrollIndicator={false}>

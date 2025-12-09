@@ -140,7 +140,7 @@ export default function TagUsersModal({
     <Modal
       visible={visible}
       animationType="slide"
-      transparent={false}
+      presentationStyle="pageSheet"
       onRequestClose={handleCancel}
     >
       <View style={styles.container}>
@@ -404,7 +404,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    paddingVertical: 12,
+    paddingVertical: 10,
     paddingHorizontal: 12,
     marginBottom: 4,
     borderRadius: 8,
@@ -413,13 +413,13 @@ const styles = StyleSheet.create({
   userLeft: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 12,
+    gap: 10,
     flex: 1,
   },
   userAvatar: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
+    width: 36,
+    height: 36,
+    borderRadius: 18,
     backgroundColor: '#f0f0f0',
     alignItems: 'center',
     justifyContent: 'center',
@@ -427,15 +427,14 @@ const styles = StyleSheet.create({
   userAvatarImage: {
     width: '100%',
     height: '100%',
-    borderRadius: 20,
+    borderRadius: 18,
   },
   userAvatarInitial: {
-    fontSize: 16,
+    fontSize: 14,
     fontWeight: '600',
   },
   username: {
-    fontSize: 16,
-    fontWeight: '500',
+    fontSize: 14,
     color: '#000',
     flex: 1,
   },

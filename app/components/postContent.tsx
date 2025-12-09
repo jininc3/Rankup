@@ -5,7 +5,7 @@ import { Timestamp } from 'firebase/firestore';
 import { useEffect, useState, useRef } from 'react';
 import { Dimensions, FlatList, Image, StyleSheet, TouchableOpacity, View } from 'react-native';
 import { getComments, CommentData } from '@/services/commentService';
-import { TaggedUser } from '@/components/TagUsersModal';
+import { TaggedUser } from '@/app/components/tagUsersModal';
 
 const { width: screenWidth } = Dimensions.get('window');
 

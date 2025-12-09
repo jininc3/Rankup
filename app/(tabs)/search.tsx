@@ -199,12 +199,6 @@ export default function SearchScreen() {
     <ThemedView style={styles.container}>
       <View style={styles.header}>
         <ThemedText style={styles.headerTitle}>Search Users</ThemedText>
-        <TouchableOpacity
-          style={styles.headerIconButton}
-          onPress={() => router.push('/notifications')}
-        >
-          <IconSymbol size={24} name="bell.fill" color="#000" />
-        </TouchableOpacity>
       </View>
 
       <View style={styles.searchContainer}>

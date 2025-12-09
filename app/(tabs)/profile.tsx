@@ -1,21 +1,20 @@
 import RankCard from '@/app/components/rankCard';
+import TagUsersModal, { TaggedUser } from '@/app/components/tagUsersModal';
 import { currentUser } from '@/app/data/userData';
+import PostViewerModal from '@/app/profilePages/postViewerModal';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { IconSymbol } from '@/components/ui/icon-symbol';
 import { db, storage } from '@/config/firebase';
 import { useAuth } from '@/contexts/AuthContext';
-import { useFocusEffect } from '@react-navigation/native';
 import { ResizeMode, Video } from 'expo-av';
 import * as ImagePicker from 'expo-image-picker';
 import { useRouter } from 'expo-router';
 import * as VideoThumbnails from 'expo-video-thumbnails';
-import { addDoc, collection, doc, getDocs, increment, orderBy, query, setDoc, Timestamp, updateDoc, where } from 'firebase/firestore';
+import { addDoc, collection, doc, getDocs, increment, query, setDoc, Timestamp, updateDoc, where } from 'firebase/firestore';
 import { getDownloadURL, ref, uploadBytesResumable } from 'firebase/storage';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { ActivityIndicator, Alert, Dimensions, Image, KeyboardAvoidingView, Linking, Modal, Platform, RefreshControl, ScrollView, StyleSheet, TextInput, TouchableOpacity, View } from 'react-native';
-import PostViewerModal from '@/app/profilePages/postViewerModal';
-import TagUsersModal, { TaggedUser } from '@/components/TagUsersModal';
 
 const userGames = [
   {
@@ -476,12 +475,6 @@ export default function ProfileScreen() {
             onPress={() => router.push('/profilePages/settings')}
           >
             <IconSymbol size={28} name="gearshape.fill" color="#fff" />
-          </TouchableOpacity>
-          <TouchableOpacity
-            style={styles.headerIconButton}
-            onPress={() => router.push('/notifications')}
-          >
-            <IconSymbol size={28} name="bell.fill" color="#fff" />
           </TouchableOpacity>
         </View>
       </View>
@@ -1168,7 +1161,7 @@ export default function ProfileScreen() {
               activeOpacity={0.7}
             >
               <View style={styles.postPreviewOptionLeft}>
-                <IconSymbol size={24} name="gamecontroller.fill" color="#000" />
+                <IconSymbol size={20} name="gamecontroller.fill" color="#000" />
                 <ThemedText style={styles.postPreviewOptionText}>
                   {selectedPostGame
                     ? availableGames.find(g => g.id === selectedPostGame)?.name || 'Tag Game'
@@ -1181,7 +1174,7 @@ export default function ProfileScreen() {
                     {availableGames.find(g => g.id === selectedPostGame)?.icon}
                   </ThemedText>
                 )}
-                <IconSymbol size={20} name="chevron.right" color="#999" />
+                <IconSymbol size={18} name="chevron.right" color="#999" />
               </View>
             </TouchableOpacity>
 
@@ -1192,7 +1185,7 @@ export default function ProfileScreen() {
               activeOpacity={0.7}
             >
               <View style={styles.postPreviewOptionLeft}>
-                <IconSymbol size={24} name="person.2.fill" color="#000" />
+                <IconSymbol size={20} name="person.2.fill" color="#000" />
                 <ThemedText style={styles.postPreviewOptionText}>
                   {taggedUsers.length > 0
                     ? `${taggedUsers.length} ${taggedUsers.length === 1 ? 'Person' : 'People'} Tagged`
@@ -1206,7 +1199,7 @@ export default function ProfileScreen() {
                     {taggedUsers.length > 2 && '...'}
                   </ThemedText>
                 )}
-                <IconSymbol size={20} name="chevron.right" color="#999" />
+                <IconSymbol size={18} name="chevron.right" color="#999" />
               </View>
             </TouchableOpacity>
           </ScrollView>
@@ -2006,25 +1999,24 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    paddingHorizontal: 20,
-    paddingVertical: 16,
+    paddingHorizontal: 16,
+    paddingVertical: 10,
     borderBottomWidth: 1,
     borderBottomColor: '#e5e5e5',
   },
   postPreviewOptionLeft: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 12,
+    gap: 10,
   },
   postPreviewOptionText: {
-    fontSize: 16,
+    fontSize: 14,
     color: '#000',
-    fontWeight: '500',
   },
   postPreviewOptionRight: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 8,
+    gap: 6,
   },
   selectedGameIcon: {
     fontSize: 20,
@@ -2043,7 +2035,7 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     alignItems: 'center',
     paddingHorizontal: 16,
-    paddingTop: 60,
+    paddingTop: 16,
     paddingBottom: 16,
     borderBottomWidth: 1,
     borderBottomColor: '#e5e5e5',
@@ -2076,8 +2068,8 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    paddingHorizontal: 20,
-    paddingVertical: 16,
+    paddingHorizontal: 16,
+    paddingVertical: 10,
     borderBottomWidth: 1,
     borderBottomColor: '#f0f0f0',
     overflow: 'visible',
@@ -2088,7 +2080,7 @@ const styles = StyleSheet.create({
   gamePickerItemLeft: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 16,
+    gap: 12,
   },
   gamePickerItemIcon: {
     fontSize: 28,
@@ -2107,10 +2099,8 @@ const styles = StyleSheet.create({
     alignItems: 'flex-start',
   },
   gamePickerItemName: {
-    fontSize: 17,
+    fontSize: 14,
     color: '#000',
-    fontWeight: '500',
-    lineHeight: 24,
   },
   filterModalOverlay: {
     flex: 1,

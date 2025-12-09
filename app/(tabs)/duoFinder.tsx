@@ -56,14 +56,7 @@ export default function DuoFinderScreen() {
           >
             <IconSymbol size={22} name="arrow.up.arrow.down" color="#000" />
           </TouchableOpacity>
-        ) : (
-          <TouchableOpacity
-            style={styles.headerIconButton}
-            onPress={() => router.push('/notifications')}
-          >
-            <IconSymbol size={24} name="bell.fill" color="#000" />
-          </TouchableOpacity>
-        )}
+        ) : null}
       </View>
 
       {selectedGame && (
