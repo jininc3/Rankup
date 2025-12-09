@@ -13,7 +13,7 @@ import * as VideoThumbnails from 'expo-video-thumbnails';
 import { addDoc, collection, doc, getDocs, increment, orderBy, query, Timestamp, updateDoc, where } from 'firebase/firestore';
 import { getDownloadURL, ref, uploadBytesResumable } from 'firebase/storage';
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { ActivityIndicator, Alert, Dimensions, Image, Linking, Modal, RefreshControl, ScrollView, StyleSheet, TextInput, TouchableOpacity, View } from 'react-native';
+import { ActivityIndicator, Alert, Dimensions, Image, KeyboardAvoidingView, Linking, Modal, Platform, RefreshControl, ScrollView, StyleSheet, TextInput, TouchableOpacity, View } from 'react-native';
 import PostViewerModal from '@/app/profilePages/postViewerModal';
 
 const userGames = [
@@ -134,6 +134,8 @@ export default function ProfileScreen() {
     { id: 'overwatch', name: 'Overwatch', icon: '🦸' },
   ];
   const scrollViewRef = useRef<ScrollView>(null);
+  const postPreviewScrollRef = useRef<ScrollView>(null);
+  const captionInputRef = useRef<View>(null);
 
   const handleScroll = (event: any) => {
     const offsetX = event.nativeEvent.contentOffset.x;
@@ -404,6 +406,18 @@ export default function ProfileScreen() {
   const closePostViewer = () => {
     setShowPostViewer(false);
     setSelectedPost(null);
+  };
+
+  const handleCaptionFocus = () => {
+    setTimeout(() => {
+      captionInputRef.current?.measureLayout(
+        postPreviewScrollRef.current as any,
+        (x, y) => {
+          postPreviewScrollRef.current?.scrollTo({ y: y - 50, animated: true });
+        },
+        () => {}
+      );
+    }, 300);
   };
 
   return (
@@ -945,6 +959,7 @@ export default function ProfileScreen() {
         userAvatar={user?.avatar}
         onClose={closePostViewer}
         onNavigate={handleNavigatePost}
+        onCommentAdded={fetchPosts}
       />
 
       {/* Post Preview Modal */}
@@ -954,7 +969,10 @@ export default function ProfileScreen() {
         transparent={false}
         onRequestClose={() => setShowPostPreview(false)}
       >
-        <View style={styles.postPreviewContainer}>
+        <KeyboardAvoidingView
+          behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+          style={styles.postPreviewContainer}
+        >
           {/* Header */}
           <View style={styles.postPreviewHeader}>
             <TouchableOpacity
@@ -976,6 +994,7 @@ export default function ProfileScreen() {
           </View>
 
           <ScrollView
+            ref={postPreviewScrollRef}
             style={styles.postPreviewContent}
             showsVerticalScrollIndicator={false}
             keyboardShouldPersistTaps="handled"
@@ -1060,7 +1079,7 @@ export default function ProfileScreen() {
             )}
 
             {/* Caption Input */}
-            <View style={styles.postPreviewCaptionSection}>
+            <View style={styles.postPreviewCaptionSection} ref={captionInputRef}>
               <View style={styles.postPreviewUserInfo}>
                 <View style={styles.postPreviewAvatar}>
                   {user?.avatar && user.avatar.startsWith('http') ? (
@@ -1082,6 +1101,7 @@ export default function ProfileScreen() {
                 value={caption}
                 onChangeText={setCaption}
                 maxLength={500}
+                onFocus={handleCaptionFocus}
               />
             </View>
 
@@ -1189,7 +1209,7 @@ export default function ProfileScreen() {
               </ScrollView>
             </View>
           </Modal>
-        </View>
+        </KeyboardAvoidingView>
       </Modal>
     </ThemedView>
   );

@@ -1,22 +1,22 @@
-import React, { useState, useEffect } from 'react';
+import { ThemedText } from '@/components/themed-text';
+import { ThemedView } from '@/components/themed-view';
+import { IconSymbol } from '@/components/ui/icon-symbol';
+import { db } from '@/config/firebase';
+import { useGoogleAuth } from '@/hooks/useGoogleAuth';
+import { signInWithEmail, signInWithGoogleCredential } from '@/services/authService';
+import { useRouter } from 'expo-router';
+import { collection, getDocs, query, where } from 'firebase/firestore';
+import React, { useEffect, useState, useRef } from 'react';
 import {
-  View,
-  StyleSheet,
-  TouchableOpacity,
-  TextInput,
   Alert,
   KeyboardAvoidingView,
   Platform,
   ScrollView,
+  StyleSheet,
+  TextInput,
+  TouchableOpacity,
+  View,
 } from 'react-native';
-import { ThemedText } from '@/components/themed-text';
-import { ThemedView } from '@/components/themed-view';
-import { IconSymbol } from '@/components/ui/icon-symbol';
-import { useRouter } from 'expo-router';
-import { signInWithEmail, signInWithGoogleCredential } from '@/services/authService';
-import { useGoogleAuth } from '@/hooks/useGoogleAuth';
-import { collection, query, where, getDocs } from 'firebase/firestore';
-import { db } from '@/config/firebase';
 
 export default function LoginScreen() {
   const router = useRouter();
@@ -24,6 +24,9 @@ export default function LoginScreen() {
   const [password, setPassword] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const googleAuth = useGoogleAuth();
+
+  // Ref for password field
+  const passwordRef = useRef<TextInput>(null);
 
   useEffect(() => {
     if (googleAuth.response?.type === 'success') {
@@ -154,11 +157,15 @@ export default function LoginScreen() {
                   onChangeText={setEmailOrUsername}
                   autoCapitalize="none"
                   editable={!isLoading}
+                  returnKeyType="next"
+                  onSubmitEditing={() => passwordRef.current?.focus()}
+                  blurOnSubmit={false}
                 />
               </View>
 
               <View style={styles.inputContainer}>
                 <TextInput
+                  ref={passwordRef}
                   style={styles.input}
                   placeholder="Password"
                   placeholderTextColor="#999"
@@ -166,6 +173,8 @@ export default function LoginScreen() {
                   onChangeText={setPassword}
                   secureTextEntry
                   editable={!isLoading}
+                  returnKeyType="done"
+                  onSubmitEditing={handleEmailLogin}
                 />
               </View>
 
@@ -215,6 +224,7 @@ export default function LoginScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
+    
   },
   keyboardView: {
     flex: 1,
@@ -225,16 +235,24 @@ const styles = StyleSheet.create({
   content: {
     flex: 1,
     padding: 24,
+    paddingTop: 80,
     justifyContent: 'center',
+
   },
   header: {
     marginBottom: 40,
+    marginTop: 40,
     alignItems: 'center',
+    paddingTop: 48,
+    paddingBottom: 32,
+    overflow: 'visible',
   },
   title: {
     fontSize: 32,
     fontWeight: 'bold',
     marginBottom: 8,
+    lineHeight: 40,
+    overflow: 'visible',
   },
   subtitle: {
     fontSize: 16,

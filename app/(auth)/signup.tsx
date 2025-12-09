@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import {
   View,
   StyleSheet,
@@ -32,6 +32,11 @@ export default function SignupScreen() {
   const [isLoading, setIsLoading] = useState(false);
   const [profileImage, setProfileImage] = useState<string | null>(null);
   const googleAuth = useGoogleAuth();
+
+  // Refs for input fields
+  const emailRef = useRef<TextInput>(null);
+  const passwordRef = useRef<TextInput>(null);
+  const confirmPasswordRef = useRef<TextInput>(null);
 
   useEffect(() => {
     if (googleAuth.response?.type === 'success') {
@@ -164,20 +169,31 @@ export default function SignupScreen() {
             <View style={styles.form}>
               {/* Profile Picture Section */}
               <View style={styles.profilePicContainer}>
-                <TouchableOpacity
-                  style={styles.profilePicButton}
-                  onPress={pickImage}
-                  disabled={isLoading}
-                >
-                  {profileImage ? (
-                    <Image source={{ uri: profileImage }} style={styles.profilePicImage} />
-                  ) : (
-                    <View style={styles.profilePicPlaceholder}>
-                      <IconSymbol size={40} name="person.circle" color="#999" />
-                      <ThemedText style={styles.profilePicText}>Add Photo</ThemedText>
-                    </View>
+                <View style={styles.profilePicWrapper}>
+                  <TouchableOpacity
+                    style={styles.profilePicButton}
+                    onPress={pickImage}
+                    disabled={isLoading}
+                  >
+                    {profileImage ? (
+                      <Image source={{ uri: profileImage }} style={styles.profilePicImage} />
+                    ) : (
+                      <View style={styles.profilePicPlaceholder}>
+                        <IconSymbol size={40} name="person.circle" color="#999" />
+                        <ThemedText style={styles.profilePicText}>Add Photo</ThemedText>
+                      </View>
+                    )}
+                  </TouchableOpacity>
+                  {profileImage && (
+                    <TouchableOpacity
+                      style={styles.removeImageButton}
+                      onPress={() => setProfileImage(null)}
+                      disabled={isLoading}
+                    >
+                      <IconSymbol size={20} name="xmark.circle.fill" color="#fff" />
+                    </TouchableOpacity>
                   )}
-                </TouchableOpacity>
+                </View>
               </View>
 
               <View style={styles.inputContainer}>
@@ -189,11 +205,15 @@ export default function SignupScreen() {
                   onChangeText={setUsername}
                   autoCapitalize="none"
                   editable={!isLoading}
+                  returnKeyType="next"
+                  onSubmitEditing={() => emailRef.current?.focus()}
+                  blurOnSubmit={false}
                 />
               </View>
 
               <View style={styles.inputContainer}>
                 <TextInput
+                  ref={emailRef}
                   style={styles.input}
                   placeholder="Email"
                   placeholderTextColor="#999"
@@ -202,11 +222,15 @@ export default function SignupScreen() {
                   autoCapitalize="none"
                   keyboardType="email-address"
                   editable={!isLoading}
+                  returnKeyType="next"
+                  onSubmitEditing={() => passwordRef.current?.focus()}
+                  blurOnSubmit={false}
                 />
               </View>
 
               <View style={styles.inputContainer}>
                 <TextInput
+                  ref={passwordRef}
                   style={styles.input}
                   placeholder="Password"
                   placeholderTextColor="#999"
@@ -214,11 +238,15 @@ export default function SignupScreen() {
                   onChangeText={setPassword}
                   secureTextEntry
                   editable={!isLoading}
+                  returnKeyType="next"
+                  onSubmitEditing={() => confirmPasswordRef.current?.focus()}
+                  blurOnSubmit={false}
                 />
               </View>
 
               <View style={styles.inputContainer}>
                 <TextInput
+                  ref={confirmPasswordRef}
                   style={styles.input}
                   placeholder="Confirm Password"
                   placeholderTextColor="#999"
@@ -226,6 +254,8 @@ export default function SignupScreen() {
                   onChangeText={setConfirmPassword}
                   secureTextEntry
                   editable={!isLoading}
+                  returnKeyType="done"
+                  onSubmitEditing={handleEmailSignup}
                 />
               </View>
 
@@ -285,16 +315,23 @@ const styles = StyleSheet.create({
   content: {
     flex: 1,
     padding: 24,
-    justifyContent: 'center',
+    paddingTop: 20,
+    justifyContent: 'flex-start',
   },
   header: {
-    marginBottom: 40,
+    marginBottom: 0,
+    marginTop: 20,
     alignItems: 'center',
+    paddingTop: 48,
+    paddingBottom: 16,
+    overflow: 'visible',
   },
   title: {
     fontSize: 32,
     fontWeight: 'bold',
     marginBottom: 8,
+    lineHeight: 40,
+    overflow: 'visible',
   },
   subtitle: {
     fontSize: 16,
@@ -379,6 +416,9 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     marginBottom: 24,
   },
+  profilePicWrapper: {
+    position: 'relative',
+  },
   profilePicButton: {
     alignItems: 'center',
   },
@@ -405,5 +445,18 @@ const styles = StyleSheet.create({
     fontSize: 12,
     color: '#999',
     marginTop: 4,
+  },
+  removeImageButton: {
+    position: 'absolute',
+    top: 0,
+    right: 0,
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    backgroundColor: '#ff3b30',
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 2,
+    borderColor: '#fff',
   },
 });

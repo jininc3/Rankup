@@ -134,7 +134,6 @@ export async function signInWithGoogleCredential(idToken: string): Promise<UserP
         id: user.uid,
         email: user.email!,
         username: user.displayName || user.email!.split('@')[0],
-        avatar: user.photoURL || undefined,
         bio: '',
         discordLink: '',
         instagramLink: '',
@@ -147,15 +146,6 @@ export async function signInWithGoogleCredential(idToken: string): Promise<UserP
         updatedAt: new Date(),
       };
       await setDoc(doc(db, 'users', user.uid), userProfile);
-    } else {
-      // Update avatar if it changed
-      if (user.photoURL && user.photoURL !== userProfile.avatar) {
-        userProfile.avatar = user.photoURL;
-        await setDoc(doc(db, 'users', user.uid), {
-          ...userProfile,
-          updatedAt: new Date(),
-        });
-      }
     }
 
     return userProfile;

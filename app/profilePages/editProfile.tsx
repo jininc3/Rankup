@@ -40,6 +40,7 @@ export default function EditProfileScreen() {
   const [isLoading, setIsLoading] = useState(false);
   const [posts, setPosts] = useState<Post[]>([]);
   const [loadingPosts, setLoadingPosts] = useState(false);
+  const [changesSaved, setChangesSaved] = useState(false);
 
   // Pending changes (not saved until "Save Changes" is pressed)
   const [pendingProfileImageUri, setPendingProfileImageUri] = useState<string | null>(null);
@@ -67,6 +68,11 @@ export default function EditProfileScreen() {
   // Intercept back navigation (including swipe gestures)
   useEffect(() => {
     const beforeRemoveListener = (e: any) => {
+      // If changes were saved, allow navigation without confirmation
+      if (changesSaved) {
+        return;
+      }
+
       // Check if any field has changed from original user data
       const changesExist =
         username !== (user?.username || '') ||
@@ -114,7 +120,7 @@ export default function EditProfileScreen() {
     return () => {
       navigation.removeListener('beforeRemove', beforeRemoveListener);
     };
-  }, [navigation, username, bio, discord, instagram, pendingProfileImageUri, pendingCoverPhotoUri, pendingRemoveProfileImage, pendingRemoveCoverPhoto, user]);
+  }, [navigation, username, bio, discord, instagram, pendingProfileImageUri, pendingCoverPhotoUri, pendingRemoveProfileImage, pendingRemoveCoverPhoto, user, changesSaved]);
 
   const fetchPosts = async () => {
     if (!user?.id) return;
@@ -448,51 +454,70 @@ export default function EditProfileScreen() {
       return;
     }
 
-    try {
-      setIsLoading(true);
+    // Show confirmation dialog before saving
+    Alert.alert(
+      'Save Changes?',
+      'Are you sure you want to save these changes to your profile?',
+      [
+        {
+          text: 'Cancel',
+          style: 'cancel',
+        },
+        {
+          text: 'Save',
+          onPress: async () => {
+            try {
+              setIsLoading(true);
 
-      // Prepare update data
-      const updateData: any = {
-        username: username.trim(),
-        bio: bio.trim(),
-        discordLink: discord.trim(),
-        instagramLink: instagram.trim(),
-      };
+              // Prepare update data
+              const updateData: any = {
+                username: username.trim(),
+                bio: bio.trim(),
+                discordLink: discord.trim(),
+                instagramLink: instagram.trim(),
+              };
 
-      // Handle profile image changes
-      if (pendingRemoveProfileImage) {
-        // User wants to remove profile picture
-        updateData.avatar = '';
-      } else if (pendingProfileImageUri) {
-        // User selected a new profile picture - upload it
-        const avatarUrl = await uploadProfilePicture(user.id, pendingProfileImageUri);
-        updateData.avatar = avatarUrl;
-      }
+              // Handle profile image changes
+              if (pendingRemoveProfileImage) {
+                // User wants to remove profile picture
+                updateData.avatar = '';
+              } else if (pendingProfileImageUri) {
+                // User selected a new profile picture - upload it
+                const avatarUrl = await uploadProfilePicture(user.id, pendingProfileImageUri);
+                updateData.avatar = avatarUrl;
+              }
 
-      // Handle cover photo changes
-      if (pendingRemoveCoverPhoto) {
-        // User wants to remove cover photo
-        updateData.coverPhoto = '';
-      } else if (pendingCoverPhotoUri) {
-        // User selected a new cover photo - upload it
-        const coverUrl = await uploadCoverPhoto(user.id, pendingCoverPhotoUri);
-        updateData.coverPhoto = coverUrl;
-      }
+              // Handle cover photo changes
+              if (pendingRemoveCoverPhoto) {
+                // User wants to remove cover photo
+                updateData.coverPhoto = '';
+              } else if (pendingCoverPhotoUri) {
+                // User selected a new cover photo - upload it
+                const coverUrl = await uploadCoverPhoto(user.id, pendingCoverPhotoUri);
+                updateData.coverPhoto = coverUrl;
+              }
 
-      // Save all changes at once
-      await updateUserProfile(user.id, updateData);
+              // Save all changes at once
+              await updateUserProfile(user.id, updateData);
 
-      // Refresh user data to reflect changes
-      await refreshUser();
+              // Refresh user data to reflect changes
+              await refreshUser();
 
-      // Navigate back to profile immediately after saving
-      router.back();
-    } catch (error: any) {
-      console.error('Profile update error:', error);
-      Alert.alert('Error', error.message || 'Failed to update profile');
-    } finally {
-      setIsLoading(false);
-    }
+              // Mark changes as saved to skip confirmation dialog
+              setChangesSaved(true);
+
+              // Navigate back to profile immediately after saving
+              router.back();
+            } catch (error: any) {
+              console.error('Profile update error:', error);
+              Alert.alert('Error', error.message || 'Failed to update profile');
+            } finally {
+              setIsLoading(false);
+            }
+          },
+        },
+      ]
+    );
   };
 
   return (
@@ -562,11 +587,11 @@ export default function EditProfileScreen() {
 
             {/* Stats Row - non-editable display */}
             <View style={styles.statsRow}>
-              <ThemedText style={styles.statText}>0 Clips</ThemedText>
+              <ThemedText style={styles.statText}>{posts.length} Posts</ThemedText>
               <ThemedText style={styles.statDividerText}> | </ThemedText>
-              <ThemedText style={styles.statText}>0 Followers</ThemedText>
+              <ThemedText style={styles.statText}>{user?.followersCount || 0} Followers</ThemedText>
               <ThemedText style={styles.statDividerText}> | </ThemedText>
-              <ThemedText style={styles.statText}>0 Following</ThemedText>
+              <ThemedText style={styles.statText}>{user?.followingCount || 0} Following</ThemedText>
             </View>
 
             {/* Editable Bio */}

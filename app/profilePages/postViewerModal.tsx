@@ -6,6 +6,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { Animated, Dimensions, FlatList, Image, Modal, PanResponder, StyleSheet, TouchableOpacity, View, Alert } from 'react-native';
 import { getComments, CommentData } from '@/services/commentService';
 import { createOrGetChat } from '@/services/chatService';
+import { likePost, unlikePost, isPostLiked } from '@/services/likeService';
 import CommentModal from '@/components/CommentModal';
 import { useAuth } from '@/contexts/AuthContext';
 import { useRouter } from 'expo-router';
@@ -74,6 +75,9 @@ export default function PostViewerModal({
   const postRefs = useRef<{ [key: string]: View | null }>({});
   const [selectedPostForComments, setSelectedPostForComments] = useState<Post | null>(null);
   const [showCommentModal, setShowCommentModal] = useState(false);
+  const [likedPosts, setLikedPosts] = useState<Set<string>>(new Set());
+  const [likingInProgress, setLikingInProgress] = useState<Set<string>>(new Set());
+  const [postLikeCounts, setPostLikeCounts] = useState<{ [postId: string]: number }>({});
 
   // Handle opening animation
   useEffect(() => {
@@ -87,6 +91,44 @@ export default function PostViewerModal({
       }).start();
     }
   }, [visible]);
+
+  // Debug: Track comment modal state changes
+  useEffect(() => {
+    console.log('Comment modal visible state changed:', showCommentModal);
+    console.log('Selected post for comments:', selectedPostForComments?.id);
+  }, [showCommentModal, selectedPostForComments]);
+
+  // Check which posts are liked
+  useEffect(() => {
+    const checkLikedPosts = async () => {
+      if (!currentUser?.id || posts.length === 0) {
+        console.log('Skipping like check - no user or posts');
+        return;
+      }
+
+      console.log('Checking like status for', posts.length, 'posts');
+      const likedSet = new Set<string>();
+      const likeCounts: { [postId: string]: number } = {};
+
+      for (const post of posts) {
+        const liked = await isPostLiked(currentUser.id, post.id);
+        console.log(`Post ${post.id} is ${liked ? 'LIKED' : 'NOT LIKED'}`);
+        if (liked) {
+          likedSet.add(post.id);
+        }
+        likeCounts[post.id] = post.likes;
+      }
+
+      console.log('Total liked posts:', likedSet.size);
+      console.log('Liked post IDs:', Array.from(likedSet));
+      setLikedPosts(likedSet);
+      setPostLikeCounts(likeCounts);
+    };
+
+    if (visible) {
+      checkLikedPosts();
+    }
+  }, [visible, currentUser?.id, posts]);
 
   // Scroll to initial post when modal opens
   useEffect(() => {
@@ -231,8 +273,15 @@ export default function PostViewerModal({
 
   // Handle opening comment modal for a specific post
   const handleOpenComments = (postToView: Post) => {
+    console.log('Opening comments for post:', postToView.id);
+    console.log('Post details:', {
+      id: postToView.id,
+      userId: postToView.userId,
+      mediaUrl: postToView.mediaUrl
+    });
     setSelectedPostForComments(postToView);
     setShowCommentModal(true);
+    console.log('Comment modal state set to true');
   };
 
   // Handle comment added
@@ -240,6 +289,71 @@ export default function PostViewerModal({
     // Notify parent to refresh post data
     if (onCommentAdded) {
       onCommentAdded();
+    }
+  };
+
+  // Handle like/unlike
+  const handleLikeToggle = async (post: Post) => {
+    console.log('Like toggle pressed for post:', post.id);
+
+    if (!currentUser?.id) {
+      Alert.alert('Error', 'You must be logged in to like posts');
+      return;
+    }
+
+    // Prevent duplicate requests
+    if (likingInProgress.has(post.id)) {
+      console.log('Like already in progress, skipping');
+      return;
+    }
+
+    const isLiked = likedPosts.has(post.id);
+    const newLikingInProgress = new Set(likingInProgress);
+    newLikingInProgress.add(post.id);
+    setLikingInProgress(newLikingInProgress);
+
+    // Optimistic update
+    const newLikedPosts = new Set(likedPosts);
+    const newLikeCounts = { ...postLikeCounts };
+
+    if (isLiked) {
+      newLikedPosts.delete(post.id);
+      newLikeCounts[post.id] = (newLikeCounts[post.id] || post.likes) - 1;
+    } else {
+      newLikedPosts.add(post.id);
+      newLikeCounts[post.id] = (newLikeCounts[post.id] || post.likes) + 1;
+    }
+
+    setLikedPosts(newLikedPosts);
+    setPostLikeCounts(newLikeCounts);
+
+    try {
+      if (isLiked) {
+        await unlikePost(currentUser.id, post.id);
+      } else {
+        const postThumbnail = post.mediaType === 'video' && post.thumbnailUrl
+          ? post.thumbnailUrl
+          : post.mediaUrl;
+
+        await likePost(
+          currentUser.id,
+          currentUser.username || currentUser.email?.split('@')[0] || 'User',
+          currentUser.avatar,
+          post.id,
+          post.userId,
+          postThumbnail
+        );
+      }
+    } catch (error) {
+      console.error('Error toggling like:', error);
+      // Revert optimistic update on error
+      setLikedPosts(likedPosts);
+      setPostLikeCounts(postLikeCounts);
+      Alert.alert('Error', 'Failed to update like');
+    } finally {
+      const finalLikingInProgress = new Set(likingInProgress);
+      finalLikingInProgress.delete(post.id);
+      setLikingInProgress(finalLikingInProgress);
     }
   };
 
@@ -288,6 +402,10 @@ export default function PostViewerModal({
   if (!post || posts.length === 0) return null;
 
   const renderPost = ({ item, index }: { item: Post; index: number }) => {
+    const isLiked = likedPosts.has(item.id);
+    const likeCount = postLikeCounts[item.id] ?? item.likes;
+    console.log(`Rendering post ${item.id}: isLiked=${isLiked}, likeCount=${likeCount}`);
+
     return (
       <PostItem
         post={item}
@@ -296,8 +414,12 @@ export default function PostViewerModal({
         postRefs={postRefs}
         onOpenComments={handleOpenComments}
         onDirectMessage={handleDirectMessage}
+        onLikeToggle={handleLikeToggle}
         formatTimeAgo={formatTimeAgo}
         currentUserId={currentUser?.id}
+        isLiked={isLiked}
+        likeCount={likeCount}
+        isLiking={likingInProgress.has(item.id)}
       />
     );
   };
@@ -351,6 +473,7 @@ export default function PostViewerModal({
           onMomentumScrollEnd={handleScroll}
           removeClippedSubviews={false}
           scrollEventThrottle={100}
+          keyboardShouldPersistTaps="handled"
           onScrollToIndexFailed={(info) => {
             // Wait for list to finish measuring, then try again
             setTimeout(() => {
@@ -395,8 +518,12 @@ function PostItem({
   postRefs,
   onOpenComments,
   onDirectMessage,
+  onLikeToggle,
   formatTimeAgo,
-  currentUserId
+  currentUserId,
+  isLiked,
+  likeCount,
+  isLiking
 }: {
   post: Post;
   userAvatar?: string;
@@ -404,8 +531,12 @@ function PostItem({
   postRefs: React.MutableRefObject<{ [key: string]: View | null }>;
   onOpenComments: (post: Post) => void;
   onDirectMessage: (post: Post) => void;
+  onLikeToggle: (post: Post) => void;
   formatTimeAgo: (timestamp: any) => string;
   currentUserId?: string;
+  isLiked: boolean;
+  likeCount: number;
+  isLiking: boolean;
 }) {
   const [activeMediaIndex, setActiveMediaIndex] = useState(0);
   const [mediaHeight, setMediaHeight] = useState(
@@ -558,14 +689,38 @@ function PostItem({
       {/* Post Actions */}
       <View style={styles.actionsContainer}>
         <View style={styles.leftActions}>
-          <TouchableOpacity style={styles.actionButton}>
-            <IconSymbol size={24} name="heart" color="#000" />
-          </TouchableOpacity>
+          {post.userId !== currentUserId && (
+            <TouchableOpacity
+              style={styles.actionButton}
+              onPress={() => {
+                console.log('Like button touched!');
+                onLikeToggle(post);
+              }}
+              disabled={isLiking}
+              activeOpacity={0.6}
+              hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+            >
+              <View pointerEvents="none">
+                <IconSymbol
+                  size={24}
+                  name={isLiked ? "heart.fill" : "heart"}
+                  color={isLiked ? "#ff3b30" : "#000"}
+                />
+              </View>
+            </TouchableOpacity>
+          )}
           <TouchableOpacity
             style={styles.actionButton}
-            onPress={() => onOpenComments(post)}
+            onPress={() => {
+              console.log('Comment button touched!');
+              onOpenComments(post);
+            }}
+            activeOpacity={0.6}
+            hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
           >
-            <IconSymbol size={24} name="bubble.left" color="#000" />
+            <View pointerEvents="none">
+              <IconSymbol size={24} name="bubble.left" color="#000" />
+            </View>
           </TouchableOpacity>
         </View>
         {post.userId !== currentUserId && (
@@ -581,7 +736,7 @@ function PostItem({
       {/* Likes and Comments Count */}
       <View style={styles.likesContainer}>
         <ThemedText style={styles.likesText}>
-          {post.likes.toLocaleString()} {post.likes === 1 ? 'like' : 'likes'}
+          {likeCount.toLocaleString()} {likeCount === 1 ? 'like' : 'likes'}
         </ThemedText>
         {(post.commentsCount ?? 0) > 0 && (
           <>
@@ -776,7 +931,8 @@ const styles = StyleSheet.create({
     gap: 8,
   },
   actionButton: {
-    padding: 2,
+    padding: 8,
+    marginRight: 4,
   },
   shareButton: {
     marginLeft: 'auto',

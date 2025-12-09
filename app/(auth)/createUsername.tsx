@@ -1,7 +1,7 @@
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
-import { useState } from 'react';
-import { StyleSheet, TextInput, TouchableOpacity, View, Alert, ActivityIndicator, Image } from 'react-native';
+import { useState, useRef } from 'react';
+import { StyleSheet, TextInput, TouchableOpacity, View, Alert, ActivityIndicator, Image, ScrollView, KeyboardAvoidingView, Platform } from 'react-native';
 import { useAuth } from '@/contexts/AuthContext';
 import { useRouter } from 'expo-router';
 import { doc, updateDoc, getDoc, query, collection, where, getDocs } from 'firebase/firestore';
@@ -16,6 +16,8 @@ export default function CreateUsernameScreen() {
   const [username, setUsername] = useState('');
   const [loading, setLoading] = useState(false);
   const [profileImage, setProfileImage] = useState<string | null>(null);
+  const scrollViewRef = useRef<ScrollView>(null);
+  const usernameInputRef = useRef<View>(null);
 
   const validateUsername = (text: string): boolean => {
     // Username should be 3-20 characters, alphanumeric and underscores only
@@ -133,37 +135,70 @@ export default function CreateUsernameScreen() {
     }
   };
 
+  const handleUsernameFocus = () => {
+    setTimeout(() => {
+      usernameInputRef.current?.measureLayout(
+        scrollViewRef.current as any,
+        (x, y) => {
+          scrollViewRef.current?.scrollTo({ y: y - 100, animated: true });
+        },
+        () => {}
+      );
+    }, 100);
+  };
+
   return (
     <ThemedView style={styles.container}>
-      <View style={styles.content}>
-        <View style={styles.header}>
-          <ThemedText style={styles.title}>Choose Your Username</ThemedText>
-          <ThemedText style={styles.subtitle}>
-            Pick a unique username that represents you
-          </ThemedText>
-        </View>
+      <KeyboardAvoidingView
+        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+        style={styles.keyboardView}
+      >
+        <ScrollView
+          ref={scrollViewRef}
+          contentContainerStyle={styles.scrollContent}
+          showsVerticalScrollIndicator={false}
+          keyboardShouldPersistTaps="handled"
+        >
+          <View style={styles.content}>
+            <View style={styles.header}>
+              <ThemedText style={styles.title}>Choose Your Username</ThemedText>
+              <ThemedText style={styles.subtitle}>
+                Pick a unique username that represents you
+              </ThemedText>
+            </View>
 
-        <View style={styles.form}>
+            <View style={styles.form}>
           {/* Profile Picture Section */}
           <View style={styles.profilePicContainer}>
             <ThemedText style={styles.label}>Profile Picture (Optional)</ThemedText>
-            <TouchableOpacity
-              style={styles.profilePicButton}
-              onPress={pickImage}
-              disabled={loading}
-            >
-              {profileImage ? (
-                <Image source={{ uri: profileImage }} style={styles.profilePicImage} />
-              ) : (
-                <View style={styles.profilePicPlaceholder}>
-                  <IconSymbol size={48} name="person.circle" color="#999" />
-                  <ThemedText style={styles.profilePicText}>Tap to add photo</ThemedText>
-                </View>
+            <View style={styles.profilePicWrapper}>
+              <TouchableOpacity
+                style={styles.profilePicButton}
+                onPress={pickImage}
+                disabled={loading}
+              >
+                {profileImage ? (
+                  <Image source={{ uri: profileImage }} style={styles.profilePicImage} />
+                ) : (
+                  <View style={styles.profilePicPlaceholder}>
+                    <IconSymbol size={48} name="person.circle" color="#999" />
+                    <ThemedText style={styles.profilePicText}>Tap to add photo</ThemedText>
+                  </View>
+                )}
+              </TouchableOpacity>
+              {profileImage && (
+                <TouchableOpacity
+                  style={styles.removeImageButton}
+                  onPress={() => setProfileImage(null)}
+                  disabled={loading}
+                >
+                  <IconSymbol size={20} name="xmark.circle.fill" color="#fff" />
+                </TouchableOpacity>
               )}
-            </TouchableOpacity>
+            </View>
           </View>
 
-          <View style={styles.inputContainer}>
+          <View style={styles.inputContainer} ref={usernameInputRef}>
             <ThemedText style={styles.label}>Username</ThemedText>
             <TextInput
               style={styles.input}
@@ -174,6 +209,7 @@ export default function CreateUsernameScreen() {
               autoCapitalize="none"
               autoCorrect={false}
               maxLength={20}
+              onFocus={handleUsernameFocus}
             />
             <ThemedText style={styles.hint}>
               3-20 characters, letters, numbers, and underscores only
@@ -191,8 +227,10 @@ export default function CreateUsernameScreen() {
               <ThemedText style={styles.buttonText}>Continue</ThemedText>
             )}
           </TouchableOpacity>
-        </View>
-      </View>
+            </View>
+          </View>
+        </ScrollView>
+      </KeyboardAvoidingView>
     </ThemedView>
   );
 }
@@ -202,14 +240,25 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: '#fff',
   },
+  keyboardView: {
+    flex: 1,
+  },
+  scrollContent: {
+    flexGrow: 1,
+  },
   content: {
     flex: 1,
     justifyContent: 'center',
     paddingHorizontal: 24,
+    paddingTop: 60,
+    paddingBottom: 40,
   },
   header: {
     marginBottom: 40,
     alignItems: 'center',
+    paddingTop: 40,
+    paddingBottom: 24,
+    overflow: 'visible',
   },
   title: {
     fontSize: 28,
@@ -217,6 +266,8 @@ const styles = StyleSheet.create({
     color: '#000',
     marginBottom: 12,
     textAlign: 'center',
+    lineHeight: 36,
+    overflow: 'visible',
   },
   subtitle: {
     fontSize: 16,
@@ -270,8 +321,11 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     marginBottom: 32,
   },
-  profilePicButton: {
+  profilePicWrapper: {
     marginTop: 16,
+    position: 'relative',
+  },
+  profilePicButton: {
   },
   profilePicImage: {
     width: 120,
@@ -293,8 +347,21 @@ const styles = StyleSheet.create({
     gap: 8,
   },
   profilePicText: {
-    fontSize: 13,
+    fontSize: 11,
     color: '#999',
     marginTop: 4,
+  },
+  removeImageButton: {
+    position: 'absolute',
+    top: 0,
+    right: 0,
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    backgroundColor: '#ff3b30',
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 2,
+    borderColor: '#fff',
   },
 });
