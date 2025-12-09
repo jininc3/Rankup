@@ -78,6 +78,7 @@ export default function HomeScreen() {
   const [likingInProgress, setLikingInProgress] = useState<Set<string>>(new Set());
   const [commentingPost, setCommentingPost] = useState<Post | null>(null);
   const [showCommentModal, setShowCommentModal] = useState(false);
+  const [isScreenFocused, setIsScreenFocused] = useState(true);
 
   const currentPosts = activeTab === 'forYou' ? forYouPosts : followingPosts;
 
@@ -352,11 +353,15 @@ export default function HomeScreen() {
     }
   };
 
-  // Pause video when navigating away from this screen
+  // Handle screen focus/blur for video playback
   useFocusEffect(
     useCallback(() => {
+      // Screen is focused
+      setIsScreenFocused(true);
+
       return () => {
-        // Pause all videos when screen loses focus
+        // Screen lost focus - pause all videos
+        setIsScreenFocused(false);
         setPlayingVideoId(null);
         Object.values(videoPlayers.current).forEach((player) => {
           if (player) {
@@ -371,25 +376,30 @@ export default function HomeScreen() {
     }, [])
   );
 
-  // Check for visible videos when posts load or tab changes
+  // Check for visible videos when posts load or tab changes (only when screen is focused)
   useEffect(() => {
-    if (currentPosts.length > 0 && !loading) {
+    if (currentPosts.length > 0 && !loading && isScreenFocused) {
       // Delay to ensure refs are set
       setTimeout(() => {
         checkVideoInView();
       }, 100);
     } else {
-      // If no posts, clear playing video
+      // If no posts or screen not focused, clear playing video
       setPlayingVideoId(null);
     }
-  }, [currentPosts, loading, checkVideoInView]);
+  }, [currentPosts, loading, isScreenFocused, checkVideoInView]);
 
   const handleVideoClick = (postId: string) => {
     setPlayingVideoId(playingVideoId === postId ? null : postId);
   };
 
-  // Check which video is in viewport
+  // Check which video is in viewport (only auto-play when screen is focused)
   const checkVideoInView = useCallback(() => {
+    // Don't auto-play videos if screen is not focused
+    if (!isScreenFocused) {
+      return;
+    }
+
     const videoPosts = currentPosts.filter(post => post.mediaType === 'video');
     let foundVisibleVideo = false;
 
@@ -418,7 +428,7 @@ export default function HomeScreen() {
         });
       }
     });
-  }, [currentPosts, playingVideoId]);
+  }, [currentPosts, playingVideoId, isScreenFocused]);
 
   const handleScroll = () => {
     // Use requestAnimationFrame for smoother checking
@@ -428,6 +438,9 @@ export default function HomeScreen() {
   };
 
   const handleUserPress = async (userId: string) => {
+    // Mark screen as unfocused to prevent videos from auto-playing
+    setIsScreenFocused(false);
+
     // Stop all videos immediately by setting state
     setPlayingVideoId(null);
 
