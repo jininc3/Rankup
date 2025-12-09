@@ -6,9 +6,8 @@ import { useAuth } from '@/contexts/AuthContext';
 import { getFollowing } from '@/services/followService';
 import { likePost, unlikePost, isPostLiked } from '@/services/likeService';
 import { createOrGetChat } from '@/services/chatService';
-import { getComments, CommentData } from '@/services/commentService';
 import CommentModal from '@/components/CommentModal';
-import { VideoView, useVideoPlayer } from 'expo-video';
+import PostContent from '@/components/postContent';
 import { collection, getDocs, orderBy, query, Timestamp, where, onSnapshot } from 'firebase/firestore';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { ActivityIndicator, Dimensions, Image, Modal, ScrollView, StyleSheet, TouchableOpacity, View, Alert } from 'react-native';
@@ -17,63 +16,8 @@ import { useFocusEffect } from '@react-navigation/native';
 
 const { width } = Dimensions.get('window');
 
-// Game data
-const gameData: { [key: string]: { name: string; icon?: string; image?: any } } = {
-  valorant: { name: 'Valorant', image: require('@/assets/images/valorantText.png') },
-  league: { name: 'League of Legends', image: require('@/assets/images/leagueoflegends.png') },
-  apex: { name: 'Apex Legends', icon: '🎮' },
-  fortnite: { name: 'Fortnite', icon: '🏆' },
-  csgo: { name: 'CS:GO', icon: '🔫' },
-  overwatch: { name: 'Overwatch', icon: '🦸' },
-};
-
-const getGameIcon = (gameId: string) => gameData[gameId]?.icon || '🎮';
-const getGameName = (gameId: string) => gameData[gameId]?.name || gameId;
-const getGameImage = (gameId: string) => gameData[gameId]?.image || null;
-
-// Video Player Component for expo-video
-const VideoPlayerComponent = ({
-  postId,
-  mediaUrl,
-  isPlaying,
-  onPlayerReady
-}: {
-  postId: string;
-  mediaUrl: string;
-  isPlaying: boolean;
-  onPlayerReady: (postId: string, player: any) => void;
-}) => {
-  const player = useVideoPlayer(mediaUrl, (player) => {
-    player.loop = true;
-    player.muted = false;
-  });
-
-  useEffect(() => {
-    onPlayerReady(postId, player);
-  }, [player, postId, onPlayerReady]);
-
-  useEffect(() => {
-    if (isPlaying) {
-      player.play();
-    } else {
-      player.pause();
-    }
-  }, [isPlaying, player]);
-
-  return (
-    <VideoView
-      player={player}
-      style={styles.mediaImage}
-      allowsFullscreen
-      allowsPictureInPicture={false}
-      nativeControls
-      contentFit="contain"
-    />
-  );
-};
-
 // Format timestamp for comments
-const formatTimeAgo = (timestamp: Timestamp): string => {
+const formatTimeAgo = (timestamp: any): string => {
   const now = new Date();
   const date = timestamp.toDate();
   const diffInSeconds = Math.floor((now.getTime() - date.getTime()) / 1000);
@@ -134,7 +78,6 @@ export default function HomeScreen() {
   const [likingInProgress, setLikingInProgress] = useState<Set<string>>(new Set());
   const [commentingPost, setCommentingPost] = useState<Post | null>(null);
   const [showCommentModal, setShowCommentModal] = useState(false);
-  const [postComments, setPostComments] = useState<{ [postId: string]: CommentData[] }>({});
 
   const currentPosts = activeTab === 'forYou' ? forYouPosts : followingPosts;
 
@@ -241,9 +184,6 @@ export default function HomeScreen() {
         console.log('Following posts count:', followingPostsFiltered.length);
         console.log('Following posts:', followingPostsFiltered);
         setFollowingPosts(followingPostsFiltered);
-
-        // Fetch recent comments for the posts
-        await fetchRecentCommentsForPosts(followingPostsFiltered);
       } catch (error) {
         console.error('Error fetching posts:', error);
       } finally {
@@ -375,25 +315,6 @@ export default function HomeScreen() {
     setCommentingPost(null);
   };
 
-  // Fetch recent comments for posts
-  const fetchRecentCommentsForPosts = async (posts: Post[]) => {
-    const commentsMap: { [postId: string]: CommentData[] } = {};
-
-    await Promise.all(
-      posts.map(async (post) => {
-        try {
-          const comments = await getComments(post.id);
-          commentsMap[post.id] = comments.slice(0, 2); // Get 2 most recent
-        } catch (error) {
-          console.error(`Error fetching comments for post ${post.id}:`, error);
-          commentsMap[post.id] = [];
-        }
-      })
-    );
-
-    setPostComments(commentsMap);
-  };
-
   // Refresh posts when a comment is added
   const handleCommentAdded = () => {
     // Refetch posts to get updated comment count
@@ -422,9 +343,6 @@ export default function HomeScreen() {
           }
 
           setFollowingPosts(followingPostsFiltered);
-
-          // Fetch recent comments for the updated posts
-          await fetchRecentCommentsForPosts(followingPostsFiltered);
         } catch (error) {
           console.error('Error refreshing posts:', error);
         }
@@ -645,136 +563,23 @@ export default function HomeScreen() {
           </View>
         ) : currentPosts.length > 0 ? (
           currentPosts.map((post) => (
-            <View
+            <PostContent
               key={post.id}
-              style={styles.postCard}
-              ref={(ref) => (postRefs.current[post.id] = ref)}
-              collapsable={false}
-            >
-              {/* User Header */}
-              <View style={styles.postHeader}>
-                <TouchableOpacity
-                  style={styles.userInfo}
-                  onPress={() => handleUserPress(post.userId)}
-                  activeOpacity={0.7}
-                >
-                  <View style={styles.avatarContainer}>
-                    {post.avatar && post.avatar.startsWith('http') ? (
-                      <Image source={{ uri: post.avatar }} style={styles.avatarImage} />
-                    ) : (
-                      <ThemedText style={styles.avatarInitial}>
-                        {post.username[0].toUpperCase()}
-                      </ThemedText>
-                    )}
-                  </View>
-                  <ThemedText style={styles.username}>{post.username}</ThemedText>
-                </TouchableOpacity>
-                {post.taggedGame && (
-                  <View style={styles.gameTag}>
-                    {getGameImage(post.taggedGame) ? (
-                      <Image
-                        source={getGameImage(post.taggedGame)}
-                        style={styles.gameTagImage}
-                        resizeMode="contain"
-                      />
-                    ) : (
-                      <ThemedText style={styles.gameTagText}>
-                        {getGameIcon(post.taggedGame)} {getGameName(post.taggedGame)}
-                      </ThemedText>
-                    )}
-                  </View>
-                )}
-              </View>
-
-              {/* Caption */}
-              {post.caption && (
-                <View style={styles.captionContainer}>
-                  <ThemedText style={styles.caption}>{post.caption}</ThemedText>
-                </View>
-              )}
-
-              {/* Media Content */}
-              <View style={post.mediaType === 'video' ? styles.mediaContentVideo : styles.mediaContentImage}>
-                {post.mediaType === 'video' ? (
-                  <VideoPlayerComponent
-                    postId={post.id}
-                    mediaUrl={post.mediaUrl}
-                    isPlaying={playingVideoId === post.id}
-                    onPlayerReady={handlePlayerReady}
-                  />
-                ) : (
-                  <Image
-                    source={{ uri: post.mediaUrl }}
-                    style={styles.mediaImage}
-                    resizeMode="cover"
-                  />
-                )}
-              </View>
-
-              {/* Post Footer */}
-              <View style={styles.postFooter}>
-                <TouchableOpacity
-                  style={styles.likeButton}
-                  onPress={() => handleLikeToggle(post)}
-                  disabled={likingInProgress.has(post.id)}
-                >
-                  <IconSymbol
-                    size={24}
-                    name={likedPosts.has(post.id) ? "heart.fill" : "heart"}
-                    color={likedPosts.has(post.id) ? "#ef4444" : "#000"}
-                  />
-                  <ThemedText style={styles.actionCount}>{post.likes}</ThemedText>
-                </TouchableOpacity>
-                <TouchableOpacity
-                  style={styles.commentButton}
-                  onPress={() => handleOpenComments(post)}
-                >
-                  <IconSymbol size={24} name="bubble.left" color="#000" />
-                  {(post.commentsCount ?? 0) > 0 && (
-                    <ThemedText style={styles.actionCount}>{post.commentsCount}</ThemedText>
-                  )}
-                </TouchableOpacity>
-                <TouchableOpacity
-                  style={styles.shareButton}
-                  onPress={() => handleDirectMessage(post)}
-                >
-                  <IconSymbol size={24} name="paperplane" color="#000" />
-                </TouchableOpacity>
-              </View>
-
-              {/* Recent Comments */}
-              {postComments[post.id] && postComments[post.id].length > 0 && (
-                <View style={styles.commentsPreviewContainer}>
-                  {postComments[post.id].map((comment) => (
-                    <TouchableOpacity
-                      key={comment.id}
-                      style={styles.commentPreview}
-                      onPress={() => handleOpenComments(post)}
-                      activeOpacity={0.7}
-                    >
-                      <ThemedText style={styles.commentUsername}>{comment.username}</ThemedText>
-                      <ThemedText style={styles.commentText} numberOfLines={1}>
-                        {comment.text}
-                      </ThemedText>
-                      <ThemedText style={styles.commentTime}>
-                        {formatTimeAgo(comment.createdAt)}
-                      </ThemedText>
-                    </TouchableOpacity>
-                  ))}
-                  {(post.commentsCount ?? 0) > 2 && (
-                    <TouchableOpacity
-                      style={styles.viewAllCommentsButton}
-                      onPress={() => handleOpenComments(post)}
-                      activeOpacity={0.7}
-                    >
-                      <ThemedText style={styles.viewAllCommentsText}>
-                        View all {post.commentsCount} comments
-                      </ThemedText>
-                    </TouchableOpacity>
-                  )}
-                </View>
-              )}
-            </View>
+              post={post}
+              playingVideoId={playingVideoId}
+              postRefs={postRefs}
+              onOpenComments={handleOpenComments}
+              onDirectMessage={handleDirectMessage}
+              onLikeToggle={handleLikeToggle}
+              onUserPress={handleUserPress}
+              formatTimeAgo={formatTimeAgo}
+              currentUserId={currentUser?.id}
+              isLiked={likedPosts.has(post.id)}
+              likeCount={post.likes}
+              isLiking={likingInProgress.has(post.id)}
+              onPlayerReady={handlePlayerReady}
+              showRecentComments={true}
+            />
           ))
         ) : (
           <View style={styles.emptyContainer}>
@@ -974,132 +779,6 @@ const styles = StyleSheet.create({
   scrollView: {
     flex: 1,
   },
-  postCard: {
-    marginBottom: 24,
-    backgroundColor: '#fff',
-  },
-  postHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    paddingHorizontal: 16,
-    paddingVertical: 12,
-  },
-  userInfo: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 12,
-  },
-  avatarContainer: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    backgroundColor: '#f0f0f0',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  avatarImage: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-  },
-  avatarInitial: {
-    fontSize: 18,
-    fontWeight: '600',
-    color: '#000',
-  },
-  username: {
-    fontSize: 15,
-    fontWeight: '600',
-    color: '#000',
-  },
-  gameTag: {
-    backgroundColor: '#f0f0f0',
-    paddingHorizontal: 10,
-    paddingVertical: 4,
-    borderRadius: 12,
-  },
-  gameTagText: {
-    fontSize: 12,
-    fontWeight: '500',
-    color: '#666',
-  },
-  gameTagImage: {
-    height: 28,
-    width: 100,
-  },
-  followButton: {
-    paddingHorizontal: 16,
-    paddingVertical: 6,
-    borderRadius: 6,
-    borderWidth: 1,
-    borderColor: '#e5e7eb',
-    backgroundColor: 'transparent',
-  },
-  followText: {
-    fontSize: 13,
-    fontWeight: '600',
-    color: '#000',
-  },
-  captionContainer: {
-    paddingHorizontal: 16,
-    paddingBottom: 12,
-  },
-  caption: {
-    fontSize: 15,
-    color: '#000',
-    lineHeight: 20,
-  },
-  mediaContentImage: {
-    width: width,
-    height: width, // 1:1 square aspect ratio for images
-    backgroundColor: '#000',
-    position: 'relative',
-  },
-  mediaContentVideo: {
-    width: width,
-    height: width * 0.5625, // 16:9 landscape aspect ratio (9/16 = 0.5625) for videos
-    backgroundColor: '#000',
-    position: 'relative',
-  },
-  mediaImage: {
-    width: '100%',
-    height: '100%',
-  },
-  playIconOverlay: {
-    position: 'absolute',
-    top: 0,
-    left: 0,
-    right: 0,
-    bottom: 0,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  postFooter: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 12,
-    paddingHorizontal: 16,
-    paddingVertical: 10,
-  },
-  likeButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 4,
-  },
-  commentButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 4,
-  },
-  shareButton: {
-    marginLeft: 'auto',
-  },
-  actionCount: {
-    fontSize: 13,
-    fontWeight: '600',
-    color: '#000',
-  },
   loadingContainer: {
     alignItems: 'center',
     justifyContent: 'center',
@@ -1128,10 +807,6 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: '#999',
     textAlign: 'center',
-  },
-  videoThumbnailContainer: {
-    width: '100%',
-    height: '100%',
   },
   filterModalOverlay: {
     flex: 1,
@@ -1198,40 +873,5 @@ const styles = StyleSheet.create({
     height: 24,
     width: 80,
     marginRight: 8,
-  },
-  commentsPreviewContainer: {
-    paddingHorizontal: 16,
-    paddingTop: 4,
-    paddingBottom: 8,
-    gap: 4,
-  },
-  commentPreview: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-    paddingVertical: 2,
-  },
-  commentUsername: {
-    fontSize: 13,
-    fontWeight: '600',
-    color: '#000',
-  },
-  commentText: {
-    fontSize: 13,
-    color: '#333',
-    flex: 1,
-  },
-  commentTime: {
-    fontSize: 11,
-    color: '#999',
-    marginLeft: 'auto',
-  },
-  viewAllCommentsButton: {
-    paddingVertical: 4,
-  },
-  viewAllCommentsText: {
-    fontSize: 13,
-    color: '#666',
-    fontWeight: '500',
   },
 });
