@@ -2,7 +2,7 @@ import { ThemedText } from '@/components/themed-text';
 import { IconSymbol } from '@/components/ui/icon-symbol';
 import { useAuth } from '@/contexts/AuthContext';
 import { addComment, deleteComment, getComments, CommentData } from '@/services/commentService';
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useRef } from 'react';
 import {
   View,
   StyleSheet,
@@ -15,6 +15,8 @@ import {
   Alert,
   KeyboardAvoidingView,
   Platform,
+  PanResponder,
+  Animated,
 } from 'react-native';
 
 interface CommentModalProps {
@@ -39,13 +41,52 @@ export default function CommentModal({
   const [commentText, setCommentText] = useState('');
   const [loading, setLoading] = useState(false);
   const [submitting, setSubmitting] = useState(false);
+  const [isInputFocused, setIsInputFocused] = useState(false);
+  const panY = useRef(new Animated.Value(0)).current;
 
   // Fetch comments when modal opens
   useEffect(() => {
     if (visible && postId) {
       fetchComments();
+      setIsInputFocused(false);
+    } else if (!visible) {
+      setIsInputFocused(false);
     }
   }, [visible, postId]);
+
+  // Pan responder for swipe down to close
+  const panResponder = useRef(
+    PanResponder.create({
+      onStartShouldSetPanResponder: () => true,
+      onMoveShouldSetPanResponder: (_, gestureState) => {
+        return gestureState.dy > 5;
+      },
+      onPanResponderMove: (_, gestureState) => {
+        if (gestureState.dy > 0) {
+          panY.setValue(gestureState.dy);
+        }
+      },
+      onPanResponderRelease: (_, gestureState) => {
+        if (gestureState.dy > 100 || gestureState.vy > 0.5) {
+          // Close modal if dragged down enough
+          Animated.timing(panY, {
+            toValue: 500,
+            duration: 200,
+            useNativeDriver: true,
+          }).start(() => {
+            onClose();
+            panY.setValue(0);
+          });
+        } else {
+          // Snap back
+          Animated.spring(panY, {
+            toValue: 0,
+            useNativeDriver: true,
+          }).start();
+        }
+      },
+    })
+  ).current;
 
   const fetchComments = async () => {
     setLoading(true);
@@ -154,22 +195,32 @@ export default function CommentModal({
       onRequestClose={onClose}
     >
       <View style={styles.modalOverlay}>
-        <View style={styles.modalContent}>
+        <Animated.View
+          style={[
+            styles.modalContent,
+            {
+              height: isInputFocused ? '95%' : '70%',
+              transform: [{ translateY: panY }],
+            },
+          ]}
+        >
           <KeyboardAvoidingView
             style={styles.container}
             behavior="padding"
-            keyboardVerticalOffset={Platform.OS === 'ios' ? -30 : -10}
+            keyboardVerticalOffset={Platform.OS === 'ios' ? 20 : 40}
           >
-            {/* Drag Handle */}
-            <View style={styles.dragHandle} />
+            {/* Drag Handle and Header - swipeable area */}
+            <View {...panResponder.panHandlers}>
+              <View style={styles.dragHandle} />
 
-            {/* Header */}
-            <View style={styles.header}>
-              <TouchableOpacity onPress={onClose} style={styles.closeButton}>
-                <IconSymbol size={24} name="xmark" color="#000" />
-              </TouchableOpacity>
-              <ThemedText style={styles.headerTitle}>Comments</ThemedText>
-              <View style={styles.headerSpacer} />
+              {/* Header */}
+              <View style={styles.header}>
+                <TouchableOpacity onPress={onClose} style={styles.closeButton}>
+                  <IconSymbol size={24} name="xmark" color="#000" />
+                </TouchableOpacity>
+                <ThemedText style={styles.headerTitle}>Comments</ThemedText>
+                <View style={styles.headerSpacer} />
+              </View>
             </View>
 
         {/* Comments List */}
@@ -241,6 +292,8 @@ export default function CommentModal({
             placeholderTextColor="#999"
             value={commentText}
             onChangeText={setCommentText}
+            onFocus={() => setIsInputFocused(true)}
+            onBlur={() => setIsInputFocused(false)}
             multiline
             maxLength={500}
             editable={!submitting}
@@ -258,7 +311,7 @@ export default function CommentModal({
           </TouchableOpacity>
         </View>
           </KeyboardAvoidingView>
-        </View>
+        </Animated.View>
       </View>
     </Modal>
   );
@@ -273,7 +326,7 @@ const styles = StyleSheet.create({
     backgroundColor: '#fff',
     borderTopLeftRadius: 20,
     borderTopRightRadius: 20,
-    height: '100%',
+    height: '70%',
   },
   container: {
     flex: 1,
