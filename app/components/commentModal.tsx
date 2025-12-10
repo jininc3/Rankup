@@ -47,6 +47,8 @@ export default function CommentModal({
   // Fetch comments when modal opens
   useEffect(() => {
     if (visible && postId) {
+      // Reset pan animation when opening
+      panY.setValue(0);
       fetchComments();
       setIsInputFocused(false);
     } else if (!visible) {
@@ -75,7 +77,6 @@ export default function CommentModal({
             useNativeDriver: true,
           }).start(() => {
             onClose();
-            panY.setValue(0);
           });
         } else {
           // Snap back
