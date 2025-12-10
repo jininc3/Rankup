@@ -17,3 +17,4 @@ setGlobalOptions({maxInstances: 10});
 // Export Riot Games API functions
 export {linkRiotAccountFunction as linkRiotAccount} from "./riot/linkRiotAccount";
 export {getRiotStatsFunction as getRiotStats} from "./riot/getRiotStats";
+export {unlinkRiotAccountFunction as unlinkRiotAccount} from "./riot/unlinkRiotAccount";

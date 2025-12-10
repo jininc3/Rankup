@@ -63,6 +63,11 @@ export interface GetStatsResponse {
   cached?: boolean;
 }
 
+export interface UnlinkAccountResponse {
+  success: boolean;
+  message: string;
+}
+
 /**
  * Link a Riot account to the user's profile
  * @param gameName - Riot Game Name (e.g., "PlayerName")
@@ -163,6 +168,40 @@ export const getRiotStats = async (
     }
 
     throw new Error(error.message || 'Failed to fetch Riot stats');
+  }
+};
+
+/**
+ * Unlink the Riot account from the user's profile
+ */
+export const unlinkRiotAccount = async (): Promise<UnlinkAccountResponse> => {
+  try {
+    // Check if user is authenticated
+    const currentUser = auth.currentUser;
+    if (!currentUser) {
+      throw new Error('You must be logged in to unlink a Riot account');
+    }
+
+    // Get fresh ID token to ensure authentication
+    await currentUser.getIdToken(true);
+
+    const unlinkRiotAccountFn = httpsCallable<void, UnlinkAccountResponse>(
+      functions,
+      'unlinkRiotAccount'
+    );
+
+    const result = await unlinkRiotAccountFn();
+
+    return result.data;
+  } catch (error: any) {
+    console.error('Error unlinking Riot account:', error);
+
+    // Provide more helpful error messages
+    if (error.code === 'unauthenticated') {
+      throw new Error('Authentication error. Please try logging out and back in.');
+    }
+
+    throw new Error(error.message || 'Failed to unlink Riot account');
   }
 };
 

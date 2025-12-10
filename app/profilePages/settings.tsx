@@ -7,6 +7,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { useState, useEffect, useCallback } from 'react';
 import { doc, getDoc } from 'firebase/firestore';
 import { db } from '@/config/firebase';
+import { unlinkRiotAccount } from '@/services/riotService';
 
 const settingsData = [
   {
@@ -76,8 +77,13 @@ export default function SettingsScreen() {
       const userDoc = await getDoc(doc(db, 'users', user.uid));
       if (userDoc.exists()) {
         const data = userDoc.data();
+        console.log('User data from Firestore:', data);
+        console.log('Riot account data:', data.riotAccount);
         if (data.riotAccount) {
           setRiotAccount(data.riotAccount);
+          console.log('Riot account set to:', data.riotAccount);
+        } else {
+          console.log('No riotAccount found in user data');
         }
       }
     } catch (error) {
@@ -85,6 +91,33 @@ export default function SettingsScreen() {
     } finally {
       setLoadingRiotAccount(false);
     }
+  };
+
+  const handleUnlinkRiotAccount = () => {
+    Alert.alert(
+      'Unlink Riot Account',
+      `Are you sure you want to unlink ${riotAccount?.gameName}#${riotAccount?.tagLine}? Your stats will be removed.`,
+      [
+        {
+          text: 'Cancel',
+          style: 'cancel',
+        },
+        {
+          text: 'Unlink',
+          style: 'destructive',
+          onPress: async () => {
+            try {
+              await unlinkRiotAccount();
+              setRiotAccount(null);
+              Alert.alert('Success', 'Riot account unlinked successfully');
+            } catch (error: any) {
+              Alert.alert('Error', error.message || 'Failed to unlink Riot account');
+              console.error(error);
+            }
+          },
+        },
+      ]
+    );
   };
 
   const handleSignOut = () => {
@@ -187,7 +220,7 @@ export default function SettingsScreen() {
           <ThemedText style={styles.sectionTitle}>Connected Accounts</ThemedText>
           <View style={styles.settingsGroup}>
             <TouchableOpacity
-              style={[styles.settingItem, styles.settingItemLast]}
+              style={[styles.settingItem, !riotAccount && styles.settingItemLast]}
               onPress={() => router.push('/profilePages/linkRiotAccount')}
             >
               <View style={styles.settingLeft}>
@@ -216,6 +249,23 @@ export default function SettingsScreen() {
                 <IconSymbol size={20} name="chevron.right" color="#666" />
               </View>
             </TouchableOpacity>
+
+            {/* Unlink Button - only shown when account is connected */}
+            {riotAccount && (
+              <TouchableOpacity
+                style={[styles.settingItem, styles.settingItemLast, styles.unlinkButton]}
+                onPress={handleUnlinkRiotAccount}
+              >
+                <View style={styles.settingLeft}>
+                  <View style={styles.iconContainer}>
+                    <IconSymbol size={22} name="link.badge.minus" color="#ef4444" />
+                  </View>
+                  <ThemedText style={[styles.settingTitle, styles.unlinkText]}>
+                    Unlink Riot Account
+                  </ThemedText>
+                </View>
+              </TouchableOpacity>
+            )}
           </View>
         </View>
 
@@ -398,6 +448,13 @@ const styles = StyleSheet.create({
     backgroundColor: '#fff',
   },
   signOutText: {
+    color: '#ef4444',
+    fontWeight: '600',
+  },
+  unlinkButton: {
+    backgroundColor: '#fff',
+  },
+  unlinkText: {
     color: '#ef4444',
     fontWeight: '600',
   },
