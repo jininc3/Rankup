@@ -4,7 +4,7 @@
     "slug": "RankUp",
     "version": "1.0.0",
     "orientation": "portrait",
-    "icon": "./assets/Freelo.png",
+    "icon": "./assets/images/Freelo.png",
     "scheme": "rankup",
     "userInterfaceStyle": "automatic",
     "newArchEnabled": true,
@@ -18,9 +18,9 @@
     "android": {
       "adaptiveIcon": {
         "backgroundColor": "#E6F4FE",
-        "foregroundImage": "./assets/Freelo.png",
-        "backgroundImage": "./assets/Freelo.png",
-        "monochromeImage": "./assets/Freelo.png"
+        "foregroundImage": "./assets/images/Freelo.png",
+        "backgroundImage": "./assets/images/Freelo.png",
+        "monochromeImage": "./assets/images/Freelo.png"
       },
       "edgeToEdgeEnabled": true,
       "predictiveBackGestureEnabled": false

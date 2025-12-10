@@ -2,7 +2,7 @@ import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { IconSymbol } from '@/components/ui/icon-symbol';
 import { useRouter } from 'expo-router';
-import { ScrollView, StyleSheet, TouchableOpacity, View, Alert, TextInput, Modal } from 'react-native';
+import { ScrollView, StyleSheet, TouchableOpacity, View, Alert, TextInput, Modal, KeyboardAvoidingView, Platform } from 'react-native';
 import { useAuth } from '@/contexts/AuthContext';
 import { deleteUserAccount } from '@/services/deleteAccountService';
 import { useState } from 'react';
@@ -227,7 +227,10 @@ export default function AccountSettingsScreen() {
         transparent={true}
         onRequestClose={() => !isDeleting && setShowDeleteModal(false)}
       >
-        <View style={styles.modalOverlay}>
+        <KeyboardAvoidingView
+          behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+          style={styles.modalOverlay}
+        >
           <View style={styles.modalContent}>
             <View style={styles.modalHeader}>
               <IconSymbol size={48} name="exclamationmark.triangle.fill" color="#ef4444" />
@@ -302,7 +305,7 @@ export default function AccountSettingsScreen() {
               </TouchableOpacity>
             </View>
           </View>
-        </View>
+        </KeyboardAvoidingView>
       </Modal>
     </ThemedView>
   );

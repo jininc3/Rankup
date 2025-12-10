@@ -11,7 +11,7 @@ import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 import { IconSymbol } from '@/components/ui/icon-symbol';
 
 export default function CreateUsernameScreen() {
-  const { user, refreshUser } = useAuth();
+  const { user, refreshUser, signOut } = useAuth();
   const router = useRouter();
   const [username, setUsername] = useState('');
   const [loading, setLoading] = useState(false);
@@ -147,6 +147,16 @@ export default function CreateUsernameScreen() {
     }, 100);
   };
 
+  const handleBack = async () => {
+    try {
+      await signOut();
+      router.replace('/(auth)/login');
+    } catch (error) {
+      console.error('Error signing out:', error);
+      Alert.alert('Error', 'Failed to go back. Please try again.');
+    }
+  };
+
   return (
     <ThemedView style={styles.container}>
       <KeyboardAvoidingView
@@ -159,6 +169,14 @@ export default function CreateUsernameScreen() {
           showsVerticalScrollIndicator={false}
           keyboardShouldPersistTaps="handled"
         >
+          <TouchableOpacity
+            style={styles.backButton}
+            onPress={handleBack}
+            disabled={loading}
+          >
+            <IconSymbol size={24} name="chevron.left" color="#000" />
+          </TouchableOpacity>
+
           <View style={styles.content}>
             <View style={styles.header}>
               <ThemedText style={styles.title}>Choose Your Username</ThemedText>
@@ -250,14 +268,28 @@ const styles = StyleSheet.create({
     flex: 1,
     justifyContent: 'center',
     paddingHorizontal: 24,
-    paddingTop: 60,
+    paddingTop: 20,
     paddingBottom: 40,
   },
-  header: {
-    marginBottom: 40,
+  backButton: {
+    flexDirection: 'row',
     alignItems: 'center',
-    paddingTop: 40,
-    paddingBottom: 24,
+    alignSelf: 'flex-start',
+    paddingTop: 60,
+    paddingBottom: 10,
+    paddingHorizontal: 24,
+  },
+  backButtonText: {
+    fontSize: 16,
+    color: '#000',
+    marginLeft: 4,
+    fontWeight: '500',
+  },
+  header: {
+    marginBottom: 32,
+    alignItems: 'center',
+    paddingTop: 20,
+    paddingBottom: 16,
     overflow: 'visible',
   },
   title: {
