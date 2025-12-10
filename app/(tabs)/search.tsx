@@ -137,7 +137,6 @@ export default function SearchScreen() {
       return;
     }
 
-    setShowHistory(false);
     setSearching(true);
 
     try {
