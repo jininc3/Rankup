@@ -28,7 +28,6 @@ export default function SearchScreen() {
   const [searchResults, setSearchResults] = useState<SearchUser[]>([]);
   const [searching, setSearching] = useState(false);
   const [searchHistory, setSearchHistory] = useState<SearchUser[]>([]);
-  const [showHistory, setShowHistory] = useState(false);
 
   // Load search history from Firestore
   const loadSearchHistory = async () => {
@@ -126,7 +125,6 @@ export default function SearchScreen() {
       // Clear search query when returning to search page
       setSearchQuery('');
       setSearchResults([]);
-      setShowHistory(false); // Don't show history until user clicks search bar
     }, [currentUser?.id])
   );
 
@@ -181,18 +179,15 @@ export default function SearchScreen() {
   };
 
   const handleUserClick = async (user: SearchUser) => {
-    // Hide history immediately when clicking
-    setShowHistory(false);
-
-    // Save to history and navigate
-    await saveToHistory(user);
-
-    // Navigate to profile
+    // Navigate to profile immediately
     if (user.id === currentUser?.id) {
       router.push('/(tabs)/profile');
     } else {
       router.push(`/profilePages/profileView?userId=${user.id}`);
     }
+
+    // Save to history in background (don't await)
+    saveToHistory(user);
   };
 
   return (
@@ -209,18 +204,11 @@ export default function SearchScreen() {
           placeholderTextColor="#999"
           value={searchQuery}
           onChangeText={handleSearch}
-          onFocus={() => setShowHistory(true)}
-          onBlur={() => {
-            // Hide history when user clicks off the search bar
-            // Longer timeout to allow clicks to register
-            setTimeout(() => setShowHistory(false), 200);
-          }}
           autoCapitalize="none"
         />
         {searchQuery.length > 0 && (
           <TouchableOpacity onPress={() => {
             handleSearch('');
-            setShowHistory(false); // Don't show history when clearing search
           }}>
             <IconSymbol size={20} name="xmark.circle.fill" color="#666" />
           </TouchableOpacity>
@@ -228,7 +216,7 @@ export default function SearchScreen() {
       </View>
 
       <ScrollView style={styles.scrollView} showsVerticalScrollIndicator={false}>
-        {showHistory && searchHistory.length > 0 ? (
+        {searchQuery.trim() === '' && searchHistory.length > 0 ? (
           <View>
             <View style={styles.historyHeader}>
               <ThemedText style={styles.historyTitle}>Recent Searches</ThemedText>
@@ -266,13 +254,7 @@ export default function SearchScreen() {
               </TouchableOpacity>
             ))}
           </View>
-        ) : !showHistory && searchQuery.trim() === '' && searchResults.length === 0 ? (
-          <View style={styles.emptyState}>
-            <IconSymbol size={64} name="magnifyingglass" color="#ccc" />
-            <ThemedText style={styles.emptyText}>Search user profiles</ThemedText>
-            <ThemedText style={styles.emptySubtext}>Tap the search bar to begin</ThemedText>
-          </View>
-        ) : showHistory && searchHistory.length === 0 && searchQuery.trim() === '' ? (
+        ) : searchQuery.trim() === '' && searchHistory.length === 0 ? (
           <View style={styles.emptyState}>
             <IconSymbol size={64} name="magnifyingglass" color="#ccc" />
             <ThemedText style={styles.emptyText}>No recent searches</ThemedText>

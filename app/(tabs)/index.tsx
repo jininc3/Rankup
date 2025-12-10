@@ -8,9 +8,9 @@ import { likePost, unlikePost, isPostLiked } from '@/services/likeService';
 import { createOrGetChat } from '@/services/chatService';
 import CommentModal from '@/app/components/commentModal';
 import PostContent from '@/app/components/postContent';
-import { collection, getDocs, orderBy, query, Timestamp, where, onSnapshot } from 'firebase/firestore';
+import { collection, getDocs, orderBy, query, Timestamp, where, onSnapshot, limit, startAfter, QueryDocumentSnapshot, DocumentData } from 'firebase/firestore';
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { ActivityIndicator, Dimensions, Image, Modal, ScrollView, StyleSheet, TouchableOpacity, View, Alert } from 'react-native';
+import { ActivityIndicator, Dimensions, Image, Modal, ScrollView, StyleSheet, TouchableOpacity, View, Alert, RefreshControl } from 'react-native';
 import { useRouter } from 'expo-router';
 import { useFocusEffect } from '@react-navigation/native';
 
@@ -79,8 +79,14 @@ export default function HomeScreen() {
   const [commentingPost, setCommentingPost] = useState<Post | null>(null);
   const [showCommentModal, setShowCommentModal] = useState(false);
   const [isScreenFocused, setIsScreenFocused] = useState(true);
+  const [lastDoc, setLastDoc] = useState<QueryDocumentSnapshot<DocumentData> | null>(null);
+  const [hasMore, setHasMore] = useState(true);
+  const [loadingMore, setLoadingMore] = useState(false);
+  const [refreshing, setRefreshing] = useState(false);
 
   const currentPosts = activeTab === 'forYou' ? forYouPosts : followingPosts;
+
+  const POSTS_PER_PAGE = 8;
 
   // Callback to register video players
   const handlePlayerReady = useCallback((postId: string, player: any) => {
@@ -119,81 +125,149 @@ export default function HomeScreen() {
     fetchFollowingUsers();
   }, [currentUser?.id]);
 
-  // Fetch posts from followed users and all posts
-  useEffect(() => {
-    const fetchPosts = async () => {
-      if (!currentUser?.id) return;
+  // Fetch posts with pagination
+  const fetchPostsWithPagination = useCallback(async (isLoadMore: boolean = false) => {
+    if (!currentUser?.id) return;
+    if (isLoadMore && (!hasMore || loadingMore)) return;
 
+    if (isLoadMore) {
+      setLoadingMore(true);
+    } else {
       setLoading(true);
-      try {
-        // Fetch all posts for "For You" tab (empty for now)
-        setForYouPosts([]);
+      setLastDoc(null);
+      setHasMore(true);
+    }
 
-        // Fetch all posts and filter for "Following" tab
-        const allPostsQuery = query(
+    try {
+      // Fetch all posts for "For You" tab (empty for now)
+      if (activeTab === 'forYou') {
+        setForYouPosts([]);
+        setLoading(false);
+        return;
+      }
+
+      // If no following users, show empty state
+      if (followingUserIds.length === 0) {
+        setFollowingPosts([]);
+        setLoading(false);
+        return;
+      }
+
+      // Batch queries for users following more than 10 people
+      const batchSize = 10;
+      const batches: string[][] = [];
+      for (let i = 0; i < followingUserIds.length; i += batchSize) {
+        batches.push(followingUserIds.slice(i, i + batchSize));
+      }
+
+      let allBatchPosts: Post[] = [];
+
+      // Fetch posts from each batch
+      for (const batch of batches) {
+        let q = query(
           collection(db, 'posts'),
-          orderBy('createdAt', 'desc')
+          where('userId', 'in', batch),
+          orderBy('createdAt', 'desc'),
+          limit(POSTS_PER_PAGE * 2) // Fetch more to account for filtering
         );
-        const allPostsSnapshot = await getDocs(allPostsQuery);
-        const allPosts: Post[] = allPostsSnapshot.docs.map(doc => ({
+
+        if (isLoadMore && lastDoc) {
+          q = query(
+            collection(db, 'posts'),
+            where('userId', 'in', batch),
+            orderBy('createdAt', 'desc'),
+            startAfter(lastDoc),
+            limit(POSTS_PER_PAGE * 2)
+          );
+        }
+
+        const snapshot = await getDocs(q);
+        const batchPosts = snapshot.docs.map(doc => ({
           id: doc.id,
           ...doc.data()
         } as Post));
 
-        // Fetch user avatars for posts that don't have them
-        const postsWithAvatars = await Promise.all(
-          allPosts.map(async (post) => {
-            // If post already has an avatar, return as is
-            if (post.avatar) {
-              return post;
-            }
-
-            // Otherwise, fetch the user's avatar from the users collection
-            try {
-              const userQuery = query(
-                collection(db, 'users'),
-                where('__name__', '==', post.userId)
-              );
-              const userSnapshot = await getDocs(userQuery);
-
-              if (!userSnapshot.empty) {
-                const userData = userSnapshot.docs[0].data();
-                return {
-                  ...post,
-                  avatar: userData.avatar || null
-                };
-              }
-            } catch (error) {
-              console.error(`Error fetching avatar for user ${post.userId}:`, error);
-            }
-
-            return post;
-          })
-        );
-
-        // Filter posts from followed users only (exclude current user's own posts)
-        let followingPostsFiltered = postsWithAvatars.filter(post =>
-          followingUserIds.includes(post.userId) && post.userId !== currentUser.id
-        );
-
-        // Apply game filter if selected
-        if (selectedGameFilter) {
-          followingPostsFiltered = followingPostsFiltered.filter(post => post.taggedGame === selectedGameFilter);
-        }
-
-        console.log('All posts count:', postsWithAvatars.length);
-        console.log('Following posts count:', followingPostsFiltered.length);
-        console.log('Following posts:', followingPostsFiltered);
-        setFollowingPosts(followingPostsFiltered);
-      } catch (error) {
-        console.error('Error fetching posts:', error);
-      } finally {
-        setLoading(false);
+        allBatchPosts = [...allBatchPosts, ...batchPosts];
       }
-    };
 
+      // Sort all posts by createdAt
+      allBatchPosts.sort((a, b) => b.createdAt.toMillis() - a.createdAt.toMillis());
+
+      // Filter out current user's posts
+      let filteredPosts = allBatchPosts.filter(post => post.userId !== currentUser.id);
+
+      // Apply game filter if selected
+      if (selectedGameFilter) {
+        filteredPosts = filteredPosts.filter(post => post.taggedGame === selectedGameFilter);
+      }
+
+      // Take only the number we need
+      const postsToShow = filteredPosts.slice(0, POSTS_PER_PAGE);
+
+      // Fetch user avatars for posts that don't have them
+      const postsWithAvatars = await Promise.all(
+        postsToShow.map(async (post) => {
+          if (post.avatar) {
+            return post;
+          }
+
+          try {
+            const userQuery = query(
+              collection(db, 'users'),
+              where('__name__', '==', post.userId)
+            );
+            const userSnapshot = await getDocs(userQuery);
+
+            if (!userSnapshot.empty) {
+              const userData = userSnapshot.docs[0].data();
+              return {
+                ...post,
+                avatar: userData.avatar || null
+              };
+            }
+          } catch (error) {
+            console.error(`Error fetching avatar for user ${post.userId}:`, error);
+          }
+
+          return post;
+        })
+      );
+
+      if (isLoadMore) {
+        setFollowingPosts(prev => [...prev, ...postsWithAvatars]);
+      } else {
+        setFollowingPosts(postsWithAvatars);
+      }
+
+      // Update pagination state
+      setHasMore(postsWithAvatars.length === POSTS_PER_PAGE);
+      if (postsWithAvatars.length > 0) {
+        // Find the last document for pagination
+        const lastPost = postsWithAvatars[postsWithAvatars.length - 1];
+        const lastPostQuery = query(
+          collection(db, 'posts'),
+          where('__name__', '==', lastPost.id)
+        );
+        const lastPostSnapshot = await getDocs(lastPostQuery);
+        if (!lastPostSnapshot.empty) {
+          setLastDoc(lastPostSnapshot.docs[0]);
+        }
+      }
+
+      console.log(`Fetched ${postsWithAvatars.length} posts`, isLoadMore ? '(load more)' : '(initial)');
+    } catch (error) {
+      console.error('Error fetching posts:', error);
+      Alert.alert('Error', 'Failed to load posts. Please try again.');
+    } finally {
+      setLoading(false);
+      setLoadingMore(false);
+    }
+  }, [currentUser?.id, followingUserIds, activeTab, selectedGameFilter, hasMore, loadingMore, lastDoc]);
+
+  // Initial fetch when dependencies change
+  useEffect(() => {
     if (followingUserIds.length > 0 || activeTab === 'forYou') {
-      fetchPosts();
+      fetchPostsWithPagination(false);
     } else {
       setLoading(false);
     }
@@ -316,42 +390,35 @@ export default function HomeScreen() {
     setCommentingPost(null);
   };
 
-  // Refresh posts when a comment is added
-  const handleCommentAdded = () => {
-    // Refetch posts to get updated comment count
-    if (followingUserIds.length > 0 || activeTab === 'forYou') {
-      // Re-trigger the fetch posts effect
-      const fetchPosts = async () => {
-        if (!currentUser?.id) return;
+  // Pull to refresh
+  const handleRefresh = useCallback(async () => {
+    setRefreshing(true);
+    await fetchPostsWithPagination(false);
+    setRefreshing(false);
+  }, [fetchPostsWithPagination]);
 
-        try {
-          const allPostsQuery = query(
-            collection(db, 'posts'),
-            orderBy('createdAt', 'desc')
-          );
-          const allPostsSnapshot = await getDocs(allPostsQuery);
-          const allPosts: Post[] = allPostsSnapshot.docs.map(doc => ({
-            id: doc.id,
-            ...doc.data()
-          } as Post));
-
-          let followingPostsFiltered = allPosts.filter(post =>
-            followingUserIds.includes(post.userId) && post.userId !== currentUser.id
-          );
-
-          if (selectedGameFilter) {
-            followingPostsFiltered = followingPostsFiltered.filter(post => post.taggedGame === selectedGameFilter);
-          }
-
-          setFollowingPosts(followingPostsFiltered);
-        } catch (error) {
-          console.error('Error refreshing posts:', error);
-        }
-      };
-
-      fetchPosts();
+  // Load more posts when scrolling to bottom
+  const handleLoadMore = useCallback(() => {
+    if (hasMore && !loadingMore && !loading) {
+      fetchPostsWithPagination(true);
     }
-  };
+  }, [hasMore, loadingMore, loading, fetchPostsWithPagination]);
+
+  // Detect when user scrolls to bottom
+  const handleScrollEnd = useCallback((event: any) => {
+    const { layoutMeasurement, contentOffset, contentSize } = event.nativeEvent;
+    const paddingToBottom = 100;
+    const isCloseToBottom = layoutMeasurement.height + contentOffset.y >= contentSize.height - paddingToBottom;
+
+    if (isCloseToBottom) {
+      handleLoadMore();
+    }
+  }, [handleLoadMore]);
+
+  // Refresh posts when a comment is added
+  const handleCommentAdded = useCallback(() => {
+    fetchPostsWithPagination(false);
+  }, [fetchPostsWithPagination]);
 
   // Handle screen focus/blur for video playback
   useFocusEffect(
@@ -565,10 +632,21 @@ export default function HomeScreen() {
         style={styles.scrollView}
         contentContainerStyle={styles.scrollViewContent}
         showsVerticalScrollIndicator={false}
-        onScroll={handleScroll}
+        onScroll={(e) => {
+          handleScroll();
+          handleScrollEnd(e);
+        }}
         scrollEventThrottle={100}
         onScrollEndDrag={handleScroll}
         onMomentumScrollEnd={handleScroll}
+        refreshControl={
+          <RefreshControl
+            refreshing={refreshing}
+            onRefresh={handleRefresh}
+            tintColor="#000"
+            colors={['#000']}
+          />
+        }
       >
         {loading ? (
           <View style={styles.loadingContainer}>
@@ -576,25 +654,38 @@ export default function HomeScreen() {
             <ThemedText style={styles.loadingText}>Loading posts...</ThemedText>
           </View>
         ) : currentPosts.length > 0 ? (
-          currentPosts.map((post) => (
-            <PostContent
-              key={post.id}
-              post={post}
-              playingVideoId={playingVideoId}
-              postRefs={postRefs}
-              onOpenComments={handleOpenComments}
-              onDirectMessage={handleDirectMessage}
-              onLikeToggle={handleLikeToggle}
-              onUserPress={handleUserPress}
-              formatTimeAgo={formatTimeAgo}
-              currentUserId={currentUser?.id}
-              isLiked={likedPosts.has(post.id)}
-              likeCount={post.likes}
-              isLiking={likingInProgress.has(post.id)}
-              onPlayerReady={handlePlayerReady}
-              showRecentComments={true}
-            />
-          ))
+          <>
+            {currentPosts.map((post) => (
+              <PostContent
+                key={post.id}
+                post={post}
+                playingVideoId={playingVideoId}
+                postRefs={postRefs}
+                onOpenComments={handleOpenComments}
+                onDirectMessage={handleDirectMessage}
+                onLikeToggle={handleLikeToggle}
+                onUserPress={handleUserPress}
+                formatTimeAgo={formatTimeAgo}
+                currentUserId={currentUser?.id}
+                isLiked={likedPosts.has(post.id)}
+                likeCount={post.likes}
+                isLiking={likingInProgress.has(post.id)}
+                onPlayerReady={handlePlayerReady}
+                showRecentComments={true}
+              />
+            ))}
+            {loadingMore && (
+              <View style={styles.loadingMoreContainer}>
+                <ActivityIndicator size="small" color="#000" />
+                <ThemedText style={styles.loadingMoreText}>Loading more posts...</ThemedText>
+              </View>
+            )}
+            {!hasMore && currentPosts.length > 0 && (
+              <View style={styles.endOfFeedContainer}>
+                <ThemedText style={styles.endOfFeedText}>You're all caught up!</ThemedText>
+              </View>
+            )}
+          </>
         ) : (
           <View style={styles.emptyContainer}>
             <IconSymbol size={64} name="person.2" color="#ccc" />
@@ -890,5 +981,26 @@ const styles = StyleSheet.create({
     height: 24,
     width: 80,
     marginRight: 8,
+  },
+  loadingMoreContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 20,
+    gap: 8,
+  },
+  loadingMoreText: {
+    fontSize: 14,
+    color: '#666',
+  },
+  endOfFeedContainer: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 30,
+  },
+  endOfFeedText: {
+    fontSize: 14,
+    color: '#999',
+    fontStyle: 'italic',
   },
 });

@@ -42,11 +42,7 @@ export default function PostFilterModal({
       transparent={true}
       onRequestClose={onClose}
     >
-      <TouchableOpacity
-        style={styles.filterModalOverlay}
-        activeOpacity={1}
-        onPress={onClose}
-      >
+      <View style={styles.filterModalContainer}>
         <View style={styles.filterModalContent}>
           <View style={styles.filterModalHeader}>
             <ThemedText style={styles.filterModalTitle}>Sort & Filter Posts</ThemedText>
@@ -124,9 +120,6 @@ export default function PostFilterModal({
 
             {/* Game Filter Section */}
             <View style={styles.filterSectionDivider} />
-            <View style={styles.filterSectionHeader}>
-              <ThemedText style={styles.filterSectionTitle}>Filter by Game</ThemedText>
-            </View>
             <View style={styles.filterOptionsContainer}>
               {/* All Games option */}
               <TouchableOpacity
@@ -173,23 +166,22 @@ export default function PostFilterModal({
             </View>
           </ScrollView>
         </View>
-      </TouchableOpacity>
+      </View>
     </Modal>
   );
 }
 
 const styles = StyleSheet.create({
-  filterModalOverlay: {
+  filterModalContainer: {
     flex: 1,
-    backgroundColor: 'rgba(0,0,0,0.5)',
+    backgroundColor: 'transparent',
     justifyContent: 'flex-end',
   },
   filterModalContent: {
+    height: '70%',
     backgroundColor: '#fff',
     borderTopLeftRadius: 20,
     borderTopRightRadius: 20,
-    paddingBottom: 40,
-    maxHeight: '80%',
   },
   filterModalHeader: {
     flexDirection: 'row',
@@ -253,20 +245,6 @@ const styles = StyleSheet.create({
   filterSectionDivider: {
     height: 8,
     backgroundColor: '#f5f5f5',
-  },
-  filterSectionHeader: {
-    paddingHorizontal: 20,
-    paddingVertical: 12,
-    backgroundColor: '#f8f9fa',
-    borderBottomWidth: 1,
-    borderBottomColor: '#e5e5e5',
-  },
-  filterSectionTitle: {
-    fontSize: 13,
-    fontWeight: '600',
-    color: '#666',
-    textTransform: 'uppercase',
-    letterSpacing: 0.5,
   },
   gameFilterIcon: {
     fontSize: 20,
