@@ -1,8 +1,8 @@
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { IconSymbol } from '@/components/ui/icon-symbol';
-import { useState, useEffect, useCallback } from 'react';
-import { ScrollView, StyleSheet, TouchableOpacity, View, Image, ActivityIndicator } from 'react-native';
+import { useState, useEffect, useCallback, useRef } from 'react';
+import { ScrollView, StyleSheet, TouchableOpacity, View, Image, ActivityIndicator, Animated, PanResponder } from 'react-native';
 import { useRouter } from 'expo-router';
 import { collection, query, orderBy, limit, onSnapshot, doc, updateDoc, deleteDoc, where, Timestamp, getDocs, writeBatch, getDoc } from 'firebase/firestore';
 import { db } from '@/config/firebase';
@@ -48,6 +48,7 @@ export default function NotificationsScreen() {
   const [selectedPost, setSelectedPost] = useState<Post | null>(null);
   const [showPostViewer, setShowPostViewer] = useState(false);
   const [loadingPost, setLoadingPost] = useState(false);
+  const swipeAnimations = useRef<{ [key: string]: Animated.Value }>({});
 
   // Load and listen to notifications in real-time
   useEffect(() => {
@@ -115,8 +116,10 @@ export default function NotificationsScreen() {
   };
 
   // Delete a single notification
-  const deleteNotification = async (notificationId: string, event: any) => {
-    event.stopPropagation();
+  const deleteNotification = async (notificationId: string, event?: any) => {
+    if (event) {
+      event.stopPropagation();
+    }
 
     if (!currentUser?.id) return;
 
@@ -233,6 +236,53 @@ export default function NotificationsScreen() {
     return notificationDate.toLocaleDateString();
   };
 
+  // Get or create animated value for notification
+  const getSwipeAnimation = (notificationId: string): Animated.Value => {
+    if (!swipeAnimations.current[notificationId]) {
+      swipeAnimations.current[notificationId] = new Animated.Value(0);
+    }
+    return swipeAnimations.current[notificationId];
+  };
+
+  // Create pan responder for swipe left
+  const createPanResponder = (notificationId: string) => {
+    const translateX = getSwipeAnimation(notificationId);
+
+    return PanResponder.create({
+      onStartShouldSetPanResponder: () => false,
+      onMoveShouldSetPanResponder: (_, gestureState) => {
+        return Math.abs(gestureState.dx) > 5;
+      },
+      onPanResponderGrant: () => {
+        // Start gesture
+      },
+      onPanResponderMove: (_, gestureState) => {
+        // Only allow left swipe (negative dx)
+        if (gestureState.dx < 0) {
+          translateX.setValue(gestureState.dx);
+        }
+      },
+      onPanResponderRelease: (_, gestureState) => {
+        // If swiped more than 60px to the left, open delete button
+        const shouldOpen = gestureState.dx < -60 || gestureState.vx < -0.3;
+
+        if (shouldOpen) {
+          Animated.spring(translateX, {
+            toValue: -80,
+            useNativeDriver: true,
+            friction: 8,
+          }).start();
+        } else {
+          Animated.spring(translateX, {
+            toValue: 0,
+            useNativeDriver: true,
+            friction: 8,
+          }).start();
+        }
+      },
+    });
+  };
+
   return (
     <ThemedView style={styles.container}>
       {/* Header */}
@@ -259,72 +309,97 @@ export default function NotificationsScreen() {
             <ThemedText style={styles.loadingText}>Loading notifications...</ThemedText>
           </View>
         ) : notifications.length > 0 ? (
-          notifications.map((notification) => (
-            <TouchableOpacity
-              key={notification.id}
-              style={[styles.notificationCard, !notification.read && styles.unreadNotification]}
-              onPress={() => handleNotificationPress(notification)}
-              activeOpacity={0.7}
-            >
-              <View style={styles.notificationLeft}>
-                {/* Avatar */}
-                <TouchableOpacity
-                  style={styles.avatar}
-                  onPress={(e) => handleUserPress(notification.fromUserId, e)}
-                  activeOpacity={0.7}
-                >
-                  {notification.fromUserAvatar && notification.fromUserAvatar.startsWith('http') ? (
-                    <Image source={{ uri: notification.fromUserAvatar }} style={styles.avatarImage} />
-                  ) : (
-                    <ThemedText style={styles.avatarInitial}>
-                      {notification.fromUsername[0].toUpperCase()}
-                    </ThemedText>
-                  )}
-                </TouchableOpacity>
+          notifications.map((notification) => {
+            const translateX = getSwipeAnimation(notification.id);
+            const panResponder = createPanResponder(notification.id);
 
-                {/* Notification content */}
-                <View style={styles.notificationContent}>
-                  <ThemedText style={styles.notificationText}>
-                    <ThemedText
-                      style={styles.usernameText}
-                      onPress={(e) => handleUserPress(notification.fromUserId, e)}
-                    >
-                      {notification.fromUsername}
-                    </ThemedText>
-                    {notification.type === 'follow' && ' started following you'}
-                    {notification.type === 'like' && ' liked your post'}
-                    {notification.type === 'tag' && ' tagged you in a post'}
-                    {notification.type === 'comment' && ' commented: '}
-                    {notification.type === 'comment' && notification.commentText && (
-                      <ThemedText style={styles.commentPreview}>
-                        "{notification.commentText.length > 30
-                          ? notification.commentText.substring(0, 30) + '...'
-                          : notification.commentText}"
-                      </ThemedText>
-                    )}
-                  </ThemedText>
-                  <ThemedText style={styles.timeText}>{getTimeAgo(notification.createdAt)}</ThemedText>
+            return (
+              <View key={notification.id} style={styles.notificationWrapper}>
+                {/* Delete button (behind the card) */}
+                <View style={styles.deleteButtonBehind}>
+                  <TouchableOpacity
+                    onPress={() => {
+                      // Animate back first, then delete
+                      Animated.timing(translateX, {
+                        toValue: 0,
+                        duration: 200,
+                        useNativeDriver: true,
+                      }).start(() => {
+                        deleteNotification(notification.id);
+                      });
+                    }}
+                    style={styles.deleteButtonTouchable}
+                  >
+                    <IconSymbol size={24} name="trash" color="#fff" />
+                  </TouchableOpacity>
                 </View>
 
-                {/* Post thumbnail for like/comment/tag notifications */}
-                {(notification.type === 'like' || notification.type === 'comment' || notification.type === 'tag') && notification.postThumbnail && (
-                  <Image source={{ uri: notification.postThumbnail }} style={styles.postThumbnail} />
-                )}
+                {/* Swipeable notification card */}
+                <Animated.View
+                  style={[
+                    styles.notificationAnimatedWrapper,
+                    { transform: [{ translateX }] }
+                  ]}
+                  {...panResponder.panHandlers}
+                >
+                  <TouchableOpacity
+                    style={[styles.notificationCard, !notification.read && styles.unreadNotification]}
+                    onPress={() => handleNotificationPress(notification)}
+                    activeOpacity={0.7}
+                  >
+                    <View style={styles.notificationLeft}>
+                      {/* Avatar */}
+                      <TouchableOpacity
+                        style={styles.avatar}
+                        onPress={(e) => handleUserPress(notification.fromUserId, e)}
+                        activeOpacity={0.7}
+                      >
+                        {notification.fromUserAvatar && notification.fromUserAvatar.startsWith('http') ? (
+                          <Image source={{ uri: notification.fromUserAvatar }} style={styles.avatarImage} />
+                        ) : (
+                          <ThemedText style={styles.avatarInitial}>
+                            {notification.fromUsername[0].toUpperCase()}
+                          </ThemedText>
+                        )}
+                      </TouchableOpacity>
+
+                      {/* Notification content */}
+                      <View style={styles.notificationContent}>
+                        <ThemedText style={styles.notificationText}>
+                          <ThemedText
+                            style={styles.usernameText}
+                            onPress={(e) => handleUserPress(notification.fromUserId, e)}
+                          >
+                            {notification.fromUsername}
+                          </ThemedText>
+                          {notification.type === 'follow' && ' started following you'}
+                          {notification.type === 'like' && ' liked your post'}
+                          {notification.type === 'tag' && ' tagged you in a post'}
+                          {notification.type === 'comment' && ' commented: '}
+                          {notification.type === 'comment' && notification.commentText && (
+                            <ThemedText style={styles.commentPreview}>
+                              "{notification.commentText.length > 30
+                                ? notification.commentText.substring(0, 30) + '...'
+                                : notification.commentText}"
+                            </ThemedText>
+                          )}
+                        </ThemedText>
+                        <ThemedText style={styles.timeText}>{getTimeAgo(notification.createdAt)}</ThemedText>
+                      </View>
+
+                      {/* Post thumbnail for like/comment/tag notifications */}
+                      {(notification.type === 'like' || notification.type === 'comment' || notification.type === 'tag') && notification.postThumbnail && (
+                        <Image source={{ uri: notification.postThumbnail }} style={styles.postThumbnail} />
+                      )}
+                    </View>
+
+                    {/* Unread indicator */}
+                    {!notification.read && <View style={styles.unreadDot} />}
+                  </TouchableOpacity>
+                </Animated.View>
               </View>
-
-              {/* Delete button */}
-              <TouchableOpacity
-                onPress={(e) => deleteNotification(notification.id, e)}
-                style={styles.deleteButton}
-                hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
-              >
-                <IconSymbol size={16} name="xmark" color="#999" />
-              </TouchableOpacity>
-
-              {/* Unread indicator */}
-              {!notification.read && <View style={styles.unreadDot} />}
-            </TouchableOpacity>
-          ))
+            );
+          })
         ) : (
           <View style={styles.emptyState}>
             <IconSymbol size={64} name="bell" color="#ccc" />
@@ -402,6 +477,29 @@ const styles = StyleSheet.create({
     fontSize: 16,
     color: '#666',
   },
+  notificationWrapper: {
+    position: 'relative',
+    overflow: 'hidden',
+  },
+  deleteButtonBehind: {
+    position: 'absolute',
+    right: 0,
+    top: 0,
+    bottom: 0,
+    width: 80,
+    backgroundColor: '#ef4444',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  deleteButtonTouchable: {
+    width: '100%',
+    height: '100%',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  notificationAnimatedWrapper: {
+    backgroundColor: '#fff',
+  },
   notificationCard: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -455,13 +553,10 @@ const styles = StyleSheet.create({
     fontSize: 11,
     color: '#999',
   },
-  deleteButton: {
-    padding: 6,
-  },
   unreadDot: {
     position: 'absolute',
     top: 16,
-    right: 48,
+    right: 16,
     width: 6,
     height: 6,
     borderRadius: 3,
