@@ -148,6 +148,10 @@ export default function SignupScreen() {
     }
   };
 
+  const handleBack = () => {
+    router.back();
+  };
+
   return (
     <ThemedView style={styles.container}>
       <KeyboardAvoidingView
@@ -158,6 +162,14 @@ export default function SignupScreen() {
           contentContainerStyle={styles.scrollContent}
           showsVerticalScrollIndicator={false}
         >
+          <TouchableOpacity
+            style={styles.backButton}
+            onPress={handleBack}
+            disabled={isLoading}
+          >
+            <IconSymbol size={24} name="chevron.left" color="#000" />
+          </TouchableOpacity>
+
           <View style={styles.content}>
             <View style={styles.header}>
               <ThemedText style={styles.title}>Create Account</ThemedText>
@@ -311,6 +323,14 @@ const styles = StyleSheet.create({
   },
   scrollContent: {
     flexGrow: 1,
+  },
+  backButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    alignSelf: 'flex-start',
+    paddingTop: 60,
+    paddingBottom: 10,
+    paddingHorizontal: 24,
   },
   content: {
     flex: 1,

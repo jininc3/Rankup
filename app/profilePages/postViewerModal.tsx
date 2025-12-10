@@ -74,7 +74,8 @@ export default function PostViewerModal({
   // Handle opening animation
   useEffect(() => {
     if (visible) {
-      // Fade in when opening
+      // Reset animation values and fade in when opening
+      translateX.setValue(0);
       opacity.setValue(0);
       Animated.timing(opacity, {
         toValue: 1,
@@ -175,9 +176,6 @@ export default function PostViewerModal({
             })
           ]).start(() => {
             onClose();
-            // Reset after closing
-            translateX.setValue(0);
-            opacity.setValue(1);
           });
         } else {
           // Reset to original position
