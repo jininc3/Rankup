@@ -145,6 +145,30 @@ export default function SettingsScreen() {
           </View>
         )}
 
+        {/* Connected Accounts Section */}
+        <View style={styles.section}>
+          <ThemedText style={styles.sectionTitle}>Connected Accounts</ThemedText>
+          <View style={styles.settingsGroup}>
+            <TouchableOpacity
+              style={[styles.settingItem, styles.settingItemLast]}
+              onPress={() => {
+                // TODO: Add Riot Games connection functionality
+              }}
+            >
+              <View style={styles.settingLeft}>
+                <View style={styles.iconContainer}>
+                  <IconSymbol size={22} name="gamecontroller" color="#000" />
+                </View>
+                <View style={styles.settingTextContainer}>
+                  <ThemedText style={styles.settingTitle}>Connect to Riot Games</ThemedText>
+                  <ThemedText style={styles.settingSubtitle}>Link your Riot account</ThemedText>
+                </View>
+              </View>
+              <IconSymbol size={20} name="chevron.right" color="#666" />
+            </TouchableOpacity>
+          </View>
+        </View>
+
         {/* Other Settings Sections */}
         {settingsData.map((section) => (
           <View key={section.id} style={styles.section}>
