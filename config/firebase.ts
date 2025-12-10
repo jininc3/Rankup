@@ -1,7 +1,8 @@
-import { initializeApp } from 'firebase/app';
+import { initializeApp, getApp, getApps } from 'firebase/app';
 import { getAuth, initializeAuth, getReactNativePersistence } from 'firebase/auth';
 import { getFirestore } from 'firebase/firestore';
 import { getStorage } from 'firebase/storage';
+import { getFunctions, connectFunctionsEmulator } from 'firebase/functions';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
 // Your web app's Firebase configuration
@@ -16,12 +17,22 @@ const firebaseConfig = {
 };
 
 // Initialize Firebase
-const app = initializeApp(firebaseConfig);
+let app;
+try {
+  app = getApp();
+} catch {
+  app = initializeApp(firebaseConfig);
+}
 
 // Initialize Auth with AsyncStorage persistence for React Native
-const auth = initializeAuth(app, {
-  persistence: getReactNativePersistence(AsyncStorage)
-});
+let auth;
+try {
+  auth = getAuth(app);
+} catch {
+  auth = initializeAuth(app, {
+    persistence: getReactNativePersistence(AsyncStorage)
+  });
+}
 
 // Initialize Firestore
 const db = getFirestore(app);
@@ -29,5 +40,13 @@ const db = getFirestore(app);
 // Initialize Storage
 const storage = getStorage(app);
 
-export { auth, db, storage };
+// Initialize Cloud Functions
+const functions = getFunctions(app, 'us-central1');
+
+// Uncomment below for local development with emulator
+// if (__DEV__) {
+//   connectFunctionsEmulator(functions, 'localhost', 5001);
+// }
+
+export { auth, db, storage, functions };
 export default app;

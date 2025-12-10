@@ -1,8 +1,10 @@
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { IconSymbol } from '@/components/ui/icon-symbol';
-import { StyleSheet, View, TouchableOpacity, ScrollView, Image } from 'react-native';
+import { StyleSheet, View, TouchableOpacity, ScrollView, Image, ActivityIndicator, Alert } from 'react-native';
 import { useRouter, useLocalSearchParams } from 'expo-router';
+import { useState, useEffect } from 'react';
+import { getRiotStats, formatRank, getChampionName, type RiotStats } from '@/services/riotService';
 
 interface GameStatsScreenProps {
   // Props will come from navigation params
@@ -14,6 +16,40 @@ export default function GameStatsScreen() {
 
   // Parse the game data from params
   const game = params.game ? JSON.parse(params.game as string) : null;
+
+  // State for Riot data
+  const [riotStats, setRiotStats] = useState<RiotStats | null>(null);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [hasFetched, setHasFetched] = useState(false);
+
+  // Fetch Riot stats if this is League of Legends (only once)
+  useEffect(() => {
+    if (game && game.name === 'League of Legends' && !hasFetched && !loading) {
+      fetchRiotData();
+    }
+  }, [game?.name]);
+
+  const fetchRiotData = async () => {
+    if (loading || hasFetched) return; // Prevent multiple simultaneous calls
+
+    setLoading(true);
+    setError(null);
+    setHasFetched(true);
+
+    try {
+      const response = await getRiotStats();
+      if (response.success && response.stats) {
+        setRiotStats(response.stats);
+      }
+    } catch (err: any) {
+      console.error('Error fetching Riot stats:', err);
+      setError(err.message);
+      setHasFetched(false); // Allow retry on error
+    } finally {
+      setLoading(false);
+    }
+  };
 
   if (!game) {
     return (
@@ -72,46 +108,152 @@ export default function GameStatsScreen() {
 
       {/* Stats Card */}
       <View style={styles.statsCard}>
-        {/* Primary Stats */}
-        <View style={styles.statRow}>
-          <View style={styles.statRowIcon}>
-            <IconSymbol size={20} name="trophy.fill" color="#666" />
+        {loading ? (
+          <View style={styles.loadingContainer}>
+            <ActivityIndicator size="large" color="#000" />
+            <ThemedText style={styles.loadingText}>Loading stats...</ThemedText>
           </View>
-          <ThemedText style={styles.statRowLabel}>Current Rank</ThemedText>
-          <ThemedText style={styles.statRowValue}>{game.rank}</ThemedText>
-        </View>
+        ) : error ? (
+          <View style={styles.errorContainer}>
+            <ThemedText style={styles.errorText}>{error}</ThemedText>
+            <TouchableOpacity style={styles.retryButton} onPress={fetchRiotData}>
+              <ThemedText style={styles.retryButtonText}>Retry</ThemedText>
+            </TouchableOpacity>
+          </View>
+        ) : game.name === 'League of Legends' && riotStats ? (
+          // Display real Riot stats for League of Legends
+          <>
+            <View style={styles.statRow}>
+              <View style={styles.statRowIcon}>
+                <IconSymbol size={20} name="trophy.fill" color="#666" />
+              </View>
+              <ThemedText style={styles.statRowLabel}>Current Rank</ThemedText>
+              <ThemedText style={styles.statRowValue}>
+                {riotStats.rankedSolo
+                  ? formatRank(riotStats.rankedSolo.tier, riotStats.rankedSolo.rank)
+                  : 'Unranked'}
+              </ThemedText>
+            </View>
 
-        <View style={styles.statRow}>
-          <View style={styles.statRowIcon}>
-            <IconSymbol size={20} name="star.fill" color="#666" />
-          </View>
-          <ThemedText style={styles.statRowLabel}>Peak Rank</ThemedText>
-          <ThemedText style={styles.statRowValue}>{game.peakRank || 'Diamond 3'}</ThemedText>
-        </View>
+            <View style={styles.statRow}>
+              <View style={styles.statRowIcon}>
+                <IconSymbol size={20} name="star.fill" color="#666" />
+              </View>
+              <ThemedText style={styles.statRowLabel}>Peak Rank</ThemedText>
+              <ThemedText style={styles.statRowValue}>
+                {riotStats.peakRank
+                  ? formatRank(riotStats.peakRank.tier, riotStats.peakRank.rank)
+                  : 'N/A'}
+              </ThemedText>
+            </View>
 
-        <View style={styles.statRow}>
-          <View style={styles.statRowIcon}>
-            <IconSymbol size={20} name="chart.line.uptrend.xyaxis" color="#666" />
-          </View>
-          <ThemedText style={styles.statRowLabel}>Win Rate</ThemedText>
-          <ThemedText style={styles.statRowValue}>{game.winRate}% ({game.wins}W)</ThemedText>
-        </View>
+            <View style={styles.statRow}>
+              <View style={styles.statRowIcon}>
+                <IconSymbol size={20} name="chart.line.uptrend.xyaxis" color="#666" />
+              </View>
+              <ThemedText style={styles.statRowLabel}>Win Rate</ThemedText>
+              <ThemedText style={styles.statRowValue}>
+                {riotStats.rankedSolo
+                  ? `${riotStats.rankedSolo.winRate}% (${riotStats.rankedSolo.wins}W)`
+                  : 'N/A'}
+              </ThemedText>
+            </View>
 
-        <View style={styles.statRow}>
-          <View style={styles.statRowIcon}>
-            <IconSymbol size={20} name="gamecontroller.fill" color="#666" />
-          </View>
-          <ThemedText style={styles.statRowLabel}>Games Played</ThemedText>
-          <ThemedText style={styles.statRowValue}>{game.wins + game.losses}</ThemedText>
-        </View>
+            <View style={styles.statRow}>
+              <View style={styles.statRowIcon}>
+                <IconSymbol size={20} name="gamecontroller.fill" color="#666" />
+              </View>
+              <ThemedText style={styles.statRowLabel}>Games Played</ThemedText>
+              <ThemedText style={styles.statRowValue}>
+                {riotStats.rankedSolo
+                  ? riotStats.rankedSolo.wins + riotStats.rankedSolo.losses
+                  : 0}
+              </ThemedText>
+            </View>
 
-        <View style={styles.statRow}>
-          <View style={styles.statRowIcon}>
-            <IconSymbol size={20} name="person.fill" color="#666" />
-          </View>
-          <ThemedText style={styles.statRowLabel}>Top {game.name === 'Valorant' ? 'Agent' : game.name === 'League of Legends' ? 'Champion' : 'Character'}</ThemedText>
-          <ThemedText style={styles.statRowValue}>{game.topCharacter || 'Jett'}</ThemedText>
-        </View>
+            <View style={styles.statRow}>
+              <View style={styles.statRowIcon}>
+                <IconSymbol size={20} name="shield.fill" color="#666" />
+              </View>
+              <ThemedText style={styles.statRowLabel}>League Points</ThemedText>
+              <ThemedText style={styles.statRowValue}>
+                {riotStats.rankedSolo ? `${riotStats.rankedSolo.leaguePoints} LP` : 'N/A'}
+              </ThemedText>
+            </View>
+
+            <View style={styles.statRow}>
+              <View style={styles.statRowIcon}>
+                <IconSymbol size={20} name="person.fill" color="#666" />
+              </View>
+              <ThemedText style={styles.statRowLabel}>Top Champion</ThemedText>
+              <ThemedText style={styles.statRowValue}>
+                {riotStats.topChampions && riotStats.topChampions.length > 0
+                  ? getChampionName(riotStats.topChampions[0].championId)
+                  : 'N/A'}
+              </ThemedText>
+            </View>
+
+            <View style={styles.statRow}>
+              <View style={styles.statRowIcon}>
+                <IconSymbol size={20} name="number" color="#666" />
+              </View>
+              <ThemedText style={styles.statRowLabel}>Summoner Level</ThemedText>
+              <ThemedText style={styles.statRowValue}>{riotStats.summonerLevel}</ThemedText>
+            </View>
+          </>
+        ) : (
+          // Display mock data for other games or if no Riot account linked
+          <>
+            <View style={styles.statRow}>
+              <View style={styles.statRowIcon}>
+                <IconSymbol size={20} name="trophy.fill" color="#666" />
+              </View>
+              <ThemedText style={styles.statRowLabel}>Current Rank</ThemedText>
+              <ThemedText style={styles.statRowValue}>{game.rank}</ThemedText>
+            </View>
+
+            <View style={styles.statRow}>
+              <View style={styles.statRowIcon}>
+                <IconSymbol size={20} name="star.fill" color="#666" />
+              </View>
+              <ThemedText style={styles.statRowLabel}>Peak Rank</ThemedText>
+              <ThemedText style={styles.statRowValue}>{game.peakRank || 'Diamond 3'}</ThemedText>
+            </View>
+
+            <View style={styles.statRow}>
+              <View style={styles.statRowIcon}>
+                <IconSymbol size={20} name="chart.line.uptrend.xyaxis" color="#666" />
+              </View>
+              <ThemedText style={styles.statRowLabel}>Win Rate</ThemedText>
+              <ThemedText style={styles.statRowValue}>
+                {game.winRate}% ({game.wins}W)
+              </ThemedText>
+            </View>
+
+            <View style={styles.statRow}>
+              <View style={styles.statRowIcon}>
+                <IconSymbol size={20} name="gamecontroller.fill" color="#666" />
+              </View>
+              <ThemedText style={styles.statRowLabel}>Games Played</ThemedText>
+              <ThemedText style={styles.statRowValue}>{game.wins + game.losses}</ThemedText>
+            </View>
+
+            <View style={styles.statRow}>
+              <View style={styles.statRowIcon}>
+                <IconSymbol size={20} name="person.fill" color="#666" />
+              </View>
+              <ThemedText style={styles.statRowLabel}>
+                Top{' '}
+                {game.name === 'Valorant'
+                  ? 'Agent'
+                  : game.name === 'League of Legends'
+                  ? 'Champion'
+                  : 'Character'}
+              </ThemedText>
+              <ThemedText style={styles.statRowValue}>{game.topCharacter || 'Jett'}</ThemedText>
+            </View>
+          </>
+        )}
       </View>
 
       {/* Share Button */}
@@ -290,5 +432,38 @@ const styles = StyleSheet.create({
   },
   bottomSpacer: {
     height: 40,
+  },
+  loadingContainer: {
+    paddingVertical: 40,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  loadingText: {
+    marginTop: 12,
+    fontSize: 14,
+    color: '#666',
+  },
+  errorContainer: {
+    paddingVertical: 32,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  errorText: {
+    fontSize: 14,
+    color: '#c62828',
+    textAlign: 'center',
+    marginBottom: 16,
+    paddingHorizontal: 20,
+  },
+  retryButton: {
+    backgroundColor: '#000',
+    paddingVertical: 10,
+    paddingHorizontal: 24,
+    borderRadius: 8,
+  },
+  retryButtonText: {
+    color: '#fff',
+    fontSize: 14,
+    fontWeight: '600',
   },
 });

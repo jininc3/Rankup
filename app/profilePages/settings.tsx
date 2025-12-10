@@ -1,9 +1,12 @@
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { IconSymbol } from '@/components/ui/icon-symbol';
-import { useRouter } from 'expo-router';
+import { useRouter, useFocusEffect } from 'expo-router';
 import { ScrollView, StyleSheet, TouchableOpacity, View, Alert } from 'react-native';
 import { useAuth } from '@/contexts/AuthContext';
+import { useState, useEffect, useCallback } from 'react';
+import { doc, getDoc } from 'firebase/firestore';
+import { db } from '@/config/firebase';
 
 const settingsData = [
   {
@@ -49,6 +52,40 @@ const settingsData = [
 export default function SettingsScreen() {
   const router = useRouter();
   const { signOut, user } = useAuth();
+  const [riotAccount, setRiotAccount] = useState<any>(null);
+  const [loadingRiotAccount, setLoadingRiotAccount] = useState(true);
+
+  useEffect(() => {
+    checkRiotAccount();
+  }, [user]);
+
+  // Refresh Riot account status when screen comes into focus
+  useFocusEffect(
+    useCallback(() => {
+      checkRiotAccount();
+    }, [user])
+  );
+
+  const checkRiotAccount = async () => {
+    if (!user || !user.uid) {
+      setLoadingRiotAccount(false);
+      return;
+    }
+
+    try {
+      const userDoc = await getDoc(doc(db, 'users', user.uid));
+      if (userDoc.exists()) {
+        const data = userDoc.data();
+        if (data.riotAccount) {
+          setRiotAccount(data.riotAccount);
+        }
+      }
+    } catch (error) {
+      console.error('Error checking Riot account:', error);
+    } finally {
+      setLoadingRiotAccount(false);
+    }
+  };
 
   const handleSignOut = () => {
     Alert.alert(
@@ -151,20 +188,33 @@ export default function SettingsScreen() {
           <View style={styles.settingsGroup}>
             <TouchableOpacity
               style={[styles.settingItem, styles.settingItemLast]}
-              onPress={() => {
-                // TODO: Add Riot Games connection functionality
-              }}
+              onPress={() => router.push('/profilePages/linkRiotAccount')}
             >
               <View style={styles.settingLeft}>
                 <View style={styles.iconContainer}>
                   <IconSymbol size={22} name="gamecontroller" color="#000" />
                 </View>
                 <View style={styles.settingTextContainer}>
-                  <ThemedText style={styles.settingTitle}>Connect to Riot Games</ThemedText>
-                  <ThemedText style={styles.settingSubtitle}>Link your Riot account</ThemedText>
+                  <ThemedText style={styles.settingTitle}>
+                    {riotAccount ? 'Riot Games Account' : 'Connect to Riot Games'}
+                  </ThemedText>
+                  <ThemedText style={styles.settingSubtitle}>
+                    {loadingRiotAccount
+                      ? 'Checking...'
+                      : riotAccount
+                      ? `${riotAccount.gameName}#${riotAccount.tagLine}`
+                      : 'Link your Riot account'}
+                  </ThemedText>
                 </View>
               </View>
-              <IconSymbol size={20} name="chevron.right" color="#666" />
+              <View style={styles.settingRight}>
+                {riotAccount && (
+                  <View style={styles.connectedBadge}>
+                    <ThemedText style={styles.connectedBadgeText}>Connected</ThemedText>
+                  </View>
+                )}
+                <IconSymbol size={20} name="chevron.right" color="#666" />
+              </View>
             </TouchableOpacity>
           </View>
         </View>
@@ -304,6 +354,22 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: 12,
     flex: 1,
+  },
+  settingRight: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  connectedBadge: {
+    backgroundColor: '#e8f5e9',
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 6,
+  },
+  connectedBadgeText: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: '#2e7d32',
   },
   iconContainer: {
     width: 32,

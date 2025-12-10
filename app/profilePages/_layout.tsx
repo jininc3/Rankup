@@ -57,6 +57,12 @@ export default function ProfilePagesLayout() {
           headerShown: false,
         }}
       />
+      <Stack.Screen
+        name="linkRiotAccount"
+        options={{
+          headerShown: false,
+        }}
+      />
     </Stack>
   );
 }
