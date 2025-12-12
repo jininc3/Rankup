@@ -93,6 +93,18 @@ export default function SettingsScreen() {
     }
   };
 
+  const handleLinkRiotAccount = () => {
+    if (riotAccount) {
+      Alert.alert(
+        'Account Already Linked',
+        'You already have a Riot account linked. Please unlink your current account first if you want to link a different one.',
+        [{ text: 'OK' }]
+      );
+      return;
+    }
+    router.push('/profilePages/linkRiotAccount');
+  };
+
   const handleUnlinkRiotAccount = () => {
     if (!riotAccount) {
       Alert.alert('No Account Linked', 'You don\'t have a Riot account linked yet. Connect one first!');
@@ -226,7 +238,7 @@ export default function SettingsScreen() {
           <View style={styles.settingsGroup}>
             <TouchableOpacity
               style={styles.settingItem}
-              onPress={() => router.push('/profilePages/linkRiotAccount')}
+              onPress={handleLinkRiotAccount}
             >
               <View style={styles.settingLeft}>
                 <View style={styles.iconContainer}>
