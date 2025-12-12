@@ -93,9 +93,9 @@ export const linkRiotAccountFunction = onCall(
         linkedAt: admin.firestore.FieldValue.serverTimestamp(),
       };
 
-      await userRef.update({
+      await userRef.set({
         riotAccount: accountData,
-      });
+      }, { merge: true });
 
       logger.info(`Successfully linked Riot account for user ${userId}`);
 

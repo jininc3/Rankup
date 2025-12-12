@@ -25,13 +25,20 @@ try {
 }
 
 // Initialize Auth with AsyncStorage persistence for React Native
+// We need to call initializeAuth FIRST to ensure persistence is set up
+// If already initialized (e.g., hot reload), fall back to getAuth
 let auth;
 try {
-  auth = getAuth(app);
-} catch {
   auth = initializeAuth(app, {
     persistence: getReactNativePersistence(AsyncStorage)
   });
+} catch (error: any) {
+  // If auth is already initialized, just get the existing instance
+  if (error.code === 'auth/already-initialized') {
+    auth = getAuth(app);
+  } else {
+    throw error;
+  }
 }
 
 // Initialize Firestore

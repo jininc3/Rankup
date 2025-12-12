@@ -68,13 +68,13 @@ export default function SettingsScreen() {
   );
 
   const checkRiotAccount = async () => {
-    if (!user || !user.uid) {
+    if (!user || !user.id) {
       setLoadingRiotAccount(false);
       return;
     }
 
     try {
-      const userDoc = await getDoc(doc(db, 'users', user.uid));
+      const userDoc = await getDoc(doc(db, 'users', user.id));
       if (userDoc.exists()) {
         const data = userDoc.data();
         console.log('User data from Firestore:', data);
@@ -94,6 +94,11 @@ export default function SettingsScreen() {
   };
 
   const handleUnlinkRiotAccount = () => {
+    if (!riotAccount) {
+      Alert.alert('No Account Linked', 'You don\'t have a Riot account linked yet. Connect one first!');
+      return;
+    }
+
     Alert.alert(
       'Unlink Riot Account',
       `Are you sure you want to unlink ${riotAccount?.gameName}#${riotAccount?.tagLine}? Your stats will be removed.`,
@@ -220,7 +225,7 @@ export default function SettingsScreen() {
           <ThemedText style={styles.sectionTitle}>Connected Accounts</ThemedText>
           <View style={styles.settingsGroup}>
             <TouchableOpacity
-              style={[styles.settingItem, !riotAccount && styles.settingItemLast]}
+              style={styles.settingItem}
               onPress={() => router.push('/profilePages/linkRiotAccount')}
             >
               <View style={styles.settingLeft}>
@@ -250,22 +255,20 @@ export default function SettingsScreen() {
               </View>
             </TouchableOpacity>
 
-            {/* Unlink Button - only shown when account is connected */}
-            {riotAccount && (
-              <TouchableOpacity
-                style={[styles.settingItem, styles.settingItemLast, styles.unlinkButton]}
-                onPress={handleUnlinkRiotAccount}
-              >
-                <View style={styles.settingLeft}>
-                  <View style={styles.iconContainer}>
-                    <IconSymbol size={22} name="link.badge.minus" color="#ef4444" />
-                  </View>
-                  <ThemedText style={[styles.settingTitle, styles.unlinkText]}>
-                    Unlink Riot Account
-                  </ThemedText>
+            {/* Unlink Button - always visible */}
+            <TouchableOpacity
+              style={[styles.settingItem, styles.settingItemLast, styles.unlinkButton]}
+              onPress={handleUnlinkRiotAccount}
+            >
+              <View style={styles.settingLeft}>
+                <View style={styles.iconContainer}>
+                  <IconSymbol size={22} name="link.badge.minus" color="#ef4444" />
                 </View>
-              </TouchableOpacity>
-            )}
+                <ThemedText style={[styles.settingTitle, styles.unlinkText]}>
+                  Unlink Riot Account
+                </ThemedText>
+              </View>
+            </TouchableOpacity>
           </View>
         </View>
 
