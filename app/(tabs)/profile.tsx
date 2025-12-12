@@ -12,36 +12,10 @@ import { IconSymbol } from '@/components/ui/icon-symbol';
 import { db } from '@/config/firebase';
 import { useAuth } from '@/contexts/AuthContext';
 import { useRouter } from 'expo-router';
-import { collection, getDocs, query, Timestamp, where } from 'firebase/firestore';
+import { collection, getDocs, query, Timestamp, where, doc, getDoc } from 'firebase/firestore';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { ActivityIndicator, Alert, Dimensions, Image, Linking, Modal, RefreshControl, ScrollView, StyleSheet, TouchableOpacity, View } from 'react-native';
-
-const userGames = [
-  {
-    id: 1,
-    name: 'Valorant',
-    rank: currentUser.gamesPlayed.valorant.currentRank,
-    trophies: 1243,
-    icon: '🎯',
-    image: require('@/assets/images/valorant.png'),
-    wins: Math.floor(currentUser.gamesPlayed.valorant.gamesPlayed * (currentUser.gamesPlayed.valorant.winRate / 100)),
-    losses: currentUser.gamesPlayed.valorant.gamesPlayed - Math.floor(currentUser.gamesPlayed.valorant.gamesPlayed * (currentUser.gamesPlayed.valorant.winRate / 100)),
-    winRate: currentUser.gamesPlayed.valorant.winRate,
-    recentMatches: ['+20', '+18', '-15', '+22', '+19'],
-  },
-  {
-    id: 2,
-    name: 'League of Legends',
-    rank: currentUser.gamesPlayed.league.currentRank,
-    trophies: 876,
-    icon: '⚔️',
-    image: require('@/assets/images/leagueoflegends.png'),
-    wins: Math.floor(currentUser.gamesPlayed.league.gamesPlayed * (currentUser.gamesPlayed.league.winRate / 100)),
-    losses: currentUser.gamesPlayed.league.gamesPlayed - Math.floor(currentUser.gamesPlayed.league.gamesPlayed * (currentUser.gamesPlayed.league.winRate / 100)),
-    winRate: currentUser.gamesPlayed.league.winRate,
-    recentMatches: ['+15', '-18', '+20', '+17', '-14'],
-  },
-];
+import { getRiotStats, formatRank } from '@/services/riotService';
 
 const { width: screenWidth } = Dimensions.get('window');
 const CARD_PADDING = 20;
@@ -81,6 +55,38 @@ export default function ProfileScreen() {
   const [selectedGameFilter, setSelectedGameFilter] = useState<string | null>(null); // null means "All Games"
   const [refreshing, setRefreshing] = useState(false);
   const scrollViewRef = useRef<ScrollView>(null);
+  const [riotAccount, setRiotAccount] = useState<any>(null);
+  const [riotStats, setRiotStats] = useState<any>(null);
+
+  // Dynamic games array based on Riot data
+  const userGames = [
+    {
+      id: 1,
+      name: 'Valorant',
+      rank: currentUser.gamesPlayed.valorant.currentRank,
+      trophies: 1243,
+      icon: '🎯',
+      image: require('@/assets/images/valorant.png'),
+      wins: Math.floor(currentUser.gamesPlayed.valorant.gamesPlayed * (currentUser.gamesPlayed.valorant.winRate / 100)),
+      losses: currentUser.gamesPlayed.valorant.gamesPlayed - Math.floor(currentUser.gamesPlayed.valorant.gamesPlayed * (currentUser.gamesPlayed.valorant.winRate / 100)),
+      winRate: currentUser.gamesPlayed.valorant.winRate,
+      recentMatches: ['+20', '+18', '-15', '+22', '+19'],
+    },
+    {
+      id: 2,
+      name: 'League of Legends',
+      rank: riotStats?.rankedSolo
+        ? formatRank(riotStats.rankedSolo.tier, riotStats.rankedSolo.rank)
+        : currentUser.gamesPlayed.league.currentRank,
+      trophies: riotStats?.rankedSolo?.leaguePoints || 876,
+      icon: '⚔️',
+      image: require('@/assets/images/leagueoflegends.png'),
+      wins: riotStats?.rankedSolo?.wins || Math.floor(currentUser.gamesPlayed.league.gamesPlayed * (currentUser.gamesPlayed.league.winRate / 100)),
+      losses: riotStats?.rankedSolo?.losses || (currentUser.gamesPlayed.league.gamesPlayed - Math.floor(currentUser.gamesPlayed.league.gamesPlayed * (currentUser.gamesPlayed.league.winRate / 100))),
+      winRate: riotStats?.rankedSolo?.winRate || currentUser.gamesPlayed.league.winRate,
+      recentMatches: ['+15', '-18', '+20', '+17', '-14'],
+    },
+  ];
 
   const handleScroll = (event: any) => {
     const offsetX = event.nativeEvent.contentOffset.x;
@@ -104,6 +110,34 @@ export default function ProfileScreen() {
       animated: true,
     });
     setSelectedGameIndex(index);
+  };
+
+  // Fetch Riot account and stats
+  const fetchRiotData = async () => {
+    if (!user?.id) return;
+
+    try {
+      // Fetch Riot account info from Firestore
+      const userDoc = await getDoc(doc(db, 'users', user.id));
+      if (userDoc.exists()) {
+        const data = userDoc.data();
+        if (data.riotAccount) {
+          setRiotAccount(data.riotAccount);
+
+          // Fetch stats if account is linked
+          try {
+            const statsResponse = await getRiotStats(false);
+            if (statsResponse.success && statsResponse.stats) {
+              setRiotStats(statsResponse.stats);
+            }
+          } catch (error) {
+            console.error('Error fetching Riot stats:', error);
+          }
+        }
+      }
+    } catch (error) {
+      console.error('Error fetching Riot data:', error);
+    }
   };
 
   // Fetch user's posts from Firestore
@@ -150,9 +184,10 @@ export default function ProfileScreen() {
     }
   };
 
-  // Fetch posts when component mounts to show correct count
+  // Fetch Riot data and posts when component mounts
   useEffect(() => {
     if (user?.id) {
+      fetchRiotData();
       fetchPosts();
     }
   }, [user?.id]);
@@ -168,6 +203,7 @@ export default function ProfileScreen() {
   const onRefresh = useCallback(async () => {
     setRefreshing(true);
     await refreshUser(); // Refresh user data from AuthContext
+    await fetchRiotData(); // Refresh Riot data
     await fetchPosts(); // Refresh posts
     setRefreshing(false);
   }, [user?.id]);
@@ -447,20 +483,27 @@ export default function ProfileScreen() {
             decelerationRate="fast"
             contentContainerStyle={styles.cardsContainer}
           >
-            {userGames.map((game, index) => (
-              <View
-                key={game.id}
-                style={[
-                  styles.cardWrapper,
-                  {
-                    width: CARD_WIDTH,
-                    marginRight: index < userGames.length - 1 ? CARD_GAP : 0
-                  }
-                ]}
-              >
-                <RankCard game={game} username={user?.username || 'User'} />
-              </View>
-            ))}
+            {userGames.map((game, index) => {
+              // Use Riot account username for League of Legends if available
+              const displayUsername = game.name === 'League of Legends' && riotAccount
+                ? `${riotAccount.gameName}#${riotAccount.tagLine}`
+                : user?.username || 'User';
+
+              return (
+                <View
+                  key={game.id}
+                  style={[
+                    styles.cardWrapper,
+                    {
+                      width: CARD_WIDTH,
+                      marginRight: index < userGames.length - 1 ? CARD_GAP : 0
+                    }
+                  ]}
+                >
+                  <RankCard game={game} username={displayUsername} />
+                </View>
+              );
+            })}
           </ScrollView>
         </View>
         )}
