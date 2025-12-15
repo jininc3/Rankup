@@ -4,7 +4,8 @@ import { IconSymbol } from '@/components/ui/icon-symbol';
 import { StyleSheet, View, TouchableOpacity, ScrollView, Image, ActivityIndicator, Alert } from 'react-native';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { useState, useEffect } from 'react';
-import { getRiotStats, formatRank, getChampionName, type RiotStats } from '@/services/riotService';
+import { getLeagueStats, getTftStats, formatRank, getChampionName, type RiotStats, type TftStats } from '@/services/riotService';
+// import { getValorantStats, formatValorantRank, type ValorantStats } from '@/services/valorantService'; // Disabled - API requires key
 
 interface GameStatsScreenProps {
   // Props will come from navigation params
@@ -17,39 +18,74 @@ export default function GameStatsScreen() {
   // Parse the game data from params
   const game = params.game ? JSON.parse(params.game as string) : null;
 
-  // State for Riot data
+  // State for Riot data (League of Legends)
   const [riotStats, setRiotStats] = useState<RiotStats | null>(null);
+  // State for TFT data
+  const [tftStats, setTftStats] = useState<TftStats | null>(null);
+  // Valorant stats disabled - API requires key
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [hasFetched, setHasFetched] = useState(false);
 
-  // Fetch Riot stats if this is League of Legends (only once)
+  // Fetch stats based on game type (only once)
   useEffect(() => {
-    if (game && game.name === 'League of Legends' && !hasFetched && !loading) {
-      fetchRiotData();
+    if (game && !hasFetched && !loading) {
+      if (game.name === 'League of Legends') {
+        fetchLeagueData();
+      } else if (game.name === 'TFT') {
+        fetchTftData();
+      } else if (game.name === 'Valorant') {
+        // Valorant API temporarily disabled - Henrik's API requires key
+        setHasFetched(true);
+        console.log('Valorant stats disabled - showing placeholder data');
+      }
     }
   }, [game?.name]);
 
-  const fetchRiotData = async () => {
-    if (loading || hasFetched) return; // Prevent multiple simultaneous calls
+  const fetchLeagueData = async () => {
+    if (loading || hasFetched) return;
 
     setLoading(true);
     setError(null);
     setHasFetched(true);
 
     try {
-      const response = await getRiotStats();
+      const response = await getLeagueStats();
       if (response.success && response.stats) {
         setRiotStats(response.stats);
       }
     } catch (err: any) {
-      console.error('Error fetching Riot stats:', err);
+      console.error('Error fetching League stats:', err);
       setError(err.message);
-      setHasFetched(false); // Allow retry on error
+      setHasFetched(false);
     } finally {
       setLoading(false);
     }
   };
+
+  const fetchTftData = async () => {
+    if (loading || hasFetched) return;
+
+    setLoading(true);
+    setError(null);
+    setHasFetched(true);
+
+    try {
+      const response = await getTftStats();
+      if (response.success && response.stats) {
+        setTftStats(response.stats);
+      }
+    } catch (err: any) {
+      console.error('Error fetching TFT stats:', err);
+      setError(err.message);
+      setHasFetched(false);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Valorant fetch disabled - API requires key
+  // const fetchValorantData = async () => { ... }
 
   if (!game) {
     return (
@@ -66,6 +102,8 @@ export default function GameStatsScreen() {
         return '#e8a5a5'; // Dark pastel red
       case 'League of Legends':
         return '#b3d9ff'; // Pastel blue
+      case 'TFT':
+        return '#d4b3ff'; // Pastel purple
       case 'Apex Legends':
         return '#fff4b3'; // Pastel yellow
       default:
@@ -80,6 +118,8 @@ export default function GameStatsScreen() {
         return require('@/assets/images/valorant.png');
       case 'League of Legends':
         return require('@/assets/images/leagueoflegends.png');
+      case 'TFT':
+        return require('@/assets/images/tft.png');
       case 'Apex Legends':
         return require('@/assets/images/apex.png');
       default:
@@ -116,7 +156,10 @@ export default function GameStatsScreen() {
         ) : error ? (
           <View style={styles.errorContainer}>
             <ThemedText style={styles.errorText}>{error}</ThemedText>
-            <TouchableOpacity style={styles.retryButton} onPress={fetchRiotData}>
+            <TouchableOpacity
+              style={styles.retryButton}
+              onPress={game.name === 'TFT' ? fetchTftData : fetchLeagueData}
+            >
               <ThemedText style={styles.retryButtonText}>Retry</ThemedText>
             </TouchableOpacity>
           </View>
@@ -201,8 +244,76 @@ export default function GameStatsScreen() {
               <ThemedText style={styles.statRowValue}>{riotStats.summonerLevel}</ThemedText>
             </View>
           </>
+        ) : game.name === 'TFT' && tftStats ? (
+          // Display real TFT stats
+          <>
+            <View style={styles.statRow}>
+              <View style={styles.statRowIcon}>
+                <IconSymbol size={20} name="trophy.fill" color="#666" />
+              </View>
+              <ThemedText style={styles.statRowLabel}>Current Rank</ThemedText>
+              <ThemedText style={styles.statRowValue}>
+                {tftStats.rankedTft
+                  ? formatRank(tftStats.rankedTft.tier, tftStats.rankedTft.rank)
+                  : 'Unranked'}
+              </ThemedText>
+            </View>
+
+            <View style={styles.statRow}>
+              <View style={styles.statRowIcon}>
+                <IconSymbol size={20} name="star.fill" color="#666" />
+              </View>
+              <ThemedText style={styles.statRowLabel}>Peak Rank</ThemedText>
+              <ThemedText style={styles.statRowValue}>
+                {tftStats.peakRank
+                  ? formatRank(tftStats.peakRank.tier, tftStats.peakRank.rank)
+                  : 'N/A'}
+              </ThemedText>
+            </View>
+
+            <View style={styles.statRow}>
+              <View style={styles.statRowIcon}>
+                <IconSymbol size={20} name="chart.line.uptrend.xyaxis" color="#666" />
+              </View>
+              <ThemedText style={styles.statRowLabel}>Win Rate</ThemedText>
+              <ThemedText style={styles.statRowValue}>
+                {tftStats.rankedTft
+                  ? `${tftStats.rankedTft.winRate}% (${tftStats.rankedTft.wins}W)`
+                  : 'N/A'}
+              </ThemedText>
+            </View>
+
+            <View style={styles.statRow}>
+              <View style={styles.statRowIcon}>
+                <IconSymbol size={20} name="checkmark.circle.fill" color="#666" />
+              </View>
+              <ThemedText style={styles.statRowLabel}>Wins</ThemedText>
+              <ThemedText style={styles.statRowValue}>
+                {tftStats.rankedTft ? tftStats.rankedTft.wins : 0}
+              </ThemedText>
+            </View>
+
+            <View style={styles.statRow}>
+              <View style={styles.statRowIcon}>
+                <IconSymbol size={20} name="xmark.circle.fill" color="#666" />
+              </View>
+              <ThemedText style={styles.statRowLabel}>Losses</ThemedText>
+              <ThemedText style={styles.statRowValue}>
+                {tftStats.rankedTft ? tftStats.rankedTft.losses : 0}
+              </ThemedText>
+            </View>
+
+            <View style={styles.statRow}>
+              <View style={styles.statRowIcon}>
+                <IconSymbol size={20} name="number" color="#666" />
+              </View>
+              <ThemedText style={styles.statRowLabel}>Summoner Level</ThemedText>
+              <ThemedText style={styles.statRowValue}>{tftStats.summonerLevel}</ThemedText>
+            </View>
+          </>
         ) : (
-          // Display mock data for other games or if no Riot account linked
+          // Display placeholder data for Valorant or other games
+          // Valorant API temporarily disabled - Henrik's API requires authentication
           <>
             <View style={styles.statRow}>
               <View style={styles.statRowIcon}>

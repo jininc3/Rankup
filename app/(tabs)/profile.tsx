@@ -11,11 +11,12 @@ import { ThemedView } from '@/components/themed-view';
 import { IconSymbol } from '@/components/ui/icon-symbol';
 import { db } from '@/config/firebase';
 import { useAuth } from '@/contexts/AuthContext';
-import { useRouter } from 'expo-router';
+import { useRouter, useFocusEffect } from 'expo-router';
 import { collection, getDocs, query, Timestamp, where, doc, getDoc } from 'firebase/firestore';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { ActivityIndicator, Alert, Dimensions, Image, Linking, Modal, RefreshControl, ScrollView, StyleSheet, TouchableOpacity, View } from 'react-native';
-import { getRiotStats, formatRank } from '@/services/riotService';
+import { getLeagueStats, getTftStats, formatRank } from '@/services/riotService';
+// import { getValorantStats, formatValorantRank } from '@/services/valorantService'; // Disabled - API requires key
 
 const { width: screenWidth } = Dimensions.get('window');
 const CARD_PADDING = 20;
@@ -57,12 +58,15 @@ export default function ProfileScreen() {
   const scrollViewRef = useRef<ScrollView>(null);
   const [riotAccount, setRiotAccount] = useState<any>(null);
   const [riotStats, setRiotStats] = useState<any>(null);
+  const [tftStats, setTftStats] = useState<any>(null);
+  const [valorantStats, setValorantStats] = useState<any>(null);
 
   // Dynamic games array based on Riot data
   const userGames = [
     {
       id: 1,
       name: 'Valorant',
+      // Placeholder data - Valorant API temporarily disabled
       rank: currentUser.gamesPlayed.valorant.currentRank,
       trophies: 1243,
       icon: '🎯',
@@ -77,14 +81,28 @@ export default function ProfileScreen() {
       name: 'League of Legends',
       rank: riotStats?.rankedSolo
         ? formatRank(riotStats.rankedSolo.tier, riotStats.rankedSolo.rank)
-        : currentUser.gamesPlayed.league.currentRank,
-      trophies: riotStats?.rankedSolo?.leaguePoints || 876,
+        : 'Unranked',
+      trophies: riotStats?.rankedSolo?.leaguePoints || 0,
       icon: '⚔️',
       image: require('@/assets/images/leagueoflegends.png'),
-      wins: riotStats?.rankedSolo?.wins || Math.floor(currentUser.gamesPlayed.league.gamesPlayed * (currentUser.gamesPlayed.league.winRate / 100)),
-      losses: riotStats?.rankedSolo?.losses || (currentUser.gamesPlayed.league.gamesPlayed - Math.floor(currentUser.gamesPlayed.league.gamesPlayed * (currentUser.gamesPlayed.league.winRate / 100))),
-      winRate: riotStats?.rankedSolo?.winRate || currentUser.gamesPlayed.league.winRate,
+      wins: riotStats?.rankedSolo?.wins || 0,
+      losses: riotStats?.rankedSolo?.losses || 0,
+      winRate: riotStats?.rankedSolo?.winRate || 0,
       recentMatches: ['+15', '-18', '+20', '+17', '-14'],
+    },
+    {
+      id: 3,
+      name: 'TFT',
+      rank: tftStats?.rankedTft
+        ? formatRank(tftStats.rankedTft.tier, tftStats.rankedTft.rank)
+        : 'Platinum 2',
+      trophies: tftStats?.rankedTft?.leaguePoints || 723,
+      icon: '🎲',
+      image: require('@/assets/images/tft.png'),
+      wins: tftStats?.rankedTft?.wins || 45,
+      losses: tftStats?.rankedTft?.losses || 32,
+      winRate: tftStats?.rankedTft?.winRate || 58.4,
+      recentMatches: ['+18', '+22', '-12', '+20', '+16'],
     },
   ];
 
@@ -112,8 +130,8 @@ export default function ProfileScreen() {
     setSelectedGameIndex(index);
   };
 
-  // Fetch Riot account and stats
-  const fetchRiotData = async () => {
+  // Fetch Riot account and stats (both League and Valorant)
+  const fetchRiotData = async (forceRefresh: boolean = false) => {
     if (!user?.id) return;
 
     try {
@@ -124,15 +142,34 @@ export default function ProfileScreen() {
         if (data.riotAccount) {
           setRiotAccount(data.riotAccount);
 
-          // Fetch stats if account is linked
+          // Fetch League of Legends stats if account is linked
           try {
-            const statsResponse = await getRiotStats(false);
-            if (statsResponse.success && statsResponse.stats) {
-              setRiotStats(statsResponse.stats);
+            console.log('Fetching League stats, forceRefresh:', forceRefresh);
+            const leagueResponse = await getLeagueStats(forceRefresh);
+            console.log('League response:', leagueResponse);
+            if (leagueResponse.success && leagueResponse.stats) {
+              console.log('Setting riot stats:', leagueResponse.stats);
+              setRiotStats(leagueResponse.stats);
+            } else {
+              console.log('League stats not successful or no stats returned');
             }
           } catch (error) {
-            console.error('Error fetching Riot stats:', error);
+            console.error('Error fetching League stats:', error);
           }
+
+          // Fetch TFT stats if account is linked
+          try {
+            const tftResponse = await getTftStats(forceRefresh);
+            if (tftResponse.success && tftResponse.stats) {
+              setTftStats(tftResponse.stats);
+            }
+          } catch (error) {
+            console.error('Error fetching TFT stats:', error);
+          }
+
+          // Valorant stats temporarily disabled (Henrik's API requires key)
+          // TODO: Re-enable when API key is obtained
+          console.log('Valorant stats disabled - showing placeholder data');
         }
       }
     } catch (error) {
@@ -192,6 +229,16 @@ export default function ProfileScreen() {
     }
   }, [user?.id]);
 
+  // Refetch Riot data when screen comes into focus (e.g., after linking account)
+  useFocusEffect(
+    useCallback(() => {
+      if (user?.id) {
+        // Force refresh when returning to this screen
+        fetchRiotData(true);
+      }
+    }, [user?.id])
+  );
+
   // Refetch posts when filter or game filter changes
   useEffect(() => {
     if (user?.id) {
@@ -203,7 +250,7 @@ export default function ProfileScreen() {
   const onRefresh = useCallback(async () => {
     setRefreshing(true);
     await refreshUser(); // Refresh user data from AuthContext
-    await fetchRiotData(); // Refresh Riot data
+    await fetchRiotData(true); // Force refresh Riot data from API
     await fetchPosts(); // Refresh posts
     setRefreshing(false);
   }, [user?.id]);
@@ -484,8 +531,8 @@ export default function ProfileScreen() {
             contentContainerStyle={styles.cardsContainer}
           >
             {userGames.map((game, index) => {
-              // Use Riot account username for League of Legends if available
-              const displayUsername = game.name === 'League of Legends' && riotAccount
+              // Use Riot account username for League and TFT (Valorant API disabled)
+              const displayUsername = (game.name === 'League of Legends' || game.name === 'TFT') && riotAccount
                 ? `${riotAccount.gameName}#${riotAccount.tagLine}`
                 : user?.username || 'User';
 

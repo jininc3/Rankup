@@ -1,7 +1,7 @@
 /**
- * Get Riot Stats Cloud Function
+ * Get Valorant Stats Cloud Function
  *
- * This function fetches player statistics from Riot API and caches them in Firestore.
+ * This function fetches Valorant player statistics and caches them in Firestore.
  * Implements auto-refresh if data is older than 6 hours.
  */
 
@@ -9,12 +9,11 @@ import {onCall, HttpsError} from "firebase-functions/v2/https";
 import * as admin from "firebase-admin";
 import * as logger from "firebase-functions/logger";
 import {
-  getSummonerByPuuid,
-  getRankedStats,
-  getChampionMastery,
-  getTotalMasteryScore,
+  getValorantAccount,
+  getValorantMMR,
+  getValorantMMRHistory,
 } from "./riotApi";
-import {GetStatsResponse, UserRiotStats} from "../types/riot";
+import {GetValorantStatsResponse, UserValorantStats} from "../types/riot";
 
 // Cache duration: 6 hours in milliseconds
 const CACHE_DURATION_MS = 6 * 60 * 60 * 1000;
@@ -38,13 +37,35 @@ function calculateWinRate(wins: number, losses: number): number {
 }
 
 /**
+ * Parse Valorant rank tier and division from patched rank string
+ * Example: "Gold 2" -> { tier: "GOLD", division: "2" }
+ */
+function parseValorantRank(patchedRank: string): { tier: string; division: string } {
+  if (!patchedRank || patchedRank === "Unranked") {
+    return { tier: "UNRANKED", division: "" };
+  }
+
+  // Handle special ranks (no divisions)
+  if (["Radiant", "Immortal"].includes(patchedRank)) {
+    return { tier: patchedRank.toUpperCase(), division: "" };
+  }
+
+  // Parse regular ranks (e.g., "Gold 2")
+  const parts = patchedRank.split(" ");
+  const tier = parts[0]?.toUpperCase() || "UNRANKED";
+  const division = parts[1] || "";
+
+  return { tier, division };
+}
+
+/**
  * Update peak rank if current rank is higher
  */
 async function updatePeakRank(
   userId: string,
   currentTier: string,
-  currentRank: string,
-  currentStats: UserRiotStats
+  currentDivision: string,
+  currentStats: UserValorantStats
 ): Promise<void> {
   const rankOrder: {[key: string]: number} = {
     "IRON": 1,
@@ -52,31 +73,23 @@ async function updatePeakRank(
     "SILVER": 3,
     "GOLD": 4,
     "PLATINUM": 5,
-    "EMERALD": 6,
-    "DIAMOND": 7,
-    "MASTER": 8,
-    "GRANDMASTER": 9,
-    "CHALLENGER": 10,
-  };
-
-  const divisionOrder: {[key: string]: number} = {
-    "IV": 1,
-    "III": 2,
-    "II": 3,
-    "I": 4,
+    "DIAMOND": 6,
+    "ASCENDANT": 7,
+    "IMMORTAL": 8,
+    "RADIANT": 9,
   };
 
   const currentRankValue = rankOrder[currentTier] || 0;
-  const currentDivisionValue = divisionOrder[currentRank] || 0;
+  const currentDivisionValue = parseInt(currentDivision) || 0;
 
   // If no peak rank, set current as peak
   if (!currentStats.peakRank) {
     const db = admin.firestore();
     await db.collection("users").doc(userId).update({
-      "riotStats.peakRank": {
+      "valorantStats.peakRank": {
         tier: currentTier,
-        rank: currentRank,
-        season: "2025", // Update this based on current season
+        division: currentDivision,
+        season: "2025", // Update based on current episode/act
         achievedAt: admin.firestore.FieldValue.serverTimestamp(),
       },
     });
@@ -84,43 +97,42 @@ async function updatePeakRank(
   }
 
   const peakRankValue = rankOrder[currentStats.peakRank.tier] || 0;
-  const peakDivisionValue = divisionOrder[currentStats.peakRank.rank] || 0;
+  const peakDivisionValue = parseInt(currentStats.peakRank.division) || 0;
 
-  // Compare ranks
+  // Compare ranks (higher number = higher rank, higher division = better)
   const isHigherRank = currentRankValue > peakRankValue ||
     (currentRankValue === peakRankValue && currentDivisionValue > peakDivisionValue);
 
   if (isHigherRank) {
     const db = admin.firestore();
     await db.collection("users").doc(userId).update({
-      "riotStats.peakRank": {
+      "valorantStats.peakRank": {
         tier: currentTier,
-        rank: currentRank,
+        division: currentDivision,
         season: "2025",
         achievedAt: admin.firestore.FieldValue.serverTimestamp(),
       },
     });
-    logger.info(`Updated peak rank for user ${userId}: ${currentTier} ${currentRank}`);
+    logger.info(`Updated peak Valorant rank for user ${userId}: ${currentTier} ${currentDivision}`);
   }
 }
 
 /**
- * Get Riot stats (with caching and auto-refresh)
+ * Get Valorant stats (with caching and auto-refresh)
  *
  * @param request - Callable request containing data and auth
  * @returns Response with stats and cache status
  */
-export const getRiotStatsFunction = onCall(
+export const getValorantStatsFunction = onCall(
   {
     invoker: "public",
-    secrets: ["RIOT_API_KEY"],
   },
-  async (request): Promise<GetStatsResponse> => {
+  async (request): Promise<GetValorantStatsResponse> => {
     // Check authentication
     if (!request.auth) {
       throw new HttpsError(
         "unauthenticated",
-        "User must be authenticated to get Riot stats"
+        "User must be authenticated to get Valorant stats"
       );
     }
 
@@ -129,7 +141,7 @@ export const getRiotStatsFunction = onCall(
     const {forceRefresh = false} = data;
 
     try {
-      logger.info(`User ${userId} is fetching Riot stats (forceRefresh: ${forceRefresh})`);
+      logger.info(`User ${userId} is fetching Valorant stats (forceRefresh: ${forceRefresh})`);
 
       const db = admin.firestore();
       const userRef = db.collection("users").doc(userId);
@@ -154,11 +166,14 @@ export const getRiotStatsFunction = onCall(
 
       const {puuid, region} = userData.riotAccount;
 
+      // Convert League region to Valorant region format
+      const valorantRegion = region.startsWith("eu") ? "eu" : region.startsWith("na") ? "na" : "ap";
+
       // Check if we have cached stats and they're fresh
-      const cachedStats = userData.riotStats as UserRiotStats | undefined;
+      const cachedStats = userData.valorantStats as UserValorantStats | undefined;
       if (cachedStats && cachedStats.lastUpdated && !forceRefresh) {
         if (isCacheFresh(cachedStats.lastUpdated)) {
-          logger.info(`Returning cached stats for user ${userId}`);
+          logger.info(`Returning cached Valorant stats for user ${userId}`);
           return {
             success: true,
             message: "Stats retrieved from cache",
@@ -168,86 +183,71 @@ export const getRiotStatsFunction = onCall(
         }
       }
 
-      logger.info(`Fetching fresh stats from Riot API for user ${userId}`);
+      logger.info(`Fetching fresh Valorant stats from API for user ${userId}`);
 
-      // Fetch fresh data from Riot API
-      const [summonerData, rankedStats, topChampions, masteryScore] = await Promise.all([
-        getSummonerByPuuid(puuid, region),
-        getRankedStats(puuid, region),
-        getChampionMastery(puuid, region, 3),
-        getTotalMasteryScore(puuid, region),
+      // Fetch fresh data from Valorant API
+      const [accountData, mmrData, mmrHistory] = await Promise.all([
+        getValorantAccount(puuid),
+        getValorantMMR(puuid, valorantRegion),
+        getValorantMMRHistory(puuid, valorantRegion),
       ]);
 
-      // Process ranked stats
-      const soloQueue = rankedStats.find((q) => q.queueType === "RANKED_SOLO_5x5");
-      const flexQueue = rankedStats.find((q) => q.queueType === "RANKED_FLEX_SR");
+      // Parse current rank
+      const {tier, division} = parseValorantRank(mmrData.currenttierpatched);
 
-      const stats: UserRiotStats = {
+      // Calculate wins/losses from MMR history
+      let wins = 0;
+      let losses = 0;
+
+      if (mmrHistory && mmrHistory.length > 0) {
+        mmrHistory.forEach((match) => {
+          if (match.mmr_change_to_last_game > 0) {
+            wins++;
+          } else if (match.mmr_change_to_last_game < 0) {
+            losses++;
+          }
+        });
+      }
+
+      const stats: UserValorantStats = {
         puuid,
-        summonerLevel: summonerData.summonerLevel,
-        profileIconId: summonerData.profileIconId,
-        rankedSolo: soloQueue ? {
-          tier: soloQueue.tier,
-          rank: soloQueue.rank,
-          leaguePoints: soloQueue.leaguePoints,
-          wins: soloQueue.wins,
-          losses: soloQueue.losses,
-          winRate: calculateWinRate(soloQueue.wins, soloQueue.losses),
-        } : {
-          tier: "UNRANKED",
-          rank: "",
-          leaguePoints: 0,
-          wins: 0,
-          losses: 0,
-          winRate: 0,
-        },
-        rankedFlex: flexQueue ? {
-          tier: flexQueue.tier,
-          rank: flexQueue.rank,
-          leaguePoints: flexQueue.leaguePoints,
-          wins: flexQueue.wins,
-          losses: flexQueue.losses,
-          winRate: calculateWinRate(flexQueue.wins, flexQueue.losses),
-        } : {
-          tier: "UNRANKED",
-          rank: "",
-          leaguePoints: 0,
-          wins: 0,
-          losses: 0,
-          winRate: 0,
-        },
-        topChampions: topChampions.map((champ) => ({
-          championId: champ.championId,
-          championLevel: champ.championLevel,
-          championPoints: champ.championPoints,
-        })),
-        totalMasteryScore: masteryScore,
+        accountLevel: accountData.account_level,
+        card: accountData.card,
+        rankedRating: mmrData.elo,
+        currentRank: tier !== "UNRANKED" ? {
+          tier,
+          division,
+          rankScore: mmrData.ranking_in_tier,
+          wins,
+          losses,
+          winRate: calculateWinRate(wins, losses),
+        } : undefined,
         lastUpdated: admin.firestore.Timestamp.now(),
         peakRank: cachedStats?.peakRank || {
           tier: "UNRANKED",
-          rank: "",
+          division: "",
           season: "2025",
           achievedAt: admin.firestore.Timestamp.now(),
         },
       };
 
       // Update peak rank if applicable
-      if (soloQueue) {
-        await updatePeakRank(userId, soloQueue.tier, soloQueue.rank, stats);
+      if (tier !== "UNRANKED") {
+        await updatePeakRank(userId, tier, division, stats);
         // Re-fetch to get updated peak rank
         const updatedDoc = await userRef.get();
         const updatedData = updatedDoc.data();
-        if (updatedData?.riotStats?.peakRank) {
-          stats.peakRank = updatedData.riotStats.peakRank;
+        if (updatedData?.valorantStats?.peakRank) {
+          stats.peakRank = updatedData.valorantStats.peakRank;
         }
       }
 
       // Store in Firestore
       await userRef.update({
-        riotStats: stats,
+        valorantStats: stats,
       });
 
-      logger.info(`Successfully updated Riot stats for user ${userId}`);
+      logger.info(`Successfully updated Valorant stats for user ${userId}`);
 
       return {
         success: true,
@@ -255,8 +255,16 @@ export const getRiotStatsFunction = onCall(
         stats,
         cached: false,
       };
-    } catch (error) {
-      logger.error("Error fetching Riot stats:", error);
+    } catch (error: any) {
+      logger.error("Error fetching Valorant stats:", error);
+
+      // If user hasn't played Valorant, return a more specific error
+      if (error instanceof HttpsError && error.code === "not-found") {
+        throw new HttpsError(
+          "not-found",
+          "No Valorant account found. You may not have played Valorant yet."
+        );
+      }
 
       if (error instanceof HttpsError) {
         throw error;
@@ -266,13 +274,13 @@ export const getRiotStatsFunction = onCall(
       const db = admin.firestore();
       const userDoc = await db.collection("users").doc(userId).get();
       const userData = userDoc.data();
-      const cachedStats = userData?.riotStats as UserRiotStats | undefined;
+      const cachedStats = userData?.valorantStats as UserValorantStats | undefined;
 
       if (cachedStats) {
-        logger.info(`Returning stale cached stats due to API error for user ${userId}`);
+        logger.info(`Returning stale cached Valorant stats due to API error for user ${userId}`);
         return {
           success: true,
-          message: "Showing cached stats (Riot API unavailable)",
+          message: "Showing cached stats (Valorant API unavailable)",
           stats: cachedStats,
           cached: true,
         };
@@ -280,7 +288,7 @@ export const getRiotStatsFunction = onCall(
 
       throw new HttpsError(
         "internal",
-        "Failed to fetch Riot stats. Please try again later."
+        "Failed to fetch Valorant stats. Henrik's API may be unavailable."
       );
     }
   }

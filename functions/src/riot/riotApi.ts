@@ -13,6 +13,11 @@ import {
   SummonerData,
   RankedStats,
   ChampionMastery,
+  ValorantPlayerData,
+  ValorantRankedData,
+  ValorantMMRHistory,
+  TftSummonerData,
+  TftLeagueEntry,
 } from "../types/riot";
 
 // Get API key from environment variables (Functions v2)
@@ -101,7 +106,6 @@ export async function getAccountByRiotId(
   const url = `https://${routing}.api.riotgames.com/riot/account/v1/accounts/by-riot-id/${encodeURIComponent(gameName)}/${encodeURIComponent(tagLine)}`;
 
   try {
-    logger.info(`Fetching account: ${gameName}#${tagLine} (${region})`);
     const response = await axios.get<RiotAccount>(url, {
       headers: {
         "X-Riot-Token": apiKey,
@@ -125,12 +129,15 @@ export async function getSummonerByPuuid(
   const url = `https://${region}.api.riotgames.com/lol/summoner/v4/summoners/by-puuid/${puuid}`;
 
   try {
-    logger.info(`Fetching summoner data for PUUID: ${puuid.substring(0, 10)}...`);
     const response = await axios.get<SummonerData>(url, {
       headers: {
         "X-Riot-Token": apiKey,
       },
     });
+
+    logger.info('LoL Summoner API - Response data: ' + JSON.stringify(response.data));
+    logger.info('LoL Summoner API - Has id field?: ' + ('id' in response.data));
+    logger.info('LoL Summoner API - id value: ' + (response.data.id || 'UNDEFINED'));
 
     return response.data;
   } catch (error) {
@@ -149,7 +156,6 @@ export async function getRankedStats(
   const url = `https://${region}.api.riotgames.com/lol/league/v4/entries/by-puuid/${puuid}`;
 
   try {
-    logger.info(`Fetching ranked stats for PUUID: ${puuid.substring(0, 10)}...`);
     const response = await axios.get<RankedStats[]>(url, {
       headers: {
         "X-Riot-Token": apiKey,
@@ -174,7 +180,6 @@ export async function getChampionMastery(
   const url = `https://${region}.api.riotgames.com/lol/champion-mastery/v4/champion-masteries/by-puuid/${puuid}/top?count=${count}`;
 
   try {
-    logger.info(`Fetching top ${count} champions for PUUID: ${puuid.substring(0, 10)}...`);
     const response = await axios.get<ChampionMastery[]>(url, {
       headers: {
         "X-Riot-Token": apiKey,
@@ -198,7 +203,6 @@ export async function getTotalMasteryScore(
   const url = `https://${region}.api.riotgames.com/lol/champion-mastery/v4/scores/by-puuid/${puuid}`;
 
   try {
-    logger.info(`Fetching mastery score for PUUID: ${puuid.substring(0, 10)}...`);
     const response = await axios.get<number>(url, {
       headers: {
         "X-Riot-Token": apiKey,
@@ -208,5 +212,201 @@ export async function getTotalMasteryScore(
     return response.data;
   } catch (error) {
     handleRiotError(error as AxiosError, "getTotalMasteryScore");
+  }
+}
+
+// ===== Valorant API Functions =====
+// Note: Using Henrik's unofficial Valorant API (https://henrikdev.xyz/valorant)
+
+/**
+ * Get Valorant account data by PUUID
+ */
+export async function getValorantAccount(
+  puuid: string
+): Promise<ValorantPlayerData> {
+  const url = `https://api.henrikdev.xyz/valorant/v2/by-puuid/account/${puuid}`;
+
+  try {
+    logger.info(`Fetching Valorant account for PUUID: ${puuid.substring(0, 10)}...`);
+    const response = await axios.get(url);
+
+    logger.info(`Valorant API response status: ${response.data.status}`);
+
+    if (response.data.status === 404) {
+      throw new HttpsError(
+        "not-found",
+        "No Valorant account found. You may not have played Valorant yet."
+      );
+    }
+
+    if (response.data.status !== 200 || !response.data.data) {
+      throw new HttpsError(
+        "internal",
+        `Valorant API returned status ${response.data.status}`
+      );
+    }
+
+    return response.data.data;
+  } catch (error: any) {
+    logger.error("Valorant API Error (getValorantAccount):", {
+      message: error.message,
+      status: error.response?.status,
+      data: error.response?.data,
+      url: error.config?.url,
+    });
+
+    if (error instanceof HttpsError) {
+      throw error;
+    }
+
+    // Handle axios errors
+    if (error.response?.status === 404) {
+      throw new HttpsError(
+        "not-found",
+        "No Valorant account found. You may not have played Valorant yet."
+      );
+    }
+
+    if (error.response?.status === 429) {
+      throw new HttpsError(
+        "resource-exhausted",
+        "Henrik's API rate limit exceeded. Please try again in a few minutes."
+      );
+    }
+
+    throw new HttpsError(
+      "internal",
+      `Henrik's Valorant API error: ${error.response?.status || error.message || "Unknown error"}`
+    );
+  }
+}
+
+/**
+ * Get Valorant MMR (rank) data by PUUID and region
+ */
+export async function getValorantMMR(
+  puuid: string,
+  region: string = "eu"
+): Promise<ValorantRankedData> {
+  const url = `https://api.henrikdev.xyz/valorant/v3/by-puuid/mmr/${region}/${puuid}`;
+
+  try {
+    logger.info(`Fetching Valorant MMR for PUUID: ${puuid.substring(0, 10)}...`);
+    const response = await axios.get(url);
+
+    if (response.data.status !== 200 || !response.data.data) {
+      throw new Error("Failed to fetch Valorant MMR data");
+    }
+
+    return response.data.data;
+  } catch (error: any) {
+    logger.error("Valorant API Error (getValorantMMR):", {
+      message: error.message,
+      status: error.response?.status,
+      data: error.response?.data,
+      url: error.config?.url,
+    });
+
+    if (error.response?.status === 404) {
+      throw new HttpsError(
+        "not-found",
+        "No Valorant ranked data found. You may be unranked."
+      );
+    }
+
+    if (error.response?.status === 429) {
+      throw new HttpsError(
+        "resource-exhausted",
+        "Henrik's API rate limit exceeded."
+      );
+    }
+
+    throw new HttpsError(
+      "internal",
+      `Failed to fetch Valorant rank data: ${error.response?.status || error.message}`
+    );
+  }
+}
+
+/**
+ * Get Valorant MMR history by PUUID and region
+ */
+export async function getValorantMMRHistory(
+  puuid: string,
+  region: string = "eu"
+): Promise<ValorantMMRHistory[]> {
+  const url = `https://api.henrikdev.xyz/valorant/v3/by-puuid/mmr-history/${region}/${puuid}`;
+
+  try {
+    logger.info(`Fetching Valorant MMR history for PUUID: ${puuid.substring(0, 10)}...`);
+    const response = await axios.get(url);
+
+    if (response.data.status !== 200 || !response.data.data) {
+      throw new Error("Failed to fetch Valorant MMR history");
+    }
+
+    return response.data.data;
+  } catch (error) {
+    logger.error("Valorant API Error (getValorantMMRHistory):", error);
+    // Return empty array instead of throwing - history is optional
+    return [];
+  }
+}
+
+// ===== TFT API Functions =====
+// Using official Riot TFT API
+
+/**
+ * Get TFT summoner data by PUUID
+ */
+export async function getTftSummonerByPuuid(
+  puuid: string,
+  region: string = "euw1"
+): Promise<TftSummonerData> {
+  const apiKey = getRiotApiKey();
+  const url = 'https://' + region + '.api.riotgames.com/tft/summoner/v1/summoners/by-puuid/' + puuid;
+
+  try {
+    logger.info('TFT API URL (PLATFORM ROUTING): ' + url.replace(puuid, puuid.substring(0, 15) + '...'));
+    logger.info('Region parameter: ' + region);
+
+    const response = await axios.get<TftSummonerData>(url, {
+      headers: {
+        "X-Riot-Token": apiKey,
+      },
+    });
+
+    logger.info('TFT Summoner API - Response status: ' + response.status);
+    logger.info('TFT Summoner API - Response data (raw JSON): ' + JSON.stringify(response.data));
+    logger.info('TFT Summoner API - Has id field?: ' + ('id' in response.data));
+    logger.info('TFT Summoner API - id value: ' + (response.data.id || 'UNDEFINED'));
+
+    return response.data;
+  } catch (error) {
+    handleRiotError(error as AxiosError, "getTftSummonerByPuuid");
+  }
+}
+
+/**
+ * Get TFT ranked stats by Summoner ID
+ * TFT API still requires summoner ID (no PUUID endpoint exists)
+ */
+export async function getTftRankedStats(
+  summonerId: string,
+  region: string = "euw1"
+): Promise<TftLeagueEntry[]> {
+  const apiKey = getRiotApiKey();
+  const url = 'https://' + region + '.api.riotgames.com/tft/league/v1/entries/by-summoner/' + summonerId;
+
+  try {
+    const response = await axios.get<TftLeagueEntry[]>(url, {
+      headers: {
+        "X-Riot-Token": apiKey,
+      },
+    });
+
+    return response.data;
+  } catch (error) {
+    handleRiotError(error as AxiosError, "getTftRankedStats");
   }
 }

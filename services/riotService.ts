@@ -63,6 +63,43 @@ export interface GetStatsResponse {
   cached?: boolean;
 }
 
+// TFT types
+export interface TftStats {
+  puuid: string;
+  summonerLevel: number;
+  profileIconId: number;
+  rankedTft?: {
+    tier: string;
+    rank: string;
+    leaguePoints: number;
+    wins: number;
+    losses: number;
+    winRate: number;
+  };
+  rankedDoubleUp?: {
+    tier: string;
+    rank: string;
+    leaguePoints: number;
+    wins: number;
+    losses: number;
+    winRate: number;
+  };
+  lastUpdated: any;
+  peakRank?: {
+    tier: string;
+    rank: string;
+    season: string;
+    achievedAt: any;
+  };
+}
+
+export interface GetTftStatsResponse {
+  success: boolean;
+  message: string;
+  stats?: TftStats;
+  cached?: boolean;
+}
+
 export interface UnlinkAccountResponse {
   success: boolean;
   message: string;
@@ -135,39 +172,76 @@ export const linkRiotAccount = async (
 };
 
 /**
- * Get Riot stats for the current user
+ * Get League of Legends stats for the current user
  * @param forceRefresh - Force refresh data from Riot API (bypass cache)
  */
-export const getRiotStats = async (
+export const getLeagueStats = async (
   forceRefresh: boolean = false
 ): Promise<GetStatsResponse> => {
   try {
     // Check if user is authenticated
     const currentUser = auth.currentUser;
     if (!currentUser) {
-      throw new Error('You must be logged in to view Riot stats');
+      throw new Error('You must be logged in to view League stats');
     }
 
     // Get fresh ID token to ensure authentication
     await currentUser.getIdToken(true);
 
-    const getRiotStatsFn = httpsCallable<{ forceRefresh?: boolean }, GetStatsResponse>(
+    const getLeagueStatsFn = httpsCallable<{ forceRefresh?: boolean }, GetStatsResponse>(
       functions,
-      'getRiotStats'
+      'getLeagueStats'
     );
 
-    const result = await getRiotStatsFn({ forceRefresh });
+    const result = await getLeagueStatsFn({ forceRefresh });
 
     return result.data;
   } catch (error: any) {
-    console.error('Error fetching Riot stats:', error);
+    console.error('Error fetching League stats:', error);
 
     // Provide more helpful error messages
     if (error.code === 'unauthenticated') {
       throw new Error('Authentication error. Please try logging out and back in.');
     }
 
-    throw new Error(error.message || 'Failed to fetch Riot stats');
+    throw new Error(error.message || 'Failed to fetch League stats');
+  }
+};
+
+/**
+ * Get TFT stats for the current user
+ * @param forceRefresh - Force refresh data from Riot API (bypass cache)
+ */
+export const getTftStats = async (
+  forceRefresh: boolean = false
+): Promise<GetTftStatsResponse> => {
+  try {
+    // Check if user is authenticated
+    const currentUser = auth.currentUser;
+    if (!currentUser) {
+      throw new Error('You must be logged in to view TFT stats');
+    }
+
+    // Get fresh ID token to ensure authentication
+    await currentUser.getIdToken(true);
+
+    const getTftStatsFn = httpsCallable<{ forceRefresh?: boolean }, GetTftStatsResponse>(
+      functions,
+      'getTftStats'
+    );
+
+    const result = await getTftStatsFn({ forceRefresh });
+
+    return result.data;
+  } catch (error: any) {
+    console.error('Error fetching TFT stats:', error);
+
+    // Provide more helpful error messages
+    if (error.code === 'unauthenticated') {
+      throw new Error('Authentication error. Please try logging out and back in.');
+    }
+
+    throw new Error(error.message || 'Failed to fetch TFT stats');
   }
 };
 
