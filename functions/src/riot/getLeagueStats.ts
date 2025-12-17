@@ -182,6 +182,24 @@ export const getLeagueStatsFunction = onCall(
       const soloQueue = rankedStats.find((q) => q.queueType === "RANKED_SOLO_5x5");
       const flexQueue = rankedStats.find((q) => q.queueType === "RANKED_FLEX_SR");
 
+      // Initialize peak rank - if no cached peak and we have solo queue data, use current rank
+      let initialPeakRank = cachedStats?.peakRank;
+      if (!initialPeakRank && soloQueue) {
+        initialPeakRank = {
+          tier: soloQueue.tier,
+          rank: soloQueue.rank,
+          season: "2025",
+          achievedAt: admin.firestore.Timestamp.now(),
+        };
+      } else if (!initialPeakRank) {
+        initialPeakRank = {
+          tier: "UNRANKED",
+          rank: "",
+          season: "2025",
+          achievedAt: admin.firestore.Timestamp.now(),
+        };
+      }
+
       const stats: UserRiotStats = {
         puuid,
         summonerLevel: summonerData.summonerLevel,
@@ -223,12 +241,7 @@ export const getLeagueStatsFunction = onCall(
         })),
         totalMasteryScore: masteryScore,
         lastUpdated: admin.firestore.Timestamp.now(),
-        peakRank: cachedStats?.peakRank || {
-          tier: "UNRANKED",
-          rank: "",
-          season: "2025",
-          achievedAt: admin.firestore.Timestamp.now(),
-        },
+        peakRank: initialPeakRank,
       };
 
       // Update peak rank if applicable

@@ -188,7 +188,7 @@ export default function GameStatsScreen() {
               <ThemedText style={styles.statRowLabel}>Current Rank</ThemedText>
               <ThemedText style={styles.statRowValue}>
                 {riotStats.rankedSolo
-                  ? formatRank(riotStats.rankedSolo.tier, riotStats.rankedSolo.rank)
+                  ? `${formatRank(riotStats.rankedSolo.tier, riotStats.rankedSolo.rank)} (${riotStats.rankedSolo.leaguePoints} LP)`
                   : 'Unranked'}
               </ThemedText>
             </View>
@@ -226,16 +226,6 @@ export default function GameStatsScreen() {
                 {riotStats.rankedSolo
                   ? riotStats.rankedSolo.wins + riotStats.rankedSolo.losses
                   : 0}
-              </ThemedText>
-            </View>
-
-            <View style={styles.statRow}>
-              <View style={styles.statRowIcon}>
-                <IconSymbol size={20} name="shield.fill" color="#666" />
-              </View>
-              <ThemedText style={styles.statRowLabel}>League Points</ThemedText>
-              <ThemedText style={styles.statRowValue}>
-                {riotStats.rankedSolo ? `${riotStats.rankedSolo.leaguePoints} LP` : 'N/A'}
               </ThemedText>
             </View>
 
