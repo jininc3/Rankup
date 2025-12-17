@@ -8,7 +8,7 @@ import { collection, query, orderBy, limit, onSnapshot, doc, updateDoc, deleteDo
 import { db } from '@/config/firebase';
 import { useAuth } from '@/contexts/AuthContext';
 import { useFocusEffect } from '@react-navigation/native';
-import PostViewerModal from '@/app/profilePages/postViewerModal';
+import PostViewerModal from '@/app/components/postViewerModal';
 
 interface Notification {
   id: string;

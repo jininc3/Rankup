@@ -15,7 +15,7 @@ import { db } from '@/config/firebase';
 import { collection, query, where, orderBy, getDocs, Timestamp, doc, getDoc, setDoc, deleteDoc, updateDoc, increment } from 'firebase/firestore';
 import { followUser, unfollowUser, isFollowing as checkIsFollowing } from '@/services/followService';
 import { createOrGetChat } from '@/services/chatService';
-import PostViewerModal from './postViewerModal';
+import PostViewerModal from '@/app/components/postViewerModal';
 
 interface ViewedUser {
   id: string;

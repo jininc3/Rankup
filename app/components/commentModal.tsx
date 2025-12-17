@@ -375,13 +375,13 @@ const styles = StyleSheet.create({
   },
   commentItem: {
     flexDirection: 'row',
-    marginBottom: 20,
-    gap: 12,
+    marginBottom: 12,
+    gap: 10,
   },
   commentAvatar: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
+    width: 28,
+    height: 28,
+    borderRadius: 14,
     backgroundColor: '#f0f0f0',
     alignItems: 'center',
     justifyContent: 'center',
@@ -389,10 +389,10 @@ const styles = StyleSheet.create({
   avatarImage: {
     width: '100%',
     height: '100%',
-    borderRadius: 18,
+    borderRadius: 14,
   },
   avatarInitial: {
-    fontSize: 16,
+    fontSize: 13,
     fontWeight: '600',
   },
   commentContent: {
@@ -410,18 +410,18 @@ const styles = StyleSheet.create({
     gap: 8,
   },
   commentUsername: {
-    fontSize: 14,
+    fontSize: 12,
     fontWeight: '600',
     color: '#000',
   },
   commentTime: {
-    fontSize: 12,
+    fontSize: 10,
     color: '#999',
   },
   commentText: {
-    fontSize: 14,
+    fontSize: 12,
     color: '#000',
-    lineHeight: 20,
+    lineHeight: 18,
   },
   deleteCommentButton: {
     padding: 4,

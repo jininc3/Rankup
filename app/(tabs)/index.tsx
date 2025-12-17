@@ -415,10 +415,24 @@ export default function HomeScreen() {
     }
   }, [handleLoadMore]);
 
-  // Refresh posts when a comment is added
+  // Update comment count when a comment is added (without refetching all posts)
   const handleCommentAdded = useCallback(() => {
-    fetchPostsWithPagination(false);
-  }, [fetchPostsWithPagination]);
+    if (!commentingPost) return;
+
+    // Update the comment count for the specific post locally
+    const updatePostCommentCount = (posts: Post[]) =>
+      posts.map((p) =>
+        p.id === commentingPost.id
+          ? { ...p, commentsCount: (p.commentsCount ?? 0) + 1 }
+          : p
+      );
+
+    if (activeTab === 'following') {
+      setFollowingPosts(updatePostCommentCount(followingPosts));
+    } else {
+      setForYouPosts(updatePostCommentCount(forYouPosts));
+    }
+  }, [commentingPost, activeTab, followingPosts, forYouPosts]);
 
   // Handle screen focus/blur for video playback
   useFocusEffect(

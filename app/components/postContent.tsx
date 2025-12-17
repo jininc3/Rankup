@@ -322,14 +322,6 @@ export default function PostContent({
         )}
       </View>
 
-      {/* Caption */}
-      {post.caption && (
-        <View style={styles.captionContainer}>
-          <ThemedText style={styles.captionUsername}>{post.username}</ThemedText>
-          <ThemedText style={styles.captionText}>{post.caption}</ThemedText>
-        </View>
-      )}
-
       {/* Tagged Users */}
       {post.taggedUsers && post.taggedUsers.length > 0 && (
         <View style={styles.taggedUsersContainer}>
@@ -388,7 +380,8 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     alignItems: 'center',
     paddingHorizontal: 16,
-    paddingVertical: 12,
+    paddingTop: 12,
+    paddingBottom: 4,
   },
   userInfo: {
     flexDirection: 'row',
@@ -396,20 +389,20 @@ const styles = StyleSheet.create({
     gap: 12,
   },
   avatar: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
+    width: 32,
+    height: 32,
+    borderRadius: 16,
     backgroundColor: '#f0f0f0',
     alignItems: 'center',
     justifyContent: 'center',
   },
   avatarImage: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
+    width: 32,
+    height: 32,
+    borderRadius: 16,
   },
   avatarInitial: {
-    fontSize: 18,
+    fontSize: 14,
     fontWeight: '600',
     color: '#000',
   },
@@ -435,7 +428,7 @@ const styles = StyleSheet.create({
   },
   captionContainer: {
     paddingHorizontal: 16,
-    paddingBottom: 8,
+    paddingBottom: 12,
   },
   captionText: {
     fontSize: 14,
@@ -478,27 +471,27 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     alignItems: 'center',
     paddingHorizontal: 16,
-    paddingTop: 6,
+    paddingTop: 4,
   },
   leftActions: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 8,
+    gap: 4,
   },
   actionButton: {
-    padding: 8,
-    marginRight: 4,
+    padding: 6,
+    marginRight: 2,
   },
   shareButton: {
     marginLeft: 'auto',
-    padding: 8,
+    padding: 6,
   },
   likesContainer: {
     flexDirection: 'row',
     alignItems: 'center',
     paddingHorizontal: 16,
-    paddingTop: 4,
-    gap: 6,
+    paddingTop: 2,
+    gap: 4,
   },
   likesText: {
     fontSize: 13,
@@ -547,31 +540,31 @@ const styles = StyleSheet.create({
   },
   commentsPreviewContainer: {
     paddingHorizontal: 16,
-    paddingTop: 8,
-    paddingBottom: 12,
-    gap: 4,
+    paddingTop: 6,
+    paddingBottom: 10,
+    gap: 2,
   },
   commentPreview: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 6,
+    gap: 4,
   },
   commentUsername: {
-    fontSize: 13,
+    fontSize: 12,
     fontWeight: '600',
     color: '#000',
   },
   commentText: {
-    fontSize: 13,
+    fontSize: 12,
     color: '#333',
     flex: 1,
   },
   commentTime: {
-    fontSize: 11,
+    fontSize: 10,
     color: '#999',
   },
   viewAllCommentsText: {
-    fontSize: 13,
+    fontSize: 12,
     color: '#666',
     marginTop: 4,
   },

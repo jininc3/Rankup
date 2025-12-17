@@ -5,7 +5,7 @@ const RankCard = rankCard;
 import NewPost from '@/app/components/newPost';
 import { currentUser } from '@/app/data/userData';
 import PostFilterModal from '@/app/profilePages/postFilterModal';
-import PostViewerModal from '@/app/profilePages/postViewerModal';
+import PostViewerModal from '@/app/components/postViewerModal';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { IconSymbol } from '@/components/ui/icon-symbol';
