@@ -4,7 +4,7 @@ import { IconSymbol } from '@/components/ui/icon-symbol';
 import { StyleSheet, View, TouchableOpacity, ScrollView, Image, ActivityIndicator, Alert } from 'react-native';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { useState, useEffect } from 'react';
-import { getLeagueStats, getTftStats, formatRank, getChampionName, type RiotStats, type TftStats } from '@/services/riotService';
+import { getLeagueStats, getTftStats, formatRank, getChampionName, getProfileIconUrl, type RiotStats, type TftStats } from '@/services/riotService';
 // import { getValorantStats, formatValorantRank, type ValorantStats } from '@/services/valorantService'; // Disabled - API requires key
 
 interface GameStatsScreenProps {
@@ -52,6 +52,9 @@ export default function GameStatsScreen() {
     try {
       const response = await getLeagueStats();
       if (response.success && response.stats) {
+        console.log('League stats loaded:', response.stats);
+        console.log('Profile icon ID:', response.stats.profileIconId);
+        console.log('Profile icon URL:', getProfileIconUrl(response.stats.profileIconId));
         setRiotStats(response.stats);
       }
     } catch (err: any) {
@@ -138,6 +141,16 @@ export default function GameStatsScreen() {
         >
           <IconSymbol size={24} name="chevron.left" color="#000" />
         </TouchableOpacity>
+
+        {/* Profile Icon - Top Right */}
+        {(riotStats || tftStats) && (
+          <Image
+            source={{ uri: getProfileIconUrl((riotStats || tftStats)!.profileIconId) }}
+            style={styles.profileIcon}
+            onError={(error) => console.log('Profile icon load error:', error.nativeEvent)}
+            onLoad={() => console.log('Profile icon loaded successfully')}
+          />
+        )}
 
         {/* Game Logo */}
         <View style={styles.heroContent}>
@@ -418,6 +431,21 @@ const styles = StyleSheet.create({
     marginBottom: 16,
     paddingVertical: 7,
     letterSpacing: -0.5,
+  },
+  profileIcon: {
+    position: 'absolute',
+    top: 60,
+    right: 24,
+    width: 70,
+    height: 70,
+    borderRadius: 35,
+    borderWidth: 3,
+    borderColor: '#fff',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.2,
+    shadowRadius: 4,
+    elevation: 5,
   },
   mainStatContainer: {
     alignItems: 'flex-start',
