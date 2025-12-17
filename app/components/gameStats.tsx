@@ -33,7 +33,9 @@ export default function GameStatsScreen() {
       if (game.name === 'League of Legends') {
         fetchLeagueData();
       } else if (game.name === 'TFT') {
-        fetchTftData();
+        // TFT stats disabled - showing placeholder data
+        setHasFetched(true);
+        console.log('TFT stats disabled - showing placeholder data');
       } else if (game.name === 'Valorant') {
         // Valorant API temporarily disabled - Henrik's API requires key
         setHasFetched(true);
@@ -257,76 +259,9 @@ export default function GameStatsScreen() {
               <ThemedText style={styles.statRowValue}>{riotStats.summonerLevel}</ThemedText>
             </View>
           </>
-        ) : game.name === 'TFT' && tftStats ? (
-          // Display real TFT stats
-          <>
-            <View style={styles.statRow}>
-              <View style={styles.statRowIcon}>
-                <IconSymbol size={20} name="trophy.fill" color="#666" />
-              </View>
-              <ThemedText style={styles.statRowLabel}>Current Rank</ThemedText>
-              <ThemedText style={styles.statRowValue}>
-                {tftStats.rankedTft
-                  ? formatRank(tftStats.rankedTft.tier, tftStats.rankedTft.rank)
-                  : 'Unranked'}
-              </ThemedText>
-            </View>
-
-            <View style={styles.statRow}>
-              <View style={styles.statRowIcon}>
-                <IconSymbol size={20} name="star.fill" color="#666" />
-              </View>
-              <ThemedText style={styles.statRowLabel}>Peak Rank</ThemedText>
-              <ThemedText style={styles.statRowValue}>
-                {tftStats.peakRank
-                  ? formatRank(tftStats.peakRank.tier, tftStats.peakRank.rank)
-                  : 'N/A'}
-              </ThemedText>
-            </View>
-
-            <View style={styles.statRow}>
-              <View style={styles.statRowIcon}>
-                <IconSymbol size={20} name="chart.line.uptrend.xyaxis" color="#666" />
-              </View>
-              <ThemedText style={styles.statRowLabel}>Win Rate</ThemedText>
-              <ThemedText style={styles.statRowValue}>
-                {tftStats.rankedTft
-                  ? `${tftStats.rankedTft.winRate}% (${tftStats.rankedTft.wins}W)`
-                  : 'N/A'}
-              </ThemedText>
-            </View>
-
-            <View style={styles.statRow}>
-              <View style={styles.statRowIcon}>
-                <IconSymbol size={20} name="checkmark.circle.fill" color="#666" />
-              </View>
-              <ThemedText style={styles.statRowLabel}>Wins</ThemedText>
-              <ThemedText style={styles.statRowValue}>
-                {tftStats.rankedTft ? tftStats.rankedTft.wins : 0}
-              </ThemedText>
-            </View>
-
-            <View style={styles.statRow}>
-              <View style={styles.statRowIcon}>
-                <IconSymbol size={20} name="xmark.circle.fill" color="#666" />
-              </View>
-              <ThemedText style={styles.statRowLabel}>Losses</ThemedText>
-              <ThemedText style={styles.statRowValue}>
-                {tftStats.rankedTft ? tftStats.rankedTft.losses : 0}
-              </ThemedText>
-            </View>
-
-            <View style={styles.statRow}>
-              <View style={styles.statRowIcon}>
-                <IconSymbol size={20} name="number" color="#666" />
-              </View>
-              <ThemedText style={styles.statRowLabel}>Summoner Level</ThemedText>
-              <ThemedText style={styles.statRowValue}>{tftStats.summonerLevel}</ThemedText>
-            </View>
-          </>
         ) : (
-          // Display placeholder data for Valorant or other games
-          // Valorant API temporarily disabled - Henrik's API requires authentication
+          // Display placeholder data for TFT, Valorant or other games
+          // TFT and Valorant APIs temporarily disabled
           <>
             <View style={styles.statRow}>
               <View style={styles.statRowIcon}>

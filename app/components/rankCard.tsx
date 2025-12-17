@@ -1,6 +1,7 @@
 import { ThemedText } from '@/components/themed-text';
-import { StyleSheet, TouchableOpacity, View } from 'react-native';
+import { StyleSheet, TouchableOpacity, View, Image } from 'react-native';
 import { useRouter } from 'expo-router';
+import { getProfileIconUrl } from '@/services/riotService';
 
 interface Game {
   id: number;
@@ -12,6 +13,7 @@ interface Game {
   losses: number;
   winRate: number;
   recentMatches: string[];
+  profileIconId?: number;
 }
 
 interface RankCardProps {
@@ -40,15 +42,25 @@ export default function rankCard({ game, username }: RankCardProps) {
     >
       {/* Front of card - Credit card style */}
       <View style={styles.cardFront}>
+        {/* Profile Icon - Top Left */}
         <View style={styles.cardHeader}>
-          <ThemedText style={styles.cardGameIcon}>{game.icon}</ThemedText>
+          {game.profileIconId ? (
+            <Image
+              source={{ uri: getProfileIconUrl(game.profileIconId) }}
+              style={styles.cardProfileIcon}
+            />
+          ) : (
+            <ThemedText style={styles.cardGameIcon}>{game.icon}</ThemedText>
+          )}
         </View>
 
+        {/* Current Rank - Centered */}
         <View style={styles.cardMiddle}>
           <ThemedText style={styles.cardRankLabel}>CURRENT RANK</ThemedText>
           <ThemedText style={styles.cardRankValue}>{game.rank}</ThemedText>
         </View>
 
+        {/* Footer - Bottom */}
         <View style={styles.cardFooter}>
           <View style={styles.cardUserInfo}>
             <ThemedText style={styles.cardUsername}>@{username}</ThemedText>
@@ -76,18 +88,27 @@ const styles = StyleSheet.create({
   },
   cardFront: {
     flex: 1,
-    justifyContent: 'space-between',
+    justifyContent: 'center',
+    alignItems: 'center',
   },
   cardHeader: {
-    marginBottom: 30,
+    position: 'absolute',
+    top: 0,
+    left: 0,
   },
   cardGameIcon: {
     fontSize: 42,
   },
+  cardProfileIcon: {
+    width: 50,
+    height: 50,
+    borderRadius: 25,
+    borderWidth: 2,
+    borderColor: 'rgba(255,255,255,0.3)',
+  },
   cardMiddle: {
-    marginBottom: 30,
     alignItems: 'center',
-    paddingVertical: 10,
+    justifyContent: 'center',
   },
   cardRankLabel: {
     fontSize: 11,
@@ -101,9 +122,15 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     color: '#fff',
     letterSpacing: -1,
-    paddingVertical: 10,
+    marginTop: 4,
+    lineHeight: 44,
+    includeFontPadding: false,
   },
   cardFooter: {
+    position: 'absolute',
+    bottom: 0,
+    left: 0,
+    right: 0,
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'flex-end',

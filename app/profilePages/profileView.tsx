@@ -38,10 +38,12 @@ const userGames = [
     rank: currentUser.gamesPlayed.league.currentRank,
     trophies: 876,
     icon: '⚔️',
+    image: require('@/assets/images/leagueoflegends.png'),
     wins: Math.floor(currentUser.gamesPlayed.league.gamesPlayed * (currentUser.gamesPlayed.league.winRate / 100)),
     losses: currentUser.gamesPlayed.league.gamesPlayed - Math.floor(currentUser.gamesPlayed.league.gamesPlayed * (currentUser.gamesPlayed.league.winRate / 100)),
     winRate: currentUser.gamesPlayed.league.winRate,
     recentMatches: ['+15', '-18', '+20', '+17', '-14'],
+    profileIconId: 1297, // Placeholder - should be fetched from viewed user's Riot account
   },
 ];
 
@@ -73,7 +75,7 @@ export default function ProfileViewScreen() {
   const [viewedUser, setViewedUser] = useState<ViewedUser | null>(null);
   const [loadingUser, setLoadingUser] = useState(true);
   const [selectedGameIndex, setSelectedGameIndex] = useState(0);
-  const [activeMainTab, setActiveMainTab] = useState<'games' | 'posts'>('posts'); // Default to posts tab
+  const [activeMainTab, setActiveMainTab] = useState<'rankCards' | 'clips'>('clips'); // Default to clips tab
   const [posts, setPosts] = useState<Post[]>([]);
   const [loadingPosts, setLoadingPosts] = useState(false);
   const [selectedPost, setSelectedPost] = useState<Post | null>(null);
@@ -409,84 +411,29 @@ export default function ProfileViewScreen() {
           </View>
         </View>
 
-        {/* Main Tabs: Games and Posts */}
+        {/* Main Tabs: Clips and RankCards */}
         <View style={styles.mainTabsContainer}>
           <TouchableOpacity
-            style={[styles.mainTab, activeMainTab === 'games' && styles.mainTabActive]}
-            onPress={() => setActiveMainTab('games')}
+            style={styles.mainTab}
+            onPress={() => setActiveMainTab('clips')}
           >
-            <ThemedText style={[styles.mainTabText, activeMainTab === 'games' && styles.mainTabTextActive]}>
-              Games
+            <ThemedText style={[styles.mainTabText, activeMainTab === 'clips' && styles.mainTabTextActive]}>
+              Clips
             </ThemedText>
+            {activeMainTab === 'clips' && <View style={styles.tabIndicator} />}
           </TouchableOpacity>
           <TouchableOpacity
-            style={[styles.mainTab, activeMainTab === 'posts' && styles.mainTabActive]}
-            onPress={() => setActiveMainTab('posts')}
+            style={styles.mainTab}
+            onPress={() => setActiveMainTab('rankCards')}
           >
-            <ThemedText style={[styles.mainTabText, activeMainTab === 'posts' && styles.mainTabTextActive]}>
-              Posts
+            <ThemedText style={[styles.mainTabText, activeMainTab === 'rankCards' && styles.mainTabTextActive]}>
+              RankCards
             </ThemedText>
+            {activeMainTab === 'rankCards' && <View style={styles.tabIndicator} />}
           </TouchableOpacity>
         </View>
 
-        {activeMainTab === 'games' && (
-        <View style={styles.section}>
-          {/* Minimal Game Tabs */}
-          <ScrollView
-            horizontal
-            showsHorizontalScrollIndicator={false}
-            style={styles.gameTabs}
-            contentContainerStyle={styles.gameTabsContent}
-          >
-            {userGames.map((game, index) => (
-              <TouchableOpacity
-                key={game.id}
-                style={[styles.gameTab, selectedGameIndex === index && styles.gameTabActive]}
-                onPress={() => scrollToIndex(index)}
-              >
-                <ThemedText style={[
-                  styles.gameTabText,
-                  selectedGameIndex === index && styles.gameTabTextActive
-                ]}>
-                  {game.name}
-                </ThemedText>
-              </TouchableOpacity>
-            ))}
-          </ScrollView>
-
-          {/* Scrollable Rank Cards */}
-          <ScrollView
-            ref={scrollViewRef}
-            horizontal
-            pagingEnabled
-            showsHorizontalScrollIndicator={false}
-            onScroll={handleScrollDrag}
-            onMomentumScrollEnd={handleScroll}
-            scrollEventThrottle={16}
-            snapToInterval={CARD_WIDTH + CARD_GAP}
-            decelerationRate="fast"
-            contentContainerStyle={styles.cardsContainer}
-          >
-            {userGames.map((game, index) => (
-              <View
-                key={game.id}
-                style={[
-                  styles.cardWrapper,
-                  {
-                    width: CARD_WIDTH,
-                    marginRight: index < userGames.length - 1 ? CARD_GAP : 0
-                  }
-                ]}
-              >
-                <RankCard game={game} username={viewedUser?.username || 'User'} />
-              </View>
-            ))}
-          </ScrollView>
-        </View>
-        )}
-
-        {/* Posts Tab Content */}
-        {activeMainTab === 'posts' && (
+        {activeMainTab === 'clips' && (
           <View style={styles.postsSection}>
             {loadingPosts ? (
               <View style={styles.postsContainer}>
@@ -522,6 +469,68 @@ export default function ProfileViewScreen() {
               </View>
             )}
           </View>
+        )}
+
+        {/* RankCards Tab Content */}
+        {activeMainTab === 'rankCards' && (
+        <View style={styles.section}>
+          {/* Game Icon Selector */}
+          <ScrollView
+            horizontal
+            showsHorizontalScrollIndicator={false}
+            style={styles.gameIconScroller}
+            contentContainerStyle={styles.gameIconScrollerContent}
+          >
+            {userGames.map((game, index) => (
+              <TouchableOpacity
+                key={game.id}
+                style={styles.gameIconContainer}
+                onPress={() => scrollToIndex(index)}
+                activeOpacity={0.7}
+              >
+                <View style={[
+                  styles.gameIconCircle,
+                  selectedGameIndex === index && styles.gameIconCircleActive
+                ]}>
+                  <Image
+                    source={game.image}
+                    style={styles.gameIconImage}
+                    resizeMode="contain"
+                  />
+                </View>
+              </TouchableOpacity>
+            ))}
+          </ScrollView>
+
+          {/* Scrollable Rank Cards */}
+          <ScrollView
+            ref={scrollViewRef}
+            horizontal
+            pagingEnabled
+            showsHorizontalScrollIndicator={false}
+            onScroll={handleScrollDrag}
+            onMomentumScrollEnd={handleScroll}
+            scrollEventThrottle={16}
+            snapToInterval={CARD_WIDTH + CARD_GAP}
+            decelerationRate="fast"
+            contentContainerStyle={styles.cardsContainer}
+          >
+            {userGames.map((game, index) => (
+              <View
+                key={game.id}
+                style={[
+                  styles.cardWrapper,
+                  {
+                    width: CARD_WIDTH,
+                    marginRight: index < userGames.length - 1 ? CARD_GAP : 0
+                  }
+                ]}
+              >
+                <RankCard game={game} username={viewedUser?.username || 'User'} />
+              </View>
+            ))}
+          </ScrollView>
+        </View>
         )}
       </ScrollView>
 
@@ -736,11 +745,15 @@ const styles = StyleSheet.create({
     flex: 1,
     paddingVertical: 16,
     alignItems: 'center',
-    borderBottomWidth: 2,
-    borderBottomColor: 'transparent',
+    position: 'relative',
   },
-  mainTabActive: {
-    borderBottomColor: '#000',
+  tabIndicator: {
+    position: 'absolute',
+    bottom: 0,
+    height: 2,
+    width: 30,
+    backgroundColor: '#000',
+    borderRadius: 1,
   },
   mainTabText: {
     fontSize: 15,
@@ -751,6 +764,35 @@ const styles = StyleSheet.create({
   mainTabTextActive: {
     color: '#000',
     fontWeight: '600',
+  },
+  gameIconScroller: {
+    marginBottom: 16,
+  },
+  gameIconScrollerContent: {
+    paddingVertical: 6,
+    gap: 12,
+  },
+  gameIconContainer: {
+    alignItems: 'center',
+  },
+  gameIconCircle: {
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    backgroundColor: '#f5f5f5',
+    borderWidth: 2,
+    borderColor: 'transparent',
+    alignItems: 'center',
+    justifyContent: 'center',
+    overflow: 'hidden',
+  },
+  gameIconCircleActive: {
+    borderColor: '#000',
+    backgroundColor: '#fff',
+  },
+  gameIconImage: {
+    width: 32,
+    height: 32,
   },
   gameTabs: {
     marginBottom: 20,

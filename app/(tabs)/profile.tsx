@@ -44,7 +44,7 @@ export default function ProfileScreen() {
   const router = useRouter();
   const { user, refreshUser } = useAuth();
   const [selectedGameIndex, setSelectedGameIndex] = useState(0);
-  const [activeMainTab, setActiveMainTab] = useState<'games' | 'posts'>('games');
+  const [activeMainTab, setActiveMainTab] = useState<'rankCards' | 'clips'>('clips');
   const [posts, setPosts] = useState<Post[]>([]);
   const [loadingPosts, setLoadingPosts] = useState(false);
   const [selectedPost, setSelectedPost] = useState<Post | null>(null);
@@ -89,6 +89,7 @@ export default function ProfileScreen() {
       losses: riotStats?.rankedSolo?.losses || 0,
       winRate: riotStats?.rankedSolo?.winRate || 0,
       recentMatches: ['+15', '-18', '+20', '+17', '-14'],
+      profileIconId: riotStats?.profileIconId,
     },
     {
       id: 3,
@@ -157,15 +158,9 @@ export default function ProfileScreen() {
             console.error('Error fetching League stats:', error);
           }
 
-          // Fetch TFT stats if account is linked
-          try {
-            const tftResponse = await getTftStats(forceRefresh);
-            if (tftResponse.success && tftResponse.stats) {
-              setTftStats(tftResponse.stats);
-            }
-          } catch (error) {
-            console.error('Error fetching TFT stats:', error);
-          }
+          // TFT stats temporarily disabled - using placeholder data
+          // TODO: Re-enable when needed
+          console.log('TFT stats disabled - showing placeholder data');
 
           // Valorant stats temporarily disabled (Henrik's API requires key)
           // TODO: Re-enable when API key is obtained
@@ -457,27 +452,29 @@ export default function ProfileScreen() {
           </View>
         </View>
 
-        {/* Main Tabs: Games and Posts */}
+        {/* Main Tabs: Clips and RankCards */}
         <View style={styles.mainTabsContainer}>
           <View style={styles.mainTabsLeft}>
             <TouchableOpacity
-              style={[styles.mainTab, activeMainTab === 'games' && styles.mainTabActive]}
-              onPress={() => setActiveMainTab('games')}
+              style={styles.mainTab}
+              onPress={() => setActiveMainTab('clips')}
             >
-              <ThemedText style={[styles.mainTabText, activeMainTab === 'games' && styles.mainTabTextActive]}>
-                Games
+              <ThemedText style={[styles.mainTabText, activeMainTab === 'clips' && styles.mainTabTextActive]}>
+                Clips
               </ThemedText>
+              {activeMainTab === 'clips' && <View style={styles.tabIndicator} />}
             </TouchableOpacity>
             <TouchableOpacity
-              style={[styles.mainTab, activeMainTab === 'posts' && styles.mainTabActive]}
-              onPress={() => setActiveMainTab('posts')}
+              style={styles.mainTab}
+              onPress={() => setActiveMainTab('rankCards')}
             >
-              <ThemedText style={[styles.mainTabText, activeMainTab === 'posts' && styles.mainTabTextActive]}>
-                Posts
+              <ThemedText style={[styles.mainTabText, activeMainTab === 'rankCards' && styles.mainTabTextActive]}>
+                RankCards
               </ThemedText>
+              {activeMainTab === 'rankCards' && <View style={styles.tabIndicator} />}
             </TouchableOpacity>
           </View>
-          {activeMainTab === 'posts' && (
+          {activeMainTab === 'clips' && (
             <TouchableOpacity
               style={styles.filterButton}
               onPress={() => setShowFilterMenu(true)}
@@ -487,7 +484,52 @@ export default function ProfileScreen() {
           )}
         </View>
 
-        {activeMainTab === 'games' && (
+        {activeMainTab === 'clips' && (
+          <View style={styles.postsSection}>
+            {loadingPosts ? (
+              <View style={styles.postsContainer}>
+                <ActivityIndicator size="large" color="#000" />
+                <ThemedText style={styles.loadingText}>Loading posts...</ThemedText>
+              </View>
+            ) : posts.length > 0 ? (
+              <View style={styles.postsGrid}>
+                {posts.map((post) => (
+                  <TouchableOpacity
+                    key={post.id}
+                    style={styles.postItem}
+                    onPress={() => handlePostPress(post)}
+                    activeOpacity={0.7}
+                  >
+                    <Image
+                      source={{ uri: post.mediaType === 'video' && post.thumbnailUrl ? post.thumbnailUrl : post.mediaUrl }}
+                      style={styles.postImage}
+                      resizeMode="cover"
+                    />
+                    {post.mediaType === 'video' && (
+                      <View style={styles.videoIndicator}>
+                        <IconSymbol size={24} name="play.fill" color="#fff" />
+                      </View>
+                    )}
+                    {post.mediaUrls && post.mediaUrls.length > 1 && (
+                      <View style={styles.multiplePostsIndicator}>
+                        <IconSymbol size={20} name="square.on.square" color="#fff" />
+                      </View>
+                    )}
+                  </TouchableOpacity>
+                ))}
+              </View>
+            ) : (
+              <View style={styles.postsContainer}>
+                <IconSymbol size={48} name="square.stack.3d.up" color="#ccc" />
+                <ThemedText style={styles.emptyStateText}>No posts yet</ThemedText>
+                <ThemedText style={styles.emptyStateSubtext}>Share your gaming achievements with the community</ThemedText>
+              </View>
+            )}
+          </View>
+        )}
+
+        {/* RankCards Tab Content */}
+        {activeMainTab === 'rankCards' && (
         <View style={styles.section}>
           {/* Game Icon Selector */}
           <ScrollView
@@ -554,55 +596,10 @@ export default function ProfileScreen() {
           </ScrollView>
         </View>
         )}
-
-        {/* Posts Tab Content */}
-        {activeMainTab === 'posts' && (
-          <View style={styles.postsSection}>
-            {loadingPosts ? (
-              <View style={styles.postsContainer}>
-                <ActivityIndicator size="large" color="#000" />
-                <ThemedText style={styles.loadingText}>Loading posts...</ThemedText>
-              </View>
-            ) : posts.length > 0 ? (
-              <View style={styles.postsGrid}>
-                {posts.map((post) => (
-                  <TouchableOpacity
-                    key={post.id}
-                    style={styles.postItem}
-                    onPress={() => handlePostPress(post)}
-                    activeOpacity={0.7}
-                  >
-                    <Image
-                      source={{ uri: post.mediaType === 'video' && post.thumbnailUrl ? post.thumbnailUrl : post.mediaUrl }}
-                      style={styles.postImage}
-                      resizeMode="cover"
-                    />
-                    {post.mediaType === 'video' && (
-                      <View style={styles.videoIndicator}>
-                        <IconSymbol size={24} name="play.fill" color="#fff" />
-                      </View>
-                    )}
-                    {post.mediaUrls && post.mediaUrls.length > 1 && (
-                      <View style={styles.multiplePostsIndicator}>
-                        <IconSymbol size={20} name="square.on.square" color="#fff" />
-                      </View>
-                    )}
-                  </TouchableOpacity>
-                ))}
-              </View>
-            ) : (
-              <View style={styles.postsContainer}>
-                <IconSymbol size={48} name="square.stack.3d.up" color="#ccc" />
-                <ThemedText style={styles.emptyStateText}>No posts yet</ThemedText>
-                <ThemedText style={styles.emptyStateSubtext}>Share your gaming achievements with the community</ThemedText>
-              </View>
-            )}
-          </View>
-        )}
       </ScrollView>
 
-      {/* Floating Add Post Button - only visible on Posts tab */}
-      {activeMainTab === 'posts' && (
+      {/* Floating Add Post Button - only visible on Clips tab */}
+      {activeMainTab === 'clips' && (
         <TouchableOpacity
           style={styles.fabButton}
           onPress={handleAddPost}
@@ -924,13 +921,16 @@ const styles = StyleSheet.create({
     paddingVertical: 12,
     paddingHorizontal: 20,
     alignItems: 'center',
-    borderBottomWidth: 0,
     marginRight: 8,
     position: 'relative',
   },
-  mainTabActive: {
-    borderBottomWidth: 2,
-    borderBottomColor: '#000',
+  tabIndicator: {
+    position: 'absolute',
+    bottom: 0,
+    height: 2,
+    width: 30,
+    backgroundColor: '#000',
+    borderRadius: 1,
   },
   mainTabText: {
     fontSize: 15,
