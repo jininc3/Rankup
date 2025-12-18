@@ -1,13 +1,12 @@
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { IconSymbol } from '@/components/ui/icon-symbol';
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useEffect } from 'react';
 import { ScrollView, StyleSheet, TextInput, TouchableOpacity, View, Image, ActivityIndicator } from 'react-native';
 import { useRouter } from 'expo-router';
 import { collection, query, where, getDocs, orderBy, limit, doc, setDoc, deleteDoc, getDoc, Timestamp } from 'firebase/firestore';
 import { db } from '@/config/firebase';
 import { useAuth } from '@/contexts/AuthContext';
-import { useFocusEffect } from '@react-navigation/native';
 
 interface SearchUser {
   id: string;
@@ -23,16 +22,22 @@ const MAX_HISTORY_ITEMS = 7;
 
 export default function SearchScreen() {
   const router = useRouter();
-  const { user: currentUser } = useAuth();
+  const { user: currentUser, preloadedSearchHistory, clearPreloadedSearchHistory } = useAuth();
   const [searchQuery, setSearchQuery] = useState('');
   const [searchResults, setSearchResults] = useState<SearchUser[]>([]);
   const [searching, setSearching] = useState(false);
   const [searchHistory, setSearchHistory] = useState<SearchUser[]>([]);
+  const [loadingHistory, setLoadingHistory] = useState(true);
+  const [hasConsumedPreload, setHasConsumedPreload] = useState(false);
 
   // Load search history from Firestore
   const loadSearchHistory = async () => {
-    if (!currentUser?.id) return;
+    if (!currentUser?.id) {
+      setLoadingHistory(false);
+      return;
+    }
 
+    setLoadingHistory(true);
     try {
       const historyRef = collection(db, 'users', currentUser.id, 'searchHistory');
       const q = query(historyRef, orderBy('searchedAt', 'desc'), limit(MAX_HISTORY_ITEMS));
@@ -55,6 +60,8 @@ export default function SearchScreen() {
       setSearchHistory(history);
     } catch (error) {
       console.error('Error loading search history:', error);
+    } finally {
+      setLoadingHistory(false);
     }
   };
 
@@ -75,8 +82,13 @@ export default function SearchScreen() {
         searchedAt: Timestamp.now(),
       });
 
-      // Reload history to update UI
-      await loadSearchHistory();
+      // Update local state instead of refetching
+      // Remove user if already in history (to re-add at top)
+      const filteredHistory = searchHistory.filter(item => item.id !== user.id);
+
+      // Add to beginning (most recent)
+      const newHistory = [user, ...filteredHistory].slice(0, MAX_HISTORY_ITEMS);
+      setSearchHistory(newHistory);
     } catch (error) {
       console.error('Error saving search history:', error);
     }
@@ -118,15 +130,28 @@ export default function SearchScreen() {
     }
   };
 
-  // Load history when screen comes into focus
-  useFocusEffect(
-    useCallback(() => {
+  // Consume preloaded search history from AuthContext (loaded during loading screen)
+  useEffect(() => {
+    if (preloadedSearchHistory && !hasConsumedPreload) {
+      console.log('✅ Using preloaded search history from loading screen:', preloadedSearchHistory.length);
+      setSearchHistory(preloadedSearchHistory);
+      setLoadingHistory(false);
+      setHasConsumedPreload(true);
+      clearPreloadedSearchHistory();
+    }
+  }, [preloadedSearchHistory, hasConsumedPreload, clearPreloadedSearchHistory]);
+
+  // Load search history once on mount (only if no preloaded data)
+  useEffect(() => {
+    if (currentUser?.id && !hasConsumedPreload && !preloadedSearchHistory) {
       loadSearchHistory();
-      // Clear search query when returning to search page
-      setSearchQuery('');
-      setSearchResults([]);
-    }, [currentUser?.id])
-  );
+    }
+  }, [currentUser?.id, hasConsumedPreload, preloadedSearchHistory]);
+
+  // Note: Removed automatic refetch on focus for instant loading
+  // Search history now updates via:
+  // 1. Local state updates when adding/removing items (already implemented)
+  // 2. Initial mount fetch only
 
   const handleSearch = async (text: string) => {
     setSearchQuery(text);
@@ -215,7 +240,12 @@ export default function SearchScreen() {
       </View>
 
       <ScrollView style={styles.scrollView} showsVerticalScrollIndicator={false}>
-        {searchQuery.trim() === '' && searchHistory.length > 0 ? (
+        {searchQuery.trim() === '' && loadingHistory ? (
+          <View style={styles.loadingState}>
+            <ActivityIndicator size="large" color="#000" />
+            <ThemedText style={styles.loadingText}>Loading...</ThemedText>
+          </View>
+        ) : searchQuery.trim() === '' && searchHistory.length > 0 ? (
           <View>
             <View style={styles.historyHeader}>
               <ThemedText style={styles.historyTitle}>Recent Searches</ThemedText>

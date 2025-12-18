@@ -61,7 +61,7 @@ interface Post {
 
 export default function HomeScreen() {
   const router = useRouter();
-  const { user: currentUser } = useAuth();
+  const { user: currentUser, preloadedPosts, clearPreloadedPosts } = useAuth();
   const [activeTab, setActiveTab] = useState<'forYou' | 'following'>('following');
   const [followingPosts, setFollowingPosts] = useState<Post[]>([]);
   const [forYouPosts, setForYouPosts] = useState<Post[]>([]);
@@ -83,6 +83,7 @@ export default function HomeScreen() {
   const [hasMore, setHasMore] = useState(true);
   const [loadingMore, setLoadingMore] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
+  const [hasConsumedPreload, setHasConsumedPreload] = useState(false);
 
   const currentPosts = activeTab === 'forYou' ? forYouPosts : followingPosts;
 
@@ -114,8 +115,12 @@ export default function HomeScreen() {
 
       try {
         const followingData = await getFollowing(currentUser.id);
-        const userIds = followingData.map(follow => follow.followingId);
-        console.log('Following user IDs:', userIds);
+        let userIds = followingData.map(follow => follow.followingId);
+
+        // Remove current user from the list to avoid fetching own posts
+        userIds = userIds.filter(id => id !== currentUser.id);
+
+        console.log('Following user IDs (excluding self):', userIds);
         setFollowingUserIds(userIds);
       } catch (error) {
         console.error('Error fetching following:', error);
@@ -124,6 +129,25 @@ export default function HomeScreen() {
 
     fetchFollowingUsers();
   }, [currentUser?.id]);
+
+  // Consume preloaded posts from AuthContext (loaded during loading screen)
+  useEffect(() => {
+    if (preloadedPosts && preloadedPosts.length > 0 && !hasConsumedPreload) {
+      console.log('✅ Using preloaded posts from loading screen:', preloadedPosts.length);
+      setFollowingPosts(preloadedPosts);
+      setLoading(false);
+      setHasConsumedPreload(true);
+      // Clear preloaded posts to prevent reuse
+      clearPreloadedPosts();
+    } else if (preloadedPosts && preloadedPosts.length === 0 && !hasConsumedPreload) {
+      // Preload returned empty array (no following users)
+      console.log('✅ Preload returned no posts (no following)');
+      setFollowingPosts([]);
+      setLoading(false);
+      setHasConsumedPreload(true);
+      clearPreloadedPosts();
+    }
+  }, [preloadedPosts, hasConsumedPreload, clearPreloadedPosts]);
 
   // Fetch posts with pagination
   const fetchPostsWithPagination = useCallback(async (isLoadMore: boolean = false) => {
@@ -193,10 +217,8 @@ export default function HomeScreen() {
       // Sort all posts by createdAt
       allBatchPosts.sort((a, b) => b.createdAt.toMillis() - a.createdAt.toMillis());
 
-      // Filter out current user's posts
-      let filteredPosts = allBatchPosts.filter(post => post.userId !== currentUser.id);
-
       // Apply game filter if selected
+      let filteredPosts = allBatchPosts;
       if (selectedGameFilter) {
         filteredPosts = filteredPosts.filter(post => post.taggedGame === selectedGameFilter);
       }
@@ -265,13 +287,25 @@ export default function HomeScreen() {
   }, [currentUser?.id, followingUserIds, activeTab, selectedGameFilter, hasMore, loadingMore, lastDoc]);
 
   // Initial fetch when dependencies change
+  // Note: Don't fetch if we just consumed preloaded posts (hasConsumedPreload && no filter)
   useEffect(() => {
+    // Skip initial fetch if we have preloaded posts and no filters applied
+    if (hasConsumedPreload && selectedGameFilter === null && activeTab === 'following') {
+      console.log('⏭️ Skipping initial fetch - using preloaded posts');
+      return;
+    }
+
+    // Reset hasConsumedPreload when switching tabs or filters (so subsequent changes fetch fresh data)
+    if (activeTab === 'forYou' || selectedGameFilter !== null) {
+      setHasConsumedPreload(false);
+    }
+
     if (followingUserIds.length > 0 || activeTab === 'forYou') {
       fetchPostsWithPagination(false);
     } else {
       setLoading(false);
     }
-  }, [currentUser?.id, followingUserIds, activeTab, selectedGameFilter]);
+  }, [currentUser?.id, followingUserIds, activeTab, selectedGameFilter, hasConsumedPreload]);
 
   // Check which posts are liked by the current user
   useEffect(() => {

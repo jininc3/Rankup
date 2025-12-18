@@ -1,8 +1,10 @@
 import React, { createContext, useState, useContext, useEffect } from 'react';
 import { onAuthStateChanged } from 'firebase/auth';
-import { auth } from '@/config/firebase';
+import { auth, db } from '@/config/firebase';
 import { getUserProfile, signOut as authSignOut } from '@/services/authService';
 import type { UserProfile } from '@/services/authService';
+import { collection, query, where, getDocs, orderBy, limit, Timestamp } from 'firebase/firestore';
+import { getFollowing } from '@/services/followService';
 
 interface User {
   id: string;
@@ -20,14 +22,49 @@ interface User {
   provider: 'email' | 'google' | 'discord' | 'instagram';
 }
 
+interface Post {
+  id: string;
+  userId: string;
+  username: string;
+  avatar?: string;
+  mediaUrl: string;
+  mediaUrls?: string[];
+  mediaType: 'image' | 'video';
+  mediaTypes?: string[];
+  thumbnailUrl?: string;
+  caption?: string;
+  taggedPeople?: any[];
+  taggedGame?: string;
+  createdAt: Timestamp;
+  likes: number;
+  commentsCount?: number;
+}
+
+interface SearchUser {
+  id: string;
+  username: string;
+  avatar?: string;
+  bio?: string;
+  followersCount?: number;
+  followingCount?: number;
+  postsCount?: number;
+}
+
 interface AuthContextType {
   user: User | null;
   isLoading: boolean;
+  preloadedPosts: Post[] | null;
+  preloadedSearchHistory: SearchUser[] | null;
+  preloadedProfilePosts: Post[] | null;
+  preloadedRiotStats: any | null;
   setUser: (user: User | null) => void;
   refreshUser: () => Promise<void>;
   signOut: () => Promise<void>;
   isAuthenticated: boolean;
   needsUsernameSetup: boolean;
+  clearPreloadedPosts: () => void;
+  clearPreloadedSearchHistory: () => void;
+  clearPreloadedProfileData: () => void;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -35,6 +72,148 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined);
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [preloadedPosts, setPreloadedPosts] = useState<Post[] | null>(null);
+  const [preloadedSearchHistory, setPreloadedSearchHistory] = useState<SearchUser[] | null>(null);
+  const [preloadedProfilePosts, setPreloadedProfilePosts] = useState<Post[] | null>(null);
+  const [preloadedRiotStats, setPreloadedRiotStats] = useState<any | null>(null);
+
+  // Preload feed posts while loading screen is shown
+  const preloadFeed = async (userId: string) => {
+    try {
+      console.log('🚀 Preloading feed during loading screen...');
+      const POSTS_PER_PAGE = 8;
+
+      // Get following users
+      const followingData = await getFollowing(userId);
+      let userIds = followingData.map(follow => follow.followingId);
+
+      // Remove current user from the list
+      userIds = userIds.filter(id => id !== userId);
+
+      if (userIds.length === 0) {
+        console.log('No following users, skipping preload');
+        setPreloadedPosts([]);
+        return;
+      }
+
+      // Batch queries (Firestore 'in' limited to 10 items)
+      const batchSize = 10;
+      const batches: string[][] = [];
+      for (let i = 0; i < userIds.length; i += batchSize) {
+        batches.push(userIds.slice(i, i + batchSize));
+      }
+
+      let allBatchPosts: any[] = [];
+
+      // Fetch posts from each batch
+      for (const batch of batches) {
+        const q = query(
+          collection(db, 'posts'),
+          where('userId', 'in', batch),
+          orderBy('createdAt', 'desc'),
+          limit(POSTS_PER_PAGE * 2)
+        );
+
+        const snapshot = await getDocs(q);
+        const batchPosts = snapshot.docs.map(doc => ({
+          id: doc.id,
+          ...doc.data()
+        } as Post));
+
+        allBatchPosts = [...allBatchPosts, ...batchPosts];
+      }
+
+      // Sort all posts by date
+      allBatchPosts.sort((a, b) => b.createdAt.toMillis() - a.createdAt.toMillis());
+
+      // Take only what we need (8 posts)
+      const postsToShow = allBatchPosts.slice(0, POSTS_PER_PAGE);
+
+      setPreloadedPosts(postsToShow);
+      console.log(`✅ Preloaded ${postsToShow.length} posts`);
+    } catch (error) {
+      console.error('Error preloading feed:', error);
+      setPreloadedPosts([]);
+    }
+  };
+
+  // Preload search history while loading screen is shown
+  const preloadSearchHistory = async (userId: string) => {
+    try {
+      console.log('🚀 Preloading search history during loading screen...');
+      const MAX_HISTORY_ITEMS = 7;
+
+      const historyRef = collection(db, 'users', userId, 'searchHistory');
+      const q = query(historyRef, orderBy('searchedAt', 'desc'), limit(MAX_HISTORY_ITEMS));
+      const querySnapshot = await getDocs(q);
+
+      const history: SearchUser[] = [];
+      querySnapshot.forEach((doc) => {
+        const data = doc.data();
+        history.push({
+          id: doc.id,
+          username: data.username,
+          avatar: data.avatar,
+          bio: data.bio,
+          followersCount: data.followersCount,
+          followingCount: data.followingCount,
+          postsCount: data.postsCount,
+        });
+      });
+
+      setPreloadedSearchHistory(history);
+      console.log(`✅ Preloaded ${history.length} search history items`);
+    } catch (error) {
+      console.error('Error preloading search history:', error);
+      setPreloadedSearchHistory([]);
+    }
+  };
+
+  // Preload profile posts and Riot stats while loading screen is shown
+  const preloadProfileData = async (userId: string) => {
+    try {
+      console.log('🚀 Preloading profile data during loading screen...');
+
+      // Preload user's posts
+      const postsQuery = query(
+        collection(db, 'posts'),
+        where('userId', '==', userId)
+      );
+      const querySnapshot = await getDocs(postsQuery);
+      const fetchedPosts: Post[] = querySnapshot.docs.map(doc => ({
+        id: doc.id,
+        ...doc.data()
+      } as Post));
+
+      // Sort by newest first
+      fetchedPosts.sort((a, b) => b.createdAt.toMillis() - a.createdAt.toMillis());
+      setPreloadedProfilePosts(fetchedPosts);
+      console.log(`✅ Preloaded ${fetchedPosts.length} profile posts`);
+
+      // Preload Riot stats (import getLeagueStats at top)
+      try {
+        const userDoc = await getDocs(query(collection(db, 'users'), where('__name__', '==', userId)));
+        if (!userDoc.empty) {
+          const userData = userDoc.docs[0].data();
+          if (userData.riotAccount) {
+            // Dynamically import to avoid circular dependency
+            const { getLeagueStats } = await import('@/services/riotService');
+            const leagueResponse = await getLeagueStats(false);
+            if (leagueResponse.success && leagueResponse.stats) {
+              setPreloadedRiotStats(leagueResponse.stats);
+              console.log('✅ Preloaded Riot stats');
+            }
+          }
+        }
+      } catch (error) {
+        console.error('Error preloading Riot stats:', error);
+        setPreloadedRiotStats(null);
+      }
+    } catch (error) {
+      console.error('Error preloading profile data:', error);
+      setPreloadedProfilePosts([]);
+    }
+  };
 
   useEffect(() => {
     // Listen to Firebase auth state changes
@@ -65,6 +244,19 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
               needsUsernameSetup: userProfile.needsUsernameSetup || false,
               provider: userProfile.provider,
             });
+
+            // Preload all data if user doesn't need username setup
+            // Keep loading screen visible until preload completes
+            if (!userProfile.needsUsernameSetup) {
+              console.log('⏳ Keeping loading screen visible while preloading all data...');
+              // Run all preloads in parallel for faster loading
+              await Promise.all([
+                preloadFeed(userProfile.id),
+                preloadSearchHistory(userProfile.id),
+                preloadProfileData(userProfile.id),
+              ]);
+              console.log('✅ All data preload complete - loading screen will now hide');
+            }
           } else {
             // Fallback if profile doesn't exist (new user or race condition)
             const isGoogleUser = firebaseUser.providerData.some(p => p.providerId === 'google.com');
@@ -77,6 +269,19 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
               needsUsernameSetup: isGoogleUser, // New Google users need username setup
               provider: isGoogleUser ? 'google' : 'email',
             });
+
+            // Preload all data if user doesn't need username setup
+            // Keep loading screen visible until preload completes
+            if (!isGoogleUser) {
+              console.log('⏳ Keeping loading screen visible while preloading all data...');
+              // Run all preloads in parallel for faster loading
+              await Promise.all([
+                preloadFeed(firebaseUser.uid),
+                preloadSearchHistory(firebaseUser.uid),
+                preloadProfileData(firebaseUser.uid),
+              ]);
+              console.log('✅ All data preload complete - loading screen will now hide');
+            }
           }
         } catch (error) {
           console.error('Error loading user profile:', error);
@@ -125,10 +330,27 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     try {
       await authSignOut();
       setUser(null);
+      setPreloadedPosts(null);
+      setPreloadedSearchHistory(null);
+      setPreloadedProfilePosts(null);
+      setPreloadedRiotStats(null);
     } catch (error) {
       console.error('Failed to sign out:', error);
       throw error;
     }
+  };
+
+  const clearPreloadedPosts = () => {
+    setPreloadedPosts(null);
+  };
+
+  const clearPreloadedSearchHistory = () => {
+    setPreloadedSearchHistory(null);
+  };
+
+  const clearPreloadedProfileData = () => {
+    setPreloadedProfilePosts(null);
+    setPreloadedRiotStats(null);
   };
 
   return (
@@ -136,11 +358,18 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       value={{
         user,
         isLoading,
+        preloadedPosts,
+        preloadedSearchHistory,
+        preloadedProfilePosts,
+        preloadedRiotStats,
         setUser,
         refreshUser,
         signOut: handleSignOut,
         isAuthenticated: !!user,
         needsUsernameSetup: !!user?.needsUsernameSetup,
+        clearPreloadedPosts,
+        clearPreloadedSearchHistory,
+        clearPreloadedProfileData,
       }}
     >
       {children}

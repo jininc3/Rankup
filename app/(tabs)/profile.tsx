@@ -42,7 +42,7 @@ interface Post {
 
 export default function ProfileScreen() {
   const router = useRouter();
-  const { user, refreshUser } = useAuth();
+  const { user, refreshUser, preloadedProfilePosts, preloadedRiotStats, clearPreloadedProfileData } = useAuth();
   const [selectedGameIndex, setSelectedGameIndex] = useState(0);
   const [activeMainTab, setActiveMainTab] = useState<'rankCards' | 'clips'>('clips');
   const [posts, setPosts] = useState<Post[]>([]);
@@ -60,6 +60,8 @@ export default function ProfileScreen() {
   const [riotStats, setRiotStats] = useState<any>(null);
   const [tftStats, setTftStats] = useState<any>(null);
   const [valorantStats, setValorantStats] = useState<any>(null);
+  const [hasConsumedPreloadPosts, setHasConsumedPreloadPosts] = useState(false);
+  const [hasConsumedPreloadRiot, setHasConsumedPreloadRiot] = useState(false);
 
   // Dynamic games array based on Riot data
   const userGames = [
@@ -176,6 +178,7 @@ export default function ProfileScreen() {
   const fetchPosts = async () => {
     if (!user?.id) return;
 
+    console.log('🔄 fetchPosts called');
     setLoadingPosts(true);
     try {
       // Fetch all posts with just the where clause (no orderBy in query to avoid index requirement)
@@ -216,27 +219,58 @@ export default function ProfileScreen() {
     }
   };
 
-  // Fetch Riot data and posts when component mounts
+  // Consume preloaded profile posts from AuthContext (loaded during loading screen)
+  useEffect(() => {
+    if (preloadedProfilePosts && !hasConsumedPreloadPosts) {
+      console.log('✅ Using preloaded profile posts from loading screen:', preloadedProfilePosts.length);
+      setPosts(preloadedProfilePosts);
+      setLoadingPosts(false);
+      setHasConsumedPreloadPosts(true);
+    }
+  }, [preloadedProfilePosts, hasConsumedPreloadPosts]);
+
+  // Consume preloaded Riot stats from AuthContext (loaded during loading screen)
+  useEffect(() => {
+    if (preloadedRiotStats && !hasConsumedPreloadRiot) {
+      console.log('✅ Using preloaded Riot stats from loading screen');
+      setRiotStats(preloadedRiotStats);
+      setHasConsumedPreloadRiot(true);
+    }
+  }, [preloadedRiotStats, hasConsumedPreloadRiot]);
+
+  // Clear preloaded data after consumption
+  useEffect(() => {
+    if (hasConsumedPreloadPosts && hasConsumedPreloadRiot) {
+      clearPreloadedProfileData();
+    }
+  }, [hasConsumedPreloadPosts, hasConsumedPreloadRiot, clearPreloadedProfileData]);
+
+  // Fetch Riot data and posts when component mounts (only if no preloaded data)
   useEffect(() => {
     if (user?.id) {
-      fetchRiotData();
-      fetchPosts();
-    }
-  }, [user?.id]);
-
-  // Refetch Riot data when screen comes into focus (e.g., after linking account)
-  useFocusEffect(
-    useCallback(() => {
-      if (user?.id) {
-        // Force refresh when returning to this screen
-        fetchRiotData(true);
+      // Only fetch Riot data if we didn't get preloaded stats
+      if (!hasConsumedPreloadRiot && !preloadedRiotStats) {
+        fetchRiotData();
       }
-    }, [user?.id])
-  );
+      // Only fetch posts if we didn't get preloaded posts
+      if (!hasConsumedPreloadPosts && !preloadedProfilePosts) {
+        fetchPosts();
+      }
+    }
+  }, [user?.id, hasConsumedPreloadPosts, hasConsumedPreloadRiot, preloadedProfilePosts, preloadedRiotStats]);
+
+  // Note: Removed automatic refetch on focus for better performance
+  // Data now updates via:
+  // 1. Local state updates when creating/deleting posts
+  // 2. Pull-to-refresh for manual updates
+  // 3. Initial mount fetch
 
   // Refetch posts when filter or game filter changes
   useEffect(() => {
     if (user?.id) {
+      console.log('📊 Filter changed - selectedFilter:', selectedFilter, 'selectedGameFilter:', selectedGameFilter);
+      // Reset preload flag when filters change so we fetch fresh data
+      setHasConsumedPreloadPosts(false);
       fetchPosts();
     }
   }, [selectedFilter, selectedGameFilter]);
@@ -278,8 +312,27 @@ export default function ProfileScreen() {
     setSelectedPost(null);
   };
 
-  const handlePostCreated = () => {
-    fetchPosts();
+  const handlePostCreated = (newPost: Post) => {
+    // Add new post to the beginning of the posts array (most recent first)
+    setPosts(prevPosts => [newPost, ...prevPosts]);
+    console.log('New post added to local state:', newPost.id);
+  };
+
+  const handleCommentAdded = () => {
+    // Update comment count locally instead of refetching all posts
+    if (selectedPost) {
+      setPosts(prevPosts =>
+        prevPosts.map(post =>
+          post.id === selectedPost.id
+            ? { ...post, commentsCount: (post.commentsCount ?? 0) + 1 }
+            : post
+        )
+      );
+      // Also update the selected post in the modal
+      setSelectedPost(prev =>
+        prev ? { ...prev, commentsCount: (prev.commentsCount ?? 0) + 1 } : null
+      );
+    }
   };
 
   const handleFilterChange = (filter: 'newest' | 'oldest' | 'most_viewed' | 'most_liked', gameFilter: string | null) => {
@@ -618,7 +671,7 @@ export default function ProfileScreen() {
         userAvatar={user?.avatar}
         onClose={closePostViewer}
         onNavigate={handleNavigatePost}
-        onCommentAdded={fetchPosts}
+        onCommentAdded={handleCommentAdded}
       />
 
       {/* New Post Modal */}

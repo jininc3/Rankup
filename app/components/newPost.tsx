@@ -13,10 +13,28 @@ import { ActivityIndicator, Alert, Dimensions, Image, KeyboardAvoidingView, Moda
 
 const { width: screenWidth } = Dimensions.get('window');
 
+interface Post {
+  id: string;
+  userId: string;
+  username: string;
+  avatar?: string;
+  mediaUrl: string;
+  mediaUrls?: string[];
+  mediaType: 'image' | 'video';
+  mediaTypes?: string[];
+  thumbnailUrl?: string;
+  caption?: string;
+  taggedUsers?: any[];
+  taggedGame?: string;
+  createdAt: any;
+  likes: number;
+  commentsCount?: number;
+}
+
 interface NewPostProps {
   visible: boolean;
   onClose: () => void;
-  onPostCreated: () => void;
+  onPostCreated: (post: Post) => void;
 }
 
 // Available games for tagging
@@ -214,6 +232,13 @@ export default function NewPost({ visible, onClose, onPostCreated }: NewPostProp
 
       setUploading(false);
 
+      // Create the complete post object to pass back
+      const createdPost: Post = {
+        id: newPostId,
+        ...postData,
+        commentsCount: 0,
+      };
+
       // Reset state
       setSelectedMedia([]);
       setCurrentMediaIndex(0);
@@ -223,9 +248,9 @@ export default function NewPost({ visible, onClose, onPostCreated }: NewPostProp
 
       Alert.alert('Success', 'Post shared successfully!');
 
-      // Refresh user data and notify parent
+      // Refresh user data and notify parent with the new post
       await refreshUser();
-      onPostCreated();
+      onPostCreated(createdPost);
       onClose();
     } catch (error) {
       console.error('Error uploading post:', error);

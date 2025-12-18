@@ -450,6 +450,7 @@ export default function PostViewerModal({
           renderItem={renderPost}
           keyExtractor={(item) => item.id}
           showsVerticalScrollIndicator={false}
+          contentContainerStyle={styles.flatListContent}
           onScroll={handleScroll}
           onScrollBeginDrag={() => setIsScrolling(true)}
           onScrollEndDrag={() => {
@@ -500,6 +501,9 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: '#fff',
+  },
+  flatListContent: {
+    paddingBottom: 250,
   },
   leftEdgeSwipeArea: {
     position: 'absolute',
