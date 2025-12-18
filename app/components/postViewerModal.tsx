@@ -85,35 +85,24 @@ export default function PostViewerModal({
     }
   }, [visible]);
 
-  // Debug: Track comment modal state changes
-  useEffect(() => {
-    console.log('Comment modal visible state changed:', showCommentModal);
-    console.log('Selected post for comments:', selectedPostForComments?.id);
-  }, [showCommentModal, selectedPostForComments]);
-
   // Check which posts are liked
   useEffect(() => {
     const checkLikedPosts = async () => {
       if (!currentUser?.id || posts.length === 0) {
-        console.log('Skipping like check - no user or posts');
         return;
       }
 
-      console.log('Checking like status for', posts.length, 'posts');
       const likedSet = new Set<string>();
-      const likeCounts: { [postId: string]: number } = {};
+      const likeCounts: { [postId: string]: number} = {};
 
       for (const post of posts) {
         const liked = await isPostLiked(currentUser.id, post.id);
-        console.log(`Post ${post.id} is ${liked ? 'LIKED' : 'NOT LIKED'}`);
         if (liked) {
           likedSet.add(post.id);
         }
         likeCounts[post.id] = post.likes;
       }
 
-      console.log('Total liked posts:', likedSet.size);
-      console.log('Liked post IDs:', Array.from(likedSet));
       setLikedPosts(likedSet);
       setPostLikeCounts(likeCounts);
     };
@@ -263,7 +252,6 @@ export default function PostViewerModal({
 
   // Handle opening comment modal for a specific post
   const handleOpenComments = (postToView: Post) => {
-    console.log('Opening comments for post:', postToView.id);
     setSelectedPostForComments(postToView);
     setShowCommentModal(true);
   };
@@ -278,8 +266,6 @@ export default function PostViewerModal({
 
   // Handle like/unlike
   const handleLikeToggle = async (post: Post) => {
-    console.log('Like toggle pressed for post:', post.id);
-
     if (!currentUser?.id) {
       Alert.alert('Error', 'You must be logged in to like posts');
       return;
@@ -287,7 +273,6 @@ export default function PostViewerModal({
 
     // Prevent duplicate requests
     if (likingInProgress.has(post.id)) {
-      console.log('Like already in progress, skipping');
       return;
     }
 
@@ -388,7 +373,6 @@ export default function PostViewerModal({
   const renderPost = ({ item, index }: { item: Post; index: number }) => {
     const isLiked = likedPosts.has(item.id);
     const likeCount = postLikeCounts[item.id] ?? item.likes;
-    console.log(`Rendering post ${item.id}: isLiked=${isLiked}, likeCount=${likeCount}`);
 
     return (
       <PostContent

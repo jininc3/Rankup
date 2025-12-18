@@ -120,7 +120,6 @@ export default function HomeScreen() {
         // Remove current user from the list to avoid fetching own posts
         userIds = userIds.filter(id => id !== currentUser.id);
 
-        console.log('Following user IDs (excluding self):', userIds);
         setFollowingUserIds(userIds);
       } catch (error) {
         console.error('Error fetching following:', error);
@@ -256,12 +255,17 @@ export default function HomeScreen() {
       );
 
       if (isLoadMore) {
-        setFollowingPosts(prev => [...prev, ...postsWithAvatars]);
+        setFollowingPosts(prev => {
+          // Filter out duplicates by checking if post ID already exists
+          const existingIds = new Set(prev.map(p => p.id));
+          const newPosts = postsWithAvatars.filter(p => !existingIds.has(p.id));
+          return [...prev, ...newPosts];
+        });
       } else {
         setFollowingPosts(postsWithAvatars);
       }
 
-      // Update pagination state
+      // Update pagination state - if we got fewer posts than requested, there are no more
       setHasMore(postsWithAvatars.length === POSTS_PER_PAGE);
       if (postsWithAvatars.length > 0) {
         // Find the last document for pagination
@@ -276,7 +280,6 @@ export default function HomeScreen() {
         }
       }
 
-      console.log(`Fetched ${postsWithAvatars.length} posts`, isLoadMore ? '(load more)' : '(initial)');
     } catch (error) {
       console.error('Error fetching posts:', error);
       Alert.alert('Error', 'Failed to load posts. Please try again.');
@@ -291,7 +294,6 @@ export default function HomeScreen() {
   useEffect(() => {
     // Skip initial fetch if we have preloaded posts and no filters applied
     if (hasConsumedPreload && selectedGameFilter === null && activeTab === 'following') {
-      console.log('⏭️ Skipping initial fetch - using preloaded posts');
       return;
     }
 
@@ -483,7 +485,7 @@ export default function HomeScreen() {
             try {
               player.pause();
             } catch (error) {
-              console.log('Error pausing video:', error);
+              // Video already paused or unmounted
             }
           }
         });
@@ -566,12 +568,12 @@ export default function HomeScreen() {
           try {
             player.pause();
           } catch (error) {
-            console.log('Error pausing video:', error);
+            // Video already paused or unmounted
           }
         }
       });
     } catch (error) {
-      console.log('Error in video cleanup:', error);
+      // Video cleanup error
     }
 
     // Check if clicking on own profile

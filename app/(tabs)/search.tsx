@@ -248,7 +248,7 @@ export default function SearchScreen() {
         ) : searchQuery.trim() === '' && searchHistory.length > 0 ? (
           <View>
             <View style={styles.historyHeader}>
-              <ThemedText style={styles.historyTitle}>Recent Searches</ThemedText>
+              <ThemedText style={styles.historyTitle}>Recent</ThemedText>
               <TouchableOpacity onPress={clearHistory}>
                 <ThemedText style={styles.clearButton}>Clear All</ThemedText>
               </TouchableOpacity>
@@ -261,7 +261,6 @@ export default function SearchScreen() {
                 activeOpacity={0.7}
               >
                 <View style={styles.historyLeft}>
-                  <IconSymbol size={16} name="clock" color="#999" />
                   <View style={styles.historyAvatar}>
                     {user.avatar && user.avatar.startsWith('http') ? (
                       <Image source={{ uri: user.avatar }} style={styles.historyAvatarImage} />
@@ -483,7 +482,6 @@ const styles = StyleSheet.create({
     paddingHorizontal: 12,
     marginBottom: 4,
     borderRadius: 8,
-    backgroundColor: '#fafafa',
   },
   historyLeft: {
     flexDirection: 'row',

@@ -5,7 +5,7 @@ export default function LoadingScreen() {
   const fadeAnim = useRef(new Animated.Value(0)).current;
 
   useEffect(() => {
-    // Fade in and out animation
+    // Fade in, stay visible longer, then fade out
     Animated.sequence([
       Animated.timing(fadeAnim, {
         toValue: 1,
@@ -15,7 +15,7 @@ export default function LoadingScreen() {
       Animated.timing(fadeAnim, {
         toValue: 0,
         duration: 800,
-        delay: 500,
+        delay: 3000, // Stay visible for 3 seconds before fading out
         useNativeDriver: true,
       }),
     ]).start();

@@ -81,7 +81,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   // Preload feed posts while loading screen is shown
   const preloadFeed = async (userId: string) => {
     try {
-      console.log('🚀 Preloading feed during loading screen...');
       const POSTS_PER_PAGE = 8;
 
       // Get following users
@@ -92,7 +91,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       userIds = userIds.filter(id => id !== userId);
 
       if (userIds.length === 0) {
-        console.log('No following users, skipping preload');
         setPreloadedPosts([]);
         return;
       }
@@ -152,17 +150,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         }
       });
 
-      // Prefetch all images in parallel
+      // Prefetch all images in parallel (don't await - run in background)
       if (imageUrls.length > 0) {
-        console.log(`🖼️  Prefetching ${imageUrls.length} feed images...`);
-        await Promise.all(
-          imageUrls.map(url =>
-            Image.prefetch(url).catch(err => {
-              console.warn(`Failed to prefetch image: ${url}`, err);
-            })
-          )
+        Promise.all(
+          imageUrls.map(url => Image.prefetch(url).catch(() => {}))
         );
-        console.log(`✅ Prefetched ${imageUrls.length} feed images`);
       }
     } catch (error) {
       console.error('Error preloading feed:', error);
@@ -173,7 +165,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   // Preload search history while loading screen is shown
   const preloadSearchHistory = async (userId: string) => {
     try {
-      console.log('🚀 Preloading search history during loading screen...');
       const MAX_HISTORY_ITEMS = 7;
 
       const historyRef = collection(db, 'users', userId, 'searchHistory');
@@ -195,7 +186,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       });
 
       setPreloadedSearchHistory(history);
-      console.log(`✅ Preloaded ${history.length} search history items`);
 
       // Prefetch avatar images for instant rendering
       const avatarUrls: string[] = [];
@@ -206,15 +196,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       });
 
       if (avatarUrls.length > 0) {
-        console.log(`🖼️  Prefetching ${avatarUrls.length} search history avatars...`);
-        await Promise.all(
-          avatarUrls.map(url =>
-            Image.prefetch(url).catch(err => {
-              console.warn(`Failed to prefetch avatar: ${url}`, err);
-            })
-          )
+        Promise.all(
+          avatarUrls.map(url => Image.prefetch(url).catch(() => {}))
         );
-        console.log(`✅ Prefetched ${avatarUrls.length} search history avatars`);
       }
     } catch (error) {
       console.error('Error preloading search history:', error);
@@ -225,9 +209,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   // Preload profile posts and Riot stats while loading screen is shown
   const preloadProfileData = async (userId: string, userProfile?: any) => {
     try {
-      console.log('🚀 Preloading profile data during loading screen...');
-
-      // Prefetch user's avatar and cover photo first for instant header
+      // Prefetch user's avatar and cover photo first for instant header (CRITICAL - blocks loading)
       const headerImages: string[] = [];
       if (userProfile?.avatar) {
         headerImages.push(userProfile.avatar);
@@ -236,15 +218,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         headerImages.push(userProfile.coverPhoto);
       }
       if (headerImages.length > 0) {
-        console.log(`🖼️  Prefetching ${headerImages.length} profile header images...`);
         await Promise.all(
-          headerImages.map(url =>
-            Image.prefetch(url).catch(err => {
-              console.warn(`Failed to prefetch header image: ${url}`, err);
-            })
-          )
+          headerImages.map(url => Image.prefetch(url).catch(() => {}))
         );
-        console.log(`✅ Prefetched profile header images`);
       }
 
       // Preload user's posts
@@ -278,17 +254,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         }
       });
 
-      // Prefetch all images in parallel
+      // Prefetch all images in parallel (don't await - run in background)
       if (imageUrls.length > 0) {
-        console.log(`🖼️  Prefetching ${imageUrls.length} profile images...`);
-        await Promise.all(
-          imageUrls.map(url =>
-            Image.prefetch(url).catch(err => {
-              console.warn(`Failed to prefetch image: ${url}`, err);
-            })
-          )
+        Promise.all(
+          imageUrls.map(url => Image.prefetch(url).catch(() => {}))
         );
-        console.log(`✅ Prefetched ${imageUrls.length} profile images`);
       }
 
       // Preload Riot stats (import getLeagueStats at top)
@@ -302,12 +272,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             const leagueResponse = await getLeagueStats(false);
             if (leagueResponse.success && leagueResponse.stats) {
               setPreloadedRiotStats(leagueResponse.stats);
-              console.log('✅ Preloaded Riot stats');
             }
           }
         }
       } catch (error) {
-        console.error('Error preloading Riot stats:', error);
         setPreloadedRiotStats(null);
       }
     } catch (error) {
@@ -325,11 +293,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           const userProfile = await getUserProfile(firebaseUser.uid);
 
           if (userProfile) {
-            console.log('User profile loaded:', {
-              username: userProfile.username,
-              needsUsernameSetup: userProfile.needsUsernameSetup,
-              provider: userProfile.provider
-            });
             setUser({
               id: userProfile.id,
               username: userProfile.username,
@@ -349,19 +312,16 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             // Preload all data if user doesn't need username setup
             // Keep loading screen visible until preload completes
             if (!userProfile.needsUsernameSetup) {
-              console.log('⏳ Keeping loading screen visible while preloading all data...');
               // Run all preloads in parallel for faster loading
               await Promise.all([
                 preloadFeed(userProfile.id),
                 preloadSearchHistory(userProfile.id),
                 preloadProfileData(userProfile.id, userProfile),
               ]);
-              console.log('✅ All data preload complete - loading screen will now hide');
             }
           } else {
             // Fallback if profile doesn't exist (new user or race condition)
             const isGoogleUser = firebaseUser.providerData.some(p => p.providerId === 'google.com');
-            console.log('Using fallback user, isGoogle:', isGoogleUser);
             setUser({
               id: firebaseUser.uid,
               username: firebaseUser.displayName || firebaseUser.email?.split('@')[0] || 'User',
@@ -374,7 +334,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             // Preload all data if user doesn't need username setup
             // Keep loading screen visible until preload completes
             if (!isGoogleUser) {
-              console.log('⏳ Keeping loading screen visible while preloading all data...');
               // Run all preloads in parallel for faster loading
               await Promise.all([
                 preloadFeed(firebaseUser.uid),
@@ -384,7 +343,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
                   coverPhoto: undefined,
                 }),
               ]);
-              console.log('✅ All data preload complete - loading screen will now hide');
             }
           }
         } catch (error) {

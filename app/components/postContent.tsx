@@ -271,10 +271,7 @@ export default function PostContent({
         <View style={styles.leftActions} pointerEvents="box-none">
           <TouchableOpacity
             style={styles.actionButton}
-            onPress={() => {
-              console.log('Like button touched! Post ID:', post.id, 'isLiking:', isLiking);
-              onLikeToggle(post);
-            }}
+            onPress={() => onLikeToggle(post)}
             disabled={isLiking}
             activeOpacity={0.6}
             hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
@@ -287,10 +284,7 @@ export default function PostContent({
           </TouchableOpacity>
           <TouchableOpacity
             style={styles.actionButton}
-            onPress={() => {
-              console.log('Comment button touched! Post ID:', post.id);
-              onOpenComments(post);
-            }}
+            onPress={() => onOpenComments(post)}
             activeOpacity={0.6}
             hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
           >
