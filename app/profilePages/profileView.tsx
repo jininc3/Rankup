@@ -77,7 +77,7 @@ export default function ProfileViewScreen() {
   const [selectedGameIndex, setSelectedGameIndex] = useState(0);
   const [activeMainTab, setActiveMainTab] = useState<'rankCards' | 'clips'>('clips'); // Default to clips tab
   const [posts, setPosts] = useState<Post[]>([]);
-  const [loadingPosts, setLoadingPosts] = useState(false);
+  const [loadingPosts, setLoadingPosts] = useState(true);
   const [selectedPost, setSelectedPost] = useState<Post | null>(null);
   const [selectedPostIndex, setSelectedPostIndex] = useState(0);
   const [showPostViewer, setShowPostViewer] = useState(false);
@@ -88,6 +88,10 @@ export default function ProfileViewScreen() {
 
   // Get userId from params - this is required for profileView
   const userId = params.userId as string;
+
+  // Get optional preloaded data from params for instant display
+  const preloadedUsername = params.username as string | undefined;
+  const preloadedAvatar = params.avatar as string | undefined;
 
   // Redirect to own profile if trying to view yourself
   useEffect(() => {
@@ -120,13 +124,23 @@ export default function ProfileViewScreen() {
     setSelectedGameIndex(index);
   };
 
-  // Fetch viewed user's profile data
-  const fetchUserProfile = async () => {
-    if (!userId) return;
+  // Parallel data fetching - fetch all data at once for faster load
+  const fetchAllData = async () => {
+    if (!userId || !currentUser?.id) return;
 
-    setLoadingUser(true);
     try {
-      const userDoc = await getDoc(doc(db, 'users', userId));
+      // Fetch user profile, posts, and follow status in parallel
+      const [userDoc, postsSnapshot, followStatus] = await Promise.all([
+        getDoc(doc(db, 'users', userId)),
+        getDocs(query(
+          collection(db, 'posts'),
+          where('userId', '==', userId),
+          orderBy('createdAt', 'desc')
+        )),
+        checkIsFollowing(currentUser.id, userId)
+      ]);
+
+      // Update user profile
       if (userDoc.exists()) {
         const data = userDoc.data();
         setViewedUser({
@@ -142,15 +156,27 @@ export default function ProfileViewScreen() {
           followersCount: data.followersCount || 0,
           followingCount: data.followingCount || 0,
         });
+        setLoadingUser(false);
       }
+
+      // Update posts
+      const fetchedPosts: Post[] = postsSnapshot.docs.map(doc => ({
+        id: doc.id,
+        ...doc.data()
+      } as Post));
+      setPosts(fetchedPosts);
+      setLoadingPosts(false);
+
+      // Update follow status
+      setIsFollowing(followStatus);
     } catch (error) {
-      console.error('Error fetching user profile:', error);
-    } finally {
+      console.error('Error fetching profile data:', error);
       setLoadingUser(false);
+      setLoadingPosts(false);
     }
   };
 
-  // Fetch user's posts from Firestore
+  // Fetch posts only (for refresh)
   const fetchPosts = async () => {
     if (!userId) return;
 
@@ -176,23 +202,28 @@ export default function ProfileViewScreen() {
     }
   };
 
-  // Fetch user profile and posts when component mounts
+  // Set preloaded data immediately for instant display
   useEffect(() => {
-    if (userId) {
-      fetchUserProfile();
-      fetchPosts();
+    if (preloadedUsername || preloadedAvatar) {
+      setViewedUser({
+        id: userId,
+        username: preloadedUsername || 'User',
+        email: '',
+        avatar: preloadedAvatar,
+        postsCount: 0,
+        followersCount: 0,
+        followingCount: 0,
+      });
+      setLoadingUser(false); // Show immediately, will update when real data arrives
     }
-  }, [userId]);
+  }, [userId, preloadedUsername, preloadedAvatar]);
 
-  // Refetch when screen comes into focus
-  useFocusEffect(
-    useCallback(() => {
-      if (userId) {
-        fetchUserProfile();
-        fetchPosts();
-      }
-    }, [userId])
-  );
+  // Fetch all data when component mounts (only once)
+  useEffect(() => {
+    if (userId && currentUser?.id) {
+      fetchAllData();
+    }
+  }, [userId, currentUser?.id]);
 
   const handlePostPress = (post: Post, index: number) => {
     setSelectedPost(post);
@@ -203,18 +234,6 @@ export default function ProfileViewScreen() {
   const closePostViewer = () => {
     setShowPostViewer(false);
     setSelectedPost(null);
-  };
-
-  // Check if current user is following this profile
-  const checkFollowStatus = async () => {
-    if (!currentUser?.id || !userId) return;
-
-    try {
-      const following = await checkIsFollowing(currentUser.id, userId);
-      setIsFollowing(following);
-    } catch (error) {
-      console.error('Error checking follow status:', error);
-    }
   };
 
   // Follow/Unfollow handler
@@ -269,11 +288,6 @@ export default function ProfileViewScreen() {
       setFollowLoading(false);
     }
   };
-
-  // Check follow status on mount
-  useEffect(() => {
-    checkFollowStatus();
-  }, [currentUser?.id, userId]);
 
   // Handle message button
   const handleMessage = async () => {
@@ -359,30 +373,42 @@ export default function ProfileViewScreen() {
           <View style={styles.profileTopRow}>
             {/* Avatar on the left, overlapping cover */}
             <View style={styles.avatarContainer}>
-              <View style={styles.avatarCircle}>
-                {viewedUser?.avatar && viewedUser.avatar.startsWith('http') ? (
-                  <Image source={{ uri: viewedUser.avatar }} style={styles.avatarImage} />
-                ) : (
-                  <ThemedText style={styles.avatarInitial}>
-                    {viewedUser?.avatar || viewedUser?.username?.[0]?.toUpperCase() || 'U'}
-                  </ThemedText>
-                )}
-              </View>
+              {loadingUser && !viewedUser ? (
+                <View style={[styles.avatarCircle, styles.skeletonAvatar]} />
+              ) : (
+                <View style={styles.avatarCircle}>
+                  {viewedUser?.avatar && viewedUser.avatar.startsWith('http') ? (
+                    <Image source={{ uri: viewedUser.avatar }} style={styles.avatarImage} />
+                  ) : (
+                    <ThemedText style={styles.avatarInitial}>
+                      {viewedUser?.avatar || viewedUser?.username?.[0]?.toUpperCase() || 'U'}
+                    </ThemedText>
+                  )}
+                </View>
+              )}
             </View>
 
             {/* Username and Stats on the right */}
             <View style={styles.profileInfoRight}>
               {/* Username */}
-              <ThemedText style={styles.username}>{viewedUser?.username || 'User'}</ThemedText>
+              {loadingUser && !viewedUser ? (
+                <View style={[styles.skeletonText, { width: 120, height: 24, marginBottom: 12 }]} />
+              ) : (
+                <ThemedText style={styles.username}>{viewedUser?.username || 'User'}</ThemedText>
+              )}
 
               {/* Stats in One Line */}
-              <View style={styles.statsRow}>
-                <ThemedText style={styles.statText}>{viewedUser?.postsCount || 0} Posts</ThemedText>
-                <ThemedText style={styles.statDividerText}> | </ThemedText>
-                <ThemedText style={styles.statText}>{viewedUser?.followersCount || 0} Followers</ThemedText>
-                <ThemedText style={styles.statDividerText}> | </ThemedText>
-                <ThemedText style={styles.statText}>{viewedUser?.followingCount || 0} Following</ThemedText>
-              </View>
+              {loadingUser && !viewedUser ? (
+                <View style={[styles.skeletonText, { width: 200, height: 16 }]} />
+              ) : (
+                <View style={styles.statsRow}>
+                  <ThemedText style={styles.statText}>{viewedUser?.postsCount || 0} Posts</ThemedText>
+                  <ThemedText style={styles.statDividerText}> | </ThemedText>
+                  <ThemedText style={styles.statText}>{viewedUser?.followersCount || 0} Followers</ThemedText>
+                  <ThemedText style={styles.statDividerText}> | </ThemedText>
+                  <ThemedText style={styles.statText}>{viewedUser?.followingCount || 0} Following</ThemedText>
+                </View>
+              )}
             </View>
           </View>
 
@@ -433,47 +459,44 @@ export default function ProfileViewScreen() {
           </TouchableOpacity>
         </View>
 
-        {activeMainTab === 'clips' && (
-          <View style={styles.postsSection}>
-            {loadingPosts ? (
-              <View style={styles.postsContainer}>
-                <ActivityIndicator size="large" color="#000" />
-                <ThemedText style={styles.loadingText}>Loading posts...</ThemedText>
-              </View>
-            ) : posts.length > 0 ? (
-              <View style={styles.postsGrid}>
-                {posts.map((post, index) => (
-                  <TouchableOpacity
-                    key={post.id}
-                    style={styles.postItem}
-                    onPress={() => handlePostPress(post, index)}
-                    activeOpacity={0.7}
-                  >
-                    <Image
-                      source={{ uri: post.mediaType === 'video' && post.thumbnailUrl ? post.thumbnailUrl : post.mediaUrl }}
-                      style={styles.postImage}
-                      resizeMode="cover"
-                    />
-                    {post.mediaType === 'video' && (
-                      <View style={styles.videoIndicator}>
-                        <IconSymbol size={24} name="play.fill" color="#fff" />
-                      </View>
-                    )}
-                  </TouchableOpacity>
-                ))}
-              </View>
-            ) : (
-              <View style={styles.postsContainer}>
-                <IconSymbol size={48} name="square.stack.3d.up" color="#ccc" />
-                <ThemedText style={styles.emptyStateText}>No posts yet</ThemedText>
-              </View>
-            )}
-          </View>
-        )}
+        <View style={[styles.postsSection, { display: activeMainTab === 'clips' ? 'flex' : 'none' }]}>
+          {loadingPosts ? (
+            <View style={styles.postsContainer}>
+              <ActivityIndicator size="large" color="#000" />
+              <ThemedText style={styles.loadingText}>Loading posts...</ThemedText>
+            </View>
+          ) : posts.length > 0 ? (
+            <View style={styles.postsGrid}>
+              {posts.map((post, index) => (
+                <TouchableOpacity
+                  key={post.id}
+                  style={styles.postItem}
+                  onPress={() => handlePostPress(post, index)}
+                  activeOpacity={0.7}
+                >
+                  <Image
+                    source={{ uri: post.mediaType === 'video' && post.thumbnailUrl ? post.thumbnailUrl : post.mediaUrl }}
+                    style={styles.postImage}
+                    resizeMode="cover"
+                  />
+                  {post.mediaType === 'video' && (
+                    <View style={styles.videoIndicator}>
+                      <IconSymbol size={24} name="play.fill" color="#fff" />
+                    </View>
+                  )}
+                </TouchableOpacity>
+              ))}
+            </View>
+          ) : (
+            <View style={styles.postsContainer}>
+              <IconSymbol size={48} name="square.stack.3d.up" color="#ccc" />
+              <ThemedText style={styles.emptyStateText}>No posts yet</ThemedText>
+            </View>
+          )}
+        </View>
 
         {/* RankCards Tab Content */}
-        {activeMainTab === 'rankCards' && (
-        <View style={styles.section}>
+        <View style={[styles.section, { display: activeMainTab === 'rankCards' ? 'flex' : 'none' }]}>
           {/* Game Icon Selector */}
           <ScrollView
             horizontal
@@ -531,7 +554,6 @@ export default function ProfileViewScreen() {
             ))}
           </ScrollView>
         </View>
-        )}
       </ScrollView>
 
       {/* Post Viewer Modal */}
@@ -871,5 +893,12 @@ const styles = StyleSheet.create({
     height: 32,
     alignItems: 'center',
     justifyContent: 'center',
+  },
+  skeletonAvatar: {
+    backgroundColor: '#e5e5e5',
+  },
+  skeletonText: {
+    backgroundColor: '#e5e5e5',
+    borderRadius: 4,
   },
 });

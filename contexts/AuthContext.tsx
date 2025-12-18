@@ -5,6 +5,7 @@ import { getUserProfile, signOut as authSignOut } from '@/services/authService';
 import type { UserProfile } from '@/services/authService';
 import { collection, query, where, getDocs, orderBy, limit, Timestamp } from 'firebase/firestore';
 import { getFollowing } from '@/services/followService';
+import { Image } from 'react-native';
 
 interface User {
   id: string;
@@ -131,6 +132,38 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
       setPreloadedPosts(postsToShow);
       console.log(`✅ Preloaded ${postsToShow.length} posts`);
+
+      // Prefetch feed images for instant rendering
+      const imageUrls: string[] = [];
+      postsToShow.forEach(post => {
+        // Add user avatar
+        if (post.avatar) {
+          imageUrls.push(post.avatar);
+        }
+        // Add thumbnail for videos, or main image for images
+        if (post.mediaType === 'video' && post.thumbnailUrl) {
+          imageUrls.push(post.thumbnailUrl);
+        } else if (post.mediaUrl) {
+          imageUrls.push(post.mediaUrl);
+        }
+        // Also prefetch additional media if present
+        if (post.mediaUrls && post.mediaUrls.length > 1) {
+          post.mediaUrls.forEach(url => imageUrls.push(url));
+        }
+      });
+
+      // Prefetch all images in parallel
+      if (imageUrls.length > 0) {
+        console.log(`🖼️  Prefetching ${imageUrls.length} feed images...`);
+        await Promise.all(
+          imageUrls.map(url =>
+            Image.prefetch(url).catch(err => {
+              console.warn(`Failed to prefetch image: ${url}`, err);
+            })
+          )
+        );
+        console.log(`✅ Prefetched ${imageUrls.length} feed images`);
+      }
     } catch (error) {
       console.error('Error preloading feed:', error);
       setPreloadedPosts([]);
@@ -163,6 +196,26 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
       setPreloadedSearchHistory(history);
       console.log(`✅ Preloaded ${history.length} search history items`);
+
+      // Prefetch avatar images for instant rendering
+      const avatarUrls: string[] = [];
+      history.forEach(user => {
+        if (user.avatar) {
+          avatarUrls.push(user.avatar);
+        }
+      });
+
+      if (avatarUrls.length > 0) {
+        console.log(`🖼️  Prefetching ${avatarUrls.length} search history avatars...`);
+        await Promise.all(
+          avatarUrls.map(url =>
+            Image.prefetch(url).catch(err => {
+              console.warn(`Failed to prefetch avatar: ${url}`, err);
+            })
+          )
+        );
+        console.log(`✅ Prefetched ${avatarUrls.length} search history avatars`);
+      }
     } catch (error) {
       console.error('Error preloading search history:', error);
       setPreloadedSearchHistory([]);
@@ -170,9 +223,29 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   };
 
   // Preload profile posts and Riot stats while loading screen is shown
-  const preloadProfileData = async (userId: string) => {
+  const preloadProfileData = async (userId: string, userProfile?: any) => {
     try {
       console.log('🚀 Preloading profile data during loading screen...');
+
+      // Prefetch user's avatar and cover photo first for instant header
+      const headerImages: string[] = [];
+      if (userProfile?.avatar) {
+        headerImages.push(userProfile.avatar);
+      }
+      if (userProfile?.coverPhoto) {
+        headerImages.push(userProfile.coverPhoto);
+      }
+      if (headerImages.length > 0) {
+        console.log(`🖼️  Prefetching ${headerImages.length} profile header images...`);
+        await Promise.all(
+          headerImages.map(url =>
+            Image.prefetch(url).catch(err => {
+              console.warn(`Failed to prefetch header image: ${url}`, err);
+            })
+          )
+        );
+        console.log(`✅ Prefetched profile header images`);
+      }
 
       // Preload user's posts
       const postsQuery = query(
@@ -189,6 +262,34 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       fetchedPosts.sort((a, b) => b.createdAt.toMillis() - a.createdAt.toMillis());
       setPreloadedProfilePosts(fetchedPosts);
       console.log(`✅ Preloaded ${fetchedPosts.length} profile posts`);
+
+      // Prefetch images for instant rendering
+      const imageUrls: string[] = [];
+      fetchedPosts.forEach(post => {
+        // Add thumbnail for videos, or main image for images
+        if (post.mediaType === 'video' && post.thumbnailUrl) {
+          imageUrls.push(post.thumbnailUrl);
+        } else if (post.mediaUrl) {
+          imageUrls.push(post.mediaUrl);
+        }
+        // Also prefetch additional media if present
+        if (post.mediaUrls && post.mediaUrls.length > 1) {
+          post.mediaUrls.forEach(url => imageUrls.push(url));
+        }
+      });
+
+      // Prefetch all images in parallel
+      if (imageUrls.length > 0) {
+        console.log(`🖼️  Prefetching ${imageUrls.length} profile images...`);
+        await Promise.all(
+          imageUrls.map(url =>
+            Image.prefetch(url).catch(err => {
+              console.warn(`Failed to prefetch image: ${url}`, err);
+            })
+          )
+        );
+        console.log(`✅ Prefetched ${imageUrls.length} profile images`);
+      }
 
       // Preload Riot stats (import getLeagueStats at top)
       try {
@@ -253,7 +354,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
               await Promise.all([
                 preloadFeed(userProfile.id),
                 preloadSearchHistory(userProfile.id),
-                preloadProfileData(userProfile.id),
+                preloadProfileData(userProfile.id, userProfile),
               ]);
               console.log('✅ All data preload complete - loading screen will now hide');
             }
@@ -278,7 +379,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
               await Promise.all([
                 preloadFeed(firebaseUser.uid),
                 preloadSearchHistory(firebaseUser.uid),
-                preloadProfileData(firebaseUser.uid),
+                preloadProfileData(firebaseUser.uid, {
+                  avatar: firebaseUser.photoURL,
+                  coverPhoto: undefined,
+                }),
               ]);
               console.log('✅ All data preload complete - loading screen will now hide');
             }
