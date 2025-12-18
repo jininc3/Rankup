@@ -79,7 +79,7 @@ export default function NewPost({ visible, onClose, onPostCreated }: NewPostProp
     });
 
     if (!result.canceled && result.assets && result.assets.length > 0) {
-      const MAX_VIDEO_SIZE_MB = 50;
+      const MAX_VIDEO_SIZE_MB = 20;
       const MAX_VIDEO_SIZE_BYTES = MAX_VIDEO_SIZE_MB * 1024 * 1024;
 
       // Check video file size
@@ -375,7 +375,7 @@ export default function NewPost({ visible, onClose, onPostCreated }: NewPostProp
                 </View>
                 <ThemedText style={styles.addPhotoText}>Add Photo or Video</ThemedText>
                 <ThemedText style={styles.addPhotoSubtext}>Tap to select from your library</ThemedText>
-                <ThemedText style={styles.addPhotoLimitText}>Video limit: 50 MB</ThemedText>
+                <ThemedText style={styles.addPhotoLimitText}>Video limit: 20 MB</ThemedText>
               </TouchableOpacity>
             ) : (
               <>
