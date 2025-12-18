@@ -8,7 +8,7 @@ import { ThemedView } from '@/components/themed-view';
 import { IconSymbol } from '@/components/ui/icon-symbol';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { useRef, useState, useEffect, useCallback } from 'react';
-import { Dimensions, Image, Modal, ScrollView, StyleSheet, TouchableOpacity, View, ActivityIndicator, Alert } from 'react-native';
+import { Dimensions, Image, Modal, ScrollView, StyleSheet, TouchableOpacity, View, ActivityIndicator, Alert, Linking } from 'react-native';
 import { useAuth } from '@/contexts/AuthContext';
 import { useFocusEffect } from '@react-navigation/native';
 import { Video, ResizeMode } from 'expo-av';
@@ -318,7 +318,15 @@ export default function ProfilePreviewScreen() {
               </TouchableOpacity>
             )}
             {viewedUser?.instagramLink && (
-              <TouchableOpacity style={styles.socialIconButton}>
+              <TouchableOpacity
+                style={styles.socialIconButton}
+                onPress={() => {
+                  const url = viewedUser.instagramLink!.startsWith('http')
+                    ? viewedUser.instagramLink!
+                    : `https://instagram.com/${viewedUser.instagramLink}`;
+                  Linking.openURL(url);
+                }}
+              >
                 <Image
                   source={require('@/assets/images/instagram.png')}
                   style={styles.socialIcon}

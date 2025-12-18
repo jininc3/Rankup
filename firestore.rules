@@ -85,13 +85,15 @@ service cloud.firestore {
       // Anyone can read posts
       allow read: if true;
 
-      // Only authenticated users can create posts
+      // Only authenticated users can create posts (max 5 posts per user)
       allow create: if request.auth != null
                     && request.resource.data.userId == request.auth.uid
                     && request.resource.data.keys().hasAll(['userId', 'username', 'mediaUrl', 'mediaType', 'createdAt', 'likes'])
                     && request.resource.data.mediaType in ['image', 'video']
                     && request.resource.data.likes is number
-                    && request.resource.data.createdAt is timestamp;
+                    && request.resource.data.createdAt is timestamp
+                    // Enforce 5-post limit - check user's current post count
+                    && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.postsCount < 5;
 
       // Allow owner to update their posts OR anyone to update likes/commentsCount
       allow update: if request.auth != null

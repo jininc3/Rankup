@@ -34,6 +34,7 @@ export default function ChatScreen() {
   const [sending, setSending] = useState(false);
   const [chat, setChat] = useState<Chat | null>(null);
   const flatListRef = useRef<FlatList>(null);
+  const hasMarkedInitialRead = useRef(false);
 
   const chatId = params.chatId as string;
   const otherUserId = params.otherUserId as string;
@@ -58,9 +59,27 @@ export default function ChatScreen() {
 
   // Subscribe to messages
   useEffect(() => {
-    if (!chatId) return;
+    if (!chatId || !currentUser?.id) return;
+
+    // Reset the flag when chatId changes
+    hasMarkedInitialRead.current = false;
 
     const unsubscribe = subscribeToMessages(chatId, (newMessages) => {
+      // Check if there are unread messages from the other user
+      const hasUnreadFromOther = newMessages.some(
+        msg => msg.senderId !== currentUser.id && !msg.read
+      );
+
+      // Mark as read if:
+      // 1. This is the first load (initial open), OR
+      // 2. There are new unread messages from the other user
+      if (hasUnreadFromOther || !hasMarkedInitialRead.current) {
+        if (hasUnreadFromOther) {
+          markMessagesAsRead(chatId, currentUser.id);
+        }
+        hasMarkedInitialRead.current = true;
+      }
+
       setMessages(newMessages);
       setLoading(false);
 
@@ -71,14 +90,7 @@ export default function ChatScreen() {
     });
 
     return () => unsubscribe();
-  }, [chatId]);
-
-  // Mark messages as read when screen is focused
-  useEffect(() => {
-    if (!chatId || !currentUser?.id) return;
-
-    markMessagesAsRead(chatId, currentUser.id);
-  }, [chatId, currentUser?.id, messages.length]);
+  }, [chatId, currentUser?.id]);
 
   const handleSend = async () => {
     if (!messageText.trim() || !chatId || !currentUser?.id) return;

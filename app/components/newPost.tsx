@@ -79,6 +79,28 @@ export default function NewPost({ visible, onClose, onPostCreated }: NewPostProp
     });
 
     if (!result.canceled && result.assets && result.assets.length > 0) {
+      const MAX_VIDEO_SIZE_MB = 50;
+      const MAX_VIDEO_SIZE_BYTES = MAX_VIDEO_SIZE_MB * 1024 * 1024;
+
+      // Check video file size
+      for (const asset of result.assets) {
+        if (asset.type === 'video') {
+          // Get file size
+          const response = await fetch(asset.uri);
+          const blob = await response.blob();
+          const fileSizeInMB = (blob.size / (1024 * 1024)).toFixed(2);
+
+          if (blob.size > MAX_VIDEO_SIZE_BYTES) {
+            Alert.alert(
+              'Video Too Large',
+              `The selected video is ${fileSizeInMB} MB. Please select a video under ${MAX_VIDEO_SIZE_MB} MB.`,
+              [{ text: 'OK' }]
+            );
+            return; // Don't add the video
+          }
+        }
+      }
+
       setSelectedMedia([...selectedMedia, ...result.assets]);
       if (selectedMedia.length === 0) {
         setCurrentMediaIndex(0);
@@ -97,6 +119,19 @@ export default function NewPost({ visible, onClose, onPostCreated }: NewPostProp
 
   const handleSharePost = async () => {
     if (!user?.id) return;
+
+    // Check post limit
+    const MAX_POSTS = 5;
+    const currentPostCount = user.postsCount || 0;
+
+    if (currentPostCount >= MAX_POSTS) {
+      Alert.alert(
+        'Post Limit Reached',
+        `You've reached the maximum of ${MAX_POSTS} posts. Please delete a post before creating a new one.`,
+        [{ text: 'OK' }]
+      );
+      return;
+    }
 
     // Validate that at least one photo/video is selected
     if (selectedMedia.length === 0) {
@@ -340,6 +375,7 @@ export default function NewPost({ visible, onClose, onPostCreated }: NewPostProp
                 </View>
                 <ThemedText style={styles.addPhotoText}>Add Photo or Video</ThemedText>
                 <ThemedText style={styles.addPhotoSubtext}>Tap to select from your library</ThemedText>
+                <ThemedText style={styles.addPhotoLimitText}>Video limit: 50 MB</ThemedText>
               </TouchableOpacity>
             ) : (
               <>
@@ -714,6 +750,11 @@ const styles = StyleSheet.create({
   addPhotoSubtext: {
     fontSize: 14,
     color: '#999',
+  },
+  addPhotoLimitText: {
+    fontSize: 12,
+    color: '#666',
+    marginTop: 8,
   },
   addMorePhotosButton: {
     flexDirection: 'row',
