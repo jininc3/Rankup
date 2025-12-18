@@ -537,53 +537,50 @@ export default function ProfileScreen() {
           )}
         </View>
 
-        {activeMainTab === 'clips' && (
-          <View style={styles.postsSection}>
-            {loadingPosts ? (
-              <View style={styles.postsContainer}>
-                <ActivityIndicator size="large" color="#000" />
-                <ThemedText style={styles.loadingText}>Loading posts...</ThemedText>
-              </View>
-            ) : posts.length > 0 ? (
-              <View style={styles.postsGrid}>
-                {posts.map((post) => (
-                  <TouchableOpacity
-                    key={post.id}
-                    style={styles.postItem}
-                    onPress={() => handlePostPress(post)}
-                    activeOpacity={0.7}
-                  >
-                    <Image
-                      source={{ uri: post.mediaType === 'video' && post.thumbnailUrl ? post.thumbnailUrl : post.mediaUrl }}
-                      style={styles.postImage}
-                      resizeMode="cover"
-                    />
-                    {post.mediaType === 'video' && (
-                      <View style={styles.videoIndicator}>
-                        <IconSymbol size={24} name="play.fill" color="#fff" />
-                      </View>
-                    )}
-                    {post.mediaUrls && post.mediaUrls.length > 1 && (
-                      <View style={styles.multiplePostsIndicator}>
-                        <IconSymbol size={20} name="square.on.square" color="#fff" />
-                      </View>
-                    )}
-                  </TouchableOpacity>
-                ))}
-              </View>
-            ) : (
-              <View style={styles.postsContainer}>
-                <IconSymbol size={48} name="square.stack.3d.up" color="#ccc" />
-                <ThemedText style={styles.emptyStateText}>No posts yet</ThemedText>
-                <ThemedText style={styles.emptyStateSubtext}>Share your gaming achievements with the community</ThemedText>
-              </View>
-            )}
-          </View>
-        )}
+        <View style={[styles.postsSection, { display: activeMainTab === 'clips' ? 'flex' : 'none' }]}>
+          {loadingPosts ? (
+            <View style={styles.postsContainer}>
+              <ActivityIndicator size="large" color="#000" />
+              <ThemedText style={styles.loadingText}>Loading posts...</ThemedText>
+            </View>
+          ) : posts.length > 0 ? (
+            <View style={styles.postsGrid}>
+              {posts.map((post) => (
+                <TouchableOpacity
+                  key={post.id}
+                  style={styles.postItem}
+                  onPress={() => handlePostPress(post)}
+                  activeOpacity={0.7}
+                >
+                  <Image
+                    source={{ uri: post.mediaType === 'video' && post.thumbnailUrl ? post.thumbnailUrl : post.mediaUrl }}
+                    style={styles.postImage}
+                    resizeMode="cover"
+                  />
+                  {post.mediaType === 'video' && (
+                    <View style={styles.videoIndicator}>
+                      <IconSymbol size={24} name="play.fill" color="#fff" />
+                    </View>
+                  )}
+                  {post.mediaUrls && post.mediaUrls.length > 1 && (
+                    <View style={styles.multiplePostsIndicator}>
+                      <IconSymbol size={20} name="square.on.square" color="#fff" />
+                    </View>
+                  )}
+                </TouchableOpacity>
+              ))}
+            </View>
+          ) : (
+            <View style={styles.postsContainer}>
+              <IconSymbol size={48} name="square.stack.3d.up" color="#ccc" />
+              <ThemedText style={styles.emptyStateText}>No posts yet</ThemedText>
+              <ThemedText style={styles.emptyStateSubtext}>Share your gaming achievements with the community</ThemedText>
+            </View>
+          )}
+        </View>
 
         {/* RankCards Tab Content */}
-        {activeMainTab === 'rankCards' && (
-        <View style={styles.section}>
+        <View style={[styles.section, { display: activeMainTab === 'rankCards' ? 'flex' : 'none' }]}>
           {/* Game Icon Selector */}
           <ScrollView
             horizontal
@@ -648,7 +645,6 @@ export default function ProfileScreen() {
             })}
           </ScrollView>
         </View>
-        )}
       </ScrollView>
 
       {/* Floating Add Post Button - only visible on Clips tab */}
