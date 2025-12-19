@@ -760,11 +760,7 @@ export default function HomeScreen() {
         transparent={true}
         onRequestClose={() => setShowFilterMenu(false)}
       >
-        <TouchableOpacity
-          style={styles.filterModalOverlay}
-          activeOpacity={1}
-          onPress={() => setShowFilterMenu(false)}
-        >
+        <View style={styles.filterModalContainer}>
           <View style={styles.filterModalContent}>
             <View style={styles.filterModalHeader}>
               <ThemedText style={styles.filterModalTitle}>Filter by Game</ThemedText>
@@ -786,13 +782,13 @@ export default function HomeScreen() {
                   }}
                 >
                   <View style={styles.filterOptionLeft}>
-                    <IconSymbol size={22} name="square.grid.2x2" color={selectedGameFilter === null ? '#007AFF' : '#000'} />
+                    <IconSymbol size={22} name="square.grid.2x2" color={selectedGameFilter === null ? '#000' : '#666'} />
                     <ThemedText style={[styles.filterOptionText, selectedGameFilter === null && styles.filterOptionTextActive]}>
                       All Games
                     </ThemedText>
                   </View>
                   {selectedGameFilter === null && (
-                    <IconSymbol size={22} name="checkmark" color="#007AFF" />
+                    <IconSymbol size={20} name="checkmark.circle.fill" color="#000" />
                   )}
                 </TouchableOpacity>
 
@@ -821,14 +817,14 @@ export default function HomeScreen() {
                       </ThemedText>
                     </View>
                     {selectedGameFilter === game.id && (
-                      <IconSymbol size={22} name="checkmark" color="#007AFF" />
+                      <IconSymbol size={20} name="checkmark.circle.fill" color="#000" />
                     )}
                   </TouchableOpacity>
                 ))}
               </View>
             </ScrollView>
           </View>
-        </TouchableOpacity>
+        </View>
       </Modal>
 
       {/* Comment Modal */}
@@ -966,24 +962,28 @@ const styles = StyleSheet.create({
     color: '#999',
     textAlign: 'center',
   },
-  filterModalOverlay: {
+  filterModalContainer: {
     flex: 1,
-    backgroundColor: 'transparent',
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
     justifyContent: 'flex-end',
   },
   filterModalContent: {
+    height: '70%',
     backgroundColor: '#fff',
-    borderTopLeftRadius: 20,
-    borderTopRightRadius: 20,
-    paddingBottom: 40,
-    maxHeight: '80%',
+    borderTopLeftRadius: 24,
+    borderTopRightRadius: 24,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: -4 },
+    shadowOpacity: 0.1,
+    shadowRadius: 12,
+    elevation: 8,
   },
   filterModalHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    paddingHorizontal: 20,
-    paddingVertical: 20,
+    paddingHorizontal: 24,
+    paddingVertical: 24,
     borderBottomWidth: 1,
     borderBottomColor: '#e5e5e5',
   },
@@ -991,37 +991,39 @@ const styles = StyleSheet.create({
     maxHeight: 500,
   },
   filterModalTitle: {
-    fontSize: 18,
-    fontWeight: '600',
+    fontSize: 20,
+    fontWeight: '700',
     color: '#000',
+    letterSpacing: -0.3,
   },
   filterOptionsContainer: {
-    paddingVertical: 8,
+    paddingVertical: 12,
   },
   filterOption: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    paddingHorizontal: 20,
-    paddingVertical: 16,
+    paddingHorizontal: 24,
+    paddingVertical: 18,
     borderBottomWidth: 1,
     borderBottomColor: '#f5f5f5',
   },
   filterOptionActive: {
-    backgroundColor: '#f8f9fa',
+    backgroundColor: '#fafafa',
   },
   filterOptionLeft: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 12,
+    gap: 14,
   },
   filterOptionText: {
     fontSize: 16,
     color: '#000',
     fontWeight: '500',
+    letterSpacing: -0.2,
   },
   filterOptionTextActive: {
-    color: '#007AFF',
+    color: '#000',
     fontWeight: '600',
   },
   gameFilterIcon: {
