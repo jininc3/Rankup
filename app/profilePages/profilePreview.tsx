@@ -9,6 +9,7 @@ import { IconSymbol } from '@/components/ui/icon-symbol';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { useRef, useState, useEffect, useCallback } from 'react';
 import { Dimensions, Image, Modal, ScrollView, StyleSheet, TouchableOpacity, View, ActivityIndicator, Alert, Linking } from 'react-native';
+import * as Clipboard from 'expo-clipboard';
 import { useAuth } from '@/contexts/AuthContext';
 import { useFocusEffect } from '@react-navigation/native';
 import { Video, ResizeMode } from 'expo-av';
@@ -305,38 +306,6 @@ export default function ProfilePreviewScreen() {
           </View>
         </View>
 
-        {/* Social Icons - positioned on the right below cover */}
-        {(viewedUser?.discordLink || viewedUser?.instagramLink) && (
-          <View style={styles.socialIconsContainer}>
-            {viewedUser?.discordLink && (
-              <TouchableOpacity style={styles.socialIconButton}>
-                <Image
-                  source={require('@/assets/images/discord.png')}
-                  style={styles.socialIcon}
-                  resizeMode="contain"
-                />
-              </TouchableOpacity>
-            )}
-            {viewedUser?.instagramLink && (
-              <TouchableOpacity
-                style={styles.socialIconButton}
-                onPress={() => {
-                  const url = viewedUser.instagramLink!.startsWith('http')
-                    ? viewedUser.instagramLink!
-                    : `https://instagram.com/${viewedUser.instagramLink}`;
-                  Linking.openURL(url);
-                }}
-              >
-                <Image
-                  source={require('@/assets/images/instagram.png')}
-                  style={styles.socialIcon}
-                  resizeMode="contain"
-                />
-              </TouchableOpacity>
-            )}
-          </View>
-        )}
-
         {/* Profile Content */}
         <View style={styles.profileContentWrapper}>
           {/* Top Row: Avatar and Username/Stats */}
@@ -374,6 +343,73 @@ export default function ProfilePreviewScreen() {
           {viewedUser?.bio && (
             <View style={styles.bioContainer}>
               <ThemedText style={styles.bioText}>{viewedUser.bio}</ThemedText>
+            </View>
+          )}
+
+          {/* Socials below bio */}
+          {(viewedUser?.discordLink || viewedUser?.instagramLink) && (
+            <View style={styles.socialsIconsRow}>
+              <TouchableOpacity
+                style={styles.socialLinkButton}
+                onPress={async () => {
+                  // Open Instagram link
+                  if (viewedUser?.instagramLink) {
+                    try {
+                      const username = viewedUser.instagramLink.replace(/^https?:\/\/(www\.)?instagram\.com\//, '').replace(/\/$/, '');
+                      const appUrl = `instagram://user?username=${username}`;
+                      const webUrl = `https://instagram.com/${username}`;
+
+                      const supported = await Linking.canOpenURL(appUrl);
+                      if (supported) {
+                        await Linking.openURL(appUrl);
+                      } else {
+                        await Linking.openURL(webUrl);
+                      }
+                    } catch (error) {
+                      console.error('Error opening Instagram:', error);
+                      Alert.alert('Error', 'Failed to open Instagram');
+                    }
+                  }
+                }}
+                activeOpacity={0.7}
+              >
+                <View style={[styles.instagramGradient, !viewedUser?.instagramLink && styles.socialNotConfigured]}>
+                  <Image
+                    source={require('@/assets/images/instagram.png')}
+                    style={[styles.socialLinkIcon, !viewedUser?.instagramLink && styles.socialIconNotConfigured]}
+                    resizeMode="contain"
+                  />
+                </View>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                style={styles.socialLinkButton}
+                onPress={async () => {
+                  // Copy Discord username to clipboard
+                  if (viewedUser?.discordLink) {
+                    try {
+                      await Clipboard.setStringAsync(viewedUser.discordLink);
+                      Alert.alert(
+                        'Copied!',
+                        `Discord username "${viewedUser.discordLink}" copied to clipboard`,
+                        [{ text: 'OK' }]
+                      );
+                    } catch (error) {
+                      console.error('Error copying to clipboard:', error);
+                      Alert.alert('Error', 'Failed to copy Discord username');
+                    }
+                  }
+                }}
+                activeOpacity={0.7}
+              >
+                <View style={[styles.discordBackground, !viewedUser?.discordLink && styles.socialNotConfigured]}>
+                  <Image
+                    source={require('@/assets/images/discord.png')}
+                    style={[styles.socialLinkIcon, !viewedUser?.discordLink && styles.socialIconNotConfigured]}
+                    resizeMode="contain"
+                  />
+                </View>
+              </TouchableOpacity>
             </View>
           )}
 
@@ -747,24 +783,50 @@ const styles = StyleSheet.create({
   unfollowButtonText: {
     color: '#000',
   },
-  socialIconsContainer: {
-    position: 'absolute',
-    top: 180,
-    right: 10,
+  socialsIconsRow: {
     flexDirection: 'row',
-    gap: 4,
-    zIndex: 5,
+    gap: 10,
   },
-  socialIconButton: {
+  socialLinkButton: {
+    shadowColor: '#000',
+    shadowOffset: {
+      width: 0,
+      height: 1,
+    },
+    shadowOpacity: 0.08,
+    shadowRadius: 2,
+    elevation: 2,
+  },
+  instagramGradient: {
     width: 40,
     height: 40,
+    borderRadius: 20,
+    backgroundColor: '#fff',
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: 'transparent',
+    borderWidth: 1.5,
+    borderColor: '#E4405F',
   },
-  socialIcon: {
-    width: 28,
-    height: 28,
+  discordBackground: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: '#fff',
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 1.5,
+    borderColor: '#5865F2',
+  },
+  socialLinkIcon: {
+    width: 22,
+    height: 22,
+  },
+  socialNotConfigured: {
+    borderColor: '#e5e5e5',
+    opacity: 0.5,
+  },
+  socialIconNotConfigured: {
+    opacity: 0.4,
   },
   section: {
     paddingHorizontal: 20,

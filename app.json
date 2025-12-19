@@ -12,7 +12,11 @@
       "supportsTablet": true,
       "bundleIdentifier": "com.jininc3.RankUp",
       "infoPlist": {
-        "ITSAppUsesNonExemptEncryption": false
+        "ITSAppUsesNonExemptEncryption": false,
+        "LSApplicationQueriesSchemes": [
+          "instagram",
+          "discord"
+        ]
       }
     },
     "android": {

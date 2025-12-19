@@ -612,21 +612,45 @@ export default function EditProfileScreen() {
             {/* Socials Section */}
             <View style={styles.socialsSection}>
               <ThemedText style={styles.socialsSectionTitle}>Socials</ThemedText>
-              <View style={styles.socialsIconsRow}>
-                <TouchableOpacity style={styles.socialLinkButton}>
+
+              {/* Instagram */}
+              <View style={styles.socialInputContainer}>
+                <View style={styles.socialIconInputWrapper}>
                   <Image
                     source={require('@/assets/images/instagram.png')}
-                    style={styles.socialLinkIcon}
+                    style={styles.socialInputIcon}
                     resizeMode="contain"
                   />
-                </TouchableOpacity>
-                <TouchableOpacity style={styles.socialLinkButton}>
+                  <TextInput
+                    style={styles.socialInput}
+                    value={instagram}
+                    onChangeText={setInstagram}
+                    placeholder="Instagram username"
+                    placeholderTextColor="#999"
+                    autoCapitalize="none"
+                    autoCorrect={false}
+                  />
+                </View>
+              </View>
+
+              {/* Discord */}
+              <View style={styles.socialInputContainer}>
+                <View style={styles.socialIconInputWrapper}>
                   <Image
                     source={require('@/assets/images/discord.png')}
-                    style={styles.socialLinkIcon}
+                    style={styles.socialInputIcon}
                     resizeMode="contain"
                   />
-                </TouchableOpacity>
+                  <TextInput
+                    style={styles.socialInput}
+                    value={discord}
+                    onChangeText={setDiscord}
+                    placeholder="Discord username"
+                    placeholderTextColor="#999"
+                    autoCapitalize="none"
+                    autoCorrect={false}
+                  />
+                </View>
               </View>
             </View>
           </View>
@@ -851,26 +875,32 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: '600',
     color: '#000',
-    marginBottom: 8,
+    marginBottom: 12,
     letterSpacing: -0.2,
   },
-  socialsIconsRow: {
-    flexDirection: 'row',
-    gap: 12,
+  socialInputContainer: {
+    marginBottom: 12,
   },
-  socialLinkButton: {
-    width: 44,
-    height: 44,
-    borderRadius: 22,
-    backgroundColor: '#f5f5f5',
+  socialIconInputWrapper: {
+    flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'center',
+    backgroundColor: '#f5f5f5',
+    borderRadius: 10,
     borderWidth: 1,
     borderColor: '#e5e5e5',
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    gap: 10,
   },
-  socialLinkIcon: {
+  socialInputIcon: {
     width: 24,
     height: 24,
+  },
+  socialInput: {
+    flex: 1,
+    fontSize: 14,
+    color: '#000',
+    padding: 0,
   },
   mainTabsContainer: {
     flexDirection: 'row',

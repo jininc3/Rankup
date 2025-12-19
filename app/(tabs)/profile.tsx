@@ -15,6 +15,7 @@ import { useRouter, useFocusEffect } from 'expo-router';
 import { collection, getDocs, query, Timestamp, where, doc, getDoc } from 'firebase/firestore';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { ActivityIndicator, Alert, Dimensions, Image, Linking, Modal, RefreshControl, ScrollView, StyleSheet, TouchableOpacity, View } from 'react-native';
+import * as Clipboard from 'expo-clipboard';
 import { getLeagueStats, getTftStats, formatRank } from '@/services/riotService';
 // import { getValorantStats, formatValorantRank } from '@/services/valorantService'; // Disabled - API requires key
 
@@ -436,17 +437,26 @@ export default function ProfileScreen() {
                 onPress={async () => {
                   // Open Instagram link or show not configured message
                   if (user?.instagramLink) {
-                    const url = user.instagramLink.startsWith('http')
-                      ? user.instagramLink
-                      : `https://instagram.com/${user.instagramLink}`;
-                    const canOpen = await Linking.canOpenURL(url);
-                    if (canOpen) {
-                      await Linking.openURL(url);
-                    } else {
-                      Alert.alert('Error', 'Cannot open Instagram link');
+                    try {
+                      // Extract username from URL or use as-is
+                      const username = user.instagramLink.replace(/^https?:\/\/(www\.)?instagram\.com\//, '').replace(/\/$/, '');
+                      const appUrl = `instagram://user?username=${username}`;
+                      const webUrl = `https://instagram.com/${username}`;
+
+                      // Try to open in Instagram app first
+                      const supported = await Linking.canOpenURL(appUrl);
+                      if (supported) {
+                        await Linking.openURL(appUrl);
+                      } else {
+                        // Fallback to web browser if app not installed
+                        await Linking.openURL(webUrl);
+                      }
+                    } catch (error) {
+                      console.error('Error opening Instagram:', error);
+                      Alert.alert('Error', 'Failed to open Instagram');
                     }
                   } else {
-                    Alert.alert('Not Configured', 'Add your Instagram link in Edit Profile');
+                    Alert.alert('Not Configured', 'Add your Instagram username in Edit Profile');
                   }
                 }}
                 activeOpacity={0.7}
@@ -463,19 +473,21 @@ export default function ProfileScreen() {
               <TouchableOpacity
                 style={styles.socialLinkButton}
                 onPress={async () => {
-                  // Open Discord link or show not configured message
+                  // Copy Discord username to clipboard or show not configured message
                   if (user?.discordLink) {
-                    const url = user.discordLink.startsWith('http')
-                      ? user.discordLink
-                      : `https://discord.com/users/${user.discordLink}`;
-                    const canOpen = await Linking.canOpenURL(url);
-                    if (canOpen) {
-                      await Linking.openURL(url);
-                    } else {
-                      Alert.alert('Error', 'Cannot open Discord link');
+                    try {
+                      await Clipboard.setStringAsync(user.discordLink);
+                      Alert.alert(
+                        'Copied!',
+                        `Discord username "${user.discordLink}" copied to clipboard`,
+                        [{ text: 'OK' }]
+                      );
+                    } catch (error) {
+                      console.error('Error copying to clipboard:', error);
+                      Alert.alert('Error', 'Failed to copy Discord username');
                     }
                   } else {
-                    Alert.alert('Not Configured', 'Add your Discord link in Edit Profile');
+                    Alert.alert('Not Configured', 'Add your Discord username in Edit Profile');
                   }
                 }}
                 activeOpacity={0.7}
