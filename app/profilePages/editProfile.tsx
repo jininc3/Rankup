@@ -6,24 +6,10 @@ import { useState, useEffect } from 'react';
 import { ScrollView, StyleSheet, TextInput, TouchableOpacity, View, Alert, ActivityIndicator, Image, Dimensions } from 'react-native';
 import { useAuth } from '@/contexts/AuthContext';
 import { updateUserProfile } from '@/services/authService';
-import { uploadProfilePicture, uploadCoverPhoto, deletePostMedia } from '@/services/storageService';
+import { uploadProfilePicture, uploadCoverPhoto } from '@/services/storageService';
 import * as ImagePicker from 'expo-image-picker';
 import { db } from '@/config/firebase';
-import { collection, query, where, orderBy, getDocs, deleteDoc, doc, updateDoc, Timestamp } from 'firebase/firestore';
-
-interface Post {
-  id: string;
-  userId: string;
-  username: string;
-  mediaUrl: string;
-  mediaType: 'image' | 'video';
-  caption?: string;
-  createdAt: Timestamp;
-  likes: number;
-  order?: number;
-}
-
-const { width: screenWidth } = Dimensions.get('window');
+import { doc } from 'firebase/firestore';
 
 export default function EditProfileScreen() {
   const router = useRouter();
@@ -38,8 +24,6 @@ export default function EditProfileScreen() {
   const [discord, setDiscord] = useState(user?.discordLink || '');
   const [instagram, setInstagram] = useState(user?.instagramLink || '');
   const [isLoading, setIsLoading] = useState(false);
-  const [posts, setPosts] = useState<Post[]>([]);
-  const [loadingPosts, setLoadingPosts] = useState(false);
   const [changesSaved, setChangesSaved] = useState(false);
 
   // Pending changes (not saved until "Save Changes" is pressed)
@@ -59,11 +43,6 @@ export default function EditProfileScreen() {
       setInstagram(user.instagramLink || '');
     }
   }, [user]);
-
-  // Fetch user's posts
-  useEffect(() => {
-    fetchPosts();
-  }, [user?.id]);
 
   // Intercept back navigation (including swipe gestures)
   useEffect(() => {
@@ -121,31 +100,6 @@ export default function EditProfileScreen() {
       navigation.removeListener('beforeRemove', beforeRemoveListener);
     };
   }, [navigation, username, bio, discord, instagram, pendingProfileImageUri, pendingCoverPhotoUri, pendingRemoveProfileImage, pendingRemoveCoverPhoto, user, changesSaved]);
-
-  const fetchPosts = async () => {
-    if (!user?.id) return;
-
-    setLoadingPosts(true);
-    try {
-      const postsQuery = query(
-        collection(db, 'posts'),
-        where('userId', '==', user.id),
-        orderBy('createdAt', 'desc')
-      );
-
-      const querySnapshot = await getDocs(postsQuery);
-      const fetchedPosts: Post[] = querySnapshot.docs.map(doc => ({
-        id: doc.id,
-        ...doc.data()
-      } as Post));
-
-      setPosts(fetchedPosts);
-    } catch (error) {
-      console.error('Error fetching posts:', error);
-    } finally {
-      setLoadingPosts(false);
-    }
-  };
 
   const showImageOptions = () => {
     const options: any[] = [
@@ -363,40 +317,6 @@ export default function EditProfileScreen() {
             // Mark for removal - don't actually remove until save
             setPendingRemoveCoverPhoto(true);
             setPendingCoverPhotoUri(null);
-          },
-        },
-      ]
-    );
-  };
-
-  const handlePostLongPress = (post: Post) => {
-    Alert.alert(
-      'Delete Post',
-      'Are you sure you want to delete this post? This action cannot be undone.',
-      [
-        {
-          text: 'Cancel',
-          style: 'cancel',
-        },
-        {
-          text: 'Delete',
-          style: 'destructive',
-          onPress: async () => {
-            try {
-              // Delete from Storage
-              await deletePostMedia(post.mediaUrl);
-
-              // Delete from Firestore
-              await deleteDoc(doc(db, 'posts', post.id));
-
-              // Update local state
-              setPosts(posts.filter(p => p.id !== post.id));
-
-              Alert.alert('Success', 'Post deleted successfully');
-            } catch (error: any) {
-              console.error('Delete post error:', error);
-              Alert.alert('Error', 'Failed to delete post');
-            }
           },
         },
       ]
@@ -655,53 +575,6 @@ export default function EditProfileScreen() {
             </View>
           </View>
         </View>
-
-        {/* Posts Tab */}
-        <View style={styles.mainTabsContainer}>
-          <View style={styles.mainTab}>
-            <ThemedText style={styles.mainTabTextActive}>Posts</ThemedText>
-          </View>
-        </View>
-
-        {/* Posts Content */}
-        <View style={styles.section}>
-          {loadingPosts ? (
-            <View style={styles.postsContainer}>
-              <ActivityIndicator size="large" color="#000" />
-              <ThemedText style={styles.loadingText}>Loading posts...</ThemedText>
-            </View>
-          ) : posts.length > 0 ? (
-            <View style={styles.postsGrid}>
-              {posts.map((post) => (
-                <TouchableOpacity
-                  key={post.id}
-                  style={styles.postItem}
-                  onLongPress={() => handlePostLongPress(post)}
-                  delayLongPress={500}
-                >
-                  <Image
-                    source={{ uri: post.mediaUrl }}
-                    style={styles.postImage}
-                    resizeMode="cover"
-                  />
-                  {post.mediaType === 'video' && (
-                    <View style={styles.videoIndicator}>
-                      <IconSymbol size={24} name="play.fill" color="#fff" />
-                    </View>
-                  )}
-                </TouchableOpacity>
-              ))}
-            </View>
-          ) : (
-            <View style={styles.postsContainer}>
-              <IconSymbol size={48} name="square.stack.3d.up" color="#ccc" />
-              <ThemedText style={styles.emptyStateText}>No posts yet</ThemedText>
-              <ThemedText style={styles.emptyStateSubtext}>
-                Share your gaming moments from your profile
-              </ThemedText>
-            </View>
-          )}
-        </View>
       </ScrollView>
 
       {/* Fixed Save Button at Bottom */}
@@ -901,79 +774,6 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: '#000',
     padding: 0,
-  },
-  mainTabsContainer: {
-    flexDirection: 'row',
-    backgroundColor: '#fff',
-    borderBottomWidth: 1,
-    borderBottomColor: '#e5e5e5',
-    paddingHorizontal: 20,
-  },
-  mainTab: {
-    paddingVertical: 16,
-    borderBottomWidth: 2,
-    borderBottomColor: '#000',
-  },
-  mainTabTextActive: {
-    fontSize: 15,
-    fontWeight: '600',
-    color: '#000',
-    letterSpacing: -0.2,
-  },
-  section: {
-    paddingHorizontal: 20,
-    paddingTop: 16,
-    paddingBottom: 20,
-  },
-  postsContainer: {
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingVertical: 80,
-    gap: 12,
-  },
-  loadingText: {
-    fontSize: 14,
-    color: '#666',
-    marginTop: 12,
-  },
-  emptyStateText: {
-    fontSize: 17,
-    fontWeight: '600',
-    color: '#000',
-    marginTop: 16,
-  },
-  emptyStateSubtext: {
-    fontSize: 14,
-    color: '#666',
-    textAlign: 'center',
-    paddingHorizontal: 40,
-  },
-  postsGrid: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 2,
-    marginTop: 16,
-  },
-  postItem: {
-    width: (screenWidth - 44) / 3,
-    height: (screenWidth - 44) / 3,
-    backgroundColor: '#f5f5f5',
-    position: 'relative',
-  },
-  postImage: {
-    width: '100%',
-    height: '100%',
-  },
-  videoIndicator: {
-    position: 'absolute',
-    top: 8,
-    right: 8,
-    backgroundColor: 'rgba(0, 0, 0, 0.6)',
-    borderRadius: 12,
-    width: 32,
-    height: 32,
-    alignItems: 'center',
-    justifyContent: 'center',
   },
   saveButtonContainer: {
     position: 'absolute',

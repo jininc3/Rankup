@@ -3,7 +3,7 @@ import { IconSymbol } from '@/components/ui/icon-symbol';
 import { VideoView, useVideoPlayer } from 'expo-video';
 import { Timestamp } from 'firebase/firestore';
 import { useEffect, useState, useRef } from 'react';
-import { Dimensions, FlatList, Image, StyleSheet, TouchableOpacity, View } from 'react-native';
+import { Alert, Dimensions, FlatList, Image, StyleSheet, TouchableOpacity, View } from 'react-native';
 import { getComments, CommentData } from '@/services/commentService';
 import { TaggedUser } from '@/app/components/tagUsersModal';
 
@@ -98,6 +98,7 @@ interface PostContentProps {
   isLiking: boolean;
   onPlayerReady: (postId: string, player: any) => void;
   showRecentComments?: boolean;
+  onDelete?: (post: Post) => void;
 }
 
 export default function PostContent({
@@ -115,7 +116,8 @@ export default function PostContent({
   likeCount,
   isLiking,
   onPlayerReady,
-  showRecentComments = true
+  showRecentComments = true,
+  onDelete
 }: PostContentProps) {
   const [activeMediaIndex, setActiveMediaIndex] = useState(0);
   const [mediaHeight, setMediaHeight] = useState(
@@ -141,6 +143,25 @@ export default function PostContent({
   }, [post.id, showRecentComments]);
 
   const hasMultipleMedia = post.mediaUrls && post.mediaUrls.length > 1;
+
+  // Handle post options menu
+  const handlePostOptions = () => {
+    Alert.alert(
+      'Post Options',
+      '',
+      [
+        {
+          text: 'Delete Post',
+          style: 'destructive',
+          onPress: () => onDelete?.(post)
+        },
+        {
+          text: 'Cancel',
+          style: 'cancel'
+        }
+      ]
+    );
+  };
 
   return (
     <View
@@ -185,6 +206,16 @@ export default function PostContent({
               </ThemedText>
             )}
           </View>
+        )}
+        {post.userId === currentUserId && onDelete && (
+          <TouchableOpacity
+            style={styles.menuButton}
+            onPress={handlePostOptions}
+            activeOpacity={0.6}
+            hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+          >
+            <IconSymbol size={20} name="ellipsis" color="#000" />
+          </TouchableOpacity>
         )}
       </View>
 
@@ -479,6 +510,10 @@ const styles = StyleSheet.create({
   shareButton: {
     marginLeft: 'auto',
     padding: 6,
+  },
+  menuButton: {
+    marginLeft: 'auto',
+    padding: 8,
   },
   likesContainer: {
     flexDirection: 'row',

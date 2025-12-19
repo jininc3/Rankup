@@ -39,6 +39,7 @@ interface PostViewerModalProps {
   onClose: () => void;
   onNavigate?: (index: number) => void;
   onCommentAdded?: () => void;
+  onDelete?: (post: Post) => void;
 }
 
 export default function PostViewerModal({
@@ -49,7 +50,8 @@ export default function PostViewerModal({
   userAvatar,
   onClose,
   onNavigate,
-  onCommentAdded
+  onCommentAdded,
+  onDelete
 }: PostViewerModalProps) {
   const router = useRouter();
   const { user: currentUser } = useAuth();
@@ -390,6 +392,7 @@ export default function PostViewerModal({
         isLiking={likingInProgress.has(item.id)}
         onPlayerReady={handlePlayerReady}
         showRecentComments={true}
+        onDelete={onDelete}
       />
     );
   };

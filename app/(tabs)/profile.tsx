@@ -12,11 +12,13 @@ import { IconSymbol } from '@/components/ui/icon-symbol';
 import { db } from '@/config/firebase';
 import { useAuth } from '@/contexts/AuthContext';
 import { useRouter, useFocusEffect } from 'expo-router';
-import { collection, getDocs, query, Timestamp, where, doc, getDoc } from 'firebase/firestore';
+import { collection, getDocs, query, Timestamp, where, doc, getDoc, updateDoc, increment } from 'firebase/firestore';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { ActivityIndicator, Alert, Dimensions, Image, Linking, Modal, RefreshControl, ScrollView, StyleSheet, TouchableOpacity, View } from 'react-native';
 import * as Clipboard from 'expo-clipboard';
 import { getLeagueStats, getTftStats, formatRank } from '@/services/riotService';
+import { deletePostMedia } from '@/services/storageService';
+import { deleteDoc } from 'firebase/firestore';
 // import { getValorantStats, formatValorantRank } from '@/services/valorantService'; // Disabled - API requires key
 
 const { width: screenWidth } = Dimensions.get('window');
@@ -311,6 +313,60 @@ export default function ProfileScreen() {
   const closePostViewer = () => {
     setShowPostViewer(false);
     setSelectedPost(null);
+  };
+
+  const handleDeletePost = (post: Post) => {
+    Alert.alert(
+      'Delete Post',
+      'Are you sure you want to delete this post? This action cannot be undone.',
+      [
+        {
+          text: 'Cancel',
+          style: 'cancel',
+        },
+        {
+          text: 'Delete',
+          style: 'destructive',
+          onPress: async () => {
+            try {
+              // Delete all media files from Storage
+              if (post.mediaUrls && post.mediaUrls.length > 0) {
+                for (const mediaUrl of post.mediaUrls) {
+                  await deletePostMedia(mediaUrl);
+                }
+              } else if (post.mediaUrl) {
+                await deletePostMedia(post.mediaUrl);
+              }
+
+              // Delete thumbnail if exists
+              if (post.thumbnailUrl) {
+                await deletePostMedia(post.thumbnailUrl);
+              }
+
+              // Delete from Firestore
+              await deleteDoc(doc(db, 'posts', post.id));
+
+              // Decrement user's post count
+              if (user?.id) {
+                await updateDoc(doc(db, 'users', user.id), {
+                  postsCount: increment(-1),
+                });
+                // Refresh user data to update the UI
+                await refreshUser();
+              }
+
+              // Update local state
+              setPosts(posts.filter(p => p.id !== post.id));
+
+              Alert.alert('Success', 'Post deleted successfully');
+            } catch (error: any) {
+              console.error('Delete post error:', error);
+              Alert.alert('Error', 'Failed to delete post');
+            }
+          },
+        },
+      ]
+    );
   };
 
   const handlePostCreated = (newPost: Post) => {
@@ -680,6 +736,7 @@ export default function ProfileScreen() {
         onClose={closePostViewer}
         onNavigate={handleNavigatePost}
         onCommentAdded={handleCommentAdded}
+        onDelete={handleDeletePost}
       />
 
       {/* New Post Modal */}
