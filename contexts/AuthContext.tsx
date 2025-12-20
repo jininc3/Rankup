@@ -6,6 +6,7 @@ import type { UserProfile } from '@/services/authService';
 import { collection, query, where, getDocs, orderBy, limit, Timestamp } from 'firebase/firestore';
 import { getFollowing } from '@/services/followService';
 import { Image } from 'react-native';
+import { registerForPushNotificationsAsync, unregisterPushNotifications } from '@/services/notificationService';
 
 interface User {
   id: string;
@@ -319,6 +320,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
                 preloadProfileData(userProfile.id, userProfile),
               ]);
             }
+
+            // Register for push notifications (run in background, don't block loading)
+            registerForPushNotificationsAsync(userProfile.id).catch(error => {
+              console.error('Error registering for push notifications:', error);
+            });
           } else {
             // Fallback if profile doesn't exist (new user or race condition)
             const isGoogleUser = firebaseUser.providerData.some(p => p.providerId === 'google.com');
@@ -344,6 +350,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
                 }),
               ]);
             }
+
+            // Register for push notifications (run in background, don't block loading)
+            registerForPushNotificationsAsync(firebaseUser.uid).catch(error => {
+              console.error('Error registering for push notifications:', error);
+            });
           }
         } catch (error) {
           console.error('Error loading user profile:', error);
@@ -390,6 +401,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const handleSignOut = async () => {
     try {
+      // Unregister push notifications before signing out
+      if (user?.id) {
+        await unregisterPushNotifications(user.id).catch(error => {
+          console.error('Error unregistering push notifications:', error);
+        });
+      }
+
       await authSignOut();
       setUser(null);
       setPreloadedPosts(null);

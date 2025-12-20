@@ -7,6 +7,7 @@ import { useEffect } from 'react';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { AuthProvider, useAuth } from '@/contexts/AuthContext';
 import LoadingScreen from '@/app/components/loadingScreen';
+import { addNotificationTapListener } from '@/services/notificationService';
 
 export const unstable_settings = {
   anchor: '(tabs)',
@@ -46,6 +47,29 @@ function RootLayoutNav() {
       router.replace('/(tabs)');
     }
   }, [isAuthenticated, segments, isLoading, needsUsernameSetup]);
+
+  // Set up notification tap handlers
+  useEffect(() => {
+    const subscription = addNotificationTapListener((response) => {
+      const data = response.notification.request.content.data;
+
+      console.log('Notification tapped:', data);
+
+      // Navigate based on notification type
+      if (data.type === 'follow') {
+        // Navigate to the user's profile who followed
+        router.push(`/profilePages/viewOthersProfile?userId=${data.fromUserId}`);
+      } else if (data.type === 'like' || data.type === 'comment' || data.type === 'tag') {
+        // Navigate to the post
+        if (data.postId) {
+          router.push(`/components/postViewerModal?postId=${data.postId}`);
+        }
+      }
+    });
+
+    // Clean up subscription on unmount
+    return () => subscription.remove();
+  }, [router]);
 
   // Show loading screen while checking authentication
   if (isLoading) {

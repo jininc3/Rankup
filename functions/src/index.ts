@@ -21,5 +21,5 @@ export {getTftStatsFunction as getTftStats} from "./riot/getTftStats";
 export {getValorantStatsFunction as getValorantStats} from "./riot/getValorantStats";
 export {unlinkRiotAccountFunction as unlinkRiotAccount} from "./riot/unlinkRiotAccount";
 
-// Export Instagram API functions
-export {verifyInstagramAccount} from "./instagram/verifyInstagramAccount";
+// Export Push Notification functions
+export {onNotificationCreated} from "./notifications/onNotificationCreated";

@@ -17,6 +17,8 @@ service cloud.firestore {
                       request.auth.uid == userId
                       // OR incrementing/decrementing follower counts only
                       || (request.resource.data.diff(resource.data).affectedKeys().hasOnly(['followersCount', 'followingCount', 'postsCount']))
+                      // OR updating push notification token (for user's own profile only)
+                      || (request.auth.uid == userId && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['expoPushToken', 'pushTokenUpdatedAt']))
                     );
 
       // Followers subcollection - who follows this user

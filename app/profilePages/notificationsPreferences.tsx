@@ -2,11 +2,18 @@ import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { IconSymbol } from '@/components/ui/icon-symbol';
 import { useRouter } from 'expo-router';
-import { ScrollView, StyleSheet, Switch, TouchableOpacity, View } from 'react-native';
-import { useState } from 'react';
+import { ScrollView, StyleSheet, Switch, TouchableOpacity, View, ActivityIndicator } from 'react-native';
+import { useState, useEffect } from 'react';
+import { useAuth } from '@/contexts/AuthContext';
+import { doc, getDoc, updateDoc } from 'firebase/firestore';
+import { db } from '@/config/firebase';
 
 export default function NotificationsPreferencesScreen() {
   const router = useRouter();
+  const { user } = useAuth();
+
+  // Loading state
+  const [isLoading, setIsLoading] = useState(true);
 
   // Notification toggles
   const [likesEnabled, setLikesEnabled] = useState(true);
@@ -21,6 +28,103 @@ export default function NotificationsPreferencesScreen() {
   const [emailUpdatesEnabled, setEmailUpdatesEnabled] = useState(true);
   const [emailMarketingEnabled, setEmailMarketingEnabled] = useState(false);
 
+  // Load preferences from Firestore on mount
+  useEffect(() => {
+    if (!user?.id) return;
+
+    const loadPreferences = async () => {
+      try {
+        const userRef = doc(db, 'users', user.id);
+        const userDoc = await getDoc(userRef);
+
+        if (userDoc.exists()) {
+          const data = userDoc.data();
+          const prefs = data.notificationPreferences;
+
+          if (prefs) {
+            // Load notification preferences
+            if (prefs.likes !== undefined) setLikesEnabled(prefs.likes);
+            if (prefs.comments !== undefined) setCommentsEnabled(prefs.comments);
+            if (prefs.followers !== undefined) setFollowersEnabled(prefs.followers);
+            if (prefs.rankUps !== undefined) setRankUpsEnabled(prefs.rankUps);
+            if (prefs.achievements !== undefined) setAchievementsEnabled(prefs.achievements);
+            if (prefs.challenges !== undefined) setChallengesEnabled(prefs.challenges);
+            if (prefs.emailDigest !== undefined) setEmailDigestEnabled(prefs.emailDigest);
+            if (prefs.emailUpdates !== undefined) setEmailUpdatesEnabled(prefs.emailUpdates);
+            if (prefs.emailMarketing !== undefined) setEmailMarketingEnabled(prefs.emailMarketing);
+          }
+        }
+      } catch (error) {
+        console.error('Error loading notification preferences:', error);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    loadPreferences();
+  }, [user?.id]);
+
+  // Save preferences to Firestore whenever they change
+  const savePreference = async (key: string, value: boolean) => {
+    if (!user?.id) return;
+
+    try {
+      const userRef = doc(db, 'users', user.id);
+      await updateDoc(userRef, {
+        [`notificationPreferences.${key}`]: value,
+      });
+      console.log(`Saved preference ${key}:`, value);
+    } catch (error) {
+      console.error('Error saving notification preference:', error);
+    }
+  };
+
+  // Wrapper functions that save to Firestore
+  const handleLikesChange = (value: boolean) => {
+    setLikesEnabled(value);
+    savePreference('likes', value);
+  };
+
+  const handleCommentsChange = (value: boolean) => {
+    setCommentsEnabled(value);
+    savePreference('comments', value);
+  };
+
+  const handleFollowersChange = (value: boolean) => {
+    setFollowersEnabled(value);
+    savePreference('followers', value);
+  };
+
+  const handleRankUpsChange = (value: boolean) => {
+    setRankUpsEnabled(value);
+    savePreference('rankUps', value);
+  };
+
+  const handleAchievementsChange = (value: boolean) => {
+    setAchievementsEnabled(value);
+    savePreference('achievements', value);
+  };
+
+  const handleChallengesChange = (value: boolean) => {
+    setChallengesEnabled(value);
+    savePreference('challenges', value);
+  };
+
+  const handleEmailDigestChange = (value: boolean) => {
+    setEmailDigestEnabled(value);
+    savePreference('emailDigest', value);
+  };
+
+  const handleEmailUpdatesChange = (value: boolean) => {
+    setEmailUpdatesEnabled(value);
+    savePreference('emailUpdates', value);
+  };
+
+  const handleEmailMarketingChange = (value: boolean) => {
+    setEmailMarketingEnabled(value);
+    savePreference('emailMarketing', value);
+  };
+
   const notificationSettings = [
     {
       id: 'social',
@@ -32,7 +136,7 @@ export default function NotificationsPreferencesScreen() {
           title: 'Likes',
           subtitle: 'When someone likes your post',
           value: likesEnabled,
-          onValueChange: setLikesEnabled,
+          onValueChange: handleLikesChange,
         },
         {
           id: 2,
@@ -40,7 +144,7 @@ export default function NotificationsPreferencesScreen() {
           title: 'Comments',
           subtitle: 'When someone comments on your post',
           value: commentsEnabled,
-          onValueChange: setCommentsEnabled,
+          onValueChange: handleCommentsChange,
         },
         {
           id: 3,
@@ -48,7 +152,7 @@ export default function NotificationsPreferencesScreen() {
           title: 'New Followers',
           subtitle: 'When someone follows you',
           value: followersEnabled,
-          onValueChange: setFollowersEnabled,
+          onValueChange: handleFollowersChange,
         },
       ],
     },
@@ -62,7 +166,7 @@ export default function NotificationsPreferencesScreen() {
           title: 'Rank Updates',
           subtitle: 'When you rank up or down',
           value: rankUpsEnabled,
-          onValueChange: setRankUpsEnabled,
+          onValueChange: handleRankUpsChange,
         },
         {
           id: 5,
@@ -70,7 +174,7 @@ export default function NotificationsPreferencesScreen() {
           title: 'Achievements',
           subtitle: 'When you unlock achievements',
           value: achievementsEnabled,
-          onValueChange: setAchievementsEnabled,
+          onValueChange: handleAchievementsChange,
         },
         {
           id: 6,
@@ -78,7 +182,7 @@ export default function NotificationsPreferencesScreen() {
           title: 'Challenge Invites',
           subtitle: 'When someone challenges you',
           value: challengesEnabled,
-          onValueChange: setChallengesEnabled,
+          onValueChange: handleChallengesChange,
         },
       ],
     },
@@ -92,7 +196,7 @@ export default function NotificationsPreferencesScreen() {
           title: 'Weekly Digest',
           subtitle: 'Summary of your activity',
           value: emailDigestEnabled,
-          onValueChange: setEmailDigestEnabled,
+          onValueChange: handleEmailDigestChange,
         },
         {
           id: 8,
@@ -100,7 +204,7 @@ export default function NotificationsPreferencesScreen() {
           title: 'Product Updates',
           subtitle: 'New features and improvements',
           value: emailUpdatesEnabled,
-          onValueChange: setEmailUpdatesEnabled,
+          onValueChange: handleEmailUpdatesChange,
         },
         {
           id: 9,
@@ -108,7 +212,7 @@ export default function NotificationsPreferencesScreen() {
           title: 'Marketing Emails',
           subtitle: 'Promotions and offers',
           value: emailMarketingEnabled,
-          onValueChange: setEmailMarketingEnabled,
+          onValueChange: handleEmailMarketingChange,
         },
       ],
     },
@@ -129,7 +233,12 @@ export default function NotificationsPreferencesScreen() {
         <View style={styles.headerSpacer} />
       </View>
 
-      <ScrollView showsVerticalScrollIndicator={false}>
+      {isLoading ? (
+        <View style={styles.loadingContainer}>
+          <ActivityIndicator size="large" color="#007AFF" />
+        </View>
+      ) : (
+        <ScrollView showsVerticalScrollIndicator={false}>
         {/* Settings Sections */}
         {notificationSettings.map((section) => (
           <View key={section.id} style={styles.section}>
@@ -190,6 +299,7 @@ export default function NotificationsPreferencesScreen() {
         {/* Bottom Spacing */}
         <View style={styles.bottomSpacer} />
       </ScrollView>
+      )}
     </ThemedView>
   );
 }
@@ -198,6 +308,11 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: '#fff',
+  },
+  loadingContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
   },
   header: {
     flexDirection: 'row',
