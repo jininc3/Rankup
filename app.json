@@ -4,7 +4,7 @@
     "slug": "RankUp",
     "version": "1.0.0",
     "orientation": "portrait",
-    "icon": "./assets/images/Freelo.png",
+    "icon": "./assets/images/rankup-logo.png",
     "scheme": "rankup",
     "userInterfaceStyle": "automatic",
     "newArchEnabled": true,
@@ -22,9 +22,9 @@
     "android": {
       "adaptiveIcon": {
         "backgroundColor": "#E6F4FE",
-        "foregroundImage": "./assets/images/Freelo.png",
-        "backgroundImage": "./assets/images/Freelo.png",
-        "monochromeImage": "./assets/images/Freelo.png"
+        "foregroundImage": "./assets/images/rankup-logo.png",
+        "backgroundImage": "./assets/images/rankup-logo.png",
+        "monochromeImage": "./assets/images/rankup-logo.png"
       },
       "edgeToEdgeEnabled": true,
       "predictiveBackGestureEnabled": false,

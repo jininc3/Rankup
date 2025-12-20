@@ -24,7 +24,7 @@ export default function LoadingScreen() {
   return (
     <View style={styles.container}>
       <Animated.Image
-        source={require('@/assets/images/Freelo.png')}
+        source={require('@/assets/images/rankup-logo.png')}
         style={[styles.logo, { opacity: fadeAnim }]}
         resizeMode="contain"
       />
