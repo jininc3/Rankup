@@ -44,29 +44,25 @@ export const onNotificationCreated = onDocumentCreated(
       }
 
       // Build notification title and body based on type
-      let title = '';
+      const title = 'RankUp';
       let body = '';
 
       switch (notification.type) {
         case 'follow':
-          title = 'New Follower';
           body = `${notification.fromUsername} started following you`;
           break;
 
         case 'like':
-          title = 'New Like';
           body = `${notification.fromUsername} liked your post`;
           break;
 
         case 'comment':
-          title = 'New Comment';
           const commentPreview = notification.commentText?.substring(0, 50) || '';
           const commentSuffix = notification.commentText?.length > 50 ? '...' : '';
           body = `${notification.fromUsername}: ${commentPreview}${commentSuffix}`;
           break;
 
         case 'tag':
-          title = 'You were tagged';
           body = `${notification.fromUsername} tagged you in a post`;
           break;
 

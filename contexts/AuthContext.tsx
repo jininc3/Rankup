@@ -6,7 +6,7 @@ import type { UserProfile } from '@/services/authService';
 import { collection, query, where, getDocs, orderBy, limit, Timestamp } from 'firebase/firestore';
 import { getFollowing } from '@/services/followService';
 import { Image } from 'react-native';
-import { registerForPushNotificationsAsync, unregisterPushNotifications } from '@/services/notificationService';
+import { registerForPushNotificationsAsync } from '@/services/notificationService';
 
 interface User {
   id: string;
@@ -401,12 +401,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const handleSignOut = async () => {
     try {
-      // Unregister push notifications before signing out
-      if (user?.id) {
-        await unregisterPushNotifications(user.id).catch(error => {
-          console.error('Error unregistering push notifications:', error);
-        });
-      }
+      // Don't unregister push notifications on logout
+      // Users should keep their tokens so they can receive notifications
+      // Tokens will be automatically cleaned up if they become invalid
 
       await authSignOut();
       setUser(null);
