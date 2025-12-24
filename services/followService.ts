@@ -8,8 +8,6 @@ import {
   query,
   orderBy,
   Timestamp,
-  updateDoc,
-  increment,
   getDoc
 } from 'firebase/firestore';
 
@@ -71,17 +69,8 @@ export const followUser = async (
   }
   await setDoc(followingDocRef, followingData);
 
-  // Update follower counts
-  const targetUserRef = doc(db, 'users', targetUserId);
-  const currentUserRef = doc(db, 'users', currentUserId);
-
-  await updateDoc(targetUserRef, {
-    followersCount: increment(1),
-  });
-
-  await updateDoc(currentUserRef, {
-    followingCount: increment(1),
-  });
+  // Counts are now automatically updated by Cloud Functions
+  // Cloud Function triggers on follower document creation
 
   // Create notification for the target user
   const notificationDocRef = doc(db, `users/${targetUserId}/notifications/${currentUserId}_follow_${Date.now()}`);
@@ -113,17 +102,8 @@ export const unfollowUser = async (
   const followingDocRef = doc(db, `users/${currentUserId}/following/${targetUserId}`);
   await deleteDoc(followingDocRef);
 
-  // Update follower counts
-  const targetUserRef = doc(db, 'users', targetUserId);
-  const currentUserRef = doc(db, 'users', currentUserId);
-
-  await updateDoc(targetUserRef, {
-    followersCount: increment(-1),
-  });
-
-  await updateDoc(currentUserRef, {
-    followingCount: increment(-1),
-  });
+  // Counts are now automatically updated by Cloud Functions
+  // Cloud Function triggers on follower document deletion
 };
 
 /**

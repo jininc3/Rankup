@@ -24,3 +24,11 @@ export {unlinkRiotAccountFunction as unlinkRiotAccount} from "./riot/unlinkRiotA
 // Export Push Notification functions
 export {onNotificationCreated} from "./notifications/onNotificationCreated";
 export {onMessageCreated} from "./notifications/onMessageCreated";
+
+// Export Follow Count Management functions
+export {onFollowerCreated} from "./follows/onFollowCreated";
+export {onFollowerDeleted} from "./follows/onFollowDeleted";
+export {
+  recalculateFollowCountsCallable,
+  recalculateFollowCountsScheduled,
+} from "./follows/recalculateFollowCounts";

@@ -329,7 +329,7 @@ const styles = StyleSheet.create({
   footer: {
     flexDirection: 'row',
     justifyContent: 'center',
-    marginTop: 32,
+    marginTop: 8,
   },
   footerText: {
     color: '#666',
