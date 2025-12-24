@@ -1,21 +1,21 @@
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { useState, useRef } from 'react';
-import { StyleSheet, TextInput, TouchableOpacity, View, Alert, ActivityIndicator, Image, ScrollView, KeyboardAvoidingView, Platform } from 'react-native';
+import { StyleSheet, TextInput, TouchableOpacity, View, Alert, ActivityIndicator, ScrollView, KeyboardAvoidingView, Platform } from 'react-native';
 import { useAuth } from '@/contexts/AuthContext';
 import { useRouter } from 'expo-router';
-import { doc, updateDoc, getDoc, query, collection, where, getDocs } from 'firebase/firestore';
-import { db, storage } from '@/config/firebase';
-import * as ImagePicker from 'expo-image-picker';
-import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
+import { doc, updateDoc, query, collection, where, getDocs } from 'firebase/firestore';
+import { db } from '@/config/firebase';
 import { IconSymbol } from '@/components/ui/icon-symbol';
+import DateTimePicker from '@react-native-community/datetimepicker';
 
 export default function GoogleSignUpScreen() {
   const { user, refreshUser, signOut } = useAuth();
   const router = useRouter();
   const [username, setUsername] = useState('');
+  const [dateOfBirth, setDateOfBirth] = useState<Date | null>(null);
+  const [showDatePicker, setShowDatePicker] = useState(false);
   const [loading, setLoading] = useState(false);
-  const [profileImage, setProfileImage] = useState<string | null>(null);
   const scrollViewRef = useRef<ScrollView>(null);
   const usernameInputRef = useRef<View>(null);
 
@@ -37,37 +37,16 @@ export default function GoogleSignUpScreen() {
     }
   };
 
-  const pickImage = async () => {
-    const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
-
-    if (status !== 'granted') {
-      Alert.alert('Permission Required', 'Please allow access to your photo library');
-      return;
-    }
-
-    const result = await ImagePicker.launchImageLibraryAsync({
-      mediaTypes: ImagePicker.MediaTypeOptions.Images,
-      allowsEditing: true,
-      aspect: [1, 1],
-      quality: 0.8,
-    });
-
-    if (!result.canceled && result.assets[0]) {
-      setProfileImage(result.assets[0].uri);
+  const onDateChange = (event: any, selectedDate?: Date) => {
+    setShowDatePicker(Platform.OS === 'ios');
+    if (selectedDate) {
+      setDateOfBirth(selectedDate);
     }
   };
 
-  const uploadProfileImage = async (imageUri: string): Promise<string> => {
-    const response = await fetch(imageUri);
-    const blob = await response.blob();
-
-    const filename = `profile_${user?.id}_${Date.now()}.jpg`;
-    const storageRef = ref(storage, `profile-pictures/${user?.id}/${filename}`);
-
-    await uploadBytes(storageRef, blob);
-    const downloadURL = await getDownloadURL(storageRef);
-
-    return downloadURL;
+  const formatDate = (date: Date | null): string => {
+    if (!date) return '';
+    return date.toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' });
   };
 
   const handleContinue = async () => {
@@ -76,11 +55,28 @@ export default function GoogleSignUpScreen() {
       return;
     }
 
+    if (!dateOfBirth) {
+      Alert.alert('Error', 'Please select your date of birth');
+      return;
+    }
+
     if (!validateUsername(username)) {
       Alert.alert(
         'Invalid Username',
         'Username must be 3-20 characters long and can only contain letters, numbers, and underscores.'
       );
+      return;
+    }
+
+    // Validate age (must be at least 13 years old)
+    const today = new Date();
+    const age = today.getFullYear() - dateOfBirth.getFullYear();
+    const monthDiff = today.getMonth() - dateOfBirth.getMonth();
+    const dayDiff = today.getDate() - dateOfBirth.getDate();
+    const actualAge = monthDiff < 0 || (monthDiff === 0 && dayDiff < 0) ? age - 1 : age;
+
+    if (actualAge < 13) {
+      Alert.alert('Error', 'You must be at least 13 years old to sign up');
       return;
     }
 
@@ -96,30 +92,14 @@ export default function GoogleSignUpScreen() {
         return;
       }
 
-      // Upload profile image if selected
-      let profileImageUrl = null;
-      if (profileImage) {
-        try {
-          profileImageUrl = await uploadProfileImage(profileImage);
-        } catch (error) {
-          console.error('Error uploading profile image:', error);
-          Alert.alert('Warning', 'Failed to upload profile picture, but continuing with setup');
-        }
-      }
-
       // Update user profile in Firestore
       if (user?.id) {
-        const updateData: any = {
+        await updateDoc(doc(db, 'users', user.id), {
           username: username,
+          dateOfBirth: dateOfBirth.toISOString(),
           needsUsernameSetup: false,
           updatedAt: new Date(),
-        };
-
-        if (profileImageUrl) {
-          updateData.avatar = profileImageUrl;
-        }
-
-        await updateDoc(doc(db, 'users', user.id), updateData);
+        });
 
         // Refresh user data in context
         await refreshUser();
@@ -186,38 +166,8 @@ export default function GoogleSignUpScreen() {
             </View>
 
             <View style={styles.form}>
-          {/* Profile Picture Section */}
-          <View style={styles.profilePicContainer}>
-            <ThemedText style={styles.label}>Profile Picture (Optional)</ThemedText>
-            <View style={styles.profilePicWrapper}>
-              <TouchableOpacity
-                style={styles.profilePicButton}
-                onPress={pickImage}
-                disabled={loading}
-              >
-                {profileImage ? (
-                  <Image source={{ uri: profileImage }} style={styles.profilePicImage} />
-                ) : (
-                  <View style={styles.profilePicPlaceholder}>
-                    <IconSymbol size={48} name="person.circle" color="#999" />
-                    <ThemedText style={styles.profilePicText}>Tap to add photo</ThemedText>
-                  </View>
-                )}
-              </TouchableOpacity>
-              {profileImage && (
-                <TouchableOpacity
-                  style={styles.removeImageButton}
-                  onPress={() => setProfileImage(null)}
-                  disabled={loading}
-                >
-                  <IconSymbol size={20} name="xmark.circle.fill" color="#fff" />
-                </TouchableOpacity>
-              )}
-            </View>
-          </View>
-
           <View style={styles.inputContainer} ref={usernameInputRef}>
-            <ThemedText style={styles.label}>Username</ThemedText>
+            <ThemedText style={styles.label}>Username *</ThemedText>
             <TextInput
               style={styles.input}
               placeholder="Enter username"
@@ -233,6 +183,33 @@ export default function GoogleSignUpScreen() {
               3-20 characters, letters, numbers, and underscores only
             </ThemedText>
           </View>
+
+          <View style={styles.inputContainer}>
+            <ThemedText style={styles.label}>Date of Birth *</ThemedText>
+            <TouchableOpacity
+              style={styles.input}
+              onPress={() => setShowDatePicker(true)}
+              disabled={loading}
+            >
+              <ThemedText style={[styles.dateText, !dateOfBirth && styles.placeholderText]}>
+                {dateOfBirth ? formatDate(dateOfBirth) : 'Select your date of birth'}
+              </ThemedText>
+            </TouchableOpacity>
+            <ThemedText style={styles.hint}>
+              You must be at least 13 years old
+            </ThemedText>
+          </View>
+
+          {showDatePicker && (
+            <DateTimePicker
+              value={dateOfBirth || new Date(2000, 0, 1)}
+              mode="date"
+              display={Platform.OS === 'ios' ? 'spinner' : 'default'}
+              onChange={onDateChange}
+              maximumDate={new Date()}
+              minimumDate={new Date(1900, 0, 1)}
+            />
+          )}
 
           <TouchableOpacity
             style={[styles.button, loading && styles.buttonDisabled]}
@@ -349,51 +326,11 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     color: '#fff',
   },
-  profilePicContainer: {
-    alignItems: 'center',
-    marginBottom: 32,
+  dateText: {
+    fontSize: 16,
+    color: '#000',
   },
-  profilePicWrapper: {
-    marginTop: 16,
-    position: 'relative',
-  },
-  profilePicButton: {
-  },
-  profilePicImage: {
-    width: 120,
-    height: 120,
-    borderRadius: 60,
-    borderWidth: 3,
-    borderColor: '#e5e5e5',
-  },
-  profilePicPlaceholder: {
-    width: 120,
-    height: 120,
-    borderRadius: 60,
-    backgroundColor: '#f5f5f5',
-    borderWidth: 2,
-    borderColor: '#e5e5e5',
-    borderStyle: 'dashed',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 8,
-  },
-  profilePicText: {
-    fontSize: 11,
+  placeholderText: {
     color: '#999',
-    marginTop: 4,
-  },
-  removeImageButton: {
-    position: 'absolute',
-    top: 0,
-    right: 0,
-    width: 32,
-    height: 32,
-    borderRadius: 16,
-    backgroundColor: '#ff3b30',
-    alignItems: 'center',
-    justifyContent: 'center',
-    borderWidth: 2,
-    borderColor: '#fff',
   },
 });

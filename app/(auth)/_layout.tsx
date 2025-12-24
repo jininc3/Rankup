@@ -9,7 +9,9 @@ export default function AuthLayout() {
       }}
     >
       <Stack.Screen name="login" />
-      <Stack.Screen name="signup" />
+      <Stack.Screen name="emailSignUp1" />
+      <Stack.Screen name="emailSignUp2" />
+      <Stack.Screen name="emailSignUp3" />
       <Stack.Screen name="googleSignUp" />
     </Stack>
   );

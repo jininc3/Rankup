@@ -149,9 +149,10 @@ export default function LoginScreen() {
 
             <View style={styles.form}>
               <View style={styles.inputContainer}>
+                <ThemedText style={styles.label}>Email or Username</ThemedText>
                 <TextInput
                   style={styles.input}
-                  placeholder="Email or Username"
+                  placeholder="Enter your email or username"
                   placeholderTextColor="#999"
                   value={emailOrUsername}
                   onChangeText={setEmailOrUsername}
@@ -164,10 +165,11 @@ export default function LoginScreen() {
               </View>
 
               <View style={styles.inputContainer}>
+                <ThemedText style={styles.label}>Password</ThemedText>
                 <TextInput
                   ref={passwordRef}
                   style={styles.input}
-                  placeholder="Password"
+                  placeholder="Enter your password"
                   placeholderTextColor="#999"
                   value={password}
                   onChangeText={setPassword}
@@ -210,7 +212,7 @@ export default function LoginScreen() {
               <ThemedText style={styles.footerText}>
                 Don't have an account?{' '}
               </ThemedText>
-              <TouchableOpacity onPress={() => router.push('/(auth)/signup')}>
+              <TouchableOpacity onPress={() => router.push('/(auth)/emailSignUp1')}>
                 <ThemedText style={styles.footerLink}>Sign Up</ThemedText>
               </TouchableOpacity>
             </View>
@@ -263,6 +265,12 @@ const styles = StyleSheet.create({
   },
   inputContainer: {
     marginBottom: 16,
+  },
+  label: {
+    fontSize: 15,
+    fontWeight: '600',
+    color: '#000',
+    marginBottom: 8,
   },
   input: {
     backgroundColor: '#f5f5f5',
