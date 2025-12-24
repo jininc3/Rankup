@@ -1,4 +1,4 @@
-import React, { createContext, useState, useContext, useEffect } from 'react';
+import React, { createContext, useState, useContext, useEffect, useRef } from 'react';
 import { onAuthStateChanged } from 'firebase/auth';
 import { auth, db } from '@/config/firebase';
 import { getUserProfile, signOut as authSignOut } from '@/services/authService';
@@ -78,6 +78,22 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [preloadedSearchHistory, setPreloadedSearchHistory] = useState<SearchUser[] | null>(null);
   const [preloadedProfilePosts, setPreloadedProfilePosts] = useState<Post[] | null>(null);
   const [preloadedRiotStats, setPreloadedRiotStats] = useState<any | null>(null);
+  const loadingStartTime = useRef<number>(Date.now());
+
+  // Helper to ensure minimum loading time of 4.6 seconds
+  const setLoadingFalse = () => {
+    const MINIMUM_LOADING_TIME = 4600; // 4.6 seconds to match loading screen animation
+    const elapsedTime = Date.now() - loadingStartTime.current;
+    const remainingTime = Math.max(0, MINIMUM_LOADING_TIME - elapsedTime);
+
+    if (remainingTime > 0) {
+      setTimeout(() => {
+        setIsLoading(false);
+      }, remainingTime);
+    } else {
+      setIsLoading(false);
+    }
+  };
 
   // Preload feed posts while loading screen is shown
   const preloadFeed = async (userId: string) => {
@@ -289,6 +305,16 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     // Listen to Firebase auth state changes
     const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
       if (firebaseUser) {
+        // Check email verification for email providers
+        const isEmailProvider = firebaseUser.providerData.some(p => p.providerId === 'password');
+        if (isEmailProvider && !firebaseUser.emailVerified) {
+          // Email signup users must verify their email first
+          // Don't set user state - keeps them in auth screens
+          setUser(null);
+          setLoadingFalse();
+          return;
+        }
+
         // User is signed in, get their profile
         try {
           const userProfile = await getUserProfile(firebaseUser.uid);
@@ -328,6 +354,15 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           } else {
             // Fallback if profile doesn't exist (new user or race condition)
             const isGoogleUser = firebaseUser.providerData.some(p => p.providerId === 'google.com');
+            const isEmailProvider = firebaseUser.providerData.some(p => p.providerId === 'password');
+
+            // Email users without verified email should not get user state
+            if (isEmailProvider && !firebaseUser.emailVerified) {
+              setUser(null);
+              setLoadingFalse();
+              return;
+            }
+
             setUser({
               id: firebaseUser.uid,
               username: firebaseUser.displayName || firebaseUser.email?.split('@')[0] || 'User',
@@ -364,7 +399,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         // User is signed out
         setUser(null);
       }
-      setIsLoading(false);
+      setLoadingFalse();
     });
 
     // Cleanup subscription on unmount

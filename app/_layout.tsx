@@ -9,10 +9,6 @@ import { AuthProvider, useAuth } from '@/contexts/AuthContext';
 import LoadingScreen from '@/app/components/loadingScreen';
 import { addNotificationTapListener } from '@/services/notificationService';
 
-export const unstable_settings = {
-  anchor: '(tabs)',
-};
-
 function RootLayoutNav() {
   const colorScheme = useColorScheme();
   const { isAuthenticated, isLoading, needsUsernameSetup } = useAuth();
@@ -83,6 +79,7 @@ function RootLayoutNav() {
           headerShown: false,
         }}
       >
+        <Stack.Screen name="index" options={{ headerShown: false }} />
         <Stack.Screen name="(auth)" options={{ headerShown: false }} />
         <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
         <Stack.Screen name="components/gameStats" options={{ headerShown: false }} />

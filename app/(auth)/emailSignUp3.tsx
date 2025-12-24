@@ -14,8 +14,9 @@ import { ThemedView } from '@/components/themed-view';
 import { IconSymbol } from '@/components/ui/icon-symbol';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { signUpWithEmail } from '@/services/authService';
-import { db } from '@/config/firebase';
+import { db, auth } from '@/config/firebase';
 import { doc, updateDoc } from 'firebase/firestore';
+import { sendEmailVerification } from 'firebase/auth';
 
 export default function EmailSignUpStep3() {
   const router = useRouter();
@@ -59,7 +60,13 @@ export default function EmailSignUpStep3() {
         });
       }
 
-      // Router navigation is handled by AuthContext automatically
+      // Send email verification
+      if (auth.currentUser && !auth.currentUser.emailVerified) {
+        await sendEmailVerification(auth.currentUser);
+      }
+
+      // Navigate to email verification page
+      router.replace('/(auth)/verifyEmailSignUp');
     } catch (error: any) {
       Alert.alert('Sign Up Failed', error.message);
       console.error(error);

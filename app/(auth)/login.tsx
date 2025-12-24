@@ -242,11 +242,11 @@ const styles = StyleSheet.create({
 
   },
   header: {
-    marginBottom: 40,
-    marginTop: 40,
+    marginBottom: 24,
+    marginTop: 20,
     alignItems: 'center',
-    paddingTop: 48,
-    paddingBottom: 32,
+    paddingTop: 20,
+    paddingBottom: 16,
     overflow: 'visible',
   },
   title: {
