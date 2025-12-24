@@ -10,7 +10,7 @@ import * as ImagePicker from 'expo-image-picker';
 import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 import { IconSymbol } from '@/components/ui/icon-symbol';
 
-export default function CreateUsernameScreen() {
+export default function GoogleSignUpScreen() {
   const { user, refreshUser, signOut } = useAuth();
   const router = useRouter();
   const [username, setUsername] = useState('');

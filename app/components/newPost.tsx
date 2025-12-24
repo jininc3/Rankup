@@ -139,6 +139,12 @@ export default function NewPost({ visible, onClose, onPostCreated }: NewPostProp
       return;
     }
 
+    // Validate that a game tag is selected
+    if (!selectedPostGame) {
+      Alert.alert('Error', 'Please select a game tag before posting');
+      return;
+    }
+
     setUploading(true);
 
     try {

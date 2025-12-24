@@ -23,7 +23,7 @@ function RootLayoutNav() {
     if (isLoading) return;
 
     const inAuthGroup = segments[0] === '(auth)';
-    const onUsernameSetup = segments[1] === 'createUsername';
+    const onUsernameSetup = segments[1] === 'googleSignUp';
 
     console.log('Routing check:', {
       isAuthenticated,
@@ -39,8 +39,8 @@ function RootLayoutNav() {
       router.replace('/(auth)/login');
     } else if (isAuthenticated && needsUsernameSetup && !onUsernameSetup) {
       // Authenticated but needs username setup
-      console.log('Redirecting to createUsername');
-      router.replace('/(auth)/createUsername');
+      console.log('Redirecting to googleSignUp');
+      router.replace('/(auth)/googleSignUp');
     } else if (isAuthenticated && !needsUsernameSetup && inAuthGroup) {
       // Authenticated with username set, redirect to main app
       console.log('Redirecting to tabs');

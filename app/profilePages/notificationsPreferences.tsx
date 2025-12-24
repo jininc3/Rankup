@@ -19,6 +19,7 @@ export default function NotificationsPreferencesScreen() {
   const [likesEnabled, setLikesEnabled] = useState(true);
   const [commentsEnabled, setCommentsEnabled] = useState(true);
   const [followersEnabled, setFollowersEnabled] = useState(true);
+  const [messagesEnabled, setMessagesEnabled] = useState(true);
   const [rankUpsEnabled, setRankUpsEnabled] = useState(true);
   const [achievementsEnabled, setAchievementsEnabled] = useState(true);
   const [challengesEnabled, setChallengesEnabled] = useState(true);
@@ -46,6 +47,7 @@ export default function NotificationsPreferencesScreen() {
             if (prefs.likes !== undefined) setLikesEnabled(prefs.likes);
             if (prefs.comments !== undefined) setCommentsEnabled(prefs.comments);
             if (prefs.followers !== undefined) setFollowersEnabled(prefs.followers);
+            if (prefs.messages !== undefined) setMessagesEnabled(prefs.messages);
             if (prefs.rankUps !== undefined) setRankUpsEnabled(prefs.rankUps);
             if (prefs.achievements !== undefined) setAchievementsEnabled(prefs.achievements);
             if (prefs.challenges !== undefined) setChallengesEnabled(prefs.challenges);
@@ -93,6 +95,11 @@ export default function NotificationsPreferencesScreen() {
   const handleFollowersChange = (value: boolean) => {
     setFollowersEnabled(value);
     savePreference('followers', value);
+  };
+
+  const handleMessagesChange = (value: boolean) => {
+    setMessagesEnabled(value);
+    savePreference('messages', value);
   };
 
   const handleRankUpsChange = (value: boolean) => {
@@ -154,6 +161,14 @@ export default function NotificationsPreferencesScreen() {
           value: followersEnabled,
           onValueChange: handleFollowersChange,
         },
+        {
+          id: 4,
+          icon: 'message',
+          title: 'Messages',
+          subtitle: 'When someone sends you a message',
+          value: messagesEnabled,
+          onValueChange: handleMessagesChange,
+        },
       ],
     },
     {
@@ -161,7 +176,7 @@ export default function NotificationsPreferencesScreen() {
       title: 'Gaming Activity',
       items: [
         {
-          id: 4,
+          id: 5,
           icon: 'arrow.up.circle',
           title: 'Rank Updates',
           subtitle: 'When you rank up or down',
@@ -169,7 +184,7 @@ export default function NotificationsPreferencesScreen() {
           onValueChange: handleRankUpsChange,
         },
         {
-          id: 5,
+          id: 6,
           icon: 'trophy',
           title: 'Achievements',
           subtitle: 'When you unlock achievements',
@@ -177,7 +192,7 @@ export default function NotificationsPreferencesScreen() {
           onValueChange: handleAchievementsChange,
         },
         {
-          id: 6,
+          id: 7,
           icon: 'gamecontroller',
           title: 'Challenge Invites',
           subtitle: 'When someone challenges you',
@@ -191,7 +206,7 @@ export default function NotificationsPreferencesScreen() {
       title: 'Email Preferences',
       items: [
         {
-          id: 7,
+          id: 8,
           icon: 'envelope.badge',
           title: 'Weekly Digest',
           subtitle: 'Summary of your activity',
@@ -199,7 +214,7 @@ export default function NotificationsPreferencesScreen() {
           onValueChange: handleEmailDigestChange,
         },
         {
-          id: 8,
+          id: 9,
           icon: 'envelope',
           title: 'Product Updates',
           subtitle: 'New features and improvements',
@@ -207,7 +222,7 @@ export default function NotificationsPreferencesScreen() {
           onValueChange: handleEmailUpdatesChange,
         },
         {
-          id: 9,
+          id: 10,
           icon: 'megaphone',
           title: 'Marketing Emails',
           subtitle: 'Promotions and offers',

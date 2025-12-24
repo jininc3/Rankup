@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useRef } from 'react';
 import {
   View,
   StyleSheet,
@@ -14,8 +14,7 @@ import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { IconSymbol } from '@/components/ui/icon-symbol';
 import { useRouter } from 'expo-router';
-import { signUpWithEmail, signInWithGoogleCredential } from '@/services/authService';
-import { useGoogleAuth } from '@/hooks/useGoogleAuth';
+import { signUpWithEmail } from '@/services/authService';
 import { useAuth } from '@/contexts/AuthContext';
 import * as ImagePicker from 'expo-image-picker';
 import { storage, db } from '@/config/firebase';
@@ -31,18 +30,11 @@ export default function SignupScreen() {
   const [confirmPassword, setConfirmPassword] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [profileImage, setProfileImage] = useState<string | null>(null);
-  const googleAuth = useGoogleAuth();
 
   // Refs for input fields
   const emailRef = useRef<TextInput>(null);
   const passwordRef = useRef<TextInput>(null);
   const confirmPasswordRef = useRef<TextInput>(null);
-
-  useEffect(() => {
-    if (googleAuth.response?.type === 'success') {
-      handleGoogleSuccess(googleAuth.response);
-    }
-  }, [googleAuth.response]);
 
   const pickImage = async () => {
     const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
@@ -75,23 +67,6 @@ export default function SignupScreen() {
     const downloadURL = await getDownloadURL(storageRef);
 
     return downloadURL;
-  };
-
-  const handleGoogleSuccess = async (response: any) => {
-    try {
-      setIsLoading(true);
-      const { id_token } = response.params;
-
-      if (id_token) {
-        await signInWithGoogleCredential(id_token);
-        // Router navigation is handled by AuthContext automatically
-      }
-    } catch (error: any) {
-      Alert.alert('Google Sign Up Failed', error.message);
-      console.error(error);
-    } finally {
-      setIsLoading(false);
-    }
   };
 
   const handleEmailSignup = async () => {
@@ -136,15 +111,6 @@ export default function SignupScreen() {
       console.error(error);
     } finally {
       setIsLoading(false);
-    }
-  };
-
-  const handleGoogleSignup = async () => {
-    try {
-      await googleAuth.promptAsync();
-    } catch (error: any) {
-      Alert.alert('Google Sign Up Failed', error.message);
-      console.error(error);
     }
   };
 
@@ -280,23 +246,6 @@ export default function SignupScreen() {
                   {isLoading ? 'Creating account...' : 'Sign Up'}
                 </ThemedText>
               </TouchableOpacity>
-
-              <View style={styles.divider}>
-                <View style={styles.dividerLine} />
-                <ThemedText style={styles.dividerText}>OR</ThemedText>
-                <View style={styles.dividerLine} />
-              </View>
-
-              <TouchableOpacity
-                style={[styles.socialButton, styles.googleButton, isLoading && styles.buttonDisabled]}
-                onPress={handleGoogleSignup}
-                disabled={!googleAuth.request || isLoading}
-              >
-                <IconSymbol name="globe" size={20} color="#fff" />
-                <ThemedText style={styles.socialButtonText}>
-                  Continue with Google
-                </ThemedText>
-              </TouchableOpacity>
             </View>
 
             <View style={styles.footer}>
@@ -385,38 +334,6 @@ const styles = StyleSheet.create({
   },
   buttonDisabled: {
     opacity: 0.5,
-  },
-  divider: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginVertical: 24,
-  },
-  dividerLine: {
-    flex: 1,
-    height: 1,
-    backgroundColor: '#e0e0e0',
-  },
-  dividerText: {
-    marginHorizontal: 16,
-    color: '#999',
-    fontSize: 14,
-  },
-  socialButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    borderRadius: 12,
-    padding: 16,
-    marginBottom: 12,
-    gap: 8,
-  },
-  googleButton: {
-    backgroundColor: '#4285F4',
-  },
-  socialButtonText: {
-    color: '#fff',
-    fontSize: 16,
-    fontWeight: '600',
   },
   footer: {
     flexDirection: 'row',

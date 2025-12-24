@@ -40,6 +40,9 @@ export interface Chat {
   unreadCount: {
     [userId: string]: number;
   };
+  lastNotificationSent?: {
+    [userId: string]: Timestamp;
+  };
   createdAt: Timestamp;
 }
 
@@ -94,6 +97,10 @@ export const createOrGetChat = async (
       [currentUserId]: 0,
       [otherUserId]: 0,
     },
+    lastNotificationSent: {
+      [currentUserId]: Timestamp.fromMillis(0),
+      [otherUserId]: Timestamp.fromMillis(0),
+    },
     createdAt: now,
   });
 
@@ -111,8 +118,25 @@ export const sendMessage = async (
 ): Promise<string> => {
   const now = Timestamp.now();
 
-  // Add message to subcollection
+  // Spam prevention: Check recent messages from this sender
   const messagesRef = collection(db, `chats/${chatId}/messages`);
+  const tenSecondsAgo = Timestamp.fromMillis(now.toMillis() - 10000);
+
+  const recentMessagesQuery = query(
+    messagesRef,
+    where('senderId', '==', senderId),
+    where('timestamp', '>', tenSecondsAgo),
+    orderBy('timestamp', 'desc')
+  );
+
+  const recentMessagesSnapshot = await getDocs(recentMessagesQuery);
+
+  // Limit: 5 messages per 10 seconds
+  if (recentMessagesSnapshot.size >= 5) {
+    throw new Error('You are sending messages too quickly. Please wait a moment.');
+  }
+
+  // Add message to subcollection
   const messageData = {
     senderId,
     text,

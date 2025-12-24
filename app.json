@@ -4,13 +4,14 @@
     "slug": "RankUp",
     "version": "1.0.0",
     "orientation": "portrait",
-    "icon": "./assets/images/rankup-logo.png",
+    "icon": "./assets/images/rankupicon.png",
     "scheme": "rankup",
     "userInterfaceStyle": "automatic",
     "newArchEnabled": true,
     "ios": {
       "supportsTablet": true,
       "bundleIdentifier": "com.jininc3.RankUp",
+      "buildNumber": "1",
       "infoPlist": {
         "ITSAppUsesNonExemptEncryption": false,
         "LSApplicationQueriesSchemes": [
@@ -22,9 +23,9 @@
     "android": {
       "adaptiveIcon": {
         "backgroundColor": "#E6F4FE",
-        "foregroundImage": "./assets/images/rankup-logo.png",
-        "backgroundImage": "./assets/images/rankup-logo.png",
-        "monochromeImage": "./assets/images/rankup-logo.png"
+        "foregroundImage": "./assets/images/rankupicon.png",
+        "backgroundImage": "./assets/images/rankupicon.png",
+        "monochromeImage": "./assets/images/rankupicon.png"
       },
       "edgeToEdgeEnabled": true,
       "predictiveBackGestureEnabled": false,
@@ -35,7 +36,7 @@
       "favicon": "./assets/images/favicon.png"
     },
     "notification": {
-      "icon": "./assets/images/notification-icon.png",
+      "icon": "./assets/images/rankupicon.png",
       "color": "#ffffff",
       "androidMode": "default",
       "androidCollapsedTitle": "{{unread_notifications}} new notifications"
@@ -45,7 +46,7 @@
       [
         "expo-splash-screen",
         {
-          "image": "./assets/images/splash-icon.png",
+          "image": "./assets/images/rankupicon.png",
           "imageWidth": 200,
           "resizeMode": "contain",
           "backgroundColor": "#ffffff",
@@ -64,7 +65,7 @@
       [
         "expo-notifications",
         {
-          "icon": "./assets/images/notification-icon.png",
+          "icon": "./assets/images/rankupicon.png",
           "color": "#ffffff",
           "sounds": []
         }

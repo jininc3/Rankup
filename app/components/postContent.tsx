@@ -192,31 +192,33 @@ export default function PostContent({
           </View>
           <ThemedText style={styles.username}>{post.username}</ThemedText>
         </TouchableOpacity>
-        {post.taggedGame && (
-          <View style={styles.gameTag}>
-            {getGameImage(post.taggedGame) ? (
-              <Image
-                source={getGameImage(post.taggedGame)}
-                style={styles.gameTagImage}
-                resizeMode="contain"
-              />
-            ) : (
-              <ThemedText style={styles.gameTagText}>
-                {getGameIcon(post.taggedGame)} {getGameName(post.taggedGame)}
-              </ThemedText>
-            )}
-          </View>
-        )}
-        {post.userId === currentUserId && onDelete && (
-          <TouchableOpacity
-            style={styles.menuButton}
-            onPress={handlePostOptions}
-            activeOpacity={0.6}
-            hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
-          >
-            <IconSymbol size={20} name="ellipsis" color="#000" />
-          </TouchableOpacity>
-        )}
+        <View style={styles.headerRight}>
+          {post.taggedGame && (
+            <View style={styles.gameTag}>
+              {getGameImage(post.taggedGame) ? (
+                <Image
+                  source={getGameImage(post.taggedGame)}
+                  style={styles.gameTagImage}
+                  resizeMode="contain"
+                />
+              ) : (
+                <ThemedText style={styles.gameTagText}>
+                  {getGameIcon(post.taggedGame)} {getGameName(post.taggedGame)}
+                </ThemedText>
+              )}
+            </View>
+          )}
+          {post.userId === currentUserId && onDelete && (
+            <TouchableOpacity
+              style={styles.menuButton}
+              onPress={handlePostOptions}
+              activeOpacity={0.6}
+              hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+            >
+              <IconSymbol size={20} name="ellipsis" color="#000" />
+            </TouchableOpacity>
+          )}
+        </View>
       </View>
 
       {/* Caption */}
@@ -412,6 +414,12 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 12,
+    flex: 1,
+  },
+  headerRight: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
   },
   avatar: {
     width: 32,
@@ -512,7 +520,6 @@ const styles = StyleSheet.create({
     padding: 6,
   },
   menuButton: {
-    marginLeft: 'auto',
     padding: 8,
   },
   likesContainer: {

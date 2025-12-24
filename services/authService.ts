@@ -252,3 +252,4 @@ function getAuthErrorMessage(errorCode: string): string {
       return 'An error occurred. Please try again';
   }
 }
+

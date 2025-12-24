@@ -11,6 +11,7 @@ import {
   Platform,
   Image,
   ActivityIndicator,
+  Alert,
 } from 'react-native';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { useAuth } from '@/contexts/AuthContext';
@@ -99,8 +100,14 @@ export default function ChatScreen() {
     try {
       await sendMessage(chatId, currentUser.id, messageText.trim());
       setMessageText('');
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error sending message:', error);
+      // Show user-friendly error for spam prevention
+      if (error.message?.includes('too quickly')) {
+        Alert.alert('Slow Down', error.message);
+      } else {
+        Alert.alert('Error', 'Failed to send message. Please try again.');
+      }
     } finally {
       setSending(false);
     }

@@ -23,3 +23,4 @@ export {unlinkRiotAccountFunction as unlinkRiotAccount} from "./riot/unlinkRiotA
 
 // Export Push Notification functions
 export {onNotificationCreated} from "./notifications/onNotificationCreated";
+export {onMessageCreated} from "./notifications/onMessageCreated";
