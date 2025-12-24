@@ -4,14 +4,14 @@
     "slug": "RankUp",
     "version": "1.0.0",
     "orientation": "portrait",
-    "icon": "./assets/images/rankupicon.png",
+    "icon": "./assets/images/rankup-logo-larger.png",
     "scheme": "rankup",
     "userInterfaceStyle": "automatic",
     "newArchEnabled": true,
     "ios": {
       "supportsTablet": true,
       "bundleIdentifier": "com.jininc3.RankUp",
-      "buildNumber": "1",
+      "buildNumber": "3",
       "infoPlist": {
         "ITSAppUsesNonExemptEncryption": false,
         "LSApplicationQueriesSchemes": [
@@ -23,9 +23,9 @@
     "android": {
       "adaptiveIcon": {
         "backgroundColor": "#E6F4FE",
-        "foregroundImage": "./assets/images/rankupicon.png",
-        "backgroundImage": "./assets/images/rankupicon.png",
-        "monochromeImage": "./assets/images/rankupicon.png"
+        "foregroundImage": "./assets/images/rankup-logo-larger.png",
+        "backgroundImage": "./assets/images/rankup-logo-larger.png",
+        "monochromeImage": "./assets/images/rankup-logo-larger.png"
       },
       "edgeToEdgeEnabled": true,
       "predictiveBackGestureEnabled": false,
@@ -36,7 +36,7 @@
       "favicon": "./assets/images/favicon.png"
     },
     "notification": {
-      "icon": "./assets/images/rankupicon.png",
+      "icon": "./assets/images/rankup-logo-larger.png",
       "color": "#ffffff",
       "androidMode": "default",
       "androidCollapsedTitle": "{{unread_notifications}} new notifications"
@@ -46,7 +46,7 @@
       [
         "expo-splash-screen",
         {
-          "image": "./assets/images/rankupicon.png",
+          "image": "./assets/images/rankup-logo-larger.png",
           "imageWidth": 200,
           "resizeMode": "contain",
           "backgroundColor": "#ffffff",
@@ -65,7 +65,7 @@
       [
         "expo-notifications",
         {
-          "icon": "./assets/images/rankupicon.png",
+          "icon": "./assets/images/rankup-logo-larger.png",
           "color": "#ffffff",
           "sounds": []
         }
