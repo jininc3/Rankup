@@ -11,7 +11,8 @@ import { ThemedView } from '@/components/themed-view';
 import { IconSymbol } from '@/components/ui/icon-symbol';
 import { db } from '@/config/firebase';
 import { useAuth } from '@/contexts/AuthContext';
-import { useRouter, useFocusEffect } from 'expo-router';
+import { useRouter } from 'expo-router';
+import { useFocusEffect } from '@react-navigation/native';
 import { collection, getDocs, query, Timestamp, where, doc, getDoc, updateDoc, increment } from 'firebase/firestore';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { ActivityIndicator, Alert, Dimensions, Image, Linking, Modal, RefreshControl, ScrollView, StyleSheet, TouchableOpacity, View } from 'react-native';
@@ -262,11 +263,15 @@ export default function ProfileScreen() {
     }
   }, [user?.id, hasConsumedPreloadPosts, hasConsumedPreloadRiot, preloadedProfilePosts, preloadedRiotStats]);
 
-  // Note: Removed automatic refetch on focus for better performance
-  // Data now updates via:
-  // 1. Local state updates when creating/deleting posts
-  // 2. Pull-to-refresh for manual updates
-  // 3. Initial mount fetch
+  // Refresh user data when profile page comes into focus
+  // This ensures following/followers counts are always up-to-date
+  useFocusEffect(
+    useCallback(() => {
+      if (user?.id) {
+        refreshUser();
+      }
+    }, [user?.id, refreshUser])
+  );
 
   // Refetch posts when filter or game filter changes
   useEffect(() => {

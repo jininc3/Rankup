@@ -1,7 +1,7 @@
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { useState, useRef } from 'react';
-import { StyleSheet, TextInput, TouchableOpacity, View, Alert, ActivityIndicator, ScrollView, KeyboardAvoidingView, Platform } from 'react-native';
+import { StyleSheet, TextInput, TouchableOpacity, View, Alert, ActivityIndicator, ScrollView, KeyboardAvoidingView, Platform, Keyboard } from 'react-native';
 import { useAuth } from '@/contexts/AuthContext';
 import { useRouter } from 'expo-router';
 import { doc, updateDoc, query, collection, where, getDocs } from 'firebase/firestore';
@@ -188,7 +188,10 @@ export default function GoogleSignUpScreen() {
             <ThemedText style={styles.label}>Date of Birth *</ThemedText>
             <TouchableOpacity
               style={styles.input}
-              onPress={() => setShowDatePicker(true)}
+              onPress={() => {
+                Keyboard.dismiss();
+                setShowDatePicker(true);
+              }}
               disabled={loading}
             >
               <ThemedText style={[styles.dateText, !dateOfBirth && styles.placeholderText]}>

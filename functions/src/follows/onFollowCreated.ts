@@ -24,22 +24,31 @@ export const onFollowerCreated = onDocumentCreated(
     const db = admin.firestore();
 
     try {
-      // Use batch writes for atomic operations
-      const batch = db.batch();
-
-      // Increment followers count for the target user
+      // Update counts individually to handle missing documents
       const targetUserRef = db.collection("users").doc(targetUserId);
-      batch.update(targetUserRef, {
-        followersCount: admin.firestore.FieldValue.increment(1),
-      });
-
-      // Increment following count for the follower
       const followerUserRef = db.collection("users").doc(followerId);
-      batch.update(followerUserRef, {
-        followingCount: admin.firestore.FieldValue.increment(1),
-      });
 
-      await batch.commit();
+      // Check if documents exist
+      const [targetDoc, followerDoc] = await Promise.all([
+        targetUserRef.get(),
+        followerUserRef.get(),
+      ]);
+
+      if (!targetDoc.exists) {
+        logger.warn(`Target user ${targetUserId} document not found, skipping follower count update`);
+      } else {
+        await targetUserRef.update({
+          followersCount: admin.firestore.FieldValue.increment(1),
+        });
+      }
+
+      if (!followerDoc.exists) {
+        logger.warn(`Follower user ${followerId} document not found, skipping following count update`);
+      } else {
+        await followerUserRef.update({
+          followingCount: admin.firestore.FieldValue.increment(1),
+        });
+      }
 
       logger.info(
         `Successfully updated counts for follow: ${followerId} -> ${targetUserId}`

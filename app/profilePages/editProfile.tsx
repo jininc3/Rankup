@@ -31,6 +31,7 @@ export default function EditProfileScreen() {
   const [pendingCoverPhotoUri, setPendingCoverPhotoUri] = useState<string | null>(null);
   const [pendingRemoveProfileImage, setPendingRemoveProfileImage] = useState(false);
   const [pendingRemoveCoverPhoto, setPendingRemoveCoverPhoto] = useState(false);
+  const [postsCount, setPostsCount] = useState(0);
 
   useEffect(() => {
     if (user) {
@@ -507,7 +508,7 @@ export default function EditProfileScreen() {
 
             {/* Stats Row - non-editable display */}
             <View style={styles.statsRow}>
-              <ThemedText style={styles.statText}>{posts.length} Posts</ThemedText>
+              <ThemedText style={styles.statText}>{postsCount} Posts</ThemedText>
               <ThemedText style={styles.statDividerText}> | </ThemedText>
               <ThemedText style={styles.statText}>{user?.followersCount || 0} Followers</ThemedText>
               <ThemedText style={styles.statDividerText}> | </ThemedText>

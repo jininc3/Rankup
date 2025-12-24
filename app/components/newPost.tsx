@@ -141,7 +141,7 @@ export default function NewPost({ visible, onClose, onPostCreated }: NewPostProp
 
     // Validate that a game tag is selected
     if (!selectedPostGame) {
-      Alert.alert('Error', 'Please select a game tag before posting');
+      Alert.alert('Game Tag Required', 'Please select a game tag before posting');
       return;
     }
 

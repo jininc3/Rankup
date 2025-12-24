@@ -3,7 +3,7 @@ import { ThemedView } from '@/components/themed-view';
 import { IconSymbol } from '@/components/ui/icon-symbol';
 import { useRouter } from 'expo-router';
 import { useState, useEffect } from 'react';
-import { ScrollView, StyleSheet, TouchableOpacity, View, Image, Alert, ActivityIndicator } from 'react-native';
+import { ScrollView, StyleSheet, TextInput, TouchableOpacity, View, Image, Alert, ActivityIndicator } from 'react-native';
 import { useAuth } from '@/contexts/AuthContext';
 import { getFollowing, unfollowUser, FollowingData } from '@/services/followService';
 
@@ -18,6 +18,7 @@ export default function FollowingScreen() {
   const { user } = useAuth();
   const [following, setFollowing] = useState<Following[]>([]);
   const [loading, setLoading] = useState(true);
+  const [searchQuery, setSearchQuery] = useState('');
 
   useEffect(() => {
     fetchFollowing();
@@ -59,6 +60,11 @@ export default function FollowingScreen() {
     }
   };
 
+  // Filter following based on search query
+  const filteredFollowing = following.filter(user =>
+    user.username.toLowerCase().includes(searchQuery.toLowerCase())
+  );
+
   return (
     <ThemedView style={styles.container}>
       {/* Header */}
@@ -74,15 +80,34 @@ export default function FollowingScreen() {
         <View style={styles.headerSpacer} />
       </View>
 
+      {/* Search Bar */}
+      <View style={styles.searchContainer}>
+        <IconSymbol size={18} name="magnifyingglass" color="#999" />
+        <TextInput
+          style={styles.searchInput}
+          placeholder="Search following..."
+          placeholderTextColor="#999"
+          value={searchQuery}
+          onChangeText={setSearchQuery}
+          autoCapitalize="none"
+          autoCorrect={false}
+        />
+        {searchQuery.length > 0 && (
+          <TouchableOpacity onPress={() => setSearchQuery('')}>
+            <IconSymbol size={18} name="xmark.circle.fill" color="#999" />
+          </TouchableOpacity>
+        )}
+      </View>
+
       <ScrollView showsVerticalScrollIndicator={false}>
         {loading ? (
           <View style={styles.emptyState}>
             <ActivityIndicator size="large" color="#000" />
             <ThemedText style={styles.loadingText}>Loading following...</ThemedText>
           </View>
-        ) : following.length > 0 ? (
+        ) : filteredFollowing.length > 0 ? (
           <View style={styles.listContainer}>
-            {following.map((user) => (
+            {filteredFollowing.map((user) => (
               <View key={user.id} style={styles.userItem}>
                 <TouchableOpacity
                   style={styles.userLeft}
@@ -111,10 +136,14 @@ export default function FollowingScreen() {
           </View>
         ) : (
           <View style={styles.emptyState}>
-            <IconSymbol size={64} name="person.2" color="#ccc" />
-            <ThemedText style={styles.emptyStateText}>Not following anyone yet</ThemedText>
+            <IconSymbol size={64} name={searchQuery ? "magnifyingglass" : "person.2"} color="#ccc" />
+            <ThemedText style={styles.emptyStateText}>
+              {searchQuery ? 'No results found' : 'Not following anyone yet'}
+            </ThemedText>
             <ThemedText style={styles.emptyStateSubtext}>
-              When you follow people, they'll appear here
+              {searchQuery
+                ? `No users found matching "${searchQuery}"`
+                : 'When you follow people, they\'ll appear here'}
             </ThemedText>
           </View>
         )}
@@ -159,6 +188,23 @@ const styles = StyleSheet.create({
   },
   headerSpacer: {
     flex: 1,
+  },
+  searchContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    backgroundColor: '#f5f5f5',
+    marginHorizontal: 16,
+    marginVertical: 12,
+    borderRadius: 10,
+    gap: 8,
+  },
+  searchInput: {
+    flex: 1,
+    fontSize: 15,
+    color: '#000',
+    paddingVertical: 0,
   },
   listContainer: {
     paddingVertical: 8,
