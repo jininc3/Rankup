@@ -14,17 +14,7 @@
     },
     "production": {
       "distribution": "store",
-      "node": "22.14.0",
-      "env": {
-        "EXPO_PUBLIC_FIREBASE_API_KEY": "AIzaSyA1jaZB7Km-8_qQtGOo51y61WeJVXYkW5s",
-        "EXPO_PUBLIC_FIREBASE_AUTH_DOMAIN": "rankup-a2a8a.firebaseapp.com",
-        "EXPO_PUBLIC_FIREBASE_PROJECT_ID": "rankup-a2a8a",
-        "EXPO_PUBLIC_FIREBASE_STORAGE_BUCKET": "rankup-a2a8a.firebasestorage.app",
-        "EXPO_PUBLIC_FIREBASE_MESSAGING_SENDER_ID": "636355743624",
-        "EXPO_PUBLIC_FIREBASE_APP_ID": "1:636355743624:web:8a48d33fbdf6c8869cb43d",
-        "EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID": "636355743624-0ajemthhm91trn9osmv925tb2aacgpu0.apps.googleusercontent.com",
-        "EXPO_PUBLIC_GOOGLE_IOS_CLIENT_ID": "636355743624-4onv4qf54unr6sqh6crih425vjohc9b7.apps.googleusercontent.com"
-      }
+      "node": "22.14.0"
     }
   }
 }
