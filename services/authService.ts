@@ -37,20 +37,23 @@ export async function signUpWithEmail(
   username: string
 ): Promise<UserProfile> {
   try {
+    // Normalize username to lowercase
+    const normalizedUsername = username.toLowerCase();
+
     // Create user in Firebase Auth
     const userCredential = await createUserWithEmailAndPassword(auth, email, password);
     const user = userCredential.user;
 
     // Update display name
     await updateProfile(user, {
-      displayName: username,
+      displayName: normalizedUsername,
     });
 
     // Create user profile in Firestore
     const userProfile: UserProfile = {
       id: user.uid,
       email: user.email!,
-      username,
+      username: normalizedUsername,
       bio: '',
       discordLink: '',
       instagramLink: '',
@@ -208,8 +211,14 @@ export async function updateUserProfile(
   try {
     const userRef = doc(db, 'users', userId);
 
+    // Normalize username to lowercase if provided
+    const updateData = { ...data };
+    if (updateData.username) {
+      updateData.username = updateData.username.toLowerCase();
+    }
+
     await updateDoc(userRef, {
-      ...data,
+      ...updateData,
       updatedAt: new Date(),
     });
   } catch (error: any) {

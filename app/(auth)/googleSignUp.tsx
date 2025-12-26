@@ -28,7 +28,7 @@ export default function GoogleSignUpScreen() {
   const checkUsernameAvailability = async (username: string): Promise<boolean> => {
     try {
       const usersRef = collection(db, 'users');
-      const q = query(usersRef, where('username', '==', username));
+      const q = query(usersRef, where('username', '==', username.toLowerCase()));
       const querySnapshot = await getDocs(q);
       return querySnapshot.empty;
     } catch (error) {
@@ -95,7 +95,7 @@ export default function GoogleSignUpScreen() {
       // Update user profile in Firestore
       if (user?.id) {
         await updateDoc(doc(db, 'users', user.id), {
-          username: username,
+          username: username.toLowerCase(),
           dateOfBirth: dateOfBirth.toISOString(),
           needsUsernameSetup: false,
           updatedAt: new Date(),
@@ -173,7 +173,7 @@ export default function GoogleSignUpScreen() {
               placeholder="Enter username"
               placeholderTextColor="#999"
               value={username}
-              onChangeText={setUsername}
+              onChangeText={(text) => setUsername(text.toLowerCase())}
               autoCapitalize="none"
               autoCorrect={false}
               maxLength={20}

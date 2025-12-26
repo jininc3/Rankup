@@ -7,7 +7,7 @@
     "icon": "./assets/images/rankup-logo-larger.png",
     "scheme": "rankup",
     "userInterfaceStyle": "automatic",
-    "newArchEnabled": false,
+    "newArchEnabled": true,
     "ios": {
       "supportsTablet": true,
       "bundleIdentifier": "com.jininc3.RankUp",
@@ -43,6 +43,7 @@
     },
     "plugins": [
       "expo-router",
+      "@react-native-community/datetimepicker",
       [
         "expo-splash-screen",
         {

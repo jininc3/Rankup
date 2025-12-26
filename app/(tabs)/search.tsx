@@ -165,12 +165,12 @@ export default function SearchScreen() {
     setSearching(true);
 
     try {
-      // Search for users whose username starts with the search query
+      // Search for users whose username starts with the search query (lowercase)
       const usersRef = collection(db, 'users');
       const q = query(
         usersRef,
-        where('username', '>=', text),
-        where('username', '<=', text + '\uf8ff'),
+        where('username', '>=', text.toLowerCase()),
+        where('username', '<=', text.toLowerCase() + '\uf8ff'),
         limit(20)
       );
 
@@ -227,7 +227,7 @@ export default function SearchScreen() {
           placeholder="Search by username..."
           placeholderTextColor="#999"
           value={searchQuery}
-          onChangeText={handleSearch}
+          onChangeText={(text) => handleSearch(text.toLowerCase())}
           autoCapitalize="none"
         />
         {searchQuery.length > 0 && (

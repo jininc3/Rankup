@@ -392,7 +392,7 @@ export default function EditProfileScreen() {
 
               // Prepare update data
               const updateData: any = {
-                username: username.trim(),
+                username: username.trim().toLowerCase(),
                 bio: bio.trim(),
                 discordLink: discord.trim(),
                 instagramLink: instagram.trim(),
@@ -501,9 +501,10 @@ export default function EditProfileScreen() {
             <TextInput
               style={styles.usernameInput}
               value={username}
-              onChangeText={setUsername}
+              onChangeText={(text) => setUsername(text.toLowerCase())}
               placeholder="Username"
               placeholderTextColor="#999"
+              autoCapitalize="none"
             />
 
             {/* Stats Row - non-editable display */}
