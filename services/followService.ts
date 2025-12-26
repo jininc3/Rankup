@@ -8,7 +8,9 @@ import {
   query,
   orderBy,
   Timestamp,
-  getDoc
+  getDoc,
+  where,
+  limit
 } from 'firebase/firestore';
 
 export interface FollowerData {
@@ -156,4 +158,24 @@ export const getFollowingCount = async (userId: string): Promise<number> => {
   const followingRef = collection(db, `users/${userId}/following`);
   const querySnapshot = await getDocs(followingRef);
   return querySnapshot.size;
+};
+
+/**
+ * Get a user's recent posts (for when following someone new)
+ * Returns up to 8 most recent posts
+ */
+export const getUserRecentPosts = async (userId: string): Promise<any[]> => {
+  const postsRef = collection(db, 'posts');
+  const q = query(
+    postsRef,
+    where('userId', '==', userId),
+    orderBy('createdAt', 'desc'),
+    limit(8)
+  );
+
+  const querySnapshot = await getDocs(q);
+  return querySnapshot.docs.map(doc => ({
+    id: doc.id,
+    ...doc.data()
+  }));
 };

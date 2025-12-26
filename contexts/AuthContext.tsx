@@ -59,6 +59,9 @@ interface AuthContextType {
   preloadedSearchHistory: SearchUser[] | null;
   preloadedProfilePosts: Post[] | null;
   preloadedRiotStats: any | null;
+  newlyFollowedUserPosts: Post[] | null;
+  newlyFollowedUserId: string | null;
+  newlyUnfollowedUserId: string | null;
   setUser: (user: User | null) => void;
   refreshUser: () => Promise<void>;
   signOut: () => Promise<void>;
@@ -67,6 +70,10 @@ interface AuthContextType {
   clearPreloadedPosts: () => void;
   clearPreloadedSearchHistory: () => void;
   clearPreloadedProfileData: () => void;
+  setNewlyFollowedUserPosts: (posts: Post[], userId: string) => void;
+  clearNewlyFollowedUserPosts: () => void;
+  setNewlyUnfollowedUserId: (userId: string) => void;
+  clearNewlyUnfollowedUserId: () => void;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -78,6 +85,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [preloadedSearchHistory, setPreloadedSearchHistory] = useState<SearchUser[] | null>(null);
   const [preloadedProfilePosts, setPreloadedProfilePosts] = useState<Post[] | null>(null);
   const [preloadedRiotStats, setPreloadedRiotStats] = useState<any | null>(null);
+  const [newlyFollowedUserPosts, setNewlyFollowedUserPostsState] = useState<Post[] | null>(null);
+  const [newlyFollowedUserId, setNewlyFollowedUserIdState] = useState<string | null>(null);
+  const [newlyUnfollowedUserId, setNewlyUnfollowedUserIdState] = useState<string | null>(null);
   const loadingStartTime = useRef<number>(Date.now());
 
   // Helper to ensure minimum loading time of 4.6 seconds
@@ -465,6 +475,24 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     setPreloadedRiotStats(null);
   };
 
+  const setNewlyFollowedUserPosts = (posts: Post[], userId: string) => {
+    setNewlyFollowedUserPostsState(posts);
+    setNewlyFollowedUserIdState(userId);
+  };
+
+  const clearNewlyFollowedUserPosts = () => {
+    setNewlyFollowedUserPostsState(null);
+    setNewlyFollowedUserIdState(null);
+  };
+
+  const setNewlyUnfollowedUserId = (userId: string) => {
+    setNewlyUnfollowedUserIdState(userId);
+  };
+
+  const clearNewlyUnfollowedUserId = () => {
+    setNewlyUnfollowedUserIdState(null);
+  };
+
   return (
     <AuthContext.Provider
       value={{
@@ -474,6 +502,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         preloadedSearchHistory,
         preloadedProfilePosts,
         preloadedRiotStats,
+        newlyFollowedUserPosts,
+        newlyFollowedUserId,
+        newlyUnfollowedUserId,
         setUser,
         refreshUser,
         signOut: handleSignOut,
@@ -482,6 +513,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         clearPreloadedPosts,
         clearPreloadedSearchHistory,
         clearPreloadedProfileData,
+        setNewlyFollowedUserPosts,
+        clearNewlyFollowedUserPosts,
+        setNewlyUnfollowedUserId,
+        clearNewlyUnfollowedUserId,
       }}
     >
       {children}

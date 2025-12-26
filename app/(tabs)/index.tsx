@@ -61,7 +61,16 @@ interface Post {
 
 export default function HomeScreen() {
   const router = useRouter();
-  const { user: currentUser, preloadedPosts, clearPreloadedPosts } = useAuth();
+  const {
+    user: currentUser,
+    preloadedPosts,
+    clearPreloadedPosts,
+    newlyFollowedUserPosts,
+    newlyFollowedUserId,
+    clearNewlyFollowedUserPosts,
+    newlyUnfollowedUserId,
+    clearNewlyUnfollowedUserId
+  } = useAuth();
   const [activeTab, setActiveTab] = useState<'forYou' | 'following'>('following');
   const [followingPosts, setFollowingPosts] = useState<Post[]>([]);
   const [forYouPosts, setForYouPosts] = useState<Post[]>([]);
@@ -147,6 +156,72 @@ export default function HomeScreen() {
       clearPreloadedPosts();
     }
   }, [preloadedPosts, hasConsumedPreload, clearPreloadedPosts]);
+
+  // Smart merge logic for newly followed user posts
+  useEffect(() => {
+    if (!newlyFollowedUserPosts || !newlyFollowedUserId) return;
+
+    console.log(`✅ Merging ${newlyFollowedUserPosts.length} posts from newly followed user:`, newlyFollowedUserId);
+
+    // Only merge if we're on the following tab
+    if (activeTab === 'following') {
+      setFollowingPosts(currentPosts => {
+        // Combine new posts with existing posts
+        const combined = [...currentPosts, ...newlyFollowedUserPosts];
+
+        // Remove duplicates by ID
+        const uniqueMap = new Map();
+        combined.forEach(post => {
+          if (!uniqueMap.has(post.id)) {
+            uniqueMap.set(post.id, post);
+          }
+        });
+        const unique = Array.from(uniqueMap.values());
+
+        // Sort by timestamp descending (most recent first)
+        unique.sort((a, b) => b.createdAt.toMillis() - a.createdAt.toMillis());
+
+        // Take only top 8 most recent posts
+        const top8 = unique.slice(0, POSTS_PER_PAGE);
+
+        console.log(`✅ Feed updated: ${currentPosts.length} → ${top8.length} posts (showing top 8 most recent)`);
+        return top8;
+      });
+    }
+
+    // Add the newly followed user to the following list
+    setFollowingUserIds(prev => {
+      if (!prev.includes(newlyFollowedUserId)) {
+        return [...prev, newlyFollowedUserId];
+      }
+      return prev;
+    });
+
+    // Clear the newly followed posts from context
+    clearNewlyFollowedUserPosts();
+  }, [newlyFollowedUserPosts, newlyFollowedUserId, activeTab, clearNewlyFollowedUserPosts, POSTS_PER_PAGE]);
+
+  // Smart removal logic for unfollowed user posts
+  useEffect(() => {
+    if (!newlyUnfollowedUserId) return;
+
+    console.log(`✅ Removing posts from unfollowed user:`, newlyUnfollowedUserId);
+
+    // Only remove if we're on the following tab
+    if (activeTab === 'following') {
+      setFollowingPosts(currentPosts => {
+        const filtered = currentPosts.filter(post => post.userId !== newlyUnfollowedUserId);
+        console.log(`✅ Feed updated: ${currentPosts.length} → ${filtered.length} posts (removed unfollowed user's posts)`);
+        return filtered;
+      });
+    }
+
+    // Remove the unfollowed user from the following list
+    setFollowingUserIds(prev => prev.filter(id => id !== newlyUnfollowedUserId));
+
+    // Clear the unfollowed userId from context
+    clearNewlyUnfollowedUserId();
+  }, [newlyUnfollowedUserId, activeTab, clearNewlyUnfollowedUserId]);
 
   // Fetch posts with pagination
   const fetchPostsWithPagination = useCallback(async (isLoadMore: boolean = false) => {

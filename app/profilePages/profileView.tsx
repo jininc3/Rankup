@@ -14,7 +14,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { useFocusEffect } from '@react-navigation/native';
 import { db } from '@/config/firebase';
 import { collection, query, where, orderBy, getDocs, Timestamp, doc, getDoc, setDoc, deleteDoc, updateDoc, increment } from 'firebase/firestore';
-import { followUser, unfollowUser, isFollowing as checkIsFollowing } from '@/services/followService';
+import { followUser, unfollowUser, isFollowing as checkIsFollowing, getUserRecentPosts } from '@/services/followService';
 import { createOrGetChat } from '@/services/chatService';
 import PostViewerModal from '@/app/components/postViewerModal';
 
@@ -72,7 +72,7 @@ interface Post {
 export default function ProfileViewScreen() {
   const router = useRouter();
   const params = useLocalSearchParams();
-  const { user: currentUser, refreshUser } = useAuth();
+  const { user: currentUser, refreshUser, setNewlyFollowedUserPosts, setNewlyUnfollowedUserId } = useAuth();
   const [viewedUser, setViewedUser] = useState<ViewedUser | null>(null);
   const [loadingUser, setLoadingUser] = useState(true);
   const [selectedGameIndex, setSelectedGameIndex] = useState(0);
@@ -260,6 +260,9 @@ export default function ProfileViewScreen() {
           ...viewedUser,
           followersCount: (viewedUser.followersCount || 0) - 1,
         });
+
+        // Signal to remove this user's posts from feed
+        setNewlyUnfollowedUserId(userId);
       } else {
         // Follow
         await followUser(
@@ -278,6 +281,15 @@ export default function ProfileViewScreen() {
           ...viewedUser,
           followersCount: (viewedUser.followersCount || 0) + 1,
         });
+
+        // Fetch newly followed user's recent posts and store in context
+        try {
+          const recentPosts = await getUserRecentPosts(userId);
+          setNewlyFollowedUserPosts(recentPosts, userId);
+        } catch (error) {
+          console.error('Error fetching newly followed user posts:', error);
+          // Don't block the follow operation if fetching posts fails
+        }
       }
 
       // Refresh current user data
