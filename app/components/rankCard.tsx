@@ -21,6 +21,21 @@ interface RankCardProps {
   username: string;
 }
 
+// Rank icon mapping
+const RANK_ICONS: { [key: string]: any } = {
+  iron: require('@/assets/images/leagueranks/iron.png'),
+  bronze: require('@/assets/images/leagueranks/bronze.png'),
+  silver: require('@/assets/images/leagueranks/silver.png'),
+  gold: require('@/assets/images/leagueranks/gold.png'),
+  platinum: require('@/assets/images/leagueranks/platinum.png'),
+  emerald: require('@/assets/images/leagueranks/emerald.png'),
+  diamond: require('@/assets/images/leagueranks/diamond.png'),
+  master: require('@/assets/images/leagueranks/masters.png'),
+  grandmaster: require('@/assets/images/leagueranks/grandmaster.png'),
+  challenger: require('@/assets/images/leagueranks/challenger.png'),
+  unranked: require('@/assets/images/leagueranks/unranked.png'),
+};
+
 export default function rankCard({ game, username }: RankCardProps) {
   const router = useRouter();
 
@@ -32,6 +47,16 @@ export default function rankCard({ game, username }: RankCardProps) {
         game: JSON.stringify(game),
       },
     });
+  };
+
+  // Extract tier from rank string (e.g., "Emerald III" -> "emerald")
+  const getRankIcon = (rank: string) => {
+    if (!rank || rank === 'Unranked') {
+      return RANK_ICONS.unranked;
+    }
+
+    const tier = rank.split(' ')[0].toLowerCase();
+    return RANK_ICONS[tier] || RANK_ICONS.unranked;
   };
 
   return (
@@ -58,6 +83,11 @@ export default function rankCard({ game, username }: RankCardProps) {
         <View style={styles.cardMiddle}>
           <ThemedText style={styles.cardRankLabel}>CURRENT RANK</ThemedText>
           <ThemedText style={styles.cardRankValue}>{game.rank}</ThemedText>
+          <Image
+            source={getRankIcon(game.rank)}
+            style={styles.rankIcon}
+            resizeMode="contain"
+          />
         </View>
 
         {/* Footer - Bottom */}
@@ -117,18 +147,24 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     textTransform: 'uppercase',
   },
+  rankIcon: {
+    width: 100,
+    height: 100,
+    marginTop: -10,
+    marginBottom: 2,
+  },
   cardRankValue: {
-    fontSize: 36,
+    fontSize: 24,
     fontWeight: '700',
     color: '#fff',
     letterSpacing: -1,
-    marginTop: 4,
-    lineHeight: 44,
+    marginTop: 0,
+    lineHeight: 28,
     includeFontPadding: false,
   },
   cardFooter: {
     position: 'absolute',
-    bottom: 0,
+    bottom: -20,
     left: 0,
     right: 0,
     flexDirection: 'row',
