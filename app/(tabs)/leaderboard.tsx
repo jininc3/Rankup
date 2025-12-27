@@ -4,6 +4,7 @@ import { ThemedView } from '@/components/themed-view';
 import { IconSymbol } from '@/components/ui/icon-symbol';
 import { useRouter } from 'expo-router';
 import { ScrollView, StyleSheet, TouchableOpacity, View, Image } from 'react-native';
+import PartyCards from '@/app/components/partyCards';
 
 // Game logo mapping
 const GAME_LOGOS: { [key: string]: any } = {
@@ -72,6 +73,9 @@ export default function LeaderboardScreen() {
                     <ThemedText style={styles.summaryLeaderboardName}>
                       {item.leaderboardName}
                     </ThemedText>
+                    <ThemedText style={styles.summaryMembers}>
+                      of {item.totalMembers} members
+                    </ThemedText>
                   </View>
                   <View style={styles.summaryIconContainer}>
                     <Image
@@ -84,9 +88,6 @@ export default function LeaderboardScreen() {
                 <View style={styles.summaryRankSection}>
                   <ThemedText style={styles.summaryRankLabel}>Your Rank</ThemedText>
                   <ThemedText style={styles.summaryRankValue}>#{item.rank}</ThemedText>
-                  <ThemedText style={styles.summaryMembers}>
-                    of {item.totalMembers} members
-                  </ThemedText>
                 </View>
               </View>
             ))}
@@ -103,58 +104,11 @@ export default function LeaderboardScreen() {
           </View>
 
           {leaderboardsList.map((leaderboard) => (
-            <TouchableOpacity
+            <PartyCards
               key={leaderboard.id}
-              style={styles.leaderboardCard}
-              onPress={() => handleLeaderboardPress(leaderboard)}
-            >
-              {/* Top section with icon and title */}
-              <View style={styles.cardHeader}>
-                <View style={styles.cardTitleSection}>
-                  <ThemedText style={styles.leaderboardName}>{leaderboard.name}</ThemedText>
-                </View>
-                <View style={styles.leaderboardIconContainer}>
-                  <Image
-                    source={GAME_LOGOS[leaderboard.game] || GAME_LOGOS['Valorant']}
-                    style={styles.gameLogoImage}
-                    resizeMode="contain"
-                  />
-                </View>
-              </View>
-
-              {/* Progress section */}
-              {leaderboard.userRank && (
-                <View style={styles.progressSection}>
-                  <ThemedText style={styles.progressText}>
-                    {Math.round((leaderboard.userRank / leaderboard.members) * 100)}%
-                  </ThemedText>
-                  <ThemedText style={styles.endTimeText}>
-                    Rank #{leaderboard.userRank} of {leaderboard.members}
-                  </ThemedText>
-                </View>
-              )}
-
-              {/* Progress bar */}
-              {leaderboard.userRank && (
-                <View style={styles.progressBarContainer}>
-                  <View 
-                    style={[
-                      styles.progressBarFill, 
-                      { width: `${(leaderboard.userRank / leaderboard.members) * 100}%` }
-                    ]} 
-                  />
-                </View>
-              )}
-
-              {/* Bottom meta info */}
-              <View style={styles.cardFooter}>
-                {leaderboard.isJoined && (
-                  <View style={styles.joinedBadge}>
-                    <ThemedText style={styles.joinedBadgeText}>Joined</ThemedText>
-                  </View>
-                )}
-              </View>
-            </TouchableOpacity>
+              leaderboard={leaderboard}
+              onPress={handleLeaderboardPress}
+            />
           ))}
         </View>
 
@@ -214,34 +168,34 @@ const styles = StyleSheet.create({
   },
   summaryCard: {
     backgroundColor: '#fff',
-    padding: 16,
+    padding: 12,
     borderRadius: 12,
+    minWidth: 160,
+    height: 110,
     borderWidth: 1,
     borderColor: '#e5e5e5',
-    minWidth: 200,
-    height: 140,
   },
   summaryCardHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'flex-start',
-    marginBottom: 12,
+    marginBottom: 10,
   },
   summaryCardTitleSection: {
     flex: 1,
     marginRight: 8,
   },
   summaryIconContainer: {
-    width: 40,
-    height: 40,
+    width: 36,
+    height: 36,
     borderRadius: 8,
     backgroundColor: '#f5f5f5',
     alignItems: 'center',
     justifyContent: 'center',
   },
   summaryGameLogo: {
-    width: 32,
-    height: 32,
+    width: 28,
+    height: 28,
   },
   summaryRankBadge: {
     width: 40,
@@ -254,7 +208,7 @@ const styles = StyleSheet.create({
   summaryRankText: {
     fontSize: 16,
     fontWeight: '700',
-    color: '#fff',
+    color: '#000',
   },
   summaryRankSection: {
     flex: 1,
@@ -262,27 +216,27 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   summaryRankLabel: {
-    fontSize: 10,
+    fontSize: 9,
     color: '#666',
-    letterSpacing: 1,
+    letterSpacing: 0.8,
     fontWeight: '600',
     textTransform: 'uppercase',
-    marginBottom: 4,
-  },
-  summaryRankValue: {
-    fontSize: 28,
-    fontWeight: '700',
-    color: '#000',
     marginBottom: 2,
   },
+  summaryRankValue: {
+    fontSize: 24,
+    fontWeight: '700',
+    color: '#000',
+  },
   summaryLeaderboardName: {
-    fontSize: 14,
+    fontSize: 13,
     fontWeight: '700',
     color: '#000',
     letterSpacing: -0.2,
+    marginBottom: 4,
   },
   summaryMembers: {
-    fontSize: 11,
+    fontSize: 10,
     color: '#666',
     fontWeight: '400',
   },
@@ -295,111 +249,6 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     alignItems: 'center',
     marginBottom: 12,
-  },
-  leaderboardCard: {
-    flexDirection: 'column',
-    backgroundColor: '#2a2a2e',
-    padding: 20,
-    borderRadius: 12,
-    marginBottom: 12,
-    overflow: 'hidden',
-  },
-  cardHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'flex-start',
-    marginBottom: 16,
-  },
-  cardTitleSection: {
-    flex: 1,
-    marginRight: 12,
-  },
-  leaderboardIconContainer: {
-    width: 56,
-    height: 56,
-    borderRadius: 8,
-    backgroundColor: 'rgba(255, 255, 255, 0.1)',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  leaderboardIconText: {
-    fontSize: 32,
-  },
-  gameLogoImage: {
-    width: 48,
-    height: 48,
-  },
-  leaderboardName: {
-    fontSize: 20,
-    fontWeight: '700',
-    color: '#fff',
-    letterSpacing: -0.4,
-    marginBottom: 4,
-  },
-  leaderboardDescription: {
-    fontSize: 14,
-    color: '#a0a0a0',
-    lineHeight: 18,
-  },
-  progressSection: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 8,
-  },
-  progressText: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: '#ff6b9d',
-  },
-  endTimeText: {
-    fontSize: 13,
-    color: '#a0a0a0',
-  },
-  progressBarContainer: {
-    height: 6,
-    backgroundColor: 'rgba(255, 107, 157, 0.2)',
-    borderRadius: 3,
-    overflow: 'hidden',
-    marginBottom: 12,
-  },
-  progressBarFill: {
-    height: '100%',
-    backgroundColor: '#ff6b9d',
-    borderRadius: 3,
-  },
-  cardFooter: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-  },
-  metaItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 4,
-  },
-  metaText: {
-    fontSize: 12,
-    color: '#888',
-    fontWeight: '400',
-  },
-  joinedBadge: {
-    backgroundColor: 'rgba(255, 255, 255, 0.15)',
-    paddingHorizontal: 10,
-    paddingVertical: 4,
-    borderRadius: 4,
-  },
-  joinedBadgeText: {
-    fontSize: 10,
-    fontWeight: '600',
-    color: '#fff',
-    textTransform: 'uppercase',
-    letterSpacing: 0.5,
-  },
-  userRankText: {
-    fontSize: 12,
-    color: '#fff',
-    fontWeight: '600',
   },
   bottomSpacer: {
     height: 40,
