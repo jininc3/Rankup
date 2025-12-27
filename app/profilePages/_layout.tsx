@@ -63,6 +63,12 @@ export default function ProfilePagesLayout() {
           headerShown: false,
         }}
       />
+      <Stack.Screen
+        name="newRankCard"
+        options={{
+          headerShown: false,
+        }}
+      />
     </Stack>
   );
 }
