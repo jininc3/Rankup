@@ -106,7 +106,7 @@ export default function GameStatsScreen() {
       case 'Valorant':
         return '#e8a5a5'; // Dark pastel red
       case 'League of Legends':
-        return '#b3d9ff'; // Pastel blue
+        return '#0f1f3d'; // Navy blue (matches rankCard)
       case 'TFT':
         return '#d4b3ff'; // Pastel purple
       case 'Apex Legends':
@@ -141,7 +141,7 @@ export default function GameStatsScreen() {
           style={styles.backButton}
           onPress={() => router.back()}
         >
-          <IconSymbol size={24} name="chevron.left" color="#000" />
+          <IconSymbol size={24} name="chevron.left" color={game.name === 'League of Legends' ? '#fff' : '#000'} />
         </TouchableOpacity>
 
         {/* Profile Icon - Top Right */}
@@ -154,11 +154,20 @@ export default function GameStatsScreen() {
           />
         )}
 
-        {/* Game Logo */}
-        <View style={styles.heroContent}>
-          <Image source={getGameImage()} style={styles.heroGameImage} resizeMode="contain" />
-          <ThemedText style={styles.gameTitle}>{game.name}</ThemedText>
-        </View>
+        {/* League of Legends centered logo */}
+        {game.name === 'League of Legends' ? (
+          <Image
+            source={require('@/assets/images/lol.png')}
+            style={styles.centeredLogoLOL}
+            resizeMode="contain"
+          />
+        ) : (
+          /* Game Logo for other games */
+          <View style={styles.heroContent}>
+            <Image source={getGameImage()} style={styles.heroGameImage} resizeMode="contain" />
+            <ThemedText style={styles.gameTitle}>{game.name}</ThemedText>
+          </View>
+        )}
       </View>
 
       {/* Stats Card */}
@@ -357,13 +366,24 @@ const styles = StyleSheet.create({
     paddingVertical: 7,
     letterSpacing: -0.5,
   },
+  centeredLogoLOL: {
+    position: 'absolute',
+    width: 200,
+    height: 200,
+    top: '60%',
+    left: '50%',
+    marginTop: -100,
+    marginLeft: -100,
+    opacity: 0.15,
+    alignSelf: 'center',
+  },
   profileIcon: {
     position: 'absolute',
     top: 60,
     right: 24,
-    width: 70,
-    height: 70,
-    borderRadius: 35,
+    width: 50,
+    height: 50,
+    borderRadius: 25,
     borderWidth: 3,
     borderColor: '#fff',
     shadowColor: '#000',

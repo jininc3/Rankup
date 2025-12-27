@@ -36,19 +36,17 @@ export default function LeaderboardDetailPage() {
     return 'Points';
   };
 
-  const topThree = players.filter(p => p.rank <= 3);
-  const restOfPlayers = players.filter(p => p.rank > 3);
 
   // Duration tracking (mock data for now - can be passed via params later)
   const currentDay = 5;
   const totalDays = 30;
   const progress = (currentDay / totalDays) * 100;
 
-  const getPodiumOrder = () => {
-    const first = topThree.find(p => p.rank === 1);
-    const second = topThree.find(p => p.rank === 2);
-    const third = topThree.find(p => p.rank === 3);
-    return [second, first, third].filter(Boolean);
+  const getBorderColor = (rank: number) => {
+    if (rank === 1) return '#FFD700'; // Gold
+    if (rank === 2) return '#C0C0C0'; // Silver
+    if (rank === 3) return '#CD7F32'; // Bronze
+    return '#333';
   };
 
   return (
@@ -56,11 +54,11 @@ export default function LeaderboardDetailPage() {
       {/* Header */}
       <View style={styles.header}>
         <TouchableOpacity style={styles.backButton} onPress={() => router.back()}>
-          <IconSymbol size={24} name="chevron.left" color="#000" />
+          <IconSymbol size={20} name="chevron.left" color="#fff" />
         </TouchableOpacity>
         <View style={styles.headerCenter}>
-          <ThemedText style={styles.headerTitle}>{leaderboardName}</ThemedText>
-          <ThemedText style={styles.headerSubtitle}>{game} • {members} players</ThemedText>
+          <ThemedText style={styles.headerTitle}>{leaderboardName.toUpperCase()}</ThemedText>
+          <ThemedText style={styles.headerSubtitle}>{game.toUpperCase()} • {members} PLAYERS</ThemedText>
         </View>
         <View style={styles.headerSpacer} />
       </View>
@@ -68,166 +66,76 @@ export default function LeaderboardDetailPage() {
       <ScrollView style={styles.scrollView} showsVerticalScrollIndicator={false}>
         {/* Duration Section */}
         <View style={styles.durationSection}>
-          <View style={styles.durationHeader}>
-            <ThemedText style={styles.durationLabel}>Day {currentDay}</ThemedText>
-            <ThemedText style={styles.durationTotal}>of {totalDays}</ThemedText>
-          </View>
-          <View style={styles.progressBarContainer}>
-            <View style={styles.progressBarBackground}>
-              <View style={[styles.progressBarFill, { width: `${progress}%` }]} />
+          <View style={styles.progressCard}>
+            <ThemedText style={styles.durationLabel}>DAY {currentDay}/{totalDays}</ThemedText>
+            <View style={styles.progressBarContainer}>
+              <View style={styles.progressBarBackground}>
+                <View style={[styles.progressBarFill, { width: `${progress}%` }]} />
+              </View>
             </View>
-          </View>
-          <View style={styles.durationFooter}>
-            <ThemedText style={styles.durationFooterText}>0</ThemedText>
-            <ThemedText style={styles.durationFooterText}>{totalDays} days</ThemedText>
           </View>
         </View>
 
-        {/* Podium for Top 3 */}
-        {topThree.length > 0 && (
-          <View style={styles.podiumContainer}>
-            <View style={styles.podiumRow}>
-              {getPodiumOrder().map((player) => {
-                if (!player) return null;
-                return (
-                  <View
-                    key={player.rank}
-                    style={[
-                      styles.podiumItem,
-                      player.rank === 1 && styles.firstPlace,
-                      player.rank === 2 && styles.secondPlace,
-                      player.rank === 3 && styles.thirdPlace,
-                    ]}
-                  >
-                    <View
-                      style={[
-                        styles.podiumAvatar,
-                        { borderColor: getRankColor(player.rank) },
-                      ]}
-                    >
-                      <ThemedText style={styles.podiumAvatarText}>{player.avatar}</ThemedText>
-                    </View>
-                    <View
-                      style={[
-                        styles.rankBadge,
-                        { backgroundColor: getRankColor(player.rank) },
-                      ]}
-                    >
-                      <ThemedText style={styles.rankBadgeText}>{player.rank}</ThemedText>
-                    </View>
-                    <ThemedText style={styles.podiumName} numberOfLines={1}>
-                      {player.name}
-                    </ThemedText>
-                    <View style={styles.podiumStatsContainer}>
-                      <ThemedText
-                        style={[
-                          styles.podiumDailyGain,
-                          (player.dailyGain ?? 0) > 0 && styles.positiveGainPodium,
-                          (player.dailyGain ?? 0) < 0 && styles.negativeGainPodium,
-                        ]}
-                      >
-                        {(player.dailyGain ?? 0) > 0 ? '+' : ''}{player.dailyGain ?? 0}
-                      </ThemedText>
-                      <ThemedText style={styles.podiumPoints}>
-                        {player.points.toLocaleString()}
-                      </ThemedText>
-                    </View>
-                  </View>
-                );
-              })}
-            </View>
-          </View>
-        )}
+        {/* Column Headers */}
+        <View style={styles.columnHeaders}>
+          <ThemedText style={[styles.columnHeaderText, { width: 50 }]}>RANK</ThemedText>
+          <ThemedText style={[styles.columnHeaderText, { flex: 1 }]}>PLAYER</ThemedText>
+          <ThemedText style={[styles.columnHeaderText, styles.alignRight, { width: 70 }]}>
+            DAILY
+          </ThemedText>
+          <ThemedText style={[styles.columnHeaderText, styles.alignRight, { width: 80 }]}>
+            {getPointsLabel()}
+          </ThemedText>
+        </View>
 
-        {/* Column Headers for Rest of List */}
-        {restOfPlayers.length > 0 && (
-          <View style={styles.columnHeaders}>
-            <ThemedText style={[styles.columnHeaderText, { width: 40 }]}>Rank</ThemedText>
-            <ThemedText style={[styles.columnHeaderText, { flex: 1 }]}>Player</ThemedText>
-            <ThemedText style={[styles.columnHeaderText, styles.alignRight, { width: 60 }]}>
-              Daily
-            </ThemedText>
-            <ThemedText style={[styles.columnHeaderText, styles.alignRight, { width: 70 }]}>
-              {getPointsLabel()}
-            </ThemedText>
-          </View>
-        )}
-
-        {/* Player Rows (4th place onwards) */}
-        {restOfPlayers.map((player) => (
-          <View
-            key={player.rank}
-            style={[
-              styles.playerRow,
-              player.isCurrentUser && styles.currentUserRow,
-              player.rank <= 3 && styles.topThreeRow,
-            ]}
-          >
-            {/* Rank Indicator */}
-            {player.rank <= 3 && (
-              <View
-                style={[
-                  styles.rankIndicator,
-                  { backgroundColor: getRankColor(player.rank) },
-                ]}
-              />
-            )}
-
-            {/* Rank Number */}
-            <View style={styles.rankContainer}>
-              <ThemedText
-                style={[
-                  styles.rankText,
-                  player.rank <= 3 && { color: getRankColor(player.rank) },
-                ]}
-              >
-                {player.rank}
-              </ThemedText>
-            </View>
-
-            {/* Player Info */}
-            <View style={styles.playerInfo}>
-              <View
-                style={[
-                  styles.playerAvatar,
-                  player.isCurrentUser && styles.currentUserAvatar,
-                  player.rank <= 3 && {
-                    borderColor: getRankColor(player.rank),
-                    borderWidth: 2,
-                  },
-                ]}
-              >
-                <ThemedText style={styles.avatarText}>{player.avatar}</ThemedText>
-              </View>
-              <ThemedText
-                style={[
-                  styles.playerName,
-                  player.isCurrentUser && styles.currentUserName,
-                ]}
-              >
-                {player.name}
-              </ThemedText>
-            </View>
-
-            {/* Daily Gain */}
-            <ThemedText
+        {/* Player Rows (All Players) */}
+        <View style={styles.playerList}>
+          {players.map((player, index) => (
+            <View
+              key={player.rank}
               style={[
-                styles.dailyGainText,
-                styles.alignRight,
-                { width: 60 },
-                (player.dailyGain ?? 0) > 0 && styles.positiveGain,
-                (player.dailyGain ?? 0) < 0 && styles.negativeGain,
+                styles.playerRow,
+                player.isCurrentUser && styles.currentUserRow,
+                { borderLeftWidth: 4, borderLeftColor: getBorderColor(player.rank) },
               ]}
             >
-              {(player.dailyGain ?? 0) > 0 ? '+' : ''}{player.dailyGain ?? 0}
-            </ThemedText>
+              {/* Rank Number */}
+              <View style={styles.rankContainer}>
+                <ThemedText style={styles.rankText}>
+                  {player.rank}
+                </ThemedText>
+              </View>
 
-            {/* Points */}
-            <ThemedText style={[styles.pointsText, styles.alignRight, { width: 70 }]}>
-              {player.points.toLocaleString()}
-            </ThemedText>
-          </View>
-        ))}
+              {/* Player Info */}
+              <View style={styles.playerInfo}>
+                <View style={styles.playerAvatar}>
+                  <ThemedText style={styles.avatarText}>{player.avatar}</ThemedText>
+                </View>
+                <ThemedText style={styles.playerName} numberOfLines={1}>
+                  {player.name.toUpperCase()}
+                </ThemedText>
+              </View>
+
+              {/* Daily Gain */}
+              <ThemedText
+                style={[
+                  styles.dailyGainText,
+                  styles.alignRight,
+                  { width: 70 },
+                  (player.dailyGain ?? 0) > 0 && styles.positiveGain,
+                  (player.dailyGain ?? 0) < 0 && styles.negativeGain,
+                ]}
+              >
+                {(player.dailyGain ?? 0) > 0 ? '+' : ''}{player.dailyGain ?? 0}
+              </ThemedText>
+
+              {/* Points */}
+              <ThemedText style={[styles.pointsText, styles.alignRight, { width: 80 }]}>
+                {player.points.toLocaleString()}
+              </ThemedText>
+            </View>
+          ))}
+        </View>
 
         <View style={styles.bottomSpacer} />
       </ScrollView>
@@ -238,108 +146,113 @@ export default function LeaderboardDetailPage() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#fff',
+    backgroundColor: '#0a0a0a',
   },
   header: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    alignItems: 'flex-end',
-    paddingHorizontal: 20,
-    paddingTop: 60,
+    alignItems: 'center',
+    paddingHorizontal: 16,
+    paddingTop: 50,
     paddingBottom: 16,
-    backgroundColor: '#fff',
-    borderBottomWidth: 1,
-    borderBottomColor: '#e5e7eb',
+    backgroundColor: '#0a0a0a',
+    borderBottomWidth: 3,
+    borderBottomColor: '#fff',
   },
   backButton: {
     padding: 4,
-    marginBottom: 2,
   },
   headerCenter: {
     alignItems: 'center',
-    gap: 2,
+    gap: 4,
   },
   headerTitle: {
-    fontSize: 20,
+    fontSize: 14,
     fontWeight: '700',
-    color: '#000',
+    color: '#fff',
+    letterSpacing: -0.5,
+    fontFamily: 'System',
   },
   headerSubtitle: {
-    fontSize: 12,
-    fontWeight: '500',
-    color: '#666',
+    fontSize: 8,
+    fontWeight: '400',
+    color: '#999',
+    letterSpacing: 1,
+    fontFamily: 'System',
   },
   headerSpacer: {
-    width: 32,
+    width: 36,
   },
   scrollView: {
     flex: 1,
   },
   durationSection: {
-    paddingHorizontal: 20,
+    paddingHorizontal: 16,
     paddingVertical: 16,
-    paddingBottom: 12,
-    backgroundColor: '#fff',
+    backgroundColor: '#0a0a0a',
   },
-  durationHeader: {
-    flexDirection: 'row',
-    justifyContent: 'center',
-    alignItems: 'baseline',
-    gap: 6,
-    marginBottom: 12,
+  progressCard: {
+    backgroundColor: '#fff',
+    borderWidth: 3,
+    borderColor: '#000',
+    padding: 20,
+    position: 'relative',
   },
   durationLabel: {
-    fontSize: 18,
+    fontSize: 24,
     fontWeight: '700',
     color: '#000',
-  },
-  durationTotal: {
-    fontSize: 14,
-    fontWeight: '500',
-    color: '#666',
+    textAlign: 'center',
+    marginBottom: 12,
+    letterSpacing: -1,
+    fontFamily: 'System',
   },
   progressBarContainer: {
-    marginBottom: 8,
+    marginBottom: 0,
   },
   progressBarBackground: {
     width: '100%',
-    height: 8,
-    backgroundColor: '#e5e5e5',
-    borderRadius: 4,
-    overflow: 'hidden',
+    height: 10,
+    backgroundColor: '#000',
+    position: 'relative',
+    overflow: 'visible',
   },
   progressBarFill: {
     height: '100%',
-    backgroundColor: '#000',
-    borderRadius: 4,
-  },
-  durationFooter: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-  },
-  durationFooterText: {
-    fontSize: 11,
-    fontWeight: '500',
-    color: '#666',
+    backgroundColor: '#fff',
+    borderWidth: 3,
+    borderColor: '#000',
+    position: 'relative',
   },
   columnHeaders: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 8,
-    paddingHorizontal: 20,
+    paddingHorizontal: 12,
     paddingVertical: 8,
-    marginTop: 4,
-    backgroundColor: '#fff',
+    marginHorizontal: 16,
+    marginBottom: 0,
+    backgroundColor: '#1a1a1a',
+    borderWidth: 3,
+    borderColor: '#333',
+    borderBottomWidth: 3,
   },
   columnHeaderText: {
-    fontSize: 10,
-    fontWeight: '600',
-    color: '#666',
-    textTransform: 'uppercase',
+    fontSize: 8,
+    fontWeight: '700',
+    color: '#fff',
     letterSpacing: 0.5,
+    fontFamily: 'System',
   },
   alignRight: {
     textAlign: 'right',
+  },
+  playerList: {
+    paddingHorizontal: 12,
+    borderWidth: 3,
+    borderColor: '#333',
+    marginHorizontal: 16,
+    borderTopWidth: 0,
   },
   playerRow: {
     flexDirection: 'row',
@@ -347,39 +260,25 @@ const styles = StyleSheet.create({
     gap: 8,
     paddingVertical: 8,
     paddingHorizontal: 12,
-    backgroundColor: '#fff',
-    marginHorizontal: 20,
-    marginBottom: 6,
-    borderRadius: 6,
-    borderWidth: 0.5,
-    borderColor: '#e5e5e5',
+    backgroundColor: '#0a0a0a',
+    borderBottomWidth: 1,
+    borderBottomColor: '#222',
     position: 'relative',
   },
-  topThreeRow: {
-    backgroundColor: '#fff',
-  },
   currentUserRow: {
-    backgroundColor: '#fff9ed',
-    borderColor: '#f59e0b',
-  },
-  rankIndicator: {
-    position: 'absolute',
-    left: 0,
-    top: 0,
-    bottom: 0,
-    width: 2,
-    borderTopLeftRadius: 6,
-    borderBottomLeftRadius: 6,
+    backgroundColor: '#1a1a1a',
+    borderLeftWidth: 4,
+    borderLeftColor: '#fff',
   },
   rankContainer: {
-    width: 40,
+    width: 50,
     alignItems: 'flex-start',
-    paddingLeft: 2,
   },
   rankText: {
-    fontSize: 13,
-    fontWeight: '600',
-    color: '#000',
+    fontSize: 16,
+    fontWeight: '700',
+    color: '#fff',
+    fontFamily: 'System',
   },
   playerInfo: {
     flex: 1,
@@ -388,119 +287,36 @@ const styles = StyleSheet.create({
     gap: 8,
   },
   playerAvatar: {
-    width: 24,
-    height: 24,
-    borderRadius: 12,
-    backgroundColor: '#f5f5f5',
+    width: 28,
+    height: 28,
+    backgroundColor: '#1a1a1a',
+    borderWidth: 2,
+    borderColor: '#333',
     alignItems: 'center',
     justifyContent: 'center',
   },
-  currentUserAvatar: {
-    backgroundColor: '#fef3c7',
-  },
   avatarText: {
-    fontSize: 12,
+    fontSize: 14,
     textAlign: 'center',
   },
   playerName: {
-    fontSize: 13,
-    fontWeight: '500',
-    color: '#000',
-    letterSpacing: -0.2,
-  },
-  currentUserName: {
-    fontWeight: '600',
+    fontSize: 10,
+    fontWeight: '700',
+    color: '#fff',
+    letterSpacing: 0,
+    fontFamily: 'System',
   },
   pointsText: {
-    fontSize: 11,
-    fontWeight: '600',
-    color: '#666',
-  },
-  bottomSpacer: {
-    height: 40,
-  },
-  podiumContainer: {
-    paddingVertical: 16,
-    paddingHorizontal: 20,
-    backgroundColor: '#fff',
-    marginBottom: 8,
-  },
-  podiumRow: {
-    flexDirection: 'row',
-    justifyContent: 'center',
-    alignItems: 'flex-end',
-    gap: 12,
-  },
-  podiumItem: {
-    alignItems: 'center',
-    flex: 1,
-    maxWidth: 90,
-  },
-  firstPlace: {
-    marginBottom: 12,
-  },
-  secondPlace: {
-    marginBottom: 0,
-  },
-  thirdPlace: {
-    marginBottom: -6,
-  },
-  podiumAvatar: {
-    width: 48,
-    height: 48,
-    borderRadius: 24,
-    backgroundColor: '#fff',
-    alignItems: 'center',
-    justifyContent: 'center',
-    borderWidth: 2,
-    marginBottom: 6,
-  },
-  podiumAvatarText: {
-    fontSize: 24,
-    textAlign: 'center',
-  },
-  rankBadge: {
-    width: 22,
-    height: 22,
-    borderRadius: 11,
-    alignItems: 'center',
-    justifyContent: 'center',
-    position: 'absolute',
-    top: 0,
-    right: 4,
-  },
-  rankBadgeText: {
     fontSize: 12,
     fontWeight: '700',
     color: '#fff',
-  },
-  podiumName: {
-    fontSize: 12,
-    fontWeight: '600',
-    color: '#000',
-    textAlign: 'center',
-    marginBottom: 3,
-  },
-  podiumPoints: {
-    fontSize: 11,
-    fontWeight: '500',
-    color: '#666',
-    marginBottom: 8,
-  },
-  podiumStatsContainer: {
-    alignItems: 'center',
-    gap: 1,
-    marginBottom: 8,
-  },
-  podiumDailyGain: {
-    fontSize: 10,
-    fontWeight: '600',
-    color: '#666',
+    fontFamily: 'System',
   },
   dailyGainText: {
-    fontSize: 11,
-    fontWeight: '600',
+    fontSize: 10,
+    fontWeight: '700',
     color: '#666',
+    fontFamily: 'System',
   },
   positiveGain: {
     color: '#22c55e',
@@ -508,10 +324,7 @@ const styles = StyleSheet.create({
   negativeGain: {
     color: '#ef4444',
   },
-  positiveGainPodium: {
-    color: '#22c55e',
-  },
-  negativeGainPodium: {
-    color: '#ef4444',
+  bottomSpacer: {
+    height: 40,
   },
 });
