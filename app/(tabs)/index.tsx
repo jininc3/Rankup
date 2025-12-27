@@ -8,6 +8,7 @@ import { likePost, unlikePost, isPostLiked } from '@/services/likeService';
 import { createOrGetChat } from '@/services/chatService';
 import CommentModal from '@/app/components/commentModal';
 import PostContent from '@/app/components/postContent';
+import NewPost from '@/app/components/newPost';
 import { collection, getDocs, orderBy, query, Timestamp, where, onSnapshot, limit, startAfter, QueryDocumentSnapshot, DocumentData } from 'firebase/firestore';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { ActivityIndicator, Dimensions, Image, Modal, ScrollView, StyleSheet, TouchableOpacity, View, Alert, RefreshControl } from 'react-native';
@@ -93,6 +94,7 @@ export default function HomeScreen() {
   const [loadingMore, setLoadingMore] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
   const [hasConsumedPreload, setHasConsumedPreload] = useState(false);
+  const [showNewPost, setShowNewPost] = useState(false);
 
   const currentPosts = activeTab === 'forYou' ? forYouPosts : followingPosts;
 
@@ -545,6 +547,22 @@ export default function HomeScreen() {
     }
   }, [commentingPost, activeTab, followingPosts, forYouPosts]);
 
+  // Handle add new post button
+  const handleAddPost = () => {
+    if (!currentUser?.id) {
+      Alert.alert('Error', 'You must be logged in to create a post');
+      return;
+    }
+    setShowNewPost(true);
+  };
+
+  // Handle when a new post is created
+  const handlePostCreated = (newPost: Post) => {
+    // Add new post to the beginning of the following posts array (most recent first)
+    setFollowingPosts(prevPosts => [newPost, ...prevPosts]);
+    console.log('New post added to feed:', newPost.id);
+  };
+
   // Handle screen focus/blur for video playback
   useFocusEffect(
     useCallback(() => {
@@ -917,6 +935,22 @@ export default function HomeScreen() {
           onCommentAdded={handleCommentAdded}
         />
       )}
+
+      {/* Floating Add Post Button */}
+      <TouchableOpacity
+        style={styles.fabButton}
+        onPress={handleAddPost}
+        activeOpacity={0.8}
+      >
+        <IconSymbol size={28} name="plus" color="#fff" />
+      </TouchableOpacity>
+
+      {/* New Post Modal */}
+      <NewPost
+        visible={showNewPost}
+        onClose={() => setShowNewPost(false)}
+        onPostCreated={handlePostCreated}
+      />
     </ThemedView>
   );
 }
@@ -1129,5 +1163,24 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: '#999',
     fontStyle: 'italic',
+  },
+  fabButton: {
+    position: 'absolute',
+    bottom: 24,
+    right: 24,
+    width: 60,
+    height: 60,
+    borderRadius: 30,
+    backgroundColor: '#000',
+    alignItems: 'center',
+    justifyContent: 'center',
+    shadowColor: '#000',
+    shadowOffset: {
+      width: 0,
+      height: 4,
+    },
+    shadowOpacity: 0.3,
+    shadowRadius: 4.65,
+    elevation: 8,
   },
 });
