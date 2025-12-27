@@ -209,12 +209,27 @@ export default function ProfileScreen() {
 
   // Consume preloaded Riot stats from AuthContext (loaded during loading screen)
   useEffect(() => {
-    if (preloadedRiotStats && !hasConsumedPreloadRiot) {
+    if (preloadedRiotStats && !hasConsumedPreloadRiot && user?.id) {
       console.log('✅ Using preloaded Riot stats from loading screen');
       setRiotStats(preloadedRiotStats);
       setHasConsumedPreloadRiot(true);
+
+      // Also fetch and set riotAccount from Firestore so rank cards show
+      (async () => {
+        try {
+          const userDoc = await getDoc(doc(db, 'users', user.id));
+          if (userDoc.exists()) {
+            const data = userDoc.data();
+            if (data.riotAccount) {
+              setRiotAccount(data.riotAccount);
+            }
+          }
+        } catch (error) {
+          console.error('Error fetching riotAccount:', error);
+        }
+      })();
     }
-  }, [preloadedRiotStats, hasConsumedPreloadRiot]);
+  }, [preloadedRiotStats, hasConsumedPreloadRiot, user?.id]);
 
   // Clear preloaded data after consumption
   useEffect(() => {
