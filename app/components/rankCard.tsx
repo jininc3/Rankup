@@ -1,5 +1,5 @@
 import { ThemedText } from '@/components/themed-text';
-import { StyleSheet, TouchableOpacity, View, Image } from 'react-native';
+import { StyleSheet, TouchableOpacity, View, Image, ImageBackground } from 'react-native';
 import { useRouter } from 'expo-router';
 import { getProfileIconUrl } from '@/services/riotService';
 
@@ -65,8 +65,14 @@ export default function rankCard({ game, username }: RankCardProps) {
       onPress={handlePress}
       activeOpacity={0.9}
     >
-      {/* Front of card - Credit card style */}
-      <View style={styles.cardFront}>
+      <ImageBackground
+        source={require('@/assets/images/blue-metal.png')}
+        style={styles.cardBackground}
+        imageStyle={styles.cardBackgroundImage}
+        resizeMode="stretch"
+      >
+        {/* Front of card - Credit card style */}
+        <View style={styles.cardFront}>
         {/* Profile Icon - Top Left */}
         <View style={styles.cardHeader}>
           {game.profileIconId ? (
@@ -98,14 +104,13 @@ export default function rankCard({ game, username }: RankCardProps) {
           <ThemedText style={styles.swipeHint}>Tap to view details →</ThemedText>
         </View>
       </View>
+      </ImageBackground>
     </TouchableOpacity>
   );
 }
 
 const styles = StyleSheet.create({
   rankCard: {
-    backgroundColor: '#1e1b4b',
-    padding: 30,
     borderRadius: 24,
     height: 220,
     shadowColor: '#6366f1',
@@ -115,16 +120,25 @@ const styles = StyleSheet.create({
     elevation: 12,
     borderWidth: 1,
     borderColor: 'rgba(255,255,255,0.1)',
+    overflow: 'hidden',
+  },
+  cardBackground: {
+    flex: 1,
+    borderRadius: 24,
+  },
+  cardBackgroundImage: {
+    borderRadius: 24,
   },
   cardFront: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
+    padding: 30,
   },
   cardHeader: {
     position: 'absolute',
-    top: 0,
-    left: 0,
+    top: 10,
+    left: 10,
   },
   cardGameIcon: {
     fontSize: 42,
@@ -164,9 +178,9 @@ const styles = StyleSheet.create({
   },
   cardFooter: {
     position: 'absolute',
-    bottom: -20,
-    left: 0,
-    right: 0,
+    bottom: 10,
+    left: 10,
+    right: 10,
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'flex-end',
