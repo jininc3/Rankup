@@ -1,5 +1,5 @@
 import { ThemedText } from '@/components/themed-text';
-import { StyleSheet, TouchableOpacity, View, Image, ImageBackground } from 'react-native';
+import { StyleSheet, TouchableOpacity, View, Image } from 'react-native';
 import { useRouter } from 'expo-router';
 import { getProfileIconUrl } from '@/services/riotService';
 
@@ -65,12 +65,16 @@ export default function rankCard({ game, username }: RankCardProps) {
       onPress={handlePress}
       activeOpacity={0.9}
     >
-      <ImageBackground
-        source={require('@/assets/images/blue-metal.png')}
-        style={styles.cardBackground}
-        imageStyle={styles.cardBackgroundImage}
-        resizeMode="stretch"
-      >
+      <View style={styles.cardBackground}>
+        {/* League of Legends logo watermark */}
+        {game.name === 'League of Legends' && (
+          <Image
+            source={require('@/assets/images/lol.png')}
+            style={styles.backgroundLogo}
+            resizeMode="contain"
+          />
+        )}
+
         {/* Front of card - Credit card style */}
         <View style={styles.cardFront}>
         {/* Profile Icon - Top Left */}
@@ -104,7 +108,7 @@ export default function rankCard({ game, username }: RankCardProps) {
           <ThemedText style={styles.swipeHint}>Tap to view details →</ThemedText>
         </View>
       </View>
-      </ImageBackground>
+      </View>
     </TouchableOpacity>
   );
 }
@@ -125,9 +129,17 @@ const styles = StyleSheet.create({
   cardBackground: {
     flex: 1,
     borderRadius: 24,
+    backgroundColor: '#0f1f3d',
   },
-  cardBackgroundImage: {
-    borderRadius: 24,
+  backgroundLogo: {
+    position: 'absolute',
+    width: 302,
+    height: 302,
+    top: '50%',
+    left: '50%',
+    marginTop: -151,
+    marginLeft: -151,
+    opacity: 0.08,
   },
   cardFront: {
     flex: 1,
@@ -138,15 +150,15 @@ const styles = StyleSheet.create({
   cardHeader: {
     position: 'absolute',
     top: 10,
-    left: 10,
+    right: 10,
   },
   cardGameIcon: {
     fontSize: 42,
   },
   cardProfileIcon: {
-    width: 50,
-    height: 50,
-    borderRadius: 25,
+    width: 36,
+    height: 36,
+    borderRadius: 18,
     borderWidth: 2,
     borderColor: 'rgba(255,255,255,0.3)',
   },
@@ -189,7 +201,7 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   cardUsername: {
-    fontSize: 13,
+    fontSize: 10,
     color: 'rgba(255,255,255,0.8)',
     fontWeight: '600',
   },
