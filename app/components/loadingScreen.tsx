@@ -1,21 +1,23 @@
 import { useEffect, useRef } from 'react';
 import { View, Image, StyleSheet, Animated } from 'react-native';
+import * as SplashScreen from 'expo-splash-screen';
+
+// Keep native splash visible until this component mounts
+SplashScreen.preventAutoHideAsync();
 
 export default function LoadingScreen() {
-  const fadeAnim = useRef(new Animated.Value(0)).current;
+  const fadeAnim = useRef(new Animated.Value(1)).current; // Start at full opacity
 
   useEffect(() => {
-    // Fade in, stay visible longer, then fade out
+    // Hide native splash immediately when custom loading screen mounts
+    SplashScreen.hideAsync();
+
+    // Stay visible, then fade out
     Animated.sequence([
-      Animated.timing(fadeAnim, {
-        toValue: 1,
-        duration: 800,
-        useNativeDriver: true,
-      }),
+      Animated.delay(3000), // Stay visible for 3 seconds
       Animated.timing(fadeAnim, {
         toValue: 0,
         duration: 800,
-        delay: 3000, // Stay visible for 3 seconds before fading out
         useNativeDriver: true,
       }),
     ]).start();
@@ -24,7 +26,7 @@ export default function LoadingScreen() {
   return (
     <View style={styles.container}>
       <Animated.Image
-        source={require('@/assets/images/rankup-logo.png')}
+        source={require('@/assets/images/rankup-logo-larger.png')}
         style={[styles.logo, { opacity: fadeAnim }]}
         resizeMode="contain"
       />
