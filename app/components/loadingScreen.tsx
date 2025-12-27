@@ -6,21 +6,23 @@ import * as SplashScreen from 'expo-splash-screen';
 SplashScreen.preventAutoHideAsync();
 
 export default function LoadingScreen() {
-  const fadeAnim = useRef(new Animated.Value(1)).current; // Start at full opacity
+  const fadeAnim = useRef(new Animated.Value(0)).current; // Start hidden
 
   useEffect(() => {
-    // Hide native splash immediately when custom loading screen mounts
-    SplashScreen.hideAsync();
+    // Hide native splash and fade in custom loading screen
+    const showLoadingScreen = async () => {
+      // Hide native splash immediately
+      await SplashScreen.hideAsync();
 
-    // Stay visible, then fade out
-    Animated.sequence([
-      Animated.delay(3000), // Stay visible for 3 seconds
+      // Then fade in the custom loading screen
       Animated.timing(fadeAnim, {
-        toValue: 0,
-        duration: 800,
+        toValue: 1,
+        duration: 500,
         useNativeDriver: true,
-      }),
-    ]).start();
+      }).start();
+    };
+
+    showLoadingScreen();
   }, []);
 
   return (
