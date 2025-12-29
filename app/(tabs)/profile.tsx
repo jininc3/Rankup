@@ -90,7 +90,8 @@ export default function ProfileScreen() {
   const handleScroll = (event: any) => {
     const offsetX = event.nativeEvent.contentOffset.x;
     const index = Math.round(offsetX / (CARD_WIDTH + CARD_GAP));
-    if (index !== selectedGameIndex && index >= 0 && index < userGames.length) {
+    // Allow scrolling to add rank card (userGames.length is the index of the add card)
+    if (index !== selectedGameIndex && index >= 0 && index <= userGames.length) {
       setSelectedGameIndex(index);
     }
   };
@@ -98,7 +99,8 @@ export default function ProfileScreen() {
   const handleScrollDrag = (event: any) => {
     const offsetX = event.nativeEvent.contentOffset.x;
     const index = Math.round(offsetX / (CARD_WIDTH + CARD_GAP));
-    if (index !== selectedGameIndex && index >= 0 && index < userGames.length) {
+    // Allow scrolling to add rank card (userGames.length is the index of the add card)
+    if (index !== selectedGameIndex && index >= 0 && index <= userGames.length) {
       setSelectedGameIndex(index);
     }
   };
@@ -597,6 +599,14 @@ export default function ProfileScreen() {
               <IconSymbol size={20} name="line.3.horizontal.decrease.circle" color="#000" />
             </TouchableOpacity>
           )}
+          {activeMainTab === 'rankCards' && riotAccount && (
+            <TouchableOpacity
+              style={styles.filterButton}
+              onPress={() => router.push('/profilePages/rankCardWallet')}
+            >
+              <IconSymbol size={20} name="square.stack.3d.up.fill" color="#000" />
+            </TouchableOpacity>
+          )}
         </View>
 
         <View style={[styles.postsSection, { display: activeMainTab === 'clips' ? 'flex' : 'none' }]}>
@@ -684,6 +694,19 @@ export default function ProfileScreen() {
                     </View>
                   </TouchableOpacity>
                 ))}
+                {/* Add Rank Card Icon */}
+                <TouchableOpacity
+                  style={styles.gameIconContainer}
+                  onPress={() => scrollToIndex(userGames.length)}
+                  activeOpacity={0.7}
+                >
+                  <View style={[
+                    styles.gameIconCircle,
+                    selectedGameIndex === userGames.length && styles.gameIconCircleActive
+                  ]}>
+                    <IconSymbol size={24} name="plus.circle.fill" color="#fff" />
+                  </View>
+                </TouchableOpacity>
               </ScrollView>
 
               {/* Scrollable Rank Cards */}
@@ -712,7 +735,7 @@ export default function ProfileScreen() {
                         styles.cardWrapper,
                         {
                           width: CARD_WIDTH,
-                          marginRight: index < userGames.length - 1 ? CARD_GAP : 0
+                          marginRight: CARD_GAP
                         }
                       ]}
                     >
@@ -720,6 +743,18 @@ export default function ProfileScreen() {
                     </View>
                   );
                 })}
+                {/* Add Rank Card Button */}
+                <TouchableOpacity
+                  style={[styles.cardWrapper, styles.addRankCardCard, { width: CARD_WIDTH }]}
+                  onPress={() => router.push('/profilePages/newRankCard')}
+                  activeOpacity={0.7}
+                >
+                  <View style={styles.addRankCardCardContent}>
+                    <IconSymbol size={48} name="plus.circle.fill" color="#fff" />
+                    <ThemedText style={styles.addRankCardCardText}>Add Rank Card</ThemedText>
+                    <ThemedText style={styles.addRankCardCardSubtext}>Connect another game</ThemedText>
+                  </View>
+                </TouchableOpacity>
               </ScrollView>
             </>
           )}
@@ -1033,6 +1068,32 @@ const styles = StyleSheet.create({
   },
   cardWrapper: {
     paddingHorizontal: 0,
+  },
+  addRankCardCard: {
+    height: 220,
+    backgroundColor: '#1a1a1a',
+    borderRadius: 24,
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderWidth: 2,
+    borderColor: '#333',
+    borderStyle: 'dashed',
+  },
+  addRankCardCardContent: {
+    alignItems: 'center',
+    gap: 12,
+  },
+  addRankCardCardText: {
+    fontSize: 18,
+    fontWeight: '600',
+    color: '#fff',
+    letterSpacing: -0.3,
+  },
+  addRankCardCardSubtext: {
+    fontSize: 14,
+    fontWeight: '400',
+    color: '#999',
+    letterSpacing: -0.2,
   },
   mainTabsContainer: {
     flexDirection: 'row',

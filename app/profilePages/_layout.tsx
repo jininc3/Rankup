@@ -69,6 +69,12 @@ export default function ProfilePagesLayout() {
           headerShown: false,
         }}
       />
+      <Stack.Screen
+        name="rankCardWallet"
+        options={{
+          headerShown: false,
+        }}
+      />
     </Stack>
   );
 }
