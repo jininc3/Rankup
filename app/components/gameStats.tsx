@@ -4,8 +4,15 @@ import { IconSymbol } from '@/components/ui/icon-symbol';
 import { StyleSheet, View, TouchableOpacity, ScrollView, Image, ActivityIndicator, Alert } from 'react-native';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { useState, useEffect } from 'react';
-import { getLeagueStats, getTftStats, formatRank, getChampionName, getProfileIconUrl, type RiotStats, type TftStats } from '@/services/riotService';
-// import { getValorantStats, formatValorantRank, type ValorantStats } from '@/services/valorantService'; // Disabled - API requires key
+import {
+  getLeagueStats,
+  getTftStats,
+  formatRank,
+  getChampionName,
+  getProfileIconUrl,
+  type RiotStats,
+  type TftStats
+} from '@/services/riotService';
 
 interface GameStatsScreenProps {
   // Props will come from navigation params
@@ -22,7 +29,6 @@ export default function GameStatsScreen() {
   const [riotStats, setRiotStats] = useState<RiotStats | null>(null);
   // State for TFT data
   const [tftStats, setTftStats] = useState<TftStats | null>(null);
-  // Valorant stats disabled - API requires key
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [hasFetched, setHasFetched] = useState(false);
@@ -36,10 +42,6 @@ export default function GameStatsScreen() {
         // TFT stats disabled - showing placeholder data
         setHasFetched(true);
         console.log('TFT stats disabled - showing placeholder data');
-      } else if (game.name === 'Valorant') {
-        // Valorant API temporarily disabled - Henrik's API requires key
-        setHasFetched(true);
-        console.log('Valorant stats disabled - showing placeholder data');
       }
     }
   }, [game?.name]);
@@ -89,8 +91,6 @@ export default function GameStatsScreen() {
     }
   };
 
-  // Valorant fetch disabled - API requires key
-  // const fetchValorantData = async () => { ... }
 
   if (!game) {
     return (
@@ -103,10 +103,10 @@ export default function GameStatsScreen() {
   // Get game color based on game name
   const getGameColor = () => {
     switch (game.name) {
-      case 'Valorant':
-        return '#e8a5a5'; // Dark pastel red
       case 'League of Legends':
         return '#0f1f3d'; // Navy blue (matches rankCard)
+      case 'Valorant':
+        return '#B2313B'; // Dark Valorant red (matches rankCard)
       case 'TFT':
         return '#d4b3ff'; // Pastel purple
       case 'Apex Legends':
@@ -119,10 +119,10 @@ export default function GameStatsScreen() {
   // Get game image
   const getGameImage = () => {
     switch (game.name) {
-      case 'Valorant':
-        return require('@/assets/images/valorant.png');
       case 'League of Legends':
         return require('@/assets/images/leagueoflegends.png');
+      case 'Valorant':
+        return require('@/assets/images/valorant.png');
       case 'TFT':
         return require('@/assets/images/tft.png');
       case 'Apex Legends':
@@ -141,7 +141,11 @@ export default function GameStatsScreen() {
           style={styles.backButton}
           onPress={() => router.back()}
         >
-          <IconSymbol size={24} name="chevron.left" color={game.name === 'League of Legends' ? '#fff' : '#000'} />
+          <IconSymbol
+            size={24}
+            name="chevron.left"
+            color={(game.name === 'League of Legends' || game.name === 'Valorant') ? '#fff' : '#000'}
+          />
         </TouchableOpacity>
 
         {/* Profile Icon - Top Right */}
@@ -158,6 +162,13 @@ export default function GameStatsScreen() {
         {game.name === 'League of Legends' ? (
           <Image
             source={require('@/assets/images/lol.png')}
+            style={styles.centeredLogoLOL}
+            resizeMode="contain"
+          />
+        ) : game.name === 'Valorant' ? (
+          /* Valorant centered logo */
+          <Image
+            source={require('@/assets/images/valorant-logo.png')}
             style={styles.centeredLogoLOL}
             resizeMode="contain"
           />
@@ -259,8 +270,8 @@ export default function GameStatsScreen() {
             </View>
           </>
         ) : (
-          // Display placeholder data for TFT, Valorant or other games
-          // TFT and Valorant APIs temporarily disabled
+          // Display placeholder data for TFT or other games
+          // TFT API temporarily disabled
           <>
             <View style={styles.statRow}>
               <View style={styles.statRowIcon}>
@@ -302,13 +313,11 @@ export default function GameStatsScreen() {
               </View>
               <ThemedText style={styles.statRowLabel}>
                 Top{' '}
-                {game.name === 'Valorant'
-                  ? 'Agent'
-                  : game.name === 'League of Legends'
+                {game.name === 'League of Legends'
                   ? 'Champion'
                   : 'Character'}
               </ThemedText>
-              <ThemedText style={styles.statRowValue}>{game.topCharacter || 'Jett'}</ThemedText>
+              <ThemedText style={styles.statRowValue}>{game.topCharacter || 'Unknown'}</ThemedText>
             </View>
           </>
         )}

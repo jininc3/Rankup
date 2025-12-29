@@ -83,7 +83,7 @@ export default function LinkRiotAccountScreen() {
       {/* Logo */}
       <View style={styles.logoContainer}>
         <Image
-          source={require('@/assets/images/leagueoflegends.png')}
+          source={require('@/assets/images/riotgames.png')}
           style={styles.logo}
           resizeMode="contain"
         />
@@ -91,9 +91,9 @@ export default function LinkRiotAccountScreen() {
 
       {/* Info Card */}
       <View style={styles.infoCard}>
-        <ThemedText style={styles.infoTitle}>Connect Your League Account</ThemedText>
+        <ThemedText style={styles.infoTitle}>Connect Your Riot Account</ThemedText>
         <ThemedText style={styles.infoText}>
-          Enter your Riot ID to link your League of Legends account and display your real stats.
+          Enter your Riot ID to link your Riot Games account and display your stats for League of Legends, TFT, and Valorant.
         </ThemedText>
       </View>
 

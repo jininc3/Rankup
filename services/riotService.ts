@@ -100,6 +100,7 @@ export interface GetTftStatsResponse {
   cached?: boolean;
 }
 
+
 export interface UnlinkAccountResponse {
   success: boolean;
   message: string;
@@ -245,6 +246,7 @@ export const getTftStats = async (
   }
 };
 
+
 /**
  * Unlink the Riot account from the user's profile
  */
@@ -300,6 +302,7 @@ export const formatRank = (tier: string, rank: string): string => {
 
   return `${formattedTier} ${rank}`;
 };
+
 
 /**
  * Get profile icon URL from Data Dragon

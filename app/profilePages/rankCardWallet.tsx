@@ -42,8 +42,14 @@ export default function RankCardWalletScreen() {
           setRiotAccount(account);
 
           // Fetch League stats
-          const leagueStats = await getLeagueStats(account.puuid, account.region);
-          setRiotStats(leagueStats);
+          try {
+            const leagueResponse = await getLeagueStats();
+            if (leagueResponse.success && leagueResponse.stats) {
+              setRiotStats(leagueResponse.stats);
+            }
+          } catch (error) {
+            console.error('Error fetching League stats:', error);
+          }
         }
       } catch (error) {
         console.error('Error fetching Riot data:', error);
@@ -55,19 +61,34 @@ export default function RankCardWalletScreen() {
 
   // Build games array
   const userGames = riotAccount ? [
-    {
+    // League of Legends
+    ...(riotStats ? [{
       id: 2,
       name: 'League of Legends',
-      rank: riotStats?.rankedSolo
+      rank: riotStats.rankedSolo
         ? formatRank(riotStats.rankedSolo.tier, riotStats.rankedSolo.rank)
         : 'Unranked',
-      trophies: riotStats?.rankedSolo?.leaguePoints || 0,
+      trophies: riotStats.rankedSolo?.leaguePoints || 0,
       icon: '⚔️',
       image: require('@/assets/images/leagueoflegends.png'),
-      wins: riotStats?.rankedSolo?.wins || 0,
-      losses: riotStats?.rankedSolo?.losses || 0,
-      winRate: riotStats?.rankedSolo?.winRate || 0,
+      wins: riotStats.rankedSolo?.wins || 0,
+      losses: riotStats.rankedSolo?.losses || 0,
+      winRate: riotStats.rankedSolo?.winRate || 0,
       recentMatches: ['+15', '-18', '+20', '+17', '-14'],
+      profileIconId: riotStats.profileIconId,
+    }] : []),
+    // Valorant (Placeholder - TODO: Implement Valorant API)
+    {
+      id: 3,
+      name: 'Valorant',
+      rank: 'Platinum II',
+      trophies: 65,
+      icon: '🎯',
+      image: require('@/assets/images/valorant.png'),
+      wins: 42,
+      losses: 38,
+      winRate: 52.5,
+      recentMatches: ['+18', '+22', '-16', '+20', '-15'],
       profileIconId: riotStats?.profileIconId,
     },
   ] : [];
@@ -209,7 +230,7 @@ export default function RankCardWalletScreen() {
       {/* Stacked Cards Container */}
       <View style={styles.cardsContainer}>
         {userGames.map((game, index) => {
-          const displayUsername = (game.name === 'League of Legends' || game.name === 'TFT') && riotAccount
+          const displayUsername = (game.name === 'League of Legends' || game.name === 'TFT' || game.name === 'Valorant') && riotAccount
             ? `${riotAccount.gameName}#${riotAccount.tagLine}`
             : user?.username || 'User';
 

@@ -13,9 +13,6 @@ import {
   SummonerData,
   RankedStats,
   ChampionMastery,
-  ValorantPlayerData,
-  ValorantRankedData,
-  ValorantMMRHistory,
   TftSummonerData,
   TftLeagueEntry,
 } from "../types/riot";
@@ -28,6 +25,7 @@ const getRiotApiKey = (): string => {
   }
   return apiKey;
 };
+
 
 // Regional routing values
 const REGIONAL_ROUTING: {[key: string]: string} = {
@@ -215,143 +213,6 @@ export async function getTotalMasteryScore(
   }
 }
 
-// ===== Valorant API Functions =====
-// Note: Using Henrik's unofficial Valorant API (https://henrikdev.xyz/valorant)
-
-/**
- * Get Valorant account data by PUUID
- */
-export async function getValorantAccount(
-  puuid: string
-): Promise<ValorantPlayerData> {
-  const url = `https://api.henrikdev.xyz/valorant/v2/by-puuid/account/${puuid}`;
-
-  try {
-    logger.info(`Fetching Valorant account for PUUID: ${puuid.substring(0, 10)}...`);
-    const response = await axios.get(url);
-
-    logger.info(`Valorant API response status: ${response.data.status}`);
-
-    if (response.data.status === 404) {
-      throw new HttpsError(
-        "not-found",
-        "No Valorant account found. You may not have played Valorant yet."
-      );
-    }
-
-    if (response.data.status !== 200 || !response.data.data) {
-      throw new HttpsError(
-        "internal",
-        `Valorant API returned status ${response.data.status}`
-      );
-    }
-
-    return response.data.data;
-  } catch (error: any) {
-    logger.error("Valorant API Error (getValorantAccount):", {
-      message: error.message,
-      status: error.response?.status,
-      data: error.response?.data,
-      url: error.config?.url,
-    });
-
-    if (error instanceof HttpsError) {
-      throw error;
-    }
-
-    // Handle axios errors
-    if (error.response?.status === 404) {
-      throw new HttpsError(
-        "not-found",
-        "No Valorant account found. You may not have played Valorant yet."
-      );
-    }
-
-    if (error.response?.status === 429) {
-      throw new HttpsError(
-        "resource-exhausted",
-        "Henrik's API rate limit exceeded. Please try again in a few minutes."
-      );
-    }
-
-    throw new HttpsError(
-      "internal",
-      `Henrik's Valorant API error: ${error.response?.status || error.message || "Unknown error"}`
-    );
-  }
-}
-
-/**
- * Get Valorant MMR (rank) data by PUUID and region
- */
-export async function getValorantMMR(
-  puuid: string,
-  region: string = "eu"
-): Promise<ValorantRankedData> {
-  const url = `https://api.henrikdev.xyz/valorant/v3/by-puuid/mmr/${region}/${puuid}`;
-
-  try {
-    logger.info(`Fetching Valorant MMR for PUUID: ${puuid.substring(0, 10)}...`);
-    const response = await axios.get(url);
-
-    if (response.data.status !== 200 || !response.data.data) {
-      throw new Error("Failed to fetch Valorant MMR data");
-    }
-
-    return response.data.data;
-  } catch (error: any) {
-    logger.error("Valorant API Error (getValorantMMR):", {
-      message: error.message,
-      status: error.response?.status,
-      data: error.response?.data,
-      url: error.config?.url,
-    });
-
-    if (error.response?.status === 404) {
-      throw new HttpsError(
-        "not-found",
-        "No Valorant ranked data found. You may be unranked."
-      );
-    }
-
-    if (error.response?.status === 429) {
-      throw new HttpsError(
-        "resource-exhausted",
-        "Henrik's API rate limit exceeded."
-      );
-    }
-
-    throw new HttpsError(
-      "internal",
-      `Failed to fetch Valorant rank data: ${error.response?.status || error.message}`
-    );
-  }
-}
-
-/**
- * Get Valorant MMR history by PUUID and region
- */
-export async function getValorantMMRHistory(
-  puuid: string,
-  region: string = "eu"
-): Promise<ValorantMMRHistory[]> {
-  const url = `https://api.henrikdev.xyz/valorant/v3/by-puuid/mmr-history/${region}/${puuid}`;
-
-  try {
-    logger.info(`Fetching Valorant MMR history for PUUID: ${puuid.substring(0, 10)}...`);
-    const response = await axios.get(url);
-
-    if (response.data.status !== 200 || !response.data.data) {
-      throw new Error("Failed to fetch Valorant MMR history");
-    }
-
-    return response.data.data;
-  } catch (error) {
-    logger.error("Valorant API Error (getValorantMMRHistory):", error);
-    // Return empty array instead of throwing - history is optional
-    return [];
-  }
-}
 
 // ===== TFT API Functions =====
 // Using official Riot TFT API

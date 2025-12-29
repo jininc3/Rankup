@@ -43,7 +43,7 @@ export default function NewRankCardScreen() {
           <View style={styles.optionLeft}>
             <View style={styles.iconContainer}>
               <Image
-                source={require('@/assets/images/leagueoflegends.png')}
+                source={require('@/assets/images/riotgames.png')}
                 style={styles.optionIcon}
                 resizeMode="contain"
               />

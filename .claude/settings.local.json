@@ -5,7 +5,9 @@
       "Bash(npx tsc:*)",
       "Bash(npx firebase functions:log:*)",
       "WebSearch",
-      "Bash(ls:*)"
+      "Bash(ls:*)",
+      "Bash(npm run build:*)",
+      "Bash(firebase functions:log:*)"
     ],
     "deny": [],
     "ask": []

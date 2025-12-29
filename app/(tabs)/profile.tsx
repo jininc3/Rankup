@@ -15,12 +15,11 @@ import { useRouter } from 'expo-router';
 import { useFocusEffect } from '@react-navigation/native';
 import { collection, getDocs, query, Timestamp, where, doc, getDoc, updateDoc, increment } from 'firebase/firestore';
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { ActivityIndicator, Alert, Dimensions, Image, Linking, Modal, RefreshControl, ScrollView, StyleSheet, TouchableOpacity, View } from 'react-native';
+import { ActivityIndicator, Alert, Dimensions, Image, Linking, Modal, RefreshControl, ScrollView, StyleSheet, TouchableOpacity, View, LayoutAnimation, Platform, UIManager } from 'react-native';
 import * as Clipboard from 'expo-clipboard';
 import { getLeagueStats, getTftStats, formatRank } from '@/services/riotService';
 import { deletePostMedia } from '@/services/storageService';
 import { deleteDoc } from 'firebase/firestore';
-// import { getValorantStats, formatValorantRank } from '@/services/valorantService'; // Disabled - API requires key
 
 const { width: screenWidth } = Dimensions.get('window');
 const CARD_PADDING = 20;
@@ -60,29 +59,50 @@ export default function ProfileScreen() {
   const [selectedGameFilter, setSelectedGameFilter] = useState<string | null>(null); // null means "All Games"
   const [refreshing, setRefreshing] = useState(false);
   const scrollViewRef = useRef<ScrollView>(null);
+  const iconScrollViewRef = useRef<ScrollView>(null);
   const [riotAccount, setRiotAccount] = useState<any>(null);
   const [riotStats, setRiotStats] = useState<any>(null);
   const [tftStats, setTftStats] = useState<any>(null);
-  const [valorantStats, setValorantStats] = useState<any>(null);
   const [hasConsumedPreloadPosts, setHasConsumedPreloadPosts] = useState(false);
   const [hasConsumedPreloadRiot, setHasConsumedPreloadRiot] = useState(false);
 
+  // Enable LayoutAnimation on Android
+  useEffect(() => {
+    if (Platform.OS === 'android' && UIManager.setLayoutAnimationEnabledExperimental) {
+      UIManager.setLayoutAnimationEnabledExperimental(true);
+    }
+  }, []);
+
   // Dynamic games array based on Riot data
-  // Show only League of Legends when Riot account is linked
   const userGames = riotAccount ? [
-    {
+    // League of Legends
+    ...(riotStats ? [{
       id: 2,
       name: 'League of Legends',
-      rank: riotStats?.rankedSolo
+      rank: riotStats.rankedSolo
         ? formatRank(riotStats.rankedSolo.tier, riotStats.rankedSolo.rank)
         : 'Unranked',
-      trophies: riotStats?.rankedSolo?.leaguePoints || 0,
+      trophies: riotStats.rankedSolo?.leaguePoints || 0,
       icon: '⚔️',
       image: require('@/assets/images/leagueoflegends.png'),
-      wins: riotStats?.rankedSolo?.wins || 0,
-      losses: riotStats?.rankedSolo?.losses || 0,
-      winRate: riotStats?.rankedSolo?.winRate || 0,
+      wins: riotStats.rankedSolo?.wins || 0,
+      losses: riotStats.rankedSolo?.losses || 0,
+      winRate: riotStats.rankedSolo?.winRate || 0,
       recentMatches: ['+15', '-18', '+20', '+17', '-14'],
+      profileIconId: riotStats.profileIconId,
+    }] : []),
+    // Valorant (Placeholder - TODO: Implement Valorant API)
+    {
+      id: 3,
+      name: 'Valorant',
+      rank: 'Platinum II',
+      trophies: 65,
+      icon: '🎯',
+      image: require('@/assets/images/valorant.png'),
+      wins: 42,
+      losses: 38,
+      winRate: 52.5,
+      recentMatches: ['+18', '+22', '-16', '+20', '-15'],
       profileIconId: riotStats?.profileIconId,
     },
   ] : [];
@@ -106,14 +126,34 @@ export default function ProfileScreen() {
   };
 
   const scrollToIndex = (index: number) => {
+    // Configure smooth layout animation for border transition
+    LayoutAnimation.configureNext(
+      LayoutAnimation.create(
+        200,
+        LayoutAnimation.Types.easeInEaseOut,
+        LayoutAnimation.Properties.opacity
+      )
+    );
+
+    // Update state for smooth border transition
+    setSelectedGameIndex(index);
+
+    // Scroll the cards view
     scrollViewRef.current?.scrollTo({
       x: index * (CARD_WIDTH + CARD_GAP),
       animated: true,
     });
-    setSelectedGameIndex(index);
+
+    // Scroll the icon view to center the selected icon
+    const ICON_WIDTH = 48 + 12; // icon circle (48) + gap (12)
+    const ICON_OFFSET = index * ICON_WIDTH - (screenWidth / 2) + (ICON_WIDTH / 2);
+    iconScrollViewRef.current?.scrollTo({
+      x: Math.max(0, ICON_OFFSET),
+      animated: true,
+    });
   };
 
-  // Fetch Riot account and stats (both League and Valorant)
+  // Fetch Riot account and stats (League and TFT)
   const fetchRiotData = async (forceRefresh: boolean = false) => {
     if (!user?.id) return;
 
@@ -143,10 +183,6 @@ export default function ProfileScreen() {
           // TFT stats temporarily disabled - using placeholder data
           // TODO: Re-enable when needed
           console.log('TFT stats disabled - showing placeholder data');
-
-          // Valorant stats temporarily disabled (Henrik's API requires key)
-          // TODO: Re-enable when API key is obtained
-          console.log('Valorant stats disabled - showing placeholder data');
         }
       }
     } catch (error) {
@@ -670,6 +706,7 @@ export default function ProfileScreen() {
             <>
               {/* Game Icon Selector */}
               <ScrollView
+                ref={iconScrollViewRef}
                 horizontal
                 showsHorizontalScrollIndicator={false}
                 style={styles.gameIconScroller}
@@ -723,8 +760,8 @@ export default function ProfileScreen() {
                 contentContainerStyle={styles.cardsContainer}
               >
                 {userGames.map((game, index) => {
-                  // Use Riot account username for League and TFT (Valorant API disabled)
-                  const displayUsername = (game.name === 'League of Legends' || game.name === 'TFT') && riotAccount
+                  // Use Riot account username for all Riot games (League, TFT, Valorant)
+                  const displayUsername = (game.name === 'League of Legends' || game.name === 'TFT' || game.name === 'Valorant') && riotAccount
                     ? `${riotAccount.gameName}#${riotAccount.tagLine}`
                     : user?.username || 'User';
 

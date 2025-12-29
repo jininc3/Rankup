@@ -18,7 +18,6 @@ setGlobalOptions({maxInstances: 10});
 export {linkRiotAccountFunction as linkRiotAccount} from "./riot/linkRiotAccount";
 export {getLeagueStatsFunction as getLeagueStats} from "./riot/getLeagueStats";
 export {getTftStatsFunction as getTftStats} from "./riot/getTftStats";
-export {getValorantStatsFunction as getValorantStats} from "./riot/getValorantStats";
 export {unlinkRiotAccountFunction as unlinkRiotAccount} from "./riot/unlinkRiotAccount";
 
 // Export Push Notification functions
