@@ -169,9 +169,9 @@ const styles = StyleSheet.create({
     textTransform: 'uppercase',
   },
   rankIcon: {
-    width: 70,
-    height: 70,
-    marginTop: 5,
+    width: 90,
+    height: 90,
+    marginTop: -5,
     marginBottom: 2,
   },
   cardRankValue: {

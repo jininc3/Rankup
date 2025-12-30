@@ -63,6 +63,7 @@ export default function ProfileScreen() {
   const [riotAccount, setRiotAccount] = useState<any>(null);
   const [riotStats, setRiotStats] = useState<any>(null);
   const [tftStats, setTftStats] = useState<any>(null);
+  const [enabledRankCards, setEnabledRankCards] = useState<string[]>([]);
   const [hasConsumedPreloadPosts, setHasConsumedPreloadPosts] = useState(false);
   const [hasConsumedPreloadRiot, setHasConsumedPreloadRiot] = useState(false);
 
@@ -73,10 +74,10 @@ export default function ProfileScreen() {
     }
   }, []);
 
-  // Dynamic games array based on Riot data
+  // Dynamic games array based on Riot data and enabled rank cards
   const userGames = riotAccount ? [
-    // League of Legends
-    ...(riotStats ? [{
+    // League of Legends - only show if enabled and has stats
+    ...(enabledRankCards.includes('league') && riotStats ? [{
       id: 2,
       name: 'League of Legends',
       rank: riotStats.rankedSolo
@@ -91,8 +92,8 @@ export default function ProfileScreen() {
       recentMatches: ['+15', '-18', '+20', '+17', '-14'],
       profileIconId: riotStats.profileIconId,
     }] : []),
-    // TFT (Placeholder - TODO: Implement TFT API)
-    {
+    // TFT - only show if enabled (Placeholder - TODO: Implement TFT API)
+    ...(enabledRankCards.includes('tft') ? [{
       id: 4,
       name: 'TFT',
       rank: 'Gold I',
@@ -104,9 +105,9 @@ export default function ProfileScreen() {
       winRate: 56.0,
       recentMatches: ['+12', '-10', '+15', '+18', '-8'],
       profileIconId: riotStats?.profileIconId,
-    },
-    // Valorant (Placeholder - TODO: Implement Valorant API)
-    {
+    }] : []),
+    // Valorant - only show if enabled (Placeholder - TODO: Implement Valorant API)
+    ...(enabledRankCards.includes('valorant') ? [{
       id: 3,
       name: 'Valorant',
       rank: 'Platinum II',
@@ -118,7 +119,7 @@ export default function ProfileScreen() {
       winRate: 52.5,
       recentMatches: ['+18', '+22', '-16', '+20', '-15'],
       profileIconId: riotStats?.profileIconId,
-    },
+    }] : []),
   ] : [];
 
   const handleScroll = (event: any) => {
@@ -176,6 +177,10 @@ export default function ProfileScreen() {
       const userDoc = await getDoc(doc(db, 'users', user.id));
       if (userDoc.exists()) {
         const data = userDoc.data();
+
+        // Fetch enabled rank cards
+        setEnabledRankCards(data.enabledRankCards || []);
+
         if (data.riotAccount) {
           setRiotAccount(data.riotAccount);
 
@@ -266,7 +271,7 @@ export default function ProfileScreen() {
       setRiotStats(preloadedRiotStats);
       setHasConsumedPreloadRiot(true);
 
-      // Also fetch and set riotAccount from Firestore so rank cards show
+      // Also fetch and set riotAccount and enabledRankCards from Firestore so rank cards show
       (async () => {
         try {
           const userDoc = await getDoc(doc(db, 'users', user.id));
@@ -275,6 +280,7 @@ export default function ProfileScreen() {
             if (data.riotAccount) {
               setRiotAccount(data.riotAccount);
             }
+            setEnabledRankCards(data.enabledRankCards || []);
           }
         } catch (error) {
           console.error('Error fetching riotAccount:', error);
@@ -755,7 +761,11 @@ export default function ProfileScreen() {
                     styles.gameIconCircle,
                     selectedGameIndex === userGames.length && styles.gameIconCircleActive
                   ]}>
-                    <IconSymbol size={24} name="plus.circle.fill" color="#fff" />
+                    <IconSymbol
+                      size={24}
+                      name="plus.circle.fill"
+                      color={selectedGameIndex === userGames.length ? "#000" : "#999"}
+                    />
                   </View>
                 </TouchableOpacity>
               </ScrollView>

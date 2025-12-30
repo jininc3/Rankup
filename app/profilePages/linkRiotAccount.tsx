@@ -12,11 +12,14 @@ import {
   Image,
 } from 'react-native';
 import { useState } from 'react';
-import { useRouter } from 'expo-router';
+import { useRouter, useLocalSearchParams } from 'expo-router';
 import { linkRiotAccount } from '@/services/riotService';
+import { db, auth } from '@/config/firebase';
+import { doc, updateDoc, arrayUnion } from 'firebase/firestore';
 
 export default function LinkRiotAccountScreen() {
   const router = useRouter();
+  const { selectedGame } = useLocalSearchParams<{ selectedGame?: string }>();
   const [gameName, setGameName] = useState('');
   const [tagLine, setTagLine] = useState('');
   const [region, setRegion] = useState('euw1');
@@ -45,20 +48,34 @@ export default function LinkRiotAccountScreen() {
     setLoading(true);
     try {
       // Debug: Check auth state
-      const { auth } = require('@/config/firebase');
       console.log('Current user:', auth.currentUser?.uid);
       console.log('Current user email:', auth.currentUser?.email);
 
       const response = await linkRiotAccount(gameName.trim(), tagLine.trim(), region);
 
-      if (response.success) {
+      if (response.success && auth.currentUser) {
+        // If a game was selected, add it to enabledRankCards
+        if (selectedGame) {
+          try {
+            await updateDoc(doc(db, 'users', auth.currentUser.uid), {
+              enabledRankCards: arrayUnion(selectedGame),
+            });
+          } catch (error) {
+            console.error('Error adding rank card:', error);
+          }
+        }
+
         Alert.alert(
           'Success!',
-          `Linked account: ${response.account?.gameName}#${response.account?.tagLine}`,
+          `Linked account: ${response.account?.gameName}#${response.account?.tagLine}${selectedGame ? `\n\n${getGameDisplayName(selectedGame)} rank card added to your profile!` : ''}`,
           [
             {
               text: 'OK',
-              onPress: () => router.back(),
+              onPress: () => {
+                // Navigate back to profile, going back twice (past newRankCard)
+                router.back();
+                router.back();
+              },
             },
           ]
         );
@@ -67,6 +84,19 @@ export default function LinkRiotAccountScreen() {
       Alert.alert('Error', error.message || 'Failed to link Riot account');
     } finally {
       setLoading(false);
+    }
+  };
+
+  const getGameDisplayName = (game: string) => {
+    switch (game) {
+      case 'league':
+        return 'League of Legends';
+      case 'valorant':
+        return 'Valorant';
+      case 'tft':
+        return 'TFT';
+      default:
+        return game;
     }
   };
 

@@ -6,7 +6,7 @@ import { useFocusEffect } from '@react-navigation/native';
 import { ScrollView, StyleSheet, TouchableOpacity, View, Alert } from 'react-native';
 import { useAuth } from '@/contexts/AuthContext';
 import { useState, useEffect, useCallback } from 'react';
-import { doc, getDoc } from 'firebase/firestore';
+import { doc, getDoc, updateDoc } from 'firebase/firestore';
 import { db } from '@/config/firebase';
 import { unlinkRiotAccount } from '@/services/riotService';
 
@@ -114,7 +114,7 @@ export default function SettingsScreen() {
 
     Alert.alert(
       'Unlink Riot Account',
-      `Are you sure you want to unlink ${riotAccount?.gameName}#${riotAccount?.tagLine}? Your stats will be removed.`,
+      `Are you sure you want to unlink ${riotAccount?.gameName}#${riotAccount?.tagLine}? All your rank cards and stats will be removed.`,
       [
         {
           text: 'Cancel',
@@ -126,8 +126,16 @@ export default function SettingsScreen() {
           onPress: async () => {
             try {
               await unlinkRiotAccount();
+
+              // Also clear all enabled rank cards from the user's profile
+              if (user?.id) {
+                await updateDoc(doc(db, 'users', user.id), {
+                  enabledRankCards: [],
+                });
+              }
+
               setRiotAccount(null);
-              Alert.alert('Success', 'Riot account unlinked successfully');
+              Alert.alert('Success', 'Riot account and all rank cards unlinked successfully');
             } catch (error: any) {
               Alert.alert('Error', error.message || 'Failed to unlink Riot account');
               console.error(error);
