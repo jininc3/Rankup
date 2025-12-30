@@ -1,5 +1,6 @@
 import LeagueRankCard from './leagueRankCard';
 import ValorantRankCard from './valorantRankCard';
+import TftRankCard from './tftRankCard';
 
 interface Game {
   id: number;
@@ -24,8 +25,9 @@ export default function rankCard({ game, username }: RankCardProps) {
   switch (game.name) {
     case 'Valorant':
       return <ValorantRankCard game={game} username={username} />;
-    case 'League of Legends':
     case 'TFT':
+      return <TftRankCard game={game} username={username} />;
+    case 'League of Legends':
     default:
       return <LeagueRankCard game={game} username={username} />;
   }

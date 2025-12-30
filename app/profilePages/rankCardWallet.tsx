@@ -77,6 +77,20 @@ export default function RankCardWalletScreen() {
       recentMatches: ['+15', '-18', '+20', '+17', '-14'],
       profileIconId: riotStats.profileIconId,
     }] : []),
+    // TFT (Placeholder - TODO: Implement TFT API)
+    {
+      id: 4,
+      name: 'TFT',
+      rank: 'Gold I',
+      trophies: 45,
+      icon: '♟️',
+      image: require('@/assets/images/tft.png'),
+      wins: 28,
+      losses: 22,
+      winRate: 56.0,
+      recentMatches: ['+12', '-10', '+15', '+18', '-8'],
+      profileIconId: riotStats?.profileIconId,
+    },
     // Valorant (Placeholder - TODO: Implement Valorant API)
     {
       id: 3,
