@@ -7,7 +7,10 @@
       "WebSearch",
       "Bash(ls:*)",
       "Bash(npm run build:*)",
-      "Bash(firebase functions:log:*)"
+      "Bash(firebase functions:log:*)",
+      "WebFetch(domain:developer.riotgames.com)",
+      "WebFetch(domain:github.com)",
+      "WebFetch(domain:docs.henrikdev.xyz)"
     ],
     "deny": [],
     "ask": []

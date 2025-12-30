@@ -72,6 +72,27 @@ export const linkRiotAccountFunction = onCall(
     try {
       logger.info(`User ${userId} is linking Riot account: ${cleanGameName}#${cleanTagLine}`);
 
+      const db = admin.firestore();
+
+      // Create account identifier for claim checking
+      const accountId = `riot:${cleanGameName}#${cleanTagLine}`;
+
+      // Check if account is already claimed by another user
+      const linkedAccountRef = db.collection("linkedAccounts").doc(accountId);
+      const linkedAccountDoc = await linkedAccountRef.get();
+
+      if (linkedAccountDoc.exists) {
+        const linkedData = linkedAccountDoc.data();
+        if (linkedData && linkedData.userId !== userId) {
+          logger.warn(`Account ${accountId} already linked to user ${linkedData.userId}`);
+          throw new HttpsError(
+            "already-exists",
+            "This Riot account is already linked to another RankUp profile. Please unlink it from the other profile first, or contact support if you believe this is an error."
+          );
+        }
+        logger.info(`Account ${accountId} already linked to current user, allowing re-link`);
+      }
+
       // Verify account exists via Riot API
       const riotAccount = await getAccountByRiotId(
         cleanGameName,
@@ -82,7 +103,6 @@ export const linkRiotAccountFunction = onCall(
       logger.info(`Account verified: ${riotAccount.puuid}`);
 
       // Store in Firestore
-      const db = admin.firestore();
       const userRef = db.collection("users").doc(userId);
 
       const accountData = {
@@ -92,6 +112,16 @@ export const linkRiotAccountFunction = onCall(
         region: region.toLowerCase(),
         linkedAt: admin.firestore.FieldValue.serverTimestamp(),
       };
+
+      // Claim the account in linkedAccounts collection
+      await linkedAccountRef.set({
+        userId: userId,
+        accountType: "riot",
+        gameName: riotAccount.gameName,
+        tagLine: riotAccount.tagLine,
+        puuid: riotAccount.puuid,
+        linkedAt: admin.firestore.FieldValue.serverTimestamp(),
+      });
 
       await userRef.set({
         riotAccount: accountData,

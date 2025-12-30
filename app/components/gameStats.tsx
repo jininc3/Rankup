@@ -1,7 +1,7 @@
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { IconSymbol } from '@/components/ui/icon-symbol';
-import { StyleSheet, View, TouchableOpacity, ScrollView, Image, ActivityIndicator, Alert } from 'react-native';
+import { StyleSheet, View, TouchableOpacity, ScrollView, Image, ActivityIndicator, Alert, RefreshControl } from 'react-native';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { useState, useEffect } from 'react';
 import {
@@ -13,6 +13,13 @@ import {
   type RiotStats,
   type TftStats
 } from '@/services/riotService';
+import {
+  getValorantStats,
+  type ValorantStats,
+} from '@/services/valorantService';
+import { useAuth } from '@/contexts/AuthContext';
+import { db } from '@/config/firebase';
+import { doc, getDoc } from 'firebase/firestore';
 
 interface GameStatsScreenProps {
   // Props will come from navigation params
@@ -21,6 +28,7 @@ interface GameStatsScreenProps {
 export default function GameStatsScreen() {
   const router = useRouter();
   const params = useLocalSearchParams();
+  const { user } = useAuth();
 
   // Parse the game data from params
   const game = params.game ? JSON.parse(params.game as string) : null;
@@ -29,22 +37,130 @@ export default function GameStatsScreen() {
   const [riotStats, setRiotStats] = useState<RiotStats | null>(null);
   // State for TFT data
   const [tftStats, setTftStats] = useState<TftStats | null>(null);
+  // State for Valorant data
+  const [valorantStats, setValorantStats] = useState<ValorantStats | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [hasFetched, setHasFetched] = useState(false);
+  const [refreshing, setRefreshing] = useState(false);
+  const [cacheLoaded, setCacheLoaded] = useState(false);
 
-  // Fetch stats based on game type (only once)
+  // Load cached data from Firestore on mount
   useEffect(() => {
-    if (game && !hasFetched && !loading) {
+    if (game && user?.id && !cacheLoaded) {
+      loadCachedData();
+    }
+  }, [game?.name, user?.id]);
+
+  // Helper function to check if cache is expired (> 6 hours)
+  const isCacheExpired = (lastUpdated: any): boolean => {
+    if (!lastUpdated) return true;
+
+    const CACHE_TTL = 6 * 60 * 60 * 1000; // 6 hours in milliseconds
+    const lastUpdatedTime = lastUpdated.toMillis ? lastUpdated.toMillis() : lastUpdated;
+    const now = Date.now();
+    const cacheAge = now - lastUpdatedTime;
+
+    return cacheAge > CACHE_TTL;
+  };
+
+  // Load cached stats from Firestore
+  const loadCachedData = async () => {
+    if (!user?.id) return;
+
+    try {
+      console.log('Loading cached stats from Firestore...');
+      const userRef = doc(db, 'users', user.id);
+      const userDoc = await getDoc(userRef);
+
+      if (userDoc.exists()) {
+        const data = userDoc.data();
+
+        if (game.name === 'League of Legends' && data.riotStats) {
+          console.log('Loaded cached League stats');
+          setRiotStats(data.riotStats);
+          setCacheLoaded(true);
+
+          // Check if cache is expired and fetch if needed
+          if (isCacheExpired(data.riotStats.lastUpdated)) {
+            console.log('League cache expired, fetching fresh data...');
+            fetchLeagueData();
+          } else {
+            console.log('League cache is still valid');
+            setHasFetched(true);
+          }
+        } else if (game.name === 'Valorant' && data.valorantStats) {
+          console.log('Loaded cached Valorant stats');
+          setValorantStats(data.valorantStats);
+          setCacheLoaded(true);
+
+          // Check if cache is expired and fetch if needed
+          if (isCacheExpired(data.valorantStats.lastUpdated)) {
+            console.log('Valorant cache expired, fetching fresh data...');
+            fetchValorantData();
+          } else {
+            console.log('Valorant cache is still valid');
+            setHasFetched(true);
+          }
+        } else if (game.name === 'TFT' && data.tftStats) {
+          console.log('Loaded cached TFT stats');
+          setTftStats(data.tftStats);
+          setCacheLoaded(true);
+          setHasFetched(true);
+        } else {
+          // No cached data, fetch for the first time
+          console.log('No cached data found, fetching...');
+          setCacheLoaded(true);
+          if (game.name === 'League of Legends') {
+            fetchLeagueData();
+          } else if (game.name === 'Valorant') {
+            fetchValorantData();
+          } else if (game.name === 'TFT') {
+            setHasFetched(true);
+          }
+        }
+      }
+    } catch (error) {
+      console.error('Error loading cached data:', error);
+      setCacheLoaded(true);
+      // Fallback to fetching if cache load fails
       if (game.name === 'League of Legends') {
         fetchLeagueData();
-      } else if (game.name === 'TFT') {
-        // TFT stats disabled - showing placeholder data
-        setHasFetched(true);
-        console.log('TFT stats disabled - showing placeholder data');
+      } else if (game.name === 'Valorant') {
+        fetchValorantData();
       }
     }
-  }, [game?.name]);
+  };
+
+  // Handle pull-to-refresh
+  const onRefresh = async () => {
+    setRefreshing(true);
+    setError(null);
+
+    try {
+      if (game.name === 'League of Legends') {
+        const response = await getLeagueStats(true); // Force refresh
+        if (response.success && response.stats) {
+          setRiotStats(response.stats);
+        }
+      } else if (game.name === 'Valorant') {
+        const response = await getValorantStats(true); // Force refresh
+        if (response.success && response.stats) {
+          setValorantStats(response.stats);
+        }
+      } else if (game.name === 'TFT') {
+        const response = await getTftStats(true); // Force refresh
+        if (response.success && response.stats) {
+          setTftStats(response.stats);
+        }
+      }
+    } catch (err: any) {
+      console.error('Error refreshing stats:', err);
+      setError(err.message);
+    } finally {
+      setRefreshing(false);
+    }
+  };
 
   const fetchLeagueData = async () => {
     if (loading || hasFetched) return;
@@ -84,6 +200,28 @@ export default function GameStatsScreen() {
       }
     } catch (err: any) {
       console.error('Error fetching TFT stats:', err);
+      setError(err.message);
+      setHasFetched(false);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const fetchValorantData = async () => {
+    if (loading || hasFetched) return;
+
+    setLoading(true);
+    setError(null);
+    setHasFetched(true);
+
+    try {
+      const response = await getValorantStats();
+      if (response.success && response.stats) {
+        console.log('Valorant stats loaded:', response.stats);
+        setValorantStats(response.stats);
+      }
+    } catch (err: any) {
+      console.error('Error fetching Valorant stats:', err);
       setError(err.message);
       setHasFetched(false);
     } finally {
@@ -133,7 +271,17 @@ export default function GameStatsScreen() {
   };
 
   return (
-    <ScrollView style={styles.container} showsVerticalScrollIndicator={false}>
+    <ScrollView
+      style={styles.container}
+      showsVerticalScrollIndicator={false}
+      refreshControl={
+        <RefreshControl
+          refreshing={refreshing}
+          onRefresh={onRefresh}
+          tintColor="#000"
+        />
+      }
+    >
       {/* Hero Section with Pastel Background */}
       <View style={[styles.heroSection, { backgroundColor: getGameColor() }]}>
         {/* Back Button */}
@@ -155,6 +303,15 @@ export default function GameStatsScreen() {
             style={styles.profileIcon}
             onError={(error) => console.log('Profile icon load error:', error.nativeEvent)}
             onLoad={() => console.log('Profile icon loaded successfully')}
+          />
+        )}
+        {/* Valorant Player Card - Top Right */}
+        {valorantStats && valorantStats.card && (
+          <Image
+            source={{ uri: valorantStats.card.small }}
+            style={styles.profileIcon}
+            onError={(error) => console.log('Valorant card load error:', error.nativeEvent)}
+            onLoad={() => console.log('Valorant card loaded successfully')}
           />
         )}
 
@@ -183,7 +340,7 @@ export default function GameStatsScreen() {
 
       {/* Stats Card */}
       <View style={styles.statsCard}>
-        {loading ? (
+        {loading && !riotStats && !valorantStats && !tftStats ? (
           <View style={styles.loadingContainer}>
             <ActivityIndicator size="large" color="#000" />
             <ThemedText style={styles.loadingText}>Loading stats...</ThemedText>
@@ -193,7 +350,11 @@ export default function GameStatsScreen() {
             <ThemedText style={styles.errorText}>{error}</ThemedText>
             <TouchableOpacity
               style={styles.retryButton}
-              onPress={game.name === 'TFT' ? fetchTftData : fetchLeagueData}
+              onPress={
+                game.name === 'TFT' ? fetchTftData :
+                game.name === 'Valorant' ? fetchValorantData :
+                fetchLeagueData
+              }
             >
               <ThemedText style={styles.retryButtonText}>Retry</ThemedText>
             </TouchableOpacity>
@@ -267,6 +428,63 @@ export default function GameStatsScreen() {
               </View>
               <ThemedText style={styles.statRowLabel}>Summoner Level</ThemedText>
               <ThemedText style={styles.statRowValue}>{riotStats.summonerLevel}</ThemedText>
+            </View>
+          </>
+        ) : game.name === 'Valorant' && valorantStats ? (
+          // Display Valorant stats from Henrik's API
+          <>
+            <View style={styles.statRow}>
+              <View style={styles.statRowIcon}>
+                <IconSymbol size={20} name="trophy.fill" color="#666" />
+              </View>
+              <ThemedText style={styles.statRowLabel}>Current Rank</ThemedText>
+              <ThemedText style={styles.statRowValue}>
+                {valorantStats.currentRank} ({valorantStats.rankRating} RR)
+              </ThemedText>
+            </View>
+
+            <View style={styles.statRow}>
+              <View style={styles.statRowIcon}>
+                <IconSymbol size={20} name="chart.line.uptrend.xyaxis" color="#666" />
+              </View>
+              <ThemedText style={styles.statRowLabel}>MMR</ThemedText>
+              <ThemedText style={styles.statRowValue}>{valorantStats.mmr}</ThemedText>
+            </View>
+
+            <View style={styles.statRow}>
+              <View style={styles.statRowIcon}>
+                <IconSymbol size={20} name="star.fill" color="#666" />
+              </View>
+              <ThemedText style={styles.statRowLabel}>Peak Rank</ThemedText>
+              <ThemedText style={styles.statRowValue}>
+                {valorantStats.peakRank ? valorantStats.peakRank.tier : 'N/A'}
+              </ThemedText>
+            </View>
+
+            <View style={styles.statRow}>
+              <View style={styles.statRowIcon}>
+                <IconSymbol size={20} name="chart.line.uptrend.xyaxis" color="#666" />
+              </View>
+              <ThemedText style={styles.statRowLabel}>Win Rate</ThemedText>
+              <ThemedText style={styles.statRowValue}>
+                {valorantStats.winRate}% ({valorantStats.wins}W)
+              </ThemedText>
+            </View>
+
+            <View style={styles.statRow}>
+              <View style={styles.statRowIcon}>
+                <IconSymbol size={20} name="gamecontroller.fill" color="#666" />
+              </View>
+              <ThemedText style={styles.statRowLabel}>Games Played</ThemedText>
+              <ThemedText style={styles.statRowValue}>{valorantStats.gamesPlayed}</ThemedText>
+            </View>
+
+            <View style={styles.statRow}>
+              <View style={styles.statRowIcon}>
+                <IconSymbol size={20} name="number" color="#666" />
+              </View>
+              <ThemedText style={styles.statRowLabel}>Account Level</ThemedText>
+              <ThemedText style={styles.statRowValue}>{valorantStats.accountLevel}</ThemedText>
             </View>
           </>
         ) : (

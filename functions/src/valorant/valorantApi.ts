@@ -32,7 +32,7 @@ export interface HenrikAccount {
 }
 
 /**
- * MMR data from Henrik's API
+ * MMR data from Henrik's API (V2)
  */
 export interface HenrikMMRData {
   current_data: {
@@ -44,6 +44,18 @@ export interface HenrikMMRData {
   highest_rank: {
     patched_tier: string; // e.g., "Diamond 2"
     season: string; // e.g., "e4a3"
+  };
+  by_season: {
+    [season: string]: {
+      wins: number;
+      number_of_games: number;
+      final_rank: number;
+      final_rank_patched: string;
+      act_rank_wins?: Array<{
+        patched_tier: string;
+        tier: number;
+      }>;
+    };
   };
 }
 

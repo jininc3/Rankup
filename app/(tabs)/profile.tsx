@@ -18,6 +18,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { ActivityIndicator, Alert, Dimensions, Image, Linking, Modal, RefreshControl, ScrollView, StyleSheet, TouchableOpacity, View, LayoutAnimation, Platform, UIManager } from 'react-native';
 import * as Clipboard from 'expo-clipboard';
 import { getLeagueStats, getTftStats, formatRank } from '@/services/riotService';
+import { getValorantStats } from '@/services/valorantService';
 import { deletePostMedia } from '@/services/storageService';
 import { deleteDoc } from 'firebase/firestore';
 
@@ -63,6 +64,7 @@ export default function ProfileScreen() {
   const [riotAccount, setRiotAccount] = useState<any>(null);
   const [riotStats, setRiotStats] = useState<any>(null);
   const [tftStats, setTftStats] = useState<any>(null);
+  const [valorantStats, setValorantStats] = useState<any>(null);
   const [enabledRankCards, setEnabledRankCards] = useState<string[]>([]);
   const [hasConsumedPreloadPosts, setHasConsumedPreloadPosts] = useState(false);
   const [hasConsumedPreloadRiot, setHasConsumedPreloadRiot] = useState(false);
@@ -106,19 +108,20 @@ export default function ProfileScreen() {
       recentMatches: ['+12', '-10', '+15', '+18', '-8'],
       profileIconId: riotStats?.profileIconId,
     }] : []),
-    // Valorant - only show if enabled (Placeholder - TODO: Implement Valorant API)
-    ...(enabledRankCards.includes('valorant') ? [{
+    // Valorant - only show if enabled and has stats
+    ...(enabledRankCards.includes('valorant') && valorantStats ? [{
       id: 3,
       name: 'Valorant',
-      rank: 'Platinum II',
-      trophies: 65,
+      rank: valorantStats.currentRank || 'Unranked',
+      trophies: valorantStats.rankRating || 0,
       icon: '🎯',
       image: require('@/assets/images/valorant.png'),
-      wins: 42,
-      losses: 38,
-      winRate: 52.5,
+      wins: valorantStats.wins || 0,
+      losses: valorantStats.losses || 0,
+      winRate: valorantStats.winRate || 0,
       recentMatches: ['+18', '+22', '-16', '+20', '-15'],
-      profileIconId: riotStats?.profileIconId,
+      valorantCard: valorantStats.card?.small, // Valorant player card URL
+      peakRank: valorantStats.peakRank?.tier,
     }] : []),
   ] : [];
 
@@ -203,6 +206,23 @@ export default function ProfileScreen() {
           // TODO: Re-enable when needed
           console.log('TFT stats disabled - showing placeholder data');
         }
+
+        // Fetch Valorant stats if account is linked
+        if (data.valorantAccount) {
+          try {
+            console.log('Fetching Valorant stats, forceRefresh:', forceRefresh);
+            const valorantResponse = await getValorantStats(forceRefresh);
+            console.log('Valorant response:', valorantResponse);
+            if (valorantResponse.success && valorantResponse.stats) {
+              console.log('Setting valorant stats:', valorantResponse.stats);
+              setValorantStats(valorantResponse.stats);
+            } else {
+              console.log('Valorant stats not successful or no stats returned');
+            }
+          } catch (error) {
+            console.error('Error fetching Valorant stats:', error);
+          }
+        }
       }
     } catch (error) {
       console.error('Error fetching Riot data:', error);
@@ -271,7 +291,7 @@ export default function ProfileScreen() {
       setRiotStats(preloadedRiotStats);
       setHasConsumedPreloadRiot(true);
 
-      // Also fetch and set riotAccount and enabledRankCards from Firestore so rank cards show
+      // Also fetch and set riotAccount, valorantAccount, and enabledRankCards from Firestore so rank cards show
       (async () => {
         try {
           const userDoc = await getDoc(doc(db, 'users', user.id));
@@ -281,6 +301,12 @@ export default function ProfileScreen() {
               setRiotAccount(data.riotAccount);
             }
             setEnabledRankCards(data.enabledRankCards || []);
+
+            // Load cached Valorant stats directly from Firestore (instant, no API call)
+            if (data.valorantAccount && data.valorantStats) {
+              console.log('Loading cached Valorant stats from Firestore');
+              setValorantStats(data.valorantStats);
+            }
           }
         } catch (error) {
           console.error('Error fetching riotAccount:', error);

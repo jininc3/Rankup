@@ -1,7 +1,7 @@
 import { useEffect } from 'react';
 import { useRouter } from 'expo-router';
 import { useAuth } from '@/contexts/AuthContext';
-import LoadingScreen from '@/app/components/loadingScreen';
+import { View } from 'react-native';
 
 export default function Index() {
   const router = useRouter();
@@ -22,6 +22,6 @@ export default function Index() {
     }
   }, [isAuthenticated, isLoading, needsUsernameSetup]);
 
-  // Show loading screen while checking auth
-  return <LoadingScreen />;
+  // Return empty view - root layout already shows LoadingScreen
+  return <View />;
 }

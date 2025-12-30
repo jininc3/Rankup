@@ -1,41 +1,41 @@
 /**
- * Unlink Riot Account Cloud Function
+ * Unlink Valorant Account Cloud Function
  *
- * This function removes the Riot account and stats from the user's profile.
+ * This function removes the Valorant account and stats from the user's profile.
  */
 
 import {onCall, HttpsError} from "firebase-functions/v2/https";
 import * as admin from "firebase-admin";
 import * as logger from "firebase-functions/logger";
 
-export interface UnlinkAccountResponse {
+export interface UnlinkValorantAccountResponse {
   success: boolean;
   message: string;
 }
 
 /**
- * Unlink a Riot account from the user's profile
+ * Unlink a Valorant account from the user's profile
  *
  * @param request - Callable request containing auth
  * @returns Response indicating success or failure
  */
-export const unlinkRiotAccountFunction = onCall(
+export const unlinkValorantAccountFunction = onCall(
   {
     invoker: "public",
   },
-  async (request): Promise<UnlinkAccountResponse> => {
+  async (request): Promise<UnlinkValorantAccountResponse> => {
     // Check authentication
     if (!request.auth) {
       throw new HttpsError(
         "unauthenticated",
-        "User must be authenticated to unlink a Riot account"
+        "User must be authenticated to unlink a Valorant account"
       );
     }
 
     const userId = request.auth.uid;
 
     try {
-      logger.info(`User ${userId} is unlinking their Riot account`);
+      logger.info(`User ${userId} is unlinking their Valorant account`);
 
       const db = admin.firestore();
       const userRef = db.collection("users").doc(userId);
@@ -50,18 +50,18 @@ export const unlinkRiotAccountFunction = onCall(
 
       const userData = userDoc.data();
 
-      // Check if Riot account is linked
-      if (!userData?.riotAccount) {
+      // Check if Valorant account is linked
+      if (!userData?.valorantAccount) {
         throw new HttpsError(
           "failed-precondition",
-          "No Riot account is currently linked"
+          "No Valorant account is currently linked"
         );
       }
 
-      const riotAccount = userData.riotAccount;
+      const valorantAccount = userData.valorantAccount;
 
       // Create account identifier to release the claim
-      const accountId = `riot:${riotAccount.gameName}#${riotAccount.tagLine}`;
+      const accountId = `valorant:${valorantAccount.gameName}#${valorantAccount.tag}#${valorantAccount.region}`;
 
       // Remove from linkedAccounts collection to free up the account
       const linkedAccountRef = db.collection("linkedAccounts").doc(accountId);
@@ -69,20 +69,20 @@ export const unlinkRiotAccountFunction = onCall(
 
       logger.info(`Released account claim: ${accountId}`);
 
-      // Remove Riot account and stats from user profile
+      // Remove Valorant account and stats from user profile
       await userRef.update({
-        riotAccount: admin.firestore.FieldValue.delete(),
-        riotStats: admin.firestore.FieldValue.delete(),
+        valorantAccount: admin.firestore.FieldValue.delete(),
+        valorantStats: admin.firestore.FieldValue.delete(),
       });
 
-      logger.info(`Successfully unlinked Riot account for user ${userId}`);
+      logger.info(`Successfully unlinked Valorant account for user ${userId}`);
 
       return {
         success: true,
-        message: "Riot account unlinked successfully",
+        message: "Valorant account unlinked successfully",
       };
     } catch (error) {
-      logger.error("Error unlinking Riot account:", error);
+      logger.error("Error unlinking Valorant account:", error);
 
       if (error instanceof HttpsError) {
         throw error;
@@ -90,7 +90,7 @@ export const unlinkRiotAccountFunction = onCall(
 
       throw new HttpsError(
         "internal",
-        "Failed to unlink Riot account. Please try again later."
+        "Failed to unlink Valorant account. Please try again later."
       );
     }
   }

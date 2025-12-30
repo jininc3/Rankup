@@ -41,7 +41,7 @@ export default function LeagueRankCard({ game, username }: LeagueRankCardProps) 
 
   const handlePress = () => {
     router.push({
-      pathname: '/components/gameStats',
+      pathname: '/components/leagueGameStats',
       params: {
         game: JSON.stringify(game),
       },

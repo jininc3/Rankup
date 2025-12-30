@@ -49,6 +49,12 @@ export default function NewRankCardScreen() {
   const handleGameSelect = async (game: GameType) => {
     if (!user?.id) return;
 
+    // Valorant uses Henrik's API - separate flow
+    if (game === 'valorant') {
+      router.push('/profilePages/linkValorantAccount');
+      return;
+    }
+
     // If already connected to Riot, just add the rank card
     if (riotAccount) {
       try {
@@ -170,9 +176,7 @@ export default function NewRankCardScreen() {
               <ThemedText style={styles.buttonText}>
                 {enabledRankCards.includes('valorant')
                   ? 'Already Added'
-                  : riotAccount
-                  ? 'Add Valorant Rank Card'
-                  : 'Connect to Riot Games'}
+                  : 'Add Valorant Rank Card'}
               </ThemedText>
             </TouchableOpacity>
 

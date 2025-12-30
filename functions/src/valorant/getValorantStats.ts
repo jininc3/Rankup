@@ -9,7 +9,6 @@ import * as admin from "firebase-admin";
 import * as logger from "firebase-functions/logger";
 import {
   getValorantMMR,
-  getValorantMatches,
   getValorantAccountByRiotId,
 } from "./valorantApi";
 
@@ -89,11 +88,11 @@ export const getValorantStatsFunction = onCall(
 
       const {gameName, tag, region} = valorantAccount;
 
-      // Check cache (stats updated in last 10 minutes)
+      // Check cache (stats updated in last 6 hours)
       const cachedStats = userData?.valorantStats;
       const cacheTime = cachedStats?.lastUpdated?.toDate();
       const cacheAge = cacheTime ? Date.now() - cacheTime.getTime() : Infinity;
-      const CACHE_TTL = 10 * 60 * 1000; // 10 minutes
+      const CACHE_TTL = 6 * 60 * 60 * 1000; // 6 hours
 
       if (!forceRefresh && cachedStats && cacheAge < CACHE_TTL) {
         logger.info(`Returning cached Valorant stats for user ${userId}`);
@@ -108,35 +107,59 @@ export const getValorantStatsFunction = onCall(
       logger.info(`Fetching fresh Valorant stats for user ${userId}: ${gameName}#${tag}`);
 
       // Fetch fresh data from Henrik's API
-      const [accountData, mmrData, matchesData] = await Promise.all([
+      const [accountData, mmrData] = await Promise.all([
         getValorantAccountByRiotId(gameName, tag),
         getValorantMMR(region, gameName, tag),
-        getValorantMatches(region, gameName, tag, 20),
       ]);
 
-      // Calculate win/loss from matches
+      // Get seasonal stats from MMR data
       let wins = 0;
+      let totalGames = 0;
       let losses = 0;
 
-      matchesData.forEach((match) => {
-        const playerTeam = match.players.all_players.find(
-          (p) => p.name.toLowerCase() === gameName.toLowerCase() &&
-                p.tag.toLowerCase() === tag.toLowerCase()
-        )?.team;
+      // Get the current season's stats from by_season data
+      if (mmrData.by_season && Object.keys(mmrData.by_season).length > 0) {
+        // Find the most recent season that has actual data (not undefined)
+        // Sort by episode and act number properly (e10a6 > e9a3)
+        const seasonsWithData = Object.keys(mmrData.by_season)
+          .filter(season => {
+            const data = mmrData.by_season[season];
+            return data && data.number_of_games !== undefined && data.number_of_games > 0;
+          })
+          .sort((a, b) => {
+            // Extract episode and act numbers (e.g., "e10a6" -> episode=10, act=6)
+            const parseSeasonCode = (code: string) => {
+              const match = code.match(/e(\d+)a(\d+)/);
+              if (!match) return { episode: 0, act: 0 };
+              return {
+                episode: parseInt(match[1], 10),
+                act: parseInt(match[2], 10),
+              };
+            };
 
-        if (playerTeam) {
-          const teamData = playerTeam.toLowerCase() === "red" ?
-            match.teams.red : match.teams.blue;
+            const aData = parseSeasonCode(a);
+            const bData = parseSeasonCode(b);
 
-          if (teamData.has_won) {
-            wins++;
-          } else {
-            losses++;
-          }
+            // Sort by episode first, then act
+            if (aData.episode !== bData.episode) {
+              return aData.episode - bData.episode;
+            }
+            return aData.act - bData.act;
+          });
+
+        if (seasonsWithData.length > 0) {
+          // Get the latest season with data
+          const currentSeason = seasonsWithData[seasonsWithData.length - 1];
+          const seasonData = mmrData.by_season[currentSeason];
+
+          wins = seasonData.wins || 0;
+          totalGames = seasonData.number_of_games || 0;
+          losses = totalGames - wins;
+
+          logger.info(`Current season ${currentSeason} stats: ${wins}W ${losses}L (${totalGames} total games)`);
         }
-      });
+      }
 
-      const totalGames = wins + losses;
       const winRate = totalGames > 0 ? (wins / totalGames) * 100 : 0;
 
       // Build stats object

@@ -96,6 +96,27 @@ export const linkValorantAccountFunction = onCall(
     try {
       logger.info(`User ${userId} is linking Valorant account: ${cleanGameName}#${cleanTag} (${region})`);
 
+      const db = admin.firestore();
+
+      // Create account identifier for claim checking (includes region for Valorant)
+      const accountId = `valorant:${cleanGameName}#${cleanTag}#${region.toLowerCase()}`;
+
+      // Check if account is already claimed by another user
+      const linkedAccountRef = db.collection("linkedAccounts").doc(accountId);
+      const linkedAccountDoc = await linkedAccountRef.get();
+
+      if (linkedAccountDoc.exists) {
+        const linkedData = linkedAccountDoc.data();
+        if (linkedData && linkedData.userId !== userId) {
+          logger.warn(`Account ${accountId} already linked to user ${linkedData.userId}`);
+          throw new HttpsError(
+            "already-exists",
+            "This Valorant account is already linked to another RankUp profile. Please unlink it from the other profile first, or contact support if you believe this is an error."
+          );
+        }
+        logger.info(`Account ${accountId} already linked to current user, allowing re-link`);
+      }
+
       // Verify account exists via Henrik's API
       const valorantAccount = await getValorantAccountByRiotId(
         cleanGameName,
@@ -105,7 +126,6 @@ export const linkValorantAccountFunction = onCall(
       logger.info(`Valorant account verified: ${valorantAccount.name}#${valorantAccount.tag}`);
 
       // Store in Firestore
-      const db = admin.firestore();
       const userRef = db.collection("users").doc(userId);
 
       const accountData = {
@@ -116,6 +136,16 @@ export const linkValorantAccountFunction = onCall(
         cardUrl: valorantAccount.card?.small || null,
         linkedAt: admin.firestore.FieldValue.serverTimestamp(),
       };
+
+      // Claim the account in linkedAccounts collection
+      await linkedAccountRef.set({
+        userId: userId,
+        accountType: "valorant",
+        gameName: valorantAccount.name,
+        tag: valorantAccount.tag,
+        region: region.toLowerCase(),
+        linkedAt: admin.firestore.FieldValue.serverTimestamp(),
+      });
 
       await userRef.set({
         valorantAccount: accountData,

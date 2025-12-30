@@ -1,9 +1,11 @@
 import { httpsCallable } from 'firebase/functions';
 import { functions, auth } from '@/config/firebase';
 
-// Types for Valorant stats
+// Types for Valorant stats (Henrik's API)
 export interface ValorantStats {
-  puuid: string;
+  gameName: string;
+  tag: string;
+  region: string;
   accountLevel: number;
   card?: {
     small: string;
@@ -11,22 +13,42 @@ export interface ValorantStats {
     wide: string;
     id: string;
   };
-  rankedRating: number;
-  currentRank?: {
-    tier: string;
-    division: string;
-    rankScore: number;
-    wins: number;
-    losses: number;
-    winRate: number;
+  currentRank: string; // e.g., "Gold 3"
+  rankRating: number; // RR (Rank Rating)
+  mmr: number; // MMR
+  currentData?: {
+    currenttierpatched: string;
+    ranking_in_tier: number;
+    elo: number;
+    games_needed_for_rating: number;
   };
   peakRank?: {
-    tier: string;
-    division: string;
+    tier: string; // e.g., "Diamond 2"
     season: string;
-    achievedAt: any;
   };
+  gamesPlayed: number;
+  wins: number;
+  losses: number;
+  winRate: number;
   lastUpdated: any;
+}
+
+// Link account request
+export interface LinkValorantAccountRequest {
+  gameName: string;
+  tag: string;
+  region: string;
+}
+
+export interface LinkValorantAccountResponse {
+  success: boolean;
+  message: string;
+  account?: {
+    gameName: string;
+    tag: string;
+    region: string;
+    linkedAt: any;
+  };
 }
 
 export interface GetValorantStatsResponse {
@@ -37,8 +59,49 @@ export interface GetValorantStatsResponse {
 }
 
 /**
- * Get Valorant stats for the current user
- * @param forceRefresh - Force refresh data from Riot API (bypass cache)
+ * Link Valorant account using Henrik's API
+ * @param gameName - Valorant in-game name
+ * @param tag - Valorant tag
+ * @param region - Valorant region (na, eu, ap, kr, latam, br)
+ */
+export const linkValorantAccount = async (
+  gameName: string,
+  tag: string,
+  region: string
+): Promise<LinkValorantAccountResponse> => {
+  try {
+    // Check if user is authenticated
+    const currentUser = auth.currentUser;
+    if (!currentUser) {
+      throw new Error('You must be logged in to link your Valorant account');
+    }
+
+    // Get fresh ID token to ensure authentication
+    await currentUser.getIdToken(true);
+
+    const linkValorantAccountFn = httpsCallable<LinkValorantAccountRequest, LinkValorantAccountResponse>(
+      functions,
+      'linkValorantAccount'
+    );
+
+    const result = await linkValorantAccountFn({ gameName, tag, region });
+
+    return result.data;
+  } catch (error: any) {
+    console.error('Error linking Valorant account:', error);
+
+    // Provide more helpful error messages
+    if (error.code === 'unauthenticated') {
+      throw new Error('Authentication error. Please try logging out and back in.');
+    }
+
+    throw new Error(error.message || 'Failed to link Valorant account');
+  }
+};
+
+/**
+ * Get Valorant stats for the current user using Henrik's API
+ * @param forceRefresh - Force refresh data from Henrik's API (bypass cache)
  */
 export const getValorantStats = async (
   forceRefresh: boolean = false

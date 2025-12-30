@@ -23,6 +23,7 @@ export {unlinkRiotAccountFunction as unlinkRiotAccount} from "./riot/unlinkRiotA
 // Export Valorant API functions (Henrik's API)
 export {linkValorantAccountFunction as linkValorantAccount} from "./valorant/linkValorantAccount";
 export {getValorantStatsFunction as getValorantStats} from "./valorant/getValorantStats";
+export {unlinkValorantAccountFunction as unlinkValorantAccount} from "./valorant/unlinkValorantAccount";
 
 // Export Push Notification functions
 export {onNotificationCreated} from "./notifications/onNotificationCreated";

@@ -1,7 +1,6 @@
 import { ThemedText } from '@/components/themed-text';
-import { StyleSheet, TouchableOpacity, View, Image } from 'react-native';
 import { useRouter } from 'expo-router';
-import { getProfileIconUrl } from '@/services/riotService';
+import { Image, StyleSheet, TouchableOpacity, View } from 'react-native';
 
 interface Game {
   id: number;
@@ -14,6 +13,7 @@ interface Game {
   winRate: number;
   recentMatches: string[];
   profileIconId?: number;
+  valorantCard?: string; // Valorant player card URL
 }
 
 interface ValorantRankCardProps {
@@ -21,8 +21,9 @@ interface ValorantRankCardProps {
   username: string;
 }
 
-// Valorant rank icon mapping
+// Valorant rank icon mapping - Includes subdivision ranks
 const VALORANT_RANK_ICONS: { [key: string]: any } = {
+  // Base ranks (fallback)
   iron: require('@/assets/images/valorantranks/iron.png'),
   bronze: require('@/assets/images/valorantranks/bronze.png'),
   silver: require('@/assets/images/valorantranks/silver.png'),
@@ -33,6 +34,32 @@ const VALORANT_RANK_ICONS: { [key: string]: any } = {
   immortal: require('@/assets/images/valorantranks/immortal.png'),
   radiant: require('@/assets/images/valorantranks/radiant.png'),
   unranked: require('@/assets/images/valorantranks/unranked.png'),
+
+  // Subdivision ranks
+  iron1: require('@/assets/images/valorantranks/iron1.png'),
+  iron2: require('@/assets/images/valorantranks/iron2.png'),
+  iron3: require('@/assets/images/valorantranks/iron3.png'),
+  bronze1: require('@/assets/images/valorantranks/bronze1.png'),
+  bronze2: require('@/assets/images/valorantranks/bronze2.png'),
+  bronze3: require('@/assets/images/valorantranks/bronze3.png'),
+  silver1: require('@/assets/images/valorantranks/silver1.png'),
+  silver2: require('@/assets/images/valorantranks/silver2.png'),
+  silver3: require('@/assets/images/valorantranks/silver3.png'),
+  gold1: require('@/assets/images/valorantranks/gold1.png'),
+  gold2: require('@/assets/images/valorantranks/gold2.png'),
+  gold3: require('@/assets/images/valorantranks/gold3.png'),
+  platinum1: require('@/assets/images/valorantranks/platinum1.png'),
+  platinum2: require('@/assets/images/valorantranks/platinum2.png'),
+  platinum3: require('@/assets/images/valorantranks/platinum3.png'),
+  diamond1: require('@/assets/images/valorantranks/diamond1.png'),
+  diamond2: require('@/assets/images/valorantranks/diamond2.png'),
+  diamond3: require('@/assets/images/valorantranks/diamond3.png'),
+  ascendant1: require('@/assets/images/valorantranks/ascendant1.png'),
+  ascendant2: require('@/assets/images/valorantranks/ascendant2.png'),
+  ascendant3: require('@/assets/images/valorantranks/ascendant3.png'),
+  immortal1: require('@/assets/images/valorantranks/immortal1.png'),
+  immortal2: require('@/assets/images/valorantranks/immortal2.png'),
+  immortal3: require('@/assets/images/valorantranks/immortal3.png'),
 };
 
 export default function ValorantRankCard({ game, username }: ValorantRankCardProps) {
@@ -40,7 +67,7 @@ export default function ValorantRankCard({ game, username }: ValorantRankCardPro
 
   const handlePress = () => {
     router.push({
-      pathname: '/components/gameStats',
+      pathname: '/components/valorantGameStats',
       params: {
         game: JSON.stringify(game),
       },
@@ -51,7 +78,21 @@ export default function ValorantRankCard({ game, username }: ValorantRankCardPro
     if (!rank || rank === 'Unranked') {
       return VALORANT_RANK_ICONS.unranked;
     }
-    const tier = rank.split(' ')[0].toLowerCase();
+
+    // Extract tier and subdivision (e.g., "Gold 3" → "gold3")
+    const parts = rank.split(' ');
+    const tier = parts[0].toLowerCase(); // e.g., "gold"
+    const subdivision = parts[1]; // e.g., "3"
+
+    // Try to get subdivision rank first (e.g., "gold3")
+    if (subdivision) {
+      const subdivisionKey = tier + subdivision; // e.g., "gold3"
+      if (VALORANT_RANK_ICONS[subdivisionKey]) {
+        return VALORANT_RANK_ICONS[subdivisionKey];
+      }
+    }
+
+    // Fallback to base tier (e.g., "gold") or radiant (which has no subdivision)
     return VALORANT_RANK_ICONS[tier] || VALORANT_RANK_ICONS.unranked;
   };
 
@@ -64,18 +105,18 @@ export default function ValorantRankCard({ game, username }: ValorantRankCardPro
       <View style={styles.cardBackground}>
         {/* Valorant logo watermark */}
         <Image
-          source={require('@/assets/images/valorant-logo.png')}
+          source={require('@/assets/images/valorantlogo.png')}
           style={styles.backgroundLogo}
           resizeMode="contain"
         />
 
         {/* Front of card - Credit card style */}
         <View style={styles.cardFront}>
-          {/* Profile Icon - Top Right */}
+          {/* Player Card - Top Right */}
           <View style={styles.cardHeader}>
-            {game.profileIconId ? (
+            {game.valorantCard ? (
               <Image
-                source={{ uri: getProfileIconUrl(game.profileIconId) }}
+                source={{ uri: game.valorantCard }}
                 style={styles.cardProfileIcon}
               />
             ) : (
@@ -127,12 +168,12 @@ const styles = StyleSheet.create({
   },
   backgroundLogo: {
     position: 'absolute',
-    width: 500,
-    height: 500,
+    width: 266,
+    height: 266,
     top: '50%',
     left: '50%',
-    marginTop: -250,
-    marginLeft: -250,
+    marginTop: -133,
+    marginLeft: -133,
     opacity: 0.08,
   },
   cardFront: {
