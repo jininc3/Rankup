@@ -174,7 +174,7 @@ export default function PostFilterModal({
 const styles = StyleSheet.create({
   filterModalContainer: {
     flex: 1,
-    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    backgroundColor: 'transparent',
     justifyContent: 'flex-end',
   },
   filterModalContent: {
