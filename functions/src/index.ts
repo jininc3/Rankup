@@ -20,6 +20,10 @@ export {getLeagueStatsFunction as getLeagueStats} from "./riot/getLeagueStats";
 export {getTftStatsFunction as getTftStats} from "./riot/getTftStats";
 export {unlinkRiotAccountFunction as unlinkRiotAccount} from "./riot/unlinkRiotAccount";
 
+// Export Valorant API functions (Henrik's API)
+export {linkValorantAccountFunction as linkValorantAccount} from "./valorant/linkValorantAccount";
+export {getValorantStatsFunction as getValorantStats} from "./valorant/getValorantStats";
+
 // Export Push Notification functions
 export {onNotificationCreated} from "./notifications/onNotificationCreated";
 export {onMessageCreated} from "./notifications/onMessageCreated";
