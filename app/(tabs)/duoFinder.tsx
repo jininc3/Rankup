@@ -1,11 +1,11 @@
+import DuoCard from '@/app/components/duoCard';
+import { users } from '@/app/data/userData';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { IconSymbol } from '@/components/ui/icon-symbol';
-import DuoCard from '@/app/components/duoCard';
-import { users } from '@/app/data/userData';
-import { useState } from 'react';
-import { Dimensions, Modal, ScrollView, StyleSheet, TouchableOpacity, View, Image } from 'react-native';
 import { useRouter } from 'expo-router';
+import { useState } from 'react';
+import { Dimensions, Image, Modal, ScrollView, StyleSheet, TouchableOpacity, View } from 'react-native';
 
 const { width } = Dimensions.get('window');
 
@@ -152,6 +152,20 @@ export default function DuoFinderScreen() {
           {potentialDuos.map((duo) => <DuoCard key={duo.id} duo={duo} />)}
         </ScrollView>
       )}
+
+      {/* Coming Soon Overlay */}
+      <View style={styles.comingSoonOverlay}>
+        <View style={styles.comingSoonContent}>
+          <View style={styles.iconContainer}>
+            <IconSymbol size={64} name="sparkles" color="#000" />
+          </View>
+          <ThemedText style={styles.comingSoonTitle}>Duo Finder</ThemedText>
+          <ThemedText style={styles.comingSoonSubtitle}>Coming Soon</ThemedText>
+          <ThemedText style={styles.comingSoonDescription}>
+            Find your perfect gaming partner and team up for ranked matches
+          </ThemedText>
+        </View>
+      </View>
     </ThemedView>
   );
 }
@@ -318,5 +332,48 @@ const styles = StyleSheet.create({
   },
   optionUnderlineActive: {
     backgroundColor: '#000',
+  },
+  comingSoonOverlay: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    backgroundColor: 'rgba(255, 255, 255, 0.98)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingTop: 100,
+    zIndex: 999,
+  },
+  comingSoonContent: {
+    alignItems: 'center',
+    paddingHorizontal: 40,
+    paddingVertical: 40,
+    gap: 12,
+  },
+  iconContainer: {
+    marginBottom: 8,
+  },
+  comingSoonTitle: {
+    fontSize: 32,
+    fontWeight: '700',
+    color: '#000',
+    marginTop: 20,
+    letterSpacing: -0.5,
+    lineHeight: 42,
+    paddingTop: 4,
+  },
+  comingSoonSubtitle: {
+    fontSize: 20,
+    fontWeight: '600',
+    color: '#666',
+    letterSpacing: -0.3,
+  },
+  comingSoonDescription: {
+    fontSize: 15,
+    color: '#999',
+    textAlign: 'center',
+    lineHeight: 22,
+    marginTop: 8,
   },
 });

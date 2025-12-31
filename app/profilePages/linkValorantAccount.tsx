@@ -45,18 +45,9 @@ export default function LinkValorantAccountScreen() {
       const response = await linkValorantAccount(gameName.trim(), tagLine.trim(), region);
 
       if (response.success && auth.currentUser) {
-        // Add valorant to enabledRankCards
-        try {
-          await updateDoc(doc(db, 'users', auth.currentUser.uid), {
-            enabledRankCards: arrayUnion('valorant'),
-          });
-        } catch (error) {
-          console.error('Error adding rank card:', error);
-        }
-
         Alert.alert(
           'Success!',
-          `Linked Valorant account: ${response.account?.gameName}#${response.account?.tag}\n\nValorant rank card added to your profile!`,
+          `Linked Valorant account: ${response.account?.gameName}#${response.account?.tag}\n\nYou can now add a Valorant rank card from your profile settings.`,
           [
             {
               text: 'OK',

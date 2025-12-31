@@ -183,6 +183,21 @@ export default function ProfileScreen() {
   };
 
   // Fetch Riot account and stats (League and TFT)
+  // Lightweight function to only fetch enabled rank cards (no API calls)
+  const fetchEnabledRankCards = async () => {
+    if (!user?.id) return;
+
+    try {
+      const userDoc = await getDoc(doc(db, 'users', user.id));
+      if (userDoc.exists()) {
+        const data = userDoc.data();
+        setEnabledRankCards(data.enabledRankCards || []);
+      }
+    } catch (error) {
+      console.error('Error fetching enabled rank cards:', error);
+    }
+  };
+
   const fetchRiotData = async (forceRefresh: boolean = false) => {
     if (!user?.id) return;
 
@@ -353,13 +368,15 @@ export default function ProfileScreen() {
   }, [user?.id, hasConsumedPreloadPosts, hasConsumedPreloadRiot, preloadedProfilePosts, preloadedRiotStats]);
 
   // Refresh user data when profile page comes into focus
-  // This ensures following/followers counts are always up-to-date
+  // This ensures following/followers counts and rank cards are always up-to-date
   useFocusEffect(
     useCallback(() => {
       if (user?.id) {
         refreshUser();
+        // Fetch rank cards and stats from Firestore cache (no API calls when forceRefresh=false)
+        fetchRiotData(false);
       }
-    }, [user?.id, refreshUser])
+    }, [user?.id])
   );
 
   // Refetch posts when filter or game filter changes

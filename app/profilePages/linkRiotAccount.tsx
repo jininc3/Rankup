@@ -54,20 +54,9 @@ export default function LinkRiotAccountScreen() {
       const response = await linkRiotAccount(gameName.trim(), tagLine.trim(), region);
 
       if (response.success && auth.currentUser) {
-        // If a game was selected, add it to enabledRankCards
-        if (selectedGame) {
-          try {
-            await updateDoc(doc(db, 'users', auth.currentUser.uid), {
-              enabledRankCards: arrayUnion(selectedGame),
-            });
-          } catch (error) {
-            console.error('Error adding rank card:', error);
-          }
-        }
-
         Alert.alert(
           'Success!',
-          `Linked account: ${response.account?.gameName}#${response.account?.tagLine}${selectedGame ? `\n\n${getGameDisplayName(selectedGame)} rank card added to your profile!` : ''}`,
+          `Linked account: ${response.account?.gameName}#${response.account?.tagLine}\n\nYou can now add rank cards from your profile settings.`,
           [
             {
               text: 'OK',
@@ -107,7 +96,7 @@ export default function LinkRiotAccountScreen() {
         <TouchableOpacity style={styles.backButton} onPress={() => router.back()}>
           <IconSymbol size={24} name="chevron.left" color="#000" />
         </TouchableOpacity>
-        <ThemedText style={styles.headerTitle}>Link Riot Account</ThemedText>
+        <ThemedText style={styles.headerTitle}>Link League Account</ThemedText>
       </View>
 
       {/* Logo */}
@@ -134,7 +123,7 @@ export default function LinkRiotAccountScreen() {
           <ThemedText style={styles.label}>Game Name</ThemedText>
           <TextInput
             style={styles.input}
-            placeholder="e.g., PlayerName"
+            placeholder="PlayerName"
             placeholderTextColor="#999"
             value={gameName}
             onChangeText={setGameName}
@@ -291,9 +280,10 @@ const styles = StyleSheet.create({
     borderColor: '#e5e5e5',
     borderRadius: 12,
     paddingHorizontal: 16,
-    paddingVertical: 14,
+    paddingVertical: 16,
     fontSize: 16,
     color: '#000',
+    lineHeight: 20,
   },
   hint: {
     fontSize: 12,

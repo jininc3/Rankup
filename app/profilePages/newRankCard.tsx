@@ -183,35 +183,22 @@ export default function NewRankCardScreen() {
             {/* TFT */}
             <View style={styles.gameTitleRow}>
               <ThemedText style={styles.gameTitle}>TFT</ThemedText>
-              {enabledRankCards.includes('tft') && (
-                <TouchableOpacity
-                  onPress={() => handleRemoveRankCard('tft')}
-                  activeOpacity={0.7}
-                >
-                  <ThemedText style={styles.removeText}>Remove</ThemedText>
-                </TouchableOpacity>
-              )}
+              <View style={styles.comingSoonBadge}>
+                <ThemedText style={styles.comingSoonText}>Coming Soon</ThemedText>
+              </View>
             </View>
             <TouchableOpacity
-              style={[
-                styles.connectButton,
-                enabledRankCards.includes('tft') && styles.connectButtonDisabled
-              ]}
-              onPress={() => handleGameSelect('tft')}
-              activeOpacity={0.7}
-              disabled={enabledRankCards.includes('tft')}
+              style={[styles.connectButton, styles.comingSoonButton]}
+              activeOpacity={1}
+              disabled={true}
             >
               <Image
                 source={require('@/assets/images/riotgames.png')}
-                style={styles.buttonIcon}
+                style={[styles.buttonIcon, styles.comingSoonIcon]}
                 resizeMode="contain"
               />
-              <ThemedText style={styles.buttonText}>
-                {enabledRankCards.includes('tft')
-                  ? 'Already Added'
-                  : riotAccount
-                  ? 'Add TFT Rank Card'
-                  : 'Connect to Riot Games'}
+              <ThemedText style={[styles.buttonText, styles.comingSoonButtonText]}>
+                TFT Rank Card Coming Soon
               </ThemedText>
             </TouchableOpacity>
           </>
@@ -281,6 +268,19 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     color: '#ef4444',
   },
+  comingSoonBadge: {
+    backgroundColor: '#fff3cd',
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 6,
+    borderWidth: 1,
+    borderColor: '#ffc107',
+  },
+  comingSoonText: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: '#856404',
+  },
   connectButton: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -295,6 +295,17 @@ const styles = StyleSheet.create({
   connectButtonDisabled: {
     opacity: 0.5,
     backgroundColor: '#e5e5e5',
+  },
+  comingSoonButton: {
+    opacity: 0.4,
+    backgroundColor: '#f5f5f5',
+    borderColor: '#d0d0d0',
+  },
+  comingSoonIcon: {
+    opacity: 0.5,
+  },
+  comingSoonButtonText: {
+    color: '#999',
   },
   buttonIcon: {
     width: 24,

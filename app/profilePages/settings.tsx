@@ -55,22 +55,23 @@ export default function SettingsScreen() {
   const router = useRouter();
   const { signOut, user } = useAuth();
   const [riotAccount, setRiotAccount] = useState<any>(null);
-  const [loadingRiotAccount, setLoadingRiotAccount] = useState(true);
+  const [valorantAccount, setValorantAccount] = useState<any>(null);
+  const [loadingAccounts, setLoadingAccounts] = useState(true);
 
   useEffect(() => {
-    checkRiotAccount();
+    checkAccounts();
   }, [user]);
 
-  // Refresh Riot account status when screen comes into focus
+  // Refresh account status when screen comes into focus
   useFocusEffect(
     useCallback(() => {
-      checkRiotAccount();
+      checkAccounts();
     }, [user])
   );
 
-  const checkRiotAccount = async () => {
+  const checkAccounts = async () => {
     if (!user || !user.id) {
-      setLoadingRiotAccount(false);
+      setLoadingAccounts(false);
       return;
     }
 
@@ -79,18 +80,29 @@ export default function SettingsScreen() {
       if (userDoc.exists()) {
         const data = userDoc.data();
         console.log('User data from Firestore:', data);
-        console.log('Riot account data:', data.riotAccount);
+
+        // Check for Riot account (League of Legends)
         if (data.riotAccount) {
           setRiotAccount(data.riotAccount);
           console.log('Riot account set to:', data.riotAccount);
         } else {
+          setRiotAccount(null);
           console.log('No riotAccount found in user data');
+        }
+
+        // Check for Valorant account
+        if (data.valorantAccount) {
+          setValorantAccount(data.valorantAccount);
+          console.log('Valorant account set to:', data.valorantAccount);
+        } else {
+          setValorantAccount(null);
+          console.log('No valorantAccount found in user data');
         }
       }
     } catch (error) {
-      console.error('Error checking Riot account:', error);
+      console.error('Error checking accounts:', error);
     } finally {
-      setLoadingRiotAccount(false);
+      setLoadingAccounts(false);
     }
   };
 
@@ -98,7 +110,7 @@ export default function SettingsScreen() {
     if (riotAccount) {
       Alert.alert(
         'Account Already Linked',
-        'You already have a Riot account linked. Please unlink your current account first if you want to link a different one.',
+        'You already have a League of Legends account linked. Please unlink it first if you want to link a different one.',
         [{ text: 'OK' }]
       );
       return;
@@ -106,15 +118,27 @@ export default function SettingsScreen() {
     router.push('/profilePages/linkRiotAccount');
   };
 
+  const handleLinkValorantAccount = () => {
+    if (valorantAccount) {
+      Alert.alert(
+        'Account Already Linked',
+        'You already have a Valorant account linked. Please unlink it first if you want to link a different one.',
+        [{ text: 'OK' }]
+      );
+      return;
+    }
+    router.push('/profilePages/linkValorantAccount');
+  };
+
   const handleUnlinkRiotAccount = () => {
     if (!riotAccount) {
-      Alert.alert('No Account Linked', 'You don\'t have a Riot account linked yet. Connect one first!');
+      Alert.alert('No Account Linked', 'You don\'t have a League of Legends account linked yet. Connect one first!');
       return;
     }
 
     Alert.alert(
-      'Unlink Riot Account',
-      `Are you sure you want to unlink ${riotAccount?.gameName}#${riotAccount?.tagLine}? All your rank cards and stats will be removed.`,
+      'Unlink League Account',
+      `Are you sure you want to unlink ${riotAccount?.gameName}#${riotAccount?.tagLine}? Your League rank card will be removed.`,
       [
         {
           text: 'Cancel',
@@ -127,17 +151,75 @@ export default function SettingsScreen() {
             try {
               await unlinkRiotAccount();
 
-              // Also clear all enabled rank cards from the user's profile
+              // Remove League rank cards from enabled list
               if (user?.id) {
-                await updateDoc(doc(db, 'users', user.id), {
-                  enabledRankCards: [],
-                });
+                const userDoc = await getDoc(doc(db, 'users', user.id));
+                if (userDoc.exists()) {
+                  const data = userDoc.data();
+                  const currentCards = data.enabledRankCards || [];
+                  const updatedCards = currentCards.filter((card: string) => card !== 'league' && card !== 'tft');
+
+                  await updateDoc(doc(db, 'users', user.id), {
+                    enabledRankCards: updatedCards,
+                  });
+                }
               }
 
               setRiotAccount(null);
-              Alert.alert('Success', 'Riot account and all rank cards unlinked successfully');
+              Alert.alert('Success', 'League of Legends account unlinked successfully');
             } catch (error: any) {
-              Alert.alert('Error', error.message || 'Failed to unlink Riot account');
+              Alert.alert('Error', error.message || 'Failed to unlink League account');
+              console.error(error);
+            }
+          },
+        },
+      ]
+    );
+  };
+
+  const handleUnlinkValorantAccount = async () => {
+    if (!valorantAccount) {
+      Alert.alert('No Account Linked', 'You don\'t have a Valorant account linked yet. Connect one first!');
+      return;
+    }
+
+    Alert.alert(
+      'Unlink Valorant Account',
+      `Are you sure you want to unlink ${valorantAccount?.gameName}#${valorantAccount?.tagLine}? Your Valorant rank card will be removed.`,
+      [
+        {
+          text: 'Cancel',
+          style: 'cancel',
+        },
+        {
+          text: 'Unlink',
+          style: 'destructive',
+          onPress: async () => {
+            try {
+              // Remove Valorant account from Firestore
+              if (user?.id) {
+                await updateDoc(doc(db, 'users', user.id), {
+                  valorantAccount: null,
+                  valorantStats: null,
+                });
+
+                // Remove Valorant rank card from enabled list
+                const userDoc = await getDoc(doc(db, 'users', user.id));
+                if (userDoc.exists()) {
+                  const data = userDoc.data();
+                  const currentCards = data.enabledRankCards || [];
+                  const updatedCards = currentCards.filter((card: string) => card !== 'valorant');
+
+                  await updateDoc(doc(db, 'users', user.id), {
+                    enabledRankCards: updatedCards,
+                  });
+                }
+              }
+
+              setValorantAccount(null);
+              Alert.alert('Success', 'Valorant account unlinked successfully');
+            } catch (error: any) {
+              Alert.alert('Error', error.message || 'Failed to unlink Valorant account');
               console.error(error);
             }
           },
@@ -245,24 +327,26 @@ export default function SettingsScreen() {
         <View style={styles.section}>
           <ThemedText style={styles.sectionTitle}>Connected Accounts</ThemedText>
           <View style={styles.settingsGroup}>
+            {/* League of Legends */}
             <TouchableOpacity
-              style={styles.settingItem}
+              style={[styles.settingItem, riotAccount && styles.disabledSettingItem]}
               onPress={handleLinkRiotAccount}
+              disabled={!!riotAccount}
             >
               <View style={styles.settingLeft}>
                 <View style={styles.iconContainer}>
-                  <IconSymbol size={22} name="gamecontroller" color="#000" />
+                  <IconSymbol size={22} name="gamecontroller" color={riotAccount ? "#999" : "#000"} />
                 </View>
                 <View style={styles.settingTextContainer}>
-                  <ThemedText style={styles.settingTitle}>
-                    {riotAccount ? 'Riot Games Account' : 'Connect to Riot Games'}
+                  <ThemedText style={[styles.settingTitle, riotAccount && styles.disabledText]}>
+                    {riotAccount ? 'League of Legends Account' : 'Connect to League of Legends'}
                   </ThemedText>
                   <ThemedText style={styles.settingSubtitle}>
-                    {loadingRiotAccount
+                    {loadingAccounts
                       ? 'Checking...'
                       : riotAccount
                       ? `${riotAccount.gameName}#${riotAccount.tagLine}`
-                      : 'Link your Riot account'}
+                      : 'Link your League account'}
                   </ThemedText>
                 </View>
               </View>
@@ -272,24 +356,68 @@ export default function SettingsScreen() {
                     <ThemedText style={styles.connectedBadgeText}>Connected</ThemedText>
                   </View>
                 )}
-                <IconSymbol size={20} name="chevron.right" color="#666" />
+                {!riotAccount && <IconSymbol size={20} name="chevron.right" color="#666" />}
               </View>
             </TouchableOpacity>
 
-            {/* Unlink Button - always visible */}
+            {/* Unlink League Account - Only show if linked */}
+            {riotAccount && (
+              <TouchableOpacity
+                style={styles.compactUnlinkButton}
+                onPress={handleUnlinkRiotAccount}
+              >
+                <IconSymbol size={16} name="link.badge.minus" color="#ef4444" />
+                <ThemedText style={styles.compactUnlinkText}>
+                  Unlink
+                </ThemedText>
+              </TouchableOpacity>
+            )}
+
+            {/* Valorant */}
             <TouchableOpacity
-              style={[styles.settingItem, styles.settingItemLast, styles.unlinkButton]}
-              onPress={handleUnlinkRiotAccount}
+              style={[styles.settingItem, valorantAccount && styles.disabledSettingItem]}
+              onPress={handleLinkValorantAccount}
+              disabled={!!valorantAccount}
             >
               <View style={styles.settingLeft}>
                 <View style={styles.iconContainer}>
-                  <IconSymbol size={22} name="link.badge.minus" color="#ef4444" />
+                  <IconSymbol size={22} name="target" color={valorantAccount ? "#999" : "#000"} />
                 </View>
-                <ThemedText style={[styles.settingTitle, styles.unlinkText]}>
-                  Unlink Riot Account
-                </ThemedText>
+                <View style={styles.settingTextContainer}>
+                  <ThemedText style={[styles.settingTitle, valorantAccount && styles.disabledText]}>
+                    {valorantAccount ? 'Valorant Account' : 'Connect to Valorant'}
+                  </ThemedText>
+                  <ThemedText style={styles.settingSubtitle}>
+                    {loadingAccounts
+                      ? 'Checking...'
+                      : valorantAccount
+                      ? `${valorantAccount.gameName}#${valorantAccount.tagLine}`
+                      : 'Link your Valorant account'}
+                  </ThemedText>
+                </View>
+              </View>
+              <View style={styles.settingRight}>
+                {valorantAccount && (
+                  <View style={styles.connectedBadge}>
+                    <ThemedText style={styles.connectedBadgeText}>Connected</ThemedText>
+                  </View>
+                )}
+                {!valorantAccount && <IconSymbol size={20} name="chevron.right" color="#666" />}
               </View>
             </TouchableOpacity>
+
+            {/* Unlink Valorant Account - Only show if linked */}
+            {valorantAccount && (
+              <TouchableOpacity
+                style={styles.compactUnlinkButton}
+                onPress={handleUnlinkValorantAccount}
+              >
+                <IconSymbol size={16} name="link.badge.minus" color="#ef4444" />
+                <ThemedText style={styles.compactUnlinkText}>
+                  Unlink
+                </ThemedText>
+              </TouchableOpacity>
+            )}
           </View>
         </View>
 
@@ -423,6 +551,12 @@ const styles = StyleSheet.create({
   settingItemLast: {
     borderBottomWidth: 0,
   },
+  disabledSettingItem: {
+    opacity: 0.6,
+  },
+  disabledText: {
+    color: '#999',
+  },
   settingLeft: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -481,6 +615,21 @@ const styles = StyleSheet.create({
   unlinkText: {
     color: '#ef4444',
     fontWeight: '600',
+  },
+  compactUnlinkButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    paddingVertical: 8,
+    paddingHorizontal: 16,
+    marginHorizontal: 16,
+    marginBottom: 12,
+    backgroundColor: 'transparent',
+  },
+  compactUnlinkText: {
+    fontSize: 13,
+    fontWeight: '500',
+    color: '#ef4444',
   },
   userInfoItem: {
     justifyContent: 'center',
