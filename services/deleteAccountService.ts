@@ -23,6 +23,7 @@ import { deleteProfilePicture, deleteCoverPhoto, deletePostMedia } from './stora
  * - User's notifications subcollection
  * - User from other users' followers/following lists
  * - User's chats and messages
+ * - User from all leaderboard parties
  * - User document
  * - Firebase Auth account
  */
@@ -45,14 +46,17 @@ export async function deleteUserAccount(userId: string): Promise<void> {
     // 5. Delete all user's chats and messages
     await deleteUserChats(userId);
 
-    // 6. Delete any remaining storage files in user's folder
+    // 6. Remove user from all leaderboard parties
+    await deleteUserFromParties(userId);
+
+    // 7. Delete any remaining storage files in user's folder
     await deleteUserStorageFolder(userId);
 
-    // 7. Delete user document from Firestore
+    // 8. Delete user document from Firestore
     await deleteDoc(doc(db, 'users', userId));
     console.log('User document deleted');
 
-    // 8. Delete Firebase Auth account (must be last)
+    // 9. Delete Firebase Auth account (must be last)
     const currentUser = auth.currentUser;
     if (currentUser && currentUser.uid === userId) {
       await deleteUser(currentUser);
@@ -247,6 +251,54 @@ async function deleteUserFollowRelationships(userId: string): Promise<void> {
     console.log('User follow relationships deleted');
   } catch (error) {
     console.error('Error deleting user follow relationships:', error);
+    // Don't throw - continue with deletion
+  }
+}
+
+/**
+ * Remove user from all leaderboard parties they're in
+ * This removes them from members, memberDetails, and pendingInvites arrays
+ */
+async function deleteUserFromParties(userId: string): Promise<void> {
+  try {
+    // Find all parties where user is a member
+    const partiesQuery = query(
+      collection(db, 'parties'),
+      where('members', 'array-contains', userId)
+    );
+    const partiesSnapshot = await getDocs(partiesQuery);
+
+    console.log(`Found ${partiesSnapshot.size} parties to remove user from`);
+
+    for (const partyDoc of partiesSnapshot.docs) {
+      const partyData = partyDoc.data();
+
+      // Remove user from members array
+      const updatedMembers = partyData.members.filter((id: string) => id !== userId);
+
+      // Remove user from memberDetails array
+      const updatedMemberDetails = partyData.memberDetails.filter(
+        (member: any) => member.userId !== userId
+      );
+
+      // Remove user from pendingInvites if present
+      const updatedPendingInvites = partyData.pendingInvites
+        ? partyData.pendingInvites.filter((invite: any) => invite.userId !== userId)
+        : [];
+
+      // Update the party document
+      await updateDoc(partyDoc.ref, {
+        members: updatedMembers,
+        memberDetails: updatedMemberDetails,
+        pendingInvites: updatedPendingInvites,
+      });
+
+      console.log(`Removed user from party: ${partyData.partyName}`);
+    }
+
+    console.log('User removed from all parties');
+  } catch (error) {
+    console.error('Error removing user from parties:', error);
     // Don't throw - continue with deletion
   }
 }

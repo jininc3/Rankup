@@ -74,7 +74,7 @@ service cloud.firestore {
 
         // Any authenticated user can create notifications (for others)
         allow create: if request.auth != null
-                      && request.resource.data.type in ['follow', 'like', 'comment', 'tag']
+                      && request.resource.data.type in ['follow', 'like', 'comment', 'tag', 'party_invite']
                       && request.resource.data.fromUserId is string
                       && request.resource.data.fromUsername is string
                       && request.resource.data.read is bool

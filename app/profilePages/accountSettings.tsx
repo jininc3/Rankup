@@ -261,6 +261,10 @@ export default function AccountSettingsScreen() {
                 <IconSymbol size={16} name="checkmark" color="#666" />
                 <ThemedText style={styles.deleteListText}>All chat messages</ThemedText>
               </View>
+              <View style={styles.deleteListItem}>
+                <IconSymbol size={16} name="checkmark" color="#666" />
+                <ThemedText style={styles.deleteListText}>Leaderboard party memberships</ThemedText>
+              </View>
             </View>
 
             <View style={styles.confirmInputContainer}>

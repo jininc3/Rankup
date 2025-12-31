@@ -2,10 +2,12 @@ import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { IconSymbol } from '@/components/ui/icon-symbol';
 import { useLocalSearchParams, useRouter } from 'expo-router';
-import { ScrollView, StyleSheet, TouchableOpacity, View, Image, ActivityIndicator } from 'react-native';
+import { ScrollView, StyleSheet, TouchableOpacity, View, Image, ActivityIndicator, Alert } from 'react-native';
 import { useState, useEffect } from 'react';
 import { db } from '@/config/firebase';
-import { collection, query, where, getDocs, doc, getDoc, limit } from 'firebase/firestore';
+import { collection, query, where, getDocs, doc, getDoc, limit, updateDoc, deleteDoc } from 'firebase/firestore';
+import * as Clipboard from 'expo-clipboard';
+import { useAuth } from '@/contexts/AuthContext';
 
 interface Player {
   rank: number;
@@ -17,14 +19,144 @@ interface Player {
   dailyGain?: number; // Daily RR gain/loss
 }
 
+// Helper function to calculate rank value for sorting
+const getRankValue = (currentRank: string, rr: number): number => {
+  const rankOrder: { [key: string]: number } = {
+    'RADIANT': 9,
+    'IMMORTAL': 8,
+    'ASCENDANT': 7,
+    'DIAMOND': 6,
+    'PLATINUM': 5,
+    'GOLD': 4,
+    'SILVER': 3,
+    'BRONZE': 2,
+    'IRON': 1,
+    'UNRANKED': 0,
+  };
+
+  // Parse rank string (e.g., "Gold 3" or "Radiant")
+  const parts = currentRank.toUpperCase().split(' ');
+  const tier = parts[0];
+  const division = parts[1] || '0';
+
+  const tierValue = rankOrder[tier] || 0;
+  const divisionValue = parseInt(division) || 0; // 1, 2, or 3
+
+  // Calculate total value: tier * 1000 + division * 100 + rr
+  // This ensures proper ordering: Platinum 1 (0 RR) > Gold 3 (99 RR)
+  return tierValue * 1000 + divisionValue * 100 + rr;
+};
+
 export default function ValorantLeaderboardDetails() {
   const router = useRouter();
   const params = useLocalSearchParams();
+  const { user } = useAuth();
 
   const partyIdParam = params.partyId as string;
   const [partyData, setPartyData] = useState<any>(null);
   const [players, setPlayers] = useState<Player[]>([]);
   const [loading, setLoading] = useState(true);
+  const [inviteCode, setInviteCode] = useState<string>('');
+  const [partyDocId, setPartyDocId] = useState<string>('');
+
+  // Leave party function
+  const handleLeaveParty = async () => {
+    if (!user?.id || !partyDocId) {
+      Alert.alert('Error', 'Unable to leave party. Please try again.');
+      return;
+    }
+
+    Alert.alert(
+      'Leave Party',
+      'Are you sure you want to leave this party?',
+      [
+        {
+          text: 'Cancel',
+          style: 'cancel',
+        },
+        {
+          text: 'Leave',
+          style: 'destructive',
+          onPress: async () => {
+            try {
+              const partyRef = doc(db, 'parties', partyDocId);
+
+              // Remove user from members and memberDetails arrays
+              const updatedMembers = partyData.members.filter((id: string) => id !== user.id);
+              const updatedMemberDetails = partyData.memberDetails.filter(
+                (member: any) => member.userId !== user.id
+              );
+
+              // Check if this is the last member
+              if (updatedMembers.length === 0) {
+                // Delete the party entirely
+                await deleteDoc(partyRef);
+                Alert.alert('Party Deleted', 'You were the last member. The party has been deleted.');
+                router.replace('/(tabs)/leaderboard');
+                return;
+              }
+
+              // Check if user is the party creator
+              const isCreator = partyData.createdBy === user.id;
+
+              if (isCreator) {
+                // Transfer leadership to the next member
+                const newLeader = updatedMembers[0];
+                const newLeaderDetails = updatedMemberDetails[0];
+
+                await updateDoc(partyRef, {
+                  members: updatedMembers,
+                  memberDetails: updatedMemberDetails,
+                  createdBy: newLeader,
+                });
+
+                Alert.alert(
+                  'Leadership Transferred',
+                  `You have left the party. Leadership has been transferred to ${newLeaderDetails.username}.`
+                );
+              } else {
+                // Regular member leaving
+                await updateDoc(partyRef, {
+                  members: updatedMembers,
+                  memberDetails: updatedMemberDetails,
+                });
+
+                Alert.alert('Success', 'You have left the party.');
+              }
+
+              router.replace('/(tabs)/leaderboard');
+            } catch (error) {
+              console.error('Error leaving party:', error);
+              Alert.alert('Error', 'Failed to leave party. Please try again.');
+            }
+          },
+        },
+      ]
+    );
+  };
+
+  // Show invite code and copy to clipboard
+  const handleShowInviteCode = async () => {
+    if (!inviteCode) {
+      Alert.alert('No Invite Code', 'This party does not have an invite code.');
+      return;
+    }
+
+    Alert.alert(
+      'Party Invite Code',
+      inviteCode,
+      [
+        {
+          text: 'Copy',
+          onPress: async () => {
+            await Clipboard.setStringAsync(inviteCode);
+            Alert.alert('Copied!', 'Invite code copied to clipboard');
+          },
+        },
+        { text: 'Cancel', style: 'cancel' },
+      ]
+    );
+  };
 
   // Fetch party data and member stats
   useEffect(() => {
@@ -50,9 +182,12 @@ export default function ValorantLeaderboardDetails() {
         }
 
         const partyDoc = partySnapshot.docs[0].data();
+        const partyDocumentId = partySnapshot.docs[0].id;
         console.log('Party found:', partyDoc.partyName);
         console.log('Member details:', partyDoc.memberDetails);
         setPartyData(partyDoc);
+        setPartyDocId(partyDocumentId);
+        setInviteCode(partyDoc.inviteCode || '');
 
         // Check if memberDetails exists
         if (!partyDoc.memberDetails || partyDoc.memberDetails.length === 0) {
@@ -64,26 +199,51 @@ export default function ValorantLeaderboardDetails() {
         // Fetch rank data for each member
         const memberPromises = partyDoc.memberDetails.map(async (member: any, index: number) => {
           console.log(`Fetching stats for member: ${member.username} (${member.userId})`);
+
+          // Try to get from gameStats subcollection first
           const userStatsDoc = await getDoc(doc(db, 'users', member.userId, 'gameStats', 'valorant'));
-          const stats = userStatsDoc.data();
+          let stats = userStatsDoc.data();
+
+          // Fallback: If gameStats doesn't exist, read from main valorantStats
+          if (!stats || !stats.currentRank) {
+            console.log(`No gameStats found for ${member.username}, falling back to valorantStats`);
+            const userDoc = await getDoc(doc(db, 'users', member.userId));
+            const userData = userDoc.data();
+            const valorantStats = userData?.valorantStats;
+
+            if (valorantStats) {
+              stats = {
+                currentRank: valorantStats.currentRank || 'Unranked',
+                rr: valorantStats.rankRating || 0,
+                dailyGain: 0,
+              };
+            }
+          }
+
           console.log(`Stats for ${member.username}:`, stats);
 
           return {
-            rank: index + 1, // Temporary ranking, should be calculated based on actual RR
+            rank: index + 1,
             username: member.username,
             avatar: member.avatar,
             currentRank: stats?.currentRank || 'Unranked',
             rr: stats?.rr || 0,
             dailyGain: stats?.dailyGain || 0,
-            isCurrentUser: false, // TODO: Check if current user
+            isCurrentUser: false,
           };
         });
 
         const fetchedPlayers = await Promise.all(memberPromises);
         console.log('Fetched players before sorting:', fetchedPlayers);
 
-        // Sort players by RR (descending) and assign ranks
-        fetchedPlayers.sort((a, b) => b.rr - a.rr);
+        // Sort players by rank value (tier + division + RR) in descending order
+        fetchedPlayers.sort((a, b) => {
+          const aValue = getRankValue(a.currentRank, a.rr);
+          const bValue = getRankValue(b.currentRank, b.rr);
+          return bValue - aValue; // Higher rank value = better rank = lower position number
+        });
+
+        // Assign rank positions (1st, 2nd, 3rd, etc.)
         fetchedPlayers.forEach((player, index) => {
           player.rank = index + 1;
         });
@@ -102,18 +262,78 @@ export default function ValorantLeaderboardDetails() {
 
   const leaderboardName = partyData?.partyName || params.name as string;
   const members = partyData?.members?.length || Number(params.members);
-  const startDate = partyData?.startDate || params.startDate as string;
-  const endDate = partyData?.endDate || params.endDate as string;
+
+  // Helper function to convert Firestore Timestamp or string to Date
+  const convertToDate = (dateValue: any): Date | null => {
+    if (!dateValue) return null;
+
+    // If it's a Firestore Timestamp
+    if (dateValue.toDate && typeof dateValue.toDate === 'function') {
+      return dateValue.toDate();
+    }
+
+    // If it's already a Date object
+    if (dateValue instanceof Date) {
+      return dateValue;
+    }
+
+    // If it's a string, parse MM/DD/YYYY format
+    if (typeof dateValue === 'string') {
+      // Try MM/DD/YYYY format first
+      const parts = dateValue.split('/');
+      if (parts.length === 3) {
+        const month = parseInt(parts[0], 10) - 1; // Months are 0-indexed
+        const day = parseInt(parts[1], 10);
+        const year = parseInt(parts[2], 10);
+        const date = new Date(year, month, day);
+
+        // Validate the date
+        if (!isNaN(date.getTime())) {
+          return date;
+        }
+      }
+
+      // Fallback to standard Date parsing
+      const parsed = new Date(dateValue);
+      return isNaN(parsed.getTime()) ? null : parsed;
+    }
+
+    return null;
+  };
+
+  const startDate = partyData?.startDate || params.startDate;
+  const endDate = partyData?.endDate || params.endDate;
+
+  console.log('Valorant Detail - Dates from party:', {
+    partyStartDate: partyData?.startDate,
+    partyEndDate: partyData?.endDate,
+    paramStartDate: params.startDate,
+    paramEndDate: params.endDate,
+    finalStart: startDate,
+    finalEnd: endDate
+  });
 
   // Calculate days remaining
   const calculateDaysRemaining = () => {
-    if (!startDate || !endDate) return null;
-    const start = new Date(startDate);
-    const end = new Date(endDate);
+    console.log('Calculating days with:', { startDate, endDate });
+
+    const start = convertToDate(startDate);
+    const end = convertToDate(endDate);
+
+    console.log('Converted dates:', { start, end });
+
+    if (!start || !end) {
+      console.log('Invalid dates - returning null');
+      return null;
+    }
+
     const today = new Date();
     const totalDays = Math.ceil((end.getTime() - start.getTime()) / (1000 * 60 * 60 * 24));
     const currentDay = Math.ceil((today.getTime() - start.getTime()) / (1000 * 60 * 60 * 24));
-    return { currentDay: Math.max(1, Math.min(currentDay, totalDays)), totalDays };
+
+    const result = { currentDay: Math.max(1, Math.min(currentDay, totalDays)), totalDays };
+    console.log('Days calculation result:', result);
+    return result;
   };
 
   const daysInfo = calculateDaysRemaining();
@@ -155,7 +375,9 @@ export default function ValorantLeaderboardDetails() {
           <ThemedText style={styles.headerTitle}>{leaderboardName}</ThemedText>
           <ThemedText style={styles.headerSubtitle}>Valorant • {members} Players</ThemedText>
         </View>
-        <View style={styles.headerSpacer} />
+        <TouchableOpacity style={styles.headerButton} onPress={handleLeaveParty}>
+          <IconSymbol size={20} name="rectangle.portrait.and.arrow.right" color="#ef4444" />
+        </TouchableOpacity>
       </View>
 
       <ScrollView style={styles.scrollView} showsVerticalScrollIndicator={false}>
@@ -173,11 +395,21 @@ export default function ValorantLeaderboardDetails() {
               </View>
               {startDate && endDate && (
                 <View style={styles.dateRangeContainer}>
-                  <ThemedText style={styles.dateText}>{startDate}</ThemedText>
-                  <ThemedText style={styles.dateText}>{endDate}</ThemedText>
+                  <ThemedText style={styles.dateText}>
+                    {convertToDate(startDate)?.toLocaleDateString() || 'Start Date'}
+                  </ThemedText>
+                  <ThemedText style={styles.dateText}>
+                    {convertToDate(endDate)?.toLocaleDateString() || 'End Date'}
+                  </ThemedText>
                 </View>
               )}
             </View>
+
+            {/* Invite Button */}
+            <TouchableOpacity style={styles.inviteActionButton} onPress={handleShowInviteCode}>
+              <IconSymbol size={16} name="person.badge.plus" color="#000" />
+              <ThemedText style={styles.inviteActionButtonText}>Invite Code</ThemedText>
+            </TouchableOpacity>
           </View>
         )}
 
@@ -185,11 +417,8 @@ export default function ValorantLeaderboardDetails() {
         <View style={styles.columnHeaders}>
           <ThemedText style={[styles.columnHeaderText, { width: 50 }]}>RANK</ThemedText>
           <ThemedText style={[styles.columnHeaderText, { flex: 1 }]}>PLAYER</ThemedText>
-          <ThemedText style={[styles.columnHeaderText, styles.alignRight, { width: 70 }]}>
-            DAILY
-          </ThemedText>
-          <ThemedText style={[styles.columnHeaderText, styles.alignRight, { width: 80 }]}>
-            RR
+          <ThemedText style={[styles.columnHeaderText, styles.alignRight, { width: 140 }]}>
+            CURRENT RANK
           </ThemedText>
         </View>
 
@@ -225,23 +454,9 @@ export default function ValorantLeaderboardDetails() {
                 </ThemedText>
               </View>
 
-              {/* Daily Gain */}
-              <ThemedText
-                style={[
-                  styles.dailyGainText,
-                  styles.alignRight,
-                  { width: 70 },
-                  (player.dailyGain ?? 0) > 0 && styles.positiveGain,
-                  (player.dailyGain ?? 0) < 0 && styles.negativeGain,
-                ]}
-              >
-                {(player.dailyGain ?? 0) > 0 ? '+' : ''}
-                {player.dailyGain ?? 0}
-              </ThemedText>
-
-              {/* RR */}
-              <ThemedText style={[styles.rrText, styles.alignRight, { width: 80 }]}>
-                {player.rr || 0}
+              {/* Current Rank with RR */}
+              <ThemedText style={[styles.currentRankText, styles.alignRight, { width: 140 }]}>
+                {player.currentRank} ({player.rr || 0} rr)
               </ThemedText>
             </View>
           ))}
@@ -290,6 +505,9 @@ const styles = StyleSheet.create({
   },
   headerSpacer: {
     width: 36,
+  },
+  headerButton: {
+    padding: 4,
   },
   scrollView: {
     flex: 1,
@@ -341,6 +559,24 @@ const styles = StyleSheet.create({
     fontSize: 12,
     color: '#666',
     fontWeight: '500',
+  },
+  inviteActionButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 6,
+    marginTop: 12,
+    paddingVertical: 8,
+    paddingHorizontal: 12,
+    backgroundColor: '#f9fafb',
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: '#e5e7eb',
+  },
+  inviteActionButtonText: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: '#000',
   },
   columnHeaders: {
     flexDirection: 'row',
@@ -422,21 +658,10 @@ const styles = StyleSheet.create({
     color: '#000',
     letterSpacing: -0.2,
   },
-  rrText: {
-    fontSize: 14,
-    fontWeight: '700',
-    color: '#000',
-  },
-  dailyGainText: {
-    fontSize: 12,
+  currentRankText: {
+    fontSize: 13,
     fontWeight: '600',
-    color: '#666',
-  },
-  positiveGain: {
-    color: '#22c55e',
-  },
-  negativeGain: {
-    color: '#ef4444',
+    color: '#000',
   },
   loadingContainer: {
     flex: 1,

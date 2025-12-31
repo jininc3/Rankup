@@ -260,6 +260,18 @@ export const getLeagueStatsFunction = onCall(
         riotStats: stats,
       });
 
+      // Also update gameStats subcollection for leaderboard access
+      const gameStatsRef = userRef.collection("gameStats").doc("league");
+      const currentRank = soloQueue ? `${soloQueue.tier} ${soloQueue.rank}` : "Unranked";
+      const lp = soloQueue ? soloQueue.leaguePoints : 0;
+
+      await gameStatsRef.set({
+        currentRank,
+        lp,
+        dailyGain: 0, // Can be calculated based on previous data if needed
+        lastUpdated: admin.firestore.Timestamp.now(),
+      }, {merge: true});
+
       logger.info(`Successfully updated Riot stats for user ${userId}`);
 
       return {

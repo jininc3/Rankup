@@ -12,13 +12,16 @@ import PostViewerModal from '@/app/components/postViewerModal';
 
 interface Notification {
   id: string;
-  type: 'follow' | 'like' | 'comment' | 'tag';
+  type: 'follow' | 'like' | 'comment' | 'tag' | 'party_invite';
   fromUserId: string;
   fromUsername: string;
   fromUserAvatar?: string;
   postId?: string;
   postThumbnail?: string;
   commentText?: string;
+  partyId?: string;
+  partyName?: string;
+  game?: string;
   read: boolean;
   createdAt: Timestamp;
 }
@@ -69,10 +72,13 @@ export default function NotificationsScreen() {
           type: data.type,
           fromUserId: data.fromUserId,
           fromUsername: data.fromUsername,
-          fromUserAvatar: data.fromUserAvatar,
+          fromUserAvatar: data.fromUserAvatar || data.fromAvatar,
           postId: data.postId,
           postThumbnail: data.postThumbnail,
           commentText: data.commentText,
+          partyId: data.partyId,
+          partyName: data.partyName,
+          game: data.game,
           read: data.read,
           createdAt: data.createdAt,
         });
@@ -203,6 +209,112 @@ export default function NotificationsScreen() {
       console.error('Error fetching post:', error);
     } finally {
       setLoadingPost(false);
+    }
+  };
+
+  // Accept party invitation
+  const handleAcceptInvite = async (notification: Notification, event: any) => {
+    event.stopPropagation();
+    if (!currentUser?.id || !notification.partyId) return;
+
+    try {
+      // Find the party
+      const partiesRef = collection(db, 'parties');
+      const partyQuery = query(partiesRef, where('partyId', '==', notification.partyId), limit(1));
+      const partySnapshot = await getDocs(partyQuery);
+
+      if (partySnapshot.empty) {
+        console.error('Party not found');
+        return;
+      }
+
+      const partyDoc = partySnapshot.docs[0];
+      const partyData = partyDoc.data();
+
+      // Get user data for member details
+      const userDoc = await getDoc(doc(db, 'users', currentUser.id));
+      const userData = userDoc.data();
+
+      // Update party: add user to members and memberDetails, update pendingInvites
+      const updatedMembers = [...(partyData.members || []), currentUser.id];
+      const updatedMemberDetails = [
+        ...(partyData.memberDetails || []),
+        {
+          userId: currentUser.id,
+          username: userData?.username || 'Unknown',
+          avatar: userData?.avatar || '👤',
+          joinedAt: new Date().toISOString(),
+        },
+      ];
+
+      // Update invite status in pendingInvites
+      const updatedPendingInvites = (partyData.pendingInvites || []).map((invite: any) =>
+        invite.userId === currentUser.id ? { ...invite, status: 'accepted' } : invite
+      );
+
+      await updateDoc(partyDoc.ref, {
+        members: updatedMembers,
+        memberDetails: updatedMemberDetails,
+        pendingInvites: updatedPendingInvites,
+      });
+
+      // Delete the notification
+      await deleteNotification(notification.id);
+
+      console.log('Successfully joined party:', notification.partyName);
+
+      // Navigate to the appropriate leaderboard detail page
+      const detailPage = notification.game === 'Valorant'
+        ? '/leaderboardPages/valorantLeaderboardDetails'
+        : '/leaderboardPages/leagueLeaderboardDetails';
+
+      router.push({
+        pathname: detailPage,
+        params: {
+          name: notification.partyName,
+          partyId: notification.partyId,
+          members: updatedMembers.length.toString(),
+          startDate: partyData.startDate || '',
+          endDate: partyData.endDate || '',
+          players: JSON.stringify([]),
+        },
+      });
+    } catch (error) {
+      console.error('Error accepting invitation:', error);
+    }
+  };
+
+  // Decline party invitation
+  const handleDeclineInvite = async (notification: Notification, event: any) => {
+    event.stopPropagation();
+    if (!currentUser?.id || !notification.partyId) return;
+
+    try {
+      // Find the party
+      const partiesRef = collection(db, 'parties');
+      const partyQuery = query(partiesRef, where('partyId', '==', notification.partyId), limit(1));
+      const partySnapshot = await getDocs(partyQuery);
+
+      if (!partySnapshot.empty) {
+        const partyDoc = partySnapshot.docs[0];
+        const partyData = partyDoc.data();
+
+        // Update invite status to declined in pendingInvites
+        const updatedPendingInvites = (partyData.pendingInvites || []).map((invite: any) =>
+          invite.userId === currentUser.id ? { ...invite, status: 'declined' } : invite
+        );
+
+        await updateDoc(partyDoc.ref, {
+          pendingInvites: updatedPendingInvites,
+        });
+      }
+
+      // Delete the notification
+      await deleteNotification(notification.id);
+
+      console.log('Declined party invitation:', notification.partyName);
+    } catch (error) {
+      console.error('Error declining invitation:', error);
     }
   };
 
@@ -365,25 +477,56 @@ export default function NotificationsScreen() {
 
                       {/* Notification content */}
                       <View style={styles.notificationContent}>
-                        <ThemedText style={styles.notificationText}>
-                          <ThemedText
-                            style={styles.usernameText}
-                            onPress={(e) => handleUserPress(notification.fromUserId, e)}
-                          >
-                            {notification.fromUsername}
-                          </ThemedText>
-                          {notification.type === 'follow' && ' started following you'}
-                          {notification.type === 'like' && ' liked your post'}
-                          {notification.type === 'tag' && ' tagged you in a post'}
-                          {notification.type === 'comment' && ' commented: '}
-                          {notification.type === 'comment' && notification.commentText && (
-                            <ThemedText style={styles.commentPreview}>
-                              "{notification.commentText.length > 30
-                                ? notification.commentText.substring(0, 30) + '...'
-                                : notification.commentText}"
+                        <View style={styles.notificationTextRow}>
+                          <View style={{ flex: 1 }}>
+                            <ThemedText style={styles.notificationText}>
+                              <ThemedText
+                                style={styles.usernameText}
+                                onPress={(e) => handleUserPress(notification.fromUserId, e)}
+                              >
+                                {notification.fromUsername}
+                              </ThemedText>
+                              {notification.type === 'follow' && ' started following you'}
+                              {notification.type === 'like' && ' liked your post'}
+                              {notification.type === 'tag' && ' tagged you in a post'}
+                              {notification.type === 'comment' && ' commented: '}
+                              {notification.type === 'party_invite' && ` invited you to "${notification.partyName}"`}
+                              {notification.type === 'comment' && notification.commentText && (
+                                <ThemedText style={styles.commentPreview}>
+                                  "{notification.commentText.length > 30
+                                    ? notification.commentText.substring(0, 30) + '...'
+                                    : notification.commentText}"
+                                </ThemedText>
+                              )}
                             </ThemedText>
+                          </View>
+
+                          {/* Accept/Decline buttons for party invites - inline */}
+                          {notification.type === 'party_invite' && (
+                            <View style={styles.inviteActionsInline}>
+                              <TouchableOpacity
+                                style={styles.acceptButtonCompact}
+                                onPress={(e) => handleAcceptInvite(notification, e)}
+                                activeOpacity={0.7}
+                              >
+                                <IconSymbol size={26} name="checkmark.circle.fill" color="#22c55e" />
+                              </TouchableOpacity>
+                              <TouchableOpacity
+                                style={styles.declineButtonCompact}
+                                onPress={(e) => handleDeclineInvite(notification, e)}
+                                activeOpacity={0.7}
+                              >
+                                <IconSymbol size={26} name="xmark.circle.fill" color="#999" />
+                              </TouchableOpacity>
+                            </View>
                           )}
-                        </ThemedText>
+                        </View>
+
+                        {/* Game tag for party invites */}
+                        {notification.type === 'party_invite' && notification.game && (
+                          <ThemedText style={styles.partyGameText}>{notification.game}</ThemedText>
+                        )}
+
                         <ThemedText style={styles.timeText}>{getTimeAgo(notification.createdAt)}</ThemedText>
                       </View>
 
@@ -591,5 +734,28 @@ const styles = StyleSheet.create({
   commentPreview: {
     fontStyle: 'italic',
     color: '#666',
+  },
+  notificationTextRow: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: 8,
+  },
+  partyGameText: {
+    fontSize: 11,
+    color: '#666',
+    fontWeight: '500',
+    marginTop: 2,
+    marginBottom: 1,
+  },
+  inviteActionsInline: {
+    flexDirection: 'row',
+    gap: 6,
+    alignItems: 'center',
+  },
+  acceptButtonCompact: {
+    padding: 0,
+  },
+  declineButtonCompact: {
+    padding: 0,
   },
 });

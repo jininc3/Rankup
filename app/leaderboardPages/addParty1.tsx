@@ -65,6 +65,16 @@ export default function AddParty1Screen() {
   const [startDate, setStartDate] = useState(defaultDates.start);
   const [endDate, setEndDate] = useState(defaultDates.end);
 
+  // Generate unique invite code on component mount
+  useEffect(() => {
+    const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
+    let code = '';
+    for (let i = 0; i < 5; i++) {
+      code += chars.charAt(Math.floor(Math.random() * chars.length));
+    }
+    setInviteCode(code);
+  }, []);
+
   // Fetch real followers from Firestore
   useEffect(() => {
     const fetchFollowers = async () => {
@@ -118,16 +128,6 @@ export default function AddParty1Screen() {
 
     fetchFollowers();
   }, [user?.id]);
-
-  // Generate a random 5-character invite code (letters and digits)
-  const generateInviteCode = () => {
-    const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
-    let code = '';
-    for (let i = 0; i < 5; i++) {
-      code += chars.charAt(Math.floor(Math.random() * chars.length));
-    }
-    setInviteCode(code);
-  };
 
   const handlePartyIdChange = (text: string) => {
     // Convert to uppercase and limit to 5 characters, only letters
@@ -213,7 +213,7 @@ export default function AddParty1Screen() {
       const userData = userDoc.data();
       console.log('User data:', userData);
 
-      // Prepare member details
+      // Prepare member details (only creator initially)
       const now = new Date();
       const memberDetails = [
         {
@@ -224,21 +224,23 @@ export default function AddParty1Screen() {
         },
       ];
 
-      // Add selected followers to member details
+      // Prepare pending invites for selected followers
+      const pendingInvites = [];
       for (const followerId of selectedFollowers) {
         const followerDoc = await getDoc(doc(db, 'users', followerId));
         if (followerDoc.exists()) {
           const followerData = followerDoc.data();
-          memberDetails.push({
+          pendingInvites.push({
             userId: followerId,
             username: followerData.username || 'Unknown',
             avatar: followerData.avatar || '👤',
-            joinedAt: now.toISOString(),
+            invitedAt: now.toISOString(),
+            status: 'pending', // pending, accepted, declined
           });
         }
       }
 
-      // Create party document
+      // Create party document (only creator as member initially)
       const partyData = {
         partyId: partyId,
         partyName: partyName,
@@ -249,8 +251,9 @@ export default function AddParty1Screen() {
         inviteCode: inviteCode || '',
         createdBy: user.id,
         createdAt: serverTimestamp(),
-        members: [user.id, ...selectedFollowers],
-        memberDetails: memberDetails,
+        members: [user.id], // Only creator initially
+        memberDetails: memberDetails, // Only creator's details
+        pendingInvites: pendingInvites, // Store invited users separately
       };
 
       console.log('Creating party with data:', partyData);
@@ -260,9 +263,68 @@ export default function AddParty1Screen() {
       const docRef = await addDoc(partiesRef, partyData);
       console.log('Party created successfully! Doc ID:', docRef.id);
 
+      // Send invitations to selected followers
+      if (selectedFollowers.length > 0) {
+        console.log('Sending invitations to', selectedFollowers.length, 'followers');
+
+        for (const invite of pendingInvites) {
+          try {
+            // Create in-app notification
+            const notificationRef = collection(db, 'users', invite.userId, 'notifications');
+            await addDoc(notificationRef, {
+              type: 'party_invite',
+              fromUserId: user.id,
+              fromUsername: userData?.username || 'Unknown',
+              fromAvatar: userData?.avatar || '👤',
+              partyId: partyId,
+              partyName: partyName,
+              game: gameName,
+              read: false,
+              createdAt: serverTimestamp(),
+            });
+
+            // Send push notification
+            const invitedUserDoc = await getDoc(doc(db, 'users', invite.userId));
+            const invitedUserData = invitedUserDoc.data();
+            const expoPushToken = invitedUserData?.expoPushToken;
+
+            if (expoPushToken) {
+              try {
+                await fetch('https://exp.host/--/api/v2/push/send', {
+                  method: 'POST',
+                  headers: {
+                    'Content-Type': 'application/json',
+                  },
+                  body: JSON.stringify({
+                    to: expoPushToken,
+                    title: 'Party Invitation',
+                    body: `${userData?.username} invited you to join "${partyName}" for ${gameName}!`,
+                    data: {
+                      type: 'party_invite',
+                      partyId: partyId,
+                      partyName: partyName,
+                      game: gameName,
+                    },
+                  }),
+                });
+                console.log('Push notification sent to', invite.username);
+              } catch (pushError) {
+                console.error('Error sending push notification:', pushError);
+                // Don't fail the whole operation if push fails
+              }
+            }
+          } catch (notifError) {
+            console.error('Error sending notification to', invite.username, ':', notifError);
+            // Continue with other notifications even if one fails
+          }
+        }
+      }
+
       Alert.alert(
         'Success',
-        'Leaderboard party created!',
+        selectedFollowers.length > 0
+          ? `Party created! Invitations sent to ${selectedFollowers.length} ${selectedFollowers.length === 1 ? 'player' : 'players'}.`
+          : 'Leaderboard party created!',
         [
           {
             text: 'OK',
@@ -277,10 +339,10 @@ export default function AddParty1Screen() {
                 params: {
                   name: partyName,
                   partyId: partyId,
-                  members: memberDetails.length.toString(),
+                  members: '1', // Only creator initially
                   startDate: startDate,
                   endDate: endDate,
-                  players: JSON.stringify([]), // Empty for now, will be populated with real data
+                  players: JSON.stringify([]),
                 },
               });
             },
@@ -386,27 +448,17 @@ export default function AddParty1Screen() {
             Share this code with others to invite them
           </ThemedText>
 
-          {!inviteCode ? (
-            <TouchableOpacity
-              style={styles.generateButton}
-              onPress={generateInviteCode}
-            >
-              <IconSymbol size={20} name="plus.circle.fill" color="#fff" />
-              <ThemedText style={styles.generateButtonText}>Generate Invite Code</ThemedText>
-            </TouchableOpacity>
-          ) : (
-            <View style={styles.inviteCodeContainer}>
-              <View style={styles.inviteCodeBox}>
-                <ThemedText style={styles.inviteCodeText}>{inviteCode}</ThemedText>
-              </View>
-              <TouchableOpacity
-                style={styles.copyButton}
-                onPress={handleCopyInviteCode}
-              >
-                <IconSymbol size={20} name="doc.on.doc" color="#000" />
-              </TouchableOpacity>
+          <View style={styles.inviteCodeContainer}>
+            <View style={styles.inviteCodeBox}>
+              <ThemedText style={styles.inviteCodeText}>{inviteCode}</ThemedText>
             </View>
-          )}
+            <TouchableOpacity
+              style={styles.copyButton}
+              onPress={handleCopyInviteCode}
+            >
+              <IconSymbol size={20} name="doc.on.doc" color="#000" />
+            </TouchableOpacity>
+          </View>
         </View>
 
         {/* Add from Followers */}
@@ -607,21 +659,6 @@ const styles = StyleSheet.create({
     color: '#666',
     textAlign: 'right',
     marginTop: 4,
-  },
-  generateButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: '#000',
-    paddingVertical: 12,
-    paddingHorizontal: 20,
-    borderRadius: 8,
-    gap: 8,
-  },
-  generateButtonText: {
-    fontSize: 15,
-    fontWeight: '600',
-    color: '#fff',
   },
   inviteCodeContainer: {
     flexDirection: 'row',

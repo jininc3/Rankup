@@ -8,7 +8,7 @@ import PartyCards from '@/app/components/partyCards';
 import { useState, useEffect } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { db } from '@/config/firebase';
-import { collection, query, where, getDocs, onSnapshot } from 'firebase/firestore';
+import { collection, query, where, getDocs, onSnapshot, doc, getDoc, limit } from 'firebase/firestore';
 
 // Game logo mapping
 const GAME_LOGOS: { [key: string]: any } = {
@@ -17,6 +17,37 @@ const GAME_LOGOS: { [key: string]: any } = {
   'Apex Legends': require('@/assets/images/apex.png'),
   'CS2': require('@/assets/images/valorant.png'), // placeholder
   'Overwatch 2': require('@/assets/images/valorant.png'), // placeholder
+};
+
+// Helper function to calculate League rank value for sorting
+const getLeagueRankValue = (currentRank: string, lp: number): number => {
+  const rankOrder: { [key: string]: number } = {
+    'CHALLENGER': 10, 'GRANDMASTER': 9, 'MASTER': 8, 'DIAMOND': 7,
+    'EMERALD': 6, 'PLATINUM': 5, 'GOLD': 4, 'SILVER': 3,
+    'BRONZE': 2, 'IRON': 1, 'UNRANKED': 0,
+  };
+  const divisionOrder: { [key: string]: number } = { 'I': 4, 'II': 3, 'III': 2, 'IV': 1 };
+
+  const parts = currentRank.toUpperCase().split(' ');
+  const tierValue = rankOrder[parts[0]] || 0;
+  const divisionValue = divisionOrder[parts[1]] || 0;
+
+  return tierValue * 1000 + divisionValue * 100 + lp;
+};
+
+// Helper function to calculate Valorant rank value for sorting
+const getValorantRankValue = (currentRank: string, rr: number): number => {
+  const rankOrder: { [key: string]: number } = {
+    'RADIANT': 9, 'IMMORTAL': 8, 'ASCENDANT': 7, 'DIAMOND': 6,
+    'PLATINUM': 5, 'GOLD': 4, 'SILVER': 3, 'BRONZE': 2,
+    'IRON': 1, 'UNRANKED': 0,
+  };
+
+  const parts = currentRank.toUpperCase().split(' ');
+  const tierValue = rankOrder[parts[0]] || 0;
+  const divisionValue = parseInt(parts[1]) || 0;
+
+  return tierValue * 1000 + divisionValue * 100 + rr;
 };
 
 export default function LeaderboardScreen() {
@@ -61,6 +92,91 @@ export default function LeaderboardScreen() {
 
     return () => unsubscribe();
   }, [user?.id]);
+
+  // Calculate user's rank in each party
+  useEffect(() => {
+    if (!user?.id || parties.length === 0) return;
+
+    const calculateRanks = async () => {
+      const updatedParties = await Promise.all(
+        parties.map(async (party) => {
+          try {
+            // Get party document to fetch memberDetails
+            const partiesRef = collection(db, 'parties');
+            const partyQuery = query(partiesRef, where('partyId', '==', party.partyId), limit(1));
+            const partySnapshot = await getDocs(partyQuery);
+
+            if (partySnapshot.empty || !partySnapshot.docs[0].data().memberDetails) {
+              return party;
+            }
+
+            const partyData = partySnapshot.docs[0].data();
+            const memberDetails = partyData.memberDetails;
+            const isLeague = party.game === 'League of Legends';
+            const gameStatsPath = isLeague ? 'league' : 'valorant';
+
+            // Fetch stats for all members
+            const memberStatsPromises = memberDetails.map(async (member: any) => {
+              // Try gameStats subcollection first
+              const gameStatsDoc = await getDoc(doc(db, 'users', member.userId, 'gameStats', gameStatsPath));
+              let stats = gameStatsDoc.data();
+
+              // Fallback to main stats if gameStats doesn't exist
+              if (!stats || !stats.currentRank) {
+                const userDoc = await getDoc(doc(db, 'users', member.userId));
+                const userData = userDoc.data();
+
+                if (isLeague && userData?.riotStats?.rankedSolo) {
+                  stats = {
+                    currentRank: `${userData.riotStats.rankedSolo.tier} ${userData.riotStats.rankedSolo.rank}`,
+                    lp: userData.riotStats.rankedSolo.leaguePoints || 0,
+                  };
+                } else if (!isLeague && userData?.valorantStats) {
+                  stats = {
+                    currentRank: userData.valorantStats.currentRank || 'Unranked',
+                    rr: userData.valorantStats.rankRating || 0,
+                  };
+                }
+              }
+
+              return {
+                userId: member.userId,
+                currentRank: stats?.currentRank || 'Unranked',
+                lp: stats?.lp || 0,
+                rr: stats?.rr || 0,
+              };
+            });
+
+            const memberStats = await Promise.all(memberStatsPromises);
+
+            // Sort members by rank
+            memberStats.sort((a, b) => {
+              if (isLeague) {
+                return getLeagueRankValue(b.currentRank, b.lp) - getLeagueRankValue(a.currentRank, a.lp);
+              } else {
+                return getValorantRankValue(b.currentRank, b.rr) - getValorantRankValue(a.currentRank, a.rr);
+              }
+            });
+
+            // Find user's rank
+            const userRank = memberStats.findIndex(m => m.userId === user.id) + 1;
+
+            return {
+              ...party,
+              userRank: userRank > 0 ? userRank : null,
+            };
+          } catch (error) {
+            console.error(`Error calculating rank for party ${party.partyId}:`, error);
+            return party;
+          }
+        })
+      );
+
+      setParties(updatedParties);
+    };
+
+    calculateRanks();
+  }, [parties.length, user?.id]);
 
   // User's rank summary data
   const userRankSummary = parties
@@ -128,36 +244,54 @@ export default function LeaderboardScreen() {
       ) : (
         <ScrollView style={styles.scrollView} showsVerticalScrollIndicator={false}>
         {/* Your Rankings Summary */}
-        <View style={styles.summarySection}>
-          <ThemedText style={styles.sectionTitle}>Your Rankings</ThemedText>
-          <ScrollView
-            horizontal
-            showsHorizontalScrollIndicator={false}
-            contentContainerStyle={styles.summaryScroll}
-          >
-            {userRankSummary.map((item, index) => (
-              <View key={index} style={styles.summaryCard}>
-                <View style={styles.summaryCardHeader}>
-                  <View style={styles.summaryIconContainer}>
-                    <Image
-                      source={GAME_LOGOS[item.game] || GAME_LOGOS['Valorant']}
-                      style={styles.summaryGameLogo}
-                      resizeMode="contain"
-                    />
+        {userRankSummary.length > 0 && (
+          <View style={styles.summarySection}>
+            <ThemedText style={styles.sectionTitle}>Your Rankings</ThemedText>
+            <ScrollView
+              horizontal
+              showsHorizontalScrollIndicator={false}
+              contentContainerStyle={styles.summaryScroll}
+            >
+              {userRankSummary.map((item, index) => (
+                <TouchableOpacity
+                  key={index}
+                  style={styles.summaryCard}
+                  onPress={() => {
+                    const party = parties.find(p => p.partyId === item.partyId);
+                    if (party) handleLeaderboardPress(party);
+                  }}
+                  activeOpacity={0.7}
+                >
+                  <View style={[styles.rankBadge, { backgroundColor: getRankColor(item.rank) }]}>
+                    <ThemedText style={styles.rankBadgeText}>#{item.rank}</ThemedText>
                   </View>
-                </View>
-                <View style={styles.summaryCardContent}>
-                  <ThemedText style={styles.summaryPartyId}>
-                    {item.partyId}
-                  </ThemedText>
-                  <ThemedText style={styles.summaryRankValue}>
-                    #{item.rank}/{item.totalMembers}
-                  </ThemedText>
-                </View>
-              </View>
-            ))}
-          </ScrollView>
-        </View>
+                  <View style={styles.summaryCardBody}>
+                    <View style={styles.summaryCardLeft}>
+                      <View style={styles.summaryIconContainer}>
+                        <Image
+                          source={GAME_LOGOS[item.game] || GAME_LOGOS['Valorant']}
+                          style={styles.summaryGameLogo}
+                          resizeMode="contain"
+                        />
+                      </View>
+                    </View>
+                    <View style={styles.summaryCardRight}>
+                      <ThemedText style={styles.summaryPartyId} numberOfLines={1}>
+                        {item.partyId}
+                      </ThemedText>
+                      <ThemedText style={styles.summaryGameText}>
+                        {item.game}
+                      </ThemedText>
+                      <ThemedText style={styles.summaryTotalMembers}>
+                        {item.totalMembers} players
+                      </ThemedText>
+                    </View>
+                  </View>
+                </TouchableOpacity>
+              ))}
+            </ScrollView>
+          </View>
+        )}
 
         {/* All Leaderboards */}
         <View style={styles.leaderboardsSection}>
@@ -252,53 +386,75 @@ const styles = StyleSheet.create({
   },
   summaryScroll: {
     paddingHorizontal: 20,
-    gap: 12,
+    gap: 10,
   },
   summaryCard: {
     backgroundColor: '#fff',
-    padding: 12,
-    borderRadius: 12,
-    width: 140,
-    height: 140,
+    borderRadius: 16,
+    width: 180,
     borderWidth: 1,
     borderColor: '#e5e5e5',
+    overflow: 'hidden',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.05,
+    shadowRadius: 8,
+    elevation: 2,
   },
-  summaryCardHeader: {
+  rankBadge: {
+    paddingVertical: 6,
+    paddingHorizontal: 12,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  rankBadgeText: {
+    fontSize: 13,
+    fontWeight: '700',
+    color: '#fff',
+    letterSpacing: 0.5,
+  },
+  summaryCardBody: {
     flexDirection: 'row',
-    justifyContent: 'center',
+    padding: 12,
+    gap: 10,
     alignItems: 'center',
-    marginBottom: 12,
   },
-  summaryCardContent: {
-    flex: 1,
+  summaryCardLeft: {
     justifyContent: 'center',
     alignItems: 'center',
-    gap: 8,
+  },
+  summaryCardRight: {
+    flex: 1,
+    gap: 2,
   },
   summaryIconContainer: {
-    width: 36,
-    height: 36,
-    borderRadius: 8,
-    backgroundColor: '#f5f5f5',
+    width: 40,
+    height: 40,
+    borderRadius: 10,
+    backgroundColor: '#f8f8f8',
     alignItems: 'center',
     justifyContent: 'center',
   },
   summaryGameLogo: {
-    width: 28,
-    height: 28,
+    width: 30,
+    height: 30,
   },
   summaryPartyId: {
-    fontSize: 16,
+    fontSize: 15,
     fontWeight: '700',
     color: '#000',
     letterSpacing: -0.3,
-    textAlign: 'center',
   },
-  summaryRankValue: {
-    fontSize: 20,
-    fontWeight: '700',
-    color: '#000',
-    textAlign: 'center',
+  summaryGameText: {
+    fontSize: 11,
+    fontWeight: '500',
+    color: '#666',
+    letterSpacing: -0.1,
+  },
+  summaryTotalMembers: {
+    fontSize: 11,
+    fontWeight: '500',
+    color: '#999',
   },
   leaderboardsSection: {
     paddingHorizontal: 20,

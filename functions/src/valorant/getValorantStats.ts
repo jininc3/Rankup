@@ -188,6 +188,15 @@ export const getValorantStatsFunction = onCall(
         valorantStats: stats,
       });
 
+      // Also update gameStats subcollection for leaderboard access
+      const gameStatsRef = userRef.collection("gameStats").doc("valorant");
+      await gameStatsRef.set({
+        currentRank: stats.currentRank,
+        rr: stats.rankRating,
+        dailyGain: 0, // Can be calculated based on previous data if needed
+        lastUpdated: admin.firestore.FieldValue.serverTimestamp(),
+      }, {merge: true});
+
       logger.info(`Successfully fetched Valorant stats for user ${userId}`);
 
       return {

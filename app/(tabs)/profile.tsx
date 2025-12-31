@@ -62,6 +62,7 @@ export default function ProfileScreen() {
   const scrollViewRef = useRef<ScrollView>(null);
   const iconScrollViewRef = useRef<ScrollView>(null);
   const [riotAccount, setRiotAccount] = useState<any>(null);
+  const [valorantAccount, setValorantAccount] = useState<any>(null);
   const [riotStats, setRiotStats] = useState<any>(null);
   const [tftStats, setTftStats] = useState<any>(null);
   const [valorantStats, setValorantStats] = useState<any>(null);
@@ -76,8 +77,18 @@ export default function ProfileScreen() {
     }
   }, []);
 
+  // Debug logging - only when values change
+  useEffect(() => {
+    console.log('Profile - Riot Account:', riotAccount ? 'Set' : 'Not set');
+    console.log('Profile - Valorant Account:', valorantAccount ? 'Set' : 'Not set');
+    console.log('Profile - Riot Stats:', riotStats ? 'Set' : 'Not set');
+    console.log('Profile - Valorant Stats:', valorantStats ? 'Set' : 'Not set');
+    console.log('Profile - Enabled Rank Cards:', enabledRankCards);
+  }, [riotAccount, valorantAccount, riotStats, valorantStats, enabledRankCards]);
+
   // Dynamic games array based on Riot data and enabled rank cards
-  const userGames = riotAccount ? [
+  // Show rank cards if user has either Riot account OR Valorant account
+  const userGames = (riotAccount || valorantAccount) ? [
     // League of Legends - only show if enabled and has stats
     ...(enabledRankCards.includes('league') && riotStats ? [{
       id: 2,
@@ -209,6 +220,8 @@ export default function ProfileScreen() {
 
         // Fetch Valorant stats if account is linked
         if (data.valorantAccount) {
+          setValorantAccount(data.valorantAccount);
+
           try {
             console.log('Fetching Valorant stats, forceRefresh:', forceRefresh);
             const valorantResponse = await getValorantStats(forceRefresh);
@@ -303,9 +316,12 @@ export default function ProfileScreen() {
             setEnabledRankCards(data.enabledRankCards || []);
 
             // Load cached Valorant stats directly from Firestore (instant, no API call)
-            if (data.valorantAccount && data.valorantStats) {
-              console.log('Loading cached Valorant stats from Firestore');
-              setValorantStats(data.valorantStats);
+            if (data.valorantAccount) {
+              setValorantAccount(data.valorantAccount);
+              if (data.valorantStats) {
+                console.log('Loading cached Valorant stats from Firestore');
+                setValorantStats(data.valorantStats);
+              }
             }
           }
         } catch (error) {
@@ -681,7 +697,7 @@ export default function ProfileScreen() {
               <IconSymbol size={20} name="line.3.horizontal.decrease.circle" color="#000" />
             </TouchableOpacity>
           )}
-          {activeMainTab === 'rankCards' && riotAccount && (
+          {activeMainTab === 'rankCards' && (riotAccount || valorantAccount) && (
             <TouchableOpacity
               style={styles.filterButton}
               onPress={() => router.push('/profilePages/rankCardWallet')}
@@ -735,8 +751,8 @@ export default function ProfileScreen() {
 
         {/* RankCards Tab Content */}
         <View style={[styles.section, { display: activeMainTab === 'rankCards' ? 'flex' : 'none' }]}>
-          {!riotAccount ? (
-            // Empty state for new users without Riot account
+          {!riotAccount && !valorantAccount ? (
+            // Empty state for new users without any gaming account
             <View style={styles.emptyRankCardsContainer}>
               <IconSymbol size={48} name="gamecontroller" color="#ccc" />
               <ThemedText style={styles.emptyStateText}>No RankCards yet</ThemedText>
@@ -810,10 +826,14 @@ export default function ProfileScreen() {
                 contentContainerStyle={styles.cardsContainer}
               >
                 {userGames.map((game, index) => {
-                  // Use Riot account username for all Riot games (League, TFT, Valorant)
-                  const displayUsername = (game.name === 'League of Legends' || game.name === 'TFT' || game.name === 'Valorant') && riotAccount
-                    ? `${riotAccount.gameName}#${riotAccount.tagLine}`
-                    : user?.username || 'User';
+                  // Use appropriate account username based on game
+                  let displayUsername = user?.username || 'User';
+
+                  if (game.name === 'Valorant' && valorantAccount) {
+                    displayUsername = `${valorantAccount.gameName}#${valorantAccount.tag}`;
+                  } else if ((game.name === 'League of Legends' || game.name === 'TFT') && riotAccount) {
+                    displayUsername = `${riotAccount.gameName}#${riotAccount.tagLine}`;
+                  }
 
                   return (
                     <View
