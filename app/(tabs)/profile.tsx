@@ -1324,8 +1324,8 @@ const styles = StyleSheet.create({
     marginTop: 0,
   },
   postItem: {
-    width: (screenWidth - 2) / 3, // 3 columns, only account for 2 gaps (1px each)
-    height: (screenWidth - 2) / 3, // 1:1 aspect ratio (square)
+    width: (screenWidth - 2) / 3,
+    height: ((screenWidth - 2) / 3) * 1.25,
     backgroundColor: '#f5f5f5',
     position: 'relative',
   },
