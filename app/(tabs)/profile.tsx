@@ -69,6 +69,7 @@ export default function ProfileScreen() {
   const [enabledRankCards, setEnabledRankCards] = useState<string[]>([]);
   const [hasConsumedPreloadPosts, setHasConsumedPreloadPosts] = useState(false);
   const [hasConsumedPreloadRiot, setHasConsumedPreloadRiot] = useState(false);
+  const [showSocialsSheet, setShowSocialsSheet] = useState(false);
 
   // Enable LayoutAnimation on Android
   useEffect(() => {
@@ -597,77 +598,16 @@ export default function ProfileScreen() {
               <ThemedText style={styles.emptyBioText}>No bio added yet</ThemedText>
             )}
 
-            {/* Socials below bio */}
-            <View style={styles.socialsIconsRow}>
-              <TouchableOpacity
-                style={styles.socialLinkButton}
-                onPress={async () => {
-                  // Open Instagram link or show not configured message
-                  if (user?.instagramLink) {
-                    try {
-                      // Extract username from URL or use as-is
-                      const username = user.instagramLink.replace(/^https?:\/\/(www\.)?instagram\.com\//, '').replace(/\/$/, '');
-                      const appUrl = `instagram://user?username=${username}`;
-                      const webUrl = `https://instagram.com/${username}`;
-
-                      // Try to open in Instagram app first
-                      const supported = await Linking.canOpenURL(appUrl);
-                      if (supported) {
-                        await Linking.openURL(appUrl);
-                      } else {
-                        // Fallback to web browser if app not installed
-                        await Linking.openURL(webUrl);
-                      }
-                    } catch (error) {
-                      console.error('Error opening Instagram:', error);
-                      Alert.alert('Error', 'Failed to open Instagram');
-                    }
-                  } else {
-                    Alert.alert('Not Configured', 'Add your Instagram username in Edit Profile');
-                  }
-                }}
-                activeOpacity={0.7}
-              >
-                <View style={[styles.instagramGradient, !user?.instagramLink && styles.socialNotConfigured]}>
-                  <Image
-                    source={require('@/assets/images/instagram.png')}
-                    style={[styles.socialLinkIcon, !user?.instagramLink && styles.socialIconNotConfigured]}
-                    resizeMode="contain"
-                  />
-                </View>
-              </TouchableOpacity>
-
-              <TouchableOpacity
-                style={styles.socialLinkButton}
-                onPress={async () => {
-                  // Copy Discord username to clipboard or show not configured message
-                  if (user?.discordLink) {
-                    try {
-                      await Clipboard.setStringAsync(user.discordLink);
-                      Alert.alert(
-                        'Copied!',
-                        `Discord username "${user.discordLink}" copied to clipboard`,
-                        [{ text: 'OK' }]
-                      );
-                    } catch (error) {
-                      console.error('Error copying to clipboard:', error);
-                      Alert.alert('Error', 'Failed to copy Discord username');
-                    }
-                  } else {
-                    Alert.alert('Not Configured', 'Add your Discord username in Edit Profile');
-                  }
-                }}
-                activeOpacity={0.7}
-              >
-                <View style={[styles.discordBackground, !user?.discordLink && styles.socialNotConfigured]}>
-                  <Image
-                    source={require('@/assets/images/discord.png')}
-                    style={[styles.socialLinkIcon, !user?.discordLink && styles.socialIconNotConfigured]}
-                    resizeMode="contain"
-                  />
-                </View>
-              </TouchableOpacity>
-            </View>
+            {/* Socials button */}
+            <TouchableOpacity
+              style={styles.socialsButton}
+              onPress={() => setShowSocialsSheet(true)}
+              activeOpacity={0.7}
+            >
+              <IconSymbol size={18} name="link" color="#666" />
+              <ThemedText style={styles.socialsButtonText}>Socials</ThemedText>
+              <IconSymbol size={14} name="chevron.right" color="#999" />
+            </TouchableOpacity>
           </View>
 
           {/* Action Buttons */}
@@ -950,6 +890,131 @@ export default function ProfileScreen() {
         onClose={() => setShowNewPost(false)}
         onPostCreated={handlePostCreated}
       />
+
+      {/* Socials Bottom Sheet */}
+      <Modal
+        visible={showSocialsSheet}
+        transparent={true}
+        animationType="slide"
+        onRequestClose={() => setShowSocialsSheet(false)}
+      >
+        <TouchableOpacity
+          style={styles.modalOverlay}
+          activeOpacity={1}
+          onPress={() => setShowSocialsSheet(false)}
+        >
+          <View style={styles.bottomSheet}>
+            <TouchableOpacity activeOpacity={1}>
+              {/* Sheet Header */}
+              <View style={styles.sheetHeader}>
+                <View style={styles.sheetHandle} />
+                <ThemedText style={styles.sheetTitle}>Socials</ThemedText>
+              </View>
+
+              {/* Social Links */}
+              <View style={styles.socialLinksContainer}>
+                {/* Instagram */}
+                <TouchableOpacity
+                  style={styles.socialOption}
+                  onPress={async () => {
+                    setShowSocialsSheet(false);
+                    if (user?.instagramLink) {
+                      try {
+                        const username = user.instagramLink.replace(/^https?:\/\/(www\.)?instagram\.com\//, '').replace(/\/$/, '');
+                        const appUrl = `instagram://user?username=${username}`;
+                        const webUrl = `https://instagram.com/${username}`;
+
+                        const supported = await Linking.canOpenURL(appUrl);
+                        if (supported) {
+                          await Linking.openURL(appUrl);
+                        } else {
+                          await Linking.openURL(webUrl);
+                        }
+                      } catch (error) {
+                        console.error('Error opening Instagram:', error);
+                        Alert.alert('Error', 'Failed to open Instagram');
+                      }
+                    } else {
+                      Alert.alert('Not Configured', 'Add your Instagram username in Edit Profile');
+                    }
+                  }}
+                  activeOpacity={0.7}
+                >
+                  <View style={styles.socialOptionLeft}>
+                    <View style={[styles.instagramIconContainer, !user?.instagramLink && styles.socialNotConfigured]}>
+                      <Image
+                        source={require('@/assets/images/instagram.png')}
+                        style={styles.socialOptionIcon}
+                        resizeMode="contain"
+                      />
+                    </View>
+                    <View style={{ flex: 1 }}>
+                      <ThemedText style={styles.socialOptionTitle}>Instagram</ThemedText>
+                      <ThemedText style={styles.socialOptionSubtitle}>
+                        {user?.instagramLink
+                          ? user.instagramLink.replace(/^https?:\/\/(www\.)?instagram\.com\//, '').replace(/\/$/, '')
+                          : 'Not configured'}
+                      </ThemedText>
+                    </View>
+                  </View>
+                </TouchableOpacity>
+
+                {/* Discord */}
+                <TouchableOpacity
+                  style={styles.socialOption}
+                  onPress={async () => {
+                    setShowSocialsSheet(false);
+                    if (user?.discordLink) {
+                      try {
+                        await Clipboard.setStringAsync(user.discordLink);
+                        Alert.alert(
+                          'Copied!',
+                          `Discord username "${user.discordLink}" copied to clipboard`,
+                          [{ text: 'OK' }]
+                        );
+                      } catch (error) {
+                        console.error('Error copying to clipboard:', error);
+                        Alert.alert('Error', 'Failed to copy Discord username');
+                      }
+                    } else {
+                      Alert.alert('Not Configured', 'Add your Discord username in Edit Profile');
+                    }
+                  }}
+                  activeOpacity={0.7}
+                >
+                  <View style={styles.socialOptionLeft}>
+                    <View style={[styles.discordIconContainer, !user?.discordLink && styles.socialNotConfigured]}>
+                      <Image
+                        source={require('@/assets/images/discord.png')}
+                        style={styles.socialOptionIcon}
+                        resizeMode="contain"
+                      />
+                    </View>
+                    <View style={{ flex: 1 }}>
+                      <ThemedText style={styles.socialOptionTitle}>Discord</ThemedText>
+                      <ThemedText style={styles.socialOptionSubtitle}>
+                        {user?.discordLink || 'Not configured'}
+                      </ThemedText>
+                    </View>
+                  </View>
+                  {user?.discordLink && (
+                    <IconSymbol size={20} name="doc.on.doc" color="#999" />
+                  )}
+                </TouchableOpacity>
+              </View>
+
+              {/* Cancel Button */}
+              <TouchableOpacity
+                style={styles.cancelButton}
+                onPress={() => setShowSocialsSheet(false)}
+                activeOpacity={0.7}
+              >
+                <ThemedText style={styles.cancelButtonText}>Cancel</ThemedText>
+              </TouchableOpacity>
+            </TouchableOpacity>
+          </View>
+        </TouchableOpacity>
+      </Modal>
     </ThemedView>
   );
 }
@@ -1083,50 +1148,122 @@ const styles = StyleSheet.create({
     fontStyle: 'italic',
     marginBottom: 10,
   },
-  socialsIconsRow: {
+  socialsButton: {
     flexDirection: 'row',
-    gap: 10,
+    alignItems: 'center',
+    gap: 8,
+    paddingVertical: 10,
+    paddingHorizontal: 16,
+    backgroundColor: '#fff',
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: '#e5e5e5',
+    marginTop: 12,
   },
-  socialLinkButton: {
-    shadowColor: '#000',
-    shadowOffset: {
-      width: 0,
-      height: 1,
-    },
-    shadowOpacity: 0.08,
-    shadowRadius: 2,
-    elevation: 2,
+  socialsButtonText: {
+    flex: 1,
+    fontSize: 14,
+    fontWeight: '500',
+    color: '#333',
   },
-  instagramGradient: {
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'transparent',
+    justifyContent: 'flex-end',
+  },
+  bottomSheet: {
+    backgroundColor: '#fff',
+    borderTopLeftRadius: 20,
+    borderTopRightRadius: 20,
+    paddingBottom: 34,
+  },
+  sheetHeader: {
+    alignItems: 'center',
+    paddingTop: 12,
+    paddingBottom: 16,
+    borderBottomWidth: 1,
+    borderBottomColor: '#f0f0f0',
+  },
+  sheetHandle: {
     width: 40,
-    height: 40,
-    borderRadius: 20,
+    height: 4,
+    backgroundColor: '#ddd',
+    borderRadius: 2,
+    marginBottom: 16,
+  },
+  sheetTitle: {
+    fontSize: 17,
+    fontWeight: '600',
+    color: '#000',
+  },
+  socialLinksContainer: {
+    paddingHorizontal: 20,
+    paddingTop: 8,
+  },
+  socialOption: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingVertical: 16,
+    borderBottomWidth: 1,
+    borderBottomColor: '#f5f5f5',
+  },
+  socialOptionLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 14,
+    flex: 1,
+  },
+  instagramIconContainer: {
+    width: 48,
+    height: 48,
+    borderRadius: 24,
     backgroundColor: '#fff',
     alignItems: 'center',
     justifyContent: 'center',
-    borderWidth: 1.5,
+    borderWidth: 2,
     borderColor: '#E4405F',
   },
-  discordBackground: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
+  discordIconContainer: {
+    width: 48,
+    height: 48,
+    borderRadius: 24,
     backgroundColor: '#fff',
     alignItems: 'center',
     justifyContent: 'center',
-    borderWidth: 1.5,
+    borderWidth: 2,
     borderColor: '#5865F2',
   },
-  socialLinkIcon: {
-    width: 22,
-    height: 22,
+  socialOptionIcon: {
+    width: 26,
+    height: 26,
+  },
+  socialOptionTitle: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#000',
+    marginBottom: 2,
+  },
+  socialOptionSubtitle: {
+    fontSize: 13,
+    color: '#666',
   },
   socialNotConfigured: {
     borderColor: '#e5e5e5',
     opacity: 0.5,
   },
-  socialIconNotConfigured: {
-    opacity: 0.4,
+  cancelButton: {
+    marginHorizontal: 20,
+    marginTop: 8,
+    paddingVertical: 14,
+    backgroundColor: '#f5f5f5',
+    borderRadius: 10,
+    alignItems: 'center',
+  },
+  cancelButtonText: {
+    fontSize: 15,
+    fontWeight: '600',
+    color: '#666',
   },
   actionButtons: {
     flexDirection: 'row',
