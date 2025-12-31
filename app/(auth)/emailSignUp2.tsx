@@ -18,7 +18,7 @@ export default function EmailSignUpStep2() {
   const router = useRouter();
   const { username } = useLocalSearchParams();
   const [dateOfBirth, setDateOfBirth] = useState<Date | null>(null);
-  const [showDatePicker, setShowDatePicker] = useState(false);
+  const [showDatePicker, setShowDatePicker] = useState(true);
 
   const onDateChange = (event: any, selectedDate?: Date) => {
     setShowDatePicker(Platform.OS === 'ios');
@@ -92,25 +92,26 @@ export default function EmailSignUpStep2() {
             <View style={styles.form}>
               <View style={styles.inputContainer}>
                 <ThemedText style={styles.label}>Date of Birth *</ThemedText>
-                <TouchableOpacity
-                  style={styles.input}
-                  onPress={() => setShowDatePicker(true)}
-                >
+                <View style={styles.input}>
                   <ThemedText style={[styles.dateText, !dateOfBirth && styles.placeholderText]}>
                     {dateOfBirth ? formatDate(dateOfBirth) : 'Select your date of birth'}
                   </ThemedText>
-                </TouchableOpacity>
+                </View>
               </View>
 
               {showDatePicker && (
-                <DateTimePicker
-                  value={dateOfBirth || new Date(2000, 0, 1)}
-                  mode="date"
-                  display={Platform.OS === 'ios' ? 'spinner' : 'default'}
-                  onChange={onDateChange}
-                  maximumDate={new Date()}
-                  minimumDate={new Date(1900, 0, 1)}
-                />
+                <View style={styles.datePickerContainer}>
+                  <DateTimePicker
+                    value={dateOfBirth || new Date(2000, 0, 1)}
+                    mode="date"
+                    display={Platform.OS === 'ios' ? 'spinner' : 'default'}
+                    onChange={onDateChange}
+                    maximumDate={new Date()}
+                    minimumDate={new Date(1900, 0, 1)}
+                    textColor="#000"
+                    style={styles.datePicker}
+                  />
+                </View>
               )}
 
               <TouchableOpacity
@@ -208,5 +209,19 @@ const styles = StyleSheet.create({
   },
   placeholderText: {
     color: '#999',
+  },
+  datePickerContainer: {
+    backgroundColor: '#f5f5f5',
+    borderRadius: 12,
+    marginBottom: 16,
+    marginTop: 8,
+    overflow: 'hidden',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  datePicker: {
+    height: 200,
+    width: '100%',
+    alignSelf: 'center',
   },
 });

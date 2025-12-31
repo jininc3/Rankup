@@ -29,6 +29,7 @@ interface Post {
   createdAt: any;
   likes: number;
   commentsCount?: number;
+  duration?: number; // Video duration in seconds
 }
 
 interface NewPostProps {
@@ -152,6 +153,7 @@ export default function NewPost({ visible, onClose, onPostCreated }: NewPostProp
       const uploadedMediaUrls: string[] = [];
       const mediaTypes: string[] = [];
       let thumbnailUrl: string | undefined;
+      let videoDuration: number | undefined;
 
       for (let i = 0; i < selectedMedia.length; i++) {
         const media = selectedMedia[i];
@@ -166,8 +168,13 @@ export default function NewPost({ visible, onClose, onPostCreated }: NewPostProp
         const response = await fetch(media.uri);
         const blob = await response.blob();
 
-        // Generate thumbnail for first video
+        // Generate thumbnail for first video and extract duration
         if (media.type === 'video' && i === 0) {
+          // Extract video duration (in milliseconds, convert to seconds)
+          if (media.duration) {
+            videoDuration = Math.round(media.duration / 1000);
+          }
+
           try {
             const { uri } = await VideoThumbnails.getThumbnailAsync(
               media.uri,
@@ -212,6 +219,9 @@ export default function NewPost({ visible, onClose, onPostCreated }: NewPostProp
       // Only add optional fields if they have values
       if (thumbnailUrl) {
         postData.thumbnailUrl = thumbnailUrl;
+      }
+      if (videoDuration) {
+        postData.duration = videoDuration;
       }
       if (caption && caption.trim()) {
         postData.caption = caption.trim();

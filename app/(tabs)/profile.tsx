@@ -42,7 +42,16 @@ interface Post {
   createdAt: Timestamp;
   likes: number;
   commentsCount?: number;
+  duration?: number; // Video duration in seconds
 }
+
+// Helper function to format video duration
+const formatDuration = (seconds?: number): string => {
+  if (!seconds) return '0:00';
+  const mins = Math.floor(seconds / 60);
+  const secs = Math.floor(seconds % 60);
+  return `${mins}:${secs.toString().padStart(2, '0')}`;
+};
 
 export default function ProfileScreen() {
   const router = useRouter();
@@ -685,8 +694,10 @@ export default function ProfileScreen() {
                     resizeMode="cover"
                   />
                   {post.mediaType === 'video' && (
-                    <View style={styles.videoIndicator}>
-                      <IconSymbol size={24} name="play.fill" color="#fff" />
+                    <View style={styles.videoDuration}>
+                      <ThemedText style={styles.videoDurationText}>
+                        {formatDuration(post.duration)}
+                      </ThemedText>
                     </View>
                   )}
                   {post.mediaUrls && post.mediaUrls.length > 1 && (
@@ -1480,6 +1491,21 @@ const styles = StyleSheet.create({
     height: 32,
     alignItems: 'center',
     justifyContent: 'center',
+  },
+  videoDuration: {
+    position: 'absolute',
+    bottom: 8,
+    right: 8,
+    backgroundColor: 'rgba(0, 0, 0, 0.75)',
+    borderRadius: 4,
+    paddingHorizontal: 6,
+    paddingVertical: 3,
+  },
+  videoDurationText: {
+    fontSize: 11,
+    fontWeight: '600',
+    color: '#fff',
+    letterSpacing: 0.2,
   },
   multiplePostsIndicator: {
     position: 'absolute',
