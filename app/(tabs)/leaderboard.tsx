@@ -3,8 +3,12 @@ import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { IconSymbol } from '@/components/ui/icon-symbol';
 import { useRouter } from 'expo-router';
-import { ScrollView, StyleSheet, TouchableOpacity, View, Image } from 'react-native';
+import { ScrollView, StyleSheet, TouchableOpacity, View, Image, ActivityIndicator } from 'react-native';
 import PartyCards from '@/app/components/partyCards';
+import { useState, useEffect } from 'react';
+import { useAuth } from '@/contexts/AuthContext';
+import { db } from '@/config/firebase';
+import { collection, query, where, getDocs, onSnapshot } from 'firebase/firestore';
 
 // Game logo mapping
 const GAME_LOGOS: { [key: string]: any } = {
@@ -15,21 +19,59 @@ const GAME_LOGOS: { [key: string]: any } = {
   'Overwatch 2': require('@/assets/images/valorant.png'), // placeholder
 };
 
-// User's rank summary data
-const userRankSummary = leaderboards
-  .filter(lb => lb.userRank !== null)
-  .map(lb => ({
-    leaderboardName: lb.name,
-    rank: lb.userRank!,
-    totalMembers: lb.members,
-    game: lb.game,
-  }));
-
-// List of all available leaderboards with player data
-const leaderboardsList = leaderboards;
-
 export default function LeaderboardScreen() {
   const router = useRouter();
+  const { user } = useAuth();
+  const [parties, setParties] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  // Fetch parties from Firestore
+  useEffect(() => {
+    if (!user?.id) {
+      setLoading(false);
+      return;
+    }
+
+    // Set up real-time listener for parties where user is a member
+    const partiesRef = collection(db, 'parties');
+    const partiesQuery = query(partiesRef, where('members', 'array-contains', user.id));
+
+    const unsubscribe = onSnapshot(partiesQuery, (snapshot) => {
+      const fetchedParties = snapshot.docs.map((doc) => {
+        const data = doc.data();
+        return {
+          id: data.partyId,
+          name: data.partyName,
+          game: data.game,
+          members: data.members?.length || 0,
+          description: `Created on ${data.startDate}`,
+          icon: data.game === 'Valorant' ? '🎯' : data.game === 'League of Legends' ? '💎' : '🎮',
+          userRank: null, // Will be calculated based on game stats
+          isJoined: true,
+          players: [], // Will be populated with member details
+          startDate: data.startDate,
+          endDate: data.endDate,
+          partyId: data.partyId,
+        };
+      });
+
+      setParties(fetchedParties);
+      setLoading(false);
+    });
+
+    return () => unsubscribe();
+  }, [user?.id]);
+
+  // User's rank summary data
+  const userRankSummary = parties
+    .filter(lb => lb.userRank !== null)
+    .map(lb => ({
+      leaderboardName: lb.name,
+      partyId: lb.partyId,
+      rank: lb.userRank!,
+      totalMembers: lb.members,
+      game: lb.game,
+    }));
 
   const getRankColor = (rank: number) => {
     if (rank === 1) return '#FFD700'; // Gold
@@ -39,15 +81,30 @@ export default function LeaderboardScreen() {
   };
 
   const handleLeaderboardPress = (leaderboard: any) => {
+    console.log('Navigating to party:', leaderboard.name);
+    console.log('Party ID:', leaderboard.partyId);
+    console.log('Full leaderboard data:', leaderboard);
+
     const params = {
       name: leaderboard.name,
       icon: leaderboard.icon,
       game: leaderboard.game,
       members: leaderboard.members.toString(),
       players: JSON.stringify(leaderboard.players),
+      partyId: leaderboard.partyId,
+      startDate: leaderboard.startDate,
+      endDate: leaderboard.endDate,
     };
 
-    router.push({ pathname: '/leaderboardPages/leaderboardDetail', params });
+    console.log('Navigation params:', params);
+
+    // Route to game-specific detail page
+    const pathname = leaderboard.game === 'Valorant'
+      ? '/leaderboardPages/valorantLeaderboardDetails'
+      : '/leaderboardPages/leagueLeaderboardDetails';
+
+    console.log('Navigating to:', pathname);
+    router.push({ pathname, params });
   };
 
   return (
@@ -55,9 +112,21 @@ export default function LeaderboardScreen() {
       {/* Header */}
       <View style={styles.header}>
         <ThemedText style={styles.headerTitle}>Leaderboards</ThemedText>
+        <TouchableOpacity
+          style={styles.joinButton}
+          onPress={() => router.push('/leaderboardPages/joinParty')}
+        >
+          <IconSymbol size={20} name="ticket" color="#000" />
+        </TouchableOpacity>
       </View>
 
-      <ScrollView style={styles.scrollView} showsVerticalScrollIndicator={false}>
+      {loading ? (
+        <View style={styles.loadingContainer}>
+          <ActivityIndicator size="large" color="#000" />
+          <ThemedText style={styles.loadingText}>Loading parties...</ThemedText>
+        </View>
+      ) : (
+        <ScrollView style={styles.scrollView} showsVerticalScrollIndicator={false}>
         {/* Your Rankings Summary */}
         <View style={styles.summarySection}>
           <ThemedText style={styles.sectionTitle}>Your Rankings</ThemedText>
@@ -69,14 +138,6 @@ export default function LeaderboardScreen() {
             {userRankSummary.map((item, index) => (
               <View key={index} style={styles.summaryCard}>
                 <View style={styles.summaryCardHeader}>
-                  <View style={styles.summaryCardTitleSection}>
-                    <ThemedText style={styles.summaryLeaderboardName}>
-                      {item.leaderboardName}
-                    </ThemedText>
-                    <ThemedText style={styles.summaryMembers}>
-                      of {item.totalMembers} members
-                    </ThemedText>
-                  </View>
                   <View style={styles.summaryIconContainer}>
                     <Image
                       source={GAME_LOGOS[item.game] || GAME_LOGOS['Valorant']}
@@ -85,9 +146,13 @@ export default function LeaderboardScreen() {
                     />
                   </View>
                 </View>
-                <View style={styles.summaryRankSection}>
-                  <ThemedText style={styles.summaryRankLabel}>Your Rank</ThemedText>
-                  <ThemedText style={styles.summaryRankValue}>#{item.rank}</ThemedText>
+                <View style={styles.summaryCardContent}>
+                  <ThemedText style={styles.summaryPartyId}>
+                    {item.partyId}
+                  </ThemedText>
+                  <ThemedText style={styles.summaryRankValue}>
+                    #{item.rank}/{item.totalMembers}
+                  </ThemedText>
                 </View>
               </View>
             ))}
@@ -97,23 +162,33 @@ export default function LeaderboardScreen() {
         {/* All Leaderboards */}
         <View style={styles.leaderboardsSection}>
           <View style={styles.sectionHeader}>
-            <ThemedText style={styles.sectionTitle}>All Leaderboards</ThemedText>
-            <TouchableOpacity>
+            <ThemedText style={styles.sectionTitle}>Your Parties</ThemedText>
+            <TouchableOpacity onPress={() => router.push('/leaderboardPages/addParty')}>
               <IconSymbol size={20} name="plus.circle.fill" color="#000" />
             </TouchableOpacity>
           </View>
 
-          {leaderboardsList.map((leaderboard) => (
-            <PartyCards
-              key={leaderboard.id}
-              leaderboard={leaderboard}
-              onPress={handleLeaderboardPress}
-            />
-          ))}
+          {parties.length > 0 ? (
+            parties.map((leaderboard) => (
+              <PartyCards
+                key={leaderboard.id}
+                leaderboard={leaderboard}
+                onPress={handleLeaderboardPress}
+              />
+            ))
+          ) : (
+            <View style={styles.emptyState}>
+              <ThemedText style={styles.emptyStateText}>No parties yet</ThemedText>
+              <ThemedText style={styles.emptyStateSubtext}>
+                Create a new party or join one with an invite code
+              </ThemedText>
+            </View>
+          )}
         </View>
 
         <View style={styles.bottomSpacer} />
       </ScrollView>
+      )}
     </ThemedView>
   );
 }
@@ -138,6 +213,19 @@ const styles = StyleSheet.create({
     fontSize: 20,
     fontWeight: '700',
     color: '#000',
+  },
+  joinButton: {
+    padding: 4,
+  },
+  loadingContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    gap: 12,
+  },
+  loadingText: {
+    fontSize: 14,
+    color: '#666',
   },
   headerActions: {
     flexDirection: 'row',
@@ -170,20 +258,22 @@ const styles = StyleSheet.create({
     backgroundColor: '#fff',
     padding: 12,
     borderRadius: 12,
-    minWidth: 160,
-    height: 110,
+    width: 140,
+    height: 140,
     borderWidth: 1,
     borderColor: '#e5e5e5',
   },
   summaryCardHeader: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'flex-start',
-    marginBottom: 10,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: 12,
   },
-  summaryCardTitleSection: {
+  summaryCardContent: {
     flex: 1,
-    marginRight: 8,
+    justifyContent: 'center',
+    alignItems: 'center',
+    gap: 8,
   },
   summaryIconContainer: {
     width: 36,
@@ -197,48 +287,18 @@ const styles = StyleSheet.create({
     width: 28,
     height: 28,
   },
-  summaryRankBadge: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginBottom: 8,
-  },
-  summaryRankText: {
+  summaryPartyId: {
     fontSize: 16,
     fontWeight: '700',
     color: '#000',
-  },
-  summaryRankSection: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  summaryRankLabel: {
-    fontSize: 9,
-    color: '#666',
-    letterSpacing: 0.8,
-    fontWeight: '600',
-    textTransform: 'uppercase',
-    marginBottom: 2,
+    letterSpacing: -0.3,
+    textAlign: 'center',
   },
   summaryRankValue: {
-    fontSize: 24,
+    fontSize: 20,
     fontWeight: '700',
     color: '#000',
-  },
-  summaryLeaderboardName: {
-    fontSize: 13,
-    fontWeight: '700',
-    color: '#000',
-    letterSpacing: -0.2,
-    marginBottom: 4,
-  },
-  summaryMembers: {
-    fontSize: 10,
-    color: '#666',
-    fontWeight: '400',
+    textAlign: 'center',
   },
   leaderboardsSection: {
     paddingHorizontal: 20,
@@ -249,6 +309,21 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     alignItems: 'center',
     marginBottom: 12,
+  },
+  emptyState: {
+    paddingVertical: 40,
+    alignItems: 'center',
+  },
+  emptyStateText: {
+    fontSize: 15,
+    color: '#666',
+    marginBottom: 4,
+    textAlign: 'center',
+  },
+  emptyStateSubtext: {
+    fontSize: 13,
+    color: '#999',
+    textAlign: 'center',
   },
   bottomSpacer: {
     height: 40,
