@@ -769,18 +769,53 @@ export default function ProfileScreen() {
         {/* RankCards Tab Content */}
         <View style={[styles.section, { display: activeMainTab === 'rankCards' ? 'flex' : 'none' }]}>
           {!riotAccount && !valorantAccount ? (
-            // Empty state for new users without any gaming account
-            <View style={styles.emptyRankCardsContainer}>
-              <IconSymbol size={48} name="gamecontroller" color="#ccc" />
-              <ThemedText style={styles.emptyStateText}>No RankCards yet</ThemedText>
-              <ThemedText style={styles.emptyStateSubtext}>Connect your gaming accounts to display your ranks</ThemedText>
-              <TouchableOpacity
-                style={styles.addRankCardButton}
-                onPress={() => router.push('/profilePages/newRankCard')}
+            // Empty state for new users without any gaming account - show add icon and add card
+            <>
+              {/* Add RankCard Icon */}
+              <ScrollView
+                horizontal
+                showsHorizontalScrollIndicator={false}
+                style={styles.gameIconScroller}
+                contentContainerStyle={styles.gameIconScrollerContent}
               >
-                <ThemedText style={styles.addRankCardText}>Add a RankCard</ThemedText>
-              </TouchableOpacity>
-            </View>
+                <TouchableOpacity
+                  style={styles.gameIconContainer}
+                  onPress={() => router.push('/profilePages/newRankCard')}
+                  activeOpacity={0.7}
+                >
+                  <View style={[styles.gameIconCircle, styles.gameIconCircleActive]}>
+                    <IconSymbol
+                      size={24}
+                      name="plus.circle.fill"
+                      color="#000"
+                    />
+                  </View>
+                </TouchableOpacity>
+              </ScrollView>
+
+              {/* Add Rank Card */}
+              <ScrollView
+                horizontal
+                pagingEnabled
+                showsHorizontalScrollIndicator={false}
+                scrollEnabled={false}
+                snapToInterval={CARD_WIDTH + CARD_GAP}
+                decelerationRate="fast"
+                contentContainerStyle={styles.cardsContainer}
+              >
+                <TouchableOpacity
+                  style={[styles.cardWrapper, styles.addRankCardCard, { width: CARD_WIDTH }]}
+                  onPress={() => router.push('/profilePages/newRankCard')}
+                  activeOpacity={0.7}
+                >
+                  <View style={styles.addRankCardCardContent}>
+                    <IconSymbol size={48} name="plus.circle.fill" color="#fff" />
+                    <ThemedText style={styles.addRankCardCardText}>Add Rank Card</ThemedText>
+                    <ThemedText style={styles.addRankCardCardSubtext}>Connect another game</ThemedText>
+                  </View>
+                </TouchableOpacity>
+              </ScrollView>
+            </>
           ) : (
             <>
               {/* Game Icon Selector */}
@@ -1338,13 +1373,6 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.3,
     shadowRadius: 4.65,
     elevation: 8,
-  },
-  emptyRankCardsContainer: {
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingVertical: 80,
-    paddingHorizontal: 20,
-    gap: 12,
   },
   addRankCardButton: {
     marginTop: 16,

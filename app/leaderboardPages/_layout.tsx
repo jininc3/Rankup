@@ -16,13 +16,7 @@ export default function LeaderboardPagesLayout() {
         }}
       />
       <Stack.Screen
-        name="valorantLeaderboardDetails"
-        options={{
-          headerShown: false,
-        }}
-      />
-      <Stack.Screen
-        name="leagueLeaderboardDetails"
+        name="leaderboardDetail"
         options={{
           headerShown: false,
         }}

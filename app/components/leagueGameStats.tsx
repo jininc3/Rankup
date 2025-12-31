@@ -36,6 +36,8 @@ export default function LeagueGameStatsScreen() {
 
   // Parse the game data from params
   const game = params.game ? JSON.parse(params.game as string) : null;
+  const viewedUserId = params.userId as string | undefined; // If viewing another user's stats
+  const isOwnProfile = !viewedUserId || viewedUserId === user?.id;
 
   // State for Riot data (League of Legends)
   const [riotStats, setRiotStats] = useState<RiotStats | null>(null);
@@ -48,10 +50,11 @@ export default function LeagueGameStatsScreen() {
 
   // Load cached data from Firestore on mount
   useEffect(() => {
-    if (game && user?.id && !cacheLoaded) {
+    const targetUserId = viewedUserId || user?.id;
+    if (game && targetUserId && !cacheLoaded) {
       loadCachedData();
     }
-  }, [game?.name, user?.id]);
+  }, [game?.name, user?.id, viewedUserId]);
 
   // Helper function to check if cache is expired (> 6 hours)
   const isCacheExpired = (lastUpdated: any): boolean => {
@@ -67,11 +70,12 @@ export default function LeagueGameStatsScreen() {
 
   // Load cached stats from Firestore
   const loadCachedData = async () => {
-    if (!user?.id) return;
+    const targetUserId = viewedUserId || user?.id;
+    if (!targetUserId) return;
 
     try {
-      console.log('Loading cached League stats from Firestore...');
-      const userRef = doc(db, 'users', user.id);
+      console.log(`Loading cached League stats from Firestore for user: ${targetUserId}...`);
+      const userRef = doc(db, 'users', targetUserId);
       const userDoc = await getDoc(userRef);
 
       if (userDoc.exists()) {
@@ -90,19 +94,35 @@ export default function LeagueGameStatsScreen() {
           setRiotStats(data.riotStats);
           setCacheLoaded(true);
 
-          // Check if cache is expired and fetch if needed
-          if (isCacheExpired(data.riotStats.lastUpdated)) {
-            console.log('League cache expired, fetching fresh data...');
-            fetchLeagueData();
+          // Only auto-fetch if viewing own profile
+          if (isOwnProfile) {
+            // Check if cache is expired and fetch if needed
+            if (isCacheExpired(data.riotStats.lastUpdated)) {
+              console.log('League cache expired, fetching fresh data...');
+              fetchLeagueData();
+            } else {
+              console.log('League cache is still valid');
+              setHasFetched(true);
+            }
           } else {
-            console.log('League cache is still valid');
+            // Viewing another user - just show cached data
+            console.log('Viewing another user - showing cached data only');
             setHasFetched(true);
           }
         } else {
-          // No cached data, fetch for the first time
-          console.log('No cached data found, fetching...');
-          setCacheLoaded(true);
-          fetchLeagueData();
+          // No cached data
+          if (isOwnProfile) {
+            // Fetch for own profile
+            console.log('No cached data found, fetching...');
+            setCacheLoaded(true);
+            fetchLeagueData();
+          } else {
+            // No data for other user
+            console.log('No stats available for this user');
+            setError('This user has not linked their League account or has no stats available.');
+            setCacheLoaded(true);
+            setHasFetched(true);
+          }
         }
       }
     } catch (error) {
@@ -176,11 +196,13 @@ export default function LeagueGameStatsScreen() {
       style={styles.container}
       showsVerticalScrollIndicator={false}
       refreshControl={
-        <RefreshControl
-          refreshing={refreshing}
-          onRefresh={onRefresh}
-          tintColor="#000"
-        />
+        isOwnProfile ? (
+          <RefreshControl
+            refreshing={refreshing}
+            onRefresh={onRefresh}
+            tintColor="#000"
+          />
+        ) : undefined
       }
     >
       {/* Hero Section with Navy Blue Background */}
@@ -237,12 +259,14 @@ export default function LeagueGameStatsScreen() {
         ) : error ? (
           <View style={styles.errorContainer}>
             <ThemedText style={styles.errorText}>{error}</ThemedText>
-            <TouchableOpacity
-              style={styles.retryButton}
-              onPress={fetchLeagueData}
-            >
-              <ThemedText style={styles.retryButtonText}>Retry</ThemedText>
-            </TouchableOpacity>
+            {isOwnProfile && (
+              <TouchableOpacity
+                style={styles.retryButton}
+                onPress={fetchLeagueData}
+              >
+                <ThemedText style={styles.retryButtonText}>Retry</ThemedText>
+              </TouchableOpacity>
+            )}
           </View>
         ) : riotStats ? (
           // Display League of Legends stats

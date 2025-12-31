@@ -19,6 +19,8 @@ interface Game {
 interface ValorantRankCardProps {
   game: Game;
   username: string;
+  viewOnly?: boolean; // If true, card is not clickable (for viewing other users)
+  userId?: string; // ID of the user whose stats to view (for viewing other users)
 }
 
 // Valorant rank icon mapping - Includes subdivision ranks
@@ -62,14 +64,16 @@ const VALORANT_RANK_ICONS: { [key: string]: any } = {
   immortal3: require('@/assets/images/valorantranks/immortal3.png'),
 };
 
-export default function ValorantRankCard({ game, username }: ValorantRankCardProps) {
+export default function ValorantRankCard({ game, username, viewOnly = false, userId }: ValorantRankCardProps) {
   const router = useRouter();
 
   const handlePress = () => {
+    if (viewOnly) return; // Don't navigate if view only
     router.push({
       pathname: '/components/valorantGameStats',
       params: {
         game: JSON.stringify(game),
+        ...(userId && { userId }), // Only include userId if provided
       },
     });
   };
@@ -96,11 +100,12 @@ export default function ValorantRankCard({ game, username }: ValorantRankCardPro
     return VALORANT_RANK_ICONS[tier] || VALORANT_RANK_ICONS.unranked;
   };
 
+  const CardWrapper = viewOnly ? View : TouchableOpacity;
+
   return (
-    <TouchableOpacity
+    <CardWrapper
       style={styles.rankCard}
-      onPress={handlePress}
-      activeOpacity={0.9}
+      {...(!viewOnly && { onPress: handlePress, activeOpacity: 0.9 })}
     >
       <View style={styles.cardBackground}>
         {/* Valorant logo watermark */}
@@ -144,7 +149,7 @@ export default function ValorantRankCard({ game, username }: ValorantRankCardPro
           </View>
         </View>
       </View>
-    </TouchableOpacity>
+    </CardWrapper>
   );
 }
 

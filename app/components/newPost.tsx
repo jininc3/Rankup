@@ -50,7 +50,7 @@ export default function NewPost({ visible, onClose, onPostCreated }: NewPostProp
   const [currentMediaIndex, setCurrentMediaIndex] = useState(0);
   const [caption, setCaption] = useState('');
   const [selectedPostGame, setSelectedPostGame] = useState<string | null>(null);
-  const [showGamePicker, setShowGamePicker] = useState(false);
+  const [showGameDropdown, setShowGameDropdown] = useState(false);
   const [taggedUsers, setTaggedUsers] = useState<TaggedUser[]>([]);
   const [showTagUsersModal, setShowTagUsersModal] = useState(false);
   const postPreviewScrollRef = useRef<ScrollView>(null);
@@ -319,7 +319,7 @@ export default function NewPost({ visible, onClose, onPostCreated }: NewPostProp
     setCaption('');
     setSelectedPostGame(null);
     setTaggedUsers([]);
-    setShowGamePicker(false);
+    setShowGameDropdown(false);
     setShowTagUsersModal(false);
     onClose();
   };
@@ -481,31 +481,63 @@ export default function NewPost({ visible, onClose, onPostCreated }: NewPostProp
             </View>
 
             {/* Tag Game Button */}
-            <TouchableOpacity
-              style={styles.postPreviewOptionButton}
-              onPress={() => {
-                console.log('Tag Game button pressed');
-                setShowGamePicker(true);
-              }}
-              activeOpacity={0.7}
-            >
-              <View style={styles.postPreviewOptionLeft}>
-                <IconSymbol size={20} name="gamecontroller.fill" color="#000" />
-                <ThemedText style={styles.postPreviewOptionText}>
-                  {selectedPostGame
-                    ? availableGames.find(g => g.id === selectedPostGame)?.name || 'Tag Game'
-                    : 'Tag Game'}
-                </ThemedText>
-              </View>
-              <View style={styles.postPreviewOptionRight}>
-                {selectedPostGame && (
-                  <ThemedText style={styles.selectedGameIcon}>
-                    {availableGames.find(g => g.id === selectedPostGame)?.icon}
+            <View>
+              <TouchableOpacity
+                style={styles.postPreviewOptionButton}
+                onPress={() => {
+                  console.log('Tag Game button pressed');
+                  setShowGameDropdown(!showGameDropdown);
+                }}
+                activeOpacity={0.7}
+              >
+                <View style={styles.postPreviewOptionLeft}>
+                  <IconSymbol size={20} name="gamecontroller.fill" color="#000" />
+                  <ThemedText style={styles.postPreviewOptionText}>
+                    {selectedPostGame
+                      ? availableGames.find(g => g.id === selectedPostGame)?.name || 'Tag Game'
+                      : 'Tag Game'}
                   </ThemedText>
-                )}
-                <IconSymbol size={18} name="chevron.right" color="#999" />
-              </View>
-            </TouchableOpacity>
+                </View>
+                <View style={styles.postPreviewOptionRight}>
+                  <IconSymbol
+                    size={18}
+                    name={showGameDropdown ? "chevron.up" : "chevron.down"}
+                    color="#999"
+                  />
+                </View>
+              </TouchableOpacity>
+
+              {/* Game Dropdown */}
+              {showGameDropdown && (
+                <View style={styles.gameDropdown}>
+                  {availableGames.map((game) => (
+                    <TouchableOpacity
+                      key={game.id}
+                      style={[
+                        styles.gameDropdownItem,
+                        selectedPostGame === game.id && styles.gameDropdownItemSelected
+                      ]}
+                      onPress={() => {
+                        setSelectedPostGame(game.id);
+                        setShowGameDropdown(false);
+                      }}
+                    >
+                      <View style={styles.gameDropdownItemLeft}>
+                        <Image
+                          source={game.image}
+                          style={styles.gameDropdownItemImage}
+                          resizeMode="contain"
+                        />
+                        <ThemedText style={styles.gameDropdownItemName}>{game.name}</ThemedText>
+                      </View>
+                      {selectedPostGame === game.id && (
+                        <IconSymbol size={20} name="checkmark" color="#007AFF" />
+                      )}
+                    </TouchableOpacity>
+                  ))}
+                </View>
+              )}
+            </View>
 
             {/* Tag People Button */}
             <TouchableOpacity
@@ -532,82 +564,6 @@ export default function NewPost({ visible, onClose, onPostCreated }: NewPostProp
               </View>
             </TouchableOpacity>
           </ScrollView>
-
-          {/* Game Picker Modal - Nested inside Post Preview Modal */}
-          <Modal
-            visible={showGamePicker}
-            animationType="slide"
-            presentationStyle="pageSheet"
-            transparent={false}
-            onRequestClose={() => setShowGamePicker(false)}
-          >
-            <View style={styles.gamePickerContainer}>
-              {/* Header */}
-              <View style={styles.gamePickerHeader}>
-                <TouchableOpacity
-                  style={styles.gamePickerBackButton}
-                  onPress={() => setShowGamePicker(false)}
-                >
-                  <ThemedText style={styles.gamePickerCancelText}>Cancel</ThemedText>
-                </TouchableOpacity>
-                <ThemedText style={styles.gamePickerTitle}>Select Game</ThemedText>
-                <TouchableOpacity
-                  style={styles.gamePickerDoneButton}
-                  onPress={() => setShowGamePicker(false)}
-                >
-                  <ThemedText style={styles.gamePickerDoneText}>Done</ThemedText>
-                </TouchableOpacity>
-              </View>
-
-              {/* Game List */}
-              <ScrollView style={styles.gamePickerContent} showsVerticalScrollIndicator={false}>
-                {/* None option */}
-                <TouchableOpacity
-                  style={[
-                    styles.gamePickerItem,
-                    selectedPostGame === null && styles.gamePickerItemSelected
-                  ]}
-                  onPress={() => setSelectedPostGame(null)}
-                >
-                  <View style={styles.gamePickerItemLeft}>
-                    <ThemedText style={styles.gamePickerItemIcon}>❌</ThemedText>
-                    <ThemedText style={styles.gamePickerItemName}>None</ThemedText>
-                  </View>
-                  {selectedPostGame === null && (
-                    <IconSymbol size={24} name="checkmark" color="#007AFF" />
-                  )}
-                </TouchableOpacity>
-
-                {/* Game options */}
-                {availableGames.map((game) => (
-                  <TouchableOpacity
-                    key={game.id}
-                    style={[
-                      styles.gamePickerItem,
-                      selectedPostGame === game.id && styles.gamePickerItemSelected
-                    ]}
-                    onPress={() => setSelectedPostGame(game.id)}
-                  >
-                    <View style={styles.gamePickerItemLeft}>
-                      {game.image ? (
-                        <Image
-                          source={game.image}
-                          style={styles.gamePickerItemImage}
-                          resizeMode="contain"
-                        />
-                      ) : (
-                        <ThemedText style={styles.gamePickerItemIcon}>{game.icon}</ThemedText>
-                      )}
-                      <ThemedText style={styles.gamePickerItemName}>{game.name}</ThemedText>
-                    </View>
-                    {selectedPostGame === game.id && (
-                      <IconSymbol size={24} name="checkmark" color="#007AFF" />
-                    )}
-                  </TouchableOpacity>
-                ))}
-              </ScrollView>
-            </View>
-          </Modal>
 
           {/* Tag Users Modal - Nested inside Post Preview Modal */}
           <TagUsersModal
@@ -848,72 +804,36 @@ const styles = StyleSheet.create({
     color: '#666',
     marginRight: 8,
   },
-  gamePickerContainer: {
-    flex: 1,
+  gameDropdown: {
     backgroundColor: '#fff',
+    borderTopWidth: 1,
+    borderTopColor: '#e5e5e5',
   },
-  gamePickerHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    paddingHorizontal: 16,
-    paddingTop: 16,
-    paddingBottom: 16,
-    borderBottomWidth: 1,
-    borderBottomColor: '#e5e5e5',
-  },
-  gamePickerBackButton: {
-    padding: 8,
-  },
-  gamePickerCancelText: {
-    fontSize: 17,
-    color: '#007AFF',
-  },
-  gamePickerTitle: {
-    fontSize: 17,
-    fontWeight: '600',
-    color: '#000',
-  },
-  gamePickerDoneButton: {
-    padding: 8,
-  },
-  gamePickerDoneText: {
-    fontSize: 17,
-    fontWeight: '600',
-    color: '#007AFF',
-  },
-  gamePickerContent: {
-    flex: 1,
-    overflow: 'visible',
-  },
-  gamePickerItem: {
+  gameDropdownItem: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
     paddingHorizontal: 16,
-    paddingVertical: 10,
+    paddingVertical: 12,
     borderBottomWidth: 1,
     borderBottomColor: '#f0f0f0',
-    overflow: 'visible',
   },
-  gamePickerItemSelected: {
+  gameDropdownItemSelected: {
     backgroundColor: '#f8f9fa',
   },
-  gamePickerItemLeft: {
+  gameDropdownItemLeft: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 12,
   },
-  gamePickerItemIcon: {
-    fontSize: 28,
-    lineHeight: 36,
+  gameDropdownItemIcon: {
+    fontSize: 24,
   },
-  gamePickerItemImage: {
-    height: 32,
-    width: 100,
-    marginRight: 4,
+  gameDropdownItemImage: {
+    height: 28,
+    width: 90,
   },
-  gamePickerItemName: {
+  gameDropdownItemName: {
     fontSize: 14,
     color: '#000',
   },

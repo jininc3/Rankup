@@ -19,6 +19,8 @@ interface Game {
 interface LeagueRankCardProps {
   game: Game;
   username: string;
+  viewOnly?: boolean; // If true, card is not clickable (for viewing other users)
+  userId?: string; // ID of the user whose stats to view (for viewing other users)
 }
 
 // League of Legends rank icon mapping
@@ -36,14 +38,16 @@ const LEAGUE_RANK_ICONS: { [key: string]: any } = {
   unranked: require('@/assets/images/leagueranks/unranked.png'),
 };
 
-export default function LeagueRankCard({ game, username }: LeagueRankCardProps) {
+export default function LeagueRankCard({ game, username, viewOnly = false, userId }: LeagueRankCardProps) {
   const router = useRouter();
 
   const handlePress = () => {
+    if (viewOnly) return; // Don't navigate if view only
     router.push({
       pathname: '/components/leagueGameStats',
       params: {
         game: JSON.stringify(game),
+        ...(userId && { userId }), // Only include userId if provided
       },
     });
   };
@@ -56,11 +60,12 @@ export default function LeagueRankCard({ game, username }: LeagueRankCardProps) 
     return LEAGUE_RANK_ICONS[tier] || LEAGUE_RANK_ICONS.unranked;
   };
 
+  const CardWrapper = viewOnly ? View : TouchableOpacity;
+
   return (
-    <TouchableOpacity
+    <CardWrapper
       style={styles.rankCard}
-      onPress={handlePress}
-      activeOpacity={0.9}
+      {...(!viewOnly && { onPress: handlePress, activeOpacity: 0.9 })}
     >
       <View style={styles.cardBackground}>
         {/* League of Legends logo watermark */}
@@ -104,7 +109,7 @@ export default function LeagueRankCard({ game, username }: LeagueRankCardProps) 
           </View>
         </View>
       </View>
-    </TouchableOpacity>
+    </CardWrapper>
   );
 }
 

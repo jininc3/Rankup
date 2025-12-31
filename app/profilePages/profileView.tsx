@@ -32,21 +32,10 @@ interface ViewedUser {
   followingCount?: number;
 }
 
-const userGames = [
-  {
-    id: 2,
-    name: 'League of Legends',
-    rank: currentUser.gamesPlayed.league.currentRank,
-    trophies: 876,
-    icon: '⚔️',
-    image: require('@/assets/images/leagueoflegends.png'),
-    wins: Math.floor(currentUser.gamesPlayed.league.gamesPlayed * (currentUser.gamesPlayed.league.winRate / 100)),
-    losses: currentUser.gamesPlayed.league.gamesPlayed - Math.floor(currentUser.gamesPlayed.league.gamesPlayed * (currentUser.gamesPlayed.league.winRate / 100)),
-    winRate: currentUser.gamesPlayed.league.winRate,
-    recentMatches: ['+15', '-18', '+20', '+17', '-14'],
-    profileIconId: 1297, // Placeholder - should be fetched from viewed user's Riot account
-  },
-];
+// Helper function to format rank display
+const formatRank = (tier: string, rank: string) => {
+  return `${tier.charAt(0).toUpperCase()}${tier.slice(1).toLowerCase()} ${rank}`;
+};
 
 const { width: screenWidth } = Dimensions.get('window');
 const CARD_PADDING = 20;
@@ -84,8 +73,48 @@ export default function ProfileViewScreen() {
   const [showPostViewer, setShowPostViewer] = useState(false);
   const [isFollowing, setIsFollowing] = useState(false);
   const [followLoading, setFollowLoading] = useState(false);
-  const selectedGame = userGames[selectedGameIndex];
+  const [riotAccount, setRiotAccount] = useState<any>(null);
+  const [valorantAccount, setValorantAccount] = useState<any>(null);
+  const [riotStats, setRiotStats] = useState<any>(null);
+  const [valorantStats, setValorantStats] = useState<any>(null);
+  const [enabledRankCards, setEnabledRankCards] = useState<string[]>([]);
   const scrollViewRef = useRef<ScrollView>(null);
+
+  // Dynamic games array based on Riot data and enabled rank cards
+  const userGames = (riotAccount || valorantAccount) ? [
+    // League of Legends - only show if enabled and has stats
+    ...(enabledRankCards.includes('league') && riotStats ? [{
+      id: 2,
+      name: 'League of Legends',
+      rank: riotStats.rankedSolo
+        ? formatRank(riotStats.rankedSolo.tier, riotStats.rankedSolo.rank)
+        : 'Unranked',
+      trophies: 876,
+      icon: '⚔️',
+      image: require('@/assets/images/leagueoflegends.png'),
+      wins: riotStats.rankedSolo?.wins || 0,
+      losses: riotStats.rankedSolo?.losses || 0,
+      winRate: riotStats.rankedSolo ? Math.round((riotStats.rankedSolo.wins / (riotStats.rankedSolo.wins + riotStats.rankedSolo.losses)) * 100) : 0,
+      recentMatches: [],
+      profileIconId: riotStats.profileIconId,
+    }] : []),
+    // Valorant - only show if enabled and has stats
+    ...(enabledRankCards.includes('valorant') && valorantStats ? [{
+      id: 3,
+      name: 'Valorant',
+      rank: valorantStats.currentRank || 'Unranked',
+      trophies: 654,
+      icon: '🎯',
+      image: require('@/assets/images/valorant.png'),
+      wins: valorantStats.wins || 0,
+      losses: valorantStats.losses || 0,
+      winRate: valorantStats.winRate || 0,
+      recentMatches: [],
+      valorantCard: valorantStats.card?.small,
+    }] : []),
+  ] : [];
+
+  const selectedGame = userGames[selectedGameIndex];
 
   // Get userId from params - this is required for profileView
   const userId = params.userId as string;
@@ -157,6 +186,14 @@ export default function ProfileViewScreen() {
           followersCount: data.followersCount || 0,
           followingCount: data.followingCount || 0,
         });
+
+        // Set account data
+        setRiotAccount(data.riotAccount || null);
+        setValorantAccount(data.valorantAccount || null);
+        setRiotStats(data.riotStats || null);
+        setValorantStats(data.valorantStats || null);
+        setEnabledRankCards(data.enabledRankCards || []);
+
         setLoadingUser(false);
       }
 
@@ -553,62 +590,80 @@ export default function ProfileViewScreen() {
 
         {/* RankCards Tab Content */}
         <View style={[styles.section, { display: activeMainTab === 'rankCards' ? 'flex' : 'none' }]}>
-          {/* Game Icon Selector */}
-          <ScrollView
-            horizontal
-            showsHorizontalScrollIndicator={false}
-            style={styles.gameIconScroller}
-            contentContainerStyle={styles.gameIconScrollerContent}
-          >
-            {userGames.map((game, index) => (
-              <TouchableOpacity
-                key={game.id}
-                style={styles.gameIconContainer}
-                onPress={() => scrollToIndex(index)}
-                activeOpacity={0.7}
+          {!riotAccount && !valorantAccount ? (
+            // Empty state when user has no gaming accounts linked
+            <View style={styles.emptyRankCardsContainer}>
+              <IconSymbol size={48} name="gamecontroller" color="#ccc" />
+              <ThemedText style={styles.emptyStateText}>No RankCards</ThemedText>
+              <ThemedText style={styles.emptyStateSubtext}>This user hasn't linked any gaming accounts yet</ThemedText>
+            </View>
+          ) : userGames.length === 0 ? (
+            // User has accounts but no enabled rank cards
+            <View style={styles.emptyRankCardsContainer}>
+              <IconSymbol size={48} name="gamecontroller" color="#ccc" />
+              <ThemedText style={styles.emptyStateText}>No RankCards</ThemedText>
+              <ThemedText style={styles.emptyStateSubtext}>This user hasn't added any rank cards yet</ThemedText>
+            </View>
+          ) : (
+            <>
+              {/* Game Icon Selector */}
+              <ScrollView
+                horizontal
+                showsHorizontalScrollIndicator={false}
+                style={styles.gameIconScroller}
+                contentContainerStyle={styles.gameIconScrollerContent}
               >
-                <View style={[
-                  styles.gameIconCircle,
-                  selectedGameIndex === index && styles.gameIconCircleActive
-                ]}>
-                  <Image
-                    source={game.image}
-                    style={styles.gameIconImage}
-                    resizeMode="contain"
-                  />
-                </View>
-              </TouchableOpacity>
-            ))}
-          </ScrollView>
+                {userGames.map((game, index) => (
+                  <TouchableOpacity
+                    key={game.id}
+                    style={styles.gameIconContainer}
+                    onPress={() => scrollToIndex(index)}
+                    activeOpacity={0.7}
+                  >
+                    <View style={[
+                      styles.gameIconCircle,
+                      selectedGameIndex === index && styles.gameIconCircleActive
+                    ]}>
+                      <Image
+                        source={game.image}
+                        style={styles.gameIconImage}
+                        resizeMode="contain"
+                      />
+                    </View>
+                  </TouchableOpacity>
+                ))}
+              </ScrollView>
 
-          {/* Scrollable Rank Cards */}
-          <ScrollView
-            ref={scrollViewRef}
-            horizontal
-            pagingEnabled
-            showsHorizontalScrollIndicator={false}
-            onScroll={handleScrollDrag}
-            onMomentumScrollEnd={handleScroll}
-            scrollEventThrottle={16}
-            snapToInterval={CARD_WIDTH + CARD_GAP}
-            decelerationRate="fast"
-            contentContainerStyle={styles.cardsContainer}
-          >
-            {userGames.map((game, index) => (
-              <View
-                key={game.id}
-                style={[
-                  styles.cardWrapper,
-                  {
-                    width: CARD_WIDTH,
-                    marginRight: index < userGames.length - 1 ? CARD_GAP : 0
-                  }
-                ]}
+              {/* Scrollable Rank Cards */}
+              <ScrollView
+                ref={scrollViewRef}
+                horizontal
+                pagingEnabled
+                showsHorizontalScrollIndicator={false}
+                onScroll={handleScrollDrag}
+                onMomentumScrollEnd={handleScroll}
+                scrollEventThrottle={16}
+                snapToInterval={CARD_WIDTH + CARD_GAP}
+                decelerationRate="fast"
+                contentContainerStyle={styles.cardsContainer}
               >
-                <RankCard game={game} username={viewedUser?.username || 'User'} />
-              </View>
-            ))}
-          </ScrollView>
+                {userGames.map((game, index) => (
+                  <View
+                    key={game.id}
+                    style={[
+                      styles.cardWrapper,
+                      {
+                        width: CARD_WIDTH,
+                        marginRight: index < userGames.length - 1 ? CARD_GAP : 0
+                      }
+                    ]}
+                  >
+                    <RankCard game={game} username={viewedUser?.username || 'User'} viewOnly={false} userId={viewedUser?.id} />
+                  </View>
+                ))}
+              </ScrollView>
+            </>
+          )}
         </View>
       </ScrollView>
 
@@ -943,6 +998,19 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     color: '#000',
     marginTop: 16,
+  },
+  emptyStateSubtext: {
+    fontSize: 14,
+    color: '#666',
+    textAlign: 'center',
+    marginTop: 8,
+  },
+  emptyRankCardsContainer: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 80,
+    paddingHorizontal: 20,
+    gap: 12,
   },
   loadingText: {
     fontSize: 14,

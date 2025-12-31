@@ -214,10 +214,8 @@ export default function LeaderboardScreen() {
 
     console.log('Navigation params:', params);
 
-    // Route to game-specific detail page
-    const pathname = leaderboard.game === 'Valorant'
-      ? '/leaderboardPages/valorantLeaderboardDetails'
-      : '/leaderboardPages/leagueLeaderboardDetails';
+    // Route to unified leaderboard detail page
+    const pathname = '/leaderboardPages/leaderboardDetail';
 
     console.log('Navigating to:', pathname);
     router.push({ pathname, params });
@@ -232,7 +230,7 @@ export default function LeaderboardScreen() {
           style={styles.joinButton}
           onPress={() => router.push('/leaderboardPages/joinParty')}
         >
-          <IconSymbol size={20} name="ticket" color="#000" />
+          <IconSymbol size={26} name="ticket" color="#000" />
         </TouchableOpacity>
       </View>
 
@@ -295,12 +293,7 @@ export default function LeaderboardScreen() {
 
         {/* All Leaderboards */}
         <View style={styles.leaderboardsSection}>
-          <View style={styles.sectionHeader}>
-            <ThemedText style={styles.sectionTitle}>Your Parties</ThemedText>
-            <TouchableOpacity onPress={() => router.push('/leaderboardPages/addParty')}>
-              <IconSymbol size={20} name="plus.circle.fill" color="#000" />
-            </TouchableOpacity>
-          </View>
+          <ThemedText style={styles.sectionTitle}>Your Parties</ThemedText>
 
           {parties.length > 0 ? (
             parties.map((leaderboard) => (
@@ -323,6 +316,15 @@ export default function LeaderboardScreen() {
         <View style={styles.bottomSpacer} />
       </ScrollView>
       )}
+
+      {/* Floating Add Party Button */}
+      <TouchableOpacity
+        style={styles.fabButton}
+        onPress={() => router.push('/leaderboardPages/addParty')}
+        activeOpacity={0.8}
+      >
+        <IconSymbol size={28} name="plus" color="#fff" />
+      </TouchableOpacity>
     </ThemedView>
   );
 }
@@ -460,12 +462,6 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20,
     paddingTop: 8,
   },
-  sectionHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 12,
-  },
   emptyState: {
     paddingVertical: 40,
     alignItems: 'center',
@@ -483,5 +479,24 @@ const styles = StyleSheet.create({
   },
   bottomSpacer: {
     height: 40,
+  },
+  fabButton: {
+    position: 'absolute',
+    bottom: 24,
+    right: 24,
+    width: 60,
+    height: 60,
+    borderRadius: 30,
+    backgroundColor: '#000',
+    alignItems: 'center',
+    justifyContent: 'center',
+    shadowColor: '#000',
+    shadowOffset: {
+      width: 0,
+      height: 4,
+    },
+    shadowOpacity: 0.3,
+    shadowRadius: 4.65,
+    elevation: 8,
   },
 });
