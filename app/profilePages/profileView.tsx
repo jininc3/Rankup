@@ -37,6 +37,14 @@ const formatRank = (tier: string, rank: string) => {
   return `${tier.charAt(0).toUpperCase()}${tier.slice(1).toLowerCase()} ${rank}`;
 };
 
+// Helper function to format video duration
+const formatDuration = (seconds?: number): string => {
+  if (!seconds) return '0:00';
+  const mins = Math.floor(seconds / 60);
+  const secs = Math.floor(seconds % 60);
+  return `${mins}:${secs.toString().padStart(2, '0')}`;
+};
+
 const { width: screenWidth } = Dimensions.get('window');
 const CARD_PADDING = 20;
 const CARD_GAP = 16;
@@ -56,6 +64,7 @@ interface Post {
   createdAt: Timestamp;
   likes: number;
   commentsCount?: number;
+  duration?: number; // Video duration in seconds
 }
 
 export default function ProfileViewScreen() {
@@ -520,8 +529,10 @@ export default function ProfileViewScreen() {
                     resizeMode="cover"
                   />
                   {post.mediaType === 'video' && (
-                    <View style={styles.videoIndicator}>
-                      <IconSymbol size={24} name="play.fill" color="#fff" />
+                    <View style={styles.videoDuration}>
+                      <ThemedText style={styles.videoDurationText}>
+                        {formatDuration(post.duration)}
+                      </ThemedText>
                     </View>
                   )}
                 </TouchableOpacity>
@@ -1165,16 +1176,19 @@ const styles = StyleSheet.create({
     width: '100%',
     height: '100%',
   },
-  videoIndicator: {
+  videoDuration: {
     position: 'absolute',
-    top: 8,
+    bottom: 8,
     right: 8,
-    backgroundColor: 'rgba(0, 0, 0, 0.6)',
-    borderRadius: 12,
-    width: 32,
-    height: 32,
-    alignItems: 'center',
-    justifyContent: 'center',
+    backgroundColor: 'rgba(0, 0, 0, 0.7)',
+    borderRadius: 4,
+    paddingHorizontal: 6,
+    paddingVertical: 3,
+  },
+  videoDurationText: {
+    fontSize: 11,
+    fontWeight: '600',
+    color: '#fff',
   },
   skeletonAvatar: {
     backgroundColor: '#e5e5e5',

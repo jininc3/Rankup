@@ -13,6 +13,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { auth } from '@/config/firebase';
 import { sendEmailVerification } from 'firebase/auth';
 import { useRouter } from 'expo-router';
+import { deleteIncompleteAccount } from '@/services/authService';
 
 export default function VerifyEmailSignUp() {
   const { user, refreshUser } = useAuth();
@@ -75,8 +76,41 @@ export default function VerifyEmailSignUp() {
     }
   };
 
+  const handleClose = async () => {
+    Alert.alert(
+      'Cancel Signup?',
+      'Are you sure you want to cancel? Your account will be deleted.',
+      [
+        {
+          text: 'No, Stay',
+          style: 'cancel',
+        },
+        {
+          text: 'Yes, Cancel',
+          style: 'destructive',
+          onPress: async () => {
+            try {
+              await deleteIncompleteAccount();
+              router.replace('/(auth)/login');
+            } catch (error) {
+              console.error('Error deleting account:', error);
+              Alert.alert('Error', 'Failed to cancel signup. Please try again.');
+            }
+          },
+        },
+      ]
+    );
+  };
+
   return (
     <ThemedView style={styles.container}>
+      <TouchableOpacity
+        style={styles.closeButton}
+        onPress={handleClose}
+      >
+        <IconSymbol size={24} name="xmark" color="#000" />
+      </TouchableOpacity>
+
       <View style={styles.content}>
         <View style={styles.iconContainer}>
           <IconSymbol size={80} name="envelope.fill" color="#000" />
@@ -131,11 +165,19 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
   },
+  closeButton: {
+    position: 'absolute',
+    top: 60,
+    right: 24,
+    zIndex: 10,
+    padding: 8,
+  },
   content: {
     flex: 1,
     padding: 24,
     justifyContent: 'center',
     alignItems: 'center',
+    overflow: 'visible',
   },
   iconContainer: {
     marginBottom: 32,
@@ -143,12 +185,15 @@ const styles = StyleSheet.create({
   textContainer: {
     alignItems: 'center',
     marginBottom: 48,
+    overflow: 'visible',
   },
   title: {
     fontSize: 28,
     fontWeight: 'bold',
     marginBottom: 16,
     textAlign: 'center',
+    lineHeight: 36,
+    overflow: 'visible',
   },
   subtitle: {
     fontSize: 16,

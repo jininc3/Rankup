@@ -6,8 +6,9 @@ import {
   GoogleAuthProvider,
   signInWithCredential,
   User as FirebaseUser,
+  deleteUser,
 } from 'firebase/auth';
-import { doc, setDoc, getDoc, updateDoc } from 'firebase/firestore';
+import { doc, setDoc, getDoc, updateDoc, deleteDoc } from 'firebase/firestore';
 import { auth, db } from '@/config/firebase';
 
 export interface UserProfile {
@@ -168,6 +169,39 @@ export async function signOut(): Promise<void> {
   } catch (error) {
     console.error('Sign out error:', error);
     throw new Error('Failed to sign out');
+  }
+}
+
+/**
+ * Delete incomplete account (used when user backs out of signup)
+ * Deletes both Firebase Auth account and Firestore document
+ */
+export async function deleteIncompleteAccount(): Promise<void> {
+  try {
+    const user = auth.currentUser;
+
+    if (!user) {
+      console.log('No user to delete');
+      return;
+    }
+
+    const userId = user.uid;
+
+    // Delete Firestore document first
+    try {
+      await deleteDoc(doc(db, 'users', userId));
+      console.log('Deleted Firestore document for user:', userId);
+    } catch (firestoreError) {
+      console.error('Error deleting Firestore document:', firestoreError);
+      // Continue even if Firestore deletion fails
+    }
+
+    // Delete Firebase Auth account
+    await deleteUser(user);
+    console.log('Deleted Firebase Auth account for user:', userId);
+  } catch (error) {
+    console.error('Delete incomplete account error:', error);
+    throw new Error('Failed to delete account');
   }
 }
 

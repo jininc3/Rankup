@@ -8,6 +8,7 @@ import { doc, updateDoc, query, collection, where, getDocs } from 'firebase/fire
 import { db } from '@/config/firebase';
 import { IconSymbol } from '@/components/ui/icon-symbol';
 import DateTimePicker from '@react-native-community/datetimepicker';
+import { deleteIncompleteAccount } from '@/services/authService';
 
 export default function GoogleSignUpScreen() {
   const { user, refreshUser, signOut } = useAuth();
@@ -129,10 +130,11 @@ export default function GoogleSignUpScreen() {
 
   const handleBack = async () => {
     try {
-      await signOut();
+      // Delete the incomplete account (both Auth and Firestore)
+      await deleteIncompleteAccount();
       router.replace('/(auth)/login');
     } catch (error) {
-      console.error('Error signing out:', error);
+      console.error('Error deleting incomplete account:', error);
       Alert.alert('Error', 'Failed to go back. Please try again.');
     }
   };

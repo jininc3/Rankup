@@ -21,6 +21,7 @@ export default function NewRankCardScreen() {
   const router = useRouter();
   const { user } = useAuth();
   const [riotAccount, setRiotAccount] = useState<any>(null);
+  const [valorantAccount, setValorantAccount] = useState<any>(null);
   const [enabledRankCards, setEnabledRankCards] = useState<string[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -34,6 +35,7 @@ export default function NewRankCardScreen() {
         if (userDoc.exists()) {
           const data = userDoc.data();
           setRiotAccount(data.riotAccount || null);
+          setValorantAccount(data.valorantAccount || null);
           setEnabledRankCards(data.enabledRankCards || []);
         }
       } catch (error) {
@@ -51,7 +53,22 @@ export default function NewRankCardScreen() {
 
     // Valorant uses Henrik's API - separate flow
     if (game === 'valorant') {
-      router.push('/profilePages/linkValorantAccount');
+      // Check if Valorant account is already linked
+      if (valorantAccount) {
+        // Account already linked, just add the rank card
+        try {
+          await updateDoc(doc(db, 'users', user.id), {
+            enabledRankCards: arrayUnion(game),
+          });
+          // Update local state immediately
+          setEnabledRankCards([...enabledRankCards, game]);
+        } catch (error) {
+          console.error('Error adding rank card:', error);
+        }
+      } else {
+        // Not linked yet, navigate to link page
+        router.push('/profilePages/linkValorantAccount');
+      }
       return;
     }
 
@@ -176,7 +193,9 @@ export default function NewRankCardScreen() {
               <ThemedText style={styles.buttonText}>
                 {enabledRankCards.includes('valorant')
                   ? 'Already Added'
-                  : 'Add Valorant Rank Card'}
+                  : valorantAccount
+                  ? 'Add Valorant Rank Card'
+                  : 'Connect to Valorant'}
               </ThemedText>
             </TouchableOpacity>
 

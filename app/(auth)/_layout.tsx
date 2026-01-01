@@ -8,7 +8,12 @@ export default function AuthLayout() {
         animation: 'slide_from_right',
       }}
     >
-      <Stack.Screen name="login" />
+      <Stack.Screen
+        name="login"
+        options={{
+          gestureEnabled: false,
+        }}
+      />
       <Stack.Screen name="emailSignUp1" />
       <Stack.Screen name="emailSignUp2" />
       <Stack.Screen name="emailSignUp3" />
