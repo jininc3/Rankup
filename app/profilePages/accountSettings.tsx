@@ -5,7 +5,9 @@ import { useRouter } from 'expo-router';
 import { ScrollView, StyleSheet, TouchableOpacity, View, Alert, TextInput, Modal, KeyboardAvoidingView, Platform } from 'react-native';
 import { useAuth } from '@/contexts/AuthContext';
 import { deleteUserAccount } from '@/services/deleteAccountService';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
+import { auth } from '@/config/firebase';
+import { useGoogleAuth } from '@/hooks/useGoogleAuth';
 
 const accountSettingsData = [
   {
@@ -90,7 +92,57 @@ export default function AccountSettingsScreen() {
   const { user } = useAuth();
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [deleteConfirmText, setDeleteConfirmText] = useState('');
+  const [password, setPassword] = useState('');
   const [isDeleting, setIsDeleting] = useState(false);
+  const [authProvider, setAuthProvider] = useState<'password' | 'google.com' | null>(null);
+  const googleAuth = useGoogleAuth();
+
+  // Detect the authentication provider when component mounts
+  useEffect(() => {
+    const currentUser = auth.currentUser;
+    if (currentUser && currentUser.providerData.length > 0) {
+      const providerId = currentUser.providerData[0]?.providerId;
+      setAuthProvider(providerId as 'password' | 'google.com');
+    }
+  }, []);
+
+  // Handle Google re-authentication response
+  useEffect(() => {
+    if (googleAuth.response?.type === 'success' && isDeleting) {
+      handleGoogleDeleteSuccess(googleAuth.response);
+    }
+  }, [googleAuth.response]);
+
+  const handleGoogleDeleteSuccess = async (response: any) => {
+    try {
+      const { id_token } = response.params;
+      if (id_token && user?.id) {
+        await deleteUserAccount(user.id, undefined, id_token);
+        handleDeleteSuccess();
+      }
+    } catch (error: any) {
+      console.error('Error deleting account:', error);
+      Alert.alert('Error', error.message || 'Failed to delete account. Please try again.');
+      setIsDeleting(false);
+    }
+  };
+
+  const handleDeleteSuccess = () => {
+    setShowDeleteModal(false);
+    setPassword('');
+    setDeleteConfirmText('');
+    Alert.alert(
+      'Account Deleted',
+      'Your account has been permanently deleted.',
+      [
+        {
+          text: 'OK',
+          onPress: () => router.replace('/(auth)/login'),
+        },
+      ],
+      { cancelable: false }
+    );
+  };
 
   const handleDeleteAccountPress = () => {
     Alert.alert(
@@ -121,31 +173,33 @@ export default function AccountSettingsScreen() {
       return;
     }
 
+    // Validate password for email/password users
+    if (authProvider === 'password' && !password.trim()) {
+      Alert.alert('Error', 'Please enter your password to confirm deletion');
+      return;
+    }
+
     setIsDeleting(true);
 
     try {
-      await deleteUserAccount(user.id);
-
-      // Close modal and navigate to login
-      setShowDeleteModal(false);
-      Alert.alert(
-        'Account Deleted',
-        'Your account has been permanently deleted.',
-        [
-          {
-            text: 'OK',
-            onPress: () => router.replace('/(auth)/login'),
-          },
-        ],
-        { cancelable: false }
-      );
-    } catch (error) {
+      if (authProvider === 'password') {
+        // Email/password authentication - delete with password
+        await deleteUserAccount(user.id, password);
+        handleDeleteSuccess();
+      } else if (authProvider === 'google.com') {
+        // Google authentication - prompt for Google sign-in
+        await googleAuth.promptAsync();
+        // The actual deletion will happen in the handleGoogleDeleteSuccess callback
+      } else {
+        Alert.alert('Error', 'Unknown authentication provider');
+        setIsDeleting(false);
+      }
+    } catch (error: any) {
       console.error('Error deleting account:', error);
       Alert.alert(
         'Error',
-        'Failed to delete account. Please try again or contact support.'
+        error.message || 'Failed to delete account. Please try again.'
       );
-    } finally {
       setIsDeleting(false);
     }
   };
@@ -267,6 +321,34 @@ export default function AccountSettingsScreen() {
               </View>
             </View>
 
+            {/* Password input for email/password users */}
+            {authProvider === 'password' && (
+              <View style={styles.confirmInputContainer}>
+                <ThemedText style={styles.confirmInputLabel}>
+                  Enter your password:
+                </ThemedText>
+                <TextInput
+                  style={styles.confirmInput}
+                  value={password}
+                  onChangeText={setPassword}
+                  placeholder="Your password"
+                  placeholderTextColor="#999"
+                  secureTextEntry
+                  autoCapitalize="none"
+                  editable={!isDeleting}
+                />
+              </View>
+            )}
+
+            {/* Google re-authentication notice */}
+            {authProvider === 'google.com' && (
+              <View style={styles.confirmInputContainer}>
+                <ThemedText style={styles.googleNotice}>
+                  You will be prompted to sign in with Google to confirm this action.
+                </ThemedText>
+              </View>
+            )}
+
             <View style={styles.confirmInputContainer}>
               <ThemedText style={styles.confirmInputLabel}>
                 Type DELETE to confirm:
@@ -288,6 +370,8 @@ export default function AccountSettingsScreen() {
                 onPress={() => {
                   setShowDeleteModal(false);
                   setDeleteConfirmText('');
+                  setPassword('');
+                  setIsDeleting(false);
                 }}
                 disabled={isDeleting}
               >
@@ -481,6 +565,14 @@ const styles = StyleSheet.create({
     fontSize: 16,
     color: '#000',
     backgroundColor: '#fff',
+  },
+  googleNotice: {
+    fontSize: 14,
+    color: '#666',
+    textAlign: 'center',
+    backgroundColor: '#f9fafb',
+    padding: 12,
+    borderRadius: 8,
   },
   modalButtons: {
     flexDirection: 'row',

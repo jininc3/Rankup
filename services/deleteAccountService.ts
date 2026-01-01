@@ -11,8 +11,61 @@ import {
   increment,
 } from 'firebase/firestore';
 import { ref, deleteObject, listAll } from 'firebase/storage';
-import { deleteUser } from 'firebase/auth';
+import {
+  deleteUser,
+  reauthenticateWithCredential,
+  EmailAuthProvider,
+  GoogleAuthProvider,
+  signInWithCredential
+} from 'firebase/auth';
 import { deleteProfilePicture, deleteCoverPhoto, deletePostMedia } from './storageService';
+
+/**
+ * Re-authenticate the current user before performing sensitive operations
+ * @param password - User's password (required for email/password auth)
+ * @param googleIdToken - Google ID token (required for Google auth)
+ */
+export async function reauthenticateUser(
+  password?: string,
+  googleIdToken?: string
+): Promise<void> {
+  const currentUser = auth.currentUser;
+  if (!currentUser) {
+    throw new Error('No user is currently signed in');
+  }
+
+  try {
+    // Determine which auth provider the user is using
+    const providerId = currentUser.providerData[0]?.providerId;
+
+    if (providerId === 'password' && password) {
+      // Email/password re-authentication
+      const email = currentUser.email;
+      if (!email) {
+        throw new Error('User email not found');
+      }
+      const credential = EmailAuthProvider.credential(email, password);
+      await reauthenticateWithCredential(currentUser, credential);
+      console.log('Re-authenticated with email/password');
+    } else if (providerId === 'google.com' && googleIdToken) {
+      // Google re-authentication
+      const credential = GoogleAuthProvider.credential(googleIdToken);
+      await reauthenticateWithCredential(currentUser, credential);
+      console.log('Re-authenticated with Google');
+    } else {
+      throw new Error('Invalid authentication method or missing credentials');
+    }
+  } catch (error: any) {
+    console.error('Re-authentication failed:', error);
+    if (error.code === 'auth/wrong-password') {
+      throw new Error('Incorrect password. Please try again.');
+    } else if (error.code === 'auth/too-many-requests') {
+      throw new Error('Too many failed attempts. Please try again later.');
+    } else {
+      throw new Error('Re-authentication failed. Please try again.');
+    }
+  }
+}
 
 /**
  * Deletes all data associated with a user account
@@ -21,15 +74,31 @@ import { deleteProfilePicture, deleteCoverPhoto, deletePostMedia } from './stora
  * - User's profile images
  * - User's followers/following subcollections
  * - User's notifications subcollection
+ * - User's gameStats subcollection
+ * - User's searchHistory subcollection
  * - User from other users' followers/following lists
  * - User's chats and messages
- * - User from all leaderboard parties
+ * - User's linked game accounts (Riot, Valorant, etc.)
+ * - Parties created by the user (deleted completely)
+ * - User from parties they are members of (removed from party)
+ * - User's storage files (profile pictures, cover photos, post media)
  * - User document
  * - Firebase Auth account
+ *
+ * @param userId - The ID of the user to delete
+ * @param password - User's password (required for email/password auth)
+ * @param googleIdToken - Google ID token (required for Google auth)
  */
-export async function deleteUserAccount(userId: string): Promise<void> {
+export async function deleteUserAccount(
+  userId: string,
+  password?: string,
+  googleIdToken?: string
+): Promise<void> {
   try {
     console.log(`Starting account deletion for user: ${userId}`);
+
+    // 0. Re-authenticate user before deletion (required by Firebase for security)
+    await reauthenticateUser(password, googleIdToken);
 
     // 1. Delete all user's posts (including their likes and comments subcollections) and media
     await deleteUserPosts(userId);
@@ -40,23 +109,26 @@ export async function deleteUserAccount(userId: string): Promise<void> {
     // 3. Remove user from all followers/following relationships (including other users' lists)
     await deleteUserFollowRelationships(userId);
 
-    // 4. Delete user's subcollections (notifications, followers, following, searchHistory)
+    // 4. Delete user's subcollections (notifications, followers, following, searchHistory, gameStats)
     await deleteUserSubcollections(userId);
 
     // 5. Delete all user's chats and messages
     await deleteUserChats(userId);
 
-    // 6. Remove user from all leaderboard parties
+    // 6. Delete all linked game accounts (Riot, Valorant, etc.)
+    await deleteLinkedAccounts(userId);
+
+    // 7. Delete parties created by user and remove user from other parties
     await deleteUserFromParties(userId);
 
-    // 7. Delete any remaining storage files in user's folder
+    // 8. Delete any remaining storage files in user's folder
     await deleteUserStorageFolder(userId);
 
-    // 8. Delete user document from Firestore
+    // 9. Delete user document from Firestore
     await deleteDoc(doc(db, 'users', userId));
     console.log('User document deleted');
 
-    // 9. Delete Firebase Auth account (must be last)
+    // 10. Delete Firebase Auth account (must be last)
     const currentUser = auth.currentUser;
     if (currentUser && currentUser.uid === userId) {
       await deleteUser(currentUser);
@@ -66,6 +138,12 @@ export async function deleteUserAccount(userId: string): Promise<void> {
     console.log(`Account deletion completed for user: ${userId}`);
   } catch (error) {
     console.error('Error deleting user account:', error);
+
+    // Re-throw re-authentication errors with their specific messages
+    if (error instanceof Error && error.message.includes('password')) {
+      throw error;
+    }
+
     throw new Error('Failed to delete account. Please try again.');
   }
 }
@@ -183,7 +261,7 @@ async function deleteSubcollection(
 }
 
 /**
- * Delete all user's subcollections (notifications, followers, following, searchHistory)
+ * Delete all user's subcollections (notifications, followers, following, searchHistory, gameStats)
  */
 async function deleteUserSubcollections(userId: string): Promise<void> {
   try {
@@ -191,6 +269,7 @@ async function deleteUserSubcollections(userId: string): Promise<void> {
     await deleteSubcollection(userId, 'users', 'followers');
     await deleteSubcollection(userId, 'users', 'following');
     await deleteSubcollection(userId, 'users', 'searchHistory');
+    await deleteSubcollection(userId, 'users', 'gameStats');
     console.log('User subcollections deleted');
   } catch (error) {
     console.error('Error deleting user subcollections:', error);
@@ -256,12 +335,56 @@ async function deleteUserFollowRelationships(userId: string): Promise<void> {
 }
 
 /**
- * Remove user from all leaderboard parties they're in
- * This removes them from members, memberDetails, and pendingInvites arrays
+ * Delete all linked game accounts (from linkedAccounts collection)
+ * This includes Riot, Valorant, and any other linked accounts
+ */
+async function deleteLinkedAccounts(userId: string): Promise<void> {
+  try {
+    // Find all linked accounts for this user
+    const linkedAccountsQuery = query(
+      collection(db, 'linkedAccounts'),
+      where('userId', '==', userId)
+    );
+    const linkedAccountsSnapshot = await getDocs(linkedAccountsQuery);
+
+    console.log(`Found ${linkedAccountsSnapshot.size} linked accounts to delete`);
+
+    // Delete all linked accounts
+    const batch = writeBatch(db);
+    linkedAccountsSnapshot.docs.forEach((accountDoc) => {
+      batch.delete(accountDoc.ref);
+    });
+    await batch.commit();
+
+    console.log('Linked accounts deleted');
+  } catch (error) {
+    console.error('Error deleting linked accounts:', error);
+    // Don't throw - continue with deletion
+  }
+}
+
+/**
+ * Delete parties created by the user and remove user from other parties
+ * - Deletes parties where user is the creator
+ * - Removes user from parties where they are just a member
  */
 async function deleteUserFromParties(userId: string): Promise<void> {
   try {
-    // Find all parties where user is a member
+    // 1. Find and delete all parties created by this user
+    const createdPartiesQuery = query(
+      collection(db, 'parties'),
+      where('createdBy', '==', userId)
+    );
+    const createdPartiesSnapshot = await getDocs(createdPartiesQuery);
+
+    console.log(`Found ${createdPartiesSnapshot.size} parties created by user to delete`);
+
+    for (const partyDoc of createdPartiesSnapshot.docs) {
+      await deleteDoc(partyDoc.ref);
+      console.log(`Deleted party: ${partyDoc.data().partyName}`);
+    }
+
+    // 2. Find all parties where user is a member (but not creator)
     const partiesQuery = query(
       collection(db, 'parties'),
       where('members', 'array-contains', userId)
@@ -272,6 +395,11 @@ async function deleteUserFromParties(userId: string): Promise<void> {
 
     for (const partyDoc of partiesSnapshot.docs) {
       const partyData = partyDoc.data();
+
+      // Skip if this party was already deleted (user was creator)
+      if (partyData.createdBy === userId) {
+        continue;
+      }
 
       // Remove user from members array
       const updatedMembers = partyData.members.filter((id: string) => id !== userId);
@@ -296,7 +424,7 @@ async function deleteUserFromParties(userId: string): Promise<void> {
       console.log(`Removed user from party: ${partyData.partyName}`);
     }
 
-    console.log('User removed from all parties');
+    console.log('User removed from all parties and created parties deleted');
   } catch (error) {
     console.error('Error removing user from parties:', error);
     // Don't throw - continue with deletion
