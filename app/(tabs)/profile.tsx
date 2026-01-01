@@ -3,7 +3,6 @@ import rankCard from '@/app/components/rankCard';
 // Alias for JSX usage (React components must start with uppercase)
 const RankCard = rankCard;
 import NewPost from '@/app/components/newPost';
-import { currentUser } from '@/app/data/userData';
 import PostFilterModal from '@/app/profilePages/postFilterModal';
 import PostViewerModal from '@/app/components/postViewerModal';
 import { ThemedText } from '@/components/themed-text';

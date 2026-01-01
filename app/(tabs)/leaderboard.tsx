@@ -1,4 +1,3 @@
-import { leaderboards } from '@/app/data/userData';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { IconSymbol } from '@/components/ui/icon-symbol';

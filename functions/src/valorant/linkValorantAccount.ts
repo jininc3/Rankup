@@ -7,7 +7,8 @@
 import {onCall, HttpsError} from "firebase-functions/v2/https";
 import * as admin from "firebase-admin";
 import * as logger from "firebase-functions/logger";
-import {getValorantAccountByRiotId} from "./valorantApi";
+import {getValorantAccountByRiotId, getValorantMMR} from "./valorantApi";
+import {ValorantStats} from "./getValorantStats";
 
 export interface LinkValorantAccountRequest {
   gameName: string;
@@ -152,6 +153,88 @@ export const linkValorantAccountFunction = onCall(
       }, { merge: true });
 
       logger.info(`Successfully linked Valorant account for user ${userId}`);
+
+      // Fetch and cache initial stats so they're available for profile viewing
+      try {
+        logger.info(`Fetching initial Valorant stats for ${gameName}#${tag}`);
+
+        const [accountDataFull, mmrData] = await Promise.all([
+          getValorantAccountByRiotId(gameName, tag),
+          getValorantMMR(region.toLowerCase(), gameName, tag),
+        ]);
+
+        // Calculate wins/losses from season data
+        let wins = 0;
+        let totalGames = 0;
+        let losses = 0;
+
+        if (mmrData.by_season && Object.keys(mmrData.by_season).length > 0) {
+          const seasonsWithData = Object.keys(mmrData.by_season)
+            .filter(season => {
+              const data = mmrData.by_season[season];
+              return data && data.number_of_games !== undefined && data.number_of_games > 0;
+            })
+            .sort((a, b) => {
+              const parseSeasonCode = (code: string) => {
+                const match = code.match(/e(\d+)a(\d+)/);
+                if (!match) return { episode: 0, act: 0 };
+                return {
+                  episode: parseInt(match[1], 10),
+                  act: parseInt(match[2], 10),
+                };
+              };
+
+              const aData = parseSeasonCode(a);
+              const bData = parseSeasonCode(b);
+
+              if (aData.episode !== bData.episode) {
+                return aData.episode - bData.episode;
+              }
+              return aData.act - bData.act;
+            });
+
+          if (seasonsWithData.length > 0) {
+            const currentSeason = seasonsWithData[seasonsWithData.length - 1];
+            const seasonData = mmrData.by_season[currentSeason];
+
+            wins = seasonData.wins || 0;
+            totalGames = seasonData.number_of_games || 0;
+            losses = totalGames - wins;
+          }
+        }
+
+        const winRate = totalGames > 0 ? (wins / totalGames) * 100 : 0;
+
+        const stats: ValorantStats = {
+          gameName: accountDataFull.name,
+          tag: accountDataFull.tag,
+          region: region.toLowerCase(),
+          accountLevel: accountDataFull.account_level,
+          card: accountDataFull.card,
+          currentRank: mmrData.current_data.currenttierpatched,
+          rankRating: mmrData.current_data.ranking_in_tier,
+          mmr: mmrData.current_data.elo,
+          peakRank: mmrData.highest_rank ? {
+            tier: mmrData.highest_rank.patched_tier,
+            season: mmrData.highest_rank.season,
+          } : undefined,
+          gamesPlayed: totalGames,
+          wins,
+          losses,
+          winRate: parseFloat(winRate.toFixed(2)),
+          lastUpdated: admin.firestore.FieldValue.serverTimestamp() as any,
+        };
+
+        // Save stats to Firestore
+        await userRef.update({
+          valorantStats: stats,
+        });
+
+        logger.info(`Successfully cached initial Valorant stats for user ${userId}`);
+      } catch (statsError) {
+        // Don't fail the link if stats fetch fails - they can be fetched later
+        logger.warn(`Failed to fetch initial stats, but account linked successfully: ${statsError}`);
+      }
 
       return {
         success: true,

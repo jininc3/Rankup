@@ -14,6 +14,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { useState, useEffect } from 'react';
 import { db } from '@/config/firebase';
 import { doc, getDoc, updateDoc, arrayUnion, arrayRemove } from 'firebase/firestore';
+import { getValorantStats } from '@/services/valorantService';
 
 type GameType = 'league' | 'valorant' | 'tft';
 
@@ -62,6 +63,17 @@ export default function NewRankCardScreen() {
           });
           // Update local state immediately
           setEnabledRankCards([...enabledRankCards, game]);
+
+          // Fetch stats to ensure they're cached for profile viewing
+          try {
+            console.log('Fetching Valorant stats to cache for profile viewing');
+            await getValorantStats(false);
+          } catch (statsError) {
+            console.warn('Failed to fetch stats, but rank card added:', statsError);
+          }
+
+          // Navigate back to profile to show the new rank card
+          router.back();
         } catch (error) {
           console.error('Error adding rank card:', error);
         }
@@ -80,6 +92,9 @@ export default function NewRankCardScreen() {
         });
         // Update local state immediately
         setEnabledRankCards([...enabledRankCards, game]);
+
+        // Navigate back to profile to show the new rank card
+        router.back();
       } catch (error) {
         console.error('Error adding rank card:', error);
       }

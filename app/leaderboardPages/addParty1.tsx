@@ -64,6 +64,7 @@ export default function AddParty1Screen() {
   const [searchQuery, setSearchQuery] = useState('');
   const [startDate, setStartDate] = useState(defaultDates.start);
   const [endDate, setEndDate] = useState(defaultDates.end);
+  const [challengeType, setChallengeType] = useState<'climbing' | 'rank'>('climbing');
 
   // Generate unique invite code on component mount
   useEffect(() => {
@@ -248,6 +249,7 @@ export default function AddParty1Screen() {
         gameId: gameId,
         startDate: startDate,
         endDate: endDate,
+        challengeType: challengeType, // 'climbing' or 'rank'
         inviteCode: inviteCode || '',
         createdBy: user.id,
         createdAt: serverTimestamp(),
@@ -439,6 +441,72 @@ export default function AddParty1Screen() {
             onChangeText={setEndDate}
             maxLength={10}
           />
+        </View>
+
+        {/* Challenge Type */}
+        <View style={styles.section}>
+          <ThemedText style={styles.sectionTitle}>Challenge Type</ThemedText>
+          <ThemedText style={styles.sectionDescription}>
+            Choose how the winner is determined
+          </ThemedText>
+
+          <View style={styles.challengeTypeContainer}>
+            <TouchableOpacity
+              style={[
+                styles.challengeTypeButton,
+                challengeType === 'climbing' && styles.challengeTypeButtonActive
+              ]}
+              onPress={() => setChallengeType('climbing')}
+            >
+              <View style={styles.challengeTypeHeader}>
+                <IconSymbol
+                  size={24}
+                  name="chart.line.uptrend.xyaxis"
+                  color={challengeType === 'climbing' ? '#fff' : '#000'}
+                />
+                <ThemedText style={[
+                  styles.challengeTypeTitle,
+                  challengeType === 'climbing' && styles.challengeTypeTitleActive
+                ]}>
+                  Climbing Challenge
+                </ThemedText>
+              </View>
+              <ThemedText style={[
+                styles.challengeTypeDescription,
+                challengeType === 'climbing' && styles.challengeTypeDescriptionActive
+              ]}>
+                Most LP/RR gained wins
+              </ThemedText>
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={[
+                styles.challengeTypeButton,
+                challengeType === 'rank' && styles.challengeTypeButtonActive
+              ]}
+              onPress={() => setChallengeType('rank')}
+            >
+              <View style={styles.challengeTypeHeader}>
+                <IconSymbol
+                  size={24}
+                  name="trophy.fill"
+                  color={challengeType === 'rank' ? '#fff' : '#000'}
+                />
+                <ThemedText style={[
+                  styles.challengeTypeTitle,
+                  challengeType === 'rank' && styles.challengeTypeTitleActive
+                ]}>
+                  Rank Challenge
+                </ThemedText>
+              </View>
+              <ThemedText style={[
+                styles.challengeTypeDescription,
+                challengeType === 'rank' && styles.challengeTypeDescriptionActive
+              ]}>
+                Highest rank wins
+              </ThemedText>
+            </TouchableOpacity>
+          </View>
         </View>
 
         {/* Invite Code */}
@@ -798,5 +866,41 @@ const styles = StyleSheet.create({
   },
   bottomSpacer: {
     height: 400,
+  },
+  challengeTypeContainer: {
+    gap: 12,
+  },
+  challengeTypeButton: {
+    backgroundColor: '#f5f5f5',
+    borderRadius: 12,
+    padding: 16,
+    borderWidth: 2,
+    borderColor: '#e5e5e5',
+  },
+  challengeTypeButtonActive: {
+    backgroundColor: '#000',
+    borderColor: '#000',
+  },
+  challengeTypeHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    marginBottom: 8,
+  },
+  challengeTypeTitle: {
+    fontSize: 16,
+    fontWeight: '700',
+    color: '#000',
+  },
+  challengeTypeTitleActive: {
+    color: '#fff',
+  },
+  challengeTypeDescription: {
+    fontSize: 14,
+    color: '#666',
+    marginLeft: 36,
+  },
+  challengeTypeDescriptionActive: {
+    color: '#ccc',
   },
 });
