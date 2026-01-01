@@ -108,7 +108,7 @@ export default function EmailSignUpStep2() {
                     onChange={onDateChange}
                     maximumDate={new Date()}
                     minimumDate={new Date(1900, 0, 1)}
-                    textColor="#000"
+                    themeVariant="light"
                     style={styles.datePicker}
                   />
                 </View>
@@ -223,5 +223,6 @@ const styles = StyleSheet.create({
     height: 200,
     width: '100%',
     alignSelf: 'center',
+    backgroundColor: '#f5f5f5',
   },
 });

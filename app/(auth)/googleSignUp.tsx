@@ -204,14 +204,18 @@ export default function GoogleSignUpScreen() {
           </View>
 
           {showDatePicker && (
-            <DateTimePicker
-              value={dateOfBirth || new Date(2000, 0, 1)}
-              mode="date"
-              display={Platform.OS === 'ios' ? 'spinner' : 'default'}
-              onChange={onDateChange}
-              maximumDate={new Date()}
-              minimumDate={new Date(1900, 0, 1)}
-            />
+            <View style={styles.datePickerContainer}>
+              <DateTimePicker
+                value={dateOfBirth || new Date(2000, 0, 1)}
+                mode="date"
+                display={Platform.OS === 'ios' ? 'spinner' : 'default'}
+                onChange={onDateChange}
+                maximumDate={new Date()}
+                minimumDate={new Date(1900, 0, 1)}
+                themeVariant="light"
+                style={styles.datePicker}
+              />
+            </View>
           )}
 
           <TouchableOpacity
@@ -335,5 +339,18 @@ const styles = StyleSheet.create({
   },
   placeholderText: {
     color: '#999',
+  },
+  datePickerContainer: {
+    backgroundColor: '#f5f5f5',
+    borderRadius: 12,
+    marginTop: 8,
+    overflow: 'hidden',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  datePicker: {
+    height: 200,
+    width: '100%',
+    backgroundColor: '#f5f5f5',
   },
 });
