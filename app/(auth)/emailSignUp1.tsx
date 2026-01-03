@@ -39,8 +39,8 @@ export default function EmailSignUpStep1() {
       return;
     }
 
-    if (username.trim().length < 3) {
-      Alert.alert('Error', 'Username must be at least 3 characters');
+    if (username.trim().length < 6) {
+      Alert.alert('Error', 'Username must be at least 6 characters');
       return;
     }
 

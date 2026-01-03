@@ -15,8 +15,8 @@ export default function EditUsernameScreen() {
   const [isUpdating, setIsUpdating] = useState(false);
 
   const validateUsername = (username: string): boolean => {
-    // Username must be 3-20 characters, alphanumeric and underscores only
-    const usernameRegex = /^[a-zA-Z0-9_]{3,20}$/;
+    // Username must be 6-20 characters, alphanumeric and underscores only
+    const usernameRegex = /^[a-zA-Z0-9_]{6,20}$/;
     return usernameRegex.test(username);
   };
 
@@ -47,7 +47,7 @@ export default function EditUsernameScreen() {
     if (!validateUsername(newUsername)) {
       Alert.alert(
         'Invalid Username',
-        'Username must be 3-20 characters and contain only letters, numbers, and underscores'
+        'Username must be 6-20 characters and contain only letters, numbers, and underscores'
       );
       return;
     }
@@ -108,7 +108,7 @@ export default function EditUsernameScreen() {
         <View style={styles.infoCard}>
           <IconSymbol size={24} name="info.circle" color="#666" />
           <ThemedText style={styles.infoText}>
-            Choose a unique username. It must be 3-20 characters and can only contain letters, numbers, and underscores.
+            Choose a unique username. It must be 6-20 characters and can only contain letters, numbers, and underscores.
           </ThemedText>
         </View>
 

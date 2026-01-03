@@ -21,8 +21,8 @@ export default function GoogleSignUpScreen() {
   const usernameInputRef = useRef<View>(null);
 
   const validateUsername = (text: string): boolean => {
-    // Username should be 3-20 characters, alphanumeric and underscores only
-    const usernameRegex = /^[a-zA-Z0-9_]{3,20}$/;
+    // Username should be 6-20 characters, alphanumeric and underscores only
+    const usernameRegex = /^[a-zA-Z0-9_]{6,20}$/;
     return usernameRegex.test(text);
   };
 
@@ -64,7 +64,7 @@ export default function GoogleSignUpScreen() {
     if (!validateUsername(username)) {
       Alert.alert(
         'Invalid Username',
-        'Username must be 3-20 characters long and can only contain letters, numbers, and underscores.'
+        'Username must be 6-20 characters long and can only contain letters, numbers, and underscores.'
       );
       return;
     }
@@ -182,7 +182,7 @@ export default function GoogleSignUpScreen() {
               onFocus={handleUsernameFocus}
             />
             <ThemedText style={styles.hint}>
-              3-20 characters, letters, numbers, and underscores only
+              6-20 characters, letters, numbers, and underscores only
             </ThemedText>
           </View>
 

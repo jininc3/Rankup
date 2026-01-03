@@ -15,8 +15,8 @@ export default function ChangePasswordScreen() {
   const [isUpdating, setIsUpdating] = useState(false);
 
   const validatePassword = (password: string): boolean => {
-    // Password must be at least 6 characters
-    return password.length >= 6;
+    // Password must be at least 8 characters, contain a number and a letter
+    return password.length >= 8 && /[0-9]/.test(password) && /[a-zA-Z]/.test(password);
   };
 
   const handleChangePassword = async () => {
@@ -43,7 +43,7 @@ export default function ChangePasswordScreen() {
     }
 
     if (!validatePassword(newPassword)) {
-      Alert.alert('Weak Password', 'Password must be at least 6 characters long');
+      Alert.alert('Weak Password', 'Password must be at least 8 characters and contain at least one number and one letter');
       return;
     }
 
@@ -146,14 +146,40 @@ export default function ChangePasswordScreen() {
             <View style={styles.requirementItem}>
               <IconSymbol
                 size={16}
-                name={newPassword.length >= 6 ? "checkmark.circle.fill" : "circle"}
-                color={newPassword.length >= 6 ? "#22c55e" : "#999"}
+                name={newPassword.length >= 8 ? "checkmark.circle.fill" : "circle"}
+                color={newPassword.length >= 8 ? "#22c55e" : "#999"}
               />
               <ThemedText style={[
                 styles.requirementText,
-                newPassword.length >= 6 && styles.requirementMet
+                newPassword.length >= 8 && styles.requirementMet
               ]}>
-                At least 6 characters
+                At least 8 characters
+              </ThemedText>
+            </View>
+            <View style={styles.requirementItem}>
+              <IconSymbol
+                size={16}
+                name={/[0-9]/.test(newPassword) ? "checkmark.circle.fill" : "circle"}
+                color={/[0-9]/.test(newPassword) ? "#22c55e" : "#999"}
+              />
+              <ThemedText style={[
+                styles.requirementText,
+                /[0-9]/.test(newPassword) && styles.requirementMet
+              ]}>
+                At least one number
+              </ThemedText>
+            </View>
+            <View style={styles.requirementItem}>
+              <IconSymbol
+                size={16}
+                name={/[a-zA-Z]/.test(newPassword) ? "checkmark.circle.fill" : "circle"}
+                color={/[a-zA-Z]/.test(newPassword) ? "#22c55e" : "#999"}
+              />
+              <ThemedText style={[
+                styles.requirementText,
+                /[a-zA-Z]/.test(newPassword) && styles.requirementMet
+              ]}>
+                At least one letter
               </ThemedText>
             </View>
             <View style={styles.requirementItem}>

@@ -29,19 +29,33 @@ export default function EmailSignUpStep3() {
   const passwordRef = useRef<TextInput>(null);
   const confirmPasswordRef = useRef<TextInput>(null);
 
+  const validatePassword = (pwd: string): { isValid: boolean; message?: string } => {
+    if (pwd.length < 8) {
+      return { isValid: false, message: 'Password must be at least 8 characters' };
+    }
+    if (!/[0-9]/.test(pwd)) {
+      return { isValid: false, message: 'Password must contain at least one number' };
+    }
+    if (!/[a-zA-Z]/.test(pwd)) {
+      return { isValid: false, message: 'Password must contain at least one letter' };
+    }
+    return { isValid: true };
+  };
+
   const handleSignUp = async () => {
     if (!email || !password || !confirmPassword) {
       Alert.alert('Error', 'Please fill in all fields');
       return;
     }
 
-    if (password !== confirmPassword) {
-      Alert.alert('Error', 'Passwords do not match');
+    const passwordValidation = validatePassword(password);
+    if (!passwordValidation.isValid) {
+      Alert.alert('Weak Password', passwordValidation.message || 'Please choose a stronger password');
       return;
     }
 
-    if (password.length < 6) {
-      Alert.alert('Error', 'Password must be at least 6 characters');
+    if (password !== confirmPassword) {
+      Alert.alert('Error', 'Passwords do not match');
       return;
     }
 
@@ -138,6 +152,49 @@ export default function EmailSignUpStep3() {
                   onSubmitEditing={() => confirmPasswordRef.current?.focus()}
                   blurOnSubmit={false}
                 />
+                {password.length > 0 && (
+                  <View style={styles.requirementsCard}>
+                    <View style={styles.requirementItem}>
+                      <IconSymbol
+                        size={16}
+                        name={password.length >= 8 ? "checkmark.circle.fill" : "circle"}
+                        color={password.length >= 8 ? "#22c55e" : "#999"}
+                      />
+                      <ThemedText style={[
+                        styles.requirementText,
+                        password.length >= 8 && styles.requirementMet
+                      ]}>
+                        At least 8 characters
+                      </ThemedText>
+                    </View>
+                    <View style={styles.requirementItem}>
+                      <IconSymbol
+                        size={16}
+                        name={/[0-9]/.test(password) ? "checkmark.circle.fill" : "circle"}
+                        color={/[0-9]/.test(password) ? "#22c55e" : "#999"}
+                      />
+                      <ThemedText style={[
+                        styles.requirementText,
+                        /[0-9]/.test(password) && styles.requirementMet
+                      ]}>
+                        At least one number
+                      </ThemedText>
+                    </View>
+                    <View style={styles.requirementItem}>
+                      <IconSymbol
+                        size={16}
+                        name={/[a-zA-Z]/.test(password) ? "checkmark.circle.fill" : "circle"}
+                        color={/[a-zA-Z]/.test(password) ? "#22c55e" : "#999"}
+                      />
+                      <ThemedText style={[
+                        styles.requirementText,
+                        /[a-zA-Z]/.test(password) && styles.requirementMet
+                      ]}>
+                        At least one letter
+                      </ThemedText>
+                    </View>
+                  </View>
+                )}
               </View>
 
               <View style={styles.inputContainer}>
@@ -154,6 +211,21 @@ export default function EmailSignUpStep3() {
                   returnKeyType="done"
                   onSubmitEditing={handleSignUp}
                 />
+                {confirmPassword.length > 0 && (
+                  <View style={styles.requirementItem}>
+                    <IconSymbol
+                      size={16}
+                      name={password === confirmPassword && confirmPassword !== '' ? "checkmark.circle.fill" : "circle"}
+                      color={password === confirmPassword && confirmPassword !== '' ? "#22c55e" : "#999"}
+                    />
+                    <ThemedText style={[
+                      styles.requirementText,
+                      password === confirmPassword && confirmPassword !== '' && styles.requirementMet
+                    ]}>
+                      Passwords match
+                    </ThemedText>
+                  </View>
+                )}
               </View>
 
               <TouchableOpacity
@@ -248,5 +320,27 @@ const styles = StyleSheet.create({
   },
   buttonDisabled: {
     opacity: 0.5,
+  },
+  requirementsCard: {
+    marginTop: 12,
+    padding: 12,
+    backgroundColor: '#f9fafb',
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: '#e5e7eb',
+    gap: 8,
+  },
+  requirementItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  requirementText: {
+    fontSize: 14,
+    color: '#666',
+  },
+  requirementMet: {
+    color: '#22c55e',
+    fontWeight: '500',
   },
 });
