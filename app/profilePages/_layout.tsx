@@ -75,6 +75,30 @@ export default function ProfilePagesLayout() {
           headerShown: false,
         }}
       />
+      <Stack.Screen
+        name="editUsername"
+        options={{
+          headerShown: false,
+        }}
+      />
+      <Stack.Screen
+        name="editEmail"
+        options={{
+          headerShown: false,
+        }}
+      />
+      <Stack.Screen
+        name="settingsVerifyEmail"
+        options={{
+          headerShown: false,
+        }}
+      />
+      <Stack.Screen
+        name="changePassword"
+        options={{
+          headerShown: false,
+        }}
+      />
     </Stack>
   );
 }

@@ -8,6 +8,7 @@ import { deleteUserAccount } from '@/services/deleteAccountService';
 import { useState, useEffect } from 'react';
 import { auth } from '@/config/firebase';
 import { useGoogleAuth } from '@/hooks/useGoogleAuth';
+import { EmailAuthProvider, reauthenticateWithCredential, GoogleAuthProvider } from 'firebase/auth';
 
 const accountSettingsData = [
   {
@@ -48,20 +49,6 @@ const accountSettingsData = [
         subtitle: 'Update your password',
         hasChevron: true,
       },
-      {
-        id: 5,
-        icon: 'checkmark.shield',
-        title: 'Two-Factor Authentication',
-        subtitle: 'Add extra security',
-        hasChevron: true,
-      },
-      {
-        id: 6,
-        icon: 'app.connected.to.app.below.fill',
-        title: 'Connected Accounts',
-        subtitle: 'Manage linked accounts',
-        hasChevron: true,
-      },
     ],
   },
   {
@@ -97,6 +84,15 @@ export default function AccountSettingsScreen() {
   const [authProvider, setAuthProvider] = useState<'password' | 'google.com' | null>(null);
   const googleAuth = useGoogleAuth();
 
+  // Edit Username states
+  const [showPasswordModal, setShowPasswordModal] = useState(false);
+  const [verifyPassword, setVerifyPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
+  const [isVerifying, setIsVerifying] = useState(false);
+  const [isEditUsernameFlow, setIsEditUsernameFlow] = useState(false);
+  const [isEditEmailFlow, setIsEditEmailFlow] = useState(false);
+  const [isChangePasswordFlow, setIsChangePasswordFlow] = useState(false);
+
   // Detect the authentication provider when component mounts
   useEffect(() => {
     const currentUser = auth.currentUser;
@@ -108,10 +104,167 @@ export default function AccountSettingsScreen() {
 
   // Handle Google re-authentication response
   useEffect(() => {
-    if (googleAuth.response?.type === 'success' && isDeleting) {
-      handleGoogleDeleteSuccess(googleAuth.response);
+    if (googleAuth.response?.type === 'success') {
+      if (isEditUsernameFlow) {
+        handleGoogleEditUsernameSuccess(googleAuth.response);
+      } else if (isDeleting) {
+        handleGoogleDeleteSuccess(googleAuth.response);
+      }
     }
   }, [googleAuth.response]);
+
+  // Handle Edit Username
+  const handleEditUsername = async () => {
+    // Handle Gmail/Google users - re-authenticate with Google
+    if (user?.provider === 'google') {
+      Alert.alert(
+        'Verify Your Identity',
+        'Please sign in with your Google account to verify your identity before editing your username.',
+        [
+          {
+            text: 'Cancel',
+            style: 'cancel',
+          },
+          {
+            text: 'Sign In with Google',
+            onPress: async () => {
+              try {
+                setIsEditUsernameFlow(true);
+                await googleAuth.promptAsync();
+              } catch (error: any) {
+                console.error('Google sign-in prompt error:', error);
+                Alert.alert('Error', 'Failed to open Google sign-in. Please try again.');
+                setIsEditUsernameFlow(false);
+              }
+            },
+          },
+        ]
+      );
+      return;
+    }
+
+    // Handle email/password users - show password verification modal
+    if (user?.provider === 'email') {
+      setShowPasswordModal(true);
+      return;
+    }
+
+    // For other providers (if any)
+    Alert.alert(
+      'Not Available',
+      'Username editing is not available for your account type.',
+      [{ text: 'OK' }]
+    );
+  };
+
+  const handleGoogleEditUsernameSuccess = async (response: any) => {
+    try {
+      const { id_token } = response.params;
+
+      if (id_token) {
+        const currentUser = auth.currentUser;
+        if (!currentUser) {
+          Alert.alert('Error', 'User not found');
+          setIsEditUsernameFlow(false);
+          return;
+        }
+
+        // Re-authenticate with Google credential
+        const googleCredential = GoogleAuthProvider.credential(id_token);
+        await reauthenticateWithCredential(currentUser, googleCredential);
+
+        // Successfully re-authenticated, navigate to edit username page
+        setIsEditUsernameFlow(false);
+        router.push('/profilePages/editUsername');
+      }
+    } catch (error: any) {
+      console.error('Google re-authentication error:', error);
+      Alert.alert('Error', 'Failed to verify your identity. Please try again.');
+      setIsEditUsernameFlow(false);
+    }
+  };
+
+  const handleEditEmail = async () => {
+    // Only available for email/password users
+    if (user?.provider !== 'email') {
+      Alert.alert(
+        'Not Available',
+        'Email editing is only available for email/password accounts.',
+        [{ text: 'OK' }]
+      );
+      return;
+    }
+
+    setIsEditEmailFlow(true);
+    setShowPasswordModal(true);
+  };
+
+  const handleChangePassword = async () => {
+    // Only available for email/password users
+    if (user?.provider !== 'email') {
+      Alert.alert(
+        'Not Available',
+        'Password change is only available for email/password accounts.',
+        [{ text: 'OK' }]
+      );
+      return;
+    }
+
+    setIsChangePasswordFlow(true);
+    setShowPasswordModal(true);
+  };
+
+  const handleVerifyPassword = async () => {
+    // Validate passwords
+    if (!verifyPassword || !confirmPassword) {
+      Alert.alert('Error', 'Please enter your password in both fields');
+      return;
+    }
+
+    if (verifyPassword !== confirmPassword) {
+      Alert.alert('Error', 'Passwords do not match');
+      return;
+    }
+
+    setIsVerifying(true);
+
+    try {
+      // Re-authenticate user with their password
+      const currentUser = auth.currentUser;
+      if (!currentUser || !currentUser.email) {
+        Alert.alert('Error', 'User not found');
+        setIsVerifying(false);
+        return;
+      }
+
+      const credential = EmailAuthProvider.credential(currentUser.email, verifyPassword);
+      await reauthenticateWithCredential(currentUser, credential);
+
+      // Password is correct, navigate to appropriate page
+      setShowPasswordModal(false);
+      setVerifyPassword('');
+      setConfirmPassword('');
+
+      if (isEditEmailFlow) {
+        setIsEditEmailFlow(false);
+        router.push('/profilePages/editEmail');
+      } else if (isChangePasswordFlow) {
+        setIsChangePasswordFlow(false);
+        router.push('/profilePages/changePassword');
+      } else {
+        router.push('/profilePages/editUsername');
+      }
+    } catch (error: any) {
+      console.error('Re-authentication error:', error);
+      if (error.code === 'auth/wrong-password' || error.code === 'auth/invalid-credential') {
+        Alert.alert('Error', 'Incorrect password. Please try again.');
+      } else {
+        Alert.alert('Error', 'Failed to verify password. Please try again.');
+      }
+    } finally {
+      setIsVerifying(false);
+    }
+  };
 
   const handleGoogleDeleteSuccess = async (response: any) => {
     try {
@@ -235,7 +388,16 @@ export default function AccountSettingsScreen() {
                     index === section.items.length - 1 && styles.settingItemLast,
                   ]}
                   onPress={() => {
-                    if (item.id === 8) {
+                    if (item.id === 1) {
+                      // Edit Username
+                      handleEditUsername();
+                    } else if (item.id === 2) {
+                      // Edit Email
+                      handleEditEmail();
+                    } else if (item.id === 4) {
+                      // Change Password
+                      handleChangePassword();
+                    } else if (item.id === 8) {
                       // Delete Account
                       handleDeleteAccountPress();
                     }
@@ -395,6 +557,76 @@ export default function AccountSettingsScreen() {
           </View>
         </KeyboardAvoidingView>
       </Modal>
+
+      {/* Password Verification Modal for Edit Username */}
+      <Modal
+        visible={showPasswordModal}
+        transparent={true}
+        animationType="fade"
+        onRequestClose={() => setShowPasswordModal(false)}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalContent}>
+            <ThemedText style={styles.modalTitle}>Verify Password</ThemedText>
+            <ThemedText style={styles.modalDescription}>
+              Please enter your password twice to verify your identity
+            </ThemedText>
+
+            <View style={styles.confirmInputContainer}>
+              <TextInput
+                style={styles.confirmInput}
+                placeholder="Enter password"
+                placeholderTextColor="#999"
+                secureTextEntry
+                value={verifyPassword}
+                onChangeText={setVerifyPassword}
+                autoCapitalize="none"
+                autoComplete="password"
+              />
+            </View>
+
+            <View style={styles.confirmInputContainer}>
+              <TextInput
+                style={styles.confirmInput}
+                placeholder="Confirm password"
+                placeholderTextColor="#999"
+                secureTextEntry
+                value={confirmPassword}
+                onChangeText={setConfirmPassword}
+                autoCapitalize="none"
+                autoComplete="password"
+              />
+            </View>
+
+            <View style={styles.modalButtons}>
+              <TouchableOpacity
+                style={styles.modalCancelButton}
+                onPress={() => {
+                  setShowPasswordModal(false);
+                  setVerifyPassword('');
+                  setConfirmPassword('');
+                }}
+                disabled={isVerifying}
+              >
+                <ThemedText style={styles.modalCancelText}>Cancel</ThemedText>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                style={[
+                  styles.verifyButton,
+                  isVerifying && styles.verifyButtonDisabled
+                ]}
+                onPress={handleVerifyPassword}
+                disabled={isVerifying}
+              >
+                <ThemedText style={styles.verifyButtonText}>
+                  {isVerifying ? 'Verifying...' : 'Verify'}
+                </ThemedText>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
     </ThemedView>
   );
 }
@@ -427,7 +659,7 @@ const styles = StyleSheet.create({
     fontWeight: '400',
   },
   headerTitle: {
-    fontSize: 17,
+    fontSize: 15,
     fontWeight: '600',
     color: '#000',
     flex: 1,
@@ -605,5 +837,20 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: '600',
     color: '#fff',
+  },
+  verifyButton: {
+    flex: 1,
+    paddingVertical: 12,
+    borderRadius: 8,
+    backgroundColor: '#000',
+    alignItems: 'center',
+  },
+  verifyButtonText: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#fff',
+  },
+  verifyButtonDisabled: {
+    opacity: 0.5,
   },
 });
