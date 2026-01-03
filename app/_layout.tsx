@@ -53,12 +53,22 @@ function RootLayoutNav() {
 
       // Navigate based on notification type
       if (data.type === 'follow') {
-        // Navigate to the user's profile who followed
-        router.push(`/profilePages/viewOthersProfile?userId=${data.fromUserId}`);
+        // Navigate to the user's profile who followed you
+        router.push(`/profilePages/profileView?userId=${data.fromUserId}`);
       } else if (data.type === 'like' || data.type === 'comment' || data.type === 'tag') {
-        // Navigate to the post
+        // Navigate to the post that was liked/commented/tagged
         if (data.postId) {
-          router.push(`/components/postViewerModal?postId=${data.postId}`);
+          router.push(`/postViewer?postId=${data.postId}`);
+        }
+      } else if (data.type === 'message') {
+        // Navigate to the chat screen
+        if (data.chatId && data.senderId && data.senderUsername) {
+          router.push(`/chatPages/chatScreen?chatId=${data.chatId}&otherUserId=${data.senderId}&otherUsername=${data.senderUsername}`);
+        }
+      } else if (data.type === 'party_invite') {
+        // Navigate to the party details/leaderboard
+        if (data.partyId) {
+          router.push(`/leaderboardPages/leaderboardDetail?partyId=${data.partyId}`);
         }
       }
     });
