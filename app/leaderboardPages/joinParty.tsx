@@ -86,15 +86,12 @@ export default function JoinPartyScreen() {
             text: 'OK',
             onPress: () => {
               // Navigate to the party detail page
-              const detailPage = partyData.game === 'Valorant'
-                ? '/leaderboardPages/valorantLeaderboardDetails'
-                : '/leaderboardPages/leagueLeaderboardDetails';
-
               router.push({
-                pathname: detailPage,
+                pathname: '/leaderboardPages/leaderboardDetail',
                 params: {
                   name: partyData.partyName,
                   partyId: partyData.partyId,
+                  game: partyData.game,
                   members: ((partyData.members?.length || 0) + 1).toString(),
                   startDate: partyData.startDate,
                   endDate: partyData.endDate,

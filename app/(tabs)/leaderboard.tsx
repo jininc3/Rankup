@@ -1,13 +1,13 @@
+import PartyCards from '@/app/components/partyCards';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { IconSymbol } from '@/components/ui/icon-symbol';
-import { useRouter } from 'expo-router';
-import { ScrollView, StyleSheet, TouchableOpacity, View, Image, ActivityIndicator } from 'react-native';
-import PartyCards from '@/app/components/partyCards';
-import { useState, useEffect } from 'react';
-import { useAuth } from '@/contexts/AuthContext';
 import { db } from '@/config/firebase';
-import { collection, query, where, getDocs, onSnapshot, doc, getDoc, limit } from 'firebase/firestore';
+import { useAuth } from '@/contexts/AuthContext';
+import { useRouter } from 'expo-router';
+import { collection, doc, getDoc, getDocs, limit, onSnapshot, query, where } from 'firebase/firestore';
+import { useEffect, useState } from 'react';
+import { ActivityIndicator, Image, ScrollView, StyleSheet, TouchableOpacity, View } from 'react-native';
 
 // Game logo mapping
 const GAME_LOGOS: { [key: string]: any } = {
@@ -54,6 +54,7 @@ export default function LeaderboardScreen() {
   const { user } = useAuth();
   const [parties, setParties] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+  const [selectedTab, setSelectedTab] = useState<'current' | 'completed'>('current');
 
   // Fetch parties from Firestore
   useEffect(() => {
@@ -177,16 +178,46 @@ export default function LeaderboardScreen() {
     calculateRanks();
   }, [parties.length, user?.id]);
 
-  // User's rank summary data
-  const userRankSummary = parties
-    .filter(lb => lb.userRank !== null)
-    .map(lb => ({
-      leaderboardName: lb.name,
-      partyId: lb.partyId,
-      rank: lb.userRank!,
-      totalMembers: lb.members,
-      game: lb.game,
-    }));
+  // Helper function to check if a party is completed
+  const isPartyCompleted = (endDate: any): boolean => {
+    if (!endDate) return false;
+
+    let endDateObj: Date | null = null;
+
+    // Handle Firestore Timestamp
+    if (endDate.toDate && typeof endDate.toDate === 'function') {
+      endDateObj = endDate.toDate();
+    }
+    // Handle Date object
+    else if (endDate instanceof Date) {
+      endDateObj = endDate;
+    }
+    // Handle string (MM/DD/YYYY format)
+    else if (typeof endDate === 'string') {
+      const parts = endDate.split('/');
+      if (parts.length === 3) {
+        const month = parseInt(parts[0], 10) - 1;
+        const day = parseInt(parts[1], 10);
+        const year = parseInt(parts[2], 10);
+        endDateObj = new Date(year, month, day);
+      } else {
+        endDateObj = new Date(endDate);
+      }
+    }
+
+    if (!endDateObj || isNaN(endDateObj.getTime())) return false;
+
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    endDateObj.setHours(0, 0, 0, 0);
+
+    return endDateObj < today;
+  };
+
+  // Filter parties by tab
+  const currentParties = parties.filter(party => !isPartyCompleted(party.endDate));
+  const completedParties = parties.filter(party => isPartyCompleted(party.endDate));
+  const displayedParties = selectedTab === 'current' ? currentParties : completedParties;
 
   const getRankColor = (rank: number) => {
     if (rank === 1) return '#FFD700'; // Gold
@@ -240,80 +271,52 @@ export default function LeaderboardScreen() {
         </View>
       ) : (
         <ScrollView style={styles.scrollView} showsVerticalScrollIndicator={false}>
-        {/* Your Rankings Summary */}
-        {userRankSummary.length > 0 && (
-          <View style={styles.summarySection}>
-            <ThemedText style={styles.sectionTitle}>Your Rankings</ThemedText>
-            <ScrollView
-              horizontal
-              showsHorizontalScrollIndicator={false}
-              contentContainerStyle={styles.summaryScroll}
+          {/* Tabs */}
+          <View style={styles.tabsContainer}>
+            <TouchableOpacity
+              style={[styles.tab, selectedTab === 'current' && styles.tabActive]}
+              onPress={() => setSelectedTab('current')}
             >
-              {userRankSummary.map((item, index) => (
-                <TouchableOpacity
-                  key={index}
-                  style={styles.summaryCard}
-                  onPress={() => {
-                    const party = parties.find(p => p.partyId === item.partyId);
-                    if (party) handleLeaderboardPress(party);
-                  }}
-                  activeOpacity={0.7}
-                >
-                  <View style={[styles.rankBadge, { backgroundColor: getRankColor(item.rank) }]}>
-                    <ThemedText style={styles.rankBadgeText}>#{item.rank}</ThemedText>
-                  </View>
-                  <View style={styles.summaryCardBody}>
-                    <View style={styles.summaryCardLeft}>
-                      <View style={styles.summaryIconContainer}>
-                        <Image
-                          source={GAME_LOGOS[item.game] || GAME_LOGOS['Valorant']}
-                          style={styles.summaryGameLogo}
-                          resizeMode="contain"
-                        />
-                      </View>
-                    </View>
-                    <View style={styles.summaryCardRight}>
-                      <ThemedText style={styles.summaryPartyId} numberOfLines={1}>
-                        {item.partyId}
-                      </ThemedText>
-                      <ThemedText style={styles.summaryGameText}>
-                        {item.game}
-                      </ThemedText>
-                      <ThemedText style={styles.summaryTotalMembers}>
-                        {item.totalMembers} players
-                      </ThemedText>
-                    </View>
-                  </View>
-                </TouchableOpacity>
-              ))}
-            </ScrollView>
-          </View>
-        )}
-
-        {/* All Leaderboards */}
-        <View style={styles.leaderboardsSection}>
-          <ThemedText style={styles.sectionTitle}>Your Parties</ThemedText>
-
-          {parties.length > 0 ? (
-            parties.map((leaderboard) => (
-              <PartyCards
-                key={leaderboard.id}
-                leaderboard={leaderboard}
-                onPress={handleLeaderboardPress}
-              />
-            ))
-          ) : (
-            <View style={styles.emptyState}>
-              <ThemedText style={styles.emptyStateText}>No parties yet</ThemedText>
-              <ThemedText style={styles.emptyStateSubtext}>
-                Create a new party or join one with an invite code
+              <ThemedText style={[styles.tabText, selectedTab === 'current' && styles.tabTextActive]}>
+                Current ({currentParties.length})
               </ThemedText>
-            </View>
-          )}
-        </View>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={[styles.tab, selectedTab === 'completed' && styles.tabActive]}
+              onPress={() => setSelectedTab('completed')}
+            >
+              <ThemedText style={[styles.tabText, selectedTab === 'completed' && styles.tabTextActive]}>
+                Completed ({completedParties.length})
+              </ThemedText>
+            </TouchableOpacity>
+          </View>
 
-        <View style={styles.bottomSpacer} />
-      </ScrollView>
+          {/* Parties List */}
+          <View style={styles.leaderboardsSection}>
+            {displayedParties.length > 0 ? (
+              displayedParties.map((leaderboard) => (
+                <PartyCards
+                  key={leaderboard.id}
+                  leaderboard={leaderboard}
+                  onPress={handleLeaderboardPress}
+                />
+              ))
+            ) : (
+              <View style={styles.emptyState}>
+                <ThemedText style={styles.emptyStateText}>
+                  {selectedTab === 'current' ? 'No current parties' : 'No completed parties'}
+                </ThemedText>
+                <ThemedText style={styles.emptyStateSubtext}>
+                  {selectedTab === 'current'
+                    ? 'Create a new party or join one with an invite code'
+                    : 'Completed parties will appear here after their end date'}
+                </ThemedText>
+              </View>
+            )}
+          </View>
+
+          <View style={styles.bottomSpacer} />
+        </ScrollView>
       )}
 
       {/* Floating Add Party Button */}
@@ -373,93 +376,38 @@ const styles = StyleSheet.create({
   scrollView: {
     flex: 1,
   },
-  summarySection: {
-    paddingTop: 20,
-    paddingBottom: 16,
-  },
-  sectionTitle: {
-    fontSize: 17,
-    fontWeight: '600',
-    color: '#000',
-    marginBottom: 12,
-    letterSpacing: -0.3,
-    paddingHorizontal: 20,
-  },
-  summaryScroll: {
-    paddingHorizontal: 20,
-    gap: 10,
-  },
-  summaryCard: {
-    backgroundColor: '#fff',
-    borderRadius: 16,
-    width: 180,
-    borderWidth: 1,
-    borderColor: '#e5e5e5',
-    overflow: 'hidden',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.05,
-    shadowRadius: 8,
-    elevation: 2,
-  },
-  rankBadge: {
-    paddingVertical: 6,
-    paddingHorizontal: 12,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  rankBadgeText: {
-    fontSize: 13,
-    fontWeight: '700',
-    color: '#fff',
-    letterSpacing: 0.5,
-  },
-  summaryCardBody: {
+  tabsContainer: {
     flexDirection: 'row',
-    padding: 12,
-    gap: 10,
-    alignItems: 'center',
+    paddingHorizontal: 20,
+    paddingVertical: 16,
+    gap: 12,
+    borderBottomWidth: 1,
+    borderBottomColor: '#e5e5e5',
   },
-  summaryCardLeft: {
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  summaryCardRight: {
+  tab: {
     flex: 1,
-    gap: 2,
-  },
-  summaryIconContainer: {
-    width: 40,
-    height: 40,
-    borderRadius: 10,
-    backgroundColor: '#f8f8f8',
+    paddingVertical: 10,
+    paddingHorizontal: 16,
+    borderRadius: 8,
+    backgroundColor: '#f5f5f5',
     alignItems: 'center',
     justifyContent: 'center',
   },
-  summaryGameLogo: {
-    width: 30,
-    height: 30,
+  tabActive: {
+    backgroundColor: '#000',
   },
-  summaryPartyId: {
-    fontSize: 15,
-    fontWeight: '700',
-    color: '#000',
-    letterSpacing: -0.3,
-  },
-  summaryGameText: {
-    fontSize: 11,
-    fontWeight: '500',
+  tabText: {
+    fontSize: 14,
+    fontWeight: '600',
     color: '#666',
-    letterSpacing: -0.1,
+    letterSpacing: -0.2,
   },
-  summaryTotalMembers: {
-    fontSize: 11,
-    fontWeight: '500',
-    color: '#999',
+  tabTextActive: {
+    color: '#fff',
   },
   leaderboardsSection: {
     paddingHorizontal: 20,
-    paddingTop: 8,
+    paddingTop: 16,
   },
   emptyState: {
     paddingVertical: 40,

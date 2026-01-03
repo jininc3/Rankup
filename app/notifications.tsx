@@ -263,16 +263,13 @@ export default function NotificationsScreen() {
 
       console.log('Successfully joined party:', notification.partyName);
 
-      // Navigate to the appropriate leaderboard detail page
-      const detailPage = notification.game === 'Valorant'
-        ? '/leaderboardPages/valorantLeaderboardDetails'
-        : '/leaderboardPages/leagueLeaderboardDetails';
-
+      // Navigate to the leaderboard detail page
       router.push({
-        pathname: detailPage,
+        pathname: '/leaderboardPages/leaderboardDetail',
         params: {
           name: notification.partyName,
           partyId: notification.partyId,
+          game: notification.game,
           members: updatedMembers.length.toString(),
           startDate: partyData.startDate || '',
           endDate: partyData.endDate || '',

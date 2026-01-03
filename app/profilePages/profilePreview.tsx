@@ -28,43 +28,24 @@ interface ViewedUser {
   postsCount?: number;
   followersCount?: number;
   followingCount?: number;
+  gamesPlayed?: {
+    valorant?: {
+      currentRank: string;
+      gamesPlayed: number;
+      winRate: number;
+    };
+    league?: {
+      currentRank: string;
+      gamesPlayed: number;
+      winRate: number;
+    };
+    apex?: {
+      currentRank: string;
+      gamesPlayed: number;
+      winRate: number;
+    };
+  };
 }
-
-const userGames = [
-  {
-    id: 1,
-    name: 'Valorant',
-    rank: currentUser.gamesPlayed.valorant.currentRank,
-    trophies: 1245,
-    icon: '🎯',
-    wins: Math.floor(currentUser.gamesPlayed.valorant.gamesPlayed * (currentUser.gamesPlayed.valorant.winRate / 100)),
-    losses: currentUser.gamesPlayed.valorant.gamesPlayed - Math.floor(currentUser.gamesPlayed.valorant.gamesPlayed * (currentUser.gamesPlayed.valorant.winRate / 100)),
-    winRate: currentUser.gamesPlayed.valorant.winRate,
-    recentMatches: ['+25', '+18', '-12', '+22', '+19'],
-  },
-  {
-    id: 2,
-    name: 'League of Legends',
-    rank: currentUser.gamesPlayed.league.currentRank,
-    trophies: 876,
-    icon: '⚔️',
-    wins: Math.floor(currentUser.gamesPlayed.league.gamesPlayed * (currentUser.gamesPlayed.league.winRate / 100)),
-    losses: currentUser.gamesPlayed.league.gamesPlayed - Math.floor(currentUser.gamesPlayed.league.gamesPlayed * (currentUser.gamesPlayed.league.winRate / 100)),
-    winRate: currentUser.gamesPlayed.league.winRate,
-    recentMatches: ['+15', '-18', '+20', '+17', '-14'],
-  },
-  {
-    id: 3,
-    name: 'Apex Legends',
-    rank: currentUser.gamesPlayed.apex.currentRank,
-    trophies: 422,
-    icon: '🎮',
-    wins: Math.floor(currentUser.gamesPlayed.apex.gamesPlayed * (currentUser.gamesPlayed.apex.winRate / 100)),
-    losses: currentUser.gamesPlayed.apex.gamesPlayed - Math.floor(currentUser.gamesPlayed.apex.gamesPlayed * (currentUser.gamesPlayed.apex.winRate / 100)),
-    winRate: currentUser.gamesPlayed.apex.winRate,
-    recentMatches: ['+28', '+22', '-16', '-19', '+25'],
-  },
-];
 
 const { width: screenWidth } = Dimensions.get('window');
 const CARD_PADDING = 20;
@@ -99,8 +80,46 @@ export default function ProfilePreviewScreen() {
   const [showPostViewer, setShowPostViewer] = useState(false);
   const [isFollowing, setIsFollowing] = useState(false);
   const [followLoading, setFollowLoading] = useState(false);
-  const selectedGame = userGames[selectedGameIndex];
   const scrollViewRef = useRef<ScrollView>(null);
+
+  // Create userGames array based on viewedUser data
+  const userGames = viewedUser?.gamesPlayed ? [
+    {
+      id: 1,
+      name: 'Valorant',
+      rank: viewedUser.gamesPlayed.valorant?.currentRank || 'Unranked',
+      trophies: 1245,
+      icon: '🎯',
+      wins: Math.floor((viewedUser.gamesPlayed.valorant?.gamesPlayed || 0) * ((viewedUser.gamesPlayed.valorant?.winRate || 0) / 100)),
+      losses: (viewedUser.gamesPlayed.valorant?.gamesPlayed || 0) - Math.floor((viewedUser.gamesPlayed.valorant?.gamesPlayed || 0) * ((viewedUser.gamesPlayed.valorant?.winRate || 0) / 100)),
+      winRate: viewedUser.gamesPlayed.valorant?.winRate || 0,
+      recentMatches: ['+25', '+18', '-12', '+22', '+19'],
+    },
+    {
+      id: 2,
+      name: 'League of Legends',
+      rank: viewedUser.gamesPlayed.league?.currentRank || 'Unranked',
+      trophies: 876,
+      icon: '⚔️',
+      wins: Math.floor((viewedUser.gamesPlayed.league?.gamesPlayed || 0) * ((viewedUser.gamesPlayed.league?.winRate || 0) / 100)),
+      losses: (viewedUser.gamesPlayed.league?.gamesPlayed || 0) - Math.floor((viewedUser.gamesPlayed.league?.gamesPlayed || 0) * ((viewedUser.gamesPlayed.league?.winRate || 0) / 100)),
+      winRate: viewedUser.gamesPlayed.league?.winRate || 0,
+      recentMatches: ['+15', '-18', '+20', '+17', '-14'],
+    },
+    {
+      id: 3,
+      name: 'Apex Legends',
+      rank: viewedUser.gamesPlayed.apex?.currentRank || 'Unranked',
+      trophies: 422,
+      icon: '🎮',
+      wins: Math.floor((viewedUser.gamesPlayed.apex?.gamesPlayed || 0) * ((viewedUser.gamesPlayed.apex?.winRate || 0) / 100)),
+      losses: (viewedUser.gamesPlayed.apex?.gamesPlayed || 0) - Math.floor((viewedUser.gamesPlayed.apex?.gamesPlayed || 0) * ((viewedUser.gamesPlayed.apex?.winRate || 0) / 100)),
+      winRate: viewedUser.gamesPlayed.apex?.winRate || 0,
+      recentMatches: ['+28', '+22', '-16', '-19', '+25'],
+    },
+  ] : [];
+
+  const selectedGame = userGames[selectedGameIndex];
 
   // Get userId from params, or use current user's id
   const userId = params.userId as string || currentUser?.id;
@@ -150,6 +169,7 @@ export default function ProfilePreviewScreen() {
           postsCount: data.postsCount || 0,
           followersCount: data.followersCount || 0,
           followingCount: data.followingCount || 0,
+          gamesPlayed: data.gamesPlayed,
         });
       }
     } catch (error) {

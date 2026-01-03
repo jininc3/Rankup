@@ -6,9 +6,8 @@ import { useFocusEffect } from '@react-navigation/native';
 import { ScrollView, StyleSheet, TouchableOpacity, View, Alert } from 'react-native';
 import { useAuth } from '@/contexts/AuthContext';
 import { useState, useEffect, useCallback } from 'react';
-import { doc, getDoc, updateDoc } from 'firebase/firestore';
+import { doc, getDoc } from 'firebase/firestore';
 import { db } from '@/config/firebase';
-import { unlinkRiotAccount } from '@/services/riotService';
 
 const settingsData = [
   {
@@ -106,127 +105,6 @@ export default function SettingsScreen() {
     }
   };
 
-  const handleLinkRiotAccount = () => {
-    if (riotAccount) {
-      Alert.alert(
-        'Account Already Linked',
-        'You already have a League of Legends account linked. Please unlink it first if you want to link a different one.',
-        [{ text: 'OK' }]
-      );
-      return;
-    }
-    router.push('/profilePages/linkRiotAccount');
-  };
-
-  const handleLinkValorantAccount = () => {
-    if (valorantAccount) {
-      Alert.alert(
-        'Account Already Linked',
-        'You already have a Valorant account linked. Please unlink it first if you want to link a different one.',
-        [{ text: 'OK' }]
-      );
-      return;
-    }
-    router.push('/profilePages/linkValorantAccount');
-  };
-
-  const handleUnlinkRiotAccount = () => {
-    if (!riotAccount) {
-      Alert.alert('No Account Linked', 'You don\'t have a League of Legends account linked yet. Connect one first!');
-      return;
-    }
-
-    Alert.alert(
-      'Unlink League Account',
-      `Are you sure you want to unlink ${riotAccount?.gameName}#${riotAccount?.tagLine}? Your League rank card will be removed.`,
-      [
-        {
-          text: 'Cancel',
-          style: 'cancel',
-        },
-        {
-          text: 'Unlink',
-          style: 'destructive',
-          onPress: async () => {
-            try {
-              await unlinkRiotAccount();
-
-              // Remove League rank cards from enabled list
-              if (user?.id) {
-                const userDoc = await getDoc(doc(db, 'users', user.id));
-                if (userDoc.exists()) {
-                  const data = userDoc.data();
-                  const currentCards = data.enabledRankCards || [];
-                  const updatedCards = currentCards.filter((card: string) => card !== 'league' && card !== 'tft');
-
-                  await updateDoc(doc(db, 'users', user.id), {
-                    enabledRankCards: updatedCards,
-                  });
-                }
-              }
-
-              setRiotAccount(null);
-              Alert.alert('Success', 'League of Legends account unlinked successfully');
-            } catch (error: any) {
-              Alert.alert('Error', error.message || 'Failed to unlink League account');
-              console.error(error);
-            }
-          },
-        },
-      ]
-    );
-  };
-
-  const handleUnlinkValorantAccount = async () => {
-    if (!valorantAccount) {
-      Alert.alert('No Account Linked', 'You don\'t have a Valorant account linked yet. Connect one first!');
-      return;
-    }
-
-    Alert.alert(
-      'Unlink Valorant Account',
-      `Are you sure you want to unlink ${valorantAccount?.gameName}#${valorantAccount?.tagLine}? Your Valorant rank card will be removed.`,
-      [
-        {
-          text: 'Cancel',
-          style: 'cancel',
-        },
-        {
-          text: 'Unlink',
-          style: 'destructive',
-          onPress: async () => {
-            try {
-              // Remove Valorant account from Firestore
-              if (user?.id) {
-                await updateDoc(doc(db, 'users', user.id), {
-                  valorantAccount: null,
-                  valorantStats: null,
-                });
-
-                // Remove Valorant rank card from enabled list
-                const userDoc = await getDoc(doc(db, 'users', user.id));
-                if (userDoc.exists()) {
-                  const data = userDoc.data();
-                  const currentCards = data.enabledRankCards || [];
-                  const updatedCards = currentCards.filter((card: string) => card !== 'valorant');
-
-                  await updateDoc(doc(db, 'users', user.id), {
-                    enabledRankCards: updatedCards,
-                  });
-                }
-              }
-
-              setValorantAccount(null);
-              Alert.alert('Success', 'Valorant account unlinked successfully');
-            } catch (error: any) {
-              Alert.alert('Error', error.message || 'Failed to unlink Valorant account');
-              console.error(error);
-            }
-          },
-        },
-      ]
-    );
-  };
 
   const handleSignOut = () => {
     Alert.alert(
@@ -327,97 +205,73 @@ export default function SettingsScreen() {
         <View style={styles.section}>
           <ThemedText style={styles.sectionTitle}>Connected Accounts</ThemedText>
           <View style={styles.settingsGroup}>
-            {/* League of Legends */}
-            <TouchableOpacity
-              style={[styles.settingItem, riotAccount && styles.disabledSettingItem]}
-              onPress={handleLinkRiotAccount}
-              disabled={!!riotAccount}
-            >
+            {/* Info message */}
+            <View style={styles.infoMessageContainer}>
+              <IconSymbol size={18} name="info.circle" color="#666" />
+              <ThemedText style={styles.infoMessageText}>
+                Manage account connections from your Rank Cards page
+              </ThemedText>
+            </View>
+
+            {/* League of Legends - Display Only */}
+            <View style={styles.settingItem}>
               <View style={styles.settingLeft}>
                 <View style={styles.iconContainer}>
-                  <IconSymbol size={22} name="gamecontroller" color={riotAccount ? "#999" : "#000"} />
+                  <IconSymbol size={22} name="gamecontroller" color="#000" />
                 </View>
                 <View style={styles.settingTextContainer}>
-                  <ThemedText style={[styles.settingTitle, riotAccount && styles.disabledText]}>
-                    {riotAccount ? 'League of Legends Account' : 'Connect to League of Legends'}
-                  </ThemedText>
+                  <ThemedText style={styles.settingTitle}>League of Legends</ThemedText>
                   <ThemedText style={styles.settingSubtitle}>
                     {loadingAccounts
                       ? 'Checking...'
                       : riotAccount
                       ? `${riotAccount.gameName}#${riotAccount.tagLine}`
-                      : 'Link your League account'}
+                      : 'Not connected'}
                   </ThemedText>
                 </View>
               </View>
               <View style={styles.settingRight}>
-                {riotAccount && (
+                {riotAccount ? (
                   <View style={styles.connectedBadge}>
                     <ThemedText style={styles.connectedBadgeText}>Connected</ThemedText>
                   </View>
+                ) : (
+                  <View style={styles.notConnectedBadge}>
+                    <ThemedText style={styles.notConnectedBadgeText}>Not Connected</ThemedText>
+                  </View>
                 )}
-                {!riotAccount && <IconSymbol size={20} name="chevron.right" color="#666" />}
               </View>
-            </TouchableOpacity>
+            </View>
 
-            {/* Unlink League Account - Only show if linked */}
-            {riotAccount && (
-              <TouchableOpacity
-                style={styles.compactUnlinkButton}
-                onPress={handleUnlinkRiotAccount}
-              >
-                <IconSymbol size={16} name="link.badge.minus" color="#ef4444" />
-                <ThemedText style={styles.compactUnlinkText}>
-                  Unlink
-                </ThemedText>
-              </TouchableOpacity>
-            )}
-
-            {/* Valorant */}
-            <TouchableOpacity
-              style={[styles.settingItem, valorantAccount && styles.disabledSettingItem]}
-              onPress={handleLinkValorantAccount}
-              disabled={!!valorantAccount}
-            >
+            {/* Valorant - Display Only */}
+            <View style={[styles.settingItem, styles.settingItemLast]}>
               <View style={styles.settingLeft}>
                 <View style={styles.iconContainer}>
-                  <IconSymbol size={22} name="target" color={valorantAccount ? "#999" : "#000"} />
+                  <IconSymbol size={22} name="target" color="#000" />
                 </View>
                 <View style={styles.settingTextContainer}>
-                  <ThemedText style={[styles.settingTitle, valorantAccount && styles.disabledText]}>
-                    {valorantAccount ? 'Valorant Account' : 'Connect to Valorant'}
-                  </ThemedText>
+                  <ThemedText style={styles.settingTitle}>Valorant</ThemedText>
                   <ThemedText style={styles.settingSubtitle}>
                     {loadingAccounts
                       ? 'Checking...'
                       : valorantAccount
                       ? `${valorantAccount.gameName}#${valorantAccount.tagLine}`
-                      : 'Link your Valorant account'}
+                      : 'Not connected'}
                   </ThemedText>
                 </View>
               </View>
               <View style={styles.settingRight}>
-                {valorantAccount && (
+                {valorantAccount ? (
                   <View style={styles.connectedBadge}>
                     <ThemedText style={styles.connectedBadgeText}>Connected</ThemedText>
                   </View>
+                ) : (
+                  <View style={styles.notConnectedBadge}>
+                    <ThemedText style={styles.notConnectedBadgeText}>Not Connected</ThemedText>
+                  </View>
                 )}
-                {!valorantAccount && <IconSymbol size={20} name="chevron.right" color="#666" />}
               </View>
-            </TouchableOpacity>
-
-            {/* Unlink Valorant Account - Only show if linked */}
-            {valorantAccount && (
-              <TouchableOpacity
-                style={styles.compactUnlinkButton}
-                onPress={handleUnlinkValorantAccount}
-              >
-                <IconSymbol size={16} name="link.badge.minus" color="#ef4444" />
-                <ThemedText style={styles.compactUnlinkText}>
-                  Unlink
-                </ThemedText>
-              </TouchableOpacity>
-            )}
+            </View>
           </View>
         </View>
 
@@ -578,6 +432,32 @@ const styles = StyleSheet.create({
     fontSize: 12,
     fontWeight: '600',
     color: '#2e7d32',
+  },
+  notConnectedBadge: {
+    backgroundColor: '#f5f5f5',
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 6,
+  },
+  notConnectedBadgeText: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: '#666',
+  },
+  infoMessageContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    paddingVertical: 12,
+    paddingHorizontal: 16,
+    backgroundColor: '#f9fafb',
+    borderBottomWidth: 1,
+    borderBottomColor: '#e5e7eb',
+  },
+  infoMessageText: {
+    fontSize: 13,
+    color: '#666',
+    flex: 1,
   },
   iconContainer: {
     width: 32,

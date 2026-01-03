@@ -332,15 +332,12 @@ export default function AddParty1Screen() {
             text: 'OK',
             onPress: () => {
               // Navigate to the party detail page
-              const detailPage = gameName === 'Valorant'
-                ? '/leaderboardPages/valorantLeaderboardDetails'
-                : '/leaderboardPages/leagueLeaderboardDetails';
-
               router.push({
-                pathname: detailPage,
+                pathname: '/leaderboardPages/leaderboardDetail',
                 params: {
                   name: partyName,
                   partyId: partyId,
+                  game: gameName,
                   members: '1', // Only creator initially
                   startDate: startDate,
                   endDate: endDate,
