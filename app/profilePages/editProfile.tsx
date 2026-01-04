@@ -446,7 +446,7 @@ export default function EditProfileScreen() {
       {/* Header with back button */}
       <View style={styles.header}>
         <TouchableOpacity onPress={handleBack} style={styles.backButton}>
-          <IconSymbol size={28} name="chevron.left" color="#000" />
+          <IconSymbol size={28} name="chevron.left" color="#fff" />
         </TouchableOpacity>
         <ThemedText style={styles.headerTitle}>Edit Profile</ThemedText>
         <View style={styles.headerPlaceholder} />
@@ -600,7 +600,7 @@ export default function EditProfileScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#fff',
+    backgroundColor: '#1e2124',
   },
   header: {
     flexDirection: 'row',
@@ -609,9 +609,9 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     paddingTop: 60,
     paddingBottom: 16,
-    backgroundColor: '#fff',
+    backgroundColor: '#1e2124',
     borderBottomWidth: 1,
-    borderBottomColor: '#e5e5e5',
+    borderBottomColor: '#2c2f33',
   },
   backButton: {
     width: 40,
@@ -622,7 +622,7 @@ const styles = StyleSheet.create({
   headerTitle: {
     fontSize: 17,
     fontWeight: '600',
-    color: '#000',
+    color: '#fff',
     letterSpacing: -0.4,
   },
   headerPlaceholder: {
@@ -634,7 +634,7 @@ const styles = StyleSheet.create({
   coverPhotoContainer: {
     width: '100%',
     height: 180,
-    backgroundColor: '#f5f5f5',
+    backgroundColor: '#36393e',
   },
   coverPhoto: {
     width: '100%',
@@ -657,7 +657,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   profileContentWrapper: {
-    backgroundColor: '#fff',
+    backgroundColor: '#1e2124',
     paddingHorizontal: 20,
     paddingTop: 0,
     paddingBottom: 24,
@@ -673,11 +673,11 @@ const styles = StyleSheet.create({
     width: 80,
     height: 80,
     borderRadius: 40,
-    backgroundColor: '#f5f5f5',
+    backgroundColor: '#36393e',
     alignItems: 'center',
     justifyContent: 'center',
     borderWidth: 3,
-    borderColor: '#fff',
+    borderColor: '#1e2124',
   },
   avatarInitial: {
     fontSize: 40,
@@ -694,11 +694,11 @@ const styles = StyleSheet.create({
     width: 28,
     height: 28,
     borderRadius: 14,
-    backgroundColor: '#000',
+    backgroundColor: '#c42743',
     alignItems: 'center',
     justifyContent: 'center',
     borderWidth: 2,
-    borderColor: '#fff',
+    borderColor: '#1e2124',
   },
   profileInfo: {
     width: '100%',
@@ -706,7 +706,7 @@ const styles = StyleSheet.create({
   usernameInput: {
     fontSize: 20,
     fontWeight: '700',
-    color: '#000',
+    color: '#fff',
     marginBottom: 12,
     letterSpacing: -0.5,
     padding: 0,
@@ -718,12 +718,12 @@ const styles = StyleSheet.create({
   },
   statText: {
     fontSize: 14,
-    color: '#666',
+    color: '#b9bbbe',
     fontWeight: '400',
   },
   statDividerText: {
     fontSize: 14,
-    color: '#999',
+    color: '#72767d',
     fontWeight: '400',
   },
   bioContainer: {
@@ -731,7 +731,7 @@ const styles = StyleSheet.create({
   },
   bioInput: {
     fontSize: 14,
-    color: '#333',
+    color: '#dcddde',
     lineHeight: 20,
     fontWeight: '400',
     padding: 0,
@@ -739,7 +739,7 @@ const styles = StyleSheet.create({
   },
   characterCount: {
     fontSize: 12,
-    color: '#999',
+    color: '#72767d',
     marginTop: 4,
     textAlign: 'right',
   },
@@ -749,7 +749,7 @@ const styles = StyleSheet.create({
   socialsSectionTitle: {
     fontSize: 14,
     fontWeight: '600',
-    color: '#000',
+    color: '#fff',
     marginBottom: 12,
     letterSpacing: -0.2,
   },
@@ -759,10 +759,10 @@ const styles = StyleSheet.create({
   socialIconInputWrapper: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#f5f5f5',
+    backgroundColor: '#36393e',
     borderRadius: 10,
     borderWidth: 1,
-    borderColor: '#e5e5e5',
+    borderColor: '#2c2f33',
     paddingHorizontal: 12,
     paddingVertical: 10,
     gap: 10,
@@ -774,7 +774,7 @@ const styles = StyleSheet.create({
   socialInput: {
     flex: 1,
     fontSize: 14,
-    color: '#000',
+    color: '#fff',
     padding: 0,
   },
   saveButtonContainer: {
@@ -782,12 +782,12 @@ const styles = StyleSheet.create({
     bottom: 0,
     left: 0,
     right: 0,
-    backgroundColor: '#fff',
+    backgroundColor: '#1e2124',
     paddingHorizontal: 20,
     paddingVertical: 16,
     paddingBottom: 32,
     borderTopWidth: 1,
-    borderTopColor: '#e5e5e5',
+    borderTopColor: '#2c2f33',
     shadowColor: '#000',
     shadowOffset: {
       width: 0,

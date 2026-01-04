@@ -84,7 +84,7 @@ export default function GameStatsScreen() {
           // Check if cache is expired and fetch if needed
           if (isCacheExpired(data.riotStats.lastUpdated)) {
             console.log('League cache expired, fetching fresh data...');
-            fetchLeagueData();
+            fetchLeagueDataWithCache(data.riotStats); // Pass cached data
           } else {
             console.log('League cache is still valid');
             setHasFetched(true);
@@ -97,7 +97,7 @@ export default function GameStatsScreen() {
           // Check if cache is expired and fetch if needed
           if (isCacheExpired(data.valorantStats.lastUpdated)) {
             console.log('Valorant cache expired, fetching fresh data...');
-            fetchValorantData();
+            fetchValorantDataWithCache(data.valorantStats); // Pass cached data
           } else {
             console.log('Valorant cache is still valid');
             setHasFetched(true);
@@ -112,9 +112,9 @@ export default function GameStatsScreen() {
           console.log('No cached data found, fetching...');
           setCacheLoaded(true);
           if (game.name === 'League of Legends') {
-            fetchLeagueData();
+            fetchLeagueDataWithCache(null);
           } else if (game.name === 'Valorant') {
-            fetchValorantData();
+            fetchValorantDataWithCache(null);
           } else if (game.name === 'TFT') {
             setHasFetched(true);
           }
@@ -125,9 +125,9 @@ export default function GameStatsScreen() {
       setCacheLoaded(true);
       // Fallback to fetching if cache load fails
       if (game.name === 'League of Legends') {
-        fetchLeagueData();
+        fetchLeagueDataWithCache(null);
       } else if (game.name === 'Valorant') {
-        fetchValorantData();
+        fetchValorantDataWithCache(null);
       }
     }
   };
@@ -142,27 +142,39 @@ export default function GameStatsScreen() {
         const response = await getLeagueStats(true); // Force refresh
         if (response.success && response.stats) {
           setRiotStats(response.stats);
+          setError(null);
         }
       } else if (game.name === 'Valorant') {
         const response = await getValorantStats(true); // Force refresh
         if (response.success && response.stats) {
           setValorantStats(response.stats);
+          setError(null);
         }
       } else if (game.name === 'TFT') {
         const response = await getTftStats(true); // Force refresh
         if (response.success && response.stats) {
           setTftStats(response.stats);
+          setError(null);
         }
       }
     } catch (err: any) {
       console.error('Error refreshing stats:', err);
-      setError(err.message);
+      // Show gentler error when we have cached data
+      const hasCache = (game.name === 'League of Legends' && riotStats) ||
+                       (game.name === 'Valorant' && valorantStats) ||
+                       (game.name === 'TFT' && tftStats);
+
+      if (hasCache) {
+        setError('Unable to refresh - showing cached data');
+      } else {
+        setError(err.message);
+      }
     } finally {
       setRefreshing(false);
     }
   };
 
-  const fetchLeagueData = async () => {
+  const fetchLeagueDataWithCache = async (cachedData: any) => {
     if (loading || hasFetched) return;
 
     setLoading(true);
@@ -176,14 +188,35 @@ export default function GameStatsScreen() {
         console.log('Profile icon ID:', response.stats.profileIconId);
         console.log('Profile icon URL:', getProfileIconUrl(response.stats.profileIconId));
         setRiotStats(response.stats);
+        setError(null); // Clear any previous errors on success
+      } else {
+        // API call succeeded but returned unsuccessful response
+        console.log('API returned unsuccessful response, using cached data');
+        if (!cachedData) {
+          setError(response.error || 'Failed to load stats');
+        } else {
+          setError('Using cached data - API unavailable');
+        }
+        setHasFetched(false);
       }
     } catch (err: any) {
       console.error('Error fetching League stats:', err);
-      setError(err.message);
+      // Only show error if we don't have cached data
+      if (!cachedData) {
+        setError(err.message);
+      } else {
+        console.log('API error, but using cached data');
+        // Show a subtle warning that data might be stale
+        setError('Using cached data - API unavailable');
+      }
       setHasFetched(false);
     } finally {
       setLoading(false);
     }
+  };
+
+  const fetchLeagueData = async () => {
+    fetchLeagueDataWithCache(riotStats);
   };
 
   const fetchTftData = async () => {
@@ -207,7 +240,7 @@ export default function GameStatsScreen() {
     }
   };
 
-  const fetchValorantData = async () => {
+  const fetchValorantDataWithCache = async (cachedData: any) => {
     if (loading || hasFetched) return;
 
     setLoading(true);
@@ -219,14 +252,35 @@ export default function GameStatsScreen() {
       if (response.success && response.stats) {
         console.log('Valorant stats loaded:', response.stats);
         setValorantStats(response.stats);
+        setError(null); // Clear any previous errors on success
+      } else {
+        // API call succeeded but returned unsuccessful response
+        console.log('API returned unsuccessful response, using cached data');
+        if (!cachedData) {
+          setError(response.error || 'Failed to load stats');
+        } else {
+          setError('Using cached data - API unavailable');
+        }
+        setHasFetched(false);
       }
     } catch (err: any) {
       console.error('Error fetching Valorant stats:', err);
-      setError(err.message);
+      // Only show error if we don't have cached data
+      if (!cachedData) {
+        setError(err.message);
+      } else {
+        console.log('API error, but using cached data');
+        // Show a subtle warning that data might be stale
+        setError('Using cached data - API unavailable');
+      }
       setHasFetched(false);
     } finally {
       setLoading(false);
     }
+  };
+
+  const fetchValorantData = async () => {
+    fetchValorantDataWithCache(valorantStats);
   };
 
 
@@ -338,6 +392,16 @@ export default function GameStatsScreen() {
         )}
       </View>
 
+      {/* Warning banner when showing cached data with API error */}
+      {error && (riotStats || valorantStats || tftStats) && (
+        <View style={styles.warningBanner}>
+          <IconSymbol size={16} name="exclamationmark.triangle.fill" color="#f59e0b" />
+          <ThemedText style={styles.warningText}>
+            {error}
+          </ThemedText>
+        </View>
+      )}
+
       {/* Stats Card */}
       <View style={styles.statsCard}>
         {loading && !riotStats && !valorantStats && !tftStats ? (
@@ -345,7 +409,7 @@ export default function GameStatsScreen() {
             <ActivityIndicator size="large" color="#000" />
             <ThemedText style={styles.loadingText}>Loading stats...</ThemedText>
           </View>
-        ) : error ? (
+        ) : error && !riotStats && !valorantStats && !tftStats ? (
           <View style={styles.errorContainer}>
             <ThemedText style={styles.errorText}>{error}</ThemedText>
             <TouchableOpacity
@@ -753,6 +817,25 @@ const styles = StyleSheet.create({
     marginTop: 12,
     fontSize: 14,
     color: '#666',
+  },
+  warningBanner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#fef3c7',
+    paddingVertical: 10,
+    paddingHorizontal: 16,
+    marginHorizontal: 20,
+    marginTop: 12,
+    marginBottom: 12,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: '#fbbf24',
+    gap: 8,
+  },
+  warningText: {
+    fontSize: 12,
+    color: '#92400e',
+    flex: 1,
   },
   errorContainer: {
     paddingVertical: 32,

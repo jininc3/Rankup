@@ -365,7 +365,7 @@ export default function AccountSettingsScreen() {
           style={styles.backButton}
           onPress={() => router.back()}
         >
-          <IconSymbol size={24} name="chevron.left" color="#000" />
+          <IconSymbol size={24} name="chevron.left" color="#fff" />
           <ThemedText style={styles.backText}>Settings</ThemedText>
         </TouchableOpacity>
         <ThemedText style={styles.headerTitle}>Account Settings</ThemedText>
@@ -408,7 +408,7 @@ export default function AccountSettingsScreen() {
                       <IconSymbol
                         size={22}
                         name={item.icon}
-                        color={item.isDangerous ? '#ef4444' : '#000'}
+                        color={item.isDangerous ? '#ef4444' : '#fff'}
                       />
                     </View>
                     <View style={styles.settingTextContainer}>
@@ -424,7 +424,7 @@ export default function AccountSettingsScreen() {
                     </View>
                   </View>
                   {item.hasChevron && (
-                    <IconSymbol size={20} name="chevron.right" color="#666" />
+                    <IconSymbol size={20} name="chevron.right" color="#b9bbbe" />
                   )}
                 </TouchableOpacity>
               ))}
@@ -458,27 +458,27 @@ export default function AccountSettingsScreen() {
 
             <View style={styles.deleteListContainer}>
               <View style={styles.deleteListItem}>
-                <IconSymbol size={16} name="checkmark" color="#666" />
+                <IconSymbol size={16} name="checkmark" color="#b9bbbe" />
                 <ThemedText style={styles.deleteListText}>All your posts and media</ThemedText>
               </View>
               <View style={styles.deleteListItem}>
-                <IconSymbol size={16} name="checkmark" color="#666" />
+                <IconSymbol size={16} name="checkmark" color="#b9bbbe" />
                 <ThemedText style={styles.deleteListText}>Your profile and photos</ThemedText>
               </View>
               <View style={styles.deleteListItem}>
-                <IconSymbol size={16} name="checkmark" color="#666" />
+                <IconSymbol size={16} name="checkmark" color="#b9bbbe" />
                 <ThemedText style={styles.deleteListText}>All comments and likes</ThemedText>
               </View>
               <View style={styles.deleteListItem}>
-                <IconSymbol size={16} name="checkmark" color="#666" />
+                <IconSymbol size={16} name="checkmark" color="#b9bbbe" />
                 <ThemedText style={styles.deleteListText}>Your followers and following</ThemedText>
               </View>
               <View style={styles.deleteListItem}>
-                <IconSymbol size={16} name="checkmark" color="#666" />
+                <IconSymbol size={16} name="checkmark" color="#b9bbbe" />
                 <ThemedText style={styles.deleteListText}>All chat messages</ThemedText>
               </View>
               <View style={styles.deleteListItem}>
-                <IconSymbol size={16} name="checkmark" color="#666" />
+                <IconSymbol size={16} name="checkmark" color="#b9bbbe" />
                 <ThemedText style={styles.deleteListText}>Leaderboard party memberships</ThemedText>
               </View>
             </View>
@@ -494,7 +494,7 @@ export default function AccountSettingsScreen() {
                   value={password}
                   onChangeText={setPassword}
                   placeholder="Your password"
-                  placeholderTextColor="#999"
+                  placeholderTextColor="#72767d"
                   secureTextEntry
                   autoCapitalize="none"
                   editable={!isDeleting}
@@ -520,7 +520,7 @@ export default function AccountSettingsScreen() {
                 value={deleteConfirmText}
                 onChangeText={setDeleteConfirmText}
                 placeholder="DELETE"
-                placeholderTextColor="#999"
+                placeholderTextColor="#72767d"
                 autoCapitalize="characters"
                 editable={!isDeleting}
               />
@@ -576,7 +576,7 @@ export default function AccountSettingsScreen() {
               <TextInput
                 style={styles.confirmInput}
                 placeholder="Enter password"
-                placeholderTextColor="#999"
+                placeholderTextColor="#72767d"
                 secureTextEntry
                 value={verifyPassword}
                 onChangeText={setVerifyPassword}
@@ -589,7 +589,7 @@ export default function AccountSettingsScreen() {
               <TextInput
                 style={styles.confirmInput}
                 placeholder="Confirm password"
-                placeholderTextColor="#999"
+                placeholderTextColor="#72767d"
                 secureTextEntry
                 value={confirmPassword}
                 onChangeText={setConfirmPassword}
@@ -634,7 +634,7 @@ export default function AccountSettingsScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#fff',
+    backgroundColor: '#1e2124',
   },
   header: {
     flexDirection: 'row',
@@ -643,9 +643,9 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20,
     paddingTop: 60,
     paddingBottom: 16,
-    backgroundColor: '#fff',
+    backgroundColor: '#1e2124',
     borderBottomWidth: 1,
-    borderBottomColor: '#e5e7eb',
+    borderBottomColor: '#2c2f33',
   },
   backButton: {
     flexDirection: 'row',
@@ -655,13 +655,13 @@ const styles = StyleSheet.create({
   },
   backText: {
     fontSize: 17,
-    color: '#000',
+    color: '#fff',
     fontWeight: '400',
   },
   headerTitle: {
     fontSize: 15,
     fontWeight: '600',
-    color: '#000',
+    color: '#fff',
     flex: 1,
     textAlign: 'center',
   },
@@ -675,7 +675,7 @@ const styles = StyleSheet.create({
   sectionTitle: {
     fontSize: 13,
     fontWeight: '600',
-    color: '#666',
+    color: '#b9bbbe',
     textTransform: 'uppercase',
     letterSpacing: 0.5,
     marginBottom: 12,
@@ -683,10 +683,10 @@ const styles = StyleSheet.create({
   },
   settingsGroup: {
     marginHorizontal: 16,
-    backgroundColor: '#fff',
+    backgroundColor: '#36393e',
     borderRadius: 12,
     borderWidth: 1,
-    borderColor: '#e5e7eb',
+    borderColor: '#2c2f33',
     overflow: 'hidden',
   },
   settingItem: {
@@ -696,7 +696,7 @@ const styles = StyleSheet.create({
     paddingVertical: 16,
     paddingHorizontal: 16,
     borderBottomWidth: 1,
-    borderBottomColor: '#e5e7eb',
+    borderBottomColor: '#2c2f33',
   },
   settingItemLast: {
     borderBottomWidth: 0,
@@ -719,12 +719,12 @@ const styles = StyleSheet.create({
   settingTitle: {
     fontSize: 16,
     fontWeight: '500',
-    color: '#000',
+    color: '#fff',
     letterSpacing: -0.2,
   },
   settingSubtitle: {
     fontSize: 13,
-    color: '#666',
+    color: '#b9bbbe',
     marginTop: 2,
   },
   dangerousText: {
@@ -741,7 +741,7 @@ const styles = StyleSheet.create({
     padding: 20,
   },
   modalContent: {
-    backgroundColor: '#fff',
+    backgroundColor: '#36393e',
     borderRadius: 16,
     padding: 24,
     width: '100%',
@@ -754,17 +754,17 @@ const styles = StyleSheet.create({
   modalTitle: {
     fontSize: 22,
     fontWeight: '700',
-    color: '#000',
+    color: '#fff',
     marginTop: 12,
     marginBottom: 8,
   },
   modalDescription: {
     fontSize: 15,
-    color: '#666',
+    color: '#b9bbbe',
     textAlign: 'center',
   },
   deleteListContainer: {
-    backgroundColor: '#f9fafb',
+    backgroundColor: '#2c2f33',
     borderRadius: 12,
     padding: 16,
     marginBottom: 24,
@@ -777,7 +777,7 @@ const styles = StyleSheet.create({
   },
   deleteListText: {
     fontSize: 14,
-    color: '#333',
+    color: '#dcddde',
     flex: 1,
   },
   confirmInputContainer: {
@@ -786,23 +786,23 @@ const styles = StyleSheet.create({
   confirmInputLabel: {
     fontSize: 14,
     fontWeight: '600',
-    color: '#000',
+    color: '#fff',
     marginBottom: 8,
   },
   confirmInput: {
     borderWidth: 1,
-    borderColor: '#e5e7eb',
+    borderColor: '#2c2f33',
     borderRadius: 8,
     padding: 12,
     fontSize: 16,
-    color: '#000',
-    backgroundColor: '#fff',
+    color: '#fff',
+    backgroundColor: '#2c2f33',
   },
   googleNotice: {
     fontSize: 14,
-    color: '#666',
+    color: '#b9bbbe',
     textAlign: 'center',
-    backgroundColor: '#f9fafb',
+    backgroundColor: '#2c2f33',
     padding: 12,
     borderRadius: 8,
   },
@@ -814,13 +814,13 @@ const styles = StyleSheet.create({
     flex: 1,
     paddingVertical: 12,
     borderRadius: 8,
-    backgroundColor: '#f3f4f6',
+    backgroundColor: '#2c2f33',
     alignItems: 'center',
   },
   modalCancelText: {
     fontSize: 16,
     fontWeight: '600',
-    color: '#000',
+    color: '#fff',
   },
   modalDeleteButton: {
     flex: 1,
@@ -842,7 +842,7 @@ const styles = StyleSheet.create({
     flex: 1,
     paddingVertical: 12,
     borderRadius: 8,
-    backgroundColor: '#000',
+    backgroundColor: '#c42743',
     alignItems: 'center',
   },
   verifyButtonText: {

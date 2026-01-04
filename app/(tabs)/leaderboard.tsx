@@ -260,13 +260,13 @@ export default function LeaderboardScreen() {
           style={styles.joinButton}
           onPress={() => router.push('/leaderboardPages/joinParty')}
         >
-          <IconSymbol size={26} name="ticket" color="#000" />
+          <IconSymbol size={26} name="ticket" color="#fff" />
         </TouchableOpacity>
       </View>
 
       {loading ? (
         <View style={styles.loadingContainer}>
-          <ActivityIndicator size="large" color="#000" />
+          <ActivityIndicator size="large" color="#c42743" />
           <ThemedText style={styles.loadingText}>Loading parties...</ThemedText>
         </View>
       ) : (
@@ -334,7 +334,7 @@ export default function LeaderboardScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#fff',
+    backgroundColor: '#1e2124',
   },
   header: {
     flexDirection: 'row',
@@ -343,14 +343,14 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20,
     paddingTop: 60,
     paddingBottom: 16,
-    backgroundColor: '#fff',
+    backgroundColor: '#1e2124',
     borderBottomWidth: 1,
-    borderBottomColor: '#e5e7eb',
+    borderBottomColor: '#2c2f33',
   },
   headerTitle: {
     fontSize: 20,
     fontWeight: '700',
-    color: '#000',
+    color: '#fff',
   },
   joinButton: {
     padding: 4,
@@ -363,7 +363,7 @@ const styles = StyleSheet.create({
   },
   loadingText: {
     fontSize: 14,
-    color: '#666',
+    color: '#b9bbbe',
   },
   headerActions: {
     flexDirection: 'row',
@@ -382,24 +382,24 @@ const styles = StyleSheet.create({
     paddingVertical: 16,
     gap: 12,
     borderBottomWidth: 1,
-    borderBottomColor: '#e5e5e5',
+    borderBottomColor: '#c42743',
   },
   tab: {
     flex: 1,
     paddingVertical: 10,
     paddingHorizontal: 16,
     borderRadius: 8,
-    backgroundColor: '#f5f5f5',
+    backgroundColor: '#36393e',
     alignItems: 'center',
     justifyContent: 'center',
   },
   tabActive: {
-    backgroundColor: '#000',
+    backgroundColor: '#c42743',
   },
   tabText: {
     fontSize: 14,
     fontWeight: '600',
-    color: '#666',
+    color: '#b9bbbe',
     letterSpacing: -0.2,
   },
   tabTextActive: {
@@ -415,13 +415,13 @@ const styles = StyleSheet.create({
   },
   emptyStateText: {
     fontSize: 15,
-    color: '#666',
+    color: '#fff',
     marginBottom: 4,
     textAlign: 'center',
   },
   emptyStateSubtext: {
     fontSize: 13,
-    color: '#999',
+    color: '#b9bbbe',
     textAlign: 'center',
   },
   bottomSpacer: {

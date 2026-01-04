@@ -527,7 +527,7 @@ export default function ProfilePreviewScreen() {
           <View style={styles.postsSection}>
             {loadingPosts ? (
               <View style={styles.postsContainer}>
-                <ActivityIndicator size="large" color="#000" />
+                <ActivityIndicator size="large" color="#c42743" />
                 <ThemedText style={styles.loadingText}>Loading posts...</ThemedText>
               </View>
             ) : posts.length > 0 ? (
@@ -663,7 +663,7 @@ export default function ProfilePreviewScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#fff',
+    backgroundColor: '#1e2124',
   },
   header: {
     position: 'absolute',
@@ -708,7 +708,7 @@ const styles = StyleSheet.create({
     height: '100%',
   },
   profileContentWrapper: {
-    backgroundColor: '#fff',
+    backgroundColor: '#1e2124',
     paddingHorizontal: 20,
     paddingTop: 0,
     paddingBottom: 8,
@@ -726,11 +726,11 @@ const styles = StyleSheet.create({
     width: 80,
     height: 80,
     borderRadius: 40,
-    backgroundColor: '#f5f5f5',
+    backgroundColor: '#36393e',
     alignItems: 'center',
     justifyContent: 'center',
     borderWidth: 3,
-    borderColor: '#fff',
+    borderColor: '#1e2124',
   },
   avatarInitial: {
     fontSize: 40,
@@ -753,7 +753,7 @@ const styles = StyleSheet.create({
   username: {
     fontSize: 20,
     fontWeight: '700',
-    color: '#000',
+    color: '#fff',
     marginBottom: 12,
     letterSpacing: -0.5,
   },
@@ -764,12 +764,12 @@ const styles = StyleSheet.create({
   },
   statText: {
     fontSize: 14,
-    color: '#666',
+    color: '#b9bbbe',
     fontWeight: '400',
   },
   statDividerText: {
     fontSize: 14,
-    color: '#999',
+    color: '#72767d',
     fontWeight: '400',
   },
   bioContainer: {
@@ -777,7 +777,7 @@ const styles = StyleSheet.create({
   },
   bioText: {
     fontSize: 14,
-    color: '#333',
+    color: '#dcddde',
     lineHeight: 20,
     fontWeight: '400',
   },
@@ -790,9 +790,9 @@ const styles = StyleSheet.create({
     marginTop: 12,
   },
   unfollowButton: {
-    backgroundColor: '#fff',
+    backgroundColor: '#36393e',
     borderWidth: 1,
-    borderColor: '#e5e5e5',
+    borderColor: '#2c2f33',
   },
   followButtonText: {
     fontSize: 15,
@@ -800,7 +800,7 @@ const styles = StyleSheet.create({
     color: '#fff',
   },
   unfollowButtonText: {
-    color: '#000',
+    color: '#fff',
   },
   socialsIconsRow: {
     flexDirection: 'row',
@@ -820,7 +820,7 @@ const styles = StyleSheet.create({
     width: 40,
     height: 40,
     borderRadius: 20,
-    backgroundColor: '#fff',
+    backgroundColor: '#36393e',
     alignItems: 'center',
     justifyContent: 'center',
     borderWidth: 1.5,
@@ -830,7 +830,7 @@ const styles = StyleSheet.create({
     width: 40,
     height: 40,
     borderRadius: 20,
-    backgroundColor: '#fff',
+    backgroundColor: '#36393e',
     alignItems: 'center',
     justifyContent: 'center',
     borderWidth: 1.5,
@@ -859,9 +859,9 @@ const styles = StyleSheet.create({
   },
   mainTabsContainer: {
     flexDirection: 'row',
-    backgroundColor: '#fff',
+    backgroundColor: '#1e2124',
     borderBottomWidth: 1,
-    borderBottomColor: '#e5e5e5',
+    borderBottomColor: '#2c2f33',
     paddingHorizontal: 20,
   },
   mainTab: {
@@ -872,16 +872,16 @@ const styles = StyleSheet.create({
     borderBottomColor: 'transparent',
   },
   mainTabActive: {
-    borderBottomColor: '#000',
+    borderBottomColor: '#c42743',
   },
   mainTabText: {
     fontSize: 15,
     fontWeight: '500',
-    color: '#666',
+    color: '#72767d',
     letterSpacing: -0.2,
   },
   mainTabTextActive: {
-    color: '#000',
+    color: '#fff',
     fontWeight: '600',
   },
   gameTabs: {
@@ -899,16 +899,16 @@ const styles = StyleSheet.create({
     borderBottomColor: 'transparent',
   },
   gameTabActive: {
-    borderBottomColor: '#000',
+    borderBottomColor: '#c42743',
   },
   gameTabText: {
     fontSize: 14,
-    color: '#999',
+    color: '#72767d',
     fontWeight: '500',
     letterSpacing: -0.2,
   },
   gameTabTextActive: {
-    color: '#000',
+    color: '#fff',
     fontWeight: '600',
   },
   cardsContainer: {
@@ -927,12 +927,12 @@ const styles = StyleSheet.create({
   emptyStateText: {
     fontSize: 17,
     fontWeight: '600',
-    color: '#000',
+    color: '#fff',
     marginTop: 16,
   },
   loadingText: {
     fontSize: 14,
-    color: '#666',
+    color: '#b9bbbe',
     marginTop: 12,
   },
   postsGrid: {

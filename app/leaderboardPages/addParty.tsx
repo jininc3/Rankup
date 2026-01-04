@@ -9,20 +9,14 @@ const AVAILABLE_GAMES = [
   {
     id: 'valorant',
     name: 'Valorant',
-    logo: require('@/assets/images/valorant.png'),
+    logo: require('@/assets/images/valorant-red.png'),
     color: '#FF4655'
   },
   {
     id: 'league',
     name: 'League of Legends',
-    logo: require('@/assets/images/leagueoflegends.png'),
+    logo: require('@/assets/images/lol.png'),
     color: '#0AC8B9'
-  },
-  {
-    id: 'apex',
-    name: 'Apex Legends',
-    logo: require('@/assets/images/apex.png'),
-    color: '#DA292E'
   },
 ];
 
@@ -44,7 +38,7 @@ export default function AddPartyScreen() {
       {/* Header */}
       <View style={styles.header}>
         <TouchableOpacity style={styles.backButton} onPress={() => router.back()}>
-          <IconSymbol size={20} name="chevron.left" color="#000" />
+          <IconSymbol size={20} name="chevron.left" color="#fff" />
         </TouchableOpacity>
         <ThemedText style={styles.headerTitle}>Create Leaderboard</ThemedText>
         <View style={styles.headerSpacer} />
@@ -78,7 +72,7 @@ export default function AddPartyScreen() {
                 </View>
                 <ThemedText style={styles.gameName}>{game.name}</ThemedText>
               </View>
-              <IconSymbol size={20} name="chevron.right" color="#666" />
+              <IconSymbol size={20} name="chevron.right" color="#b9bbbe" />
             </TouchableOpacity>
           ))}
         </View>
@@ -92,7 +86,7 @@ export default function AddPartyScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#fff',
+    backgroundColor: '#1e2124',
   },
   header: {
     flexDirection: 'row',
@@ -101,9 +95,9 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20,
     paddingTop: 60,
     paddingBottom: 16,
-    backgroundColor: '#fff',
+    backgroundColor: '#1e2124',
     borderBottomWidth: 1,
-    borderBottomColor: '#e5e7eb',
+    borderBottomColor: '#2c2f33',
   },
   backButton: {
     padding: 4,
@@ -111,7 +105,7 @@ const styles = StyleSheet.create({
   headerTitle: {
     fontSize: 20,
     fontWeight: '700',
-    color: '#000',
+    color: '#fff',
   },
   headerSpacer: {
     width: 28,
@@ -126,13 +120,13 @@ const styles = StyleSheet.create({
   instructionsTitle: {
     fontSize: 24,
     fontWeight: '700',
-    color: '#000',
+    color: '#fff',
     marginBottom: 8,
     letterSpacing: -0.5,
   },
   instructionsText: {
     fontSize: 15,
-    color: '#666',
+    color: '#b9bbbe',
     lineHeight: 22,
   },
   gamesSection: {
@@ -144,10 +138,10 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'space-between',
     padding: 16,
-    backgroundColor: '#fff',
+    backgroundColor: '#36393e',
     borderRadius: 12,
-    borderWidth: 1,
-    borderColor: '#e5e5e5',
+    borderWidth: 1.5,
+    borderColor: '#2c2f33',
   },
   gameCardLeft: {
     flexDirection: 'row',
@@ -159,7 +153,7 @@ const styles = StyleSheet.create({
     width: 48,
     height: 48,
     borderRadius: 12,
-    backgroundColor: '#f5f5f5',
+    backgroundColor: '#2c2f33',
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -170,7 +164,7 @@ const styles = StyleSheet.create({
   gameName: {
     fontSize: 17,
     fontWeight: '600',
-    color: '#000',
+    color: '#fff',
     letterSpacing: -0.3,
   },
   bottomSpacer: {

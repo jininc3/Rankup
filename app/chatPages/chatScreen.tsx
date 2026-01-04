@@ -180,7 +180,7 @@ export default function ChatScreen() {
       {/* Header */}
       <View style={styles.header}>
         <TouchableOpacity style={styles.backButton} onPress={() => router.back()}>
-          <IconSymbol size={24} name="chevron.left" color="#000" />
+          <IconSymbol size={24} name="chevron.left" color="#fff" />
         </TouchableOpacity>
 
         <TouchableOpacity
@@ -205,7 +205,7 @@ export default function ChatScreen() {
       {/* Messages */}
       {loading ? (
         <View style={styles.loadingContainer}>
-          <ActivityIndicator size="large" color="#000" />
+          <ActivityIndicator size="large" color="#c42743" />
         </View>
       ) : (
         <FlatList
@@ -262,7 +262,7 @@ export default function ChatScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#fff',
+    backgroundColor: '#1e2124',
   },
   header: {
     flexDirection: 'row',
@@ -271,9 +271,9 @@ const styles = StyleSheet.create({
     paddingHorizontal: 8,
     paddingTop: 60,
     paddingBottom: 12,
-    backgroundColor: '#fff',
+    backgroundColor: '#1e2124',
     borderBottomWidth: 1,
-    borderBottomColor: '#e5e7eb',
+    borderBottomColor: '#2c2f33',
   },
   backButton: {
     width: 44,
@@ -291,7 +291,7 @@ const styles = StyleSheet.create({
     width: 36,
     height: 36,
     borderRadius: 18,
-    backgroundColor: '#f0f0f0',
+    backgroundColor: '#36393e',
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -303,12 +303,12 @@ const styles = StyleSheet.create({
   avatarInitial: {
     fontSize: 16,
     fontWeight: '600',
-    color: '#000',
+    color: '#fff',
   },
   headerUsername: {
     fontSize: 16,
     fontWeight: '600',
-    color: '#000',
+    color: '#fff',
   },
   headerSpacer: {
     width: 44,
@@ -328,7 +328,7 @@ const styles = StyleSheet.create({
   },
   timestamp: {
     fontSize: 11,
-    color: '#999',
+    color: '#72767d',
     textAlign: 'center',
     marginBottom: 8,
   },
@@ -339,11 +339,11 @@ const styles = StyleSheet.create({
     borderRadius: 18,
   },
   currentUserBubble: {
-    backgroundColor: '#007AFF',
+    backgroundColor: '#c42743',
     alignSelf: 'flex-end',
   },
   otherUserBubble: {
-    backgroundColor: '#f0f0f0',
+    backgroundColor: '#36393e',
     alignSelf: 'flex-start',
   },
   messageText: {
@@ -354,7 +354,7 @@ const styles = StyleSheet.create({
     color: '#fff',
   },
   otherUserText: {
-    color: '#000',
+    color: '#fff',
   },
   emptyState: {
     flex: 1,
@@ -366,13 +366,13 @@ const styles = StyleSheet.create({
   emptyText: {
     fontSize: 18,
     fontWeight: '600',
-    color: '#666',
+    color: '#fff',
     marginTop: 16,
     marginBottom: 8,
   },
   emptySubtext: {
     fontSize: 14,
-    color: '#999',
+    color: '#b9bbbe',
     textAlign: 'center',
     lineHeight: 20,
   },
@@ -382,20 +382,20 @@ const styles = StyleSheet.create({
     paddingHorizontal: 12,
     paddingTop: 8,
     paddingBottom: 40,
-    backgroundColor: '#fff',
+    backgroundColor: '#1e2124',
     borderTopWidth: 1,
-    borderTopColor: '#e5e7eb',
+    borderTopColor: '#2c2f33',
     gap: 8,
   },
   input: {
     flex: 1,
-    backgroundColor: '#f5f5f5',
+    backgroundColor: '#36393e',
     borderRadius: 20,
     paddingHorizontal: 16,
     paddingVertical: 10,
     fontSize: 15,
     maxHeight: 100,
-    color: '#000',
+    color: '#fff',
   },
   sendButton: {
     width: 40,

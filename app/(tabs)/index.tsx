@@ -724,13 +724,13 @@ export default function HomeScreen() {
             style={styles.headerIconButton}
             onPress={() => router.push('/chatPages/chatList')}
           >
-            <IconSymbol size={24} name="message.fill" color="#000" />
+            <IconSymbol size={24} name="message.fill" color="#fff" />
           </TouchableOpacity>
           <TouchableOpacity
             style={styles.headerIconButton}
             onPress={() => router.push('/notifications')}
           >
-            <IconSymbol size={24} name="bell.fill" color="#000" />
+            <IconSymbol size={24} name="bell.fill" color="#fff" />
             {unreadNotificationCount > 0 && (
               <View style={styles.notificationBadge}>
                 <ThemedText style={styles.notificationBadgeText}>
@@ -766,7 +766,7 @@ export default function HomeScreen() {
           style={styles.filterButton}
           onPress={() => setShowFilterMenu(true)}
         >
-          <IconSymbol size={20} name="line.3.horizontal.decrease.circle" color="#000" />
+          <IconSymbol size={20} name="line.3.horizontal.decrease.circle" color="#fff" />
         </TouchableOpacity>
       </View>
 
@@ -831,7 +831,7 @@ export default function HomeScreen() {
           </>
         ) : (
           <View style={styles.emptyContainer}>
-            <IconSymbol size={64} name="person.2" color="#ccc" />
+            <IconSymbol size={64} name="person.2" color="#fff" />
             <ThemedText style={styles.emptyText}>
               {activeTab === 'following'
                 ? "No posts from people you follow yet"
@@ -858,7 +858,7 @@ export default function HomeScreen() {
             <View style={styles.filterModalHeader}>
               <ThemedText style={styles.filterModalTitle}>Filter by Game</ThemedText>
               <TouchableOpacity onPress={() => setShowFilterMenu(false)}>
-                <IconSymbol size={24} name="xmark" color="#000" />
+                <IconSymbol size={24} name="xmark" color="#fff" />
               </TouchableOpacity>
             </View>
             <ScrollView
@@ -875,13 +875,13 @@ export default function HomeScreen() {
                   }}
                 >
                   <View style={styles.filterOptionLeft}>
-                    <IconSymbol size={22} name="square.grid.2x2" color={selectedGameFilter === null ? '#000' : '#666'} />
+                    <IconSymbol size={22} name="square.grid.2x2" color="#fff" />
                     <ThemedText style={[styles.filterOptionText, selectedGameFilter === null && styles.filterOptionTextActive]}>
                       All Games
                     </ThemedText>
                   </View>
                   {selectedGameFilter === null && (
-                    <IconSymbol size={20} name="checkmark.circle.fill" color="#000" />
+                    <IconSymbol size={20} name="checkmark.circle.fill" color="#fff" />
                   )}
                 </TouchableOpacity>
 
@@ -910,7 +910,7 @@ export default function HomeScreen() {
                       </ThemedText>
                     </View>
                     {selectedGameFilter === game.id && (
-                      <IconSymbol size={20} name="checkmark.circle.fill" color="#000" />
+                      <IconSymbol size={20} name="checkmark.circle.fill" color="#fff" />
                     )}
                   </TouchableOpacity>
                 ))}
@@ -958,7 +958,7 @@ export default function HomeScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#fff',
+    backgroundColor: '#1e2124',
   },
   header: {
     flexDirection: 'row',
@@ -967,14 +967,14 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20,
     paddingTop: 60,
     paddingBottom: 16,
-    backgroundColor: '#fff',
+    backgroundColor: '#1e2124',
     borderBottomWidth: 1,
-    borderBottomColor: '#e5e7eb',
+    borderBottomColor: '#2c2f33',
   },
   headerTitle: {
     fontSize: 20,
     fontWeight: '700',
-    color: '#000',
+    color: '#fff',
   },
   headerActions: {
     flexDirection: 'row',
@@ -1006,7 +1006,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    backgroundColor: '#fff',
+    backgroundColor: '#1e2124',
     paddingHorizontal: 20,
   },
   tabsLeft: {
@@ -1022,7 +1022,7 @@ const styles = StyleSheet.create({
   },
   tabActive: {
     borderBottomWidth: 2,
-    borderBottomColor: '#000',
+    borderBottomColor: '#c42743',
   },
   tabText: {
     fontSize: 15,
@@ -1030,7 +1030,7 @@ const styles = StyleSheet.create({
     color: '#999',
   },
   tabTextActive: {
-    color: '#000',
+    color: '#fff',
     fontWeight: '600',
   },
   filterButton: {
@@ -1038,9 +1038,11 @@ const styles = StyleSheet.create({
   },
   scrollView: {
     flex: 1,
+    backgroundColor: '#1e2124',
   },
   scrollViewContent: {
     paddingBottom: 100,
+    backgroundColor: '#1e2124',
   },
   loadingContainer: {
     alignItems: 'center',
@@ -1050,7 +1052,7 @@ const styles = StyleSheet.create({
   },
   loadingText: {
     fontSize: 16,
-    color: '#666',
+    color: '#fff',
   },
   emptyContainer: {
     alignItems: 'center',
@@ -1062,13 +1064,13 @@ const styles = StyleSheet.create({
   emptyText: {
     fontSize: 18,
     fontWeight: '600',
-    color: '#666',
+    color: '#fff',
     textAlign: 'center',
     marginTop: 16,
   },
   emptySubtext: {
     fontSize: 14,
-    color: '#999',
+    color: '#ccc',
     textAlign: 'center',
   },
   filterModalContainer: {

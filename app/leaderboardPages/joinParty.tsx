@@ -115,7 +115,7 @@ export default function JoinPartyScreen() {
       {/* Header */}
       <View style={styles.header}>
         <TouchableOpacity style={styles.backButton} onPress={() => router.back()}>
-          <IconSymbol size={20} name="chevron.left" color="#000" />
+          <IconSymbol size={20} name="chevron.left" color="#fff" />
         </TouchableOpacity>
         <ThemedText style={styles.headerTitle}>Join Party</ThemedText>
         <View style={styles.headerSpacer} />
@@ -166,7 +166,7 @@ export default function JoinPartyScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#fff',
+    backgroundColor: '#1e2124',
   },
   header: {
     flexDirection: 'row',
@@ -175,9 +175,9 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20,
     paddingTop: 60,
     paddingBottom: 16,
-    backgroundColor: '#fff',
+    backgroundColor: '#1e2124',
     borderBottomWidth: 1,
-    borderBottomColor: '#e5e7eb',
+    borderBottomColor: '#2c2f33',
   },
   backButton: {
     padding: 4,
@@ -185,7 +185,7 @@ const styles = StyleSheet.create({
   headerTitle: {
     fontSize: 20,
     fontWeight: '700',
-    color: '#000',
+    color: '#fff',
   },
   headerSpacer: {
     width: 28,
@@ -201,13 +201,13 @@ const styles = StyleSheet.create({
   instructionsTitle: {
     fontSize: 24,
     fontWeight: '700',
-    color: '#000',
+    color: '#fff',
     marginBottom: 8,
     letterSpacing: -0.5,
   },
   instructionsText: {
     fontSize: 15,
-    color: '#666',
+    color: '#b9bbbe',
     lineHeight: 22,
   },
   inputSection: {
@@ -216,25 +216,25 @@ const styles = StyleSheet.create({
   inputLabel: {
     fontSize: 17,
     fontWeight: '600',
-    color: '#000',
+    color: '#fff',
     marginBottom: 8,
     letterSpacing: -0.3,
   },
   input: {
-    backgroundColor: '#f5f5f5',
+    backgroundColor: '#36393e',
     borderRadius: 8,
     padding: 16,
     fontSize: 20,
-    color: '#000',
+    color: '#fff',
     borderWidth: 1,
-    borderColor: '#e5e5e5',
+    borderColor: '#2c2f33',
     textAlign: 'center',
     letterSpacing: 4,
     fontWeight: '600',
   },
   characterCount: {
     fontSize: 12,
-    color: '#666',
+    color: '#b9bbbe',
     textAlign: 'right',
     marginTop: 4,
   },

@@ -11,8 +11,10 @@ import {
   TextInput,
   Alert,
   ActivityIndicator,
-  Image
+  Image,
+  Platform
 } from 'react-native';
+import DateTimePicker from '@react-native-community/datetimepicker';
 import * as Clipboard2 from 'expo-clipboard';
 import { useAuth } from '@/contexts/AuthContext';
 import { db } from '@/config/firebase';
@@ -48,8 +50,8 @@ export default function AddParty1Screen() {
     const thirtyDaysLater = new Date(today);
     thirtyDaysLater.setDate(today.getDate() + 30);
     return {
-      start: formatDate(today),
-      end: formatDate(thirtyDaysLater),
+      start: today,
+      end: thirtyDaysLater,
     };
   };
 
@@ -62,9 +64,21 @@ export default function AddParty1Screen() {
   const [followers, setFollowers] = useState<Follower[]>([]);
   const [loadingFollowers, setLoadingFollowers] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
-  const [startDate, setStartDate] = useState(defaultDates.start);
-  const [endDate, setEndDate] = useState(defaultDates.end);
+  const [startDate, setStartDate] = useState<Date>(defaultDates.start);
+  const [endDate, setEndDate] = useState<Date>(defaultDates.end);
+  const [showStartDatePicker, setShowStartDatePicker] = useState(false);
+  const [showEndDatePicker, setShowEndDatePicker] = useState(false);
   const [challengeType, setChallengeType] = useState<'climbing' | 'rank'>('climbing');
+
+  // Format date for display
+  const formatDateForDisplay = (date: Date) => {
+    const options: Intl.DateTimeFormatOptions = {
+      year: 'numeric',
+      month: 'long',
+      day: 'numeric'
+    };
+    return date.toLocaleDateString('en-US', options);
+  };
 
   // Generate unique invite code on component mount
   useEffect(() => {
@@ -173,6 +187,20 @@ export default function AddParty1Screen() {
     }
   };
 
+  const handleStartDateChange = (event: any, selectedDate?: Date) => {
+    setShowStartDatePicker(Platform.OS === 'ios');
+    if (selectedDate) {
+      setStartDate(selectedDate);
+    }
+  };
+
+  const handleEndDateChange = (event: any, selectedDate?: Date) => {
+    setShowEndDatePicker(Platform.OS === 'ios');
+    if (selectedDate) {
+      setEndDate(selectedDate);
+    }
+  };
+
   const handleCreateParty = async () => {
     if (!partyName.trim()) {
       Alert.alert('Error', 'Please enter a party name');
@@ -247,8 +275,8 @@ export default function AddParty1Screen() {
         partyName: partyName,
         game: gameName,
         gameId: gameId,
-        startDate: startDate,
-        endDate: endDate,
+        startDate: formatDate(startDate),
+        endDate: formatDate(endDate),
         challengeType: challengeType, // 'climbing' or 'rank'
         inviteCode: inviteCode || '',
         createdBy: user.id,
@@ -271,7 +299,7 @@ export default function AddParty1Screen() {
 
         for (const invite of pendingInvites) {
           try {
-            // Create in-app notification
+            // Create in-app notification (push notification will be sent automatically by Cloud Function)
             const notificationRef = collection(db, 'users', invite.userId, 'notifications');
             await addDoc(notificationRef, {
               type: 'party_invite',
@@ -284,37 +312,7 @@ export default function AddParty1Screen() {
               read: false,
               createdAt: serverTimestamp(),
             });
-
-            // Send push notification
-            const invitedUserDoc = await getDoc(doc(db, 'users', invite.userId));
-            const invitedUserData = invitedUserDoc.data();
-            const expoPushToken = invitedUserData?.expoPushToken;
-
-            if (expoPushToken) {
-              try {
-                await fetch('https://exp.host/--/api/v2/push/send', {
-                  method: 'POST',
-                  headers: {
-                    'Content-Type': 'application/json',
-                  },
-                  body: JSON.stringify({
-                    to: expoPushToken,
-                    title: 'Party Invitation',
-                    body: `${userData?.username} invited you to join "${partyName}" for ${gameName}!`,
-                    data: {
-                      type: 'party_invite',
-                      partyId: partyId,
-                      partyName: partyName,
-                      game: gameName,
-                    },
-                  }),
-                });
-                console.log('Push notification sent to', invite.username);
-              } catch (pushError) {
-                console.error('Error sending push notification:', pushError);
-                // Don't fail the whole operation if push fails
-              }
-            }
+            console.log('Notification created for', invite.username);
           } catch (notifError) {
             console.error('Error sending notification to', invite.username, ':', notifError);
             // Continue with other notifications even if one fails
@@ -339,8 +337,8 @@ export default function AddParty1Screen() {
                   partyId: partyId,
                   game: gameName,
                   members: '1', // Only creator initially
-                  startDate: startDate,
-                  endDate: endDate,
+                  startDate: formatDate(startDate),
+                  endDate: formatDate(endDate),
                   players: JSON.stringify([]),
                 },
               });
@@ -359,7 +357,7 @@ export default function AddParty1Screen() {
       {/* Header */}
       <View style={styles.header}>
         <TouchableOpacity style={styles.backButton} onPress={() => router.back()}>
-          <IconSymbol size={20} name="chevron.left" color="#000" />
+          <IconSymbol size={20} name="chevron.left" color="#fff" />
         </TouchableOpacity>
         <ThemedText style={styles.headerTitle}>Party Details</ThemedText>
         <View style={styles.headerSpacer} />
@@ -414,14 +412,24 @@ export default function AddParty1Screen() {
           <ThemedText style={styles.sectionDescription}>
             When does this leaderboard competition begin?
           </ThemedText>
-          <TextInput
-            style={styles.input}
-            placeholder="MM/DD/YYYY"
-            placeholderTextColor="#999"
-            value={startDate}
-            onChangeText={setStartDate}
-            maxLength={10}
-          />
+          <TouchableOpacity
+            style={styles.dateButton}
+            onPress={() => setShowStartDatePicker(true)}
+          >
+            <ThemedText style={styles.dateButtonText}>
+              {formatDateForDisplay(startDate)}
+            </ThemedText>
+            <IconSymbol size={20} name="calendar" color="#b9bbbe" />
+          </TouchableOpacity>
+          {showStartDatePicker && (
+            <DateTimePicker
+              value={startDate}
+              mode="date"
+              display={Platform.OS === 'ios' ? 'spinner' : 'default'}
+              onChange={handleStartDateChange}
+              minimumDate={new Date()}
+            />
+          )}
         </View>
 
         {/* End Date */}
@@ -430,14 +438,24 @@ export default function AddParty1Screen() {
           <ThemedText style={styles.sectionDescription}>
             When does this leaderboard competition end?
           </ThemedText>
-          <TextInput
-            style={styles.input}
-            placeholder="MM/DD/YYYY"
-            placeholderTextColor="#999"
-            value={endDate}
-            onChangeText={setEndDate}
-            maxLength={10}
-          />
+          <TouchableOpacity
+            style={styles.dateButton}
+            onPress={() => setShowEndDatePicker(true)}
+          >
+            <ThemedText style={styles.dateButtonText}>
+              {formatDateForDisplay(endDate)}
+            </ThemedText>
+            <IconSymbol size={20} name="calendar" color="#b9bbbe" />
+          </TouchableOpacity>
+          {showEndDatePicker && (
+            <DateTimePicker
+              value={endDate}
+              mode="date"
+              display={Platform.OS === 'ios' ? 'spinner' : 'default'}
+              onChange={handleEndDateChange}
+              minimumDate={startDate}
+            />
+          )}
         </View>
 
         {/* Challenge Type */}
@@ -459,7 +477,7 @@ export default function AddParty1Screen() {
                 <IconSymbol
                   size={24}
                   name="chart.line.uptrend.xyaxis"
-                  color={challengeType === 'climbing' ? '#fff' : '#000'}
+                  color="#fff"
                 />
                 <ThemedText style={[
                   styles.challengeTypeTitle,
@@ -487,7 +505,7 @@ export default function AddParty1Screen() {
                 <IconSymbol
                   size={24}
                   name="trophy.fill"
-                  color={challengeType === 'rank' ? '#fff' : '#000'}
+                  color="#fff"
                 />
                 <ThemedText style={[
                   styles.challengeTypeTitle,
@@ -521,7 +539,7 @@ export default function AddParty1Screen() {
               style={styles.copyButton}
               onPress={handleCopyInviteCode}
             >
-              <IconSymbol size={20} name="doc.on.doc" color="#000" />
+              <IconSymbol size={20} name="doc.on.doc" color="#fff" />
             </TouchableOpacity>
           </View>
         </View>
@@ -547,7 +565,7 @@ export default function AddParty1Screen() {
 
           {loadingFollowers ? (
             <View style={styles.loadingContainer}>
-              <ActivityIndicator size="small" color="#000" />
+              <ActivityIndicator size="small" color="#c42743" />
               <ThemedText style={styles.loadingText}>Loading followers...</ThemedText>
             </View>
           ) : followers.length === 0 ? (
@@ -593,7 +611,7 @@ export default function AddParty1Screen() {
                       <ThemedText style={styles.followerUsername}>{follower.username}</ThemedText>
                     </View>
                     {selectedFollowers.includes(follower.id) && (
-                      <IconSymbol size={20} name="checkmark.circle.fill" color="#000" />
+                      <IconSymbol size={20} name="checkmark.circle.fill" color="#c42743" />
                     )}
                   </TouchableOpacity>
                 ))}
@@ -634,7 +652,7 @@ export default function AddParty1Screen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#fff',
+    backgroundColor: '#1e2124',
   },
   header: {
     flexDirection: 'row',
@@ -643,9 +661,9 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20,
     paddingTop: 60,
     paddingBottom: 16,
-    backgroundColor: '#fff',
+    backgroundColor: '#1e2124',
     borderBottomWidth: 1,
-    borderBottomColor: '#e5e7eb',
+    borderBottomColor: '#2c2f33',
   },
   backButton: {
     padding: 4,
@@ -653,7 +671,7 @@ const styles = StyleSheet.create({
   headerTitle: {
     fontSize: 20,
     fontWeight: '700',
-    color: '#000',
+    color: '#fff',
   },
   headerSpacer: {
     width: 28,
@@ -664,13 +682,13 @@ const styles = StyleSheet.create({
   gameInfoSection: {
     paddingHorizontal: 20,
     paddingVertical: 16,
-    backgroundColor: '#f5f5f5',
+    backgroundColor: '#1e2124',
     borderBottomWidth: 1,
-    borderBottomColor: '#e5e5e5',
+    borderBottomColor: '#2c2f33',
   },
   gameInfoLabel: {
     fontSize: 12,
-    color: '#666',
+    color: '#b9bbbe',
     marginBottom: 4,
     textTransform: 'uppercase',
     letterSpacing: 0.5,
@@ -679,49 +697,49 @@ const styles = StyleSheet.create({
   gameInfoValue: {
     fontSize: 17,
     fontWeight: '600',
-    color: '#000',
+    color: '#fff',
   },
   section: {
     paddingHorizontal: 20,
     paddingTop: 24,
     paddingBottom: 16,
     borderBottomWidth: 1,
-    borderBottomColor: '#f5f5f5',
+    borderBottomColor: '#2c2f33',
   },
   sectionTitle: {
     fontSize: 17,
     fontWeight: '600',
-    color: '#000',
+    color: '#fff',
     marginBottom: 8,
     letterSpacing: -0.3,
   },
   sectionDescription: {
     fontSize: 14,
-    color: '#666',
+    color: '#b9bbbe',
     marginBottom: 12,
   },
   input: {
-    backgroundColor: '#f5f5f5',
+    backgroundColor: '#36393e',
     borderRadius: 8,
     padding: 12,
     fontSize: 16,
-    color: '#000',
-    borderWidth: 1,
-    borderColor: '#e5e5e5',
+    color: '#fff',
+    borderWidth: 1.5,
+    borderColor: '#2c2f33',
   },
   searchInput: {
-    backgroundColor: '#f5f5f5',
+    backgroundColor: '#36393e',
     borderRadius: 8,
     padding: 12,
     fontSize: 15,
-    color: '#000',
-    borderWidth: 1,
-    borderColor: '#e5e5e5',
+    color: '#fff',
+    borderWidth: 1.5,
+    borderColor: '#2c2f33',
     marginBottom: 12,
   },
   characterCount: {
     fontSize: 12,
-    color: '#666',
+    color: '#b9bbbe',
     textAlign: 'right',
     marginTop: 4,
   },
@@ -732,26 +750,26 @@ const styles = StyleSheet.create({
   },
   inviteCodeBox: {
     flex: 1,
-    backgroundColor: '#f5f5f5',
+    backgroundColor: '#36393e',
     borderRadius: 8,
     padding: 16,
     borderWidth: 2,
-    borderColor: '#000',
+    borderColor: '#c42743',
     alignItems: 'center',
   },
   inviteCodeText: {
     fontSize: 24,
     fontWeight: '700',
-    color: '#000',
+    color: '#fff',
     letterSpacing: 4,
   },
   copyButton: {
     width: 48,
     height: 48,
     borderRadius: 8,
-    backgroundColor: '#f5f5f5',
-    borderWidth: 1,
-    borderColor: '#e5e5e5',
+    backgroundColor: '#36393e',
+    borderWidth: 1.5,
+    borderColor: '#2c2f33',
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -763,14 +781,14 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'space-between',
     padding: 12,
-    backgroundColor: '#f5f5f5',
+    backgroundColor: '#36393e',
     borderRadius: 8,
-    borderWidth: 1,
-    borderColor: '#e5e5e5',
+    borderWidth: 1.5,
+    borderColor: '#2c2f33',
   },
   followerCardSelected: {
-    backgroundColor: '#fff',
-    borderColor: '#000',
+    backgroundColor: '#424549',
+    borderColor: '#c42743',
     borderWidth: 2,
   },
   followerLeft: {
@@ -782,9 +800,9 @@ const styles = StyleSheet.create({
     width: 36,
     height: 36,
     borderRadius: 18,
-    backgroundColor: '#fff',
+    backgroundColor: '#2c2f33',
     borderWidth: 1,
-    borderColor: '#e5e5e5',
+    borderColor: '#424549',
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -799,7 +817,7 @@ const styles = StyleSheet.create({
   followerUsername: {
     fontSize: 15,
     fontWeight: '600',
-    color: '#000',
+    color: '#fff',
   },
   followerStats: {
     marginTop: 8,
@@ -808,12 +826,12 @@ const styles = StyleSheet.create({
   },
   followerCount: {
     fontSize: 12,
-    color: '#999',
+    color: '#72767d',
     textAlign: 'center',
   },
   selectedCount: {
     fontSize: 13,
-    color: '#666',
+    color: '#b9bbbe',
     textAlign: 'center',
   },
   loadingContainer: {
@@ -825,7 +843,7 @@ const styles = StyleSheet.create({
   },
   loadingText: {
     fontSize: 14,
-    color: '#666',
+    color: '#b9bbbe',
   },
   emptyFollowersContainer: {
     paddingVertical: 32,
@@ -833,21 +851,21 @@ const styles = StyleSheet.create({
   },
   emptyFollowersText: {
     fontSize: 15,
-    color: '#666',
+    color: '#fff',
     marginBottom: 4,
     textAlign: 'center',
   },
   emptyFollowersSubtext: {
     fontSize: 13,
-    color: '#999',
+    color: '#b9bbbe',
     textAlign: 'center',
   },
   footer: {
     paddingHorizontal: 20,
     paddingVertical: 16,
-    backgroundColor: '#fff',
+    backgroundColor: '#1e2124',
     borderTopWidth: 1,
-    borderTopColor: '#e5e5e5',
+    borderTopColor: '#2c2f33',
   },
   createButton: {
     backgroundColor: '#000',
@@ -868,15 +886,16 @@ const styles = StyleSheet.create({
     gap: 12,
   },
   challengeTypeButton: {
-    backgroundColor: '#f5f5f5',
+    backgroundColor: '#36393e',
     borderRadius: 12,
     padding: 16,
-    borderWidth: 2,
-    borderColor: '#e5e5e5',
+    borderWidth: 1.5,
+    borderColor: '#2c2f33',
   },
   challengeTypeButtonActive: {
-    backgroundColor: '#000',
-    borderColor: '#000',
+    backgroundColor: '#c42743',
+    borderColor: '#c42743',
+    borderWidth: 2,
   },
   challengeTypeHeader: {
     flexDirection: 'row',
@@ -887,17 +906,32 @@ const styles = StyleSheet.create({
   challengeTypeTitle: {
     fontSize: 16,
     fontWeight: '700',
-    color: '#000',
+    color: '#fff',
   },
   challengeTypeTitleActive: {
     color: '#fff',
   },
   challengeTypeDescription: {
     fontSize: 14,
-    color: '#666',
+    color: '#b9bbbe',
     marginLeft: 36,
   },
   challengeTypeDescriptionActive: {
-    color: '#ccc',
+    color: '#fff',
+  },
+  dateButton: {
+    backgroundColor: '#36393e',
+    borderRadius: 8,
+    padding: 14,
+    borderWidth: 1.5,
+    borderColor: '#2c2f33',
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
+  dateButtonText: {
+    fontSize: 16,
+    color: '#fff',
+    fontWeight: '500',
   },
 });

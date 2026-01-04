@@ -140,7 +140,7 @@ export default function SettingsScreen() {
           style={styles.backButton}
           onPress={() => router.back()}
         >
-          <IconSymbol size={24} name="chevron.left" color="#000" />
+          <IconSymbol size={24} name="chevron.left" color="#fff" />
           <ThemedText style={styles.backText}>Back</ThemedText>
         </TouchableOpacity>
         <ThemedText style={styles.headerTitle}>Settings</ThemedText>
@@ -157,7 +157,7 @@ export default function SettingsScreen() {
               <View style={[styles.settingItem, styles.userInfoItem]}>
                 <View style={styles.userInfoContent}>
                   <View style={styles.userInfoRow}>
-                    <IconSymbol size={28} name="person.circle" color="#000" />
+                    <IconSymbol size={28} name="person.circle" color="#fff" />
                     <ThemedText style={styles.userInfoTitle}>{user.username}</ThemedText>
                   </View>
                   <ThemedText style={styles.userInfoSubtitle}>
@@ -173,7 +173,7 @@ export default function SettingsScreen() {
               >
                 <View style={styles.settingLeft}>
                   <View style={styles.iconContainer}>
-                    <IconSymbol size={22} name="eye" color="#000" />
+                    <IconSymbol size={22} name="eye" color="#fff" />
                   </View>
                   <View style={styles.settingTextContainer}>
                     <ThemedText style={styles.settingTitle}>View Profile Preview</ThemedText>
@@ -189,7 +189,7 @@ export default function SettingsScreen() {
               >
                 <View style={styles.settingLeft}>
                   <View style={styles.iconContainer}>
-                    <IconSymbol size={22} name="gearshape" color="#000" />
+                    <IconSymbol size={22} name="gearshape" color="#fff" />
                   </View>
                   <View style={styles.settingTextContainer}>
                     <ThemedText style={styles.settingTitle}>Account Settings</ThemedText>
@@ -217,7 +217,7 @@ export default function SettingsScreen() {
             <View style={styles.settingItem}>
               <View style={styles.settingLeft}>
                 <View style={styles.iconContainer}>
-                  <IconSymbol size={22} name="gamecontroller" color="#000" />
+                  <IconSymbol size={22} name="gamecontroller" color="#fff" />
                 </View>
                 <View style={styles.settingTextContainer}>
                   <ThemedText style={styles.settingTitle}>League of Legends</ThemedText>
@@ -247,7 +247,7 @@ export default function SettingsScreen() {
             <View style={[styles.settingItem, styles.settingItemLast]}>
               <View style={styles.settingLeft}>
                 <View style={styles.iconContainer}>
-                  <IconSymbol size={22} name="target" color="#000" />
+                  <IconSymbol size={22} name="target" color="#fff" />
                 </View>
                 <View style={styles.settingTextContainer}>
                   <ThemedText style={styles.settingTitle}>Valorant</ThemedText>
@@ -293,7 +293,7 @@ export default function SettingsScreen() {
                 >
                   <View style={styles.settingLeft}>
                     <View style={styles.iconContainer}>
-                      <IconSymbol size={22} name={item.icon} color="#000" />
+                      <IconSymbol size={22} name={item.icon} color="#fff" />
                     </View>
                     <View style={styles.settingTextContainer}>
                       <ThemedText style={styles.settingTitle}>{item.title}</ThemedText>
@@ -338,7 +338,7 @@ export default function SettingsScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#fff',
+    backgroundColor: '#1e2124',
   },
   header: {
     flexDirection: 'row',
@@ -347,9 +347,9 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20,
     paddingTop: 60,
     paddingBottom: 16,
-    backgroundColor: '#fff',
+    backgroundColor: '#1e2124',
     borderBottomWidth: 1,
-    borderBottomColor: '#e5e7eb',
+    borderBottomColor: '#2c2f33',
   },
   backButton: {
     flexDirection: 'row',
@@ -359,13 +359,13 @@ const styles = StyleSheet.create({
   },
   backText: {
     fontSize: 17,
-    color: '#000',
+    color: '#fff',
     fontWeight: '400',
   },
   headerTitle: {
     fontSize: 17,
     fontWeight: '600',
-    color: '#000',
+    color: '#fff',
     flex: 1,
     textAlign: 'center',
   },
@@ -379,7 +379,7 @@ const styles = StyleSheet.create({
   sectionTitle: {
     fontSize: 13,
     fontWeight: '600',
-    color: '#666',
+    color: '#b9bbbe',
     textTransform: 'uppercase',
     letterSpacing: 0.5,
     marginBottom: 12,
@@ -387,10 +387,10 @@ const styles = StyleSheet.create({
   },
   settingsGroup: {
     marginHorizontal: 16,
-    backgroundColor: '#fff',
+    backgroundColor: '#36393e',
     borderRadius: 12,
     borderWidth: 1,
-    borderColor: '#e5e7eb',
+    borderColor: '#2c2f33',
     overflow: 'hidden',
   },
   settingItem: {
@@ -400,7 +400,7 @@ const styles = StyleSheet.create({
     paddingVertical: 16,
     paddingHorizontal: 16,
     borderBottomWidth: 1,
-    borderBottomColor: '#e5e7eb',
+    borderBottomColor: '#2c2f33',
   },
   settingItemLast: {
     borderBottomWidth: 0,
@@ -409,7 +409,7 @@ const styles = StyleSheet.create({
     opacity: 0.6,
   },
   disabledText: {
-    color: '#999',
+    color: '#72767d',
   },
   settingLeft: {
     flexDirection: 'row',
@@ -434,7 +434,7 @@ const styles = StyleSheet.create({
     color: '#2e7d32',
   },
   notConnectedBadge: {
-    backgroundColor: '#f5f5f5',
+    backgroundColor: '#2c2f33',
     paddingHorizontal: 10,
     paddingVertical: 4,
     borderRadius: 6,
@@ -442,7 +442,7 @@ const styles = StyleSheet.create({
   notConnectedBadgeText: {
     fontSize: 12,
     fontWeight: '600',
-    color: '#666',
+    color: '#b9bbbe',
   },
   infoMessageContainer: {
     flexDirection: 'row',
@@ -450,13 +450,13 @@ const styles = StyleSheet.create({
     gap: 8,
     paddingVertical: 12,
     paddingHorizontal: 16,
-    backgroundColor: '#f9fafb',
+    backgroundColor: '#2c2f33',
     borderBottomWidth: 1,
-    borderBottomColor: '#e5e7eb',
+    borderBottomColor: '#2c2f33',
   },
   infoMessageText: {
     fontSize: 13,
-    color: '#666',
+    color: '#b9bbbe',
     flex: 1,
   },
   iconContainer: {
@@ -471,26 +471,26 @@ const styles = StyleSheet.create({
   settingTitle: {
     fontSize: 16,
     fontWeight: '500',
-    color: '#000',
+    color: '#fff',
     letterSpacing: -0.2,
   },
   settingSubtitle: {
     fontSize: 13,
-    color: '#666',
+    color: '#b9bbbe',
     marginTop: 2,
   },
   bottomSpacer: {
     height: 40,
   },
   signOutButton: {
-    backgroundColor: '#fff',
+    backgroundColor: '#36393e',
   },
   signOutText: {
     color: '#ef4444',
     fontWeight: '600',
   },
   unlinkButton: {
-    backgroundColor: '#fff',
+    backgroundColor: '#36393e',
   },
   unlinkText: {
     color: '#ef4444',

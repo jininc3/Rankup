@@ -758,7 +758,7 @@ export default function ProfileViewScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#fff',
+    backgroundColor: '#1e2124',
   },
   header: {
     position: 'absolute',
@@ -803,7 +803,7 @@ const styles = StyleSheet.create({
     height: '100%',
   },
   profileContentWrapper: {
-    backgroundColor: '#fff',
+    backgroundColor: '#1e2124',
     paddingHorizontal: 20,
     paddingTop: 0,
     paddingBottom: 8,
@@ -821,11 +821,11 @@ const styles = StyleSheet.create({
     width: 80,
     height: 80,
     borderRadius: 40,
-    backgroundColor: '#f5f5f5',
+    backgroundColor: '#36393e',
     alignItems: 'center',
     justifyContent: 'center',
     borderWidth: 3,
-    borderColor: '#fff',
+    borderColor: '#1e2124',
   },
   avatarInitial: {
     fontSize: 40,
@@ -848,7 +848,7 @@ const styles = StyleSheet.create({
   username: {
     fontSize: 20,
     fontWeight: '700',
-    color: '#000',
+    color: '#fff',
     marginBottom: 12,
     letterSpacing: -0.5,
   },
@@ -859,12 +859,12 @@ const styles = StyleSheet.create({
   },
   statText: {
     fontSize: 14,
-    color: '#666',
+    color: '#b9bbbe',
     fontWeight: '400',
   },
   statDividerText: {
     fontSize: 14,
-    color: '#999',
+    color: '#72767d',
     fontWeight: '400',
   },
   bioContainer: {
@@ -872,7 +872,7 @@ const styles = StyleSheet.create({
   },
   bioText: {
     fontSize: 14,
-    color: '#333',
+    color: '#dcddde',
     lineHeight: 20,
     fontWeight: '400',
   },
@@ -890,9 +890,9 @@ const styles = StyleSheet.create({
     backgroundColor: '#000',
   },
   unfollowButton: {
-    backgroundColor: '#fff',
+    backgroundColor: '#36393e',
     borderWidth: 1,
-    borderColor: '#e5e5e5',
+    borderColor: '#2c2f33',
   },
   followButtonText: {
     fontSize: 13,
@@ -900,15 +900,15 @@ const styles = StyleSheet.create({
     color: '#fff',
   },
   unfollowButtonText: {
-    color: '#000',
+    color: '#fff',
   },
   messageButton: {
     width: 40,
     height: 32,
     borderRadius: 6,
-    backgroundColor: '#fff',
+    backgroundColor: '#36393e',
     borderWidth: 1,
-    borderColor: '#e5e5e5',
+    borderColor: '#2c2f33',
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -918,17 +918,17 @@ const styles = StyleSheet.create({
     gap: 8,
     paddingVertical: 10,
     paddingHorizontal: 16,
-    backgroundColor: '#fff',
+    backgroundColor: '#36393e',
     borderRadius: 8,
     borderWidth: 1,
-    borderColor: '#e5e5e5',
+    borderColor: '#2c2f33',
     marginTop: 12,
   },
   socialsButtonText: {
     flex: 1,
     fontSize: 14,
     fontWeight: '500',
-    color: '#333',
+    color: '#dcddde',
   },
   modalOverlay: {
     flex: 1,
@@ -1037,9 +1037,9 @@ const styles = StyleSheet.create({
   },
   mainTabsContainer: {
     flexDirection: 'row',
-    backgroundColor: '#fff',
+    backgroundColor: '#1e2124',
     borderBottomWidth: 1,
-    borderBottomColor: '#e5e5e5',
+    borderBottomColor: '#2c2f33',
     paddingHorizontal: 20,
   },
   mainTab: {
@@ -1053,17 +1053,17 @@ const styles = StyleSheet.create({
     bottom: 0,
     height: 2,
     width: 30,
-    backgroundColor: '#000',
+    backgroundColor: '#c42743',
     borderRadius: 1,
   },
   mainTabText: {
     fontSize: 15,
     fontWeight: '500',
-    color: '#666',
+    color: '#72767d',
     letterSpacing: -0.2,
   },
   mainTabTextActive: {
-    color: '#000',
+    color: '#fff',
     fontWeight: '600',
   },
   gameIconScroller: {
@@ -1080,7 +1080,7 @@ const styles = StyleSheet.create({
     width: 48,
     height: 48,
     borderRadius: 24,
-    backgroundColor: '#f5f5f5',
+    backgroundColor: '#36393e',
     borderWidth: 2,
     borderColor: 'transparent',
     alignItems: 'center',
@@ -1088,8 +1088,8 @@ const styles = StyleSheet.create({
     overflow: 'hidden',
   },
   gameIconCircleActive: {
-    borderColor: '#000',
-    backgroundColor: '#fff',
+    borderColor: '#c42743',
+    backgroundColor: '#36393e',
   },
   gameIconImage: {
     width: 32,
@@ -1110,16 +1110,16 @@ const styles = StyleSheet.create({
     borderBottomColor: 'transparent',
   },
   gameTabActive: {
-    borderBottomColor: '#000',
+    borderBottomColor: '#c42743',
   },
   gameTabText: {
     fontSize: 14,
-    color: '#999',
+    color: '#72767d',
     fontWeight: '500',
     letterSpacing: -0.2,
   },
   gameTabTextActive: {
-    color: '#000',
+    color: '#fff',
     fontWeight: '600',
   },
   cardsContainer: {
@@ -1138,12 +1138,12 @@ const styles = StyleSheet.create({
   emptyStateText: {
     fontSize: 17,
     fontWeight: '600',
-    color: '#000',
+    color: '#fff',
     marginTop: 16,
   },
   emptyStateSubtext: {
     fontSize: 14,
-    color: '#666',
+    color: '#b9bbbe',
     textAlign: 'center',
     marginTop: 8,
   },
@@ -1156,7 +1156,7 @@ const styles = StyleSheet.create({
   },
   loadingText: {
     fontSize: 14,
-    color: '#666',
+    color: '#b9bbbe',
     marginTop: 12,
   },
   postsGrid: {
@@ -1168,7 +1168,7 @@ const styles = StyleSheet.create({
   postItem: {
     width: (screenWidth - 2) / 3,
     height: ((screenWidth - 2) / 3) * 1.25,
-    backgroundColor: '#f5f5f5',
+    backgroundColor: '#36393e',
     position: 'relative',
   },
   postImage: {

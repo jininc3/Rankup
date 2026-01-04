@@ -146,7 +146,7 @@ export default function ChatListScreen() {
       {/* Header */}
       <View style={styles.header}>
         <TouchableOpacity style={styles.backButton} onPress={() => router.back()}>
-          <IconSymbol size={24} name="chevron.left" color="#000" />
+          <IconSymbol size={24} name="chevron.left" color="#fff" />
         </TouchableOpacity>
         <ThemedText style={styles.headerTitle}>Messages</ThemedText>
         <View style={styles.headerSpacer} />
@@ -155,7 +155,7 @@ export default function ChatListScreen() {
       {/* Chat List */}
       {loading ? (
         <View style={styles.loadingContainer}>
-          <ActivityIndicator size="large" color="#000" />
+          <ActivityIndicator size="large" color="#c42743" />
           <ThemedText style={styles.loadingText}>Loading chats...</ThemedText>
         </View>
       ) : chats.length > 0 ? (
@@ -168,7 +168,7 @@ export default function ChatListScreen() {
         />
       ) : (
         <View style={styles.emptyState}>
-          <IconSymbol size={64} name="bubble.left.and.bubble.right" color="#ccc" />
+          <IconSymbol size={64} name="bubble.left.and.bubble.right" color="#72767d" />
           <ThemedText style={styles.emptyText}>No messages yet</ThemedText>
           <ThemedText style={styles.emptySubtext}>
             Start a conversation by visiting a user's profile
@@ -182,7 +182,7 @@ export default function ChatListScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#fff',
+    backgroundColor: '#1e2124',
   },
   header: {
     flexDirection: 'row',
@@ -191,9 +191,9 @@ const styles = StyleSheet.create({
     paddingHorizontal: 8,
     paddingTop: 60,
     paddingBottom: 12,
-    backgroundColor: '#fff',
+    backgroundColor: '#1e2124',
     borderBottomWidth: 1,
-    borderBottomColor: '#e5e7eb',
+    borderBottomColor: '#2c2f33',
   },
   backButton: {
     width: 44,
@@ -204,7 +204,7 @@ const styles = StyleSheet.create({
   headerTitle: {
     fontSize: 20,
     fontWeight: '700',
-    color: '#000',
+    color: '#fff',
   },
   headerSpacer: {
     width: 44,
@@ -217,7 +217,7 @@ const styles = StyleSheet.create({
   },
   loadingText: {
     fontSize: 16,
-    color: '#666',
+    color: '#b9bbbe',
   },
   chatList: {
     paddingVertical: 8,
@@ -227,18 +227,18 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     paddingHorizontal: 20,
     paddingVertical: 14,
-    backgroundColor: '#fff',
+    backgroundColor: '#1e2124',
     borderBottomWidth: 1,
-    borderBottomColor: '#f5f5f5',
+    borderBottomColor: '#2c2f33',
   },
   unreadChatItem: {
-    backgroundColor: '#f8f9ff',
+    backgroundColor: '#36393e',
   },
   chatAvatar: {
     width: 52,
     height: 52,
     borderRadius: 26,
-    backgroundColor: '#f0f0f0',
+    backgroundColor: '#36393e',
     alignItems: 'center',
     justifyContent: 'center',
     marginRight: 12,
@@ -251,7 +251,7 @@ const styles = StyleSheet.create({
   avatarInitial: {
     fontSize: 20,
     fontWeight: '600',
-    color: '#000',
+    color: '#fff',
   },
   chatContent: {
     flex: 1,
@@ -265,11 +265,11 @@ const styles = StyleSheet.create({
   username: {
     fontSize: 16,
     fontWeight: '500',
-    color: '#000',
+    color: '#fff',
   },
   timestamp: {
     fontSize: 13,
-    color: '#999',
+    color: '#72767d',
   },
   messageRow: {
     flexDirection: 'row',
@@ -278,15 +278,15 @@ const styles = StyleSheet.create({
   },
   lastMessage: {
     fontSize: 14,
-    color: '#666',
+    color: '#b9bbbe',
     flex: 1,
   },
   unreadText: {
     fontWeight: '600',
-    color: '#000',
+    color: '#fff',
   },
   unreadBadge: {
-    backgroundColor: '#007AFF',
+    backgroundColor: '#c42743',
     borderRadius: 10,
     minWidth: 20,
     height: 20,
@@ -310,13 +310,13 @@ const styles = StyleSheet.create({
   emptyText: {
     fontSize: 18,
     fontWeight: '600',
-    color: '#666',
+    color: '#fff',
     marginTop: 16,
     marginBottom: 8,
   },
   emptySubtext: {
     fontSize: 14,
-    color: '#999',
+    color: '#b9bbbe',
     textAlign: 'center',
     lineHeight: 20,
   },

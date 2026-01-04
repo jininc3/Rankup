@@ -12,7 +12,7 @@ import PostViewerModal from '@/app/components/postViewerModal';
 
 interface Notification {
   id: string;
-  type: 'follow' | 'like' | 'comment' | 'tag' | 'party_invite';
+  type: 'follow' | 'like' | 'comment' | 'tag' | 'party_invite' | 'party_complete';
   fromUserId: string;
   fromUsername: string;
   fromUserAvatar?: string;
@@ -22,6 +22,10 @@ interface Notification {
   partyId?: string;
   partyName?: string;
   game?: string;
+  winnerUserId?: string;
+  winnerUsername?: string;
+  isWinner?: boolean;
+  finalRank?: number;
   read: boolean;
   createdAt: Timestamp;
 }
@@ -329,6 +333,16 @@ export default function NotificationsScreen() {
     } else if ((notification.type === 'like' || notification.type === 'comment' || notification.type === 'tag') && notification.postId) {
       // Show post viewer for like/comment/tag notifications
       fetchAndShowPost(notification.postId);
+    } else if ((notification.type === 'party_invite' || notification.type === 'party_complete') && notification.partyId) {
+      // Navigate to party detail page
+      router.push({
+        pathname: '/leaderboardPages/leaderboardDetail',
+        params: {
+          partyId: notification.partyId,
+          name: notification.partyName || 'Party',
+          game: notification.game || '',
+        },
+      });
     }
   };
 
@@ -400,7 +414,7 @@ export default function NotificationsScreen() {
           style={styles.backButton}
           onPress={() => router.back()}
         >
-          <IconSymbol size={24} name="chevron.left" color="#000" />
+          <IconSymbol size={24} name="chevron.left" color="#fff" />
         </TouchableOpacity>
         <ThemedText style={styles.headerTitle}>Notifications</ThemedText>
         {notifications.length > 0 && (
@@ -414,7 +428,7 @@ export default function NotificationsScreen() {
       <ScrollView style={styles.scrollView} showsVerticalScrollIndicator={false}>
         {loading ? (
           <View style={styles.loadingContainer}>
-            <ActivityIndicator size="large" color="#000" />
+            <ActivityIndicator size="large" color="#c42743" />
             <ThemedText style={styles.loadingText}>Loading notifications...</ThemedText>
           </View>
         ) : notifications.length > 0 ? (
@@ -488,6 +502,16 @@ export default function NotificationsScreen() {
                               {notification.type === 'tag' && ' tagged you in a post'}
                               {notification.type === 'comment' && ' commented: '}
                               {notification.type === 'party_invite' && ` invited you to "${notification.partyName}"`}
+                              {notification.type === 'party_complete' && notification.isWinner && (
+                                <ThemedText style={styles.winnerText}>
+                                  🏆 You won "{notification.partyName}"! Rank #{notification.finalRank}
+                                </ThemedText>
+                              )}
+                              {notification.type === 'party_complete' && !notification.isWinner && (
+                                <ThemedText>
+                                  {` "${notification.partyName}" ended. You ranked #${notification.finalRank}`}
+                                </ThemedText>
+                              )}
                               {notification.type === 'comment' && notification.commentText && (
                                 <ThemedText style={styles.commentPreview}>
                                   "{notification.commentText.length > 30
@@ -542,7 +566,7 @@ export default function NotificationsScreen() {
           })
         ) : (
           <View style={styles.emptyState}>
-            <IconSymbol size={64} name="bell" color="#ccc" />
+            <IconSymbol size={64} name="bell" color="#72767d" />
             <ThemedText style={styles.emptyText}>No notifications yet</ThemedText>
             <ThemedText style={styles.emptySubtext}>
               When someone follows you, you'll see it here
@@ -575,7 +599,7 @@ export default function NotificationsScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#fff',
+    backgroundColor: '#1e2124',
   },
   header: {
     flexDirection: 'row',
@@ -584,9 +608,9 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20,
     paddingTop: 60,
     paddingBottom: 16,
-    backgroundColor: '#fff',
+    backgroundColor: '#1e2124',
     borderBottomWidth: 1,
-    borderBottomColor: '#e5e7eb',
+    borderBottomColor: '#2c2f33',
   },
   backButton: {
     padding: 4,
@@ -594,7 +618,7 @@ const styles = StyleSheet.create({
   headerTitle: {
     fontSize: 20,
     fontWeight: '700',
-    color: '#000',
+    color: '#fff',
   },
   headerSpacer: {
     width: 60,
@@ -615,7 +639,7 @@ const styles = StyleSheet.create({
   },
   loadingText: {
     fontSize: 16,
-    color: '#666',
+    color: '#b9bbbe',
   },
   notificationWrapper: {
     position: 'relative',
@@ -638,7 +662,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   notificationAnimatedWrapper: {
-    backgroundColor: '#fff',
+    backgroundColor: '#1e2124',
   },
   notificationCard: {
     flexDirection: 'row',
@@ -647,12 +671,12 @@ const styles = StyleSheet.create({
     paddingVertical: 10,
     paddingHorizontal: 16,
     borderBottomWidth: 1,
-    borderBottomColor: '#f5f5f5',
-    backgroundColor: '#fff',
+    borderBottomColor: '#2c2f33',
+    backgroundColor: '#1e2124',
     position: 'relative',
   },
   unreadNotification: {
-    backgroundColor: '#f8f9ff',
+    backgroundColor: '#36393e',
   },
   notificationLeft: {
     flexDirection: 'row',
@@ -664,7 +688,7 @@ const styles = StyleSheet.create({
     width: 36,
     height: 36,
     borderRadius: 18,
-    backgroundColor: '#f0f0f0',
+    backgroundColor: '#36393e',
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -682,7 +706,7 @@ const styles = StyleSheet.create({
   },
   notificationText: {
     fontSize: 13,
-    color: '#000',
+    color: '#fff',
     lineHeight: 18,
     marginBottom: 2,
   },
@@ -691,7 +715,7 @@ const styles = StyleSheet.create({
   },
   timeText: {
     fontSize: 11,
-    color: '#999',
+    color: '#72767d',
   },
   unreadDot: {
     position: 'absolute',
@@ -700,7 +724,7 @@ const styles = StyleSheet.create({
     width: 6,
     height: 6,
     borderRadius: 3,
-    backgroundColor: '#3b82f6',
+    backgroundColor: '#c42743',
   },
   emptyState: {
     alignItems: 'center',
@@ -711,13 +735,13 @@ const styles = StyleSheet.create({
   emptyText: {
     fontSize: 18,
     fontWeight: '600',
-    color: '#666',
+    color: '#fff',
     marginTop: 16,
     marginBottom: 8,
   },
   emptySubtext: {
     fontSize: 14,
-    color: '#999',
+    color: '#b9bbbe',
     textAlign: 'center',
     lineHeight: 20,
   },
@@ -725,12 +749,16 @@ const styles = StyleSheet.create({
     width: 36,
     height: 36,
     borderRadius: 6,
-    backgroundColor: '#f0f0f0',
+    backgroundColor: '#36393e',
     marginLeft: 6,
   },
   commentPreview: {
     fontStyle: 'italic',
-    color: '#666',
+    color: '#b9bbbe',
+  },
+  winnerText: {
+    color: '#FFD700',
+    fontWeight: '700',
   },
   notificationTextRow: {
     flexDirection: 'row',
@@ -739,7 +767,7 @@ const styles = StyleSheet.create({
   },
   partyGameText: {
     fontSize: 11,
-    color: '#666',
+    color: '#b9bbbe',
     fontWeight: '500',
     marginTop: 2,
     marginBottom: 1,

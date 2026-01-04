@@ -241,7 +241,7 @@ export default function NotificationsPreferencesScreen() {
           style={styles.backButton}
           onPress={() => router.back()}
         >
-          <IconSymbol size={24} name="chevron.left" color="#000" />
+          <IconSymbol size={24} name="chevron.left" color="#fff" />
           <ThemedText style={styles.backText}>Settings</ThemedText>
         </TouchableOpacity>
         <ThemedText style={styles.headerTitle}>Notifications</ThemedText>
@@ -250,7 +250,7 @@ export default function NotificationsPreferencesScreen() {
 
       {isLoading ? (
         <View style={styles.loadingContainer}>
-          <ActivityIndicator size="large" color="#007AFF" />
+          <ActivityIndicator size="large" color="#c42743" />
         </View>
       ) : (
         <ScrollView showsVerticalScrollIndicator={false}>
@@ -271,7 +271,7 @@ export default function NotificationsPreferencesScreen() {
                 >
                   <View style={styles.settingLeft}>
                     <View style={styles.iconContainer}>
-                      <IconSymbol size={22} name={item.icon} color="#000" />
+                      <IconSymbol size={22} name={item.icon} color="#fff" />
                     </View>
                     <View style={styles.settingTextContainer}>
                       <ThemedText style={styles.settingTitle}>{item.title}</ThemedText>
@@ -283,7 +283,7 @@ export default function NotificationsPreferencesScreen() {
                   <Switch
                     value={item.value}
                     onValueChange={item.onValueChange}
-                    trackColor={{ false: '#e5e7eb', true: '#007AFF' }}
+                    trackColor={{ false: '#2c2f33', true: '#007AFF' }}
                     thumbColor="#fff"
                   />
                 </View>
@@ -299,14 +299,14 @@ export default function NotificationsPreferencesScreen() {
             <TouchableOpacity style={styles.settingItem}>
               <View style={styles.settingLeft}>
                 <View style={styles.iconContainer}>
-                  <IconSymbol size={22} name="bell.badge" color="#000" />
+                  <IconSymbol size={22} name="bell.badge" color="#fff" />
                 </View>
                 <View style={styles.settingTextContainer}>
                   <ThemedText style={styles.settingTitle}>Push Notification Sounds</ThemedText>
                   <ThemedText style={styles.settingSubtitle}>Customize notification tones</ThemedText>
                 </View>
               </View>
-              <IconSymbol size={20} name="chevron.right" color="#666" />
+              <IconSymbol size={20} name="chevron.right" color="#b9bbbe" />
             </TouchableOpacity>
           </View>
         </View>
@@ -322,7 +322,7 @@ export default function NotificationsPreferencesScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#fff',
+    backgroundColor: '#1e2124',
   },
   loadingContainer: {
     flex: 1,
@@ -336,9 +336,9 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20,
     paddingTop: 60,
     paddingBottom: 16,
-    backgroundColor: '#fff',
+    backgroundColor: '#1e2124',
     borderBottomWidth: 1,
-    borderBottomColor: '#e5e7eb',
+    borderBottomColor: '#2c2f33',
   },
   backButton: {
     flexDirection: 'row',
@@ -348,13 +348,13 @@ const styles = StyleSheet.create({
   },
   backText: {
     fontSize: 17,
-    color: '#000',
+    color: '#fff',
     fontWeight: '400',
   },
   headerTitle: {
     fontSize: 17,
     fontWeight: '600',
-    color: '#000',
+    color: '#fff',
     flex: 1,
     textAlign: 'center',
   },
@@ -368,7 +368,7 @@ const styles = StyleSheet.create({
   sectionTitle: {
     fontSize: 13,
     fontWeight: '600',
-    color: '#666',
+    color: '#b9bbbe',
     textTransform: 'uppercase',
     letterSpacing: 0.5,
     marginBottom: 12,
@@ -376,10 +376,10 @@ const styles = StyleSheet.create({
   },
   settingsGroup: {
     marginHorizontal: 16,
-    backgroundColor: '#fff',
+    backgroundColor: '#36393e',
     borderRadius: 12,
     borderWidth: 1,
-    borderColor: '#e5e7eb',
+    borderColor: '#2c2f33',
     overflow: 'hidden',
   },
   settingItem: {
@@ -389,7 +389,7 @@ const styles = StyleSheet.create({
     paddingVertical: 16,
     paddingHorizontal: 16,
     borderBottomWidth: 1,
-    borderBottomColor: '#e5e7eb',
+    borderBottomColor: '#2c2f33',
   },
   settingItemLast: {
     borderBottomWidth: 0,
@@ -412,12 +412,12 @@ const styles = StyleSheet.create({
   settingTitle: {
     fontSize: 16,
     fontWeight: '500',
-    color: '#000',
+    color: '#fff',
     letterSpacing: -0.2,
   },
   settingSubtitle: {
     fontSize: 13,
-    color: '#666',
+    color: '#b9bbbe',
     marginTop: 2,
   },
   bottomSpacer: {

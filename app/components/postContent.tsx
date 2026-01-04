@@ -215,7 +215,7 @@ export default function PostContent({
               activeOpacity={0.6}
               hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
             >
-              <IconSymbol size={20} name="ellipsis" color="#000" />
+              <IconSymbol size={20} name="ellipsis" color="#fff" />
             </TouchableOpacity>
           )}
         </View>
@@ -312,7 +312,7 @@ export default function PostContent({
             <IconSymbol
               size={24}
               name={isLiked ? "heart.fill" : "heart"}
-              color={isLiked ? "#ff3b30" : "#000"}
+              color={isLiked ? "#ff3b30" : "#fff"}
             />
           </TouchableOpacity>
           <TouchableOpacity
@@ -321,7 +321,7 @@ export default function PostContent({
             activeOpacity={0.6}
             hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
           >
-            <IconSymbol size={24} name="bubble.left" color="#000" />
+            <IconSymbol size={24} name="bubble.left" color="#fff" />
           </TouchableOpacity>
         </View>
         {post.userId !== currentUserId && onDirectMessage && (
@@ -329,7 +329,7 @@ export default function PostContent({
             style={styles.shareButton}
             onPress={() => onDirectMessage(post)}
           >
-            <IconSymbol size={24} name="paperplane" color="#000" />
+            <IconSymbol size={24} name="paperplane" color="#fff" />
           </TouchableOpacity>
         )}
       </View>
@@ -400,7 +400,7 @@ export default function PostContent({
 const styles = StyleSheet.create({
   postContainer: {
     width: screenWidth,
-    backgroundColor: '#fff',
+    backgroundColor: '#1e2124',
   },
   postHeader: {
     flexDirection: 'row',
@@ -437,15 +437,15 @@ const styles = StyleSheet.create({
   avatarInitial: {
     fontSize: 14,
     fontWeight: '600',
-    color: '#000',
+    color: '#fff',
   },
   username: {
     fontSize: 14,
     fontWeight: '600',
-    color: '#000',
+    color: '#fff',
   },
   gameTag: {
-    backgroundColor: '#f0f0f0',
+    backgroundColor: '#424549',
     paddingHorizontal: 10,
     paddingVertical: 4,
     borderRadius: 12,
@@ -453,7 +453,7 @@ const styles = StyleSheet.create({
   gameTagText: {
     fontSize: 12,
     fontWeight: '500',
-    color: '#666',
+    color: '#fff',
   },
   gameTagImage: {
     height: 28,
@@ -465,7 +465,7 @@ const styles = StyleSheet.create({
   },
   captionText: {
     fontSize: 14,
-    color: '#000',
+    color: '#fff',
     lineHeight: 18,
   },
   mediaContainer: {
@@ -532,15 +532,15 @@ const styles = StyleSheet.create({
   likesText: {
     fontSize: 13,
     fontWeight: '600',
-    color: '#000',
+    color: '#fff',
   },
   dotSeparator: {
     fontSize: 13,
-    color: '#999',
+    color: '#b9bbbe',
   },
   commentsText: {
     fontSize: 13,
-    color: '#666',
+    color: '#b9bbbe',
   },
   captionContainer: {
     flexDirection: 'row',
@@ -551,11 +551,11 @@ const styles = StyleSheet.create({
   captionUsername: {
     fontSize: 14,
     fontWeight: '600',
-    color: '#000',
+    color: '#fff',
   },
   captionText: {
     fontSize: 14,
-    color: '#000',
+    color: '#fff',
     flex: 1,
   },
   taggedUsersContainer: {
@@ -567,12 +567,12 @@ const styles = StyleSheet.create({
   },
   taggedUsersLabel: {
     fontSize: 13,
-    color: '#666',
+    color: '#b9bbbe',
   },
   taggedUsername: {
     fontSize: 13,
     fontWeight: '600',
-    color: '#000',
+    color: '#fff',
   },
   commentsPreviewContainer: {
     paddingHorizontal: 16,
@@ -588,20 +588,20 @@ const styles = StyleSheet.create({
   commentUsername: {
     fontSize: 12,
     fontWeight: '600',
-    color: '#000',
+    color: '#fff',
   },
   commentText: {
     fontSize: 12,
-    color: '#333',
+    color: '#dcddde',
     flex: 1,
   },
   commentTime: {
     fontSize: 10,
-    color: '#999',
+    color: '#b9bbbe',
   },
   viewAllCommentsText: {
     fontSize: 12,
-    color: '#666',
+    color: '#b9bbbe',
     marginTop: 4,
   },
 });

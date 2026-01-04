@@ -445,13 +445,13 @@ export default function LeaderboardDetail() {
       <ThemedView style={styles.container}>
         <View style={styles.header}>
           <TouchableOpacity style={styles.backButton} onPress={() => router.replace('/(tabs)/leaderboard')}>
-            <IconSymbol size={20} name="chevron.left" color="#000" />
+            <IconSymbol size={20} name="chevron.left" color="#fff" />
           </TouchableOpacity>
           <ThemedText style={styles.headerTitle}>Loading...</ThemedText>
           <View style={styles.headerSpacer} />
         </View>
         <View style={styles.loadingContainer}>
-          <ActivityIndicator size="large" color="#000" />
+          <ActivityIndicator size="large" color="#c42743" />
           <ThemedText style={styles.loadingText}>Loading party data...</ThemedText>
         </View>
       </ThemedView>
@@ -478,7 +478,7 @@ export default function LeaderboardDetail() {
         style={styles.scrollView}
         showsVerticalScrollIndicator={false}
         refreshControl={
-          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor="#000" />
+          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor="#c42743" />
         }
       >
         {/* Duration Section */}
@@ -507,7 +507,7 @@ export default function LeaderboardDetail() {
 
             {/* Invite Button */}
             <TouchableOpacity style={styles.inviteActionButton} onPress={handleShowInviteCode}>
-              <IconSymbol size={16} name="person.badge.plus" color="#000" />
+              <IconSymbol size={16} name="person.badge.plus" color="#fff" />
               <ThemedText style={styles.inviteActionButtonText}>Invite Code</ThemedText>
             </TouchableOpacity>
           </View>
@@ -573,7 +573,7 @@ export default function LeaderboardDetail() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#fff',
+    backgroundColor: '#1e2124',
   },
   header: {
     flexDirection: 'row',
@@ -582,9 +582,9 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20,
     paddingTop: 60,
     paddingBottom: 16,
-    backgroundColor: '#fff',
+    backgroundColor: '#1e2124',
     borderBottomWidth: 1,
-    borderBottomColor: '#e5e7eb',
+    borderBottomColor: '#2c2f33',
   },
   backButton: {
     padding: 4,
@@ -596,13 +596,13 @@ const styles = StyleSheet.create({
   headerTitle: {
     fontSize: 20,
     fontWeight: '700',
-    color: '#000',
+    color: '#fff',
     letterSpacing: -0.3,
   },
   headerSubtitle: {
     fontSize: 12,
     fontWeight: '400',
-    color: '#666',
+    color: '#b9bbbe',
     letterSpacing: 0,
   },
   headerSpacer: {
@@ -617,12 +617,12 @@ const styles = StyleSheet.create({
   durationSection: {
     paddingHorizontal: 20,
     paddingVertical: 16,
-    backgroundColor: '#fff',
+    backgroundColor: '#1e2124',
   },
   progressCard: {
-    backgroundColor: '#fff',
+    backgroundColor: '#36393e',
     borderWidth: 1,
-    borderColor: '#e5e5e5',
+    borderColor: '#2c2f33',
     borderRadius: 12,
     padding: 16,
     position: 'relative',
@@ -630,7 +630,7 @@ const styles = StyleSheet.create({
   durationLabel: {
     fontSize: 17,
     fontWeight: '600',
-    color: '#000',
+    color: '#fff',
     textAlign: 'center',
     marginBottom: 12,
     letterSpacing: -0.3,
@@ -641,14 +641,14 @@ const styles = StyleSheet.create({
   progressBarBackground: {
     width: '100%',
     height: 8,
-    backgroundColor: '#f5f5f5',
+    backgroundColor: '#2c2f33',
     borderRadius: 4,
     position: 'relative',
     overflow: 'hidden',
   },
   progressBarFill: {
     height: '100%',
-    backgroundColor: '#000',
+    backgroundColor: '#c42743',
     borderRadius: 4,
     position: 'relative',
   },
@@ -659,7 +659,7 @@ const styles = StyleSheet.create({
   },
   dateText: {
     fontSize: 12,
-    color: '#666',
+    color: '#b9bbbe',
     fontWeight: '500',
   },
   inviteActionButton: {
@@ -670,15 +670,15 @@ const styles = StyleSheet.create({
     marginTop: 12,
     paddingVertical: 8,
     paddingHorizontal: 12,
-    backgroundColor: '#f9fafb',
+    backgroundColor: '#424549',
     borderRadius: 8,
     borderWidth: 1,
-    borderColor: '#e5e7eb',
+    borderColor: '#2c2f33',
   },
   inviteActionButtonText: {
     fontSize: 13,
     fontWeight: '600',
-    color: '#000',
+    color: '#fff',
   },
   columnHeaders: {
     flexDirection: 'row',
@@ -687,14 +687,14 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20,
     paddingVertical: 12,
     marginBottom: 0,
-    backgroundColor: '#f5f5f5',
+    backgroundColor: '#36393e',
     borderBottomWidth: 1,
-    borderBottomColor: '#e5e5e5',
+    borderBottomColor: '#2c2f33',
   },
   columnHeaderText: {
     fontSize: 11,
     fontWeight: '600',
-    color: '#666',
+    color: '#b9bbbe',
     letterSpacing: 0.5,
     textTransform: 'uppercase',
   },
@@ -711,14 +711,14 @@ const styles = StyleSheet.create({
     paddingVertical: 12,
     paddingLeft: 16,
     paddingRight: 20,
-    backgroundColor: '#fff',
+    backgroundColor: '#36393e',
     borderBottomWidth: 1,
-    borderBottomColor: '#f5f5f5',
+    borderBottomColor: '#2c2f33',
     position: 'relative',
     borderLeftWidth: 4,
   },
   currentUserRow: {
-    backgroundColor: '#fafafa',
+    backgroundColor: '#424549',
   },
   rankContainer: {
     width: 50,
@@ -727,7 +727,7 @@ const styles = StyleSheet.create({
   rankText: {
     fontSize: 16,
     fontWeight: '700',
-    color: '#000',
+    color: '#fff',
   },
   playerInfo: {
     flex: 1,
@@ -738,10 +738,10 @@ const styles = StyleSheet.create({
   playerAvatar: {
     width: 32,
     height: 32,
-    backgroundColor: '#f5f5f5',
+    backgroundColor: '#2c2f33',
     borderRadius: 16,
     borderWidth: 1,
-    borderColor: '#e5e5e5',
+    borderColor: '#424549',
     alignItems: 'center',
     justifyContent: 'center',
     overflow: 'hidden',
@@ -758,13 +758,13 @@ const styles = StyleSheet.create({
   playerName: {
     fontSize: 14,
     fontWeight: '600',
-    color: '#000',
+    color: '#fff',
     letterSpacing: -0.2,
   },
   currentRankText: {
     fontSize: 13,
     fontWeight: '600',
-    color: '#000',
+    color: '#fff',
   },
   loadingContainer: {
     flex: 1,
@@ -774,7 +774,7 @@ const styles = StyleSheet.create({
   },
   loadingText: {
     fontSize: 14,
-    color: '#666',
+    color: '#b9bbbe',
   },
   bottomSpacer: {
     height: 40,

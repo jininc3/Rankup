@@ -43,7 +43,7 @@ export default function DuoFinderScreen() {
       <View style={styles.header}>
         {selectedGame && (
           <TouchableOpacity onPress={handleBackToGames} style={styles.backButton}>
-            <IconSymbol size={22} name="chevron.left" color="#000" />
+            <IconSymbol size={22} name="chevron.left" color="#fff" />
           </TouchableOpacity>
         )}
         <ThemedText style={[styles.headerTitle, selectedGame && styles.headerTitleWithBack]}>
@@ -54,7 +54,7 @@ export default function DuoFinderScreen() {
             style={styles.sortIconButton}
             onPress={() => setSortModalVisible(true)}
           >
-            <IconSymbol size={22} name="arrow.up.arrow.down" color="#000" />
+            <IconSymbol size={22} name="arrow.up.arrow.down" color="#fff" />
           </TouchableOpacity>
         ) : null}
       </View>
@@ -157,7 +157,7 @@ export default function DuoFinderScreen() {
       <View style={styles.comingSoonOverlay}>
         <View style={styles.comingSoonContent}>
           <View style={styles.iconContainer}>
-            <IconSymbol size={64} name="sparkles" color="#000" />
+            <IconSymbol size={64} name="sparkles" color="#fff" />
           </View>
           <ThemedText style={styles.comingSoonTitle}>Duo Finder</ThemedText>
           <ThemedText style={styles.comingSoonSubtitle}>Coming Soon</ThemedText>
@@ -173,7 +173,7 @@ export default function DuoFinderScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#fff',
+    backgroundColor: '#1e2124',
   },
   header: {
     flexDirection: 'row',
@@ -182,14 +182,14 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20,
     paddingTop: 60,
     paddingBottom: 16,
-    backgroundColor: '#fff',
+    backgroundColor: '#1e2124',
     borderBottomWidth: 1,
-    borderBottomColor: '#e5e7eb',
+    borderBottomColor: '#2c2f33',
   },
   headerTitle: {
     fontSize: 20,
     fontWeight: '700',
-    color: '#000',
+    color: '#fff',
   },
   headerTitleWithBack: {
     marginLeft: 40,
@@ -248,11 +248,11 @@ const styles = StyleSheet.create({
   gameName: {
     fontSize: 18,
     fontWeight: '700',
-    color: '#000',
+    color: '#fff',
   },
   gameSubtext: {
     fontSize: 14,
-    color: '#666',
+    color: '#b9bbbe',
     lineHeight: 20,
   },
   filterContainer: {
@@ -269,10 +269,10 @@ const styles = StyleSheet.create({
   tabButtonText: {
     fontSize: 14,
     fontWeight: '500',
-    color: '#666',
+    color: '#b9bbbe',
   },
   tabButtonTextActive: {
-    color: '#000',
+    color: '#fff',
     fontWeight: '600',
   },
   tabUnderline: {
@@ -281,7 +281,7 @@ const styles = StyleSheet.create({
     marginTop: 6,
   },
   tabUnderlineActive: {
-    backgroundColor: '#000',
+    backgroundColor: '#c42743',
   },
   scrollView: {
     flex: 1,
@@ -331,7 +331,7 @@ const styles = StyleSheet.create({
     marginTop: 8,
   },
   optionUnderlineActive: {
-    backgroundColor: '#000',
+    backgroundColor: '#c42743',
   },
   comingSoonOverlay: {
     position: 'absolute',
@@ -339,7 +339,7 @@ const styles = StyleSheet.create({
     left: 0,
     right: 0,
     bottom: 0,
-    backgroundColor: 'rgba(255, 255, 255, 0.98)',
+    backgroundColor: 'rgba(30, 33, 36, 0.98)',
     justifyContent: 'center',
     alignItems: 'center',
     paddingTop: 100,
@@ -357,7 +357,7 @@ const styles = StyleSheet.create({
   comingSoonTitle: {
     fontSize: 32,
     fontWeight: '700',
-    color: '#000',
+    color: '#fff',
     marginTop: 20,
     letterSpacing: -0.5,
     lineHeight: 42,
@@ -366,12 +366,12 @@ const styles = StyleSheet.create({
   comingSoonSubtitle: {
     fontSize: 20,
     fontWeight: '600',
-    color: '#666',
+    color: '#b9bbbe',
     letterSpacing: -0.3,
   },
   comingSoonDescription: {
     fontSize: 15,
-    color: '#999',
+    color: '#72767d',
     textAlign: 'center',
     lineHeight: 22,
     marginTop: 8,

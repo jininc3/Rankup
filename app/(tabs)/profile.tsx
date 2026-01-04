@@ -222,19 +222,26 @@ export default function ProfileScreen() {
         if (data.riotAccount) {
           setRiotAccount(data.riotAccount);
 
-          // Fetch League of Legends stats if account is linked
+          // Load cached League stats from Firestore first
+          if (data.riotStats) {
+            console.log('Loading cached riot stats from Firestore');
+            setRiotStats(data.riotStats);
+          }
+
+          // Fetch fresh League of Legends stats if account is linked
           try {
-            console.log('Fetching League stats, forceRefresh:', forceRefresh);
+            console.log('Fetching fresh League stats, forceRefresh:', forceRefresh);
             const leagueResponse = await getLeagueStats(forceRefresh);
             console.log('League response:', leagueResponse);
             if (leagueResponse.success && leagueResponse.stats) {
-              console.log('Setting riot stats:', leagueResponse.stats);
+              console.log('Setting fresh riot stats:', leagueResponse.stats);
               setRiotStats(leagueResponse.stats);
             } else {
-              console.log('League stats not successful or no stats returned');
+              console.log('League stats not successful, using cached data');
             }
           } catch (error) {
-            console.error('Error fetching League stats:', error);
+            console.error('Error fetching League stats, using cached data:', error);
+            // Keep using cached data from Firestore
           }
 
           // TFT stats temporarily disabled - using placeholder data
@@ -246,15 +253,21 @@ export default function ProfileScreen() {
         if (data.valorantAccount) {
           setValorantAccount(data.valorantAccount);
 
+          // Load cached Valorant stats from Firestore first
+          if (data.valorantStats) {
+            console.log('Loading cached valorant stats from Firestore');
+            setValorantStats(data.valorantStats);
+          }
+
           try {
-            console.log('Fetching Valorant stats, forceRefresh:', forceRefresh);
+            console.log('Fetching fresh Valorant stats, forceRefresh:', forceRefresh);
             const valorantResponse = await getValorantStats(forceRefresh);
             console.log('Valorant response:', valorantResponse);
             if (valorantResponse.success && valorantResponse.stats) {
-              console.log('Setting valorant stats:', valorantResponse.stats);
+              console.log('Setting fresh valorant stats:', valorantResponse.stats);
               setValorantStats(valorantResponse.stats);
             } else {
-              console.log('Valorant stats not successful or no stats returned');
+              console.log('Valorant stats not successful, using cached data');
             }
           } catch (error) {
             console.error('Error fetching Valorant stats:', error);
@@ -612,9 +625,9 @@ export default function ProfileScreen() {
               onPress={() => setShowSocialsSheet(true)}
               activeOpacity={0.7}
             >
-              <IconSymbol size={18} name="link" color="#666" />
+              <IconSymbol size={18} name="link" color="#b9bbbe" />
               <ThemedText style={styles.socialsButtonText}>Socials</ThemedText>
-              <IconSymbol size={14} name="chevron.right" color="#999" />
+              <IconSymbol size={14} name="chevron.right" color="#72767d" />
             </TouchableOpacity>
           </View>
 
@@ -627,7 +640,7 @@ export default function ProfileScreen() {
               <ThemedText style={styles.editProfileText}>Edit Profile</ThemedText>
             </TouchableOpacity>
             <TouchableOpacity style={styles.shareProfileButton}>
-              <IconSymbol size={20} name="square.and.arrow.up" color="#000" />
+              <IconSymbol size={20} name="square.and.arrow.up" color="#fff" />
             </TouchableOpacity>
           </View>
         </View>
@@ -659,7 +672,7 @@ export default function ProfileScreen() {
               style={styles.filterButton}
               onPress={() => setShowFilterMenu(true)}
             >
-              <IconSymbol size={20} name="line.3.horizontal.decrease.circle" color="#000" />
+              <IconSymbol size={20} name="line.3.horizontal.decrease.circle" color="#fff" />
             </TouchableOpacity>
           )}
           {activeMainTab === 'rankCards' && (riotAccount || valorantAccount) && (
@@ -667,7 +680,7 @@ export default function ProfileScreen() {
               style={styles.filterButton}
               onPress={() => router.push('/profilePages/rankCardWallet')}
             >
-              <IconSymbol size={20} name="square.stack.3d.up.fill" color="#000" />
+              <IconSymbol size={20} name="square.stack.3d.up.fill" color="#fff" />
             </TouchableOpacity>
           )}
         </View>
@@ -675,7 +688,7 @@ export default function ProfileScreen() {
         <View style={[styles.postsSection, { display: activeMainTab === 'clips' ? 'flex' : 'none' }]}>
           {loadingPosts ? (
             <View style={styles.postsContainer}>
-              <ActivityIndicator size="large" color="#000" />
+              <ActivityIndicator size="large" color="#c42743" />
               <ThemedText style={styles.loadingText}>Loading posts...</ThemedText>
             </View>
           ) : posts.length > 0 ? (
@@ -709,7 +722,7 @@ export default function ProfileScreen() {
             </View>
           ) : (
             <View style={styles.postsContainer}>
-              <IconSymbol size={48} name="square.stack.3d.up" color="#ccc" />
+              <IconSymbol size={48} name="square.stack.3d.up" color="#fff" />
               <ThemedText style={styles.emptyStateText}>No posts yet</ThemedText>
               <ThemedText style={styles.emptyStateSubtext}>Share your gaming achievements with the community</ThemedText>
             </View>
@@ -737,7 +750,7 @@ export default function ProfileScreen() {
                     <IconSymbol
                       size={24}
                       name="plus.circle.fill"
-                      color="#000"
+                      color="#fff"
                     />
                   </View>
                 </TouchableOpacity>
@@ -808,7 +821,7 @@ export default function ProfileScreen() {
                     <IconSymbol
                       size={24}
                       name="plus.circle.fill"
-                      color={selectedGameIndex === userGames.length ? "#000" : "#999"}
+                      color={selectedGameIndex === userGames.length ? "#c42743" : "#72767d"}
                     />
                   </View>
                 </TouchableOpacity>
@@ -1032,7 +1045,7 @@ export default function ProfileScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#fff',
+    backgroundColor: '#1e2124',
   },
   header: {
     position: 'absolute',
@@ -1079,7 +1092,7 @@ const styles = StyleSheet.create({
     height: '100%',
   },
   profileContentWrapper: {
-    backgroundColor: '#fff',
+    backgroundColor: '#1e2124',
     paddingHorizontal: 20,
     paddingTop: 0,
     paddingBottom: 12,
@@ -1124,7 +1137,7 @@ const styles = StyleSheet.create({
   username: {
     fontSize: 20,
     fontWeight: '700',
-    color: '#000',
+    color: '#fff',
     letterSpacing: -0.5,
   },
   statsRow: {
@@ -1134,12 +1147,12 @@ const styles = StyleSheet.create({
   },
   statText: {
     fontSize: 14,
-    color: '#666',
+    color: '#b9bbbe',
     fontWeight: '400',
   },
   statDividerText: {
     fontSize: 14,
-    color: '#999',
+    color: '#72767d',
     fontWeight: '400',
   },
   bioSocialsContainer: {
@@ -1147,14 +1160,14 @@ const styles = StyleSheet.create({
   },
   bioText: {
     fontSize: 14,
-    color: '#333',
+    color: '#dcddde',
     lineHeight: 20,
     fontWeight: '400',
     marginBottom: 10,
   },
   emptyBioText: {
     fontSize: 14,
-    color: '#999',
+    color: '#72767d',
     fontStyle: 'italic',
     marginBottom: 10,
   },
@@ -1164,17 +1177,17 @@ const styles = StyleSheet.create({
     gap: 8,
     paddingVertical: 10,
     paddingHorizontal: 16,
-    backgroundColor: '#fff',
+    backgroundColor: '#36393e',
     borderRadius: 8,
     borderWidth: 1,
-    borderColor: '#e5e5e5',
+    borderColor: '#2c2f33',
     marginTop: 12,
   },
   socialsButtonText: {
     flex: 1,
     fontSize: 14,
     fontWeight: '500',
-    color: '#333',
+    color: '#dcddde',
   },
   modalOverlay: {
     flex: 1,
@@ -1300,9 +1313,9 @@ const styles = StyleSheet.create({
     borderRadius: 6,
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: '#fff',
+    backgroundColor: '#36393e',
     borderWidth: 1,
-    borderColor: '#e5e5e5',
+    borderColor: '#2c2f33',
   },
   shareProfileText: {
     fontSize: 14,
@@ -1354,7 +1367,7 @@ const styles = StyleSheet.create({
     width: 48,
     height: 48,
     borderRadius: 24,
-    backgroundColor: '#f5f5f5',
+    backgroundColor: '#36393e',
     borderWidth: 2,
     borderColor: 'transparent',
     alignItems: 'center',
@@ -1362,8 +1375,8 @@ const styles = StyleSheet.create({
     overflow: 'hidden',
   },
   gameIconCircleActive: {
-    borderColor: '#000',
-    backgroundColor: '#fff',
+    borderColor: '#c42743',
+    backgroundColor: '#36393e',
   },
   gameIconImage: {
     width: 32,
@@ -1405,10 +1418,10 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    backgroundColor: '#fff',
+    backgroundColor: '#1e2124',
     paddingHorizontal: 20,
     borderBottomWidth: 1,
-    borderBottomColor: '#e5e5e5',
+    borderBottomColor: '#2c2f33',
   },
   mainTabsLeft: {
     flexDirection: 'row',
@@ -1425,16 +1438,16 @@ const styles = StyleSheet.create({
     bottom: 0,
     height: 2,
     width: 30,
-    backgroundColor: '#000',
+    backgroundColor: '#c42743',
     borderRadius: 1,
   },
   mainTabText: {
     fontSize: 15,
     fontWeight: '500',
-    color: '#999',
+    color: '#72767d',
   },
   mainTabTextActive: {
-    color: '#000',
+    color: '#fff',
     fontWeight: '600',
   },
   filterButton: {
@@ -1450,18 +1463,18 @@ const styles = StyleSheet.create({
   emptyStateText: {
     fontSize: 17,
     fontWeight: '600',
-    color: '#000',
+    color: '#fff',
     marginTop: 16,
   },
   emptyStateSubtext: {
     fontSize: 14,
-    color: '#666',
+    color: '#b9bbbe',
     textAlign: 'center',
     paddingHorizontal: 40,
   },
   loadingText: {
     fontSize: 14,
-    color: '#666',
+    color: '#b9bbbe',
     marginTop: 12,
   },
   postsGrid: {
