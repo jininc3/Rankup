@@ -418,7 +418,7 @@ export default function PostViewerModal({
         {/* Header */}
         <View style={styles.header}>
           <TouchableOpacity style={styles.backButton} onPress={onClose}>
-            <IconSymbol size={28} name="chevron.left" color="#000" />
+            <IconSymbol size={28} name="chevron.left" color="#fff" />
           </TouchableOpacity>
           <ThemedText style={styles.headerTitle}>Posts</ThemedText>
           <View style={styles.backButton} />
@@ -487,7 +487,7 @@ export default function PostViewerModal({
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#fff',
+    backgroundColor: '#1e2124',
   },
   flatListContent: {
     paddingBottom: 250,
@@ -508,9 +508,9 @@ const styles = StyleSheet.create({
     paddingHorizontal: 8,
     paddingTop: 60,
     paddingBottom: 12,
-    backgroundColor: '#fff',
+    backgroundColor: '#1e2124',
     borderBottomWidth: 1,
-    borderBottomColor: '#e5e7eb',
+    borderBottomColor: '#2c2f33',
   },
   backButton: {
     width: 44,
@@ -521,6 +521,6 @@ const styles = StyleSheet.create({
   headerTitle: {
     fontSize: 18,
     fontWeight: '600',
-    color: '#000',
+    color: '#fff',
   },
 });

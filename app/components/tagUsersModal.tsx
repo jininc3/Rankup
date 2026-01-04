@@ -157,11 +157,11 @@ export default function TagUsersModal({
 
         {/* Search Bar */}
         <View style={styles.searchContainer}>
-          <IconSymbol size={20} name="magnifyingglass" color="#666" />
+          <IconSymbol size={20} name="magnifyingglass" color="#b9bbbe" />
           <TextInput
             style={styles.searchInput}
             placeholder="Search people you follow..."
-            placeholderTextColor="#999"
+            placeholderTextColor="#72767d"
             value={searchQuery}
             onChangeText={handleSearch}
             autoCapitalize="none"
@@ -169,7 +169,7 @@ export default function TagUsersModal({
           />
           {searchQuery.length > 0 && (
             <TouchableOpacity onPress={() => handleSearch('')}>
-              <IconSymbol size={20} name="xmark.circle.fill" color="#666" />
+              <IconSymbol size={20} name="xmark.circle.fill" color="#b9bbbe" />
             </TouchableOpacity>
           )}
         </View>
@@ -202,7 +202,7 @@ export default function TagUsersModal({
                     onPress={() => handleSelectUser(user)}
                     style={styles.chipRemoveButton}
                   >
-                    <IconSymbol size={16} name="xmark" color="#666" />
+                    <IconSymbol size={16} name="xmark" color="#b9bbbe" />
                   </TouchableOpacity>
                 </View>
               ))}
@@ -214,12 +214,12 @@ export default function TagUsersModal({
         <ScrollView style={styles.resultsContainer} showsVerticalScrollIndicator={false}>
           {loadingFollowing ? (
             <View style={styles.loadingContainer}>
-              <ActivityIndicator size="large" color="#000" />
+              <ActivityIndicator size="large" color="#fff" />
               <ThemedText style={styles.loadingText}>Loading following list...</ThemedText>
             </View>
           ) : searchQuery.trim() === '' ? (
             <View style={styles.emptyState}>
-              <IconSymbol size={64} name="person.2" color="#ccc" />
+              <IconSymbol size={64} name="person.2" color="#404249" />
               <ThemedText style={styles.emptyText}>Search people you follow</ThemedText>
               <ThemedText style={styles.emptySubtext}>
                 {followingList.length > 0
@@ -257,7 +257,7 @@ export default function TagUsersModal({
             })
           ) : (
             <View style={styles.emptyState}>
-              <IconSymbol size={64} name="person.crop.circle.badge.xmark" color="#ccc" />
+              <IconSymbol size={64} name="person.crop.circle.badge.xmark" color="#404249" />
               <ThemedText style={styles.emptyText}>No matches found</ThemedText>
               <ThemedText style={styles.emptySubtext}>
                 No one you follow matches "{searchQuery}"
@@ -273,7 +273,7 @@ export default function TagUsersModal({
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#fff',
+    backgroundColor: '#1e2124',
   },
   header: {
     flexDirection: 'row',
@@ -283,14 +283,14 @@ const styles = StyleSheet.create({
     paddingTop: 16,
     paddingBottom: 16,
     borderBottomWidth: 1,
-    borderBottomColor: '#e5e5e5',
+    borderBottomColor: '#2c2f33',
   },
   headerButton: {
     padding: 4,
   },
   headerButtonText: {
     fontSize: 16,
-    color: '#000',
+    color: '#fff',
   },
   doneButton: {
     fontWeight: '600',
@@ -299,12 +299,12 @@ const styles = StyleSheet.create({
   headerTitle: {
     fontSize: 18,
     fontWeight: '600',
-    color: '#000',
+    color: '#fff',
   },
   searchContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#f5f5f5',
+    backgroundColor: '#36393e',
     marginHorizontal: 20,
     marginTop: 16,
     marginBottom: 16,
@@ -316,7 +316,7 @@ const styles = StyleSheet.create({
   searchInput: {
     flex: 1,
     fontSize: 16,
-    color: '#000',
+    color: '#fff',
     padding: 0,
   },
   selectedSection: {
@@ -326,7 +326,7 @@ const styles = StyleSheet.create({
   selectedTitle: {
     fontSize: 14,
     fontWeight: '600',
-    color: '#666',
+    color: '#b9bbbe',
     marginBottom: 12,
   },
   selectedScroll: {
@@ -338,7 +338,7 @@ const styles = StyleSheet.create({
   selectedChip: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#f0f0f0',
+    backgroundColor: '#36393e',
     paddingLeft: 4,
     paddingRight: 8,
     paddingVertical: 4,
@@ -349,7 +349,7 @@ const styles = StyleSheet.create({
     width: 24,
     height: 24,
     borderRadius: 12,
-    backgroundColor: '#ddd',
+    backgroundColor: '#2c2f33',
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -365,7 +365,7 @@ const styles = StyleSheet.create({
   chipUsername: {
     fontSize: 14,
     fontWeight: '500',
-    color: '#000',
+    color: '#fff',
   },
   chipRemoveButton: {
     padding: 2,
@@ -382,7 +382,7 @@ const styles = StyleSheet.create({
   },
   loadingText: {
     fontSize: 16,
-    color: '#666',
+    color: '#b9bbbe',
   },
   emptyState: {
     alignItems: 'center',
@@ -392,12 +392,12 @@ const styles = StyleSheet.create({
   emptyText: {
     fontSize: 18,
     fontWeight: '600',
-    color: '#666',
+    color: '#b9bbbe',
     marginTop: 16,
   },
   emptySubtext: {
     fontSize: 14,
-    color: '#999',
+    color: '#72767d',
     marginTop: 8,
   },
   userItem: {
@@ -408,7 +408,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 12,
     marginBottom: 4,
     borderRadius: 8,
-    backgroundColor: '#fafafa',
+    backgroundColor: '#36393e',
   },
   userLeft: {
     flexDirection: 'row',
@@ -420,7 +420,7 @@ const styles = StyleSheet.create({
     width: 36,
     height: 36,
     borderRadius: 18,
-    backgroundColor: '#f0f0f0',
+    backgroundColor: '#2c2f33',
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -435,7 +435,7 @@ const styles = StyleSheet.create({
   },
   username: {
     fontSize: 14,
-    color: '#000',
+    color: '#fff',
     flex: 1,
   },
   checkbox: {
@@ -443,7 +443,7 @@ const styles = StyleSheet.create({
     height: 24,
     borderRadius: 12,
     borderWidth: 2,
-    borderColor: '#ddd',
+    borderColor: '#2c2f33',
     alignItems: 'center',
     justifyContent: 'center',
   },

@@ -228,7 +228,7 @@ export default function CommentModal({
         >
           {loading ? (
             <View style={styles.loadingContainer}>
-              <ActivityIndicator size="large" color="#000" />
+              <ActivityIndicator size="large" color="#fff" />
               <ThemedText style={styles.loadingText}>Loading comments...</ThemedText>
             </View>
           ) : comments.length > 0 ? (
@@ -266,7 +266,7 @@ export default function CommentModal({
             ))
           ) : (
             <View style={styles.emptyState}>
-              <IconSymbol size={64} name="bubble.left" color="#ccc" />
+              <IconSymbol size={64} name="bubble.left" color="#72767d" />
               <ThemedText style={styles.emptyText}>No comments yet</ThemedText>
               <ThemedText style={styles.emptySubtext}>Be the first to comment!</ThemedText>
             </View>
@@ -287,7 +287,7 @@ export default function CommentModal({
           <TextInput
             style={styles.input}
             placeholder="Add a comment..."
-            placeholderTextColor="#999"
+            placeholderTextColor="#72767d"
             value={commentText}
             onChangeText={setCommentText}
             onFocus={() => setIsInputFocused(true)}
@@ -304,7 +304,7 @@ export default function CommentModal({
             {submitting ? (
               <ActivityIndicator size="small" color="#007AFF" />
             ) : (
-              <IconSymbol size={24} name="paperplane.fill" color={commentText.trim() ? "#007AFF" : "#ccc"} />
+              <IconSymbol size={24} name="paperplane.fill" color={commentText.trim() ? "#007AFF" : "#72767d"} />
             )}
           </TouchableOpacity>
         </View>
@@ -321,7 +321,7 @@ const styles = StyleSheet.create({
     justifyContent: 'flex-end',
   },
   modalContent: {
-    backgroundColor: '#fff',
+    backgroundColor: '#1e2124',
     borderTopLeftRadius: 20,
     borderTopRightRadius: 20,
     height: '70%',
@@ -332,7 +332,7 @@ const styles = StyleSheet.create({
   dragHandle: {
     width: 36,
     height: 4,
-    backgroundColor: '#d1d5db',
+    backgroundColor: '#2c2f33',
     borderRadius: 2,
     alignSelf: 'center',
     marginTop: 12,
@@ -344,7 +344,7 @@ const styles = StyleSheet.create({
     paddingTop: 8,
     paddingBottom: 16,
     borderBottomWidth: 1,
-    borderBottomColor: '#e5e5e5',
+    borderBottomColor: '#2c2f33',
   },
   closeButton: {
     padding: 4,
@@ -352,7 +352,7 @@ const styles = StyleSheet.create({
   headerTitle: {
     fontSize: 18,
     fontWeight: '600',
-    color: '#000',
+    color: '#fff',
   },
   headerSpacer: {
     width: 32,
@@ -371,7 +371,7 @@ const styles = StyleSheet.create({
   },
   loadingText: {
     fontSize: 14,
-    color: '#666',
+    color: '#b9bbbe',
   },
   commentItem: {
     flexDirection: 'row',
@@ -382,7 +382,7 @@ const styles = StyleSheet.create({
     width: 28,
     height: 28,
     borderRadius: 14,
-    backgroundColor: '#f0f0f0',
+    backgroundColor: '#36393e',
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -412,15 +412,15 @@ const styles = StyleSheet.create({
   commentUsername: {
     fontSize: 12,
     fontWeight: '600',
-    color: '#000',
+    color: '#fff',
   },
   commentTime: {
     fontSize: 10,
-    color: '#999',
+    color: '#72767d',
   },
   commentText: {
     fontSize: 12,
-    color: '#000',
+    color: '#dcddde',
     lineHeight: 18,
   },
   deleteCommentButton: {
@@ -439,12 +439,12 @@ const styles = StyleSheet.create({
   emptyText: {
     fontSize: 18,
     fontWeight: '600',
-    color: '#666',
+    color: '#b9bbbe',
     marginTop: 16,
   },
   emptySubtext: {
     fontSize: 14,
-    color: '#999',
+    color: '#72767d',
     marginTop: 8,
   },
   inputContainer: {
@@ -454,15 +454,15 @@ const styles = StyleSheet.create({
     paddingTop: 12,
     paddingBottom: 40,
     borderTopWidth: 1,
-    borderTopColor: '#e5e5e5',
-    backgroundColor: '#fff',
+    borderTopColor: '#2c2f33',
+    backgroundColor: '#1e2124',
     gap: 12,
   },
   inputAvatar: {
     width: 32,
     height: 32,
     borderRadius: 16,
-    backgroundColor: '#f0f0f0',
+    backgroundColor: '#36393e',
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -479,12 +479,12 @@ const styles = StyleSheet.create({
     flex: 1,
     maxHeight: 100,
     minHeight: 36,
-    backgroundColor: '#f5f5f5',
+    backgroundColor: '#36393e',
     borderRadius: 18,
     paddingHorizontal: 16,
     paddingVertical: 8,
     fontSize: 15,
-    color: '#000',
+    color: '#fff',
   },
   sendButton: {
     padding: 6,

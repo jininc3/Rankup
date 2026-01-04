@@ -363,7 +363,7 @@ export default function NewPost({ visible, onClose, onPostCreated }: NewPostProp
               style={styles.postPreviewBackButton}
               onPress={handleClose}
             >
-              <IconSymbol size={28} name="chevron.left" color="#000" />
+              <IconSymbol size={28} name="chevron.left" color="#fff" />
             </TouchableOpacity>
             <ThemedText style={styles.postPreviewTitle}>New Post</ThemedText>
             <TouchableOpacity
@@ -387,7 +387,7 @@ export default function NewPost({ visible, onClose, onPostCreated }: NewPostProp
             {selectedMedia.length === 0 ? (
               <TouchableOpacity style={styles.addPhotoButton} onPress={handleAddPhoto}>
                 <View style={styles.addPhotoIconContainer}>
-                  <IconSymbol size={48} name="photo.on.rectangle" color="#000" />
+                  <IconSymbol size={48} name="photo.on.rectangle" color="#b9bbbe" />
                 </View>
                 <ThemedText style={styles.addPhotoText}>Add Photo or Video</ThemedText>
                 <ThemedText style={styles.addPhotoSubtext}>Tap to select from your library</ThemedText>
@@ -456,7 +456,7 @@ export default function NewPost({ visible, onClose, onPostCreated }: NewPostProp
                 {/* Add More Photos Button */}
                 {selectedMedia[0].type !== 'video' && (
                   <TouchableOpacity style={styles.addMorePhotosButton} onPress={handleAddPhoto}>
-                    <IconSymbol size={24} name="plus.circle.fill" color="#000" />
+                    <IconSymbol size={24} name="plus.circle.fill" color="#007AFF" />
                     <ThemedText style={styles.addMorePhotosText}>Add More Photos</ThemedText>
                   </TouchableOpacity>
                 )}
@@ -481,7 +481,7 @@ export default function NewPost({ visible, onClose, onPostCreated }: NewPostProp
               <TextInput
                 style={styles.postPreviewCaptionInput}
                 placeholder="Write a caption..."
-                placeholderTextColor="#999"
+                placeholderTextColor="#72767d"
                 multiline
                 value={caption}
                 onChangeText={setCaption}
@@ -501,7 +501,7 @@ export default function NewPost({ visible, onClose, onPostCreated }: NewPostProp
                 activeOpacity={0.7}
               >
                 <View style={styles.postPreviewOptionLeft}>
-                  <IconSymbol size={20} name="gamecontroller.fill" color="#000" />
+                  <IconSymbol size={20} name="gamecontroller.fill" color="#fff" />
                   <ThemedText style={styles.postPreviewOptionText}>
                     {selectedPostGame
                       ? availableGames.find(g => g.id === selectedPostGame)?.name || 'Tag Game'
@@ -512,7 +512,7 @@ export default function NewPost({ visible, onClose, onPostCreated }: NewPostProp
                   <IconSymbol
                     size={18}
                     name={showGameDropdown ? "chevron.up" : "chevron.down"}
-                    color="#999"
+                    color="#b9bbbe"
                   />
                 </View>
               </TouchableOpacity>
@@ -556,7 +556,7 @@ export default function NewPost({ visible, onClose, onPostCreated }: NewPostProp
               activeOpacity={0.7}
             >
               <View style={styles.postPreviewOptionLeft}>
-                <IconSymbol size={20} name="person.2.fill" color="#000" />
+                <IconSymbol size={20} name="person.2.fill" color="#fff" />
                 <ThemedText style={styles.postPreviewOptionText}>
                   {taggedUsers.length > 0
                     ? `${taggedUsers.length} ${taggedUsers.length === 1 ? 'Person' : 'People'} Tagged`
@@ -570,7 +570,7 @@ export default function NewPost({ visible, onClose, onPostCreated }: NewPostProp
                     {taggedUsers.length > 2 && '...'}
                   </ThemedText>
                 )}
-                <IconSymbol size={18} name="chevron.right" color="#999" />
+                <IconSymbol size={18} name="chevron.right" color="#b9bbbe" />
               </View>
             </TouchableOpacity>
           </ScrollView>
@@ -614,7 +614,7 @@ const styles = StyleSheet.create({
   },
   postPreviewContainer: {
     flex: 1,
-    backgroundColor: '#fff',
+    backgroundColor: '#1e2124',
   },
   postPreviewHeader: {
     flexDirection: 'row',
@@ -624,8 +624,8 @@ const styles = StyleSheet.create({
     paddingTop: 60,
     paddingBottom: 16,
     borderBottomWidth: 1,
-    borderBottomColor: '#e5e5e5',
-    backgroundColor: '#fff',
+    borderBottomColor: '#2c2f33',
+    backgroundColor: '#1e2124',
   },
   postPreviewBackButton: {
     padding: 4,
@@ -633,12 +633,12 @@ const styles = StyleSheet.create({
   postPreviewTitle: {
     fontSize: 18,
     fontWeight: '600',
-    color: '#000',
+    color: '#fff',
   },
   postPreviewShareButton: {
     paddingVertical: 8,
     paddingHorizontal: 16,
-    backgroundColor: '#000',
+    backgroundColor: '#007AFF',
     borderRadius: 8,
   },
   postPreviewShareText: {
@@ -651,11 +651,12 @@ const styles = StyleSheet.create({
   },
   postPreviewContent: {
     flex: 1,
+    backgroundColor: '#1e2124',
   },
   postPreviewMediaContainer: {
     width: '100%',
     height: 400,
-    backgroundColor: '#f5f5f5',
+    backgroundColor: '#36393e',
     position: 'relative',
   },
   postPreviewMedia: {
@@ -698,17 +699,17 @@ const styles = StyleSheet.create({
   addPhotoButton: {
     width: '100%',
     height: 300,
-    backgroundColor: '#f5f5f5',
+    backgroundColor: '#36393e',
     alignItems: 'center',
     justifyContent: 'center',
     borderBottomWidth: 1,
-    borderBottomColor: '#e5e5e5',
+    borderBottomColor: '#2c2f33',
   },
   addPhotoIconContainer: {
     width: 80,
     height: 80,
     borderRadius: 40,
-    backgroundColor: '#fff',
+    backgroundColor: '#2c2f33',
     alignItems: 'center',
     justifyContent: 'center',
     marginBottom: 16,
@@ -716,16 +717,16 @@ const styles = StyleSheet.create({
   addPhotoText: {
     fontSize: 17,
     fontWeight: '600',
-    color: '#000',
+    color: '#fff',
     marginBottom: 4,
   },
   addPhotoSubtext: {
     fontSize: 14,
-    color: '#999',
+    color: '#72767d',
   },
   addPhotoLimitText: {
     fontSize: 12,
-    color: '#666',
+    color: '#b9bbbe',
     marginTop: 8,
   },
   addMorePhotosButton: {
@@ -735,18 +736,19 @@ const styles = StyleSheet.create({
     gap: 8,
     paddingVertical: 16,
     borderBottomWidth: 1,
-    borderBottomColor: '#e5e5e5',
-    backgroundColor: '#fff',
+    borderBottomColor: '#2c2f33',
+    backgroundColor: '#1e2124',
   },
   addMorePhotosText: {
     fontSize: 15,
     fontWeight: '600',
-    color: '#000',
+    color: '#fff',
   },
   postPreviewCaptionSection: {
     padding: 20,
     borderBottomWidth: 1,
-    borderBottomColor: '#e5e5e5',
+    borderBottomColor: '#2c2f33',
+    backgroundColor: '#1e2124',
   },
   postPreviewUserInfo: {
     flexDirection: 'row',
@@ -758,7 +760,7 @@ const styles = StyleSheet.create({
     width: 40,
     height: 40,
     borderRadius: 20,
-    backgroundColor: '#f5f5f5',
+    backgroundColor: '#36393e',
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -774,14 +776,15 @@ const styles = StyleSheet.create({
   postPreviewUsername: {
     fontSize: 16,
     fontWeight: '600',
-    color: '#000',
+    color: '#fff',
   },
   postPreviewCaptionInput: {
     fontSize: 15,
-    color: '#000',
+    color: '#fff',
     minHeight: 100,
     textAlignVertical: 'top',
     paddingTop: 0,
+    backgroundColor: '#36393e',
   },
   postPreviewOptionButton: {
     flexDirection: 'row',
@@ -790,7 +793,8 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     paddingVertical: 10,
     borderBottomWidth: 1,
-    borderBottomColor: '#e5e5e5',
+    borderBottomColor: '#2c2f33',
+    backgroundColor: '#1e2124',
   },
   postPreviewOptionLeft: {
     flexDirection: 'row',
@@ -799,7 +803,7 @@ const styles = StyleSheet.create({
   },
   postPreviewOptionText: {
     fontSize: 14,
-    color: '#000',
+    color: '#fff',
   },
   postPreviewOptionRight: {
     flexDirection: 'row',
@@ -811,13 +815,13 @@ const styles = StyleSheet.create({
   },
   taggedUsersPreview: {
     fontSize: 13,
-    color: '#666',
+    color: '#b9bbbe',
     marginRight: 8,
   },
   gameDropdown: {
-    backgroundColor: '#fff',
+    backgroundColor: '#36393e',
     borderTopWidth: 1,
-    borderTopColor: '#e5e5e5',
+    borderTopColor: '#2c2f33',
   },
   gameDropdownItem: {
     flexDirection: 'row',
@@ -826,10 +830,11 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     paddingVertical: 12,
     borderBottomWidth: 1,
-    borderBottomColor: '#f0f0f0',
+    borderBottomColor: '#2c2f33',
+    backgroundColor: '#36393e',
   },
   gameDropdownItemSelected: {
-    backgroundColor: '#f8f9fa',
+    backgroundColor: '#2c2f33',
   },
   gameDropdownItemLeft: {
     flexDirection: 'row',
@@ -845,6 +850,6 @@ const styles = StyleSheet.create({
   },
   gameDropdownItemName: {
     fontSize: 14,
-    color: '#000',
+    color: '#fff',
   },
 });

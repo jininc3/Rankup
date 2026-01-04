@@ -47,7 +47,7 @@ export default function PostFilterModal({
           <View style={styles.filterModalHeader}>
             <ThemedText style={styles.filterModalTitle}>Sort & Filter Posts</ThemedText>
             <TouchableOpacity onPress={onClose}>
-              <IconSymbol size={24} name="xmark" color="#000" />
+              <IconSymbol size={24} name="xmark" color="#fff" />
             </TouchableOpacity>
           </View>
           <ScrollView
@@ -60,13 +60,13 @@ export default function PostFilterModal({
                 onPress={() => handleFilterSelect('newest')}
               >
                 <View style={styles.filterOptionLeft}>
-                  <IconSymbol size={22} name="calendar.badge.clock" color={selectedFilter === 'newest' ? '#000' : '#666'} />
+                  <IconSymbol size={22} name="calendar.badge.clock" color={selectedFilter === 'newest' ? '#c42743' : '#b9bbbe'} />
                   <ThemedText style={[styles.filterOptionText, selectedFilter === 'newest' && styles.filterOptionTextActive]}>
                     Newest
                   </ThemedText>
                 </View>
                 {selectedFilter === 'newest' && (
-                  <IconSymbol size={20} name="checkmark.circle.fill" color="#000" />
+                  <IconSymbol size={20} name="checkmark.circle.fill" color="#c42743" />
                 )}
               </TouchableOpacity>
 
@@ -75,13 +75,13 @@ export default function PostFilterModal({
                 onPress={() => handleFilterSelect('oldest')}
               >
                 <View style={styles.filterOptionLeft}>
-                  <IconSymbol size={22} name="clock.arrow.circlepath" color={selectedFilter === 'oldest' ? '#000' : '#666'} />
+                  <IconSymbol size={22} name="clock.arrow.circlepath" color={selectedFilter === 'oldest' ? '#c42743' : '#b9bbbe'} />
                   <ThemedText style={[styles.filterOptionText, selectedFilter === 'oldest' && styles.filterOptionTextActive]}>
                     Oldest
                   </ThemedText>
                 </View>
                 {selectedFilter === 'oldest' && (
-                  <IconSymbol size={20} name="checkmark.circle.fill" color="#000" />
+                  <IconSymbol size={20} name="checkmark.circle.fill" color="#c42743" />
                 )}
               </TouchableOpacity>
 
@@ -90,14 +90,14 @@ export default function PostFilterModal({
                 onPress={() => handleFilterSelect('most_viewed')}
               >
                 <View style={styles.filterOptionLeft}>
-                  <IconSymbol size={22} name="eye.fill" color={selectedFilter === 'most_viewed' ? '#000' : '#999'} />
+                  <IconSymbol size={22} name="eye.fill" color={selectedFilter === 'most_viewed' ? '#c42743' : '#72767d'} />
                   <ThemedText style={[styles.filterOptionText, styles.filterOptionTextDisabled, selectedFilter === 'most_viewed' && styles.filterOptionTextActive]}>
                     Most Viewed
                   </ThemedText>
                   <ThemedText style={styles.comingSoonBadge}>Coming Soon</ThemedText>
                 </View>
                 {selectedFilter === 'most_viewed' && (
-                  <IconSymbol size={20} name="checkmark.circle.fill" color="#000" />
+                  <IconSymbol size={20} name="checkmark.circle.fill" color="#c42743" />
                 )}
               </TouchableOpacity>
 
@@ -106,14 +106,14 @@ export default function PostFilterModal({
                 onPress={() => handleFilterSelect('most_liked')}
               >
                 <View style={styles.filterOptionLeft}>
-                  <IconSymbol size={22} name="heart.fill" color={selectedFilter === 'most_liked' ? '#000' : '#999'} />
+                  <IconSymbol size={22} name="heart.fill" color={selectedFilter === 'most_liked' ? '#c42743' : '#72767d'} />
                   <ThemedText style={[styles.filterOptionText, styles.filterOptionTextDisabled, selectedFilter === 'most_liked' && styles.filterOptionTextActive]}>
                     Most Liked
                   </ThemedText>
                   <ThemedText style={styles.comingSoonBadge}>Coming Soon</ThemedText>
                 </View>
                 {selectedFilter === 'most_liked' && (
-                  <IconSymbol size={20} name="checkmark.circle.fill" color="#000" />
+                  <IconSymbol size={20} name="checkmark.circle.fill" color="#c42743" />
                 )}
               </TouchableOpacity>
             </View>
@@ -127,13 +127,13 @@ export default function PostFilterModal({
                 onPress={() => handleGameFilterSelect(null)}
               >
                 <View style={styles.filterOptionLeft}>
-                  <IconSymbol size={22} name="square.grid.2x2" color={selectedGameFilter === null ? '#000' : '#666'} />
+                  <IconSymbol size={22} name="square.grid.2x2" color={selectedGameFilter === null ? '#c42743' : '#b9bbbe'} />
                   <ThemedText style={[styles.filterOptionText, selectedGameFilter === null && styles.filterOptionTextActive]}>
                     All Games
                   </ThemedText>
                 </View>
                 {selectedGameFilter === null && (
-                  <IconSymbol size={20} name="checkmark.circle.fill" color="#000" />
+                  <IconSymbol size={20} name="checkmark.circle.fill" color="#c42743" />
                 )}
               </TouchableOpacity>
 
@@ -159,7 +159,7 @@ export default function PostFilterModal({
                     </ThemedText>
                   </View>
                   {selectedGameFilter === game.id && (
-                    <IconSymbol size={20} name="checkmark.circle.fill" color="#000" />
+                    <IconSymbol size={20} name="checkmark.circle.fill" color="#c42743" />
                   )}
                 </TouchableOpacity>
               ))}
@@ -179,7 +179,7 @@ const styles = StyleSheet.create({
   },
   filterModalContent: {
     height: '70%',
-    backgroundColor: '#fff',
+    backgroundColor: '#1e2124',
     borderTopLeftRadius: 24,
     borderTopRightRadius: 24,
     shadowColor: '#000',
@@ -195,7 +195,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 24,
     paddingVertical: 24,
     borderBottomWidth: 1,
-    borderBottomColor: '#e5e5e5',
+    borderBottomColor: '#2c2f33',
   },
   filterModalScroll: {
     maxHeight: 500,
@@ -203,7 +203,7 @@ const styles = StyleSheet.create({
   filterModalTitle: {
     fontSize: 20,
     fontWeight: '700',
-    color: '#000',
+    color: '#fff',
     letterSpacing: -0.3,
   },
   filterOptionsContainer: {
@@ -216,10 +216,10 @@ const styles = StyleSheet.create({
     paddingHorizontal: 24,
     paddingVertical: 18,
     borderBottomWidth: 1,
-    borderBottomColor: '#f5f5f5',
+    borderBottomColor: '#2c2f33',
   },
   filterOptionActive: {
-    backgroundColor: '#fafafa',
+    backgroundColor: '#36393e',
   },
   filterOptionLeft: {
     flexDirection: 'row',
@@ -228,21 +228,21 @@ const styles = StyleSheet.create({
   },
   filterOptionText: {
     fontSize: 16,
-    color: '#000',
+    color: '#fff',
     fontWeight: '500',
     letterSpacing: -0.2,
   },
   filterOptionTextActive: {
-    color: '#000',
+    color: '#fff',
     fontWeight: '600',
   },
   filterOptionTextDisabled: {
-    color: '#999',
+    color: '#72767d',
   },
   comingSoonBadge: {
     fontSize: 10,
-    color: '#666',
-    backgroundColor: '#f0f0f0',
+    color: '#b9bbbe',
+    backgroundColor: '#36393e',
     paddingHorizontal: 10,
     paddingVertical: 4,
     borderRadius: 12,
@@ -253,7 +253,7 @@ const styles = StyleSheet.create({
   },
   filterSectionDivider: {
     height: 12,
-    backgroundColor: '#f5f5f5',
+    backgroundColor: '#2c2f33',
     marginVertical: 8,
   },
   gameFilterIcon: {

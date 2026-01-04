@@ -206,7 +206,7 @@ export default function RankCardWalletScreen() {
         {/* Header */}
         <View style={styles.header}>
           <TouchableOpacity style={styles.backButton} onPress={() => router.back()}>
-            <IconSymbol size={24} name="chevron.left" color="#000" />
+            <IconSymbol size={24} name="chevron.left" color="#fff" />
           </TouchableOpacity>
           <ThemedText style={styles.headerTitle}>Card Wallet</ThemedText>
         </View>
@@ -225,7 +225,7 @@ export default function RankCardWalletScreen() {
       {/* Header */}
       <View style={styles.header}>
         <TouchableOpacity style={styles.backButton} onPress={() => router.back()}>
-          <IconSymbol size={24} name="chevron.left" color="#000" />
+          <IconSymbol size={24} name="chevron.left" color="#fff" />
         </TouchableOpacity>
         <ThemedText style={styles.headerTitle}>Card Wallet</ThemedText>
         <View style={styles.headerRight}>
@@ -237,7 +237,7 @@ export default function RankCardWalletScreen() {
 
       {/* Instructions */}
       <View style={styles.instructions}>
-        <IconSymbol size={16} name="hand.draw" color="#666" />
+        <IconSymbol size={16} name="hand.draw" color="#b9bbbe" />
         <ThemedText style={styles.instructionsText}>Swipe up or down to browse cards</ThemedText>
       </View>
 
@@ -274,7 +274,7 @@ export default function RankCardWalletScreen() {
           onPress={() => currentIndex > 0 && moveToCard(currentIndex - 1)}
           disabled={currentIndex === 0}
         >
-          <IconSymbol size={24} name="chevron.up" color={currentIndex === 0 ? '#ccc' : '#000'} />
+          <IconSymbol size={24} name="chevron.up" color={currentIndex === 0 ? '#72767d' : '#fff'} />
         </TouchableOpacity>
 
         <TouchableOpacity
@@ -282,7 +282,7 @@ export default function RankCardWalletScreen() {
           onPress={() => currentIndex < userGames.length - 1 && moveToCard(currentIndex + 1)}
           disabled={currentIndex === userGames.length - 1}
         >
-          <IconSymbol size={24} name="chevron.down" color={currentIndex === userGames.length - 1 ? '#ccc' : '#000'} />
+          <IconSymbol size={24} name="chevron.down" color={currentIndex === userGames.length - 1 ? '#72767d' : '#fff'} />
         </TouchableOpacity>
       </View>
 
@@ -305,7 +305,7 @@ export default function RankCardWalletScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#f5f5f5',
+    backgroundColor: '#1e2124',
   },
   header: {
     flexDirection: 'row',
@@ -314,22 +314,22 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20,
     paddingTop: 60,
     paddingBottom: 20,
-    backgroundColor: '#fff',
+    backgroundColor: '#36393e',
     borderBottomWidth: 1,
-    borderBottomColor: '#e5e5e5',
+    borderBottomColor: '#2c2f33',
   },
   backButton: {
     width: 40,
     height: 40,
     borderRadius: 20,
-    backgroundColor: '#f5f5f5',
+    backgroundColor: '#2c2f33',
     alignItems: 'center',
     justifyContent: 'center',
   },
   headerTitle: {
     fontSize: 20,
     fontWeight: '700',
-    color: '#000',
+    color: '#fff',
     flex: 1,
     marginLeft: 12,
   },
@@ -340,7 +340,7 @@ const styles = StyleSheet.create({
   cardCounter: {
     fontSize: 15,
     fontWeight: '600',
-    color: '#666',
+    color: '#b9bbbe',
   },
   instructions: {
     flexDirection: 'row',
@@ -351,7 +351,7 @@ const styles = StyleSheet.create({
   },
   instructionsText: {
     fontSize: 13,
-    color: '#666',
+    color: '#b9bbbe',
   },
   cardsContainer: {
     flex: 1,
@@ -374,7 +374,7 @@ const styles = StyleSheet.create({
     width: 56,
     height: 56,
     borderRadius: 28,
-    backgroundColor: '#fff',
+    backgroundColor: '#36393e',
     alignItems: 'center',
     justifyContent: 'center',
     shadowColor: '#000',
@@ -397,10 +397,10 @@ const styles = StyleSheet.create({
     width: 6,
     height: 6,
     borderRadius: 3,
-    backgroundColor: '#ccc',
+    backgroundColor: '#72767d',
   },
   indicatorActive: {
-    backgroundColor: '#000',
+    backgroundColor: '#fff',
     width: 24,
   },
   emptyContainer: {
@@ -413,11 +413,11 @@ const styles = StyleSheet.create({
   emptyText: {
     fontSize: 20,
     fontWeight: '600',
-    color: '#000',
+    color: '#fff',
   },
   emptySubtext: {
     fontSize: 15,
-    color: '#666',
+    color: '#b9bbbe',
     textAlign: 'center',
   },
 });
