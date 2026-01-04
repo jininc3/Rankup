@@ -36,3 +36,6 @@ export {
   recalculateFollowCountsCallable,
   recalculateFollowCountsScheduled,
 } from "./follows/recalculateFollowCounts";
+
+// Export Party Management functions
+export {checkCompletedPartiesScheduled} from "./parties/checkCompletedParties";

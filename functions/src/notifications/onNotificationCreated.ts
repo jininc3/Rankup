@@ -66,20 +66,43 @@ export const onNotificationCreated = onDocumentCreated(
           body = `${notification.fromUsername} tagged you in a post`;
           break;
 
+        case 'party_invite':
+          body = `${notification.fromUsername} invited you to join "${notification.partyName}" for ${notification.game}!`;
+          break;
+
+        case 'party_complete':
+          if (notification.isWinner) {
+            body = `🏆 Congratulations! You won "${notification.partyName}"! You ranked #${notification.finalRank}!`;
+          } else {
+            body = `"${notification.partyName}" has ended. You ranked #${notification.finalRank}. Winner: ${notification.winnerUsername}`;
+          }
+          break;
+
         default:
           console.log(`Unknown notification type: ${notification.type}`);
           return;
       }
 
       // Send the push notification
-      await sendPushNotification(userId, title, body, {
+      const pushData: Record<string, any> = {
         notificationId: event.params.notificationId,
         type: notification.type,
         fromUserId: notification.fromUserId,
         fromUsername: notification.fromUsername,
-        postId: notification.postId,
         timestamp: new Date().toISOString(),
-      });
+      };
+
+      // Add type-specific data
+      if (notification.postId) {
+        pushData.postId = notification.postId;
+      }
+      if (notification.partyId) {
+        pushData.partyId = notification.partyId;
+        pushData.partyName = notification.partyName;
+        pushData.game = notification.game;
+      }
+
+      await sendPushNotification(userId, title, body, pushData);
 
       console.log(`Push notification sent to user ${userId}`);
     } catch (error) {
