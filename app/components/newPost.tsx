@@ -64,7 +64,7 @@ export default function NewPost({ visible, onClose, onPostCreated }: NewPostProp
     if (status !== 'granted') {
       Alert.alert(
         'Permission Required',
-        'Sorry, we need camera roll permissions to upload images and videos.',
+        'Sorry, we need camera roll permissions to upload videos.',
         [{ text: 'OK' }]
       );
       return;
@@ -72,7 +72,7 @@ export default function NewPost({ visible, onClose, onPostCreated }: NewPostProp
 
     // Launch image picker
     const result = await ImagePicker.launchImageLibraryAsync({
-      mediaTypes: ['images', 'videos'],
+      mediaTypes: ['videos'],
       allowsEditing: true,
       aspect: [4, 3],
       quality: 1,
@@ -136,7 +136,7 @@ export default function NewPost({ visible, onClose, onPostCreated }: NewPostProp
 
     // Validate that at least one photo/video is selected
     if (selectedMedia.length === 0) {
-      Alert.alert('Error', 'Please add at least one photo or video');
+      Alert.alert('Error', 'Please add at least one video');
       return;
     }
 
@@ -200,7 +200,7 @@ export default function NewPost({ visible, onClose, onPostCreated }: NewPostProp
         const downloadURL = await getDownloadURL(uploadTask.ref);
 
         uploadedMediaUrls.push(downloadURL);
-        mediaTypes.push(media.type || 'image');
+        mediaTypes.push(media.type || 'video');
       }
 
       // Save post metadata to Firestore
@@ -387,9 +387,9 @@ export default function NewPost({ visible, onClose, onPostCreated }: NewPostProp
             {selectedMedia.length === 0 ? (
               <TouchableOpacity style={styles.addPhotoButton} onPress={handleAddPhoto}>
                 <View style={styles.addPhotoIconContainer}>
-                  <IconSymbol size={48} name="photo.on.rectangle" color="#b9bbbe" />
+                  <IconSymbol size={48} name="video" color="#b9bbbe" />
                 </View>
-                <ThemedText style={styles.addPhotoText}>Add Photo or Video</ThemedText>
+                <ThemedText style={styles.addPhotoText}>Add Video</ThemedText>
                 <ThemedText style={styles.addPhotoSubtext}>Tap to select from your library</ThemedText>
                 <ThemedText style={styles.addPhotoLimitText}>Video limit: 20 MB</ThemedText>
               </TouchableOpacity>
@@ -452,14 +452,6 @@ export default function NewPost({ visible, onClose, onPostCreated }: NewPostProp
                     <IconSymbol size={24} name="xmark.circle.fill" color="#fff" />
                   </TouchableOpacity>
                 </View>
-
-                {/* Add More Photos Button */}
-                {selectedMedia[0].type !== 'video' && (
-                  <TouchableOpacity style={styles.addMorePhotosButton} onPress={handleAddPhoto}>
-                    <IconSymbol size={24} name="plus.circle.fill" color="#007AFF" />
-                    <ThemedText style={styles.addMorePhotosText}>Add More Photos</ThemedText>
-                  </TouchableOpacity>
-                )}
               </>
             )}
 
