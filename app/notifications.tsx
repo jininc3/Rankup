@@ -712,6 +712,7 @@ const styles = StyleSheet.create({
   },
   usernameText: {
     fontWeight: '600',
+    color: '#fff',
   },
   timeText: {
     fontSize: 11,

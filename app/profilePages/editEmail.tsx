@@ -74,7 +74,6 @@ export default function EditEmailScreen() {
       <View style={styles.header}>
         <TouchableOpacity style={styles.backButton} onPress={() => router.back()}>
           <IconSymbol size={24} name="chevron.left" color="#000" />
-          <ThemedText style={styles.backText}>Back</ThemedText>
         </TouchableOpacity>
         <ThemedText style={styles.headerTitle}>Edit Email</ThemedText>
         <View style={styles.headerSpacer} />
@@ -140,15 +139,8 @@ const styles = StyleSheet.create({
     borderBottomColor: '#e5e7eb',
   },
   backButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 4,
+    padding: 4,
     flex: 1,
-  },
-  backText: {
-    fontSize: 17,
-    color: '#000',
-    fontWeight: '400',
   },
   headerTitle: {
     fontSize: 17,

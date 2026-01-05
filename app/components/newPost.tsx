@@ -533,7 +533,7 @@ export default function NewPost({ visible, onClose, onPostCreated }: NewPostProp
                         <ThemedText style={styles.gameDropdownItemName}>{game.name}</ThemedText>
                       </View>
                       {selectedPostGame === game.id && (
-                        <IconSymbol size={20} name="checkmark" color="#007AFF" />
+                        <IconSymbol size={20} name="checkmark" color="#c42743" />
                       )}
                     </TouchableOpacity>
                   ))}
@@ -630,7 +630,7 @@ const styles = StyleSheet.create({
   postPreviewShareButton: {
     paddingVertical: 8,
     paddingHorizontal: 16,
-    backgroundColor: '#007AFF',
+    backgroundColor: '#c42743',
     borderRadius: 8,
   },
   postPreviewShareText: {
