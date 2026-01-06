@@ -57,14 +57,26 @@ interface Post {
   userId: string;
   username: string;
   mediaUrl: string;
+  mediaUrls?: string[];
   mediaType: 'image' | 'video';
+  mediaTypes?: string[];
   thumbnailUrl?: string;
   caption?: string;
-  taggedPeople?: string[];
+  taggedUsers?: any[];
   taggedGame?: string;
   createdAt: Timestamp;
   likes: number;
+  commentsCount?: number;
+  duration?: number; // Video duration in seconds
 }
+
+// Helper function to format video duration
+const formatDuration = (seconds?: number): string => {
+  if (!seconds) return '0:00';
+  const mins = Math.floor(seconds / 60);
+  const secs = Math.floor(seconds % 60);
+  return `${mins}:${secs.toString().padStart(2, '0')}`;
+};
 
 export default function ProfilePreviewScreen() {
   const router = useRouter();
@@ -73,7 +85,7 @@ export default function ProfilePreviewScreen() {
   const [viewedUser, setViewedUser] = useState<ViewedUser | null>(null);
   const [loadingUser, setLoadingUser] = useState(true);
   const [selectedGameIndex, setSelectedGameIndex] = useState(0);
-  const [activeMainTab, setActiveMainTab] = useState<'games' | 'posts'>('games');
+  const [activeMainTab, setActiveMainTab] = useState<'rankCards' | 'clips'>('clips');
   const [posts, setPosts] = useState<Post[]>([]);
   const [loadingPosts, setLoadingPosts] = useState(false);
   const [selectedPost, setSelectedPost] = useState<Post | null>(null);
@@ -81,6 +93,8 @@ export default function ProfilePreviewScreen() {
   const [isFollowing, setIsFollowing] = useState(false);
   const [followLoading, setFollowLoading] = useState(false);
   const scrollViewRef = useRef<ScrollView>(null);
+  const iconScrollViewRef = useRef<ScrollView>(null);
+  const [showSocialsSheet, setShowSocialsSheet] = useState(false);
 
   // Create userGames array based on viewedUser data
   const userGames = viewedUser?.gamesPlayed ? [
@@ -141,11 +155,22 @@ export default function ProfilePreviewScreen() {
   };
 
   const scrollToIndex = (index: number) => {
+    // Update state for smooth border transition
+    setSelectedGameIndex(index);
+
+    // Scroll the cards view
     scrollViewRef.current?.scrollTo({
       x: index * (CARD_WIDTH + CARD_GAP),
       animated: true,
     });
-    setSelectedGameIndex(index);
+
+    // Scroll the icon view to center the selected icon
+    const ICON_WIDTH = 48 + 12; // icon circle (48) + gap (12)
+    const ICON_OFFSET = index * ICON_WIDTH - (screenWidth / 2) + (ICON_WIDTH / 2);
+    iconScrollViewRef.current?.scrollTo({
+      x: Math.max(0, ICON_OFFSET),
+      animated: true,
+    });
   };
 
   // Fetch viewed user's profile data
@@ -358,79 +383,28 @@ export default function ProfilePreviewScreen() {
             </View>
           </View>
 
-          {/* Bio */}
-          {viewedUser?.bio && (
-            <View style={styles.bioContainer}>
+          {/* Bio & Socials Section */}
+          <View style={styles.bioSocialsContainer}>
+            {/* Bio */}
+            {viewedUser?.bio ? (
               <ThemedText style={styles.bioText}>{viewedUser.bio}</ThemedText>
-            </View>
-          )}
+            ) : (
+              <ThemedText style={styles.emptyBioText}>No bio added yet</ThemedText>
+            )}
 
-          {/* Socials below bio */}
-          {(viewedUser?.discordLink || viewedUser?.instagramLink) && (
-            <View style={styles.socialsIconsRow}>
+            {/* Socials button */}
+            {(viewedUser?.discordLink || viewedUser?.instagramLink) && (
               <TouchableOpacity
-                style={styles.socialLinkButton}
-                onPress={async () => {
-                  // Open Instagram link
-                  if (viewedUser?.instagramLink) {
-                    try {
-                      const username = viewedUser.instagramLink.replace(/^https?:\/\/(www\.)?instagram\.com\//, '').replace(/\/$/, '');
-                      const appUrl = `instagram://user?username=${username}`;
-                      const webUrl = `https://instagram.com/${username}`;
-
-                      const supported = await Linking.canOpenURL(appUrl);
-                      if (supported) {
-                        await Linking.openURL(appUrl);
-                      } else {
-                        await Linking.openURL(webUrl);
-                      }
-                    } catch (error) {
-                      console.error('Error opening Instagram:', error);
-                      Alert.alert('Error', 'Failed to open Instagram');
-                    }
-                  }
-                }}
+                style={styles.socialsButton}
+                onPress={() => setShowSocialsSheet(true)}
                 activeOpacity={0.7}
               >
-                <View style={[styles.instagramGradient, !viewedUser?.instagramLink && styles.socialNotConfigured]}>
-                  <Image
-                    source={require('@/assets/images/instagram.png')}
-                    style={[styles.socialLinkIcon, !viewedUser?.instagramLink && styles.socialIconNotConfigured]}
-                    resizeMode="contain"
-                  />
-                </View>
+                <IconSymbol size={18} name="link" color="#b9bbbe" />
+                <ThemedText style={styles.socialsButtonText}>Socials</ThemedText>
+                <IconSymbol size={14} name="chevron.right" color="#72767d" />
               </TouchableOpacity>
-
-              <TouchableOpacity
-                style={styles.socialLinkButton}
-                onPress={async () => {
-                  // Copy Discord username to clipboard
-                  if (viewedUser?.discordLink) {
-                    try {
-                      await Clipboard.setStringAsync(viewedUser.discordLink);
-                      Alert.alert(
-                        'Copied!',
-                        `Discord username "${viewedUser.discordLink}" copied to clipboard`,
-                        [{ text: 'OK' }]
-                      );
-                    } catch (error) {
-                      console.error('Error copying to clipboard:', error);
-                      Alert.alert('Error', 'Failed to copy Discord username');
-                    }
-                  }
-                }}
-                activeOpacity={0.7}
-              >
-                <View style={[styles.discordBackground, !viewedUser?.discordLink && styles.socialNotConfigured]}>
-                  <Image
-                    source={require('@/assets/images/discord.png')}
-                    style={[styles.socialLinkIcon, !viewedUser?.discordLink && styles.socialIconNotConfigured]}
-                    resizeMode="contain"
-                  />
-                </View>
-              </TouchableOpacity>
-            </View>
-          )}
+            )}
+          </View>
 
           {/* Follow Button - Only show when viewing other users */}
           {userId !== currentUser?.id && (
@@ -446,120 +420,139 @@ export default function ProfilePreviewScreen() {
           )}
         </View>
 
-        {/* Main Tabs: Games and Posts */}
+        {/* Main Tabs: Clips and RankCards */}
         <View style={styles.mainTabsContainer}>
-          <TouchableOpacity
-            style={[styles.mainTab, activeMainTab === 'games' && styles.mainTabActive]}
-            onPress={() => setActiveMainTab('games')}
-          >
-            <ThemedText style={[styles.mainTabText, activeMainTab === 'games' && styles.mainTabTextActive]}>
-              Games
-            </ThemedText>
-          </TouchableOpacity>
-          <TouchableOpacity
-            style={[styles.mainTab, activeMainTab === 'posts' && styles.mainTabActive]}
-            onPress={() => setActiveMainTab('posts')}
-          >
-            <ThemedText style={[styles.mainTabText, activeMainTab === 'posts' && styles.mainTabTextActive]}>
-              Posts
-            </ThemedText>
-          </TouchableOpacity>
+          <View style={styles.mainTabsLeft}>
+            <TouchableOpacity
+              style={styles.mainTab}
+              onPress={() => setActiveMainTab('clips')}
+            >
+              <ThemedText style={[styles.mainTabText, activeMainTab === 'clips' && styles.mainTabTextActive]}>
+                Clips
+              </ThemedText>
+              {activeMainTab === 'clips' && <View style={styles.tabIndicator} />}
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={styles.mainTab}
+              onPress={() => setActiveMainTab('rankCards')}
+            >
+              <ThemedText style={[styles.mainTabText, activeMainTab === 'rankCards' && styles.mainTabTextActive]}>
+                RankCards
+              </ThemedText>
+              {activeMainTab === 'rankCards' && <View style={styles.tabIndicator} />}
+            </TouchableOpacity>
+          </View>
         </View>
-
-        {activeMainTab === 'games' && (
-        <View style={styles.section}>
-          {/* Minimal Game Tabs */}
-          <ScrollView
-            horizontal
-            showsHorizontalScrollIndicator={false}
-            style={styles.gameTabs}
-            contentContainerStyle={styles.gameTabsContent}
-          >
-            {userGames.map((game, index) => (
-              <TouchableOpacity
-                key={game.id}
-                style={[styles.gameTab, selectedGameIndex === index && styles.gameTabActive]}
-                onPress={() => scrollToIndex(index)}
-              >
-                <ThemedText style={[
-                  styles.gameTabText,
-                  selectedGameIndex === index && styles.gameTabTextActive
-                ]}>
-                  {game.name}
-                </ThemedText>
-              </TouchableOpacity>
-            ))}
-          </ScrollView>
-
-          {/* Scrollable Rank Cards */}
-          <ScrollView
-            ref={scrollViewRef}
-            horizontal
-            pagingEnabled
-            showsHorizontalScrollIndicator={false}
-            onScroll={handleScrollDrag}
-            onMomentumScrollEnd={handleScroll}
-            scrollEventThrottle={16}
-            snapToInterval={CARD_WIDTH + CARD_GAP}
-            decelerationRate="fast"
-            contentContainerStyle={styles.cardsContainer}
-          >
-            {userGames.map((game, index) => (
-              <View
-                key={game.id}
-                style={[
-                  styles.cardWrapper,
-                  {
-                    width: CARD_WIDTH,
-                    marginRight: index < userGames.length - 1 ? CARD_GAP : 0
-                  }
-                ]}
-              >
-                <RankCard game={game} username={viewedUser?.username || 'User'} />
-              </View>
-            ))}
-          </ScrollView>
-        </View>
-        )}
 
         {/* Posts Tab Content */}
-        {activeMainTab === 'posts' && (
-          <View style={styles.postsSection}>
-            {loadingPosts ? (
-              <View style={styles.postsContainer}>
-                <ActivityIndicator size="large" color="#c42743" />
-                <ThemedText style={styles.loadingText}>Loading posts...</ThemedText>
-              </View>
-            ) : posts.length > 0 ? (
-              <View style={styles.postsGrid}>
-                {posts.map((post) => (
+        <View style={[styles.postsSection, { display: activeMainTab === 'clips' ? 'flex' : 'none' }]}>
+          {loadingPosts ? (
+            <View style={styles.postsContainer}>
+              <ActivityIndicator size="large" color="#c42743" />
+              <ThemedText style={styles.loadingText}>Loading posts...</ThemedText>
+            </View>
+          ) : posts.length > 0 ? (
+            <View style={styles.postsGrid}>
+              {posts.map((post) => (
+                <TouchableOpacity
+                  key={post.id}
+                  style={styles.postItem}
+                  onPress={() => handlePostPress(post)}
+                  activeOpacity={0.7}
+                >
+                  <Image
+                    source={{ uri: post.mediaType === 'video' && post.thumbnailUrl ? post.thumbnailUrl : post.mediaUrl }}
+                    style={styles.postImage}
+                    resizeMode="cover"
+                  />
+                  {post.mediaType === 'video' && (
+                    <View style={styles.videoDuration}>
+                      <ThemedText style={styles.videoDurationText}>
+                        {formatDuration(post.duration)}
+                      </ThemedText>
+                    </View>
+                  )}
+                  {post.mediaUrls && post.mediaUrls.length > 1 && (
+                    <View style={styles.multiplePostsIndicator}>
+                      <IconSymbol size={20} name="square.on.square" color="#fff" />
+                    </View>
+                  )}
+                </TouchableOpacity>
+              ))}
+            </View>
+          ) : (
+            <View style={styles.postsContainer}>
+              <IconSymbol size={48} name="square.stack.3d.up" color="#fff" />
+              <ThemedText style={styles.emptyStateText}>No posts yet</ThemedText>
+            </View>
+          )}
+        </View>
+
+        {/* RankCards Tab Content */}
+        <View style={[styles.section, { display: activeMainTab === 'rankCards' ? 'flex' : 'none' }]}>
+          {userGames.length === 0 ? (
+            <View style={styles.postsContainer}>
+              <IconSymbol size={48} name="gamecontroller" color="#fff" />
+              <ThemedText style={styles.emptyStateText}>No rank cards yet</ThemedText>
+            </View>
+          ) : (
+            <>
+              {/* Game Icon Selector */}
+              <ScrollView
+                ref={iconScrollViewRef}
+                horizontal
+                showsHorizontalScrollIndicator={false}
+                style={styles.gameIconScroller}
+                contentContainerStyle={styles.gameIconScrollerContent}
+              >
+                {userGames.map((game, index) => (
                   <TouchableOpacity
-                    key={post.id}
-                    style={styles.postItem}
-                    onPress={() => handlePostPress(post)}
+                    key={game.id}
+                    style={styles.gameIconContainer}
+                    onPress={() => scrollToIndex(index)}
                     activeOpacity={0.7}
                   >
-                    <Image
-                      source={{ uri: post.mediaType === 'video' && post.thumbnailUrl ? post.thumbnailUrl : post.mediaUrl }}
-                      style={styles.postImage}
-                      resizeMode="cover"
-                    />
-                    {post.mediaType === 'video' && (
-                      <View style={styles.videoIndicator}>
-                        <IconSymbol size={24} name="play.fill" color="#fff" />
-                      </View>
-                    )}
+                    <View style={[
+                      styles.gameIconCircle,
+                      selectedGameIndex === index && styles.gameIconCircleActive
+                    ]}>
+                      <ThemedText style={styles.gameIconEmoji}>{game.icon}</ThemedText>
+                    </View>
                   </TouchableOpacity>
                 ))}
-              </View>
-            ) : (
-              <View style={styles.postsContainer}>
-                <IconSymbol size={48} name="square.stack.3d.up" color="#ccc" />
-                <ThemedText style={styles.emptyStateText}>No posts yet</ThemedText>
-              </View>
-            )}
-          </View>
-        )}
+              </ScrollView>
+
+              {/* Scrollable Rank Cards */}
+              <ScrollView
+                ref={scrollViewRef}
+                horizontal
+                pagingEnabled
+                showsHorizontalScrollIndicator={false}
+                onScroll={handleScrollDrag}
+                onMomentumScrollEnd={handleScroll}
+                scrollEventThrottle={16}
+                snapToInterval={CARD_WIDTH + CARD_GAP}
+                decelerationRate="fast"
+                contentContainerStyle={styles.cardsContainer}
+              >
+                {userGames.map((game, index) => (
+                  <View
+                    key={game.id}
+                    style={[
+                      styles.cardWrapper,
+                      {
+                        width: CARD_WIDTH,
+                        marginRight: index < userGames.length - 1 ? CARD_GAP : 0
+                      }
+                    ]}
+                  >
+                    <RankCard game={game} username={viewedUser?.username || 'User'} />
+                  </View>
+                ))}
+              </ScrollView>
+            </>
+          )}
+        </View>
       </ScrollView>
 
       {/* Post Viewer Modal */}
@@ -655,6 +648,127 @@ export default function ProfilePreviewScreen() {
             )}
           </View>
         </View>
+      </Modal>
+
+      {/* Socials Bottom Sheet */}
+      <Modal
+        visible={showSocialsSheet}
+        transparent={true}
+        animationType="slide"
+        onRequestClose={() => setShowSocialsSheet(false)}
+      >
+        <TouchableOpacity
+          style={styles.modalOverlay}
+          activeOpacity={1}
+          onPress={() => setShowSocialsSheet(false)}
+        >
+          <View style={styles.bottomSheet}>
+            <TouchableOpacity activeOpacity={1}>
+              {/* Sheet Header */}
+              <View style={styles.sheetHeader}>
+                <View style={styles.sheetHandle} />
+                <ThemedText style={styles.sheetTitle}>Socials</ThemedText>
+              </View>
+
+              {/* Social Links */}
+              <View style={styles.socialLinksContainer}>
+                {/* Instagram */}
+                <TouchableOpacity
+                  style={styles.socialOption}
+                  onPress={async () => {
+                    setShowSocialsSheet(false);
+                    if (viewedUser?.instagramLink) {
+                      try {
+                        const username = viewedUser.instagramLink.replace(/^https?:\/\/(www\.)?instagram\.com\//, '').replace(/\/$/, '');
+                        const appUrl = `instagram://user?username=${username}`;
+                        const webUrl = `https://instagram.com/${username}`;
+
+                        const supported = await Linking.canOpenURL(appUrl);
+                        if (supported) {
+                          await Linking.openURL(appUrl);
+                        } else {
+                          await Linking.openURL(webUrl);
+                        }
+                      } catch (error) {
+                        console.error('Error opening Instagram:', error);
+                        Alert.alert('Error', 'Failed to open Instagram');
+                      }
+                    }
+                  }}
+                  activeOpacity={0.7}
+                >
+                  <View style={styles.socialOptionLeft}>
+                    <View style={[styles.instagramIconContainer, !viewedUser?.instagramLink && styles.socialNotConfigured]}>
+                      <Image
+                        source={require('@/assets/images/instagram.png')}
+                        style={styles.socialOptionIcon}
+                        resizeMode="contain"
+                      />
+                    </View>
+                    <View style={{ flex: 1 }}>
+                      <ThemedText style={styles.socialOptionTitle}>Instagram</ThemedText>
+                      <ThemedText style={styles.socialOptionSubtitle}>
+                        {viewedUser?.instagramLink
+                          ? viewedUser.instagramLink.replace(/^https?:\/\/(www\.)?instagram\.com\//, '').replace(/\/$/, '')
+                          : 'Not configured'}
+                      </ThemedText>
+                    </View>
+                  </View>
+                </TouchableOpacity>
+
+                {/* Discord */}
+                <TouchableOpacity
+                  style={styles.socialOption}
+                  onPress={async () => {
+                    setShowSocialsSheet(false);
+                    if (viewedUser?.discordLink) {
+                      try {
+                        await Clipboard.setStringAsync(viewedUser.discordLink);
+                        Alert.alert(
+                          'Copied!',
+                          `Discord username "${viewedUser.discordLink}" copied to clipboard`,
+                          [{ text: 'OK' }]
+                        );
+                      } catch (error) {
+                        console.error('Error copying to clipboard:', error);
+                        Alert.alert('Error', 'Failed to copy Discord username');
+                      }
+                    }
+                  }}
+                  activeOpacity={0.7}
+                >
+                  <View style={styles.socialOptionLeft}>
+                    <View style={[styles.discordIconContainer, !viewedUser?.discordLink && styles.socialNotConfigured]}>
+                      <Image
+                        source={require('@/assets/images/discord.png')}
+                        style={styles.socialOptionIcon}
+                        resizeMode="contain"
+                      />
+                    </View>
+                    <View style={{ flex: 1 }}>
+                      <ThemedText style={styles.socialOptionTitle}>Discord</ThemedText>
+                      <ThemedText style={styles.socialOptionSubtitle}>
+                        {viewedUser?.discordLink || 'Not configured'}
+                      </ThemedText>
+                    </View>
+                  </View>
+                  {viewedUser?.discordLink && (
+                    <IconSymbol size={20} name="doc.on.doc" color="#999" />
+                  )}
+                </TouchableOpacity>
+              </View>
+
+              {/* Cancel Button */}
+              <TouchableOpacity
+                style={styles.cancelButton}
+                onPress={() => setShowSocialsSheet(false)}
+                activeOpacity={0.7}
+              >
+                <ThemedText style={styles.cancelButtonText}>Cancel</ThemedText>
+              </TouchableOpacity>
+            </TouchableOpacity>
+          </View>
+        </TouchableOpacity>
       </Modal>
     </ThemedView>
   );
@@ -772,14 +886,39 @@ const styles = StyleSheet.create({
     color: '#72767d',
     fontWeight: '400',
   },
-  bioContainer: {
-    marginBottom: 0,
+  bioSocialsContainer: {
+    marginBottom: 20,
   },
   bioText: {
     fontSize: 14,
     color: '#dcddde',
     lineHeight: 20,
     fontWeight: '400',
+    marginBottom: 10,
+  },
+  emptyBioText: {
+    fontSize: 14,
+    color: '#72767d',
+    fontStyle: 'italic',
+    marginBottom: 10,
+  },
+  socialsButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    paddingVertical: 10,
+    paddingHorizontal: 16,
+    backgroundColor: '#36393e',
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: '#2c2f33',
+    marginTop: 12,
+  },
+  socialsButtonText: {
+    flex: 1,
+    fontSize: 14,
+    fontWeight: '500',
+    color: '#dcddde',
   },
   followButton: {
     width: '100%',
@@ -802,50 +941,104 @@ const styles = StyleSheet.create({
   unfollowButtonText: {
     color: '#fff',
   },
-  socialsIconsRow: {
-    flexDirection: 'row',
-    gap: 10,
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'transparent',
+    justifyContent: 'flex-end',
   },
-  socialLinkButton: {
-    shadowColor: '#000',
-    shadowOffset: {
-      width: 0,
-      height: 1,
-    },
-    shadowOpacity: 0.08,
-    shadowRadius: 2,
-    elevation: 2,
+  bottomSheet: {
+    backgroundColor: '#36393e',
+    borderTopLeftRadius: 20,
+    borderTopRightRadius: 20,
+    paddingBottom: 34,
   },
-  instagramGradient: {
+  sheetHeader: {
+    alignItems: 'center',
+    paddingTop: 12,
+    paddingBottom: 16,
+    borderBottomWidth: 1,
+    borderBottomColor: '#2c2f33',
+  },
+  sheetHandle: {
     width: 40,
-    height: 40,
-    borderRadius: 20,
+    height: 4,
+    backgroundColor: '#72767d',
+    borderRadius: 2,
+    marginBottom: 16,
+  },
+  sheetTitle: {
+    fontSize: 17,
+    fontWeight: '600',
+    color: '#fff',
+  },
+  socialLinksContainer: {
+    paddingHorizontal: 20,
+    paddingTop: 8,
+  },
+  socialOption: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingVertical: 16,
+    borderBottomWidth: 1,
+    borderBottomColor: '#2c2f33',
+  },
+  socialOptionLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 14,
+    flex: 1,
+  },
+  instagramIconContainer: {
+    width: 48,
+    height: 48,
+    borderRadius: 24,
     backgroundColor: '#36393e',
     alignItems: 'center',
     justifyContent: 'center',
-    borderWidth: 1.5,
+    borderWidth: 2,
     borderColor: '#E4405F',
   },
-  discordBackground: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
+  discordIconContainer: {
+    width: 48,
+    height: 48,
+    borderRadius: 24,
     backgroundColor: '#36393e',
     alignItems: 'center',
     justifyContent: 'center',
-    borderWidth: 1.5,
+    borderWidth: 2,
     borderColor: '#5865F2',
   },
-  socialLinkIcon: {
-    width: 22,
-    height: 22,
+  socialOptionIcon: {
+    width: 26,
+    height: 26,
+  },
+  socialOptionTitle: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#fff',
+    marginBottom: 2,
+  },
+  socialOptionSubtitle: {
+    fontSize: 13,
+    color: '#b9bbbe',
   },
   socialNotConfigured: {
-    borderColor: '#e5e5e5',
+    borderColor: '#2c2f33',
     opacity: 0.5,
   },
-  socialIconNotConfigured: {
-    opacity: 0.4,
+  cancelButton: {
+    marginHorizontal: 20,
+    marginTop: 8,
+    paddingVertical: 14,
+    backgroundColor: '#2c2f33',
+    borderRadius: 10,
+    alignItems: 'center',
+  },
+  cancelButtonText: {
+    fontSize: 15,
+    fontWeight: '600',
+    color: '#b9bbbe',
   },
   section: {
     paddingHorizontal: 20,
@@ -859,57 +1052,67 @@ const styles = StyleSheet.create({
   },
   mainTabsContainer: {
     flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
     backgroundColor: '#1e2124',
+    paddingHorizontal: 20,
     borderBottomWidth: 1,
     borderBottomColor: '#2c2f33',
-    paddingHorizontal: 20,
+  },
+  mainTabsLeft: {
+    flexDirection: 'row',
   },
   mainTab: {
-    flex: 1,
-    paddingVertical: 16,
+    paddingVertical: 12,
+    paddingHorizontal: 20,
     alignItems: 'center',
-    borderBottomWidth: 2,
-    borderBottomColor: 'transparent',
+    marginRight: 8,
+    position: 'relative',
   },
-  mainTabActive: {
-    borderBottomColor: '#c42743',
+  tabIndicator: {
+    position: 'absolute',
+    bottom: 0,
+    height: 2,
+    width: 30,
+    backgroundColor: '#c42743',
+    borderRadius: 1,
   },
   mainTabText: {
     fontSize: 15,
     fontWeight: '500',
     color: '#72767d',
-    letterSpacing: -0.2,
   },
   mainTabTextActive: {
     color: '#fff',
     fontWeight: '600',
   },
-  gameTabs: {
-    marginBottom: 20,
+  gameIconScroller: {
+    marginBottom: 16,
   },
-  gameTabsContent: {
-    gap: 10,
-    paddingBottom: 4,
+  gameIconScrollerContent: {
+    paddingVertical: 6,
+    gap: 12,
   },
-  gameTab: {
-    paddingVertical: 8,
-    paddingHorizontal: 12,
-    backgroundColor: 'transparent',
-    borderBottomWidth: 2,
-    borderBottomColor: 'transparent',
+  gameIconContainer: {
+    alignItems: 'center',
   },
-  gameTabActive: {
-    borderBottomColor: '#c42743',
+  gameIconCircle: {
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    backgroundColor: '#36393e',
+    borderWidth: 2,
+    borderColor: 'transparent',
+    alignItems: 'center',
+    justifyContent: 'center',
+    overflow: 'hidden',
   },
-  gameTabText: {
-    fontSize: 14,
-    color: '#72767d',
-    fontWeight: '500',
-    letterSpacing: -0.2,
+  gameIconCircleActive: {
+    borderColor: '#c42743',
+    backgroundColor: '#36393e',
   },
-  gameTabTextActive: {
-    color: '#fff',
-    fontWeight: '600',
+  gameIconEmoji: {
+    fontSize: 24,
   },
   cardsContainer: {
     paddingBottom: 4,
@@ -951,14 +1154,29 @@ const styles = StyleSheet.create({
     width: '100%',
     height: '100%',
   },
-  videoIndicator: {
+  videoDuration: {
     position: 'absolute',
-    top: 8,
+    bottom: 8,
+    right: 8,
+    backgroundColor: 'rgba(0, 0, 0, 0.75)',
+    borderRadius: 4,
+    paddingHorizontal: 6,
+    paddingVertical: 3,
+  },
+  videoDurationText: {
+    fontSize: 11,
+    fontWeight: '600',
+    color: '#fff',
+    letterSpacing: 0.2,
+  },
+  multiplePostsIndicator: {
+    position: 'absolute',
+    bottom: 8,
     right: 8,
     backgroundColor: 'rgba(0, 0, 0, 0.6)',
     borderRadius: 12,
-    width: 32,
-    height: 32,
+    width: 28,
+    height: 28,
     alignItems: 'center',
     justifyContent: 'center',
   },
