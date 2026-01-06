@@ -14,6 +14,10 @@ import {
   Timestamp,
   increment,
   writeBatch,
+  limit,
+  startAfter,
+  QueryDocumentSnapshot,
+  DocumentData,
 } from 'firebase/firestore';
 
 export interface ChatMessage {
@@ -70,6 +74,18 @@ export const createOrGetChat = async (
   for (const docSnap of querySnapshot.docs) {
     const data = docSnap.data();
     if (data.participants.includes(otherUserId)) {
+      // Update participant details to ensure avatars are current
+      const chatRef = doc(db, 'chats', docSnap.id);
+      await updateDoc(chatRef, {
+        [`participantDetails.${currentUserId}`]: {
+          username: currentUsername,
+          avatar: currentUserAvatar || null,
+        },
+        [`participantDetails.${otherUserId}`]: {
+          username: otherUsername,
+          avatar: otherUserAvatar || null,
+        },
+      });
       return docSnap.id;
     }
   }
@@ -189,6 +205,105 @@ export const subscribeToMessages = (
 ) => {
   const messagesRef = collection(db, `chats/${chatId}/messages`);
   const q = query(messagesRef, orderBy('timestamp', 'asc'));
+
+  return onSnapshot(q, (snapshot) => {
+    const messages: ChatMessage[] = [];
+    snapshot.forEach((doc) => {
+      messages.push({
+        id: doc.id,
+        ...doc.data()
+      } as ChatMessage);
+    });
+    callback(messages);
+  });
+};
+
+/**
+ * Get initial batch of most recent messages (paginated)
+ */
+export const getInitialMessages = async (
+  chatId: string,
+  pageSize: number = 20
+): Promise<{
+  messages: ChatMessage[];
+  lastDoc: QueryDocumentSnapshot<DocumentData> | null;
+  hasMore: boolean;
+}> => {
+  const messagesRef = collection(db, `chats/${chatId}/messages`);
+  const q = query(messagesRef, orderBy('timestamp', 'desc'), limit(pageSize));
+  const querySnapshot = await getDocs(q);
+
+  const messages: ChatMessage[] = [];
+  querySnapshot.forEach((doc) => {
+    messages.push({
+      id: doc.id,
+      ...doc.data()
+    } as ChatMessage);
+  });
+
+  // Reverse to show oldest first (since we queried desc)
+  messages.reverse();
+
+  return {
+    messages,
+    lastDoc: querySnapshot.docs[querySnapshot.docs.length - 1] || null,
+    hasMore: querySnapshot.docs.length === pageSize,
+  };
+};
+
+/**
+ * Get older messages (paginated)
+ */
+export const getOlderMessages = async (
+  chatId: string,
+  lastDoc: QueryDocumentSnapshot<DocumentData>,
+  pageSize: number = 20
+): Promise<{
+  messages: ChatMessage[];
+  lastDoc: QueryDocumentSnapshot<DocumentData> | null;
+  hasMore: boolean;
+}> => {
+  const messagesRef = collection(db, `chats/${chatId}/messages`);
+  const q = query(
+    messagesRef,
+    orderBy('timestamp', 'desc'),
+    startAfter(lastDoc),
+    limit(pageSize)
+  );
+  const querySnapshot = await getDocs(q);
+
+  const messages: ChatMessage[] = [];
+  querySnapshot.forEach((doc) => {
+    messages.push({
+      id: doc.id,
+      ...doc.data()
+    } as ChatMessage);
+  });
+
+  // Reverse to show oldest first (since we queried desc)
+  messages.reverse();
+
+  return {
+    messages,
+    lastDoc: querySnapshot.docs[querySnapshot.docs.length - 1] || null,
+    hasMore: querySnapshot.docs.length === pageSize,
+  };
+};
+
+/**
+ * Subscribe to new messages after a certain timestamp (real-time)
+ */
+export const subscribeToNewMessages = (
+  chatId: string,
+  afterTimestamp: Timestamp,
+  callback: (messages: ChatMessage[]) => void
+) => {
+  const messagesRef = collection(db, `chats/${chatId}/messages`);
+  const q = query(
+    messagesRef,
+    where('timestamp', '>', afterTimestamp),
+    orderBy('timestamp', 'asc')
+  );
 
   return onSnapshot(q, (snapshot) => {
     const messages: ChatMessage[] = [];

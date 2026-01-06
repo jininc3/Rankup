@@ -17,13 +17,15 @@ import { useRouter, useLocalSearchParams } from 'expo-router';
 import { useAuth } from '@/contexts/AuthContext';
 import {
   sendMessage,
-  subscribeToMessages,
   markMessagesAsRead,
   getChat,
+  getInitialMessages,
+  getOlderMessages,
+  subscribeToNewMessages,
   ChatMessage,
   Chat,
 } from '@/services/chatService';
-import { Timestamp } from 'firebase/firestore';
+import { Timestamp, QueryDocumentSnapshot, DocumentData } from 'firebase/firestore';
 
 export default function ChatScreen() {
   const router = useRouter();
@@ -37,10 +39,18 @@ export default function ChatScreen() {
   const flatListRef = useRef<FlatList>(null);
   const hasMarkedInitialRead = useRef(false);
 
+  // Pagination state
+  const [hasMore, setHasMore] = useState(true);
+  const [loadingMore, setLoadingMore] = useState(false);
+  const [lastDoc, setLastDoc] = useState<QueryDocumentSnapshot<DocumentData> | null>(null);
+  const [lastTimestamp, setLastTimestamp] = useState<Timestamp | null>(null);
+
   const chatId = params.chatId as string;
   const otherUserId = params.otherUserId as string;
   const otherUsername = params.otherUsername as string;
-  const otherUserAvatar = params.otherUserAvatar as string | undefined;
+
+  // Get avatar from chat data (more reliable than URL params)
+  const otherUserAvatar = chat?.participantDetails?.[otherUserId]?.avatar || params.otherUserAvatar as string | undefined;
 
   // Load chat details
   useEffect(() => {
@@ -58,40 +68,92 @@ export default function ChatScreen() {
     loadChat();
   }, [chatId]);
 
-  // Subscribe to messages
+  // Load initial messages and subscribe to new ones
   useEffect(() => {
     if (!chatId || !currentUser?.id) return;
 
-    // Reset the flag when chatId changes
+    let unsubscribe: (() => void) | null = null;
+
+    // Reset state when chatId changes
     hasMarkedInitialRead.current = false;
+    setMessages([]);
+    setHasMore(true);
+    setLastDoc(null);
+    setLastTimestamp(null);
+    setLoading(true);
 
-    const unsubscribe = subscribeToMessages(chatId, (newMessages) => {
-      // Check if there are unread messages from the other user
-      const hasUnreadFromOther = newMessages.some(
-        msg => msg.senderId !== currentUser.id && !msg.read
-      );
+    const loadInitialMessages = async () => {
+      try {
+        // Fetch initial batch of messages
+        const result = await getInitialMessages(chatId, 20);
 
-      // Mark as read if:
-      // 1. This is the first load (initial open), OR
-      // 2. There are new unread messages from the other user
-      if (hasUnreadFromOther || !hasMarkedInitialRead.current) {
-        if (hasUnreadFromOther) {
-          markMessagesAsRead(chatId, currentUser.id);
-        }
+        setMessages(result.messages);
+        setHasMore(result.hasMore);
+        setLastDoc(result.lastDoc);
+
+        // Always mark messages as read when opening a chat
+        // This ensures unread count is cleared even if unread messages
+        // are beyond the initial batch loaded
+        await markMessagesAsRead(chatId, currentUser.id);
         hasMarkedInitialRead.current = true;
+
+        // Get the latest message timestamp for real-time subscription
+        if (result.messages.length > 0) {
+          const latestTimestamp = result.messages[result.messages.length - 1].timestamp;
+          setLastTimestamp(latestTimestamp);
+
+          // Subscribe to new messages after the latest loaded message
+          unsubscribe = subscribeToNewMessages(chatId, latestTimestamp, (newMessages) => {
+            if (newMessages.length > 0) {
+              // Append new messages and update latest timestamp
+              setMessages(prev => [...prev, ...newMessages]);
+              setLastTimestamp(newMessages[newMessages.length - 1].timestamp);
+
+              // Mark new messages as read immediately
+              markMessagesAsRead(chatId, currentUser.id);
+
+              // Scroll to bottom when new messages arrive (offset 0 in inverted list)
+              setTimeout(() => {
+                flatListRef.current?.scrollToOffset({ offset: 0, animated: true });
+              }, 100);
+            }
+          });
+        }
+
+      } catch (error) {
+        console.error('Error loading initial messages:', error);
+      } finally {
+        setLoading(false);
       }
+    };
 
-      setMessages(newMessages);
-      setLoading(false);
+    loadInitialMessages();
 
-      // Scroll to bottom when new messages arrive
-      setTimeout(() => {
-        flatListRef.current?.scrollToEnd({ animated: true });
-      }, 100);
-    });
-
-    return () => unsubscribe();
+    return () => {
+      if (unsubscribe) {
+        unsubscribe();
+      }
+    };
   }, [chatId, currentUser?.id]);
+
+  // Load older messages when scrolling up
+  const loadOlderMessages = async () => {
+    if (!hasMore || loadingMore || !lastDoc || !chatId) return;
+
+    setLoadingMore(true);
+    try {
+      const result = await getOlderMessages(chatId, lastDoc, 20);
+
+      // Prepend older messages to the beginning
+      setMessages(prev => [...result.messages, ...prev]);
+      setHasMore(result.hasMore);
+      setLastDoc(result.lastDoc);
+    } catch (error) {
+      console.error('Error loading older messages:', error);
+    } finally {
+      setLoadingMore(false);
+    }
+  };
 
   const handleSend = async () => {
     if (!messageText.trim() || !chatId || !currentUser?.id) return;
@@ -142,10 +204,16 @@ export default function ChatScreen() {
 
   const renderMessage = ({ item, index }: { item: ChatMessage; index: number }) => {
     const isCurrentUser = item.senderId === currentUser?.id;
+
+    // Find the chronologically previous message (older message)
+    // Since FlatList data is reversed, we need to find in original messages array
+    const messageIndex = messages.findIndex(msg => msg.id === item.id);
+    const previousMessage = messageIndex > 0 ? messages[messageIndex - 1] : null;
+
     const showTimestamp =
-      index === 0 ||
-      messages[index - 1].senderId !== item.senderId ||
-      item.timestamp.toMillis() - messages[index - 1].timestamp.toMillis() > 300000; // 5 minutes
+      !previousMessage ||
+      previousMessage.senderId !== item.senderId ||
+      item.timestamp.toMillis() - previousMessage.timestamp.toMillis() > 300000; // 5 minutes
 
     return (
       <View style={styles.messageContainer}>
@@ -175,7 +243,7 @@ export default function ChatScreen() {
     <KeyboardAvoidingView
       style={styles.container}
       behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-      keyboardVerticalOffset={Platform.OS === 'ios' ? -40 : 0}
+      keyboardVerticalOffset={-15}
     >
       {/* Header */}
       <View style={styles.header}>
@@ -210,12 +278,22 @@ export default function ChatScreen() {
       ) : (
         <FlatList
           ref={flatListRef}
-          data={messages}
+          data={[...messages].reverse()}
           renderItem={renderMessage}
           keyExtractor={(item) => item.id}
           contentContainerStyle={styles.messagesList}
           showsVerticalScrollIndicator={false}
-          onContentSizeChange={() => flatListRef.current?.scrollToEnd({ animated: false })}
+          onEndReached={loadOlderMessages}
+          onEndReachedThreshold={0.5}
+          inverted={true}
+          ListHeaderComponent={
+            loadingMore ? (
+              <View style={styles.loadingMoreContainer}>
+                <ActivityIndicator size="small" color="#c42743" />
+                <ThemedText style={styles.loadingMoreText}>Loading older messages...</ThemedText>
+              </View>
+            ) : null
+          }
           ListEmptyComponent={
             <View style={styles.emptyState}>
               <IconSymbol size={64} name="bubble.left.and.bubble.right" color="#ccc" />
@@ -381,7 +459,7 @@ const styles = StyleSheet.create({
     alignItems: 'flex-end',
     paddingHorizontal: 12,
     paddingTop: 8,
-    paddingBottom: 40,
+    paddingBottom: 30,
     backgroundColor: '#1e2124',
     borderTopWidth: 1,
     borderTopColor: '#2c2f33',
@@ -407,5 +485,16 @@ const styles = StyleSheet.create({
   },
   sendButtonDisabled: {
     backgroundColor: '#f0f0f0',
+  },
+  loadingMoreContainer: {
+    paddingVertical: 16,
+    alignItems: 'center',
+    justifyContent: 'center',
+    flexDirection: 'row',
+    gap: 8,
+  },
+  loadingMoreText: {
+    fontSize: 13,
+    color: '#72767d',
   },
 });

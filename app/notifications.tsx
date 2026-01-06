@@ -67,8 +67,11 @@ export default function NotificationsScreen() {
     const notificationsRef = collection(db, 'users', currentUser.id, 'notifications');
     const q = query(notificationsRef, orderBy('createdAt', 'desc'), limit(10));
 
-    const unsubscribe = onSnapshot(q, (snapshot) => {
+    const unsubscribe = onSnapshot(q, async (snapshot) => {
       const notifs: Notification[] = [];
+      const userAvatarCache: { [userId: string]: string | undefined } = {};
+
+      // First pass: collect all notifications
       snapshot.forEach((doc) => {
         const data = doc.data();
         notifs.push({
@@ -87,6 +90,30 @@ export default function NotificationsScreen() {
           createdAt: data.createdAt,
         });
       });
+
+      // Second pass: fetch current avatars for users without avatars
+      for (const notif of notifs) {
+        if (!notif.fromUserAvatar || !notif.fromUserAvatar.startsWith('http')) {
+          // Check cache first
+          if (userAvatarCache[notif.fromUserId] !== undefined) {
+            notif.fromUserAvatar = userAvatarCache[notif.fromUserId];
+          } else {
+            // Fetch current avatar from user document
+            try {
+              const userDoc = await getDoc(doc(db, 'users', notif.fromUserId));
+              if (userDoc.exists()) {
+                const userData = userDoc.data();
+                const currentAvatar = userData.avatar;
+                userAvatarCache[notif.fromUserId] = currentAvatar;
+                notif.fromUserAvatar = currentAvatar;
+              }
+            } catch (error) {
+              console.error('Error fetching user avatar:', error);
+            }
+          }
+        }
+      }
+
       setNotifications(notifs);
       setLoading(false);
     });
