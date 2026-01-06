@@ -227,6 +227,30 @@ service cloud.firestore {
                        request.auth.uid == resource.data.createdBy;
     }
 
+    // Duo Cards collection - for finding duo partners
+    match /duoCards/{cardId} {
+      // Anyone authenticated can read duo cards (to find partners)
+      allow read: if request.auth != null;
+
+      // Only the card owner can create their own duo card
+      allow create: if request.auth != null
+                    && request.resource.data.userId == request.auth.uid
+                    && request.resource.data.keys().hasAll(['userId', 'game', 'username', 'currentRank', 'region', 'mainRole', 'peakRank', 'mainAgent', 'createdAt', 'updatedAt', 'status'])
+                    && request.resource.data.game in ['valorant', 'league']
+                    && request.resource.data.status == 'active'
+                    && request.resource.data.createdAt is timestamp
+                    && request.resource.data.updatedAt is timestamp;
+
+      // Only the card owner can update their own duo card
+      allow update: if request.auth != null
+                    && resource.data.userId == request.auth.uid
+                    && request.resource.data.userId == request.auth.uid;
+
+      // Only the card owner can delete their own duo card
+      allow delete: if request.auth != null
+                    && resource.data.userId == request.auth.uid;
+    }
+
     // Default: deny all other access
     match /{document=**} {
       allow read, write: if false;

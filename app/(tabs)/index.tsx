@@ -11,7 +11,7 @@ import PostContent from '@/app/components/postContent';
 import NewPost from '@/app/components/newPost';
 import { collection, getDocs, orderBy, query, Timestamp, where, onSnapshot, limit, startAfter, QueryDocumentSnapshot, DocumentData } from 'firebase/firestore';
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { ActivityIndicator, Dimensions, Image, Modal, ScrollView, StyleSheet, TouchableOpacity, View, Alert, RefreshControl } from 'react-native';
+import { ActivityIndicator, Dimensions, Image, ScrollView, StyleSheet, TouchableOpacity, View, Alert, RefreshControl, TouchableWithoutFeedback } from 'react-native';
 import { useRouter } from 'expo-router';
 import { useFocusEffect } from '@react-navigation/native';
 
@@ -716,8 +716,9 @@ export default function HomeScreen() {
   };
 
   return (
-    <ThemedView style={styles.container}>
-      <View style={styles.header}>
+    <TouchableWithoutFeedback onPress={() => setShowFilterMenu(false)}>
+      <ThemedView style={styles.container}>
+        <View style={styles.header}>
         <ThemedText style={styles.headerTitle}>Home</ThemedText>
         <View style={styles.headerActions}>
           <TouchableOpacity
@@ -762,12 +763,63 @@ export default function HomeScreen() {
             </ThemedText>
           </TouchableOpacity>
         </View>
-        <TouchableOpacity
-          style={styles.filterButton}
-          onPress={() => setShowFilterMenu(true)}
-        >
-          <IconSymbol size={20} name="line.3.horizontal.decrease.circle" color="#fff" />
-        </TouchableOpacity>
+        <View>
+          <TouchableOpacity
+            style={styles.filterButton}
+            onPress={() => setShowFilterMenu(!showFilterMenu)}
+          >
+            <IconSymbol
+              size={20}
+              name="line.3.horizontal.decrease.circle"
+              color={selectedGameFilter ? "#c42743" : "#fff"}
+            />
+          </TouchableOpacity>
+
+          {/* Filter Dropdown */}
+          {showFilterMenu && (
+            <TouchableWithoutFeedback onPress={(e) => e?.stopPropagation?.()}>
+              <View style={styles.filterDropdown}>
+                <TouchableOpacity
+                style={[styles.filterDropdownOption, selectedGameFilter === null && styles.filterDropdownOptionActive]}
+                onPress={() => {
+                  setSelectedGameFilter(null);
+                  setShowFilterMenu(false);
+                }}
+              >
+                <IconSymbol size={18} name="square.grid.2x2" color="#fff" />
+                <ThemedText style={[styles.filterDropdownText, selectedGameFilter === null && styles.filterDropdownTextActive]}>
+                  All Games
+                </ThemedText>
+                {selectedGameFilter === null && (
+                  <IconSymbol size={16} name="checkmark" color="#c42743" />
+                )}
+              </TouchableOpacity>
+
+              {availableGames.map((game, index) => (
+                <TouchableOpacity
+                  key={game.id}
+                  style={[
+                    styles.filterDropdownOption,
+                    selectedGameFilter === game.id && styles.filterDropdownOptionActive,
+                    index === availableGames.length - 1 && styles.filterDropdownOptionLast
+                  ]}
+                  onPress={() => {
+                    setSelectedGameFilter(game.id);
+                    setShowFilterMenu(false);
+                  }}
+                >
+                  <ThemedText style={[styles.filterDropdownText, selectedGameFilter === game.id && styles.filterDropdownTextActive]}>
+                    {game.name}
+                  </ThemedText>
+                  {selectedGameFilter === game.id && (
+                    <IconSymbol size={16} name="checkmark" color="#c42743" />
+                  )}
+                </TouchableOpacity>
+              ))}
+              </View>
+            </TouchableWithoutFeedback>
+          )}
+        </View>
       </View>
 
       <ScrollView
@@ -846,80 +898,6 @@ export default function HomeScreen() {
         )}
       </ScrollView>
 
-      {/* Filter Menu Modal */}
-      <Modal
-        visible={showFilterMenu}
-        animationType="slide"
-        transparent={true}
-        onRequestClose={() => setShowFilterMenu(false)}
-      >
-        <View style={styles.filterModalContainer}>
-          <View style={styles.filterModalContent}>
-            <View style={styles.filterModalHeader}>
-              <ThemedText style={styles.filterModalTitle}>Filter by Game</ThemedText>
-              <TouchableOpacity onPress={() => setShowFilterMenu(false)}>
-                <IconSymbol size={24} name="xmark" color="#fff" />
-              </TouchableOpacity>
-            </View>
-            <ScrollView
-              style={styles.filterModalScroll}
-              showsVerticalScrollIndicator={false}
-            >
-              <View style={styles.filterOptionsContainer}>
-                {/* All Games option */}
-                <TouchableOpacity
-                  style={[styles.filterOption, selectedGameFilter === null && styles.filterOptionActive]}
-                  onPress={() => {
-                    setSelectedGameFilter(null);
-                    setShowFilterMenu(false);
-                  }}
-                >
-                  <View style={styles.filterOptionLeft}>
-                    <IconSymbol size={22} name="square.grid.2x2" color="#fff" />
-                    <ThemedText style={[styles.filterOptionText, selectedGameFilter === null && styles.filterOptionTextActive]}>
-                      All Games
-                    </ThemedText>
-                  </View>
-                  {selectedGameFilter === null && (
-                    <IconSymbol size={20} name="checkmark.circle.fill" color="#c42743" />
-                  )}
-                </TouchableOpacity>
-
-                {/* Individual game options */}
-                {availableGames.map((game) => (
-                  <TouchableOpacity
-                    key={game.id}
-                    style={[styles.filterOption, selectedGameFilter === game.id && styles.filterOptionActive]}
-                    onPress={() => {
-                      setSelectedGameFilter(game.id);
-                      setShowFilterMenu(false);
-                    }}
-                  >
-                    <View style={styles.filterOptionLeft}>
-                      {game.image ? (
-                        <Image
-                          source={game.image}
-                          style={styles.gameFilterImage}
-                          resizeMode="contain"
-                        />
-                      ) : (
-                        <ThemedText style={styles.gameFilterIcon}>{game.icon}</ThemedText>
-                      )}
-                      <ThemedText style={[styles.filterOptionText, selectedGameFilter === game.id && styles.filterOptionTextActive]}>
-                        {game.name}
-                      </ThemedText>
-                    </View>
-                    {selectedGameFilter === game.id && (
-                      <IconSymbol size={20} name="checkmark.circle.fill" color="#c42743" />
-                    )}
-                  </TouchableOpacity>
-                ))}
-              </View>
-            </ScrollView>
-          </View>
-        </View>
-      </Modal>
-
       {/* Comment Modal */}
       {commentingPost && (
         <CommentModal
@@ -951,7 +929,8 @@ export default function HomeScreen() {
         onClose={() => setShowNewPost(false)}
         onPostCreated={handlePostCreated}
       />
-    </ThemedView>
+      </ThemedView>
+    </TouchableWithoutFeedback>
   );
 }
 
@@ -1035,6 +1014,47 @@ const styles = StyleSheet.create({
   },
   filterButton: {
     padding: 8,
+    position: 'relative',
+  },
+  filterDropdown: {
+    position: 'absolute',
+    top: 40,
+    right: 0,
+    backgroundColor: '#2c2f33',
+    borderRadius: 12,
+    minWidth: 200,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    elevation: 8,
+    zIndex: 1000,
+    overflow: 'hidden',
+  },
+  filterDropdownOption: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    borderBottomWidth: 1,
+    borderBottomColor: '#1e2124',
+  },
+  filterDropdownOptionActive: {
+    backgroundColor: '#1e2124',
+  },
+  filterDropdownOptionLast: {
+    borderBottomWidth: 0,
+  },
+  filterDropdownText: {
+    flex: 1,
+    fontSize: 14,
+    color: '#fff',
+    fontWeight: '500',
+  },
+  filterDropdownTextActive: {
+    color: '#c42743',
+    fontWeight: '600',
   },
   scrollView: {
     flex: 1,
@@ -1072,78 +1092,6 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: '#ccc',
     textAlign: 'center',
-  },
-  filterModalContainer: {
-    flex: 1,
-    backgroundColor: 'transparent',
-    justifyContent: 'flex-end',
-  },
-  filterModalContent: {
-    height: '70%',
-    backgroundColor: '#2c2f33',
-    borderTopLeftRadius: 24,
-    borderTopRightRadius: 24,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: -4 },
-    shadowOpacity: 0.1,
-    shadowRadius: 12,
-    elevation: 8,
-  },
-  filterModalHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    paddingHorizontal: 24,
-    paddingVertical: 24,
-    borderBottomWidth: 1,
-    borderBottomColor: '#1e2124',
-  },
-  filterModalScroll: {
-    maxHeight: 500,
-  },
-  filterModalTitle: {
-    fontSize: 20,
-    fontWeight: '700',
-    color: '#fff',
-    letterSpacing: -0.3,
-  },
-  filterOptionsContainer: {
-    paddingVertical: 12,
-  },
-  filterOption: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingHorizontal: 24,
-    paddingVertical: 18,
-    borderBottomWidth: 1,
-    borderBottomColor: '#1e2124',
-  },
-  filterOptionActive: {
-    backgroundColor: '#1e2124',
-  },
-  filterOptionLeft: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 14,
-  },
-  filterOptionText: {
-    fontSize: 16,
-    color: '#fff',
-    fontWeight: '500',
-    letterSpacing: -0.2,
-  },
-  filterOptionTextActive: {
-    color: '#c42743',
-    fontWeight: '600',
-  },
-  gameFilterIcon: {
-    fontSize: 20,
-  },
-  gameFilterImage: {
-    height: 24,
-    width: 80,
-    marginRight: 8,
   },
   loadingMoreContainer: {
     flexDirection: 'row',
