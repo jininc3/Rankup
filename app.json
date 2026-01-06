@@ -4,7 +4,7 @@
     "slug": "RankUp",
     "version": "1.0.0",
     "orientation": "portrait",
-    "icon": "./assets/images/rankup.png",
+    "icon": "./assets/images/rankup-black.png",
     "scheme": "rankup",
     "userInterfaceStyle": "automatic",
     "newArchEnabled": true,
@@ -23,9 +23,9 @@
     "android": {
       "adaptiveIcon": {
         "backgroundColor": "#E6F4FE",
-        "foregroundImage": "./assets/images/rankup.png",
-        "backgroundImage": "./assets/images/rankup.png",
-        "monochromeImage": "./assets/images/rankup.png"
+        "foregroundImage": "./assets/images/rankup-black.png",
+        "backgroundImage": "./assets/images/rankup-black.png",
+        "monochromeImage": "./assets/images/rankup-black.png"
       },
       "edgeToEdgeEnabled": true,
       "predictiveBackGestureEnabled": false,
@@ -36,7 +36,7 @@
       "favicon": "./assets/images/favicon.png"
     },
     "notification": {
-      "icon": "./assets/images/rankup.png",
+      "icon": "./assets/images/rankup-black.png",
       "color": "#ffffff",
       "androidMode": "default",
       "androidCollapsedTitle": "{{unread_notifications}} new notifications"
@@ -63,7 +63,7 @@
       [
         "expo-notifications",
         {
-          "icon": "./assets/images/rankup.png",
+          "icon": "./assets/images/rankup-black.png",
           "color": "#ffffff",
           "sounds": []
         }

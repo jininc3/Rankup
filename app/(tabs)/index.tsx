@@ -724,7 +724,7 @@ export default function HomeScreen() {
             style={styles.headerIconButton}
             onPress={() => router.push('/chatPages/chatList')}
           >
-            <IconSymbol size={24} name="message.fill" color="#fff" />
+            <IconSymbol size={24} name="paperplane.fill" color="#fff" />
           </TouchableOpacity>
           <TouchableOpacity
             style={styles.headerIconButton}
@@ -881,7 +881,7 @@ export default function HomeScreen() {
                     </ThemedText>
                   </View>
                   {selectedGameFilter === null && (
-                    <IconSymbol size={20} name="checkmark.circle.fill" color="#fff" />
+                    <IconSymbol size={20} name="checkmark.circle.fill" color="#c42743" />
                   )}
                 </TouchableOpacity>
 
@@ -910,7 +910,7 @@ export default function HomeScreen() {
                       </ThemedText>
                     </View>
                     {selectedGameFilter === game.id && (
-                      <IconSymbol size={20} name="checkmark.circle.fill" color="#fff" />
+                      <IconSymbol size={20} name="checkmark.circle.fill" color="#c42743" />
                     )}
                   </TouchableOpacity>
                 ))}
@@ -1080,7 +1080,7 @@ const styles = StyleSheet.create({
   },
   filterModalContent: {
     height: '70%',
-    backgroundColor: '#fff',
+    backgroundColor: '#2c2f33',
     borderTopLeftRadius: 24,
     borderTopRightRadius: 24,
     shadowColor: '#000',
@@ -1096,7 +1096,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 24,
     paddingVertical: 24,
     borderBottomWidth: 1,
-    borderBottomColor: '#e5e5e5',
+    borderBottomColor: '#1e2124',
   },
   filterModalScroll: {
     maxHeight: 500,
@@ -1104,7 +1104,7 @@ const styles = StyleSheet.create({
   filterModalTitle: {
     fontSize: 20,
     fontWeight: '700',
-    color: '#000',
+    color: '#fff',
     letterSpacing: -0.3,
   },
   filterOptionsContainer: {
@@ -1117,10 +1117,10 @@ const styles = StyleSheet.create({
     paddingHorizontal: 24,
     paddingVertical: 18,
     borderBottomWidth: 1,
-    borderBottomColor: '#f5f5f5',
+    borderBottomColor: '#1e2124',
   },
   filterOptionActive: {
-    backgroundColor: '#fafafa',
+    backgroundColor: '#1e2124',
   },
   filterOptionLeft: {
     flexDirection: 'row',
@@ -1129,12 +1129,12 @@ const styles = StyleSheet.create({
   },
   filterOptionText: {
     fontSize: 16,
-    color: '#000',
+    color: '#fff',
     fontWeight: '500',
     letterSpacing: -0.2,
   },
   filterOptionTextActive: {
-    color: '#000',
+    color: '#c42743',
     fontWeight: '600',
   },
   gameFilterIcon: {

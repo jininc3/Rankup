@@ -141,7 +141,6 @@ export default function SettingsScreen() {
           onPress={() => router.back()}
         >
           <IconSymbol size={24} name="chevron.left" color="#fff" />
-          <ThemedText style={styles.backText}>Back</ThemedText>
         </TouchableOpacity>
         <ThemedText style={styles.headerTitle}>Settings</ThemedText>
         <View style={styles.headerSpacer} />
@@ -352,15 +351,8 @@ const styles = StyleSheet.create({
     borderBottomColor: '#2c2f33',
   },
   backButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 4,
+    padding: 4,
     flex: 1,
-  },
-  backText: {
-    fontSize: 17,
-    color: '#fff',
-    fontWeight: '400',
   },
   headerTitle: {
     fontSize: 17,
