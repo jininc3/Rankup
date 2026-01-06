@@ -9,7 +9,7 @@ import * as VideoThumbnails from 'expo-video-thumbnails';
 import { addDoc, collection, doc, increment, setDoc, Timestamp, updateDoc } from 'firebase/firestore';
 import { getDownloadURL, ref, uploadBytesResumable } from 'firebase/storage';
 import { useRef, useState } from 'react';
-import { ActivityIndicator, Alert, Dimensions, Image, KeyboardAvoidingView, Modal, Platform, ScrollView, StyleSheet, TextInput, TouchableOpacity, View } from 'react-native';
+import { ActivityIndicator, Alert, Dimensions, Image, Keyboard, KeyboardAvoidingView, Modal, Platform, ScrollView, StyleSheet, TextInput, TouchableOpacity, View } from 'react-native';
 
 const { width: screenWidth } = Dimensions.get('window');
 
@@ -488,9 +488,10 @@ export default function NewPost({ visible, onClose, onPostCreated }: NewPostProp
                 style={styles.postPreviewOptionButton}
                 onPress={() => {
                   console.log('Tag Game button pressed');
+                  Keyboard.dismiss();
                   setShowGameDropdown(!showGameDropdown);
                 }}
-                activeOpacity={0.7}
+                activeOpacity={0.6}
               >
                 <View style={styles.postPreviewOptionLeft}>
                   <IconSymbol size={20} name="gamecontroller.fill" color="#fff" />
@@ -544,8 +545,11 @@ export default function NewPost({ visible, onClose, onPostCreated }: NewPostProp
             {/* Tag People Button */}
             <TouchableOpacity
               style={styles.postPreviewOptionButton}
-              onPress={() => setShowTagUsersModal(true)}
-              activeOpacity={0.7}
+              onPress={() => {
+                Keyboard.dismiss();
+                setShowTagUsersModal(true);
+              }}
+              activeOpacity={0.6}
             >
               <View style={styles.postPreviewOptionLeft}>
                 <IconSymbol size={20} name="person.2.fill" color="#fff" />
@@ -775,8 +779,11 @@ const styles = StyleSheet.create({
     color: '#fff',
     minHeight: 100,
     textAlignVertical: 'top',
-    paddingTop: 0,
-    backgroundColor: '#36393e',
+    paddingTop: 12,
+    backgroundColor: '#2c2f33',
+    paddingHorizontal: 12,
+    paddingBottom: 12,
+    borderRadius: 8,
   },
   postPreviewOptionButton: {
     flexDirection: 'row',
