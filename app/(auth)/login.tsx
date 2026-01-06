@@ -239,7 +239,7 @@ export default function LoginScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    
+    backgroundColor: '#1e2124',
   },
   keyboardView: {
     flex: 1,
@@ -252,7 +252,6 @@ const styles = StyleSheet.create({
     padding: 24,
     paddingTop: 80,
     justifyContent: 'center',
-
   },
   header: {
     marginBottom: 24,
@@ -268,10 +267,11 @@ const styles = StyleSheet.create({
     marginBottom: 8,
     lineHeight: 40,
     overflow: 'visible',
+    color: '#fff',
   },
   subtitle: {
     fontSize: 16,
-    color: '#666',
+    color: '#ccc',
   },
   form: {
     width: '100%',
@@ -282,18 +282,18 @@ const styles = StyleSheet.create({
   label: {
     fontSize: 15,
     fontWeight: '600',
-    color: '#000',
+    color: '#fff',
     marginBottom: 8,
   },
   input: {
-    backgroundColor: '#f5f5f5',
+    backgroundColor: '#2c2f33',
     borderRadius: 12,
     padding: 16,
     fontSize: 16,
-    color: '#000',
+    color: '#fff',
   },
   loginButton: {
-    backgroundColor: '#000',
+    backgroundColor: '#c42743',
     borderRadius: 12,
     padding: 16,
     alignItems: 'center',
@@ -315,7 +315,7 @@ const styles = StyleSheet.create({
   dividerLine: {
     flex: 1,
     height: 1,
-    backgroundColor: '#e0e0e0',
+    backgroundColor: '#2c2f33',
   },
   dividerText: {
     marginHorizontal: 16,
@@ -345,11 +345,11 @@ const styles = StyleSheet.create({
     marginTop: 8,
   },
   footerText: {
-    color: '#666',
+    color: '#ccc',
     fontSize: 14,
   },
   footerLink: {
-    color: '#000',
+    color: '#c42743',
     fontSize: 14,
     fontWeight: '600',
   },
@@ -358,7 +358,7 @@ const styles = StyleSheet.create({
     marginTop: 8,
   },
   forgotPasswordText: {
-    color: '#666',
+    color: '#ccc',
     fontSize: 14,
     fontWeight: '500',
   },

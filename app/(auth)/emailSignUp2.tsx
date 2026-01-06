@@ -78,7 +78,7 @@ export default function EmailSignUpStep2() {
             style={styles.backButton}
             onPress={handleBack}
           >
-            <IconSymbol size={24} name="chevron.left" color="#000" />
+            <IconSymbol size={24} name="chevron.left" color="#fff" />
           </TouchableOpacity>
 
           <View style={styles.content}>
@@ -133,6 +133,7 @@ export default function EmailSignUpStep2() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
+    backgroundColor: '#1e2124',
   },
   keyboardView: {
     flex: 1,
@@ -165,10 +166,11 @@ const styles = StyleSheet.create({
     marginBottom: 8,
     lineHeight: 40,
     overflow: 'visible',
+    color: '#fff',
   },
   subtitle: {
     fontSize: 16,
-    color: '#666',
+    color: '#ccc',
     textAlign: 'center',
     lineHeight: 22,
   },
@@ -181,18 +183,18 @@ const styles = StyleSheet.create({
   label: {
     fontSize: 15,
     fontWeight: '600',
-    color: '#000',
+    color: '#fff',
     marginBottom: 8,
   },
   input: {
-    backgroundColor: '#f5f5f5',
+    backgroundColor: '#2c2f33',
     borderRadius: 12,
     padding: 16,
     fontSize: 16,
-    color: '#000',
+    color: '#fff',
   },
   continueButton: {
-    backgroundColor: '#000',
+    backgroundColor: '#c42743',
     borderRadius: 12,
     padding: 16,
     alignItems: 'center',
@@ -205,13 +207,13 @@ const styles = StyleSheet.create({
   },
   dateText: {
     fontSize: 16,
-    color: '#000',
+    color: '#fff',
   },
   placeholderText: {
     color: '#999',
   },
   datePickerContainer: {
-    backgroundColor: '#f5f5f5',
+    backgroundColor: '#2c2f33',
     borderRadius: 12,
     marginBottom: 16,
     marginTop: 8,
@@ -223,6 +225,6 @@ const styles = StyleSheet.create({
     height: 200,
     width: '100%',
     alignSelf: 'center',
-    backgroundColor: '#f5f5f5',
+    backgroundColor: '#2c2f33',
   },
 });

@@ -108,12 +108,12 @@ export default function VerifyEmailSignUp() {
         style={styles.closeButton}
         onPress={handleClose}
       >
-        <IconSymbol size={24} name="xmark" color="#000" />
+        <IconSymbol size={24} name="xmark" color="#fff" />
       </TouchableOpacity>
 
       <View style={styles.content}>
         <View style={styles.iconContainer}>
-          <IconSymbol size={80} name="envelope.fill" color="#000" />
+          <IconSymbol size={80} name="envelope.fill" color="#fff" />
         </View>
 
         <View style={styles.textContainer}>
@@ -164,6 +164,7 @@ export default function VerifyEmailSignUp() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
+    backgroundColor: '#1e2124',
   },
   closeButton: {
     position: 'absolute',
@@ -194,23 +195,24 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     lineHeight: 36,
     overflow: 'visible',
+    color: '#fff',
   },
   subtitle: {
     fontSize: 16,
-    color: '#666',
+    color: '#ccc',
     textAlign: 'center',
     marginBottom: 8,
   },
   email: {
     fontSize: 16,
     fontWeight: '600',
-    color: '#000',
+    color: '#fff',
     marginBottom: 16,
     textAlign: 'center',
   },
   description: {
     fontSize: 14,
-    color: '#666',
+    color: '#ccc',
     textAlign: 'center',
     lineHeight: 20,
     paddingHorizontal: 16,
@@ -220,7 +222,7 @@ const styles = StyleSheet.create({
     gap: 12,
   },
   verifyButton: {
-    backgroundColor: '#000',
+    backgroundColor: '#c42743',
     borderRadius: 12,
     padding: 16,
     alignItems: 'center',
@@ -231,13 +233,13 @@ const styles = StyleSheet.create({
     fontWeight: '600',
   },
   resendButton: {
-    backgroundColor: '#f5f5f5',
+    backgroundColor: '#2c2f33',
     borderRadius: 12,
     padding: 16,
     alignItems: 'center',
   },
   resendButtonText: {
-    color: '#000',
+    color: '#fff',
     fontSize: 16,
     fontWeight: '600',
   },

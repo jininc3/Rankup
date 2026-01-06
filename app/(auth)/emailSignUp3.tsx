@@ -108,7 +108,7 @@ export default function EmailSignUpStep3() {
             onPress={handleBack}
             disabled={isLoading}
           >
-            <IconSymbol size={24} name="chevron.left" color="#000" />
+            <IconSymbol size={24} name="chevron.left" color="#fff" />
           </TouchableOpacity>
 
           <View style={styles.content}>
@@ -248,6 +248,7 @@ export default function EmailSignUpStep3() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
+    backgroundColor: '#1e2124',
   },
   keyboardView: {
     flex: 1,
@@ -280,10 +281,11 @@ const styles = StyleSheet.create({
     marginBottom: 8,
     lineHeight: 40,
     overflow: 'visible',
+    color: '#fff',
   },
   subtitle: {
     fontSize: 16,
-    color: '#666',
+    color: '#ccc',
     textAlign: 'center',
     lineHeight: 22,
   },
@@ -296,18 +298,18 @@ const styles = StyleSheet.create({
   label: {
     fontSize: 15,
     fontWeight: '600',
-    color: '#000',
+    color: '#fff',
     marginBottom: 8,
   },
   input: {
-    backgroundColor: '#f5f5f5',
+    backgroundColor: '#2c2f33',
     borderRadius: 12,
     padding: 16,
     fontSize: 16,
-    color: '#000',
+    color: '#fff',
   },
   signupButton: {
-    backgroundColor: '#000',
+    backgroundColor: '#c42743',
     borderRadius: 12,
     padding: 16,
     alignItems: 'center',
@@ -324,10 +326,10 @@ const styles = StyleSheet.create({
   requirementsCard: {
     marginTop: 12,
     padding: 12,
-    backgroundColor: '#f9fafb',
+    backgroundColor: '#2c2f33',
     borderRadius: 8,
     borderWidth: 1,
-    borderColor: '#e5e7eb',
+    borderColor: '#3a3f44',
     gap: 8,
   },
   requirementItem: {
@@ -337,7 +339,7 @@ const styles = StyleSheet.create({
   },
   requirementText: {
     fontSize: 14,
-    color: '#666',
+    color: '#ccc',
   },
   requirementMet: {
     color: '#22c55e',

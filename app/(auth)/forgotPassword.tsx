@@ -108,7 +108,7 @@ export default function ForgotPasswordScreen() {
                 onPress={() => router.back()}
                 disabled={isLoading}
               >
-                <IconSymbol size={24} name="chevron.left" color="#000" />
+                <IconSymbol size={24} name="chevron.left" color="#fff" />
               </TouchableOpacity>
             </View>
 
@@ -116,7 +116,7 @@ export default function ForgotPasswordScreen() {
               <>
                 {/* Title Section */}
                 <View style={styles.header}>
-                  <IconSymbol size={64} name="lock.shield" color="#000" />
+                  <IconSymbol size={64} name="lock.shield" color="#fff" />
                   <ThemedText style={styles.title}>Forgot Password?</ThemedText>
                   <ThemedText style={styles.subtitle}>
                     No worries! Enter your email address and we'll send you a link to reset your password.
@@ -198,6 +198,7 @@ export default function ForgotPasswordScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
+    backgroundColor: '#1e2124',
   },
   keyboardView: {
     flex: 1,
@@ -233,10 +234,11 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     lineHeight: 36,
     overflow: 'visible',
+    color: '#fff',
   },
   subtitle: {
     fontSize: 15,
-    color: '#666',
+    color: '#ccc',
     textAlign: 'center',
     lineHeight: 22,
     paddingHorizontal: 16,
@@ -250,18 +252,18 @@ const styles = StyleSheet.create({
   label: {
     fontSize: 15,
     fontWeight: '600',
-    color: '#000',
+    color: '#fff',
     marginBottom: 8,
   },
   input: {
-    backgroundColor: '#f5f5f5',
+    backgroundColor: '#2c2f33',
     borderRadius: 12,
     padding: 16,
     fontSize: 16,
-    color: '#000',
+    color: '#fff',
   },
   sendButton: {
-    backgroundColor: '#000',
+    backgroundColor: '#c42743',
     borderRadius: 12,
     padding: 16,
     alignItems: 'center',
@@ -291,30 +293,31 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     lineHeight: 36,
     overflow: 'visible',
+    color: '#fff',
   },
   successSubtitle: {
     fontSize: 15,
-    color: '#666',
+    color: '#ccc',
     textAlign: 'center',
     marginBottom: 8,
   },
   emailText: {
     fontSize: 16,
     fontWeight: '600',
-    color: '#000',
+    color: '#fff',
     textAlign: 'center',
     marginBottom: 16,
   },
   instructionText: {
     fontSize: 14,
-    color: '#666',
+    color: '#ccc',
     textAlign: 'center',
     lineHeight: 20,
     paddingHorizontal: 32,
     marginBottom: 32,
   },
   backToLoginButton: {
-    backgroundColor: '#000',
+    backgroundColor: '#c42743',
     borderRadius: 12,
     paddingVertical: 14,
     paddingHorizontal: 48,
@@ -329,7 +332,7 @@ const styles = StyleSheet.create({
     padding: 8,
   },
   resendText: {
-    color: '#666',
+    color: '#ccc',
     fontSize: 14,
     textDecorationLine: 'underline',
   },

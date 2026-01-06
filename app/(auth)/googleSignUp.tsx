@@ -156,7 +156,7 @@ export default function GoogleSignUpScreen() {
             onPress={handleBack}
             disabled={loading}
           >
-            <IconSymbol size={24} name="chevron.left" color="#000" />
+            <IconSymbol size={24} name="chevron.left" color="#fff" />
           </TouchableOpacity>
 
           <View style={styles.content}>
@@ -242,7 +242,7 @@ export default function GoogleSignUpScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#fff',
+    backgroundColor: '#1e2124',
   },
   keyboardView: {
     flex: 1,
@@ -267,7 +267,7 @@ const styles = StyleSheet.create({
   },
   backButtonText: {
     fontSize: 16,
-    color: '#000',
+    color: '#fff',
     marginLeft: 4,
     fontWeight: '500',
   },
@@ -281,7 +281,7 @@ const styles = StyleSheet.create({
   title: {
     fontSize: 28,
     fontWeight: '700',
-    color: '#000',
+    color: '#fff',
     marginBottom: 12,
     textAlign: 'center',
     lineHeight: 36,
@@ -289,7 +289,7 @@ const styles = StyleSheet.create({
   },
   subtitle: {
     fontSize: 16,
-    color: '#666',
+    color: '#ccc',
     textAlign: 'center',
     lineHeight: 22,
   },
@@ -302,18 +302,18 @@ const styles = StyleSheet.create({
   label: {
     fontSize: 15,
     fontWeight: '600',
-    color: '#000',
+    color: '#fff',
     marginBottom: 4,
   },
   input: {
-    backgroundColor: '#f5f5f5',
+    backgroundColor: '#2c2f33',
     paddingHorizontal: 16,
     paddingVertical: 14,
     borderRadius: 12,
     fontSize: 16,
-    color: '#000',
+    color: '#fff',
     borderWidth: 1,
-    borderColor: '#e5e5e5',
+    borderColor: '#3a3f44',
   },
   hint: {
     fontSize: 13,
@@ -321,7 +321,7 @@ const styles = StyleSheet.create({
     marginTop: 4,
   },
   button: {
-    backgroundColor: '#000',
+    backgroundColor: '#c42743',
     paddingVertical: 16,
     borderRadius: 12,
     alignItems: 'center',
@@ -337,13 +337,13 @@ const styles = StyleSheet.create({
   },
   dateText: {
     fontSize: 16,
-    color: '#000',
+    color: '#fff',
   },
   placeholderText: {
     color: '#999',
   },
   datePickerContainer: {
-    backgroundColor: '#f5f5f5',
+    backgroundColor: '#2c2f33',
     borderRadius: 12,
     marginTop: 8,
     overflow: 'hidden',
@@ -353,6 +353,6 @@ const styles = StyleSheet.create({
   datePicker: {
     height: 200,
     width: '100%',
-    backgroundColor: '#f5f5f5',
+    backgroundColor: '#2c2f33',
   },
 });

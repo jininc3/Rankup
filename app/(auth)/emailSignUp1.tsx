@@ -87,7 +87,7 @@ export default function EmailSignUpStep1() {
             style={styles.backButton}
             onPress={handleBack}
           >
-            <IconSymbol size={24} name="chevron.left" color="#000" />
+            <IconSymbol size={24} name="chevron.left" color="#fff" />
           </TouchableOpacity>
 
           <View style={styles.content}>
@@ -142,6 +142,7 @@ export default function EmailSignUpStep1() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
+    backgroundColor: '#1e2124',
   },
   keyboardView: {
     flex: 1,
@@ -174,10 +175,11 @@ const styles = StyleSheet.create({
     marginBottom: 8,
     lineHeight: 40,
     overflow: 'visible',
+    color: '#fff',
   },
   subtitle: {
     fontSize: 16,
-    color: '#666',
+    color: '#ccc',
     textAlign: 'center',
     lineHeight: 22,
   },
@@ -190,18 +192,18 @@ const styles = StyleSheet.create({
   label: {
     fontSize: 15,
     fontWeight: '600',
-    color: '#000',
+    color: '#fff',
     marginBottom: 8,
   },
   input: {
-    backgroundColor: '#f5f5f5',
+    backgroundColor: '#2c2f33',
     borderRadius: 12,
     padding: 16,
     fontSize: 16,
-    color: '#000',
+    color: '#fff',
   },
   continueButton: {
-    backgroundColor: '#000',
+    backgroundColor: '#c42743',
     borderRadius: 12,
     padding: 16,
     alignItems: 'center',
@@ -221,11 +223,11 @@ const styles = StyleSheet.create({
     marginTop: 32,
   },
   footerText: {
-    color: '#666',
+    color: '#ccc',
     fontSize: 14,
   },
   footerLink: {
-    color: '#000',
+    color: '#c42743',
     fontSize: 14,
     fontWeight: '600',
   },
