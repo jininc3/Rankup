@@ -2,9 +2,9 @@ import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { IconSymbol } from '@/components/ui/icon-symbol';
 import { useState, useEffect, useCallback, useRef } from 'react';
-import { ScrollView, StyleSheet, TouchableOpacity, View, Image, ActivityIndicator, Animated, PanResponder } from 'react-native';
+import { FlatList, StyleSheet, TouchableOpacity, View, Image, ActivityIndicator, Animated, PanResponder } from 'react-native';
 import { useRouter } from 'expo-router';
-import { collection, query, orderBy, limit, onSnapshot, doc, updateDoc, deleteDoc, where, Timestamp, getDocs, writeBatch, getDoc } from 'firebase/firestore';
+import { collection, query, orderBy, limit, onSnapshot, doc, updateDoc, deleteDoc, where, Timestamp, getDocs, writeBatch, getDoc, startAfter, QueryDocumentSnapshot, DocumentData } from 'firebase/firestore';
 import { db } from '@/config/firebase';
 import { useAuth } from '@/contexts/AuthContext';
 import { useFocusEffect } from '@react-navigation/native';
@@ -58,6 +58,11 @@ export default function NotificationsScreen() {
   const [loadingPost, setLoadingPost] = useState(false);
   const swipeAnimations = useRef<{ [key: string]: Animated.Value }>({});
 
+  // Pagination state
+  const [hasMore, setHasMore] = useState(true);
+  const [loadingMore, setLoadingMore] = useState(false);
+  const [lastDoc, setLastDoc] = useState<QueryDocumentSnapshot<DocumentData> | null>(null);
+
   // Load and listen to notifications in real-time
   useEffect(() => {
     if (!currentUser?.id) return;
@@ -71,6 +76,11 @@ export default function NotificationsScreen() {
     const unsubscribe = onSnapshot(q, async (snapshot) => {
       const notifs: Notification[] = [];
       const userAvatarCache: { [userId: string]: string | undefined } = {};
+
+      // Track last document for pagination
+      const lastVisible = snapshot.docs[snapshot.docs.length - 1];
+      setLastDoc(lastVisible || null);
+      setHasMore(snapshot.docs.length === 10);
 
       // First pass: collect all notifications
       snapshot.forEach((doc) => {
@@ -395,6 +405,83 @@ export default function NotificationsScreen() {
     return swipeAnimations.current[notificationId];
   };
 
+  // Load older notifications when scrolling
+  const loadOlderNotifications = useCallback(async () => {
+    if (!hasMore || loadingMore || !lastDoc || !currentUser?.id) return;
+
+    setLoadingMore(true);
+    try {
+      const notificationsRef = collection(db, 'users', currentUser.id, 'notifications');
+      const q = query(
+        notificationsRef,
+        orderBy('createdAt', 'desc'),
+        startAfter(lastDoc),
+        limit(10)
+      );
+      const querySnapshot = await getDocs(q);
+
+      const newNotifs: Notification[] = [];
+      const userAvatarCache: { [userId: string]: string | undefined } = {};
+
+      // Collect new notifications
+      querySnapshot.forEach((doc) => {
+        const data = doc.data();
+        newNotifs.push({
+          id: doc.id,
+          type: data.type,
+          fromUserId: data.fromUserId,
+          fromUsername: data.fromUsername,
+          fromUserAvatar: data.fromUserAvatar || data.fromAvatar,
+          postId: data.postId,
+          postThumbnail: data.postThumbnail,
+          commentText: data.commentText,
+          partyId: data.partyId,
+          partyName: data.partyName,
+          game: data.game,
+          read: data.read,
+          createdAt: data.createdAt,
+        });
+      });
+
+      // Fetch current avatars for users without avatars
+      for (const notif of newNotifs) {
+        if (!notif.fromUserAvatar || !notif.fromUserAvatar.startsWith('http')) {
+          if (userAvatarCache[notif.fromUserId] !== undefined) {
+            notif.fromUserAvatar = userAvatarCache[notif.fromUserId];
+          } else {
+            try {
+              const userDoc = await getDoc(doc(db, 'users', notif.fromUserId));
+              if (userDoc.exists()) {
+                const userData = userDoc.data();
+                const currentAvatar = userData.avatar;
+                userAvatarCache[notif.fromUserId] = currentAvatar;
+                notif.fromUserAvatar = currentAvatar;
+              }
+            } catch (error) {
+              console.error('Error fetching user avatar:', error);
+            }
+          }
+        }
+      }
+
+      // Append new notifications and filter out duplicates
+      setNotifications(prev => {
+        const existingIds = new Set(prev.map(n => n.id));
+        const uniqueNewNotifs = newNotifs.filter(n => !existingIds.has(n.id));
+        return [...prev, ...uniqueNewNotifs];
+      });
+
+      // Update pagination state
+      const lastVisible = querySnapshot.docs[querySnapshot.docs.length - 1];
+      setLastDoc(lastVisible || null);
+      setHasMore(querySnapshot.docs.length === 10);
+    } catch (error) {
+      console.error('Error loading older notifications:', error);
+    } finally {
+      setLoadingMore(false);
+    }
+  }, [hasMore, loadingMore, lastDoc, currentUser?.id]);
+
   // Create pan responder for swipe left
   const createPanResponder = (notificationId: string) => {
     const translateX = getSwipeAnimation(notificationId);
@@ -453,14 +540,34 @@ export default function NotificationsScreen() {
         {notifications.length === 0 && <View style={styles.headerSpacer} />}
       </View>
 
-      <ScrollView style={styles.scrollView} showsVerticalScrollIndicator={false}>
-        {loading ? (
+      <FlatList
+        data={notifications}
+        keyExtractor={(item) => item.id}
+        showsVerticalScrollIndicator={false}
+        onEndReached={loadOlderNotifications}
+        onEndReachedThreshold={0.5}
+        ListHeaderComponent={loading ? (
           <View style={styles.loadingContainer}>
             <ActivityIndicator size="large" color="#c42743" />
             <ThemedText style={styles.loadingText}>Loading notifications...</ThemedText>
           </View>
-        ) : notifications.length > 0 ? (
-          notifications.map((notification) => {
+        ) : null}
+        ListFooterComponent={loadingMore ? (
+          <View style={styles.loadingMoreContainer}>
+            <ActivityIndicator size="small" color="#c42743" />
+            <ThemedText style={styles.loadingMoreText}>Loading more...</ThemedText>
+          </View>
+        ) : null}
+        ListEmptyComponent={!loading ? (
+          <View style={styles.emptyState}>
+            <IconSymbol size={64} name="bell" color="#72767d" />
+            <ThemedText style={styles.emptyText}>No notifications yet</ThemedText>
+            <ThemedText style={styles.emptySubtext}>
+              When someone follows you, you'll see it here
+            </ThemedText>
+          </View>
+        ) : null}
+        renderItem={({ item: notification }) => {
             const translateX = getSwipeAnimation(notification.id);
             const panResponder = createPanResponder(notification.id);
 
@@ -541,7 +648,7 @@ export default function NotificationsScreen() {
                                 </ThemedText>
                               )}
                               {notification.type === 'party_ranking_change' && (
-                                <ThemedText>
+                                <ThemedText style={styles.rankingChangeText}>
                                   {` just moved to `}
                                   <ThemedText style={styles.rankText}>
                                     {notification.newRank === 1 ? '🥇 #1' : notification.newRank === 2 ? '🥈 #2' : '🥉 #3'}
@@ -558,26 +665,6 @@ export default function NotificationsScreen() {
                               )}
                             </ThemedText>
                           </View>
-
-                          {/* Accept/Decline buttons for party invites - inline */}
-                          {notification.type === 'party_invite' && (
-                            <View style={styles.inviteActionsInline}>
-                              <TouchableOpacity
-                                style={styles.acceptButtonCompact}
-                                onPress={(e) => handleAcceptInvite(notification, e)}
-                                activeOpacity={0.7}
-                              >
-                                <IconSymbol size={26} name="checkmark.circle.fill" color="#22c55e" />
-                              </TouchableOpacity>
-                              <TouchableOpacity
-                                style={styles.declineButtonCompact}
-                                onPress={(e) => handleDeclineInvite(notification, e)}
-                                activeOpacity={0.7}
-                              >
-                                <IconSymbol size={26} name="xmark.circle.fill" color="#999" />
-                              </TouchableOpacity>
-                            </View>
-                          )}
                         </View>
 
                         {/* Game tag for party invites */}
@@ -585,7 +672,20 @@ export default function NotificationsScreen() {
                           <ThemedText style={styles.partyGameText}>{notification.game}</ThemedText>
                         )}
 
-                        <ThemedText style={styles.timeText}>{getTimeAgo(notification.createdAt)}</ThemedText>
+                        <View style={styles.bottomRow}>
+                          <ThemedText style={styles.timeText}>{getTimeAgo(notification.createdAt)}</ThemedText>
+
+                          {/* Accept button for party invites - bottom right */}
+                          {notification.type === 'party_invite' && (
+                            <TouchableOpacity
+                              style={styles.acceptButton}
+                              onPress={(e) => handleAcceptInvite(notification, e)}
+                              activeOpacity={0.7}
+                            >
+                              <ThemedText style={styles.acceptButtonText}>Accept</ThemedText>
+                            </TouchableOpacity>
+                          )}
+                        </View>
                       </View>
 
                       {/* Post thumbnail for like/comment/tag notifications */}
@@ -600,17 +700,8 @@ export default function NotificationsScreen() {
                 </Animated.View>
               </View>
             );
-          })
-        ) : (
-          <View style={styles.emptyState}>
-            <IconSymbol size={64} name="bell" color="#72767d" />
-            <ThemedText style={styles.emptyText}>No notifications yet</ThemedText>
-            <ThemedText style={styles.emptySubtext}>
-              When someone follows you, you'll see it here
-            </ThemedText>
-          </View>
-        )}
-      </ScrollView>
+        }}
+      />
 
       {/* Post Viewer Modal */}
       {selectedPost && (
@@ -664,9 +755,6 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: '600',
     color: '#ef4444',
-  },
-  scrollView: {
-    flex: 1,
   },
   loadingContainer: {
     alignItems: 'center',
@@ -801,7 +889,7 @@ const styles = StyleSheet.create({
   rankText: {
     color: '#FFD700',
     fontWeight: '700',
-    fontSize: 15,
+    fontSize: 13,
   },
   notificationTextRow: {
     flexDirection: 'row',
@@ -815,15 +903,34 @@ const styles = StyleSheet.create({
     marginTop: 2,
     marginBottom: 1,
   },
-  inviteActionsInline: {
+  bottomRow: {
     flexDirection: 'row',
-    gap: 6,
+    justifyContent: 'space-between',
     alignItems: 'center',
   },
-  acceptButtonCompact: {
-    padding: 0,
+  acceptButton: {
+    backgroundColor: '#22c55e',
+    paddingHorizontal: 16,
+    paddingVertical: 6,
+    borderRadius: 6,
   },
-  declineButtonCompact: {
-    padding: 0,
+  acceptButtonText: {
+    color: '#fff',
+    fontSize: 13,
+    fontWeight: '600',
+  },
+  rankingChangeText: {
+    color: '#fff',
+  },
+  loadingMoreContainer: {
+    paddingVertical: 20,
+    alignItems: 'center',
+    justifyContent: 'center',
+    flexDirection: 'row',
+    gap: 8,
+  },
+  loadingMoreText: {
+    fontSize: 13,
+    color: '#72767d',
   },
 });
