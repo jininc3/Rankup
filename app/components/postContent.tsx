@@ -3,7 +3,7 @@ import { IconSymbol } from '@/components/ui/icon-symbol';
 import { VideoView, useVideoPlayer } from 'expo-video';
 import { Timestamp } from 'firebase/firestore';
 import { useEffect, useState, useRef } from 'react';
-import { Alert, Dimensions, FlatList, Image, StyleSheet, TouchableOpacity, View } from 'react-native';
+import { Alert, Dimensions, FlatList, Image, StyleSheet, TouchableOpacity, View, PanResponder } from 'react-native';
 import { getComments, CommentData } from '@/services/commentService';
 import { TaggedUser } from '@/app/components/tagUsersModal';
 
@@ -28,39 +28,253 @@ const VideoPlayerComponent = ({
   postId,
   mediaUrl,
   isPlaying,
-  onPlayerReady
+  onPlayerReady,
+  onDoubleTap,
+  enableScrubber = false
 }: {
   postId: string;
   mediaUrl: string;
   isPlaying: boolean;
   onPlayerReady: (postId: string, player: any) => void;
+  onDoubleTap?: () => void;
+  enableScrubber?: boolean;
 }) => {
   const player = useVideoPlayer(mediaUrl, (player) => {
     player.loop = true;
     player.muted = false;
   });
 
+  const [isMuted, setIsMuted] = useState(false);
+  const [isLocallyPaused, setIsLocallyPaused] = useState(false);
+  const [showHeart, setShowHeart] = useState(false);
+  const [showPauseIcon, setShowPauseIcon] = useState(false);
+  const [pauseIconType, setPauseIconType] = useState<'pause' | 'play'>('pause');
+  const [currentTime, setCurrentTime] = useState(0);
+  const [duration, setDuration] = useState(0);
+  const [isSeeking, setIsSeeking] = useState(false);
+  const lastTap = useRef<number | null>(null);
+  const pauseIconTimeout = useRef<NodeJS.Timeout | null>(null);
+  const doubleTapDelay = 300; // ms
+
   useEffect(() => {
     onPlayerReady(postId, player);
   }, [player, postId, onPlayerReady]);
 
   useEffect(() => {
-    if (isPlaying) {
+    if (isPlaying && !isLocallyPaused) {
       player.play();
     } else {
       player.pause();
     }
-  }, [isPlaying, player]);
+
+    // When video scrolls out of view (isPlaying becomes false)
+    // Reset local pause state so it auto-plays correctly when scrolling back
+    if (!isPlaying && isLocallyPaused) {
+      setIsLocallyPaused(false);
+      setShowPauseIcon(false);
+      if (pauseIconTimeout.current) {
+        clearTimeout(pauseIconTimeout.current);
+      }
+    }
+
+    // Hide pause icon when video auto-plays from scrolling
+    if (isPlaying && !isLocallyPaused) {
+      setShowPauseIcon(false);
+      if (pauseIconTimeout.current) {
+        clearTimeout(pauseIconTimeout.current);
+      }
+    }
+  }, [isPlaying, isLocallyPaused, player]);
+
+  // Cleanup timeout on unmount
+  useEffect(() => {
+    return () => {
+      if (pauseIconTimeout.current) {
+        clearTimeout(pauseIconTimeout.current);
+      }
+    };
+  }, []);
+
+  useEffect(() => {
+    player.muted = isMuted;
+  }, [isMuted, player]);
+
+  // Track video progress for scrubber
+  useEffect(() => {
+    if (!enableScrubber) return;
+
+    const interval = setInterval(() => {
+      if (player.status === 'readyToPlay' && !isSeeking) {
+        setCurrentTime(player.currentTime);
+        setDuration(player.duration);
+      }
+    }, 100);
+
+    return () => clearInterval(interval);
+  }, [player, enableScrubber, isSeeking]);
+
+  const handleVideoPress = () => {
+    const now = Date.now();
+
+    if (lastTap.current && now - lastTap.current < doubleTapDelay) {
+      // Double tap detected
+      lastTap.current = null;
+
+      // Show heart animation
+      setShowHeart(true);
+      setTimeout(() => setShowHeart(false), 1000);
+
+      // Trigger like
+      if (onDoubleTap) {
+        onDoubleTap();
+      }
+    } else {
+      // Single tap - toggle play/pause
+      lastTap.current = now;
+      setTimeout(() => {
+        if (lastTap.current === now) {
+          // It was actually a single tap
+          const newPausedState = !isLocallyPaused;
+          setIsLocallyPaused(newPausedState);
+
+          // Clear any existing timeout
+          if (pauseIconTimeout.current) {
+            clearTimeout(pauseIconTimeout.current);
+          }
+
+          if (newPausedState) {
+            // Video is now paused - show play button and keep it visible
+            setPauseIconType('play');
+            setShowPauseIcon(true);
+          } else {
+            // Video is now playing - hide the play button
+            setShowPauseIcon(false);
+          }
+
+          lastTap.current = null;
+        }
+      }, doubleTapDelay);
+    }
+  };
+
+  const toggleMute = () => {
+    setIsMuted(!isMuted);
+  };
+
+  const handleSeek = (value: number) => {
+    setIsSeeking(true);
+    player.currentTime = value;
+    setCurrentTime(value);
+    setTimeout(() => setIsSeeking(false), 100);
+  };
+
+  const formatTime = (seconds: number) => {
+    const mins = Math.floor(seconds / 60);
+    const secs = Math.floor(seconds % 60);
+    return `${mins}:${secs.toString().padStart(2, '0')}`;
+  };
 
   return (
-    <VideoView
-      player={player}
-      style={styles.media}
-      allowsFullscreen
-      allowsPictureInPicture={false}
-      nativeControls
-      contentFit="contain"
-    />
+    <View style={styles.videoContainer}>
+      <VideoView
+        player={player}
+        style={styles.media}
+        allowsFullscreen={false}
+        allowsPictureInPicture={false}
+        nativeControls={false}
+        contentFit="contain"
+      />
+
+      {/* Tap overlay for play/pause and double-tap to like */}
+      <TouchableOpacity
+        style={styles.videoTapOverlay}
+        activeOpacity={1}
+        onPress={handleVideoPress}
+      >
+        {/* Heart animation for double-tap like */}
+        {showHeart && (
+          <View style={styles.heartAnimation}>
+            <IconSymbol size={100} name="heart.fill" color="#fff" />
+          </View>
+        )}
+
+        {/* Pause/Play icon */}
+        {showPauseIcon && (
+          <View style={styles.pausePlayIcon}>
+            <View style={styles.pausePlayIconBackground}>
+              <IconSymbol
+                size={28}
+                name={pauseIconType === 'pause' ? "pause.fill" : "play.fill"}
+                color="#fff"
+              />
+            </View>
+          </View>
+        )}
+      </TouchableOpacity>
+
+      {/* Mute button */}
+      <TouchableOpacity
+        style={styles.muteButton}
+        onPress={toggleMute}
+        activeOpacity={0.7}
+      >
+        <View style={styles.muteButtonBackground}>
+          <IconSymbol
+            size={20}
+            name={isMuted ? "speaker.slash.fill" : "speaker.wave.2.fill"}
+            color="#fff"
+          />
+        </View>
+      </TouchableOpacity>
+
+      {/* Scrubber/Progress Bar */}
+      {enableScrubber && duration > 0 && (
+        <View style={styles.scrubberContainer}>
+          <ThemedText style={styles.timeText}>{formatTime(currentTime)}</ThemedText>
+          <View style={styles.progressBarContainer}>
+            <View style={styles.progressBarBackground}>
+              <View
+                style={[
+                  styles.progressBarFill,
+                  { width: `${(currentTime / duration) * 100}%` }
+                ]}
+              />
+            </View>
+            <TouchableOpacity
+              style={[
+                styles.scrubberThumb,
+                { left: `${(currentTime / duration) * 100}%` }
+              ]}
+              onPress={(e) => {
+                e.stopPropagation();
+              }}
+              {...PanResponder.create({
+                onStartShouldSetPanResponder: () => true,
+                onMoveShouldSetPanResponder: () => true,
+                onPanResponderGrant: () => {
+                  setIsSeeking(true);
+                },
+                onPanResponderMove: (_, gesture) => {
+                  const containerWidth = screenWidth - 80; // Account for padding and time text
+                  const newPosition = Math.max(0, Math.min(containerWidth, gesture.moveX - 60));
+                  const percentage = newPosition / containerWidth;
+                  const newTime = percentage * duration;
+                  setCurrentTime(newTime);
+                },
+                onPanResponderRelease: (_, gesture) => {
+                  const containerWidth = screenWidth - 80;
+                  const newPosition = Math.max(0, Math.min(containerWidth, gesture.moveX - 60));
+                  const percentage = newPosition / containerWidth;
+                  const newTime = percentage * duration;
+                  handleSeek(newTime);
+                },
+              }).panHandlers}
+            />
+          </View>
+          <ThemedText style={styles.timeText}>{formatTime(duration)}</ThemedText>
+        </View>
+      )}
+    </View>
   );
 };
 
@@ -98,6 +312,7 @@ interface PostContentProps {
   isLiking: boolean;
   onPlayerReady: (postId: string, player: any) => void;
   showRecentComments?: boolean;
+  enableVideoScrubber?: boolean;
   onDelete?: (post: Post) => void;
 }
 
@@ -117,6 +332,7 @@ export default function PostContent({
   isLiking,
   onPlayerReady,
   showRecentComments = true,
+  enableVideoScrubber = false,
   onDelete
 }: PostContentProps) {
   const [activeMediaIndex, setActiveMediaIndex] = useState(0);
@@ -254,6 +470,8 @@ export default function PostContent({
                         mediaUrl={url}
                         isPlaying={playingVideoId === post.id && activeMediaIndex === index}
                         onPlayerReady={onPlayerReady}
+                        onDoubleTap={() => onLikeToggle(post)}
+                        enableScrubber={enableVideoScrubber}
                       />
                     ) : (
                       <Image
@@ -287,6 +505,8 @@ export default function PostContent({
                 mediaUrl={post.mediaUrl}
                 isPlaying={playingVideoId === post.id}
                 onPlayerReady={onPlayerReady}
+                onDoubleTap={() => onLikeToggle(post)}
+                enableScrubber={enableVideoScrubber}
               />
             ) : (
               <Image
@@ -480,6 +700,102 @@ const styles = StyleSheet.create({
   media: {
     width: '100%',
     height: '100%',
+  },
+  videoContainer: {
+    position: 'relative',
+    width: '100%',
+    height: '100%',
+  },
+  videoTapOverlay: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    justifyContent: 'center',
+    alignItems: 'center',
+    zIndex: 1,
+  },
+  heartAnimation: {
+    position: 'absolute',
+    justifyContent: 'center',
+    alignItems: 'center',
+    opacity: 0.9,
+  },
+  pausePlayIcon: {
+    position: 'absolute',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  pausePlayIconBackground: {
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    borderRadius: 30,
+    width: 60,
+    height: 60,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  muteButton: {
+    position: 'absolute',
+    top: 16,
+    right: 16,
+    zIndex: 2,
+  },
+  muteButtonBackground: {
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    borderRadius: 20,
+    width: 40,
+    height: 40,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  scrubberContainer: {
+    position: 'absolute',
+    bottom: 12,
+    left: 12,
+    right: 12,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    zIndex: 2,
+  },
+  timeText: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: '#fff',
+    textShadowColor: 'rgba(0, 0, 0, 0.75)',
+    textShadowOffset: { width: 0, height: 1 },
+    textShadowRadius: 3,
+  },
+  progressBarContainer: {
+    flex: 1,
+    height: 24,
+    justifyContent: 'center',
+    position: 'relative',
+  },
+  progressBarBackground: {
+    height: 4,
+    backgroundColor: 'rgba(255, 255, 255, 0.3)',
+    borderRadius: 2,
+    overflow: 'hidden',
+  },
+  progressBarFill: {
+    height: '100%',
+    backgroundColor: '#c42743',
+    borderRadius: 2,
+  },
+  scrubberThumb: {
+    position: 'absolute',
+    width: 16,
+    height: 16,
+    borderRadius: 8,
+    backgroundColor: '#fff',
+    marginLeft: -8,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.3,
+    shadowRadius: 3,
+    elevation: 3,
   },
   indicatorContainer: {
     position: 'absolute',

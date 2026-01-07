@@ -12,7 +12,7 @@ import PostViewerModal from '@/app/components/postViewerModal';
 
 interface Notification {
   id: string;
-  type: 'follow' | 'like' | 'comment' | 'tag' | 'party_invite' | 'party_complete';
+  type: 'follow' | 'like' | 'comment' | 'tag' | 'party_invite' | 'party_complete' | 'party_ranking_change';
   fromUserId: string;
   fromUsername: string;
   fromUserAvatar?: string;
@@ -26,6 +26,7 @@ interface Notification {
   winnerUsername?: string;
   isWinner?: boolean;
   finalRank?: number;
+  newRank?: number; // For party_ranking_change
   read: boolean;
   createdAt: Timestamp;
 }
@@ -360,7 +361,7 @@ export default function NotificationsScreen() {
     } else if ((notification.type === 'like' || notification.type === 'comment' || notification.type === 'tag') && notification.postId) {
       // Show post viewer for like/comment/tag notifications
       fetchAndShowPost(notification.postId);
-    } else if ((notification.type === 'party_invite' || notification.type === 'party_complete') && notification.partyId) {
+    } else if ((notification.type === 'party_invite' || notification.type === 'party_complete' || notification.type === 'party_ranking_change') && notification.partyId) {
       // Navigate to party detail page
       router.push({
         pathname: '/leaderboardPages/leaderboardDetail',
@@ -537,6 +538,15 @@ export default function NotificationsScreen() {
                               {notification.type === 'party_complete' && !notification.isWinner && (
                                 <ThemedText>
                                   {` "${notification.partyName}" ended. You ranked #${notification.finalRank}`}
+                                </ThemedText>
+                              )}
+                              {notification.type === 'party_ranking_change' && (
+                                <ThemedText>
+                                  {` just moved to `}
+                                  <ThemedText style={styles.rankText}>
+                                    {notification.newRank === 1 ? '🥇 #1' : notification.newRank === 2 ? '🥈 #2' : '🥉 #3'}
+                                  </ThemedText>
+                                  {` in "${notification.partyName}"!`}
                                 </ThemedText>
                               )}
                               {notification.type === 'comment' && notification.commentText && (
@@ -787,6 +797,11 @@ const styles = StyleSheet.create({
   winnerText: {
     color: '#FFD700',
     fontWeight: '700',
+  },
+  rankText: {
+    color: '#FFD700',
+    fontWeight: '700',
+    fontSize: 15,
   },
   notificationTextRow: {
     flexDirection: 'row',

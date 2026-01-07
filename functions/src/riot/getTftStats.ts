@@ -2,7 +2,7 @@
  * Get TFT Stats Cloud Function
  *
  * This function fetches TFT (Teamfight Tactics) player statistics from Riot API and caches them in Firestore.
- * Implements auto-refresh if data is older than 6 hours.
+ * Implements auto-refresh if data is older than 3 hours.
  */
 
 import {onCall, HttpsError} from "firebase-functions/v2/https";
@@ -15,8 +15,8 @@ import {
 } from "./riotApi";
 import {GetTftStatsResponse, UserTftStats} from "../types/riot";
 
-// Cache duration: 6 hours in milliseconds
-const CACHE_DURATION_MS = 6 * 60 * 60 * 1000;
+// Cache duration: 3 hours in milliseconds
+const CACHE_DURATION_MS = 3 * 60 * 60 * 1000;
 
 /**
  * Check if cached data is still fresh

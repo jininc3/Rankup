@@ -8,7 +8,7 @@ import { db } from '../config/firebase';
 // Configure how notifications should be handled when app is in foreground
 Notifications.setNotificationHandler({
   handleNotification: async () => ({
-    shouldShowAlert: true,
+    shouldShowAlert: false, // Disabled to use custom in-app notifications
     shouldPlaySound: true,
     shouldSetBadge: true,
   }),

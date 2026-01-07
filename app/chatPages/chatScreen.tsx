@@ -1,6 +1,6 @@
 import { ThemedText } from '@/components/themed-text';
 import { IconSymbol } from '@/components/ui/icon-symbol';
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import {
   View,
   StyleSheet,
@@ -87,7 +87,8 @@ export default function ChatScreen() {
         // Fetch initial batch of messages
         const result = await getInitialMessages(chatId, 20);
 
-        setMessages(result.messages);
+        // Store messages in reverse order (newest first) for FlatList performance
+        setMessages([...result.messages].reverse());
         setHasMore(result.hasMore);
         setLastDoc(result.lastDoc);
 
@@ -105,8 +106,14 @@ export default function ChatScreen() {
           // Subscribe to new messages after the latest loaded message
           unsubscribe = subscribeToNewMessages(chatId, latestTimestamp, (newMessages) => {
             if (newMessages.length > 0) {
-              // Append new messages and update latest timestamp
-              setMessages(prev => [...prev, ...newMessages]);
+              // Prepend new messages (reversed) since we store newest first
+              // Filter out duplicates to prevent key conflicts
+              setMessages(prev => {
+                const existingIds = new Set(prev.map(m => m.id));
+                const uniqueNewMessages = newMessages.filter(m => !existingIds.has(m.id));
+                if (uniqueNewMessages.length === 0) return prev;
+                return [...uniqueNewMessages.reverse(), ...prev];
+              });
               setLastTimestamp(newMessages[newMessages.length - 1].timestamp);
 
               // Mark new messages as read immediately
@@ -137,15 +144,20 @@ export default function ChatScreen() {
   }, [chatId, currentUser?.id]);
 
   // Load older messages when scrolling up
-  const loadOlderMessages = async () => {
+  const loadOlderMessages = useCallback(async () => {
     if (!hasMore || loadingMore || !lastDoc || !chatId) return;
 
     setLoadingMore(true);
     try {
       const result = await getOlderMessages(chatId, lastDoc, 20);
 
-      // Prepend older messages to the beginning
-      setMessages(prev => [...result.messages, ...prev]);
+      // Append older messages to the end (since we store newest first)
+      // Filter out duplicates to prevent key conflicts
+      setMessages(prev => {
+        const existingIds = new Set(prev.map(m => m.id));
+        const uniqueOlderMessages = result.messages.filter(m => !existingIds.has(m.id));
+        return [...prev, ...uniqueOlderMessages.reverse()];
+      });
       setHasMore(result.hasMore);
       setLastDoc(result.lastDoc);
     } catch (error) {
@@ -153,9 +165,9 @@ export default function ChatScreen() {
     } finally {
       setLoadingMore(false);
     }
-  };
+  }, [hasMore, loadingMore, lastDoc, chatId]);
 
-  const handleSend = async () => {
+  const handleSend = useCallback(async () => {
     if (!messageText.trim() || !chatId || !currentUser?.id) return;
 
     setSending(true);
@@ -173,9 +185,9 @@ export default function ChatScreen() {
     } finally {
       setSending(false);
     }
-  };
+  }, [messageText, chatId, currentUser?.id]);
 
-  const formatTime = (timestamp: Timestamp): string => {
+  const formatTime = useCallback((timestamp: Timestamp): string => {
     const date = timestamp.toDate();
     const now = new Date();
     const diffInHours = Math.floor((now.getTime() - date.getTime()) / (1000 * 60 * 60));
@@ -200,15 +212,14 @@ export default function ChatScreen() {
         day: 'numeric',
       });
     }
-  };
+  }, []);
 
-  const renderMessage = ({ item, index }: { item: ChatMessage; index: number }) => {
+  const renderMessage = useCallback(({ item, index }: { item: ChatMessage; index: number }) => {
     const isCurrentUser = item.senderId === currentUser?.id;
 
-    // Find the chronologically previous message (older message)
-    // Since FlatList data is reversed, we need to find in original messages array
-    const messageIndex = messages.findIndex(msg => msg.id === item.id);
-    const previousMessage = messageIndex > 0 ? messages[messageIndex - 1] : null;
+    // Find the chronologically previous (older) message
+    // Since we store newest first, the next item in array is the older message
+    const previousMessage = index < messages.length - 1 ? messages[index + 1] : null;
 
     const showTimestamp =
       !previousMessage ||
@@ -227,6 +238,7 @@ export default function ChatScreen() {
           ]}
         >
           <ThemedText
+            selectable={true}
             style={[
               styles.messageText,
               isCurrentUser ? styles.currentUserText : styles.otherUserText,
@@ -237,7 +249,7 @@ export default function ChatScreen() {
         </View>
       </View>
     );
-  };
+  }, [currentUser?.id, messages, formatTime]);
 
   return (
     <KeyboardAvoidingView
@@ -278,7 +290,7 @@ export default function ChatScreen() {
       ) : (
         <FlatList
           ref={flatListRef}
-          data={[...messages].reverse()}
+          data={messages}
           renderItem={renderMessage}
           keyExtractor={(item) => item.id}
           contentContainerStyle={styles.messagesList}
@@ -286,6 +298,11 @@ export default function ChatScreen() {
           onEndReached={loadOlderMessages}
           onEndReachedThreshold={0.5}
           inverted={true}
+          removeClippedSubviews={Platform.OS === 'android'}
+          maxToRenderPerBatch={10}
+          updateCellsBatchingPeriod={50}
+          windowSize={10}
+          initialNumToRender={20}
           ListHeaderComponent={
             loadingMore ? (
               <View style={styles.loadingMoreContainer}>
@@ -328,7 +345,7 @@ export default function ChatScreen() {
             <IconSymbol
               size={20}
               name="paperplane.fill"
-              color={messageText.trim() ? '#fff' : '#ccc'}
+              color={messageText.trim() ? '#fff' : '#000'}
             />
           )}
         </TouchableOpacity>
@@ -479,12 +496,12 @@ const styles = StyleSheet.create({
     width: 40,
     height: 40,
     borderRadius: 20,
-    backgroundColor: '#007AFF',
+    backgroundColor: '#c42743',
     alignItems: 'center',
     justifyContent: 'center',
   },
   sendButtonDisabled: {
-    backgroundColor: '#f0f0f0',
+    backgroundColor: '#fff',
   },
   loadingMoreContainer: {
     paddingVertical: 16,

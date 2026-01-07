@@ -28,6 +28,7 @@ export {unlinkValorantAccountFunction as unlinkValorantAccount} from "./valorant
 // Export Push Notification functions
 export {onNotificationCreated} from "./notifications/onNotificationCreated";
 export {onMessageCreated} from "./notifications/onMessageCreated";
+export {onGameStatsUpdatedFunction as onGameStatsUpdated} from "./notifications/onGameStatsUpdated";
 
 // Export Follow Count Management functions
 export {onFollowerCreated} from "./follows/onFollowCreated";

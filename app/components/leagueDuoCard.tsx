@@ -152,6 +152,7 @@ export default function LeagueDuoCard({
 
 const styles = StyleSheet.create({
   duoCard: {
+    width: '100%',
     borderRadius: 24,
     height: 440,
     shadowColor: '#0AC8B9',

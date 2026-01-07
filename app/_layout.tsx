@@ -8,13 +8,16 @@ import * as Notifications from 'expo-notifications';
 import LoadingScreen from '@/app/components/loadingScreen';
 import { AuthProvider, useAuth } from '@/contexts/AuthContext';
 import { useColorScheme } from '@/hooks/use-color-scheme';
-import { addNotificationTapListener } from '@/services/notificationService';
+import { addNotificationTapListener, addNotificationReceivedListener } from '@/services/notificationService';
+import { InAppNotificationProvider, useInAppNotification } from '@/contexts/InAppNotificationContext';
+import InAppNotificationContainer from '@/app/components/InAppNotificationContainer';
 
 function RootLayoutNav() {
   const colorScheme = useColorScheme();
   const { isAuthenticated, isLoading, needsUsernameSetup } = useAuth();
   const segments = useSegments();
   const router = useRouter();
+  const { showNotification } = useInAppNotification();
 
   useEffect(() => {
     if (isLoading) return;
@@ -73,6 +76,55 @@ function RootLayoutNav() {
     return () => subscription.remove();
   }, [router, isAuthenticated, isLoading]);
 
+  // Listen for foreground notifications and show in-app banner
+  useEffect(() => {
+    if (!isAuthenticated || isLoading) return;
+
+    const subscription = addNotificationReceivedListener((notification) => {
+      const data = notification.request.content.data;
+      console.log('Foreground notification received:', data);
+
+      // Format notification message
+      let message = '';
+      if (data.type === 'follow') {
+        message = 'started following you';
+      } else if (data.type === 'like') {
+        message = 'liked your post';
+      } else if (data.type === 'comment') {
+        message = 'commented on your post';
+      } else if (data.type === 'tag') {
+        message = 'tagged you in a post';
+      } else if (data.type === 'message') {
+        message = 'sent you a message';
+      } else if (data.type === 'party_invite') {
+        message = `invited you to ${data.partyName || 'a party'}`;
+      } else if (data.type === 'party_complete') {
+        message = data.winnerUsername ? `${data.winnerUsername} won the party!` : 'Party completed!';
+      } else if (data.type === 'party_ranking_change') {
+        const rankEmoji = data.newRank === 1 ? '🥇' : data.newRank === 2 ? '🥈' : '🥉';
+        message = `${rankEmoji} ${data.username} just moved to #${data.newRank} in ${data.partyName}!`;
+      }
+
+      // Show in-app notification
+      showNotification({
+        id: Date.now().toString(),
+        type: data.type,
+        fromUserId: data.fromUserId,
+        fromUsername: data.fromUsername,
+        fromUserAvatar: data.fromUserAvatar,
+        postId: data.postId,
+        postThumbnail: data.postThumbnail,
+        chatId: data.chatId,
+        partyId: data.partyId,
+        game: data.game,
+        message,
+        navigationData: data,
+      });
+    });
+
+    return () => subscription.remove();
+  }, [isAuthenticated, isLoading, showNotification]);
+
   // Centralized notification navigation handler
   const handleNotificationNavigation = (data: any) => {
     if (data.type === 'follow') {
@@ -88,7 +140,7 @@ function RootLayoutNav() {
       if (data.chatId && data.senderId && data.senderUsername) {
         router.push(`/chatPages/chatScreen?chatId=${data.chatId}&otherUserId=${data.senderId}&otherUsername=${data.senderUsername}`);
       }
-    } else if (data.type === 'party_invite' || data.type === 'party_complete') {
+    } else if (data.type === 'party_invite' || data.type === 'party_complete' || data.type === 'party_ranking_change') {
       // Navigate to the party details/leaderboard
       if (data.partyId && data.game) {
         router.push(`/leaderboardPages/leaderboardDetail?partyId=${data.partyId}&game=${encodeURIComponent(data.game)}`);
@@ -114,6 +166,7 @@ function RootLayoutNav() {
         <Stack.Screen name="components/gameStats" options={{ headerShown: false }} />
       </Stack>
       <StatusBar style="auto" />
+      <InAppNotificationContainer />
     </ThemeProvider>
   );
 }
@@ -121,7 +174,9 @@ function RootLayoutNav() {
 export default function RootLayout() {
   return (
     <AuthProvider>
-      <RootLayoutNav />
+      <InAppNotificationProvider>
+        <RootLayoutNav />
+      </InAppNotificationProvider>
     </AuthProvider>
   );
 }

@@ -150,6 +150,7 @@ export default function ValorantDuoCard({
 
 const styles = StyleSheet.create({
   duoCard: {
+    width: '100%',
     borderRadius: 24,
     height: 440, // 2x the height of leagueRankCard (220 * 2)
     shadowColor: '#B2313B',

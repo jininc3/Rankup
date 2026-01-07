@@ -7,6 +7,7 @@ import {
   getDocs,
   addDoc,
   updateDoc,
+  deleteDoc,
   query,
   where,
   orderBy,
@@ -402,6 +403,61 @@ export const getChat = async (chatId: string): Promise<Chat | null> => {
   }
 
   return null;
+};
+
+/**
+ * Delete a message
+ */
+export const deleteMessage = async (
+  chatId: string,
+  messageId: string,
+  senderId: string
+): Promise<void> => {
+  const messageRef = doc(db, `chats/${chatId}/messages`, messageId);
+  const messageSnap = await getDoc(messageRef);
+
+  if (!messageSnap.exists()) {
+    throw new Error('Message not found');
+  }
+
+  const messageData = messageSnap.data();
+
+  // Only allow sender to delete their own message
+  if (messageData.senderId !== senderId) {
+    throw new Error('You can only delete your own messages');
+  }
+
+  // Delete the message
+  await deleteDoc(messageRef);
+
+  // Update chat's last message if this was the last message
+  const chatRef = doc(db, 'chats', chatId);
+  const chatSnap = await getDoc(chatRef);
+
+  if (chatSnap.exists()) {
+    const chatData = chatSnap.data();
+
+    // If the deleted message was the last message, update to previous message
+    const messagesRef = collection(db, `chats/${chatId}/messages`);
+    const q = query(messagesRef, orderBy('timestamp', 'desc'), limit(1));
+    const lastMessageSnapshot = await getDocs(q);
+
+    if (lastMessageSnapshot.empty) {
+      // No messages left
+      await updateDoc(chatRef, {
+        lastMessage: '',
+        lastMessageTimestamp: Timestamp.now(),
+        lastMessageSenderId: '',
+      });
+    } else {
+      const lastMsg = lastMessageSnapshot.docs[0].data();
+      await updateDoc(chatRef, {
+        lastMessage: lastMsg.text,
+        lastMessageTimestamp: lastMsg.timestamp,
+        lastMessageSenderId: lastMsg.senderId,
+      });
+    }
+  }
 };
 
 /**

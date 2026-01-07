@@ -52,11 +52,11 @@ export default function GameStatsScreen() {
     }
   }, [game?.name, user?.id]);
 
-  // Helper function to check if cache is expired (> 6 hours)
+  // Helper function to check if cache is expired (> 3 hours)
   const isCacheExpired = (lastUpdated: any): boolean => {
     if (!lastUpdated) return true;
 
-    const CACHE_TTL = 6 * 60 * 60 * 1000; // 6 hours in milliseconds
+    const CACHE_TTL = 3 * 60 * 60 * 1000; // 3 hours in milliseconds
     const lastUpdatedTime = lastUpdated.toMillis ? lastUpdated.toMillis() : lastUpdated;
     const now = Date.now();
     const cacheAge = now - lastUpdatedTime;

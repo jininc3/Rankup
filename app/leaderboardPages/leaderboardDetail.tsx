@@ -5,7 +5,7 @@ import { useLocalSearchParams, useRouter } from 'expo-router';
 import { ScrollView, StyleSheet, TouchableOpacity, View, Image, ActivityIndicator, Alert, RefreshControl } from 'react-native';
 import { useState, useEffect } from 'react';
 import { db } from '@/config/firebase';
-import { collection, query, where, getDocs, doc, getDoc, limit, updateDoc, deleteDoc } from 'firebase/firestore';
+import { collection, query, where, getDocs, doc, getDoc, limit, updateDoc, deleteDoc, onSnapshot } from 'firebase/firestore';
 import * as Clipboard from 'expo-clipboard';
 import { useAuth } from '@/contexts/AuthContext';
 import AsyncStorage from '@react-native-async-storage/async-storage';
@@ -96,7 +96,7 @@ export default function LeaderboardDetail() {
   const [inviteCode, setInviteCode] = useState<string>('');
   const [partyDocId, setPartyDocId] = useState<string>('');
 
-  const CACHE_DURATION = 6 * 60 * 60 * 1000; // 6 hours in milliseconds
+  const CACHE_DURATION = 3 * 60 * 60 * 1000; // 3 hours in milliseconds
 
   // Leave party function
   const handleLeaveParty = async () => {
@@ -325,7 +325,7 @@ export default function LeaderboardDetail() {
           const { partyDoc, players: cachedPlayers, timestamp } = JSON.parse(cachedData);
           const age = Date.now() - timestamp;
 
-          // Use cache if less than 6 hours old
+          // Use cache if less than 3 hours old
           if (age < CACHE_DURATION) {
             console.log('Using cached party data (age:', Math.floor(age / 1000 / 60), 'minutes)');
             setPartyData(partyDoc);
@@ -349,15 +349,148 @@ export default function LeaderboardDetail() {
     }
   };
 
-  // Initial load
+  // Set up real-time listener for party updates
   useEffect(() => {
-    loadPartyData();
-  }, [partyIdParam, game, isLeague]);
+    if (!partyIdParam) {
+      setLoading(false);
+      return;
+    }
+
+    let unsubscribe: (() => void) | undefined;
+
+    const setupRealtimeListener = async () => {
+      try {
+        // Query for party by partyId
+        const partiesRef = collection(db, 'parties');
+        const partyQuery = query(partiesRef, where('partyId', '==', partyIdParam), limit(1));
+        const partySnapshot = await getDocs(partyQuery);
+
+        if (partySnapshot.empty) {
+          console.log('Party not found for ID:', partyIdParam);
+          setLoading(false);
+          return;
+        }
+
+        const partyDocumentId = partySnapshot.docs[0].id;
+        const partyRef = doc(db, 'parties', partyDocumentId);
+
+        // Set up real-time listener
+        unsubscribe = onSnapshot(partyRef, async (docSnapshot) => {
+          if (!docSnapshot.exists()) {
+            console.log('Party document no longer exists');
+            setLoading(false);
+            return;
+          }
+
+          const partyDoc = docSnapshot.data();
+          console.log('Party data updated in real-time:', partyDoc.partyName);
+
+          setPartyData(partyDoc);
+          setPartyDocId(partyDocumentId);
+          setInviteCode(partyDoc.inviteCode || '');
+
+          // Check if memberDetails exists
+          if (!partyDoc.memberDetails || partyDoc.memberDetails.length === 0) {
+            console.log('No member details found in party');
+            setPlayers([]);
+            setLoading(false);
+            return;
+          }
+
+          // Determine which subcollection and stats to fetch based on game
+          const gameStatsPath = isLeague ? 'league' : 'valorant';
+
+          // Fetch rank data for each member
+          const memberPromises = partyDoc.memberDetails.map(async (member: any, index: number) => {
+            // Try to get from gameStats subcollection first
+            const userStatsDoc = await getDoc(doc(db, 'users', member.userId, 'gameStats', gameStatsPath));
+            let stats = userStatsDoc.data();
+
+            // Fallback: If gameStats doesn't exist, read from main stats
+            if (!stats || !stats.currentRank) {
+              const userDoc = await getDoc(doc(db, 'users', member.userId));
+              const userData = userDoc.data();
+
+              if (isLeague && userData?.riotStats?.rankedSolo) {
+                stats = {
+                  currentRank: `${userData.riotStats.rankedSolo.tier} ${userData.riotStats.rankedSolo.rank}`,
+                  lp: userData.riotStats.rankedSolo.leaguePoints || 0,
+                  dailyGain: 0,
+                };
+              } else if (!isLeague && userData?.valorantStats) {
+                stats = {
+                  currentRank: userData.valorantStats.currentRank || 'Unranked',
+                  rr: userData.valorantStats.rankRating || 0,
+                  dailyGain: 0,
+                };
+              }
+            }
+
+            return {
+              rank: index + 1,
+              userId: member.userId,
+              username: member.username,
+              avatar: member.avatar,
+              currentRank: stats?.currentRank || 'Unranked',
+              lp: isLeague ? (stats?.lp || 0) : undefined,
+              rr: !isLeague ? (stats?.rr || 0) : undefined,
+              dailyGain: stats?.dailyGain || 0,
+              isCurrentUser: member.userId === user?.id,
+            };
+          });
+
+          const fetchedPlayers = await Promise.all(memberPromises);
+
+          // Sort players by rank value based on game type
+          fetchedPlayers.sort((a, b) => {
+            if (isLeague) {
+              const aValue = getLeagueRankValue(a.currentRank, a.lp || 0);
+              const bValue = getLeagueRankValue(b.currentRank, b.lp || 0);
+              return bValue - aValue;
+            } else {
+              const aValue = getValorantRankValue(a.currentRank, a.rr || 0);
+              const bValue = getValorantRankValue(b.currentRank, b.rr || 0);
+              return bValue - aValue;
+            }
+          });
+
+          // Assign rank positions (1st, 2nd, 3rd, etc.)
+          fetchedPlayers.forEach((player, index) => {
+            player.rank = index + 1;
+          });
+
+          setPlayers(fetchedPlayers);
+          setLoading(false);
+          setRefreshing(false);
+        }, (error) => {
+          console.error('Error in real-time listener:', error);
+          setLoading(false);
+          setRefreshing(false);
+        });
+      } catch (error) {
+        console.error('Error setting up real-time listener:', error);
+        setLoading(false);
+      }
+    };
+
+    setupRealtimeListener();
+
+    // Cleanup listener on unmount
+    return () => {
+      if (unsubscribe) {
+        unsubscribe();
+      }
+    };
+  }, [partyIdParam, game, isLeague, user?.id]);
 
   // Handle pull-to-refresh
   const onRefresh = async () => {
     setRefreshing(true);
-    await loadPartyData(true);
+    // The real-time listener will automatically update the data
+    // This just provides user feedback that a refresh was triggered
+    setTimeout(() => {
+      setRefreshing(false);
+    }, 1000);
   };
 
   const leaderboardName = partyData?.partyName || params.name as string;
@@ -463,7 +596,7 @@ export default function LeaderboardDetail() {
       {/* Header */}
       <View style={styles.header}>
         <TouchableOpacity style={styles.backButton} onPress={() => router.replace('/(tabs)/leaderboard')}>
-          <IconSymbol size={20} name="chevron.left" color="#000" />
+          <IconSymbol size={20} name="chevron.left" color="#fff" />
         </TouchableOpacity>
         <View style={styles.headerCenter}>
           <ThemedText style={styles.headerTitle}>{leaderboardName}</ThemedText>

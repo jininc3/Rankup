@@ -88,11 +88,11 @@ export const getValorantStatsFunction = onCall(
 
       const {gameName, tag, region} = valorantAccount;
 
-      // Check cache (stats updated in last 6 hours)
+      // Check cache (stats updated in last 3 hours)
       const cachedStats = userData?.valorantStats;
       const cacheTime = cachedStats?.lastUpdated?.toDate();
       const cacheAge = cacheTime ? Date.now() - cacheTime.getTime() : Infinity;
-      const CACHE_TTL = 6 * 60 * 60 * 1000; // 6 hours
+      const CACHE_TTL = 3 * 60 * 60 * 1000; // 3 hours
 
       if (!forceRefresh && cachedStats && cacheAge < CACHE_TTL) {
         logger.info(`Returning cached Valorant stats for user ${userId}`);
