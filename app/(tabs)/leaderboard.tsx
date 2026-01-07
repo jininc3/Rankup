@@ -256,12 +256,20 @@ export default function LeaderboardScreen() {
       {/* Header */}
       <View style={styles.header}>
         <ThemedText style={styles.headerTitle}>Leaderboards</ThemedText>
-        <TouchableOpacity
-          style={styles.joinButton}
-          onPress={() => router.push('/leaderboardPages/joinParty')}
-        >
-          <IconSymbol size={26} name="ticket" color="#fff" />
-        </TouchableOpacity>
+        <View style={styles.headerActions}>
+          <TouchableOpacity
+            style={styles.headerIconButton}
+            onPress={() => router.push('/chatPages/chatList')}
+          >
+            <IconSymbol size={24} name="paperplane.fill" color="#fff" />
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={styles.joinButton}
+            onPress={() => router.push('/leaderboardPages/joinParty')}
+          >
+            <IconSymbol size={26} name="ticket" color="#fff" />
+          </TouchableOpacity>
+        </View>
       </View>
 
       {loading ? (

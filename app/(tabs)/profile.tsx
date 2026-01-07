@@ -538,6 +538,12 @@ export default function ProfileScreen() {
         <View style={styles.headerActions}>
           <TouchableOpacity
             style={styles.headerIconButton}
+            onPress={() => router.push('/chatPages/chatList')}
+          >
+            <IconSymbol size={24} name="paperplane.fill" color="#fff" />
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={styles.headerIconButton}
             onPress={() => router.push('/profilePages/settings')}
           >
             <IconSymbol size={28} name="gearshape.fill" color="#fff" />
@@ -1076,6 +1082,7 @@ const styles = StyleSheet.create({
   },
   headerIconButton: {
     position: 'relative',
+    padding: 4,
   },
   coverPhotoContainer: {
     width: '100%',

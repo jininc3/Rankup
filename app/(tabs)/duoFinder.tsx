@@ -10,6 +10,7 @@ import { Alert, ScrollView, StyleSheet, TouchableOpacity, View, RefreshControl }
 import { doc, getDoc, setDoc, deleteDoc, serverTimestamp, collection, query, where, getDocs, orderBy, limit } from 'firebase/firestore';
 import { db } from '@/config/firebase';
 import { getAllowedRanks, sortByRankProximity, getRankRangeText } from '@/utils/rankFilters';
+import { useRouter } from 'expo-router';
 
 interface DuoCardWithId extends DuoCardData {
   id: string;
@@ -19,6 +20,7 @@ interface DuoCardWithId extends DuoCardData {
 
 export default function DuoFinderScreen() {
   const { user } = useAuth();
+  const router = useRouter();
   const [activeTab, setActiveTab] = useState<'findDuo' | 'myCard'>('findDuo');
   const [showAddCard, setShowAddCard] = useState(false);
   const [valorantCard, setValorantCard] = useState<DuoCardData | null>(null);
@@ -410,6 +412,12 @@ export default function DuoFinderScreen() {
       {/* Header */}
       <View style={styles.header}>
         <ThemedText style={styles.headerTitle}>Duo Finder</ThemedText>
+        <TouchableOpacity
+          style={styles.headerIconButton}
+          onPress={() => router.push('/chatPages/chatList')}
+        >
+          <IconSymbol size={24} name="paperplane.fill" color="#fff" />
+        </TouchableOpacity>
       </View>
 
       {/* Tabs */}
@@ -513,7 +521,12 @@ export default function DuoFinderScreen() {
             ) : (
               <View style={styles.duoCardsContainer}>
                 {duoCards.map((card) => (
-                  <View key={card.id} style={styles.duoCardItem}>
+                  <TouchableOpacity
+                    key={card.id}
+                    style={styles.duoCardItem}
+                    activeOpacity={0.7}
+                    onPress={() => router.push(`/profilePages/profileView?userId=${card.userId}`)}
+                  >
                     {card.game === 'valorant' ? (
                       <ValorantDuoCard
                         username={card.username}
@@ -533,7 +546,7 @@ export default function DuoFinderScreen() {
                         mainChampion={card.mainAgent}
                       />
                     )}
-                  </View>
+                  </TouchableOpacity>
                 ))}
               </View>
             )}
@@ -645,9 +658,12 @@ const styles = StyleSheet.create({
     backgroundColor: '#1e2124',
   },
   header: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
     paddingHorizontal: 20,
     paddingTop: 60,
-    paddingBottom: 16,
+    paddingBottom: 10,
     backgroundColor: '#1e2124',
     borderBottomWidth: 1,
     borderBottomColor: '#2c2f33',
@@ -657,10 +673,13 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     color: '#fff',
   },
+  headerIconButton: {
+    padding: 4,
+  },
   tabsContainer: {
     flexDirection: 'row',
     paddingHorizontal: 20,
-    paddingTop: 16,
+    paddingTop: 8,
     paddingBottom: 0,
     gap: 12,
     borderBottomWidth: 1,
@@ -669,7 +688,7 @@ const styles = StyleSheet.create({
   },
   tab: {
     flex: 1,
-    paddingVertical: 14,
+    paddingVertical: 10,
     alignItems: 'center',
     borderBottomWidth: 3,
     borderBottomColor: 'transparent',
@@ -691,7 +710,8 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   scrollContent: {
-    padding: 20,
+    paddingHorizontal: 0,
+    paddingVertical: 0,
     flexGrow: 1,
   },
   emptyState: {
@@ -714,6 +734,7 @@ const styles = StyleSheet.create({
   },
   myCardContent: {
     flex: 1,
+    padding: 20,
   },
   emptyCardState: {
     flex: 1,
@@ -801,8 +822,9 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   filterSection: {
-    padding: 20,
-    gap: 16,
+    paddingHorizontal: 20,
+    paddingVertical: 12,
+    gap: 10,
     borderBottomWidth: 1,
     borderBottomColor: '#2c2f33',
     backgroundColor: '#1a1d1f',
@@ -816,8 +838,8 @@ const styles = StyleSheet.create({
   },
   gameFilterButton: {
     flex: 1,
-    paddingVertical: 8,
-    paddingHorizontal: 12,
+    paddingVertical: 6,
+    paddingHorizontal: 10,
     backgroundColor: 'transparent',
     borderRadius: 8,
     alignItems: 'center',
@@ -832,7 +854,7 @@ const styles = StyleSheet.create({
     elevation: 4,
   },
   gameFilterText: {
-    fontSize: 13,
+    fontSize: 12,
     fontWeight: '600',
     color: '#888',
     letterSpacing: 0.2,

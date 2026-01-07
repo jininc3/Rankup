@@ -11,7 +11,7 @@ import PostContent from '@/app/components/postContent';
 import NewPost from '@/app/components/newPost';
 import { collection, getDocs, orderBy, query, Timestamp, where, onSnapshot, limit, startAfter, QueryDocumentSnapshot, DocumentData } from 'firebase/firestore';
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { ActivityIndicator, Dimensions, Image, ScrollView, StyleSheet, TouchableOpacity, View, Alert, RefreshControl, TouchableWithoutFeedback } from 'react-native';
+import { ActivityIndicator, Dimensions, Image, ScrollView, StyleSheet, TouchableOpacity, View, Alert, RefreshControl } from 'react-native';
 import { useRouter } from 'expo-router';
 import { useFocusEffect } from '@react-navigation/native';
 
@@ -716,8 +716,7 @@ export default function HomeScreen() {
   };
 
   return (
-    <TouchableWithoutFeedback onPress={() => setShowFilterMenu(false)}>
-      <ThemedView style={styles.container}>
+    <ThemedView style={styles.container}>
         <View style={styles.header}>
         <ThemedText style={styles.headerTitle}>Home</ThemedText>
         <View style={styles.headerActions}>
@@ -777,9 +776,8 @@ export default function HomeScreen() {
 
           {/* Filter Dropdown */}
           {showFilterMenu && (
-            <TouchableWithoutFeedback onPress={(e) => e?.stopPropagation?.()}>
-              <View style={styles.filterDropdown}>
-                <TouchableOpacity
+            <View style={styles.filterDropdown}>
+              <TouchableOpacity
                 style={[styles.filterDropdownOption, selectedGameFilter === null && styles.filterDropdownOptionActive]}
                 onPress={() => {
                   setSelectedGameFilter(null);
@@ -816,8 +814,7 @@ export default function HomeScreen() {
                   )}
                 </TouchableOpacity>
               ))}
-              </View>
-            </TouchableWithoutFeedback>
+            </View>
           )}
         </View>
       </View>
@@ -914,6 +911,15 @@ export default function HomeScreen() {
         />
       )}
 
+      {/* Transparent Overlay for Filter Menu */}
+      {showFilterMenu && (
+        <TouchableOpacity
+          style={styles.filterOverlay}
+          activeOpacity={1}
+          onPress={() => setShowFilterMenu(false)}
+        />
+      )}
+
       {/* Floating Add Post Button */}
       <TouchableOpacity
         style={styles.fabButton}
@@ -929,8 +935,7 @@ export default function HomeScreen() {
         onClose={() => setShowNewPost(false)}
         onPostCreated={handlePostCreated}
       />
-      </ThemedView>
-    </TouchableWithoutFeedback>
+    </ThemedView>
   );
 }
 
@@ -1015,6 +1020,14 @@ const styles = StyleSheet.create({
   filterButton: {
     padding: 8,
     position: 'relative',
+  },
+  filterOverlay: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    zIndex: 999,
   },
   filterDropdown: {
     position: 'absolute',
