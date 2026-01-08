@@ -721,7 +721,7 @@ export default function HomeScreen() {
         <ThemedText style={styles.headerTitle}>Home</ThemedText>
         <View style={styles.headerActions}>
           <TouchableOpacity
-            style={styles.headerIconButton}
+            style={[styles.headerIconButton, { marginLeft: 30 }]}
             onPress={() => router.push('/chatPages/chatList')}
           >
             <IconSymbol size={24} name="paperplane.fill" color="#fff" />
@@ -963,7 +963,7 @@ const styles = StyleSheet.create({
   headerActions: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 16,
+    gap: 0,
   },
   headerIconButton: {
     position: 'relative',

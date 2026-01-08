@@ -212,6 +212,12 @@ async function processPartyUpdate(
   const notifiedUsers = new Set<string>();
 
   for (const notification of relevantNotifications) {
+    // Defensive check: ensure newRank is defined
+    if (notification.newRank === undefined || notification.newRank === null) {
+      logger.error(`Invalid notification detected - newRank is undefined for user ${notification.movedUserId}`);
+      continue;
+    }
+
     const rankEmoji = notification.newRank === 1 ? "🥇" : notification.newRank === 2 ? "🥈" : "🥉";
 
     let notificationBody: string;

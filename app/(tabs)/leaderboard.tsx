@@ -376,7 +376,7 @@ const styles = StyleSheet.create({
   headerActions: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 16,
+    gap: 0,
   },
   headerIconButton: {
     padding: 4,

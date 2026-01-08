@@ -649,11 +649,17 @@ export default function NotificationsScreen() {
                               )}
                               {notification.type === 'party_ranking_change' && (
                                 <ThemedText style={styles.rankingChangeText}>
-                                  {` just moved to `}
-                                  <ThemedText style={styles.rankText}>
-                                    {notification.newRank === 1 ? '🥇 #1' : notification.newRank === 2 ? '🥈 #2' : notification.newRank === 3 ? '🥉 #3' : `#${notification.newRank}`}
-                                  </ThemedText>
-                                  {` in "${notification.partyName}"!`}
+                                  {` just moved `}
+                                  {notification.newRank ? (
+                                    <>
+                                      <ThemedText style={styles.rankText}>
+                                        {`to ${notification.newRank === 1 ? '🥇 #1' : notification.newRank === 2 ? '🥈 #2' : notification.newRank === 3 ? '🥉 #3' : `#${notification.newRank}`}`}
+                                      </ThemedText>
+                                      {` in "${notification.partyName}"!`}
+                                    </>
+                                  ) : (
+                                    `in "${notification.partyName}" rankings!`
+                                  )}
                                 </ThemedText>
                               )}
                               {notification.type === 'comment' && notification.commentText && (

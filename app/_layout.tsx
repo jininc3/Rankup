@@ -101,9 +101,13 @@ function RootLayoutNav() {
       } else if (data.type === 'party_complete') {
         message = data.winnerUsername ? `${data.winnerUsername} won the party!` : 'Party completed!';
       } else if (data.type === 'party_ranking_change') {
-        const rankEmoji = data.newRank === 1 ? '🥇' : data.newRank === 2 ? '🥈' : data.newRank === 3 ? '🥉' : '';
-        const rankText = rankEmoji ? `${rankEmoji} #${data.newRank}` : `#${data.newRank}`;
-        message = `${data.username} just moved to ${rankText} in ${data.partyName}!`;
+        if (data.newRank) {
+          const rankEmoji = data.newRank === 1 ? '🥇' : data.newRank === 2 ? '🥈' : data.newRank === 3 ? '🥉' : '';
+          const rankText = rankEmoji ? `${rankEmoji} #${data.newRank}` : `#${data.newRank}`;
+          message = `${data.username} just moved to ${rankText} in ${data.partyName}!`;
+        } else {
+          message = `${data.username} just moved in ${data.partyName} rankings!`;
+        }
       }
 
       // Show in-app notification

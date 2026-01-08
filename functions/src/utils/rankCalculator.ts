@@ -186,7 +186,7 @@ export function detectRelevantRankChanges(
         recipientUserId: member.userId,
         movedUserId: member.userId,
         movedUsername: member.username,
-        newRank: member.rank,
+        newRank: member.rank, // Use member.rank for initial ranking
         oldRank: undefined,
         wasOvertaken: false,
       });
@@ -224,8 +224,8 @@ export function detectRelevantRankChanges(
         recipientUserId: newMember.userId,
         movedUserId: newMember.userId,
         movedUsername: newMember.username,
-        newRank,
-        oldRank,
+        newRank: newRank, // Explicitly set newRank
+        oldRank: oldRank,
         wasOvertaken: false,
       });
 
@@ -245,8 +245,8 @@ export function detectRelevantRankChanges(
             recipientUserId: otherMember.userId,
             movedUserId: newMember.userId,
             movedUsername: newMember.username,
-            newRank,
-            oldRank,
+            newRank: newRank, // Explicitly set to the rank of the person who moved up
+            oldRank: oldRank,
             wasOvertaken: true,
           });
         }
@@ -258,8 +258,8 @@ export function detectRelevantRankChanges(
         recipientUserId: newMember.userId,
         movedUserId: newMember.userId,
         movedUsername: newMember.username,
-        newRank,
-        oldRank,
+        newRank: newRank, // Explicitly set newRank
+        oldRank: oldRank,
         wasOvertaken: true,
       });
     }
