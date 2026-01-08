@@ -675,15 +675,24 @@ export default function NotificationsScreen() {
                         <View style={styles.bottomRow}>
                           <ThemedText style={styles.timeText}>{getTimeAgo(notification.createdAt)}</ThemedText>
 
-                          {/* Accept button for party invites - bottom right */}
+                          {/* Accept/Decline buttons for party invites - bottom right */}
                           {notification.type === 'party_invite' && (
-                            <TouchableOpacity
-                              style={styles.acceptButton}
-                              onPress={(e) => handleAcceptInvite(notification, e)}
-                              activeOpacity={0.7}
-                            >
-                              <ThemedText style={styles.acceptButtonText}>Accept</ThemedText>
-                            </TouchableOpacity>
+                            <View style={styles.inviteActions}>
+                              <TouchableOpacity
+                                style={styles.acceptButton}
+                                onPress={(e) => handleAcceptInvite(notification, e)}
+                                activeOpacity={0.7}
+                              >
+                                <ThemedText style={styles.acceptButtonText}>Accept</ThemedText>
+                              </TouchableOpacity>
+                              <TouchableOpacity
+                                style={styles.declineButton}
+                                onPress={(e) => handleDeclineInvite(notification, e)}
+                                activeOpacity={0.7}
+                              >
+                                <IconSymbol size={20} name="xmark" color="#999" />
+                              </TouchableOpacity>
+                            </View>
                           )}
                         </View>
                       </View>
@@ -908,6 +917,18 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     alignItems: 'center',
   },
+  inviteActions: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  declineButton: {
+    padding: 6,
+    borderRadius: 6,
+    backgroundColor: '#36393e',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
   acceptButton: {
     backgroundColor: '#22c55e',
     paddingHorizontal: 16,
@@ -921,6 +942,8 @@ const styles = StyleSheet.create({
   },
   rankingChangeText: {
     color: '#fff',
+    fontSize: 13,
+    lineHeight: 18,
   },
   loadingMoreContainer: {
     paddingVertical: 20,
