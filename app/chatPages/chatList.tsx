@@ -9,6 +9,7 @@ import {
   FlatList,
   Image,
   ActivityIndicator,
+  TextInput,
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import { useAuth } from '@/contexts/AuthContext';
@@ -19,7 +20,9 @@ export default function ChatListScreen() {
   const router = useRouter();
   const { user: currentUser } = useAuth();
   const [chats, setChats] = useState<Chat[]>([]);
+  const [filteredChats, setFilteredChats] = useState<Chat[]>([]);
   const [loading, setLoading] = useState(true);
+  const [searchQuery, setSearchQuery] = useState('');
 
   // Subscribe to user's chats
   useEffect(() => {
@@ -27,11 +30,26 @@ export default function ChatListScreen() {
 
     const unsubscribe = subscribeToUserChats(currentUser.id, (userChats) => {
       setChats(userChats);
+      setFilteredChats(userChats);
       setLoading(false);
     });
 
     return () => unsubscribe();
   }, [currentUser?.id]);
+
+  // Filter chats based on search query
+  useEffect(() => {
+    if (searchQuery.trim() === '') {
+      setFilteredChats(chats);
+    } else {
+      const filtered = chats.filter((chat) => {
+        const otherUser = getOtherUser(chat);
+        if (!otherUser) return false;
+        return otherUser.username.toLowerCase().includes(searchQuery.toLowerCase());
+      });
+      setFilteredChats(filtered);
+    }
+  }, [searchQuery, chats]);
 
   const getOtherUser = (chat: Chat) => {
     const otherUserId = chat.participants.find((id) => id !== currentUser?.id);
@@ -148,8 +166,27 @@ export default function ChatListScreen() {
         <TouchableOpacity style={styles.backButton} onPress={() => router.back()}>
           <IconSymbol size={24} name="chevron.left" color="#fff" />
         </TouchableOpacity>
-        <ThemedText style={styles.headerTitle}>Messages</ThemedText>
+        <ThemedText style={styles.headerTitle}>{currentUser?.username || 'User'}</ThemedText>
         <View style={styles.headerSpacer} />
+      </View>
+
+      {/* Search Bar */}
+      <View style={styles.searchContainer}>
+        <View style={styles.searchBar}>
+          <IconSymbol size={18} name="magnifyingglass" color="#72767d" />
+          <TextInput
+            style={styles.searchInput}
+            placeholder="Search messages..."
+            placeholderTextColor="#72767d"
+            value={searchQuery}
+            onChangeText={setSearchQuery}
+          />
+          {searchQuery.length > 0 && (
+            <TouchableOpacity onPress={() => setSearchQuery('')}>
+              <IconSymbol size={18} name="xmark.circle.fill" color="#72767d" />
+            </TouchableOpacity>
+          )}
+        </View>
       </View>
 
       {/* Chat List */}
@@ -160,11 +197,27 @@ export default function ChatListScreen() {
         </View>
       ) : chats.length > 0 ? (
         <FlatList
-          data={chats}
+          data={filteredChats}
           renderItem={renderChat}
           keyExtractor={(item) => item.id}
           showsVerticalScrollIndicator={false}
           contentContainerStyle={styles.chatList}
+          ListHeaderComponent={
+            <View style={styles.listHeader}>
+              <ThemedText style={styles.listHeaderText}>Messages</ThemedText>
+            </View>
+          }
+          ListEmptyComponent={
+            searchQuery.trim() !== '' ? (
+              <View style={styles.emptySearchState}>
+                <IconSymbol size={48} name="magnifyingglass" color="#72767d" />
+                <ThemedText style={styles.emptySearchText}>No results found</ThemedText>
+                <ThemedText style={styles.emptySearchSubtext}>
+                  Try searching for a different username
+                </ThemedText>
+              </View>
+            ) : null
+          }
         />
       ) : (
         <View style={styles.emptyState}>
@@ -209,6 +262,40 @@ const styles = StyleSheet.create({
   headerSpacer: {
     width: 44,
   },
+  searchContainer: {
+    paddingHorizontal: 20,
+    paddingVertical: 12,
+    backgroundColor: '#1e2124',
+    borderBottomWidth: 1,
+    borderBottomColor: '#2c2f33',
+  },
+  searchBar: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#2c2f33',
+    borderRadius: 10,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    gap: 8,
+  },
+  searchInput: {
+    flex: 1,
+    fontSize: 16,
+    color: '#fff',
+    padding: 0,
+  },
+  listHeader: {
+    paddingHorizontal: 20,
+    paddingTop: 8,
+    paddingBottom: 4,
+  },
+  listHeaderText: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: '#72767d',
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
+  },
   loadingContainer: {
     flex: 1,
     alignItems: 'center',
@@ -220,7 +307,7 @@ const styles = StyleSheet.create({
     color: '#b9bbbe',
   },
   chatList: {
-    paddingVertical: 8,
+    paddingBottom: 8,
   },
   chatItem: {
     flexDirection: 'row',
@@ -319,5 +406,23 @@ const styles = StyleSheet.create({
     color: '#b9bbbe',
     textAlign: 'center',
     lineHeight: 20,
+  },
+  emptySearchState: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 60,
+    paddingHorizontal: 40,
+  },
+  emptySearchText: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#fff',
+    marginTop: 12,
+  },
+  emptySearchSubtext: {
+    fontSize: 14,
+    color: '#b9bbbe',
+    textAlign: 'center',
+    marginTop: 4,
   },
 });

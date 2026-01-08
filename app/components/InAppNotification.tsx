@@ -50,7 +50,7 @@ export default function InAppNotification({ notification }: InAppNotificationPro
       ) : (
         <View style={[styles.avatar, styles.avatarPlaceholder]}>
           <Text style={styles.avatarText}>
-            {notification.fromUsername.charAt(0).toUpperCase()}
+            {notification.fromUsername?.charAt(0).toUpperCase() || '?'}
           </Text>
         </View>
       )}
@@ -58,7 +58,7 @@ export default function InAppNotification({ notification }: InAppNotificationPro
       {/* Content */}
       <View style={styles.content}>
         <Text style={styles.username} numberOfLines={1}>
-          {notification.fromUsername}
+          {notification.fromUsername || 'Unknown'}
         </Text>
         <Text style={styles.message} numberOfLines={1}>
           {notification.message}

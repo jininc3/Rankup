@@ -180,16 +180,16 @@ export default function AddDuoCard({ visible, onClose, onSave, hasValorantAccoun
           const riotAccount = userData.riotAccount;
 
           // Format rank from tier and rank
+          let formattedRank = 'Unranked';
           if (riotStats.rankedSolo) {
             const tier = riotStats.rankedSolo.tier || 'UNRANKED';
             const rank = riotStats.rankedSolo.rank || '';
-            setCurrentRank(tier === 'UNRANKED' ? 'Unranked' : `${tier.charAt(0) + tier.slice(1).toLowerCase()} ${rank}`);
-          } else {
-            setCurrentRank('Unranked');
+            formattedRank = tier === 'UNRANKED' ? 'Unranked' : `${tier.charAt(0) + tier.slice(1).toLowerCase()} ${rank}`;
           }
+          setCurrentRank(formattedRank);
 
-          // Peak rank - for now use current rank as placeholder
-          setPeakRank(currentRank);
+          // Peak rank - use current rank as League API doesn't provide peak rank
+          setPeakRank(formattedRank);
 
           // Get region from riot account
           setRegion(riotAccount.region || 'NA');
@@ -240,7 +240,7 @@ export default function AddDuoCard({ visible, onClose, onSave, hasValorantAccoun
       currentRank,
       region,
       mainRole,
-      peakRank: currentRank, // Set peak rank to current rank for now
+      peakRank, // Use actual peak rank (fetched from Valorant stats or current rank for League)
       mainAgent,
     });
 

@@ -651,7 +651,7 @@ export default function NotificationsScreen() {
                                 <ThemedText style={styles.rankingChangeText}>
                                   {` just moved to `}
                                   <ThemedText style={styles.rankText}>
-                                    {notification.newRank === 1 ? '🥇 #1' : notification.newRank === 2 ? '🥈 #2' : '🥉 #3'}
+                                    {notification.newRank === 1 ? '🥇 #1' : notification.newRank === 2 ? '🥈 #2' : notification.newRank === 3 ? '🥉 #3' : `#${notification.newRank}`}
                                   </ThemedText>
                                   {` in "${notification.partyName}"!`}
                                 </ThemedText>

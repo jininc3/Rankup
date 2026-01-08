@@ -154,3 +154,116 @@ export function detectTop3Changes(
 
   return changes;
 }
+
+/**
+ * Notification recipient for a rank change
+ */
+export interface RankChangeNotification {
+  recipientUserId: string;
+  movedUserId: string;
+  movedUsername: string;
+  newRank: number;
+  oldRank?: number;
+  wasOvertaken: boolean; // true if recipient was overtaken, false if they overtook someone
+}
+
+/**
+ * Detect relevant rank changes and determine who should be notified
+ * Only notifies users when:
+ * - Someone overtakes them OR they overtake someone
+ * - At least one person involved is in top 3
+ */
+export function detectRelevantRankChanges(
+  oldRankings: RankedMember[] | undefined,
+  newRankings: RankedMember[]
+): RankChangeNotification[] {
+  const notifications: RankChangeNotification[] = [];
+
+  if (!oldRankings || oldRankings.length === 0) {
+    // First time rankings - notify top 3 users about their initial position
+    for (const member of newRankings.slice(0, 3)) {
+      notifications.push({
+        recipientUserId: member.userId,
+        movedUserId: member.userId,
+        movedUsername: member.username,
+        newRank: member.rank,
+        oldRank: undefined,
+        wasOvertaken: false,
+      });
+    }
+    return notifications;
+  }
+
+  // Create maps for easy lookup
+  const oldRankMap = new Map(oldRankings.map(m => [m.userId, m.rank]));
+  const newRankMap = new Map(newRankings.map(m => [m.userId, m.rank]));
+
+  // Check each user whose rank changed
+  for (const newMember of newRankings) {
+    const oldRank = oldRankMap.get(newMember.userId);
+    const newRank = newMember.rank;
+
+    // Skip if rank didn't change
+    if (oldRank === undefined || oldRank === newRank) {
+      continue;
+    }
+
+    // Determine if this change involves someone in top 3
+    const isInTop3Now = newRank <= 3;
+    const wasInTop3Before = oldRank <= 3;
+
+    // Skip if neither old nor new rank is in top 3
+    if (!isInTop3Now && !wasInTop3Before) {
+      continue;
+    }
+
+    if (newRank < oldRank) {
+      // User moved up (improved rank) - they overtook someone
+      // Notify the user who moved up
+      notifications.push({
+        recipientUserId: newMember.userId,
+        movedUserId: newMember.userId,
+        movedUsername: newMember.username,
+        newRank,
+        oldRank,
+        wasOvertaken: false,
+      });
+
+      // Find and notify users who were overtaken
+      for (const otherMember of oldRankings) {
+        const otherNewRank = newRankMap.get(otherMember.userId);
+        const otherOldRank = otherMember.rank;
+
+        // Check if this user was overtaken (their rank got worse)
+        if (
+          otherNewRank !== undefined &&
+          otherOldRank < oldRank && // They were ahead before
+          otherNewRank >= newRank && // Now they're at or behind the moved user
+          otherOldRank >= newRank // They were in the range that got overtaken
+        ) {
+          notifications.push({
+            recipientUserId: otherMember.userId,
+            movedUserId: newMember.userId,
+            movedUsername: newMember.username,
+            newRank,
+            oldRank,
+            wasOvertaken: true,
+          });
+        }
+      }
+    } else {
+      // User moved down (worse rank) - someone overtook them
+      // Notify the user who moved down
+      notifications.push({
+        recipientUserId: newMember.userId,
+        movedUserId: newMember.userId,
+        movedUsername: newMember.username,
+        newRank,
+        oldRank,
+        wasOvertaken: true,
+      });
+    }
+  }
+
+  return notifications;
+}

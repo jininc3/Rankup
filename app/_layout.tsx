@@ -101,8 +101,9 @@ function RootLayoutNav() {
       } else if (data.type === 'party_complete') {
         message = data.winnerUsername ? `${data.winnerUsername} won the party!` : 'Party completed!';
       } else if (data.type === 'party_ranking_change') {
-        const rankEmoji = data.newRank === 1 ? '🥇' : data.newRank === 2 ? '🥈' : '🥉';
-        message = `${rankEmoji} ${data.username} just moved to #${data.newRank} in ${data.partyName}!`;
+        const rankEmoji = data.newRank === 1 ? '🥇' : data.newRank === 2 ? '🥈' : data.newRank === 3 ? '🥉' : '';
+        const rankText = rankEmoji ? `${rankEmoji} #${data.newRank}` : `#${data.newRank}`;
+        message = `${data.username} just moved to ${rankText} in ${data.partyName}!`;
       }
 
       // Show in-app notification

@@ -9,6 +9,7 @@ import * as logger from "firebase-functions/logger";
 import {
   calculatePartyRankings,
   detectTop3Changes,
+  detectRelevantRankChanges,
   PartyMember,
 } from "../utils/rankCalculator";
 import {sendBatchPushNotifications} from "./sendPushNotification";
@@ -170,26 +171,37 @@ async function processPartyUpdate(
   // Calculate new rankings
   const newRankings = calculatePartyRankings(members, isLeague);
 
-  // Get stored top 3 snapshot
-  const oldTop3: Top3Snapshot[] = partyData.top3Rankings || [];
+  // Get stored rankings snapshot
+  const oldRankings = partyData.rankings || [];
 
-  // Detect changes in top 3
-  const changes = detectTop3Changes(
-    oldTop3.map(t => ({
-      ...t,
-      rank: t.rank,
-    })),
+  // Detect relevant rank changes (only notifies affected users)
+  const relevantNotifications = detectRelevantRankChanges(
+    oldRankings.length > 0 ? oldRankings : undefined,
     newRankings
   );
 
-  if (changes.length === 0) {
-    logger.info(`No top 3 changes in party ${partyName}`);
+  if (relevantNotifications.length === 0) {
+    logger.info(`No relevant rank changes in party ${partyName}`);
+    // Still update stored rankings even if no notifications
+    await db.collection("parties").doc(partyDocId).update({
+      rankings: newRankings,
+      top3Rankings: newRankings.slice(0, 3).map((m) => ({
+        userId: m.userId,
+        username: m.username,
+        avatar: m.avatar,
+        rank: m.rank,
+        currentRank: m.currentRank,
+        lp: m.lp,
+        rr: m.rr,
+      })),
+      lastRankingUpdate: admin.firestore.FieldValue.serverTimestamp(),
+    });
     return;
   }
 
-  logger.info(`Detected ${changes.length} top 3 changes in party ${partyName}`);
+  logger.info(`Detected ${relevantNotifications.length} relevant rank change notifications in party ${partyName}`);
 
-  // Prepare notifications for all party members
+  // Prepare notifications for affected users only
   const notifications: Array<{
     recipientUserId: string;
     title: string;
@@ -197,22 +209,37 @@ async function processPartyUpdate(
     data: Record<string, any>;
   }> = [];
 
-  for (const change of changes) {
-    const rankEmoji = change.newRank === 1 ? "🥇" : change.newRank === 2 ? "🥈" : "🥉";
-    let notificationBody: string;
+  // Track which users we've notified to avoid duplicates
+  const notifiedUsers = new Set<string>();
 
-    if (change.isNewEntry) {
-      // User newly entered top 3
-      notificationBody = `${change.username} just climbed to #${change.newRank} in ${partyName}!`;
+  for (const notification of relevantNotifications) {
+    const rankEmoji = notification.newRank === 1 ? "🥇" : notification.newRank === 2 ? "🥈" : "🥉";
+
+    let notificationBody: string;
+    if (notification.recipientUserId === notification.movedUserId) {
+      // Notify the user who moved
+      if (notification.oldRank === undefined) {
+        // First time in top 3
+        notificationBody = `You're now ranked #${notification.newRank} in ${partyName}!`;
+      } else if (notification.newRank < notification.oldRank) {
+        // Moved up
+        notificationBody = `You moved up to #${notification.newRank} in ${partyName}!`;
+      } else {
+        // Moved down
+        notificationBody = `You dropped to #${notification.newRank} in ${partyName}`;
+      }
     } else {
-      // User changed position within top 3
-      notificationBody = `${change.username} moved to #${change.newRank} in ${partyName}!`;
+      // Notify someone who was affected by the move
+      notificationBody = `${notification.movedUsername} moved to #${notification.newRank} in ${partyName}!`;
     }
 
-    // Send notification to all party members (including the user who moved up)
-    for (const member of partyData.members) {
+    // Create unique key to avoid duplicate notifications
+    const notificationKey = `${notification.recipientUserId}-${notification.movedUserId}-${notification.newRank}`;
+    if (!notifiedUsers.has(notificationKey)) {
+      notifiedUsers.add(notificationKey);
+
       notifications.push({
-        recipientUserId: member,
+        recipientUserId: notification.recipientUserId,
         title: `${rankEmoji} Leaderboard Update`,
         body: notificationBody,
         data: {
@@ -220,25 +247,25 @@ async function processPartyUpdate(
           partyId: partyData.partyId,
           partyName: partyName,
           game: gameName,
-          userId: change.userId,
-          username: change.username,
-          newRank: change.newRank,
+          userId: notification.movedUserId,
+          username: notification.movedUsername,
+          newRank: notification.newRank,
         },
       });
 
       // Also create in-app notification document
       await db
         .collection("users")
-        .doc(member)
+        .doc(notification.recipientUserId)
         .collection("notifications")
         .add({
           type: "party_ranking_change",
-          fromUserId: change.userId,
-          fromUsername: change.username,
+          fromUserId: notification.movedUserId,
+          fromUsername: notification.movedUsername,
           partyId: partyData.partyId,
           partyName: partyName,
           game: gameName,
-          newRank: change.newRank,
+          newRank: notification.newRank,
           read: false,
           createdAt: admin.firestore.FieldValue.serverTimestamp(),
         });
@@ -255,7 +282,7 @@ async function processPartyUpdate(
     }
   }
 
-  // Update stored top 3 snapshot
+  // Update stored rankings snapshot (full rankings and top 3)
   const newTop3: Top3Snapshot[] = newRankings.slice(0, 3).map((m) => ({
     userId: m.userId,
     username: m.username,
@@ -267,9 +294,10 @@ async function processPartyUpdate(
   }));
 
   await db.collection("parties").doc(partyDocId).update({
+    rankings: newRankings,
     top3Rankings: newTop3,
     lastRankingUpdate: admin.firestore.FieldValue.serverTimestamp(),
   });
 
-  logger.info(`Updated top 3 snapshot for party ${partyName}`);
+  logger.info(`Updated rankings snapshot for party ${partyName}`);
 }

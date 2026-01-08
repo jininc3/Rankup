@@ -65,10 +65,14 @@ export default function DuoFinderScreen() {
             // If stats are newer than card, update the card
             if (statsUpdatedAt > cardUpdatedAt) {
               console.log('Syncing Valorant duo card with updated stats...');
+
+              // Get peak rank from valorantStats (it's an object with tier and season)
+              const peakRankTier = valorantStats.peakRank?.tier || cardData.peakRank || valorantStats.currentRank;
+
               const updatedCardData = {
                 ...cardData,
                 currentRank: valorantStats.currentRank || cardData.currentRank,
-                peakRank: valorantStats.currentRank || cardData.peakRank,
+                peakRank: peakRankTier,
                 updatedAt: serverTimestamp(),
               };
 
