@@ -8,7 +8,6 @@ import * as admin from "firebase-admin";
 import * as logger from "firebase-functions/logger";
 import {
   calculatePartyRankings,
-  detectTop3Changes,
   detectRelevantRankChanges,
   PartyMember,
 } from "../utils/rankCalculator";

@@ -146,9 +146,6 @@ export default function PostViewerModal({
         // Only allow right swipes (positive dx)
         if (gestureState.dx > 0) {
           translateX.setValue(gestureState.dx);
-          // Calculate opacity based on swipe distance (fade out as we swipe)
-          const opacityValue = Math.max(0, 1 - gestureState.dx / screenWidth);
-          opacity.setValue(opacityValue);
         }
       },
       onPanResponderRelease: (_, gestureState) => {
@@ -156,34 +153,20 @@ export default function PostViewerModal({
         const shouldClose = gestureState.dx > 80 || gestureState.vx > 0.3;
 
         if (shouldClose) {
-          Animated.parallel([
-            Animated.timing(translateX, {
-              toValue: screenWidth,
-              duration: 200,
-              useNativeDriver: true,
-            }),
-            Animated.timing(opacity, {
-              toValue: 0,
-              duration: 200,
-              useNativeDriver: true,
-            })
-          ]).start(() => {
+          Animated.timing(translateX, {
+            toValue: screenWidth,
+            duration: 200,
+            useNativeDriver: true,
+          }).start(() => {
             onClose();
           });
         } else {
           // Reset to original position
-          Animated.parallel([
-            Animated.spring(translateX, {
-              toValue: 0,
-              useNativeDriver: true,
-              friction: 8,
-            }),
-            Animated.spring(opacity, {
-              toValue: 1,
-              useNativeDriver: true,
-              friction: 8,
-            })
-          ]).start();
+          Animated.spring(translateX, {
+            toValue: 0,
+            useNativeDriver: true,
+            friction: 8,
+          }).start();
         }
       },
     })
