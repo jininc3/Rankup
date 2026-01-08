@@ -12,10 +12,11 @@ import * as Clipboard from 'expo-clipboard';
 import { useAuth } from '@/contexts/AuthContext';
 import { useFocusEffect } from '@react-navigation/native';
 import { db } from '@/config/firebase';
-import { collection, query, where, orderBy, getDocs, Timestamp, doc, getDoc, setDoc, deleteDoc, updateDoc, increment } from 'firebase/firestore';
+import { collection, query, where, getDocs, Timestamp, doc, getDoc, setDoc, deleteDoc, updateDoc, increment } from 'firebase/firestore';
 import { followUser, unfollowUser, isFollowing as checkIsFollowing, getUserRecentPosts } from '@/services/followService';
 import { createOrGetChat } from '@/services/chatService';
 import PostViewerModal from '@/app/components/postViewerModal';
+import PostFilterModal from '@/app/profilePages/postFilterModal';
 
 interface ViewedUser {
   id: string;
@@ -87,6 +88,9 @@ export default function ProfileViewScreen() {
   const [valorantStats, setValorantStats] = useState<any>(null);
   const [enabledRankCards, setEnabledRankCards] = useState<string[]>([]);
   const [showSocialsSheet, setShowSocialsSheet] = useState(false);
+  const [showFilterMenu, setShowFilterMenu] = useState(false);
+  const [selectedFilter, setSelectedFilter] = useState<'newest' | 'oldest' | 'most_viewed' | 'most_liked'>('newest');
+  const [selectedGameFilter, setSelectedGameFilter] = useState<string | null>(null);
   const scrollViewRef = useRef<ScrollView>(null);
 
   // Dynamic games array based on Riot data and enabled rank cards
@@ -173,8 +177,7 @@ export default function ProfileViewScreen() {
         getDoc(doc(db, 'users', userId)),
         getDocs(query(
           collection(db, 'posts'),
-          where('userId', '==', userId),
-          orderBy('createdAt', 'desc')
+          where('userId', '==', userId)
         )),
         checkIsFollowing(currentUser.id, userId)
       ]);
@@ -207,10 +210,27 @@ export default function ProfileViewScreen() {
       }
 
       // Update posts
-      const fetchedPosts: Post[] = postsSnapshot.docs.map(doc => ({
+      let fetchedPosts: Post[] = postsSnapshot.docs.map(doc => ({
         id: doc.id,
         ...doc.data()
       } as Post));
+
+      // Filter by game if a game filter is selected
+      if (selectedGameFilter) {
+        fetchedPosts = fetchedPosts.filter(post => post.taggedGame === selectedGameFilter);
+      }
+
+      // Sort based on selected filter
+      if (selectedFilter === 'newest') {
+        fetchedPosts = fetchedPosts.sort((a, b) => b.createdAt.toMillis() - a.createdAt.toMillis());
+      } else if (selectedFilter === 'oldest') {
+        fetchedPosts = fetchedPosts.sort((a, b) => a.createdAt.toMillis() - b.createdAt.toMillis());
+      } else if (selectedFilter === 'most_liked') {
+        fetchedPosts = fetchedPosts.sort((a, b) => b.likes - a.likes);
+      } else if (selectedFilter === 'most_viewed') {
+        fetchedPosts = fetchedPosts.sort((a, b) => b.likes - a.likes);
+      }
+
       setPosts(fetchedPosts);
       setLoadingPosts(false);
 
@@ -231,15 +251,31 @@ export default function ProfileViewScreen() {
     try {
       const postsQuery = query(
         collection(db, 'posts'),
-        where('userId', '==', userId),
-        orderBy('createdAt', 'desc')
+        where('userId', '==', userId)
       );
 
       const querySnapshot = await getDocs(postsQuery);
-      const fetchedPosts: Post[] = querySnapshot.docs.map(doc => ({
+      let fetchedPosts: Post[] = querySnapshot.docs.map(doc => ({
         id: doc.id,
         ...doc.data()
       } as Post));
+
+      // Filter by game if a game filter is selected
+      if (selectedGameFilter) {
+        fetchedPosts = fetchedPosts.filter(post => post.taggedGame === selectedGameFilter);
+      }
+
+      // Sort client-side based on selected filter
+      if (selectedFilter === 'newest') {
+        fetchedPosts = fetchedPosts.sort((a, b) => b.createdAt.toMillis() - a.createdAt.toMillis());
+      } else if (selectedFilter === 'oldest') {
+        fetchedPosts = fetchedPosts.sort((a, b) => a.createdAt.toMillis() - b.createdAt.toMillis());
+      } else if (selectedFilter === 'most_liked') {
+        fetchedPosts = fetchedPosts.sort((a, b) => b.likes - a.likes);
+      } else if (selectedFilter === 'most_viewed') {
+        // Placeholder: would need a views field in the future
+        fetchedPosts = fetchedPosts.sort((a, b) => b.likes - a.likes);
+      }
 
       setPosts(fetchedPosts);
     } catch (error) {
@@ -272,6 +308,13 @@ export default function ProfileViewScreen() {
     }
   }, [userId, currentUser?.id]);
 
+  // Refetch posts when filter changes
+  useEffect(() => {
+    if (userId) {
+      fetchPosts();
+    }
+  }, [selectedFilter, selectedGameFilter]);
+
   const handlePostPress = (post: Post, index: number) => {
     setSelectedPost(post);
     setSelectedPostIndex(index);
@@ -281,6 +324,11 @@ export default function ProfileViewScreen() {
   const closePostViewer = () => {
     setShowPostViewer(false);
     setSelectedPost(null);
+  };
+
+  const handleFilterChange = (filter: 'newest' | 'oldest' | 'most_viewed' | 'most_liked', gameFilter: string | null) => {
+    setSelectedFilter(filter);
+    setSelectedGameFilter(gameFilter);
   };
 
   // Follow/Unfollow handler
@@ -392,6 +440,15 @@ export default function ProfileViewScreen() {
         </TouchableOpacity>
       </View>
 
+      {/* Post Filter Modal */}
+      <PostFilterModal
+        visible={showFilterMenu}
+        onClose={() => setShowFilterMenu(false)}
+        selectedFilter={selectedFilter}
+        selectedGameFilter={selectedGameFilter}
+        onFilterChange={handleFilterChange}
+      />
+
       <ScrollView showsVerticalScrollIndicator={false}>
         {/* Cover Photo */}
         <View style={styles.coverPhotoContainer}>
@@ -487,24 +544,34 @@ export default function ProfileViewScreen() {
 
         {/* Main Tabs: Clips and RankCards */}
         <View style={styles.mainTabsContainer}>
-          <TouchableOpacity
-            style={styles.mainTab}
-            onPress={() => setActiveMainTab('clips')}
-          >
-            <ThemedText style={[styles.mainTabText, activeMainTab === 'clips' && styles.mainTabTextActive]}>
-              Clips
-            </ThemedText>
-            {activeMainTab === 'clips' && <View style={styles.tabIndicator} />}
-          </TouchableOpacity>
-          <TouchableOpacity
-            style={styles.mainTab}
-            onPress={() => setActiveMainTab('rankCards')}
-          >
-            <ThemedText style={[styles.mainTabText, activeMainTab === 'rankCards' && styles.mainTabTextActive]}>
-              RankCards
-            </ThemedText>
-            {activeMainTab === 'rankCards' && <View style={styles.tabIndicator} />}
-          </TouchableOpacity>
+          <View style={styles.mainTabsLeft}>
+            <TouchableOpacity
+              style={styles.mainTab}
+              onPress={() => setActiveMainTab('clips')}
+            >
+              <ThemedText style={[styles.mainTabText, activeMainTab === 'clips' && styles.mainTabTextActive]}>
+                Clips
+              </ThemedText>
+              {activeMainTab === 'clips' && <View style={styles.tabIndicator} />}
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={styles.mainTab}
+              onPress={() => setActiveMainTab('rankCards')}
+            >
+              <ThemedText style={[styles.mainTabText, activeMainTab === 'rankCards' && styles.mainTabTextActive]}>
+                RankCards
+              </ThemedText>
+              {activeMainTab === 'rankCards' && <View style={styles.tabIndicator} />}
+            </TouchableOpacity>
+          </View>
+          {activeMainTab === 'clips' && (
+            <TouchableOpacity
+              style={styles.filterButton}
+              onPress={() => setShowFilterMenu(true)}
+            >
+              <IconSymbol size={20} name="line.3.horizontal.decrease.circle" color="#fff" />
+            </TouchableOpacity>
+          )}
         </View>
 
         <View style={[styles.postsSection, { display: activeMainTab === 'clips' ? 'flex' : 'none' }]}>
@@ -1038,15 +1105,21 @@ const styles = StyleSheet.create({
   },
   mainTabsContainer: {
     flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
     backgroundColor: '#1e2124',
     borderBottomWidth: 1,
     borderBottomColor: '#2c2f33',
     paddingHorizontal: 20,
   },
+  mainTabsLeft: {
+    flexDirection: 'row',
+  },
   mainTab: {
-    flex: 1,
-    paddingVertical: 16,
+    paddingVertical: 12,
+    paddingHorizontal: 20,
     alignItems: 'center',
+    marginRight: 8,
     position: 'relative',
   },
   tabIndicator: {
@@ -1066,6 +1139,9 @@ const styles = StyleSheet.create({
   mainTabTextActive: {
     color: '#fff',
     fontWeight: '600',
+  },
+  filterButton: {
+    padding: 8,
   },
   gameIconScroller: {
     marginBottom: 16,

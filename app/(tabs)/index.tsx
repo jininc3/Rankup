@@ -41,8 +41,8 @@ const formatTimeAgo = (timestamp: any): string => {
 
 // Available games for filtering
 const availableGames = [
-  { id: 'valorant', name: 'Valorant', image: require('@/assets/images/valorantText.png') },
-  { id: 'league', name: 'League of Legends', image: require('@/assets/images/leagueoflegends.png') },
+  { id: 'valorant', name: 'Valorant', image: require('@/assets/images/valorant-text.png') },
+  { id: 'league', name: 'League of Legends', image: require('@/assets/images/lol.png') },
 ];
 
 interface Post {

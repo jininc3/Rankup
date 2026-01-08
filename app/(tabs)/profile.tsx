@@ -681,14 +681,6 @@ export default function ProfileScreen() {
               <IconSymbol size={20} name="line.3.horizontal.decrease.circle" color="#fff" />
             </TouchableOpacity>
           )}
-          {activeMainTab === 'rankCards' && (riotAccount || valorantAccount) && (
-            <TouchableOpacity
-              style={styles.filterButton}
-              onPress={() => router.push('/profilePages/rankCardWallet')}
-            >
-              <IconSymbol size={20} name="square.stack.3d.up.fill" color="#fff" />
-            </TouchableOpacity>
-          )}
         </View>
 
         <View style={[styles.postsSection, { display: activeMainTab === 'clips' ? 'flex' : 'none' }]}>

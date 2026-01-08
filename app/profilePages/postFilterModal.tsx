@@ -14,8 +14,8 @@ interface PostFilterModalProps {
 
 // Available games for filtering
 const availableGames = [
-  { id: 'valorant', name: 'Valorant', image: require('@/assets/images/valorantText.png') },
-  { id: 'league', name: 'League of Legends', image: require('@/assets/images/leagueoflegends.png') },
+  { id: 'valorant', name: 'Valorant', image: require('@/assets/images/valorant-red.png') },
+  { id: 'league', name: 'League of Legends', image: require('@/assets/images/lol.png') },
 ];
 
 export default function PostFilterModal({
@@ -42,8 +42,12 @@ export default function PostFilterModal({
       transparent={true}
       onRequestClose={onClose}
     >
-      <View style={styles.filterModalContainer}>
-        <View style={styles.filterModalContent}>
+      <TouchableOpacity
+        style={styles.filterModalContainer}
+        activeOpacity={1}
+        onPress={onClose}
+      >
+        <TouchableOpacity style={styles.filterModalContent} activeOpacity={1} onPress={(e) => e.stopPropagation()}>
           <View style={styles.filterModalHeader}>
             <ThemedText style={styles.filterModalTitle}>Sort & Filter Posts</ThemedText>
             <TouchableOpacity onPress={onClose}>
@@ -52,6 +56,7 @@ export default function PostFilterModal({
           </View>
           <ScrollView
             style={styles.filterModalScroll}
+            contentContainerStyle={styles.filterModalScrollContent}
             showsVerticalScrollIndicator={false}
           >
             <View style={styles.filterOptionsContainer}>
@@ -60,13 +65,13 @@ export default function PostFilterModal({
                 onPress={() => handleFilterSelect('newest')}
               >
                 <View style={styles.filterOptionLeft}>
-                  <IconSymbol size={22} name="calendar.badge.clock" color={selectedFilter === 'newest' ? '#c42743' : '#b9bbbe'} />
+                  <IconSymbol size={18} name="calendar.badge.clock" color={selectedFilter === 'newest' ? '#c42743' : '#b9bbbe'} />
                   <ThemedText style={[styles.filterOptionText, selectedFilter === 'newest' && styles.filterOptionTextActive]}>
                     Newest
                   </ThemedText>
                 </View>
                 {selectedFilter === 'newest' && (
-                  <IconSymbol size={20} name="checkmark.circle.fill" color="#c42743" />
+                  <IconSymbol size={18} name="checkmark.circle.fill" color="#c42743" />
                 )}
               </TouchableOpacity>
 
@@ -75,29 +80,13 @@ export default function PostFilterModal({
                 onPress={() => handleFilterSelect('oldest')}
               >
                 <View style={styles.filterOptionLeft}>
-                  <IconSymbol size={22} name="clock.arrow.circlepath" color={selectedFilter === 'oldest' ? '#c42743' : '#b9bbbe'} />
+                  <IconSymbol size={18} name="clock.arrow.circlepath" color={selectedFilter === 'oldest' ? '#c42743' : '#b9bbbe'} />
                   <ThemedText style={[styles.filterOptionText, selectedFilter === 'oldest' && styles.filterOptionTextActive]}>
                     Oldest
                   </ThemedText>
                 </View>
                 {selectedFilter === 'oldest' && (
-                  <IconSymbol size={20} name="checkmark.circle.fill" color="#c42743" />
-                )}
-              </TouchableOpacity>
-
-              <TouchableOpacity
-                style={[styles.filterOption, selectedFilter === 'most_viewed' && styles.filterOptionActive]}
-                onPress={() => handleFilterSelect('most_viewed')}
-              >
-                <View style={styles.filterOptionLeft}>
-                  <IconSymbol size={22} name="eye.fill" color={selectedFilter === 'most_viewed' ? '#c42743' : '#72767d'} />
-                  <ThemedText style={[styles.filterOptionText, styles.filterOptionTextDisabled, selectedFilter === 'most_viewed' && styles.filterOptionTextActive]}>
-                    Most Viewed
-                  </ThemedText>
-                  <ThemedText style={styles.comingSoonBadge}>Coming Soon</ThemedText>
-                </View>
-                {selectedFilter === 'most_viewed' && (
-                  <IconSymbol size={20} name="checkmark.circle.fill" color="#c42743" />
+                  <IconSymbol size={18} name="checkmark.circle.fill" color="#c42743" />
                 )}
               </TouchableOpacity>
 
@@ -106,14 +95,14 @@ export default function PostFilterModal({
                 onPress={() => handleFilterSelect('most_liked')}
               >
                 <View style={styles.filterOptionLeft}>
-                  <IconSymbol size={22} name="heart.fill" color={selectedFilter === 'most_liked' ? '#c42743' : '#72767d'} />
+                  <IconSymbol size={18} name="heart.fill" color={selectedFilter === 'most_liked' ? '#c42743' : '#72767d'} />
                   <ThemedText style={[styles.filterOptionText, styles.filterOptionTextDisabled, selectedFilter === 'most_liked' && styles.filterOptionTextActive]}>
                     Most Liked
                   </ThemedText>
-                  <ThemedText style={styles.comingSoonBadge}>Coming Soon</ThemedText>
+                  <ThemedText style={styles.comingSoonBadge}>Soon</ThemedText>
                 </View>
                 {selectedFilter === 'most_liked' && (
-                  <IconSymbol size={20} name="checkmark.circle.fill" color="#c42743" />
+                  <IconSymbol size={18} name="checkmark.circle.fill" color="#c42743" />
                 )}
               </TouchableOpacity>
             </View>
@@ -127,13 +116,13 @@ export default function PostFilterModal({
                 onPress={() => handleGameFilterSelect(null)}
               >
                 <View style={styles.filterOptionLeft}>
-                  <IconSymbol size={22} name="square.grid.2x2" color={selectedGameFilter === null ? '#c42743' : '#b9bbbe'} />
+                  <IconSymbol size={18} name="square.grid.2x2" color={selectedGameFilter === null ? '#c42743' : '#b9bbbe'} />
                   <ThemedText style={[styles.filterOptionText, selectedGameFilter === null && styles.filterOptionTextActive]}>
                     All Games
                   </ThemedText>
                 </View>
                 {selectedGameFilter === null && (
-                  <IconSymbol size={20} name="checkmark.circle.fill" color="#c42743" />
+                  <IconSymbol size={18} name="checkmark.circle.fill" color="#c42743" />
                 )}
               </TouchableOpacity>
 
@@ -159,14 +148,14 @@ export default function PostFilterModal({
                     </ThemedText>
                   </View>
                   {selectedGameFilter === game.id && (
-                    <IconSymbol size={20} name="checkmark.circle.fill" color="#c42743" />
+                    <IconSymbol size={18} name="checkmark.circle.fill" color="#c42743" />
                   )}
                 </TouchableOpacity>
               ))}
             </View>
           </ScrollView>
-        </View>
-      </View>
+        </TouchableOpacity>
+      </TouchableOpacity>
     </Modal>
   );
 }
@@ -174,47 +163,50 @@ export default function PostFilterModal({
 const styles = StyleSheet.create({
   filterModalContainer: {
     flex: 1,
-    backgroundColor: 'transparent',
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
     justifyContent: 'flex-end',
   },
   filterModalContent: {
-    height: '70%',
     backgroundColor: '#1e2124',
-    borderTopLeftRadius: 24,
-    borderTopRightRadius: 24,
+    borderTopLeftRadius: 16,
+    borderTopRightRadius: 16,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: -4 },
     shadowOpacity: 0.1,
     shadowRadius: 12,
     elevation: 8,
+    maxHeight: '60%',
   },
   filterModalHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    paddingHorizontal: 24,
-    paddingVertical: 24,
+    paddingHorizontal: 20,
+    paddingVertical: 16,
     borderBottomWidth: 1,
     borderBottomColor: '#2c2f33',
   },
   filterModalScroll: {
-    maxHeight: 500,
+    flexGrow: 0,
+  },
+  filterModalScrollContent: {
+    paddingBottom: 24,
   },
   filterModalTitle: {
-    fontSize: 20,
-    fontWeight: '700',
+    fontSize: 17,
+    fontWeight: '600',
     color: '#fff',
     letterSpacing: -0.3,
   },
   filterOptionsContainer: {
-    paddingVertical: 12,
+    paddingVertical: 4,
   },
   filterOption: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    paddingHorizontal: 24,
-    paddingVertical: 18,
+    paddingHorizontal: 20,
+    paddingVertical: 12,
     borderBottomWidth: 1,
     borderBottomColor: '#2c2f33',
   },
@@ -224,11 +216,11 @@ const styles = StyleSheet.create({
   filterOptionLeft: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 14,
+    gap: 12,
   },
   filterOptionText: {
-    fontSize: 16,
-    color: '#fff',
+    fontSize: 15,
+    color: '#dcddde',
     fontWeight: '500',
     letterSpacing: -0.2,
   },
@@ -240,28 +232,28 @@ const styles = StyleSheet.create({
     color: '#72767d',
   },
   comingSoonBadge: {
-    fontSize: 10,
+    fontSize: 9,
     color: '#b9bbbe',
     backgroundColor: '#36393e',
-    paddingHorizontal: 10,
-    paddingVertical: 4,
-    borderRadius: 12,
+    paddingHorizontal: 8,
+    paddingVertical: 2,
+    borderRadius: 8,
     fontWeight: '600',
-    marginLeft: 6,
+    marginLeft: 4,
     textTransform: 'uppercase',
-    letterSpacing: 0.5,
+    letterSpacing: 0.3,
   },
   filterSectionDivider: {
-    height: 12,
+    height: 8,
     backgroundColor: '#2c2f33',
-    marginVertical: 8,
+    marginVertical: 4,
   },
   gameFilterIcon: {
-    fontSize: 20,
+    fontSize: 18,
   },
   gameFilterImage: {
-    height: 24,
-    width: 80,
-    marginRight: 8,
+    height: 20,
+    width: 70,
+    marginRight: 4,
   },
 });
