@@ -253,25 +253,6 @@ export default function LeaderboardScreen() {
 
   return (
     <ThemedView style={styles.container}>
-      {/* Header */}
-      <View style={styles.header}>
-        <ThemedText style={styles.headerTitle}>Leaderboards</ThemedText>
-        <View style={styles.headerActions}>
-          <TouchableOpacity
-            style={styles.headerIconButton}
-            onPress={() => router.push('/chatPages/chatList')}
-          >
-            <IconSymbol size={24} name="paperplane.fill" color="#fff" />
-          </TouchableOpacity>
-          <TouchableOpacity
-            style={styles.joinButton}
-            onPress={() => router.push('/leaderboardPages/joinParty')}
-          >
-            <IconSymbol size={26} name="ticket" color="#fff" />
-          </TouchableOpacity>
-        </View>
-      </View>
-
       {loading ? (
         <View style={styles.loadingContainer}>
           <ActivityIndicator size="large" color="#c42743" />
@@ -387,7 +368,8 @@ const styles = StyleSheet.create({
   tabsContainer: {
     flexDirection: 'row',
     paddingHorizontal: 20,
-    paddingVertical: 16,
+    paddingTop: 76,
+    paddingBottom: 16,
     gap: 12,
     borderBottomWidth: 1,
     borderBottomColor: '#c42743',

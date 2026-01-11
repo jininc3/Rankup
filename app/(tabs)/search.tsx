@@ -216,10 +216,6 @@ export default function SearchScreen() {
 
   return (
     <ThemedView style={styles.container}>
-      <View style={styles.header}>
-        <ThemedText style={styles.headerTitle}>Search Users</ThemedText>
-      </View>
-
       <View style={styles.searchContainer}>
         <IconSymbol size={20} name="magnifyingglass" color="#fff" />
         <TextInput
@@ -361,7 +357,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     backgroundColor: '#36393e',
     marginHorizontal: 20,
-    marginTop: 16,
+    marginTop: 60,
     marginBottom: 16,
     paddingHorizontal: 16,
     paddingVertical: 12,

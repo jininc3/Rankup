@@ -39,12 +39,6 @@ const formatTimeAgo = (timestamp: any): string => {
   }
 };
 
-// Available games for filtering
-const availableGames = [
-  { id: 'valorant', name: 'Valorant', image: require('@/assets/images/valorant-text.png') },
-  { id: 'league', name: 'League of Legends', image: require('@/assets/images/lol.png') },
-];
-
 interface Post {
   id: string;
   userId: string;
@@ -81,7 +75,6 @@ export default function HomeScreen() {
   const postRefs = useRef<{ [key: string]: View | null }>({});
   const videoPlayers = useRef<{ [key: string]: any }>({});
   const scrollViewRef = useRef<ScrollView>(null);
-  const [showFilterMenu, setShowFilterMenu] = useState(false);
   const [selectedGameFilter, setSelectedGameFilter] = useState<string | null>(null);
   const [unreadNotificationCount, setUnreadNotificationCount] = useState(0);
   const [likedPosts, setLikedPosts] = useState<Set<string>>(new Set());
@@ -718,7 +711,7 @@ export default function HomeScreen() {
   return (
     <ThemedView style={styles.container}>
         <View style={styles.header}>
-        <ThemedText style={styles.headerTitle}>Home</ThemedText>
+        <ThemedText style={styles.headerTitle}>Following</ThemedText>
         <View style={styles.headerActions}>
           <TouchableOpacity
             style={[styles.headerIconButton, { marginLeft: 30 }]}
@@ -739,83 +732,6 @@ export default function HomeScreen() {
               </View>
             )}
           </TouchableOpacity>
-        </View>
-      </View>
-
-      {/* Tabs */}
-      <View style={styles.tabContainer}>
-        <View style={styles.tabsLeft}>
-          <TouchableOpacity
-            style={[styles.tab, activeTab === 'forYou' && styles.tabActive]}
-            onPress={() => setActiveTab('forYou')}
-          >
-            <ThemedText style={[styles.tabText, activeTab === 'forYou' && styles.tabTextActive]}>
-              For You
-            </ThemedText>
-          </TouchableOpacity>
-          <TouchableOpacity
-            style={[styles.tab, activeTab === 'following' && styles.tabActive]}
-            onPress={() => setActiveTab('following')}
-          >
-            <ThemedText style={[styles.tabText, activeTab === 'following' && styles.tabTextActive]}>
-              Following
-            </ThemedText>
-          </TouchableOpacity>
-        </View>
-        <View>
-          <TouchableOpacity
-            style={styles.filterButton}
-            onPress={() => setShowFilterMenu(!showFilterMenu)}
-          >
-            <IconSymbol
-              size={20}
-              name="line.3.horizontal.decrease.circle"
-              color={selectedGameFilter ? "#c42743" : "#fff"}
-            />
-          </TouchableOpacity>
-
-          {/* Filter Dropdown */}
-          {showFilterMenu && (
-            <View style={styles.filterDropdown}>
-              <TouchableOpacity
-                style={[styles.filterDropdownOption, selectedGameFilter === null && styles.filterDropdownOptionActive]}
-                onPress={() => {
-                  setSelectedGameFilter(null);
-                  setShowFilterMenu(false);
-                }}
-              >
-                <IconSymbol size={18} name="square.grid.2x2" color="#fff" />
-                <ThemedText style={[styles.filterDropdownText, selectedGameFilter === null && styles.filterDropdownTextActive]}>
-                  All Games
-                </ThemedText>
-                {selectedGameFilter === null && (
-                  <IconSymbol size={16} name="checkmark" color="#c42743" />
-                )}
-              </TouchableOpacity>
-
-              {availableGames.map((game, index) => (
-                <TouchableOpacity
-                  key={game.id}
-                  style={[
-                    styles.filterDropdownOption,
-                    selectedGameFilter === game.id && styles.filterDropdownOptionActive,
-                    index === availableGames.length - 1 && styles.filterDropdownOptionLast
-                  ]}
-                  onPress={() => {
-                    setSelectedGameFilter(game.id);
-                    setShowFilterMenu(false);
-                  }}
-                >
-                  <ThemedText style={[styles.filterDropdownText, selectedGameFilter === game.id && styles.filterDropdownTextActive]}>
-                    {game.name}
-                  </ThemedText>
-                  {selectedGameFilter === game.id && (
-                    <IconSymbol size={16} name="checkmark" color="#c42743" />
-                  )}
-                </TouchableOpacity>
-              ))}
-            </View>
-          )}
         </View>
       </View>
 
@@ -840,6 +756,31 @@ export default function HomeScreen() {
           />
         }
       >
+        {/* Game Filter Tabs */}
+        <ScrollView
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          contentContainerStyle={styles.tabScrollContent}
+          style={styles.tabScrollContainer}
+        >
+          <TouchableOpacity
+            style={[styles.gameTab, selectedGameFilter === 'valorant' && styles.gameTabActive]}
+            onPress={() => setSelectedGameFilter(selectedGameFilter === 'valorant' ? null : 'valorant')}
+          >
+            <ThemedText style={[styles.gameTabText, selectedGameFilter === 'valorant' && styles.gameTabTextActive]}>
+              Valorant
+            </ThemedText>
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={[styles.gameTab, selectedGameFilter === 'league' && styles.gameTabActive]}
+            onPress={() => setSelectedGameFilter(selectedGameFilter === 'league' ? null : 'league')}
+          >
+            <ThemedText style={[styles.gameTabText, selectedGameFilter === 'league' && styles.gameTabTextActive]}>
+              League
+            </ThemedText>
+          </TouchableOpacity>
+        </ScrollView>
+
         {loading ? (
           <View style={styles.loadingContainer}>
             <ActivityIndicator size="large" color="#000" />
@@ -911,15 +852,6 @@ export default function HomeScreen() {
         />
       )}
 
-      {/* Transparent Overlay for Filter Menu */}
-      {showFilterMenu && (
-        <TouchableOpacity
-          style={styles.filterOverlay}
-          activeOpacity={1}
-          onPress={() => setShowFilterMenu(false)}
-        />
-      )}
-
       {/* Floating Add Post Button */}
       <TouchableOpacity
         style={styles.fabButton}
@@ -986,27 +918,46 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     color: '#fff',
   },
-  tabContainer: {
+  tabScrollContainer: {
+    backgroundColor: '#1e2124',
+  },
+  tabScrollContent: {
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'space-between',
-    backgroundColor: '#1e2124',
     paddingHorizontal: 20,
-  },
-  tabsLeft: {
-    flexDirection: 'row',
+    paddingVertical: 16,
+    gap: 8,
   },
   tab: {
-    paddingVertical: 12,
+    paddingVertical: 10,
     paddingHorizontal: 20,
     alignItems: 'center',
-    borderBottomWidth: 0,
-    marginHorizontal: 8,
-    position: 'relative',
+    justifyContent: 'center',
+    borderRadius: 20,
+    backgroundColor: '#2c2f33',
+    borderWidth: 1,
+    borderColor: '#2c2f33',
+    shadowColor: '#000',
+    shadowOffset: {
+      width: 0,
+      height: 2,
+    },
+    shadowOpacity: 0.25,
+    shadowRadius: 3.84,
+    elevation: 5,
+    minHeight: 40,
   },
   tabActive: {
-    borderBottomWidth: 2,
-    borderBottomColor: '#c42743',
+    backgroundColor: '#c42743',
+    borderColor: '#c42743',
+    shadowColor: '#c42743',
+    shadowOffset: {
+      width: 0,
+      height: 3,
+    },
+    shadowOpacity: 0.4,
+    shadowRadius: 4.65,
+    elevation: 8,
   },
   tabText: {
     fontSize: 15,
@@ -1017,56 +968,45 @@ const styles = StyleSheet.create({
     color: '#fff',
     fontWeight: '600',
   },
-  filterButton: {
-    padding: 8,
-    position: 'relative',
-  },
-  filterOverlay: {
-    position: 'absolute',
-    top: 0,
-    left: 0,
-    right: 0,
-    bottom: 0,
-    zIndex: 999,
-  },
-  filterDropdown: {
-    position: 'absolute',
-    top: 40,
-    right: 0,
-    backgroundColor: '#2c2f33',
-    borderRadius: 12,
-    minWidth: 200,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.3,
-    shadowRadius: 8,
-    elevation: 8,
-    zIndex: 1000,
-    overflow: 'hidden',
-  },
-  filterDropdownOption: {
-    flexDirection: 'row',
+  gameTab: {
+    paddingVertical: 6,
+    paddingHorizontal: 14,
     alignItems: 'center',
-    gap: 10,
-    paddingHorizontal: 16,
-    paddingVertical: 12,
-    borderBottomWidth: 1,
-    borderBottomColor: '#1e2124',
+    justifyContent: 'center',
+    borderRadius: 16,
+    backgroundColor: '#2c2f33',
+    borderWidth: 1,
+    borderColor: '#2c2f33',
+    shadowColor: '#000',
+    shadowOffset: {
+      width: 0,
+      height: 1,
+    },
+    shadowOpacity: 0.2,
+    shadowRadius: 2,
+    elevation: 3,
+    minHeight: 32,
+    minWidth: 90,
   },
-  filterDropdownOptionActive: {
-    backgroundColor: '#1e2124',
+  gameTabActive: {
+    backgroundColor: '#c42743',
+    borderColor: '#c42743',
+    shadowColor: '#c42743',
+    shadowOffset: {
+      width: 0,
+      height: 2,
+    },
+    shadowOpacity: 0.3,
+    shadowRadius: 3,
+    elevation: 5,
   },
-  filterDropdownOptionLast: {
-    borderBottomWidth: 0,
-  },
-  filterDropdownText: {
-    flex: 1,
-    fontSize: 14,
-    color: '#fff',
+  gameTabText: {
+    fontSize: 13,
     fontWeight: '500',
+    color: '#999',
   },
-  filterDropdownTextActive: {
-    color: '#c42743',
+  gameTabTextActive: {
+    color: '#fff',
     fontWeight: '600',
   },
   scrollView: {

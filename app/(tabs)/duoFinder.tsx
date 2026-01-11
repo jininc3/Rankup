@@ -413,17 +413,6 @@ export default function DuoFinderScreen() {
 
   return (
     <ThemedView style={styles.container}>
-      {/* Header */}
-      <View style={styles.header}>
-        <ThemedText style={styles.headerTitle}>Duo Finder</ThemedText>
-        <TouchableOpacity
-          style={styles.headerIconButton}
-          onPress={() => router.push('/chatPages/chatList')}
-        >
-          <IconSymbol size={24} name="paperplane.fill" color="#fff" />
-        </TouchableOpacity>
-      </View>
-
       {/* Tabs */}
       <View style={styles.tabsContainer}>
         <TouchableOpacity
@@ -683,7 +672,7 @@ const styles = StyleSheet.create({
   tabsContainer: {
     flexDirection: 'row',
     paddingHorizontal: 20,
-    paddingTop: 8,
+    paddingTop: 68,
     paddingBottom: 0,
     gap: 12,
     borderBottomWidth: 1,

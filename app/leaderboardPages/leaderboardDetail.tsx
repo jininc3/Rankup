@@ -91,7 +91,7 @@ export default function LeaderboardDetail() {
 
   const [partyData, setPartyData] = useState<any>(null);
   const [players, setPlayers] = useState<Player[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
   const [inviteCode, setInviteCode] = useState<string>('');
   const [partyDocId, setPartyDocId] = useState<string>('');
@@ -572,24 +572,6 @@ export default function LeaderboardDetail() {
       router.push(`/profilePages/profileView?userId=${player.userId}`);
     }
   };
-
-  if (loading) {
-    return (
-      <ThemedView style={styles.container}>
-        <View style={styles.header}>
-          <TouchableOpacity style={styles.backButton} onPress={() => router.replace('/(tabs)/leaderboard')}>
-            <IconSymbol size={20} name="chevron.left" color="#fff" />
-          </TouchableOpacity>
-          <ThemedText style={styles.headerTitle}>Loading...</ThemedText>
-          <View style={styles.headerSpacer} />
-        </View>
-        <View style={styles.loadingContainer}>
-          <ActivityIndicator size="large" color="#c42743" />
-          <ThemedText style={styles.loadingText}>Loading party data...</ThemedText>
-        </View>
-      </ThemedView>
-    );
-  }
 
   return (
     <ThemedView style={styles.container}>
