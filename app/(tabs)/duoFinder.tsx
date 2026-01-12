@@ -1,21 +1,22 @@
-import ValorantDuoCard from '@/app/components/valorantDuoCard';
-import LeagueDuoCard from '@/app/components/leagueDuoCard';
+import CompactDuoCard from '@/app/components/compactDuoCard';
+import DuoCardDetailModal from '@/app/components/duoCardDetailModal';
 import AddDuoCard, { DuoCardData } from '@/app/components/addDuoCard';
+import EditDuoCard from '@/app/components/editDuoCard';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { IconSymbol } from '@/components/ui/icon-symbol';
 import { useAuth } from '@/contexts/AuthContext';
 import { useState, useEffect, useCallback } from 'react';
-import { Alert, ScrollView, StyleSheet, TouchableOpacity, View, RefreshControl } from 'react-native';
+import { Alert, ScrollView, StyleSheet, TouchableOpacity, View, RefreshControl, Dimensions } from 'react-native';
 import { doc, getDoc, setDoc, deleteDoc, serverTimestamp, collection, query, where, getDocs, orderBy, limit } from 'firebase/firestore';
 import { db } from '@/config/firebase';
-import { getAllowedRanks, sortByRankProximity, getRankRangeText } from '@/utils/rankFilters';
 import { useRouter } from 'expo-router';
 
 interface DuoCardWithId extends DuoCardData {
   id: string;
   userId: string;
   updatedAt?: any;
+  avatar?: string;
 }
 
 export default function DuoFinderScreen() {
@@ -33,7 +34,13 @@ export default function DuoFinderScreen() {
   const [selectedGameFilter, setSelectedGameFilter] = useState<'valorant' | 'league' | 'both'>('both');
   const [duoCards, setDuoCards] = useState<DuoCardWithId[]>([]);
   const [loadingDuoCards, setLoadingDuoCards] = useState(false);
-  const [userCurrentRank, setUserCurrentRank] = useState<{ valorant?: string; league?: string }>({});
+  const [isEditMode, setIsEditMode] = useState(false);
+  const [showDetailModal, setShowDetailModal] = useState(false);
+  const [selectedCard, setSelectedCard] = useState<{ game: 'valorant' | 'league' } | null>(null);
+  const [showFindDuoDetailModal, setShowFindDuoDetailModal] = useState(false);
+  const [selectedFindDuoCard, setSelectedFindDuoCard] = useState<DuoCardWithId | null>(null);
+  const [showEditModal, setShowEditModal] = useState(false);
+  const [editingGame, setEditingGame] = useState<'valorant' | 'league' | null>(null);
 
   // Function to sync duo cards with rank stats
   const syncDuoCardsWithStats = async (isManualRefresh: boolean = false) => {
@@ -86,6 +93,7 @@ export default function DuoFinderScreen() {
                 mainRole: updatedCardData.mainRole,
                 peakRank: updatedCardData.peakRank,
                 mainAgent: updatedCardData.mainAgent,
+                lookingFor: updatedCardData.lookingFor || 'Any',
               });
             } else {
               // Use existing card data
@@ -97,6 +105,7 @@ export default function DuoFinderScreen() {
                 mainRole: cardData.mainRole,
                 peakRank: cardData.peakRank,
                 mainAgent: cardData.mainAgent,
+                lookingFor: cardData.lookingFor || 'Any',
               });
             }
           } else {
@@ -109,6 +118,7 @@ export default function DuoFinderScreen() {
               mainRole: cardData.mainRole,
               peakRank: cardData.peakRank,
               mainAgent: cardData.mainAgent,
+              lookingFor: cardData.lookingFor || 'Any',
             });
           }
         }
@@ -154,6 +164,7 @@ export default function DuoFinderScreen() {
                 mainRole: updatedCardData.mainRole,
                 peakRank: updatedCardData.peakRank,
                 mainAgent: updatedCardData.mainAgent,
+                lookingFor: updatedCardData.lookingFor || 'Any',
               });
             } else {
               // Use existing card data
@@ -165,6 +176,7 @@ export default function DuoFinderScreen() {
                 mainRole: cardData.mainRole,
                 peakRank: cardData.peakRank,
                 mainAgent: cardData.mainAgent,
+                lookingFor: cardData.lookingFor || 'Any',
               });
             }
           } else {
@@ -177,6 +189,7 @@ export default function DuoFinderScreen() {
               mainRole: cardData.mainRole,
               peakRank: cardData.peakRank,
               mainAgent: cardData.mainAgent,
+              lookingFor: cardData.lookingFor || 'Any',
             });
           }
         }
@@ -205,6 +218,7 @@ export default function DuoFinderScreen() {
         mainRole: data.mainRole,
         peakRank: data.peakRank,
         mainAgent: data.mainAgent,
+        lookingFor: data.lookingFor || 'Any',
         createdAt: serverTimestamp(),
         updatedAt: serverTimestamp(),
         status: 'active',
@@ -224,40 +238,6 @@ export default function DuoFinderScreen() {
     }
   };
 
-  const handleRemoveCard = (game: 'valorant' | 'league') => {
-    Alert.alert(
-      'Remove Duo Card',
-      `Are you sure you want to remove your ${game === 'valorant' ? 'Valorant' : 'League of Legends'} duo card?`,
-      [
-        { text: 'Cancel', style: 'cancel' },
-        {
-          text: 'Remove',
-          style: 'destructive',
-          onPress: async () => {
-            if (!user?.id) return;
-
-            try {
-              // Delete from Firebase
-              const duoCardRef = doc(db, 'duoCards', `${user.id}_${game}`);
-              await deleteDoc(duoCardRef);
-
-              // Update local state
-              if (game === 'valorant') {
-                setValorantCard(null);
-              } else {
-                setLeagueCard(null);
-              }
-
-              Alert.alert('Success', 'Your duo card has been removed.');
-            } catch (error) {
-              console.error('Error removing duo card:', error);
-              Alert.alert('Error', 'Failed to remove your duo card. Please try again.');
-            }
-          },
-        },
-      ]
-    );
-  };
 
   // Check if user has Valorant or League accounts (RankCards)
   useEffect(() => {
@@ -301,41 +281,6 @@ export default function DuoFinderScreen() {
     syncDuoCardsWithStats(true);
   }, [user?.id]);
 
-  // Fetch user's current rank for filtering
-  useEffect(() => {
-    const fetchUserRank = async () => {
-      if (!user?.id) return;
-
-      try {
-        const userDocRef = doc(db, 'users', user.id);
-        const userDoc = await getDoc(userDocRef);
-
-        if (userDoc.exists()) {
-          const userData = userDoc.data();
-          const ranks: { valorant?: string; league?: string } = {};
-
-          // Get Valorant rank
-          if (userData.valorantStats?.currentRank) {
-            ranks.valorant = userData.valorantStats.currentRank;
-          }
-
-          // Get League rank
-          if (userData.riotStats?.rankedSolo) {
-            const tier = userData.riotStats.rankedSolo.tier || 'UNRANKED';
-            const rank = userData.riotStats.rankedSolo.rank || '';
-            ranks.league = tier === 'UNRANKED' ? 'Unranked' : `${tier.charAt(0) + tier.slice(1).toLowerCase()} ${rank}`;
-          }
-
-          setUserCurrentRank(ranks);
-        }
-      } catch (error) {
-        console.error('Error fetching user rank:', error);
-      }
-    };
-
-    fetchUserRank();
-  }, [user?.id]);
-
   // Fetch duo cards from Firebase
   const fetchDuoCards = async () => {
     if (!user?.id) return;
@@ -357,43 +302,51 @@ export default function DuoFinderScreen() {
           where('game', '==', game),
           where('status', '==', 'active'),
           orderBy('updatedAt', 'desc'),
-          limit(100)
+          limit(50) // Fetch more than 5 to account for filtering out own card
         );
 
         const snapshot = await getDocs(q);
-        const cards = snapshot.docs
-          .filter(doc => doc.data().userId !== user.id) // Exclude own card
-          .map(doc => ({
-            id: doc.id,
-            userId: doc.data().userId,
-            game: doc.data().game,
-            username: doc.data().username,
-            currentRank: doc.data().currentRank,
-            region: doc.data().region,
-            mainRole: doc.data().mainRole,
-            peakRank: doc.data().peakRank,
-            mainAgent: doc.data().mainAgent,
-            updatedAt: doc.data().updatedAt,
-          })) as DuoCardWithId[];
+        const cards = await Promise.all(
+          snapshot.docs
+            .filter(docSnapshot => docSnapshot.data().userId !== user.id) // Exclude own card
+            .map(async (docSnapshot) => {
+              const cardData = docSnapshot.data();
 
-        // Filter by allowed ranks
-        const userRank = game === 'valorant' ? userCurrentRank.valorant : userCurrentRank.league;
-        if (userRank && userRank !== 'Unranked') {
-          const allowedRanks = getAllowedRanks(game, userRank);
-          const filteredCards = cards.filter(card =>
-            allowedRanks.includes(card.currentRank)
-          );
+              // Fetch user's avatar
+              let avatar = undefined;
+              try {
+                const userDocRef = doc(db, 'users', cardData.userId);
+                const userDoc = await getDoc(userDocRef);
+                if (userDoc.exists()) {
+                  avatar = userDoc.data()?.avatar;
+                }
+              } catch (error) {
+                console.error('Error fetching avatar for user:', cardData.userId, error);
+              }
 
-          // Sort by rank proximity
-          const sortedCards = sortByRankProximity(filteredCards, game, userRank);
-          allCards = [...allCards, ...sortedCards];
-        } else {
-          // If user is unranked or no rank found, show all
-          allCards = [...allCards, ...cards];
-        }
+              return {
+                id: docSnapshot.id,
+                userId: cardData.userId,
+                game: cardData.game,
+                username: cardData.username,
+                currentRank: cardData.currentRank,
+                region: cardData.region,
+                mainRole: cardData.mainRole,
+                peakRank: cardData.peakRank,
+                mainAgent: cardData.mainAgent,
+                lookingFor: cardData.lookingFor || 'Any',
+                updatedAt: cardData.updatedAt,
+                avatar: avatar,
+              };
+            })
+        ) as DuoCardWithId[];
+
+        // No rank filtering - show all cards
+        allCards = [...allCards, ...cards];
       }
 
-      setDuoCards(allCards);
+      // Limit to 5 cards
+      setDuoCards(allCards.slice(0, 5));
     } catch (error) {
       console.error('Error fetching duo cards:', error);
       Alert.alert('Error', 'Failed to load duo cards. Please try again.');
@@ -407,9 +360,102 @@ export default function DuoFinderScreen() {
     if (activeTab === 'findDuo') {
       fetchDuoCards();
     }
-  }, [activeTab, selectedGameFilter, userCurrentRank]);
+  }, [activeTab, selectedGameFilter]);
 
   const hasCards = valorantCard !== null || leagueCard !== null;
+
+  const handleEditButtonPress = () => {
+    setIsEditMode(!isEditMode);
+  };
+
+  const handleCardPress = (game: 'valorant' | 'league') => {
+    if (isEditMode) {
+      // Open edit modal
+      setEditingGame(game);
+      setShowEditModal(true);
+    } else {
+      // Open detail modal
+      setSelectedCard({ game });
+      setShowDetailModal(true);
+    }
+  };
+
+  const handleCloseDetailModal = () => {
+    setShowDetailModal(false);
+    setSelectedCard(null);
+  };
+
+  const handleFindDuoCardPress = (card: DuoCardWithId) => {
+    setSelectedFindDuoCard(card);
+    setShowFindDuoDetailModal(true);
+  };
+
+  const handleCloseFindDuoDetailModal = () => {
+    setShowFindDuoDetailModal(false);
+    setSelectedFindDuoCard(null);
+  };
+
+  const handleSaveEdit = async (mainRole: string, mainAgent: string, lookingFor: string) => {
+    if (!user?.id || !editingGame) return;
+
+    try {
+      // Update in Firebase
+      const duoCardRef = doc(db, 'duoCards', `${user.id}_${editingGame}`);
+      await setDoc(duoCardRef, {
+        mainRole,
+        mainAgent,
+        lookingFor,
+        updatedAt: serverTimestamp(),
+      }, { merge: true });
+
+      // Update local state
+      if (editingGame === 'valorant') {
+        setValorantCard(prev => prev ? { ...prev, mainRole, mainAgent, lookingFor } : null);
+      } else {
+        setLeagueCard(prev => prev ? { ...prev, mainRole, mainAgent, lookingFor } : null);
+      }
+
+      Alert.alert('Success', 'Your duo card has been updated!');
+      setShowEditModal(false);
+      setEditingGame(null);
+      // Exit edit mode after saving
+      setIsEditMode(false);
+    } catch (error) {
+      console.error('Error updating duo card:', error);
+      Alert.alert('Error', 'Failed to update your duo card. Please try again.');
+    }
+  };
+
+  const handleDeleteFromEdit = async () => {
+    if (!user?.id || !editingGame) return;
+
+    try {
+      // Delete from Firebase
+      const duoCardRef = doc(db, 'duoCards', `${user.id}_${editingGame}`);
+      await deleteDoc(duoCardRef);
+
+      // Update local state
+      if (editingGame === 'valorant') {
+        setValorantCard(null);
+      } else {
+        setLeagueCard(null);
+      }
+
+      Alert.alert('Success', 'Your duo card has been deleted.');
+      setShowEditModal(false);
+      setEditingGame(null);
+      // Exit edit mode after deleting
+      setIsEditMode(false);
+    } catch (error) {
+      console.error('Error deleting duo card:', error);
+      Alert.alert('Error', 'Failed to delete your duo card. Please try again.');
+    }
+  };
+
+  const handleCloseEditModal = () => {
+    setShowEditModal(false);
+    setEditingGame(null);
+  };
 
   return (
     <ThemedView style={styles.container}>
@@ -514,38 +560,38 @@ export default function DuoFinderScreen() {
             ) : (
               <View style={styles.duoCardsContainer}>
                 {duoCards.map((card) => (
-                  <TouchableOpacity
-                    key={card.id}
-                    style={styles.duoCardItem}
-                    activeOpacity={0.7}
-                    onPress={() => router.push(`/profilePages/profileView?userId=${card.userId}`)}
-                  >
-                    {card.game === 'valorant' ? (
-                      <ValorantDuoCard
-                        username={card.username}
-                        currentRank={card.currentRank}
-                        region={card.region}
-                        mainRole={card.mainRole}
-                        peakRank={card.peakRank}
-                        mainAgent={card.mainAgent}
-                      />
-                    ) : (
-                      <LeagueDuoCard
-                        username={card.username}
-                        currentRank={card.currentRank}
-                        region={card.region}
-                        mainRole={card.mainRole}
-                        peakRank={card.peakRank}
-                        mainChampion={card.mainAgent}
-                      />
-                    )}
-                  </TouchableOpacity>
+                  <View key={card.id} style={styles.duoCardItem}>
+                    <CompactDuoCard
+                      game={card.game}
+                      username={card.username}
+                      avatar={card.avatar}
+                      peakRank={card.peakRank}
+                      mainRole={card.mainRole}
+                      preferredDuoRole={card.lookingFor || 'Any'}
+                      onPress={() => handleFindDuoCardPress(card)}
+                    />
+                  </View>
                 ))}
               </View>
             )}
           </View>
         ) : (
           <View style={styles.myCardContent}>
+            {hasCards && (
+              <View style={styles.myCardHeader}>
+                <ThemedText style={styles.myCardHeaderTitle}>
+                  {isEditMode ? 'Tap a card to edit' : 'My Duo Cards'}
+                </ThemedText>
+                <TouchableOpacity
+                  style={styles.editButton}
+                  onPress={handleEditButtonPress}
+                >
+                  <ThemedText style={isEditMode ? styles.doneButtonText : styles.editButtonText}>
+                    {isEditMode ? 'Done' : 'Edit'}
+                  </ThemedText>
+                </TouchableOpacity>
+              </View>
+            )}
             {!hasCards ? (
               // No cards - Show add button
               <View style={styles.emptyCardState}>
@@ -563,60 +609,44 @@ export default function DuoFinderScreen() {
                 </TouchableOpacity>
               </View>
             ) : (
-              // Has cards - Show them
-              <View style={styles.cardsContainer}>
+              // Has cards - Show them vertically with compact cards
+              <View style={styles.compactCardsContainer}>
                 {/* Valorant Card */}
                 {valorantCard && (
-                  <View style={styles.cardSection}>
-                    <View style={styles.cardHeader}>
-                      <ThemedText style={styles.cardSectionTitle}>Valorant</ThemedText>
-                      <TouchableOpacity
-                        style={styles.removeButton}
-                        onPress={() => handleRemoveCard('valorant')}
-                      >
-                        <IconSymbol size={16} name="trash.fill" color="#ff4444" />
-                        <ThemedText style={styles.removeButtonText}>Remove</ThemedText>
-                      </TouchableOpacity>
-                    </View>
-                    <ValorantDuoCard
+                  <View style={styles.compactCardSection}>
+                    <ThemedText style={styles.cardSectionTitle}>Valorant</ThemedText>
+                    <CompactDuoCard
+                      game="valorant"
                       username={valorantCard.username}
-                      currentRank={valorantCard.currentRank}
-                      region={valorantCard.region}
-                      mainRole={valorantCard.mainRole}
+                      avatar={user?.avatar}
                       peakRank={valorantCard.peakRank}
-                      mainAgent={valorantCard.mainAgent}
+                      mainRole={valorantCard.mainRole}
+                      preferredDuoRole={valorantCard.lookingFor || 'Any'}
+                      onPress={() => handleCardPress('valorant')}
                     />
                   </View>
                 )}
 
                 {/* League Card */}
                 {leagueCard && (
-                  <View style={styles.cardSection}>
-                    <View style={styles.cardHeader}>
-                      <ThemedText style={styles.cardSectionTitle}>League of Legends</ThemedText>
-                      <TouchableOpacity
-                        style={styles.removeButton}
-                        onPress={() => handleRemoveCard('league')}
-                      >
-                        <IconSymbol size={16} name="trash.fill" color="#ff4444" />
-                        <ThemedText style={styles.removeButtonText}>Remove</ThemedText>
-                      </TouchableOpacity>
-                    </View>
-                    <LeagueDuoCard
+                  <View style={styles.compactCardSection}>
+                    <ThemedText style={styles.cardSectionTitle}>League of Legends</ThemedText>
+                    <CompactDuoCard
+                      game="league"
                       username={leagueCard.username}
-                      currentRank={leagueCard.currentRank}
-                      region={leagueCard.region}
-                      mainRole={leagueCard.mainRole}
+                      avatar={user?.avatar}
                       peakRank={leagueCard.peakRank}
-                      mainChampion={leagueCard.mainAgent}
+                      mainRole={leagueCard.mainRole}
+                      preferredDuoRole={leagueCard.lookingFor || 'Any'}
+                      onPress={() => handleCardPress('league')}
                     />
                   </View>
                 )}
 
                 {/* Add Another Card Button */}
-                {(valorantCard === null || leagueCard === null) && (
+                {!isEditMode && (valorantCard === null || leagueCard === null) && (
                   <TouchableOpacity
-                    style={styles.addAnotherButton}
+                    style={styles.addAnotherButtonCompact}
                     onPress={() => setShowAddCard(true)}
                   >
                     <IconSymbol size={20} name="plus.circle" color="#c42743" />
@@ -641,6 +671,64 @@ export default function DuoFinderScreen() {
         hasValorantDuoCard={valorantCard !== null}
         hasLeagueDuoCard={leagueCard !== null}
       />
+
+      {/* Duo Card Detail Modal - My Duo Cards */}
+      {selectedCard && (
+        <DuoCardDetailModal
+          visible={showDetailModal}
+          onClose={handleCloseDetailModal}
+          game={selectedCard.game}
+          username={selectedCard.game === 'valorant' ? (valorantCard?.username || '') : (leagueCard?.username || '')}
+          avatar={user?.avatar}
+          peakRank={selectedCard.game === 'valorant' ? (valorantCard?.peakRank || 'Unranked') : (leagueCard?.peakRank || 'Unranked')}
+          currentRank={selectedCard.game === 'valorant' ? (valorantCard?.currentRank || 'Unranked') : (leagueCard?.currentRank || 'Unranked')}
+          region={selectedCard.game === 'valorant' ? (valorantCard?.region || 'NA') : (leagueCard?.region || 'NA')}
+          mainRole={selectedCard.game === 'valorant' ? (valorantCard?.mainRole || 'Duelist') : (leagueCard?.mainRole || 'Mid')}
+          mainAgent={selectedCard.game === 'valorant' ? (valorantCard?.mainAgent || '') : (leagueCard?.mainAgent || '')}
+          onUserPress={() => {
+            handleCloseDetailModal();
+            router.push('/(tabs)/profile');
+          }}
+        />
+      )}
+
+      {/* Duo Card Detail Modal - Find Duo */}
+      {selectedFindDuoCard && (
+        <DuoCardDetailModal
+          visible={showFindDuoDetailModal}
+          onClose={handleCloseFindDuoDetailModal}
+          game={selectedFindDuoCard.game}
+          username={selectedFindDuoCard.username}
+          avatar={selectedFindDuoCard.avatar}
+          peakRank={selectedFindDuoCard.peakRank}
+          currentRank={selectedFindDuoCard.currentRank}
+          region={selectedFindDuoCard.region}
+          mainRole={selectedFindDuoCard.mainRole}
+          mainAgent={selectedFindDuoCard.mainAgent || ''}
+          onUserPress={() => {
+            handleCloseFindDuoDetailModal();
+            router.push(`/profilePages/profileView?userId=${selectedFindDuoCard.userId}`);
+          }}
+        />
+      )}
+
+      {/* Edit Duo Card Modal */}
+      {editingGame && (
+        <EditDuoCard
+          visible={showEditModal}
+          onClose={handleCloseEditModal}
+          onSave={handleSaveEdit}
+          onDelete={handleDeleteFromEdit}
+          game={editingGame}
+          username={editingGame === 'valorant' ? (valorantCard?.username || '') : (leagueCard?.username || '')}
+          currentRank={editingGame === 'valorant' ? (valorantCard?.currentRank || 'Unranked') : (leagueCard?.currentRank || 'Unranked')}
+          region={editingGame === 'valorant' ? (valorantCard?.region || 'NA') : (leagueCard?.region || 'NA')}
+          peakRank={editingGame === 'valorant' ? (valorantCard?.peakRank || 'Unranked') : (leagueCard?.peakRank || 'Unranked')}
+          initialMainRole={editingGame === 'valorant' ? (valorantCard?.mainRole || '') : (leagueCard?.mainRole || '')}
+          initialMainAgent={editingGame === 'valorant' ? (valorantCard?.mainAgent || '') : (leagueCard?.mainAgent || '')}
+          initialLookingFor={editingGame === 'valorant' ? (valorantCard?.lookingFor || 'Any') : (leagueCard?.lookingFor || 'Any')}
+        />
+      )}
     </ThemedView>
   );
 }
@@ -729,6 +817,31 @@ const styles = StyleSheet.create({
     flex: 1,
     padding: 20,
   },
+  myCardHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 20,
+  },
+  myCardHeaderTitle: {
+    fontSize: 20,
+    fontWeight: '700',
+    color: '#fff',
+  },
+  editButton: {
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+  },
+  editButtonText: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#c42743',
+  },
+  doneButtonText: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#c42743',
+  },
   emptyCardState: {
     flex: 1,
     justifyContent: 'center',
@@ -764,37 +877,19 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     color: '#fff',
   },
-  cardsContainer: {
-    gap: 24,
+  compactCardsContainer: {
+    gap: 10,
   },
-  cardSection: {
-    gap: 12,
-  },
-  cardHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
+  compactCardSection: {
+    gap: 8,
   },
   cardSectionTitle: {
-    fontSize: 18,
+    fontSize: 14,
     fontWeight: '700',
     color: '#fff',
+    marginBottom: 4,
   },
-  removeButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-    backgroundColor: 'rgba(255, 68, 68, 0.1)',
-    borderRadius: 8,
-  },
-  removeButtonText: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: '#ff4444',
-  },
-  addAnotherButton: {
+  addAnotherButtonCompact: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
@@ -804,7 +899,6 @@ const styles = StyleSheet.create({
     borderWidth: 2,
     borderColor: '#c42743',
     borderStyle: 'dashed',
-    marginTop: 8,
   },
   addAnotherButtonText: {
     fontSize: 16,
@@ -906,10 +1000,10 @@ const styles = StyleSheet.create({
     color: '#fff',
   },
   duoCardsContainer: {
-    paddingTop: 20,
+    paddingTop: 16,
     paddingHorizontal: 20,
     paddingBottom: 40,
-    gap: 16,
+    gap: 12,
   },
   duoCardItem: {
     width: '100%',

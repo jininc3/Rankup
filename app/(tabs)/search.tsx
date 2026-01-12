@@ -389,7 +389,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     backgroundColor: '#36393e',
     marginHorizontal: 20,
-    marginTop: 60,
+    marginTop: 75,
     marginBottom: 16,
     paddingHorizontal: 16,
     paddingVertical: 12,

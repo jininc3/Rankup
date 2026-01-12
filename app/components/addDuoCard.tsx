@@ -17,8 +17,6 @@ import {
 } from 'react-native';
 import { doc, getDoc } from 'firebase/firestore';
 import { db } from '@/config/firebase';
-import ValorantDuoCard from './valorantDuoCard';
-import LeagueDuoCard from './leagueDuoCard';
 
 interface AddDuoCardProps {
   visible: boolean;
@@ -38,7 +36,46 @@ export interface DuoCardData {
   mainRole: string;
   peakRank: string;
   mainAgent?: string;
+  lookingFor?: string;
 }
+
+// League rank icon mapping
+const LEAGUE_RANK_ICONS: { [key: string]: any } = {
+  iron: require('@/assets/images/leagueranks/iron.png'),
+  bronze: require('@/assets/images/leagueranks/bronze.png'),
+  silver: require('@/assets/images/leagueranks/silver.png'),
+  gold: require('@/assets/images/leagueranks/gold.png'),
+  platinum: require('@/assets/images/leagueranks/platinum.png'),
+  emerald: require('@/assets/images/leagueranks/emerald.png'),
+  diamond: require('@/assets/images/leagueranks/diamond.png'),
+  master: require('@/assets/images/leagueranks/masters.png'),
+  grandmaster: require('@/assets/images/leagueranks/grandmaster.png'),
+  challenger: require('@/assets/images/leagueranks/challenger.png'),
+  unranked: require('@/assets/images/leagueranks/unranked.png'),
+};
+
+// Valorant rank icon mapping
+const VALORANT_RANK_ICONS: { [key: string]: any } = {
+  iron: require('@/assets/images/valorantranks/iron.png'),
+  bronze: require('@/assets/images/valorantranks/bronze.png'),
+  silver: require('@/assets/images/valorantranks/silver.png'),
+  gold: require('@/assets/images/valorantranks/gold.png'),
+  platinum: require('@/assets/images/valorantranks/platinum.png'),
+  diamond: require('@/assets/images/valorantranks/diamond.png'),
+  ascendant: require('@/assets/images/valorantranks/ascendant.png'),
+  immortal: require('@/assets/images/valorantranks/immortal.png'),
+  radiant: require('@/assets/images/valorantranks/radiant.png'),
+  unranked: require('@/assets/images/valorantranks/unranked.png'),
+};
+
+// League lane icons
+const LEAGUE_LANE_ICONS: { [key: string]: any } = {
+  'Top': require('@/assets/images/leaguelanes/top.png'),
+  'Jungle': require('@/assets/images/leaguelanes/jungle.png'),
+  'Mid': require('@/assets/images/leaguelanes/mid.png'),
+  'ADC': require('@/assets/images/leaguelanes/bottom.png'),
+  'Support': require('@/assets/images/leaguelanes/support.png'),
+};
 
 const VALORANT_RANKS = [
   'Iron 1', 'Iron 2', 'Iron 3',
@@ -101,10 +138,32 @@ export default function AddDuoCard({ visible, onClose, onSave, hasValorantAccoun
   const [mainRole, setMainRole] = useState('');
   const [peakRank, setPeakRank] = useState('');
   const [mainAgent, setMainAgent] = useState('');
+  const [lookingFor, setLookingFor] = useState('Any');
   const [loading, setLoading] = useState(false);
 
   const [showRoleDropdown, setShowRoleDropdown] = useState(false);
   const [showAgentDropdown, setShowAgentDropdown] = useState(false);
+  const [showLookingForDropdown, setShowLookingForDropdown] = useState(false);
+
+  // Helper function to get rank icon
+  const getRankIcon = (rank: string) => {
+    if (!rank || rank === 'Unranked') {
+      return selectedGame === 'valorant' ? VALORANT_RANK_ICONS.unranked : LEAGUE_RANK_ICONS.unranked;
+    }
+    const tier = rank.split(' ')[0].toLowerCase();
+    return selectedGame === 'valorant'
+      ? (VALORANT_RANK_ICONS[tier] || VALORANT_RANK_ICONS.unranked)
+      : (LEAGUE_RANK_ICONS[tier] || LEAGUE_RANK_ICONS.unranked);
+  };
+
+  // Helper function to get role icon
+  const getRoleIcon = (role: string) => {
+    if (selectedGame === 'valorant') {
+      return VALORANT_ROLE_ICONS[role] || VALORANT_ROLE_ICONS['Duelist'];
+    } else {
+      return LEAGUE_LANE_ICONS[role] || LEAGUE_LANE_ICONS['Mid'];
+    }
+  };
 
   const handleGameSelect = async (game: 'valorant' | 'league') => {
     // Check if user already has a duo card for this game
@@ -226,6 +285,7 @@ export default function AddDuoCard({ visible, onClose, onSave, hasValorantAccoun
     setMainRole('');
     setPeakRank('');
     setMainAgent('');
+    setLookingFor('Any');
   };
 
   const handleSave = () => {
@@ -242,6 +302,7 @@ export default function AddDuoCard({ visible, onClose, onSave, hasValorantAccoun
       mainRole,
       peakRank, // Use actual peak rank (fetched from Valorant stats or current rank for League)
       mainAgent,
+      lookingFor,
     });
 
     handleClose();
@@ -333,25 +394,83 @@ export default function AddDuoCard({ visible, onClose, onSave, hasValorantAccoun
               {/* Card Preview */}
               <View style={styles.previewSection}>
                 <ThemedText style={styles.previewLabel}>CARD PREVIEW</ThemedText>
-                {selectedGame === 'valorant' ? (
-                  <ValorantDuoCard
-                    username={username}
-                    currentRank={currentRank}
-                    region={region}
-                    mainRole={mainRole || 'Select Role'}
-                    peakRank={peakRank}
-                    mainAgent={mainAgent || 'Select Agent'}
-                  />
-                ) : (
-                  <LeagueDuoCard
-                    username={username}
-                    currentRank={currentRank}
-                    region={region}
-                    mainRole={mainRole || 'Select Role'}
-                    peakRank={peakRank}
-                    mainChampion={mainAgent || 'Select Champion'}
-                  />
-                )}
+                <View style={styles.detailCardPreview}>
+                  {/* Profile Section */}
+                  <View style={styles.profileSection}>
+                    <View style={styles.avatarContainer}>
+                      {user?.avatar && user.avatar.startsWith('http') ? (
+                        <Image source={{ uri: user.avatar }} style={styles.avatar} />
+                      ) : (
+                        <View style={styles.avatarPlaceholder}>
+                          <IconSymbol size={40} name="person.fill" color="#fff" />
+                        </View>
+                      )}
+                    </View>
+                    <ThemedText style={styles.previewUsername}>{username || 'Your Username'}</ThemedText>
+                  </View>
+
+                  {/* Ranks Section */}
+                  <View style={styles.ranksSection}>
+                    <View style={styles.rankBox}>
+                      <Image
+                        source={getRankIcon(peakRank || 'Unranked')}
+                        style={styles.rankIcon}
+                        resizeMode="contain"
+                      />
+                      <ThemedText style={styles.rankLabel}>Peak Rank</ThemedText>
+                      <ThemedText style={styles.rankValue}>{peakRank || 'Unranked'}</ThemedText>
+                    </View>
+
+                    <View style={styles.rankBox}>
+                      <Image
+                        source={getRankIcon(currentRank || 'Unranked')}
+                        style={styles.rankIcon}
+                        resizeMode="contain"
+                      />
+                      <ThemedText style={styles.rankLabel}>Current Rank</ThemedText>
+                      <ThemedText style={styles.rankValue}>{currentRank || 'Unranked'}</ThemedText>
+                    </View>
+                  </View>
+
+                  {/* Details Section */}
+                  <View style={styles.detailsSection}>
+                    {/* Region and Main Role - Split Row */}
+                    <View style={styles.splitRow}>
+                      <View style={styles.detailRowHalf}>
+                        <IconSymbol size={20} name="globe" color="#94a3b8" />
+                        <View style={styles.detailTextContainer}>
+                          <ThemedText style={styles.detailLabel}>Region</ThemedText>
+                          <ThemedText style={styles.detailValue}>{region || 'N/A'}</ThemedText>
+                        </View>
+                      </View>
+
+                      <View style={styles.detailRowHalf}>
+                        {mainRole && (
+                          <Image
+                            source={getRoleIcon(mainRole)}
+                            style={styles.previewRoleIcon}
+                            resizeMode="contain"
+                          />
+                        )}
+                        <View style={styles.detailTextContainer}>
+                          <ThemedText style={styles.detailLabel}>Main Role</ThemedText>
+                          <ThemedText style={styles.detailValue}>{mainRole || 'Not Selected'}</ThemedText>
+                        </View>
+                      </View>
+                    </View>
+
+                    {/* Main Agent - Full Width */}
+                    <View style={styles.detailRow}>
+                      <IconSymbol size={20} name="star.fill" color="#94a3b8" />
+                      <View style={styles.detailTextContainer}>
+                        <ThemedText style={styles.detailLabel}>
+                          {selectedGame === 'valorant' ? 'Main Agent' : 'Main Champion'}
+                        </ThemedText>
+                        <ThemedText style={styles.detailValue}>{mainAgent || 'Not Selected'}</ThemedText>
+                      </View>
+                    </View>
+                  </View>
+                </View>
               </View>
 
               {/* Inputs Section */}
@@ -460,6 +579,69 @@ export default function AddDuoCard({ visible, onClose, onSave, hasValorantAccoun
                   )}
                 </View>
 
+                {/* Looking For */}
+                <View style={styles.inputGroup}>
+                  <ThemedText style={styles.label}>Looking For</ThemedText>
+                  <TouchableOpacity
+                    style={styles.input}
+                    onPress={() => {
+                      setShowLookingForDropdown(!showLookingForDropdown);
+                      setShowRoleDropdown(false);
+                      setShowAgentDropdown(false);
+                    }}
+                  >
+                    <View style={styles.inputContent}>
+                      {selectedGame === 'valorant' && lookingFor !== 'Any' && VALORANT_ROLE_ICONS[lookingFor] && (
+                        <Image
+                          source={VALORANT_ROLE_ICONS[lookingFor]}
+                          style={styles.inputRoleIcon}
+                          resizeMode="contain"
+                        />
+                      )}
+                      <ThemedText style={styles.inputText}>
+                        {lookingFor}
+                      </ThemedText>
+                    </View>
+                    <IconSymbol size={20} name="chevron.down" color="#999" />
+                  </TouchableOpacity>
+
+                  {/* Looking For Dropdown */}
+                  {showLookingForDropdown && (
+                    <View style={styles.dropdown}>
+                      <ScrollView style={styles.dropdownScroll} nestedScrollEnabled={true}>
+                        <TouchableOpacity
+                          style={styles.dropdownOption}
+                          onPress={() => {
+                            setLookingFor('Any');
+                            setShowLookingForDropdown(false);
+                          }}
+                        >
+                          <ThemedText style={styles.dropdownOptionText}>Any</ThemedText>
+                        </TouchableOpacity>
+                        {roles.map((role) => (
+                          <TouchableOpacity
+                            key={role}
+                            style={styles.dropdownOption}
+                            onPress={() => {
+                              setLookingFor(role);
+                              setShowLookingForDropdown(false);
+                            }}
+                          >
+                            {selectedGame === 'valorant' && VALORANT_ROLE_ICONS[role] && (
+                              <Image
+                                source={VALORANT_ROLE_ICONS[role]}
+                                style={styles.roleIcon}
+                                resizeMode="contain"
+                              />
+                            )}
+                            <ThemedText style={styles.dropdownOptionText}>{role}</ThemedText>
+                          </TouchableOpacity>
+                        ))}
+                      </ScrollView>
+                    </View>
+                  )}
+                </View>
+
                 {/* Save Button */}
                 <TouchableOpacity style={styles.saveButton} onPress={handleSave}>
                   <ThemedText style={styles.saveButtonText}>Create Duo Card</ThemedText>
@@ -556,6 +738,117 @@ const styles = StyleSheet.create({
     color: '#999',
     letterSpacing: 1.5,
     textTransform: 'uppercase',
+  },
+  detailCardPreview: {
+    backgroundColor: '#2c2f33',
+    borderRadius: 24,
+    padding: 24,
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.1)',
+  },
+  profileSection: {
+    alignItems: 'center',
+    marginBottom: 24,
+  },
+  avatarContainer: {
+    width: 80,
+    height: 80,
+    borderRadius: 40,
+    overflow: 'hidden',
+    marginBottom: 12,
+    borderWidth: 3,
+    borderColor: '#c42743',
+  },
+  avatar: {
+    width: '100%',
+    height: '100%',
+  },
+  avatarPlaceholder: {
+    width: '100%',
+    height: '100%',
+    backgroundColor: '#3a3a3a',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  previewUsername: {
+    fontSize: 20,
+    fontWeight: '700',
+    color: '#fff',
+    letterSpacing: -0.5,
+  },
+  ranksSection: {
+    flexDirection: 'row',
+    gap: 12,
+    marginBottom: 24,
+  },
+  rankBox: {
+    flex: 1,
+    alignItems: 'center',
+    backgroundColor: 'rgba(255,255,255,0.05)',
+    padding: 16,
+    borderRadius: 16,
+    gap: 8,
+  },
+  rankIcon: {
+    width: 60,
+    height: 60,
+  },
+  rankLabel: {
+    fontSize: 11,
+    color: '#94a3b8',
+    fontWeight: '600',
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
+  },
+  rankValue: {
+    fontSize: 14,
+    color: '#fff',
+    fontWeight: '700',
+    textAlign: 'center',
+  },
+  detailsSection: {
+    gap: 12,
+  },
+  splitRow: {
+    flexDirection: 'row',
+    gap: 12,
+  },
+  detailRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    backgroundColor: 'rgba(255,255,255,0.05)',
+    padding: 14,
+    borderRadius: 12,
+  },
+  detailRowHalf: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    backgroundColor: 'rgba(255,255,255,0.05)',
+    padding: 14,
+    borderRadius: 12,
+  },
+  previewRoleIcon: {
+    width: 20,
+    height: 20,
+  },
+  detailTextContainer: {
+    flex: 1,
+    gap: 2,
+  },
+  detailLabel: {
+    fontSize: 11,
+    color: '#94a3b8',
+    fontWeight: '600',
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
+  },
+  detailValue: {
+    fontSize: 15,
+    color: '#fff',
+    fontWeight: '600',
   },
   inputsSection: {
     gap: 20,

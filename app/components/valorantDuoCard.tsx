@@ -56,23 +56,11 @@ export default function ValorantDuoCard({
   return (
     <View style={styles.duoCard}>
       <View style={styles.cardBackground}>
-        {/* Valorant logo watermark */}
-        <Image
-          source={require('@/assets/images/valorantText.png')}
-          style={styles.backgroundLogo}
-          resizeMode="contain"
-        />
-
         {/* Card Content */}
         <View style={styles.cardContent}>
           {/* Header Section */}
           <View style={styles.cardHeader}>
             <ThemedText style={styles.username}>{username}</ThemedText>
-            <Image
-              source={require('@/assets/images/valorant.png')}
-              style={styles.gameIcon}
-              resizeMode="contain"
-            />
           </View>
 
           {/* Current Rank Section - Main Focus */}
@@ -153,7 +141,7 @@ const styles = StyleSheet.create({
     width: '100%',
     borderRadius: 24,
     height: 440, // 2x the height of leagueRankCard (220 * 2)
-    shadowColor: '#B2313B',
+    shadowColor: '#666',
     shadowOffset: { width: 0, height: 10 },
     shadowOpacity: 0.3,
     shadowRadius: 20,
@@ -165,7 +153,7 @@ const styles = StyleSheet.create({
   cardBackground: {
     flex: 1,
     borderRadius: 24,
-    backgroundColor: '#B2313B', // Dark Valorant red
+    backgroundColor: '#3a3a3a', // Grey
   },
   backgroundLogo: {
     position: 'absolute',

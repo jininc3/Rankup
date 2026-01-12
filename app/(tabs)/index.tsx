@@ -872,7 +872,7 @@ export default function HomeScreen() {
             <IconSymbol size={24} name="paperplane.fill" color="#fff" />
           </TouchableOpacity>
           <TouchableOpacity
-            style={styles.headerIconButton}
+            style={[styles.headerIconButton, { marginLeft: 10 }]}
             onPress={() => router.push('/notifications')}
           >
             <IconSymbol size={24} name="bell" color="#fff" />
