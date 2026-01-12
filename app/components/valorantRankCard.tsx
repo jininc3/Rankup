@@ -122,6 +122,7 @@ export default function ValorantRankCard({ game, username, viewOnly = false, use
             {game.valorantCard ? (
               <Image
                 source={{ uri: game.valorantCard }}
+                defaultSource={require('@/assets/images/valorantlogo.png')}
                 style={styles.cardProfileIcon}
               />
             ) : (
@@ -143,7 +144,7 @@ export default function ValorantRankCard({ game, username, viewOnly = false, use
           {/* Footer - Bottom */}
           <View style={styles.cardFooter}>
             <View style={styles.cardUserInfo}>
-              <ThemedText style={styles.cardUsername}>@{username}</ThemedText>
+              <ThemedText style={styles.cardUsername}>{username}</ThemedText>
             </View>
             <ThemedText style={styles.swipeHint}>Tap to view details →</ThemedText>
           </View>

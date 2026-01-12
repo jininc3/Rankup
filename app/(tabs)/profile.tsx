@@ -903,7 +903,7 @@ export default function ProfileScreen() {
         onNavigate={handleNavigatePost}
         onCommentAdded={handleCommentAdded}
         onDelete={handleDeletePost}
-        enableVideoScrubber={true}
+        enableVideoScrubber={false}
       />
 
       {/* New Post Modal */}

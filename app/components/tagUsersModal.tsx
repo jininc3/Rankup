@@ -294,7 +294,7 @@ const styles = StyleSheet.create({
   },
   doneButton: {
     fontWeight: '600',
-    color: '#007AFF',
+    color: '#c42743',
   },
   headerTitle: {
     fontSize: 18,
@@ -448,7 +448,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   checkboxSelected: {
-    backgroundColor: '#007AFF',
-    borderColor: '#007AFF',
+    backgroundColor: '#c42743',
+    borderColor: '#c42743',
   },
 });

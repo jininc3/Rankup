@@ -82,6 +82,7 @@ export default function LeagueRankCard({ game, username, viewOnly = false, userI
             {game.profileIconId ? (
               <Image
                 source={{ uri: getProfileIconUrl(game.profileIconId) }}
+                defaultSource={require('@/assets/images/lol.png')}
                 style={styles.cardProfileIcon}
               />
             ) : (
@@ -103,7 +104,7 @@ export default function LeagueRankCard({ game, username, viewOnly = false, userI
           {/* Footer - Bottom */}
           <View style={styles.cardFooter}>
             <View style={styles.cardUserInfo}>
-              <ThemedText style={styles.cardUsername}>@{username}</ThemedText>
+              <ThemedText style={styles.cardUsername}>{username}</ThemedText>
             </View>
             <ThemedText style={styles.swipeHint}>Tap to view details →</ThemedText>
           </View>

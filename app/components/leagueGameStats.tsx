@@ -200,7 +200,7 @@ export default function LeagueGameStatsScreen() {
           <RefreshControl
             refreshing={refreshing}
             onRefresh={onRefresh}
-            tintColor="#000"
+            tintColor="#fff"
           />
         ) : undefined
       }
@@ -229,12 +229,14 @@ export default function LeagueGameStatsScreen() {
         {/* Summoner Name - Centered Title */}
         {summonerName && (
           <View style={styles.summonerNameContainer}>
-            <ThemedText style={styles.summonerNameText}>
-              {summonerName.gameName}
-            </ThemedText>
-            <ThemedText style={styles.summonerTagText}>
-              #{summonerName.tagLine}
-            </ThemedText>
+            <View style={styles.summonerNameRow}>
+              <ThemedText style={styles.summonerNameText}>
+                {summonerName.gameName}
+              </ThemedText>
+              <ThemedText style={styles.summonerTagText}>
+                {' '}#{summonerName.tagLine}
+              </ThemedText>
+            </View>
           </View>
         )}
 
@@ -253,7 +255,7 @@ export default function LeagueGameStatsScreen() {
       <View style={styles.statsCard}>
         {loading && !riotStats ? (
           <View style={styles.loadingContainer}>
-            <ActivityIndicator size="large" color="#000" />
+            <ActivityIndicator size="large" color="#fff" />
             <ThemedText style={styles.loadingText}>Loading stats...</ThemedText>
           </View>
         ) : error ? (
@@ -320,7 +322,7 @@ export default function LeagueGameStatsScreen() {
             {/* OTHER STATS - Compact Display */}
             <View style={styles.statRow}>
               <View style={styles.statRowIcon}>
-                <IconSymbol size={20} name="chart.line.uptrend.xyaxis" color="#666" />
+                <IconSymbol size={20} name="chart.line.uptrend.xyaxis" color="#b9bbbe" />
               </View>
               <ThemedText style={styles.statRowLabel}>Win Rate</ThemedText>
               <ThemedText style={styles.statRowValue}>
@@ -332,7 +334,7 @@ export default function LeagueGameStatsScreen() {
 
             <View style={styles.statRow}>
               <View style={styles.statRowIcon}>
-                <IconSymbol size={20} name="gamecontroller.fill" color="#666" />
+                <IconSymbol size={20} name="gamecontroller.fill" color="#b9bbbe" />
               </View>
               <ThemedText style={styles.statRowLabel}>Games Played</ThemedText>
               <ThemedText style={styles.statRowValue}>
@@ -344,7 +346,7 @@ export default function LeagueGameStatsScreen() {
 
             <View style={styles.statRow}>
               <View style={styles.statRowIcon}>
-                <IconSymbol size={20} name="person.fill" color="#666" />
+                <IconSymbol size={20} name="person.fill" color="#b9bbbe" />
               </View>
               <ThemedText style={styles.statRowLabel}>Top Champion</ThemedText>
               <ThemedText style={styles.statRowValue}>
@@ -356,7 +358,7 @@ export default function LeagueGameStatsScreen() {
 
             <View style={styles.statRow}>
               <View style={styles.statRowIcon}>
-                <IconSymbol size={20} name="number" color="#666" />
+                <IconSymbol size={20} name="number" color="#b9bbbe" />
               </View>
               <ThemedText style={styles.statRowLabel}>Summoner Level</ThemedText>
               <ThemedText style={styles.statRowValue}>{riotStats.summonerLevel}</ThemedText>
@@ -382,7 +384,7 @@ export default function LeagueGameStatsScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#fff',
+    backgroundColor: '#1e2124',
   },
   heroSection: {
     height: 240,
@@ -416,20 +418,21 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
+  summonerNameRow: {
+    flexDirection: 'row',
+    alignItems: 'baseline',
+  },
   summonerNameText: {
     fontSize: 20,
     fontWeight: '700',
     color: '#fff',
     letterSpacing: 0.5,
-    textAlign: 'center',
   },
   summonerTagText: {
-    fontSize: 14,
+    fontSize: 16,
     fontWeight: '600',
     color: 'rgba(255,255,255,0.8)',
     letterSpacing: 0.5,
-    textAlign: 'center',
-    marginTop: 0,
   },
   profileIcon: {
     position: 'absolute',
@@ -447,31 +450,31 @@ const styles = StyleSheet.create({
     elevation: 5,
   },
   statsCard: {
-    backgroundColor: '#fff',
+    backgroundColor: '#2c2f33',
     marginHorizontal: 20,
     marginTop: -80,
     borderRadius: 16,
     padding: 20,
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.08,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
     shadowRadius: 8,
-    elevation: 4,
+    elevation: 8,
     borderWidth: 1,
-    borderColor: '#e5e5e5',
+    borderColor: '#2c2f33',
   },
   statRow: {
     flexDirection: 'row',
     alignItems: 'center',
     paddingVertical: 14,
     borderBottomWidth: 1,
-    borderBottomColor: '#f5f5f5',
+    borderBottomColor: '#36393e',
   },
   statRowIcon: {
     width: 36,
     height: 36,
     borderRadius: 18,
-    backgroundColor: '#f9f9f9',
+    backgroundColor: '#36393e',
     alignItems: 'center',
     justifyContent: 'center',
     marginRight: 14,
@@ -479,13 +482,13 @@ const styles = StyleSheet.create({
   statRowLabel: {
     flex: 1,
     fontSize: 14,
-    color: '#666',
+    color: '#b9bbbe',
     fontWeight: '500',
     textTransform: 'uppercase',
   },
   statRowValue: {
     fontSize: 15,
-    color: '#000',
+    color: '#fff',
     fontWeight: '700',
   },
   shareButton: {
@@ -525,7 +528,7 @@ const styles = StyleSheet.create({
   loadingText: {
     marginTop: 12,
     fontSize: 14,
-    color: '#666',
+    color: '#b9bbbe',
   },
   errorContainer: {
     paddingVertical: 32,
@@ -540,7 +543,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20,
   },
   retryButton: {
-    backgroundColor: '#000',
+    backgroundColor: '#c42743',
     paddingVertical: 10,
     paddingHorizontal: 24,
     borderRadius: 8,
@@ -555,14 +558,14 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     paddingVertical: 24,
     paddingHorizontal: 20,
-    backgroundColor: '#fafafa',
+    backgroundColor: '#36393e',
     borderRadius: 12,
     marginBottom: 16,
   },
   rankSectionLabel: {
     fontSize: 11,
     fontWeight: '700',
-    color: '#999',
+    color: '#b9bbbe',
     letterSpacing: 1.5,
     marginBottom: 16,
     textTransform: 'uppercase',
@@ -575,7 +578,7 @@ const styles = StyleSheet.create({
   rankTitleLarge: {
     fontSize: 28,
     fontWeight: '800',
-    color: '#000',
+    color: '#fff',
     marginBottom: 8,
     letterSpacing: -0.5,
     lineHeight: 34,
@@ -595,7 +598,7 @@ const styles = StyleSheet.create({
   peakRankSection: {
     paddingVertical: 20,
     paddingHorizontal: 20,
-    backgroundColor: '#f5f5f5',
+    backgroundColor: '#36393e',
     borderRadius: 12,
     marginBottom: 16,
   },
@@ -614,14 +617,14 @@ const styles = StyleSheet.create({
   rankTitleMedium: {
     fontSize: 22,
     fontWeight: '700',
-    color: '#000',
+    color: '#fff',
     marginBottom: 4,
     letterSpacing: -0.3,
   },
   // Section Divider
   sectionDivider: {
     height: 1,
-    backgroundColor: '#e5e5e5',
+    backgroundColor: '#36393e',
     marginVertical: 16,
   },
 });

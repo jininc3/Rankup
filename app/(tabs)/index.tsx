@@ -764,6 +764,14 @@ export default function HomeScreen() {
           style={styles.tabScrollContainer}
         >
           <TouchableOpacity
+            style={[styles.gameTab, selectedGameFilter === null && styles.gameTabActive]}
+            onPress={() => setSelectedGameFilter(null)}
+          >
+            <ThemedText style={[styles.gameTabText, selectedGameFilter === null && styles.gameTabTextActive]}>
+              All Games
+            </ThemedText>
+          </TouchableOpacity>
+          <TouchableOpacity
             style={[styles.gameTab, selectedGameFilter === 'valorant' && styles.gameTabActive]}
             onPress={() => setSelectedGameFilter(selectedGameFilter === 'valorant' ? null : 'valorant')}
           >

@@ -233,9 +233,8 @@ export default function NewRankCardScreen() {
 
       {/* Content */}
       <View style={styles.content}>
-        <ThemedText style={styles.title}>Connect Your Gaming Accounts</ThemedText>
         <ThemedText style={styles.subtitle}>
-          Link your gaming accounts to display your ranks and stats on your profile
+          Link your gaming accounts to display rank cards on your profile
         </ThemedText>
 
         {loading ? (
@@ -245,170 +244,124 @@ export default function NewRankCardScreen() {
         ) : (
           <>
             {/* League of Legends */}
-            <View style={styles.gameSection}>
-              <View style={styles.gameTitleRow}>
-                <ThemedText style={styles.gameTitle}>League of Legends</ThemedText>
-                {riotAccount && (
-                  <View style={styles.statusBadge}>
-                    <IconSymbol size={14} name="checkmark.circle.fill" color="#4ade80" />
-                    <ThemedText style={styles.statusBadgeText}>
-                      {riotAccount.gameName}#{riotAccount.tagLine}
-                    </ThemedText>
+            <TouchableOpacity
+              style={[
+                styles.gameCard,
+                enabledRankCards.includes('league') && styles.gameCardActive
+              ]}
+              onPress={() => handleGameSelect('league')}
+              activeOpacity={0.7}
+              disabled={enabledRankCards.includes('league')}
+            >
+              <View style={styles.gameCardHeader}>
+                <View style={styles.gameCardLeft}>
+                  <Image
+                    source={require('@/assets/images/lol.png')}
+                    style={styles.gameCardIcon}
+                    resizeMode="contain"
+                  />
+                  <View>
+                    <ThemedText style={styles.gameCardTitle}>League of Legends</ThemedText>
+                    {riotAccount && (
+                      <ThemedText style={styles.gameCardSubtitle}>
+                        {riotAccount.gameName}#{riotAccount.tagLine}
+                      </ThemedText>
+                    )}
                   </View>
+                </View>
+                {enabledRankCards.includes('league') ? (
+                  <IconSymbol size={24} name="checkmark.circle.fill" color="#4ade80" />
+                ) : (
+                  <IconSymbol size={24} name="plus.circle" color="#b9bbbe" />
                 )}
               </View>
+            </TouchableOpacity>
 
-              {/* Main Action Button */}
-              <TouchableOpacity
-                style={[
-                  styles.connectButton,
-                  enabledRankCards.includes('league') && styles.connectButtonDisabled
-                ]}
-                onPress={() => handleGameSelect('league')}
-                activeOpacity={0.7}
-                disabled={enabledRankCards.includes('league')}
-              >
-                <Image
-                  source={require('@/assets/images/riotgames.png')}
-                  style={[
-                    styles.buttonIcon,
-                    enabledRankCards.includes('league') && styles.buttonIconDisabled
-                  ]}
-                  resizeMode="contain"
-                />
-                <ThemedText style={[
-                  styles.buttonText,
-                  enabledRankCards.includes('league') && styles.buttonTextDisabled
-                ]}>
-                  {enabledRankCards.includes('league')
-                    ? 'Active ✓'
-                    : riotAccount
-                    ? 'Add Rank Card'
-                    : 'Connect Account'}
-                </ThemedText>
-              </TouchableOpacity>
-
-              {/* Secondary Actions */}
-              {(enabledRankCards.includes('league') || riotAccount) && (
-                <View style={styles.secondaryActions}>
-                  {enabledRankCards.includes('league') && (
-                    <TouchableOpacity
-                      style={styles.secondaryButton}
-                      onPress={() => handleRemoveRankCard('league')}
-                      activeOpacity={0.7}
-                    >
-                      <IconSymbol size={14} name="minus.circle" color="#999" />
-                      <ThemedText style={styles.secondaryButtonText}>Remove</ThemedText>
-                    </TouchableOpacity>
-                  )}
-                  {riotAccount && (
-                    <TouchableOpacity
-                      style={styles.unlinkButtonLarge}
-                      onPress={handleUnlinkRiotAccount}
-                      activeOpacity={0.7}
-                    >
-                      <IconSymbol size={14} name="link.badge.minus" color="#c42743" />
-                      <ThemedText style={styles.unlinkButtonText}>Unlink</ThemedText>
-                    </TouchableOpacity>
-                  )}
-                </View>
-              )}
-            </View>
+            {/* Secondary Actions for League */}
+            {(enabledRankCards.includes('league') || riotAccount) && (
+              <View style={styles.actionsRow}>
+                {enabledRankCards.includes('league') && (
+                  <TouchableOpacity
+                    style={styles.actionButton}
+                    onPress={() => handleRemoveRankCard('league')}
+                    activeOpacity={0.7}
+                  >
+                    <IconSymbol size={16} name="minus.circle" color="#72767d" />
+                    <ThemedText style={styles.actionButtonText}>Remove Card</ThemedText>
+                  </TouchableOpacity>
+                )}
+                {riotAccount && (
+                  <TouchableOpacity
+                    style={styles.actionButton}
+                    onPress={handleUnlinkRiotAccount}
+                    activeOpacity={0.7}
+                  >
+                    <IconSymbol size={16} name="link.badge.minus" color="#c42743" />
+                    <ThemedText style={[styles.actionButtonText, styles.unlinkText]}>Unlink Account</ThemedText>
+                  </TouchableOpacity>
+                )}
+              </View>
+            )}
 
             {/* Valorant */}
-            <View style={styles.gameSection}>
-              <View style={styles.gameTitleRow}>
-                <ThemedText style={styles.gameTitle}>Valorant</ThemedText>
-                {valorantAccount && (
-                  <View style={styles.statusBadge}>
-                    <IconSymbol size={14} name="checkmark.circle.fill" color="#4ade80" />
-                    <ThemedText style={styles.statusBadgeText}>
-                      {valorantAccount.gameName}#{valorantAccount.tagLine}
-                    </ThemedText>
+            <TouchableOpacity
+              style={[
+                styles.gameCard,
+                enabledRankCards.includes('valorant') && styles.gameCardActive
+              ]}
+              onPress={() => handleGameSelect('valorant')}
+              activeOpacity={0.7}
+              disabled={enabledRankCards.includes('valorant')}
+            >
+              <View style={styles.gameCardHeader}>
+                <View style={styles.gameCardLeft}>
+                  <Image
+                    source={require('@/assets/images/valorant-text.png')}
+                    style={styles.gameCardIcon}
+                    resizeMode="contain"
+                  />
+                  <View>
+                    <ThemedText style={styles.gameCardTitle}>Valorant</ThemedText>
+                    {valorantAccount && (
+                      <ThemedText style={styles.gameCardSubtitle}>
+                        {valorantAccount.gameName}#{valorantAccount.tagLine}
+                      </ThemedText>
+                    )}
                   </View>
+                </View>
+                {enabledRankCards.includes('valorant') ? (
+                  <IconSymbol size={24} name="checkmark.circle.fill" color="#4ade80" />
+                ) : (
+                  <IconSymbol size={24} name="plus.circle" color="#b9bbbe" />
                 )}
               </View>
+            </TouchableOpacity>
 
-              {/* Main Action Button */}
-              <TouchableOpacity
-                style={[
-                  styles.connectButton,
-                  enabledRankCards.includes('valorant') && styles.connectButtonDisabled
-                ]}
-                onPress={() => handleGameSelect('valorant')}
-                activeOpacity={0.7}
-                disabled={enabledRankCards.includes('valorant')}
-              >
-                <Image
-                  source={require('@/assets/images/riotgames.png')}
-                  style={[
-                    styles.buttonIcon,
-                    enabledRankCards.includes('valorant') && styles.buttonIconDisabled
-                  ]}
-                  resizeMode="contain"
-                />
-                <ThemedText style={[
-                  styles.buttonText,
-                  enabledRankCards.includes('valorant') && styles.buttonTextDisabled
-                ]}>
-                  {enabledRankCards.includes('valorant')
-                    ? 'Active ✓'
-                    : valorantAccount
-                    ? 'Add Rank Card'
-                    : 'Connect Account'}
-                </ThemedText>
-              </TouchableOpacity>
-
-              {/* Secondary Actions */}
-              {(enabledRankCards.includes('valorant') || valorantAccount) && (
-                <View style={styles.secondaryActions}>
-                  {enabledRankCards.includes('valorant') && (
-                    <TouchableOpacity
-                      style={styles.secondaryButton}
-                      onPress={() => handleRemoveRankCard('valorant')}
-                      activeOpacity={0.7}
-                    >
-                      <IconSymbol size={14} name="minus.circle" color="#999" />
-                      <ThemedText style={styles.secondaryButtonText}>Remove</ThemedText>
-                    </TouchableOpacity>
-                  )}
-                  {valorantAccount && (
-                    <TouchableOpacity
-                      style={styles.unlinkButtonLarge}
-                      onPress={handleUnlinkValorantAccount}
-                      activeOpacity={0.7}
-                    >
-                      <IconSymbol size={14} name="link.badge.minus" color="#c42743" />
-                      <ThemedText style={styles.unlinkButtonText}>Unlink</ThemedText>
-                    </TouchableOpacity>
-                  )}
-                </View>
-              )}
-            </View>
-
-            {/* TFT */}
-            <View style={styles.gameSection}>
-              <View style={styles.gameTitleRow}>
-                <ThemedText style={styles.gameTitle}>TFT</ThemedText>
-                <View style={styles.comingSoonBadge}>
-                  <ThemedText style={styles.comingSoonText}>Coming Soon</ThemedText>
-                </View>
+            {/* Secondary Actions for Valorant */}
+            {(enabledRankCards.includes('valorant') || valorantAccount) && (
+              <View style={styles.actionsRow}>
+                {enabledRankCards.includes('valorant') && (
+                  <TouchableOpacity
+                    style={styles.actionButton}
+                    onPress={() => handleRemoveRankCard('valorant')}
+                    activeOpacity={0.7}
+                  >
+                    <IconSymbol size={16} name="minus.circle" color="#72767d" />
+                    <ThemedText style={styles.actionButtonText}>Remove Card</ThemedText>
+                  </TouchableOpacity>
+                )}
+                {valorantAccount && (
+                  <TouchableOpacity
+                    style={styles.actionButton}
+                    onPress={handleUnlinkValorantAccount}
+                    activeOpacity={0.7}
+                  >
+                    <IconSymbol size={16} name="link.badge.minus" color="#c42743" />
+                    <ThemedText style={[styles.actionButtonText, styles.unlinkText]}>Unlink Account</ThemedText>
+                  </TouchableOpacity>
+                )}
               </View>
-              <TouchableOpacity
-                style={[styles.connectButton, styles.comingSoonButton]}
-                activeOpacity={1}
-                disabled={true}
-              >
-                <Image
-                  source={require('@/assets/images/riotgames.png')}
-                  style={[styles.buttonIcon, styles.comingSoonIcon]}
-                  resizeMode="contain"
-                />
-                <ThemedText style={[styles.buttonText, styles.comingSoonButtonText]}>
-                  Coming Soon
-                </ThemedText>
-              </TouchableOpacity>
-            </View>
+            )}
           </>
         )}
       </View>
@@ -429,9 +382,9 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20,
     paddingTop: 60,
     paddingBottom: 20,
-    backgroundColor: '#2c2f33',
+    backgroundColor: '#1e2124',
     borderBottomWidth: 1,
-    borderBottomColor: '#1e2124',
+    borderBottomColor: '#2c2f33',
   },
   backButton: {
     width: 40,
@@ -447,167 +400,71 @@ const styles = StyleSheet.create({
   },
   content: {
     paddingHorizontal: 20,
-    paddingTop: 24,
-  },
-  title: {
-    fontSize: 28,
-    fontWeight: '700',
-    color: '#fff',
-    marginBottom: 8,
-    letterSpacing: -0.5,
-    lineHeight: 36,
+    paddingTop: 20,
   },
   subtitle: {
-    fontSize: 16,
-    color: '#999',
-    lineHeight: 24,
-    marginBottom: 32,
+    fontSize: 15,
+    color: '#fff',
+    lineHeight: 22,
+    marginBottom: 24,
   },
-  gameSection: {
-    marginBottom: 16,
+  gameCard: {
     backgroundColor: '#2c2f33',
     borderRadius: 12,
     padding: 16,
+    marginBottom: 12,
     borderWidth: 1,
-    borderColor: '#3a3f47',
+    borderColor: '#36393e',
   },
-  gameTitleRow: {
+  gameCardActive: {
+    borderColor: '#4ade80',
+    backgroundColor: '#2c2f33',
+  },
+  gameCardHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: 12,
-    flexWrap: 'wrap',
-    gap: 8,
   },
-  gameTitle: {
-    fontSize: 18,
-    fontWeight: '700',
+  gameCardLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    flex: 1,
+  },
+  gameCardIcon: {
+    width: 40,
+    height: 40,
+  },
+  gameCardTitle: {
+    fontSize: 16,
+    fontWeight: '600',
     color: '#fff',
-    marginBottom: 0,
-    letterSpacing: -0.3,
+    marginBottom: 2,
   },
-  statusBadge: {
+  gameCardSubtitle: {
+    fontSize: 13,
+    color: '#fff',
+  },
+  actionsRow: {
+    flexDirection: 'row',
+    gap: 8,
+    marginBottom: 12,
+    paddingHorizontal: 4,
+  },
+  actionButton: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 6,
-    backgroundColor: '#1e2124',
-    paddingVertical: 6,
-    paddingHorizontal: 10,
-    borderRadius: 8,
-    borderWidth: 1,
-    borderColor: '#3a3f47',
-  },
-  statusBadgeText: {
-    fontSize: 12,
-    fontWeight: '600',
-    color: '#4ade80',
-  },
-  secondaryActions: {
-    flexDirection: 'row',
-    gap: 8,
-    marginTop: 10,
-  },
-  secondaryButton: {
-    flex: 1,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 4,
-    paddingVertical: 10,
+    paddingVertical: 8,
     paddingHorizontal: 12,
-    borderRadius: 8,
-    backgroundColor: '#1e2124',
-    borderWidth: 1,
-    borderColor: '#3a3f47',
   },
-  secondaryButtonText: {
+  actionButtonText: {
     fontSize: 13,
-    fontWeight: '600',
-    color: '#999',
-  },
-  unlinkButtonLarge: {
-    flex: 1,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 4,
-    paddingVertical: 10,
-    paddingHorizontal: 12,
-    borderRadius: 8,
-    backgroundColor: '#1e2124',
-    borderWidth: 1,
-    borderColor: '#3a3f47',
-  },
-  unlinkButtonText: {
-    fontSize: 13,
-    fontWeight: '600',
-    color: '#c42743',
-  },
-  comingSoonBadge: {
-    backgroundColor: '#1e2124',
-    paddingHorizontal: 10,
-    paddingVertical: 6,
-    borderRadius: 8,
-    borderWidth: 1,
-    borderColor: '#666',
-  },
-  comingSoonText: {
-    fontSize: 11,
-    fontWeight: '700',
-    color: '#999',
-    letterSpacing: 0.5,
-  },
-  connectButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: '#c42743',
-    paddingVertical: 14,
-    paddingHorizontal: 20,
-    borderRadius: 10,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 2,
-  },
-  connectButtonDisabled: {
-    backgroundColor: '#1e2124',
-    borderWidth: 1,
-    borderColor: '#3a3f47',
-    shadowOpacity: 0,
-    elevation: 0,
-  },
-  buttonText: {
-    fontSize: 15,
-    fontWeight: '700',
     color: '#fff',
-    letterSpacing: -0.2,
+    fontWeight: '500',
   },
-  buttonTextDisabled: {
-    color: '#4ade80',
-  },
-  buttonIconDisabled: {
-    tintColor: '#4ade80',
-  },
-  comingSoonButton: {
-    backgroundColor: '#1e2124',
-    borderWidth: 1,
-    borderColor: '#3a3f47',
-    shadowOpacity: 0,
-    elevation: 0,
-  },
-  comingSoonIcon: {
-    tintColor: '#999',
-  },
-  comingSoonButtonText: {
-    color: '#999',
-  },
-  buttonIcon: {
-    width: 20,
-    height: 20,
-    marginRight: 8,
-    tintColor: '#fff',
+  unlinkText: {
+    color: '#c42743',
   },
   loadingContainer: {
     paddingVertical: 60,

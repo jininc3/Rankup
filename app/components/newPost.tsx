@@ -54,6 +54,7 @@ export default function NewPost({ visible, onClose, onPostCreated }: NewPostProp
   const [showGameDropdown, setShowGameDropdown] = useState(false);
   const [taggedUsers, setTaggedUsers] = useState<TaggedUser[]>([]);
   const [showTagUsersModal, setShowTagUsersModal] = useState(false);
+  const [showGameOptions, setShowGameOptions] = useState(false);
   const postPreviewScrollRef = useRef<ScrollView>(null);
   const captionInputRef = useRef<View>(null);
 
@@ -296,6 +297,7 @@ export default function NewPost({ visible, onClose, onPostCreated }: NewPostProp
       setCaption('');
       setSelectedPostGame(null);
       setTaggedUsers([]);
+      setShowGameOptions(false);
 
       Alert.alert('Success', 'Post shared successfully!');
 
@@ -330,6 +332,7 @@ export default function NewPost({ visible, onClose, onPostCreated }: NewPostProp
     setSelectedPostGame(null);
     setTaggedUsers([]);
     setShowGameDropdown(false);
+    setShowGameOptions(false);
     setShowTagUsersModal(false);
     onClose();
   };
@@ -396,6 +399,7 @@ export default function NewPost({ visible, onClose, onPostCreated }: NewPostProp
             ) : (
               <>
                 {/* Media Preview with Swipe */}
+                <View style={styles.mediaTopSpace} />
                 <View style={styles.postPreviewMediaContainer}>
                   <ScrollView
                     horizontal
@@ -408,25 +412,31 @@ export default function NewPost({ visible, onClose, onPostCreated }: NewPostProp
                     }}
                     scrollEventThrottle={16}
                   >
-                    {selectedMedia.map((media, index) => (
-                      <View key={index} style={{ width: screenWidth, height: 400 }}>
-                        {media.type === 'video' ? (
-                          <Video
-                            source={{ uri: media.uri }}
-                            style={styles.postPreviewMedia}
-                            useNativeControls
-                            resizeMode={ResizeMode.CONTAIN}
-                            shouldPlay={false}
-                          />
-                        ) : (
-                          <Image
-                            source={{ uri: media.uri }}
-                            style={styles.postPreviewMedia}
-                            resizeMode="cover"
-                          />
-                        )}
-                      </View>
-                    ))}
+                    {selectedMedia.map((media, index) => {
+                      // Calculate height based on video aspect ratio to avoid black bars
+                      const aspectRatio = media.width && media.height ? media.width / media.height : 16 / 9;
+                      const calculatedHeight = screenWidth / aspectRatio;
+
+                      return (
+                        <View key={index} style={{ width: screenWidth, height: calculatedHeight }}>
+                          {media.type === 'video' ? (
+                            <Video
+                              source={{ uri: media.uri }}
+                              style={styles.postPreviewMedia}
+                              useNativeControls
+                              resizeMode={ResizeMode.CONTAIN}
+                              shouldPlay={false}
+                            />
+                          ) : (
+                            <Image
+                              source={{ uri: media.uri }}
+                              style={styles.postPreviewMedia}
+                              resizeMode="cover"
+                            />
+                          )}
+                        </View>
+                      );
+                    })}
                   </ScrollView>
 
                   {/* Dot indicators */}
@@ -482,59 +492,46 @@ export default function NewPost({ visible, onClose, onPostCreated }: NewPostProp
               />
             </View>
 
-            {/* Tag Game Button */}
-            <View>
+            {/* Tag Game Expandable Section */}
+            <View style={styles.gameTagSection}>
               <TouchableOpacity
-                style={styles.postPreviewOptionButton}
-                onPress={() => {
-                  console.log('Tag Game button pressed');
-                  Keyboard.dismiss();
-                  setShowGameDropdown(!showGameDropdown);
-                }}
+                style={styles.gameTagHeader}
+                onPress={() => setShowGameOptions(!showGameOptions)}
                 activeOpacity={0.6}
               >
-                <View style={styles.postPreviewOptionLeft}>
+                <View style={styles.gameTagHeaderLeft}>
                   <IconSymbol size={20} name="gamecontroller.fill" color="#fff" />
-                  <ThemedText style={styles.postPreviewOptionText}>
-                    {selectedPostGame
-                      ? availableGames.find(g => g.id === selectedPostGame)?.name || 'Tag Game'
-                      : 'Tag Game'}
-                  </ThemedText>
+                  <ThemedText style={styles.gameTagHeaderText}>Tag Game</ThemedText>
                 </View>
-                <View style={styles.postPreviewOptionRight}>
-                  <IconSymbol
-                    size={18}
-                    name={showGameDropdown ? "chevron.up" : "chevron.down"}
-                    color="#b9bbbe"
-                  />
-                </View>
+                <IconSymbol
+                  size={18}
+                  name={showGameOptions ? "chevron.up" : "chevron.down"}
+                  color="#b9bbbe"
+                />
               </TouchableOpacity>
 
-              {/* Game Dropdown */}
-              {showGameDropdown && (
-                <View style={styles.gameDropdown}>
+              {showGameOptions && (
+                <View style={styles.gameButtonsContainer}>
                   {availableGames.map((game) => (
                     <TouchableOpacity
                       key={game.id}
                       style={[
-                        styles.gameDropdownItem,
-                        selectedPostGame === game.id && styles.gameDropdownItemSelected
+                        styles.gameButton,
+                        selectedPostGame === game.id && styles.gameButtonSelected
                       ]}
                       onPress={() => {
-                        setSelectedPostGame(game.id);
-                        setShowGameDropdown(false);
+                        setSelectedPostGame(selectedPostGame === game.id ? null : game.id);
                       }}
+                      activeOpacity={0.7}
                     >
-                      <View style={styles.gameDropdownItemLeft}>
-                        <Image
-                          source={game.image}
-                          style={styles.gameDropdownItemImage}
-                          resizeMode="contain"
-                        />
-                        <ThemedText style={styles.gameDropdownItemName}>{game.name}</ThemedText>
-                      </View>
+                      <ThemedText style={[
+                        styles.gameButtonText,
+                        selectedPostGame === game.id && styles.gameButtonTextSelected
+                      ]}>
+                        {game.name}
+                      </ThemedText>
                       {selectedPostGame === game.id && (
-                        <IconSymbol size={20} name="checkmark" color="#c42743" />
+                        <IconSymbol size={16} name="checkmark" color="#fff" />
                       )}
                     </TouchableOpacity>
                   ))}
@@ -649,9 +646,12 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: '#1e2124',
   },
+  mediaTopSpace: {
+    height: 12,
+    backgroundColor: '#1e2124',
+  },
   postPreviewMediaContainer: {
     width: '100%',
-    height: 400,
     backgroundColor: '#36393e',
     position: 'relative',
   },
@@ -817,38 +817,58 @@ const styles = StyleSheet.create({
     color: '#b9bbbe',
     marginRight: 8,
   },
-  gameDropdown: {
-    backgroundColor: '#36393e',
-    borderTopWidth: 1,
-    borderTopColor: '#2c2f33',
+  gameTagSection: {
+    backgroundColor: '#1e2124',
+    borderBottomWidth: 1,
+    borderBottomColor: '#2c2f33',
   },
-  gameDropdownItem: {
+  gameTagHeader: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
     paddingHorizontal: 16,
-    paddingVertical: 12,
-    borderBottomWidth: 1,
-    borderBottomColor: '#2c2f33',
-    backgroundColor: '#36393e',
+    paddingVertical: 10,
   },
-  gameDropdownItemSelected: {
-    backgroundColor: '#2c2f33',
-  },
-  gameDropdownItemLeft: {
+  gameTagHeaderLeft: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 12,
+    gap: 8,
   },
-  gameDropdownItemIcon: {
-    fontSize: 24,
-  },
-  gameDropdownItemImage: {
-    height: 28,
-    width: 90,
-  },
-  gameDropdownItemName: {
+  gameTagHeaderText: {
     fontSize: 14,
+    fontWeight: '600',
+    color: '#fff',
+  },
+  gameButtonsContainer: {
+    flexDirection: 'row',
+    gap: 10,
+    paddingHorizontal: 16,
+    paddingTop: 8,
+    paddingBottom: 12,
+  },
+  gameButton: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 6,
+    paddingVertical: 10,
+    paddingHorizontal: 12,
+    borderRadius: 8,
+    backgroundColor: '#36393e',
+    borderWidth: 2,
+    borderColor: '#36393e',
+  },
+  gameButtonSelected: {
+    backgroundColor: '#c42743',
+    borderColor: '#c42743',
+  },
+  gameButtonText: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: '#b9bbbe',
+  },
+  gameButtonTextSelected: {
     color: '#fff',
   },
 });
