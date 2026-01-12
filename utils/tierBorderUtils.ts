@@ -1,4 +1,4 @@
-// Tier border colors
+// Tier border colors (solid)
 export const TIER_COLORS = {
   S: '#FFD700', // Gold
   A: '#C0C0C0', // Silver/Grey
@@ -6,6 +6,16 @@ export const TIER_COLORS = {
   C: '#3B82F6', // Blue
   D: '#22C55E', // Green
   F: '#EF4444', // Red
+};
+
+// Tier border gradients (for enhanced visual effect)
+export const TIER_GRADIENTS = {
+  S: ['#FFD700', '#FFA500', '#FFD700'], // Gold gradient
+  A: ['#E8E8E8', '#A8A8A8', '#E8E8E8'], // Silver gradient
+  B: ['#C084FC', '#9333EA', '#C084FC'], // Purple gradient
+  C: ['#60A5FA', '#2563EB', '#60A5FA'], // Blue gradient
+  D: ['#4ADE80', '#16A34A', '#4ADE80'], // Green gradient
+  F: ['#F87171', '#DC2626', '#F87171'], // Red gradient
 };
 
 // Tier ranking by value (higher is better)
@@ -143,4 +153,18 @@ export const calculateTier = (
   if (!valorantRank) return leagueTier;
 
   return TIER_VALUES[leagueTier] > TIER_VALUES[valorantTier] ? leagueTier : valorantTier;
+};
+
+/**
+ * Calculate the tier border gradient based on peak ranks
+ * @param leagueRank - Current League of Legends rank
+ * @param valorantRank - Current Valorant rank
+ * @returns Array of gradient colors or null if no rank
+ */
+export const calculateTierBorderGradient = (
+  leagueRank?: string,
+  valorantRank?: string
+): string[] | null => {
+  const tier = calculateTier(leagueRank, valorantRank);
+  return tier ? TIER_GRADIENTS[tier] : null;
 };

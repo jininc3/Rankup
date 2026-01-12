@@ -3,6 +3,8 @@ import { ThemedView } from '@/components/themed-view';
 import { IconSymbol } from '@/components/ui/icon-symbol';
 import { useRouter } from 'expo-router';
 import { ScrollView, StyleSheet, TouchableOpacity, View, Image } from 'react-native';
+import GradientBorder from '@/components/GradientBorder';
+import { TIER_GRADIENTS } from '@/utils/tierBorderUtils';
 
 // League rank images mapping
 const leagueRankImages: { [key: string]: any } = {
@@ -35,7 +37,7 @@ const valorantRankImages: { [key: string]: any } = {
 
 const tierData = [
   {
-    tier: 'S',
+    tier: 'S' as const,
     color: '#FFD700',
     name: 'S Tier',
     ranks: {
@@ -44,7 +46,7 @@ const tierData = [
     },
   },
   {
-    tier: 'A',
+    tier: 'A' as const,
     color: '#C0C0C0',
     name: 'A Tier',
     ranks: {
@@ -53,7 +55,7 @@ const tierData = [
     },
   },
   {
-    tier: 'B',
+    tier: 'B' as const,
     color: '#A855F7',
     name: 'B Tier',
     ranks: {
@@ -62,7 +64,7 @@ const tierData = [
     },
   },
   {
-    tier: 'C',
+    tier: 'C' as const,
     color: '#3B82F6',
     name: 'C Tier',
     ranks: {
@@ -71,7 +73,7 @@ const tierData = [
     },
   },
   {
-    tier: 'D',
+    tier: 'D' as const,
     color: '#22C55E',
     name: 'D Tier',
     ranks: {
@@ -80,7 +82,7 @@ const tierData = [
     },
   },
   {
-    tier: 'F',
+    tier: 'F' as const,
     color: '#EF4444',
     name: 'F Tier',
     ranks: {
@@ -120,15 +122,19 @@ export default function TierBordersScreen() {
           <View key={tier.tier} style={styles.tierCard}>
             {/* Tier Header with Border Preview */}
             <View style={styles.tierHeader}>
-              <View style={[styles.tierBorderPreview, { borderColor: tier.color }]}>
+              <GradientBorder
+                colors={TIER_GRADIENTS[tier.tier]}
+                borderWidth={4}
+                borderRadius={32}
+              >
                 <View style={styles.tierAvatarPlaceholder}>
                   <IconSymbol size={32} name="person.fill" color="#666" />
                 </View>
-              </View>
+              </GradientBorder>
               <View style={styles.tierInfo}>
                 <ThemedText style={styles.tierName}>{tier.name}</ThemedText>
                 <ThemedText style={styles.tierSubtext}>
-                  Border Color: {tier.color}
+                  Gradient: {TIER_GRADIENTS[tier.tier][0]} → {TIER_GRADIENTS[tier.tier][1]}
                 </ThemedText>
               </View>
             </View>
@@ -258,19 +264,10 @@ const styles = StyleSheet.create({
     borderBottomWidth: 1,
     borderBottomColor: '#2c2f33',
   },
-  tierBorderPreview: {
+  tierAvatarPlaceholder: {
     width: 64,
     height: 64,
-    borderRadius: 32,
-    borderWidth: 3,
-    padding: 3,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  tierAvatarPlaceholder: {
-    width: '100%',
-    height: '100%',
-    borderRadius: 29,
+    borderRadius: 28,
     backgroundColor: '#2c2f33',
     alignItems: 'center',
     justifyContent: 'center',
