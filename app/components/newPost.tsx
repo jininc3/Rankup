@@ -413,18 +413,17 @@ export default function NewPost({ visible, onClose, onPostCreated }: NewPostProp
                     scrollEventThrottle={16}
                   >
                     {selectedMedia.map((media, index) => {
-                      // Calculate height based on video aspect ratio to avoid black bars
-                      const aspectRatio = media.width && media.height ? media.width / media.height : 16 / 9;
-                      const calculatedHeight = screenWidth / aspectRatio;
+                      // Use same dimensions as feed: 16:9 for videos, full width for images
+                      const mediaHeight = media.type === 'video' ? screenWidth * 0.5625 : screenWidth;
 
                       return (
-                        <View key={index} style={{ width: screenWidth, height: calculatedHeight }}>
+                        <View key={index} style={{ width: screenWidth, height: mediaHeight }}>
                           {media.type === 'video' ? (
                             <Video
                               source={{ uri: media.uri }}
                               style={styles.postPreviewMedia}
                               useNativeControls
-                              resizeMode={ResizeMode.CONTAIN}
+                              resizeMode={ResizeMode.COVER}
                               shouldPlay={false}
                             />
                           ) : (

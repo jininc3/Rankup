@@ -644,6 +644,24 @@ export default function HomeScreen() {
       Alert.alert('Error', 'You must be logged in to create a post');
       return;
     }
+
+    // Mark screen as unfocused to prevent videos from auto-playing
+    setIsScreenFocused(false);
+
+    // Stop all videos immediately by setting state
+    setPlayingVideoId(null);
+
+    // Pause all videos before opening modal
+    Object.values(videoPlayers.current).forEach((player) => {
+      if (player) {
+        try {
+          player.pause();
+        } catch (error) {
+          // Video already paused or unmounted
+        }
+      }
+    });
+
     setShowNewPost(true);
   };
 
@@ -685,6 +703,9 @@ export default function HomeScreen() {
     // Add new post to the beginning of the following posts array (most recent first)
     setFollowingPosts(prevPosts => [newPost, ...prevPosts]);
     console.log('New post added to feed:', newPost.id);
+
+    // Restore screen focus after post is created
+    setIsScreenFocused(true);
   };
 
   // Handle screen focus/blur for video playback
@@ -1003,7 +1024,11 @@ export default function HomeScreen() {
       {/* New Post Modal */}
       <NewPost
         visible={showNewPost}
-        onClose={() => setShowNewPost(false)}
+        onClose={() => {
+          setShowNewPost(false);
+          // Restore screen focus when modal closes
+          setIsScreenFocused(true);
+        }}
         onPostCreated={handlePostCreated}
       />
     </ThemedView>
