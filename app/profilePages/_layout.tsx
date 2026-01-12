@@ -99,6 +99,12 @@ export default function ProfilePagesLayout() {
           headerShown: false,
         }}
       />
+      <Stack.Screen
+        name="tierBorders"
+        options={{
+          headerShown: false,
+        }}
+      />
     </Stack>
   );
 }

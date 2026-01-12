@@ -6,6 +6,7 @@ import { useEffect, useState, useRef } from 'react';
 import { Alert, Dimensions, FlatList, Image, StyleSheet, TouchableOpacity, View, PanResponder } from 'react-native';
 import { getComments, CommentData } from '@/services/commentService';
 import { TaggedUser } from '@/app/components/tagUsersModal';
+import { calculateTierBorderColor } from '@/utils/tierBorderUtils';
 
 const { width: screenWidth } = Dimensions.get('window');
 
@@ -294,6 +295,8 @@ interface Post {
   createdAt: Timestamp;
   likes: number;
   commentsCount?: number;
+  leagueRank?: string;
+  valorantRank?: string;
 }
 
 interface PostContentProps {
@@ -335,6 +338,9 @@ export default function PostContent({
   enableVideoScrubber = false,
   onDelete
 }: PostContentProps) {
+  // Calculate tier border color
+  const tierBorderColor = calculateTierBorderColor(post.leagueRank, post.valorantRank);
+
   const [activeMediaIndex, setActiveMediaIndex] = useState(0);
   const [mediaHeight, setMediaHeight] = useState(
     post.mediaType === 'video' ? screenWidth * 0.5625 : screenWidth
@@ -397,7 +403,10 @@ export default function PostContent({
           activeOpacity={0.7}
           disabled={!onUserPress}
         >
-          <View style={styles.avatar}>
+          <View style={[
+            styles.avatar,
+            tierBorderColor && { borderColor: tierBorderColor, borderWidth: 2 }
+          ]}>
             {(post.avatar || userAvatar) && (post.avatar || userAvatar)!.startsWith('http') ? (
               <Image source={{ uri: post.avatar || userAvatar }} style={styles.avatarImage} />
             ) : (

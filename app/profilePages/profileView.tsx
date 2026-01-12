@@ -17,6 +17,7 @@ import { followUser, unfollowUser, isFollowing as checkIsFollowing, getUserRecen
 import { createOrGetChat } from '@/services/chatService';
 import PostViewerModal from '@/app/components/postViewerModal';
 import PostFilterModal from '@/app/profilePages/postFilterModal';
+import { calculateTierBorderColor } from '@/utils/tierBorderUtils';
 
 interface ViewedUser {
   id: string;
@@ -428,6 +429,12 @@ export default function ProfileViewScreen() {
     }
   };
 
+  // Calculate tier border color based on current ranks
+  const tierBorderColor = calculateTierBorderColor(
+    riotStats?.rankedSolo ? formatRank(riotStats.rankedSolo.tier, riotStats.rankedSolo.rank) : undefined,
+    valorantStats?.currentRank
+  );
+
   return (
     <ThemedView style={styles.container}>
       {/* Header with back button */}
@@ -468,7 +475,10 @@ export default function ProfileViewScreen() {
               {loadingUser && !viewedUser ? (
                 <View style={[styles.avatarCircle, styles.skeletonAvatar]} />
               ) : (
-                <View style={styles.avatarCircle}>
+                <View style={[
+                  styles.avatarCircle,
+                  tierBorderColor && { borderColor: tierBorderColor, borderWidth: 4 }
+                ]}>
                   {viewedUser?.avatar && viewedUser.avatar.startsWith('http') ? (
                     <Image source={{ uri: viewedUser.avatar }} style={styles.avatarImage} />
                   ) : (

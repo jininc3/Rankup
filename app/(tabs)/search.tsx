@@ -7,6 +7,7 @@ import { useRouter } from 'expo-router';
 import { collection, query, where, getDocs, orderBy, limit, doc, setDoc, deleteDoc, getDoc, Timestamp } from 'firebase/firestore';
 import { db } from '@/config/firebase';
 import { useAuth } from '@/contexts/AuthContext';
+import { calculateTierBorderColor } from '@/utils/tierBorderUtils';
 
 interface SearchUser {
   id: string;
@@ -16,6 +17,8 @@ interface SearchUser {
   followersCount?: number;
   followingCount?: number;
   postsCount?: number;
+  leagueRank?: string;
+  valorantRank?: string;
 }
 
 const MAX_HISTORY_ITEMS = 7;
@@ -54,6 +57,8 @@ export default function SearchScreen() {
           followersCount: data.followersCount,
           followingCount: data.followingCount,
           postsCount: data.postsCount,
+          leagueRank: data.leagueRank,
+          valorantRank: data.valorantRank,
         });
       });
 
@@ -79,6 +84,8 @@ export default function SearchScreen() {
         followersCount: user.followersCount || 0,
         followingCount: user.followingCount || 0,
         postsCount: user.postsCount || 0,
+        leagueRank: user.leagueRank || null,
+        valorantRank: user.valorantRank || null,
         searchedAt: Timestamp.now(),
       });
 
@@ -181,6 +188,17 @@ export default function SearchScreen() {
         const data = doc.data();
         // Don't show current user in search results
         if (doc.id !== currentUser?.id) {
+          // Get rank data for tier border
+          let leagueRank = undefined;
+          let valorantRank = undefined;
+
+          if (data.riotStats?.rankedSolo) {
+            leagueRank = `${data.riotStats.rankedSolo.tier} ${data.riotStats.rankedSolo.rank}`;
+          }
+          if (data.valorantStats?.currentRank) {
+            valorantRank = data.valorantStats.currentRank;
+          }
+
           users.push({
             id: doc.id,
             username: data.username,
@@ -188,6 +206,8 @@ export default function SearchScreen() {
             bio: data.bio,
             followersCount: data.followersCount || 0,
             followingCount: data.followingCount || 0,
+            leagueRank,
+            valorantRank,
             postsCount: data.postsCount || 0,
           });
         }
@@ -249,7 +269,9 @@ export default function SearchScreen() {
                 <ThemedText style={styles.clearButton}>Clear All</ThemedText>
               </TouchableOpacity>
             </View>
-            {searchHistory.map((user) => (
+            {searchHistory.map((user) => {
+              const tierBorderColor = calculateTierBorderColor(user.leagueRank, user.valorantRank);
+              return (
               <TouchableOpacity
                 key={user.id}
                 style={styles.historyCard}
@@ -257,7 +279,10 @@ export default function SearchScreen() {
                 activeOpacity={0.7}
               >
                 <View style={styles.historyLeft}>
-                  <View style={styles.historyAvatar}>
+                  <View style={[
+                    styles.historyAvatar,
+                    tierBorderColor && { borderColor: tierBorderColor, borderWidth: 2 }
+                  ]}>
                     {user.avatar && user.avatar.startsWith('http') ? (
                       <Image source={{ uri: user.avatar }} style={styles.historyAvatarImage} />
                     ) : (
@@ -276,7 +301,8 @@ export default function SearchScreen() {
                   <IconSymbol size={16} name="xmark" color="#b9bbbe" />
                 </TouchableOpacity>
               </TouchableOpacity>
-            ))}
+              );
+            })}
           </View>
         ) : searchQuery.trim() === '' && searchHistory.length === 0 ? (
           <View style={styles.emptyState}>
@@ -290,7 +316,9 @@ export default function SearchScreen() {
             <ThemedText style={styles.loadingText}>Searching...</ThemedText>
           </View>
         ) : searchResults.length > 0 ? (
-          searchResults.map((user) => (
+          searchResults.map((user) => {
+            const tierBorderColor = calculateTierBorderColor(user.leagueRank, user.valorantRank);
+            return (
             <TouchableOpacity
               key={user.id}
               style={styles.historyCard}
@@ -298,7 +326,10 @@ export default function SearchScreen() {
               activeOpacity={0.7}
             >
               <View style={styles.historyLeft}>
-                <View style={styles.historyAvatar}>
+                <View style={[
+                  styles.historyAvatar,
+                  tierBorderColor && { borderColor: tierBorderColor, borderWidth: 2 }
+                ]}>
                   {user.avatar && user.avatar.startsWith('http') ? (
                     <Image source={{ uri: user.avatar }} style={styles.historyAvatarImage} />
                   ) : (
@@ -310,7 +341,8 @@ export default function SearchScreen() {
                 <ThemedText style={styles.historyUsername}>{user.username}</ThemedText>
               </View>
             </TouchableOpacity>
-          ))
+            );
+          })
         ) : (
           <View style={styles.emptyState}>
             <IconSymbol size={64} name="magnifyingglass" color="#fff" />

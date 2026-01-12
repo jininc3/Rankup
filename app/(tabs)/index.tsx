@@ -52,6 +52,8 @@ interface Post {
   createdAt: Timestamp;
   likes: number;
   commentsCount?: number;
+  leagueRank?: string;
+  valorantRank?: string;
 }
 
 export default function HomeScreen() {
@@ -135,34 +137,117 @@ export default function HomeScreen() {
 
   // Consume preloaded posts from AuthContext (loaded during loading screen)
   useEffect(() => {
-    if (preloadedPosts && preloadedPosts.length > 0 && !hasConsumedPreload) {
-      console.log('✅ Using preloaded posts from loading screen:', preloadedPosts.length);
-      setFollowingPosts(preloadedPosts);
-      setLoading(false);
-      setHasConsumedPreload(true);
-      // Clear preloaded posts to prevent reuse
-      clearPreloadedPosts();
-    } else if (preloadedPosts && preloadedPosts.length === 0 && !hasConsumedPreload) {
-      // Preload returned empty array (no following users)
-      console.log('✅ Preload returned no posts (no following)');
-      setFollowingPosts([]);
-      setLoading(false);
-      setHasConsumedPreload(true);
-      clearPreloadedPosts();
-    }
+    const enrichPreloadedPosts = async () => {
+      if (preloadedPosts && preloadedPosts.length > 0 && !hasConsumedPreload) {
+        console.log('✅ Using preloaded posts from loading screen:', preloadedPosts.length);
+
+        // Enrich preloaded posts with rank data
+        const enrichedPosts = await Promise.all(
+          preloadedPosts.map(async (post) => {
+            try {
+              const userQuery = query(
+                collection(db, 'users'),
+                where('__name__', '==', post.userId)
+              );
+              const userSnapshot = await getDocs(userQuery);
+
+              if (!userSnapshot.empty) {
+                const userData = userSnapshot.docs[0].data();
+
+                // Get rank data for tier border
+                let leagueRank = undefined;
+                let valorantRank = undefined;
+
+                if (userData.riotStats?.rankedSolo) {
+                  leagueRank = `${userData.riotStats.rankedSolo.tier} ${userData.riotStats.rankedSolo.rank}`;
+                }
+                if (userData.valorantStats?.currentRank) {
+                  valorantRank = userData.valorantStats.currentRank;
+                }
+
+                return {
+                  ...post,
+                  avatar: userData.avatar || post.avatar || null,
+                  leagueRank,
+                  valorantRank
+                };
+              }
+            } catch (error) {
+              console.error(`Error enriching post ${post.id}:`, error);
+            }
+
+            return post;
+          })
+        );
+
+        setFollowingPosts(enrichedPosts);
+        setLoading(false);
+        setHasConsumedPreload(true);
+        // Clear preloaded posts to prevent reuse
+        clearPreloadedPosts();
+      } else if (preloadedPosts && preloadedPosts.length === 0 && !hasConsumedPreload) {
+        // Preload returned empty array (no following users)
+        console.log('✅ Preload returned no posts (no following)');
+        setFollowingPosts([]);
+        setLoading(false);
+        setHasConsumedPreload(true);
+        clearPreloadedPosts();
+      }
+    };
+
+    enrichPreloadedPosts();
   }, [preloadedPosts, hasConsumedPreload, clearPreloadedPosts]);
 
   // Smart merge logic for newly followed user posts
   useEffect(() => {
-    if (!newlyFollowedUserPosts || !newlyFollowedUserId) return;
+    const enrichAndMergeNewPosts = async () => {
+      if (!newlyFollowedUserPosts || !newlyFollowedUserId) return;
 
-    console.log(`✅ Merging ${newlyFollowedUserPosts.length} posts from newly followed user:`, newlyFollowedUserId);
+      console.log(`✅ Merging ${newlyFollowedUserPosts.length} posts from newly followed user:`, newlyFollowedUserId);
 
-    // Only merge if we're on the following tab
-    if (activeTab === 'following') {
-      setFollowingPosts(currentPosts => {
-        // Combine new posts with existing posts
-        const combined = [...currentPosts, ...newlyFollowedUserPosts];
+      // Enrich newly followed user posts with rank data
+      const enrichedNewPosts = await Promise.all(
+        newlyFollowedUserPosts.map(async (post) => {
+          try {
+            const userQuery = query(
+              collection(db, 'users'),
+              where('__name__', '==', post.userId)
+            );
+            const userSnapshot = await getDocs(userQuery);
+
+            if (!userSnapshot.empty) {
+              const userData = userSnapshot.docs[0].data();
+
+              let leagueRank = undefined;
+              let valorantRank = undefined;
+
+              if (userData.riotStats?.rankedSolo) {
+                leagueRank = `${userData.riotStats.rankedSolo.tier} ${userData.riotStats.rankedSolo.rank}`;
+              }
+              if (userData.valorantStats?.currentRank) {
+                valorantRank = userData.valorantStats.currentRank;
+              }
+
+              return {
+                ...post,
+                avatar: userData.avatar || post.avatar || null,
+                leagueRank,
+                valorantRank
+              };
+            }
+          } catch (error) {
+            console.error(`Error enriching newly followed post ${post.id}:`, error);
+          }
+
+          return post;
+        })
+      );
+
+      // Only merge if we're on the following tab
+      if (activeTab === 'following') {
+        setFollowingPosts(currentPosts => {
+          // Combine new posts with existing posts
+          const combined = [...currentPosts, ...enrichedNewPosts];
 
         // Remove duplicates by ID
         const uniqueMap = new Map();
@@ -184,16 +269,19 @@ export default function HomeScreen() {
       });
     }
 
-    // Add the newly followed user to the following list
-    setFollowingUserIds(prev => {
-      if (!prev.includes(newlyFollowedUserId)) {
-        return [...prev, newlyFollowedUserId];
-      }
-      return prev;
-    });
+      // Add the newly followed user to the following list
+      setFollowingUserIds(prev => {
+        if (!prev.includes(newlyFollowedUserId)) {
+          return [...prev, newlyFollowedUserId];
+        }
+        return prev;
+      });
 
-    // Clear the newly followed posts from context
-    clearNewlyFollowedUserPosts();
+      // Clear the newly followed posts from context
+      clearNewlyFollowedUserPosts();
+    };
+
+    enrichAndMergeNewPosts();
   }, [newlyFollowedUserPosts, newlyFollowedUserId, activeTab, clearNewlyFollowedUserPosts, POSTS_PER_PAGE]);
 
   // Smart removal logic for unfollowed user posts
@@ -295,13 +383,9 @@ export default function HomeScreen() {
       // Take only the number we need
       const postsToShow = filteredPosts.slice(0, POSTS_PER_PAGE);
 
-      // Fetch user avatars for posts that don't have them
+      // Fetch user avatars and rank data for posts
       const postsWithAvatars = await Promise.all(
         postsToShow.map(async (post) => {
-          if (post.avatar) {
-            return post;
-          }
-
           try {
             const userQuery = query(
               collection(db, 'users'),
@@ -311,13 +395,27 @@ export default function HomeScreen() {
 
             if (!userSnapshot.empty) {
               const userData = userSnapshot.docs[0].data();
+
+              // Get rank data for tier border
+              let leagueRank = undefined;
+              let valorantRank = undefined;
+
+              if (userData.riotStats?.rankedSolo) {
+                leagueRank = `${userData.riotStats.rankedSolo.tier} ${userData.riotStats.rankedSolo.rank}`;
+              }
+              if (userData.valorantStats?.currentRank) {
+                valorantRank = userData.valorantStats.currentRank;
+              }
+
               return {
                 ...post,
-                avatar: userData.avatar || null
+                avatar: userData.avatar || post.avatar || null,
+                leagueRank,
+                valorantRank
               };
             }
           } catch (error) {
-            console.error(`Error fetching avatar for user ${post.userId}:`, error);
+            console.error(`Error fetching data for user ${post.userId}:`, error);
           }
 
           return post;
@@ -550,7 +648,40 @@ export default function HomeScreen() {
   };
 
   // Handle when a new post is created
-  const handlePostCreated = (newPost: Post) => {
+  const handlePostCreated = async (newPost: Post) => {
+    // Enrich the new post with rank data for the current user
+    try {
+      if (currentUser?.id) {
+        const userQuery = query(
+          collection(db, 'users'),
+          where('__name__', '==', currentUser.id)
+        );
+        const userSnapshot = await getDocs(userQuery);
+
+        if (!userSnapshot.empty) {
+          const userData = userSnapshot.docs[0].data();
+
+          let leagueRank = undefined;
+          let valorantRank = undefined;
+
+          if (userData.riotStats?.rankedSolo) {
+            leagueRank = `${userData.riotStats.rankedSolo.tier} ${userData.riotStats.rankedSolo.rank}`;
+          }
+          if (userData.valorantStats?.currentRank) {
+            valorantRank = userData.valorantStats.currentRank;
+          }
+
+          newPost = {
+            ...newPost,
+            leagueRank,
+            valorantRank
+          };
+        }
+      }
+    } catch (error) {
+      console.error('Error enriching new post with rank data:', error);
+    }
+
     // Add new post to the beginning of the following posts array (most recent first)
     setFollowingPosts(prevPosts => [newPost, ...prevPosts]);
     console.log('New post added to feed:', newPost.id);

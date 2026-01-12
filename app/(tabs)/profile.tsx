@@ -20,6 +20,7 @@ import { getLeagueStats, getTftStats, formatRank } from '@/services/riotService'
 import { getValorantStats } from '@/services/valorantService';
 import { deletePostMedia } from '@/services/storageService';
 import { deleteDoc } from 'firebase/firestore';
+import { calculateTierBorderColor } from '@/utils/tierBorderUtils';
 
 const { width: screenWidth } = Dimensions.get('window');
 const CARD_PADDING = 20;
@@ -530,6 +531,12 @@ export default function ProfileScreen() {
     setSelectedGameFilter(gameFilter);
   };
 
+  // Calculate tier border color based on current ranks
+  const tierBorderColor = calculateTierBorderColor(
+    riotStats?.rankedSolo ? formatRank(riotStats.rankedSolo.tier, riotStats.rankedSolo.rank) : undefined,
+    valorantStats?.currentRank
+  );
+
   return (
     <ThemedView style={styles.container}>
       {/* Header with settings */}
@@ -586,7 +593,10 @@ export default function ProfileScreen() {
           <View style={styles.profileTopRow}>
             {/* Avatar on the left, overlapping cover */}
             <View style={styles.avatarContainer}>
-              <View style={styles.avatarCircle}>
+              <View style={[
+                styles.avatarCircle,
+                tierBorderColor && { borderColor: tierBorderColor, borderWidth: 4 }
+              ]}>
                 {user?.avatar && user.avatar.startsWith('http') ? (
                   <Image source={{ uri: user.avatar }} style={styles.avatarImage} />
                 ) : (

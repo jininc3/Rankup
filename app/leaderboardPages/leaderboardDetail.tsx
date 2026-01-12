@@ -9,6 +9,7 @@ import { collection, query, where, getDocs, doc, getDoc, limit, updateDoc, delet
 import * as Clipboard from 'expo-clipboard';
 import { useAuth } from '@/contexts/AuthContext';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { calculateTierBorderColor } from '@/utils/tierBorderUtils';
 
 interface Player {
   rank: number;
@@ -20,6 +21,8 @@ interface Player {
   lp?: number; // League Points (League of Legends)
   rr?: number; // Rank Rating (Valorant)
   dailyGain?: number;
+  leagueRank?: string; // For tier border calculation
+  valorantRank?: string; // For tier border calculation
 }
 
 // Helper function to calculate League rank value for sorting
@@ -241,19 +244,32 @@ export default function LeaderboardDetail() {
         let stats = userStatsDoc.data();
 
         // Fallback: If gameStats doesn't exist, read from main stats
+        let leagueRank = undefined;
+        let valorantRank = undefined;
+
         if (!stats || !stats.currentRank) {
           const userDoc = await getDoc(doc(db, 'users', member.userId));
           const userData = userDoc.data();
 
+          // Get League rank for tier border
+          if (userData?.riotStats?.rankedSolo) {
+            leagueRank = `${userData.riotStats.rankedSolo.tier} ${userData.riotStats.rankedSolo.rank}`;
+          }
+
+          // Get Valorant rank for tier border
+          if (userData?.valorantStats?.currentRank) {
+            valorantRank = userData.valorantStats.currentRank;
+          }
+
           if (isLeague && userData?.riotStats?.rankedSolo) {
             stats = {
-              currentRank: `${userData.riotStats.rankedSolo.tier} ${userData.riotStats.rankedSolo.rank}`,
+              currentRank: leagueRank,
               lp: userData.riotStats.rankedSolo.leaguePoints || 0,
               dailyGain: 0,
             };
           } else if (!isLeague && userData?.valorantStats) {
             stats = {
-              currentRank: userData.valorantStats.currentRank || 'Unranked',
+              currentRank: valorantRank || 'Unranked',
               rr: userData.valorantStats.rankRating || 0,
               dailyGain: 0,
             };
@@ -270,6 +286,8 @@ export default function LeaderboardDetail() {
           rr: !isLeague ? (stats?.rr || 0) : undefined,
           dailyGain: stats?.dailyGain || 0,
           isCurrentUser: member.userId === user?.id,
+          leagueRank,
+          valorantRank,
         };
       });
 
@@ -407,19 +425,32 @@ export default function LeaderboardDetail() {
             let stats = userStatsDoc.data();
 
             // Fallback: If gameStats doesn't exist, read from main stats
+            let leagueRank = undefined;
+            let valorantRank = undefined;
+
             if (!stats || !stats.currentRank) {
               const userDoc = await getDoc(doc(db, 'users', member.userId));
               const userData = userDoc.data();
 
+              // Get League rank for tier border
+              if (userData?.riotStats?.rankedSolo) {
+                leagueRank = `${userData.riotStats.rankedSolo.tier} ${userData.riotStats.rankedSolo.rank}`;
+              }
+
+              // Get Valorant rank for tier border
+              if (userData?.valorantStats?.currentRank) {
+                valorantRank = userData.valorantStats.currentRank;
+              }
+
               if (isLeague && userData?.riotStats?.rankedSolo) {
                 stats = {
-                  currentRank: `${userData.riotStats.rankedSolo.tier} ${userData.riotStats.rankedSolo.rank}`,
+                  currentRank: leagueRank,
                   lp: userData.riotStats.rankedSolo.leaguePoints || 0,
                   dailyGain: 0,
                 };
               } else if (!isLeague && userData?.valorantStats) {
                 stats = {
-                  currentRank: userData.valorantStats.currentRank || 'Unranked',
+                  currentRank: valorantRank || 'Unranked',
                   rr: userData.valorantStats.rankRating || 0,
                   dailyGain: 0,
                 };
@@ -436,6 +467,8 @@ export default function LeaderboardDetail() {
               rr: !isLeague ? (stats?.rr || 0) : undefined,
               dailyGain: stats?.dailyGain || 0,
               isCurrentUser: member.userId === user?.id,
+              leagueRank,
+              valorantRank,
             };
           });
 
@@ -639,7 +672,9 @@ export default function LeaderboardDetail() {
 
         {/* Player Rows */}
         <View style={styles.playerList}>
-          {players.map((player) => (
+          {players.map((player) => {
+            const tierBorderColor = calculateTierBorderColor(player.leagueRank, player.valorantRank);
+            return (
             <TouchableOpacity
               key={player.rank}
               style={[
@@ -657,7 +692,10 @@ export default function LeaderboardDetail() {
 
               {/* Player Info */}
               <View style={styles.playerInfo}>
-                <View style={styles.playerAvatar}>
+                <View style={[
+                  styles.playerAvatar,
+                  tierBorderColor && { borderColor: tierBorderColor, borderWidth: 2 }
+                ]}>
                   {player.avatar && player.avatar.startsWith('http') ? (
                     <Image source={{ uri: player.avatar }} style={styles.playerAvatarImage} />
                   ) : (
@@ -676,7 +714,8 @@ export default function LeaderboardDetail() {
                 {player.currentRank} ({isLeague ? `${player.lp || 0} lp` : `${player.rr || 0} rr`})
               </ThemedText>
             </TouchableOpacity>
-          ))}
+            );
+          })}
         </View>
 
         <View style={styles.bottomSpacer} />

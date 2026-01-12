@@ -31,6 +31,19 @@ const settingsData = [
     ],
   },
   {
+    id: 'info',
+    title: 'Information',
+    items: [
+      {
+        id: 10,
+        icon: 'star.circle',
+        title: 'Tier Borders System',
+        hasChevron: true,
+        route: '/profilePages/tierBorders',
+      },
+    ],
+  },
+  {
     id: 'support',
     title: 'Support',
     items: [

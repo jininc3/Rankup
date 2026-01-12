@@ -15,6 +15,7 @@ import { Video, ResizeMode } from 'expo-av';
 import { db } from '@/config/firebase';
 import { collection, query, where, orderBy, getDocs, Timestamp, doc, getDoc, setDoc, deleteDoc, updateDoc, increment } from 'firebase/firestore';
 import { followUser, unfollowUser, isFollowing as checkIsFollowing } from '@/services/followService';
+import { calculateTierBorderColor } from '@/utils/tierBorderUtils';
 
 interface ViewedUser {
   id: string;
@@ -95,6 +96,8 @@ export default function ProfilePreviewScreen() {
   const scrollViewRef = useRef<ScrollView>(null);
   const iconScrollViewRef = useRef<ScrollView>(null);
   const [showSocialsSheet, setShowSocialsSheet] = useState(false);
+  const [riotStats, setRiotStats] = useState<any>(null);
+  const [valorantStats, setValorantStats] = useState<any>(null);
 
   // Create userGames array based on viewedUser data
   const userGames = viewedUser?.gamesPlayed ? [
@@ -196,6 +199,14 @@ export default function ProfilePreviewScreen() {
           followingCount: data.followingCount || 0,
           gamesPlayed: data.gamesPlayed,
         });
+
+        // Fetch riot and valorant stats for tier border
+        if (data.riotStats) {
+          setRiotStats(data.riotStats);
+        }
+        if (data.valorantStats) {
+          setValorantStats(data.valorantStats);
+        }
       }
     } catch (error) {
       console.error('Error fetching user profile:', error);
@@ -328,6 +339,17 @@ export default function ProfilePreviewScreen() {
     checkFollowStatus();
   }, [currentUser?.id, userId]);
 
+  // Helper function to format rank
+  const formatRank = (tier: string, rank: string) => {
+    return `${tier.charAt(0).toUpperCase()}${tier.slice(1).toLowerCase()} ${rank}`;
+  };
+
+  // Calculate tier border color based on current ranks
+  const tierBorderColor = calculateTierBorderColor(
+    riotStats?.rankedSolo ? formatRank(riotStats.rankedSolo.tier, riotStats.rankedSolo.rank) : undefined,
+    valorantStats?.currentRank
+  );
+
   return (
     <ThemedView style={styles.container}>
       {/* Header with back button */}
@@ -356,7 +378,10 @@ export default function ProfilePreviewScreen() {
           <View style={styles.profileTopRow}>
             {/* Avatar on the left, overlapping cover */}
             <View style={styles.avatarContainer}>
-              <View style={styles.avatarCircle}>
+              <View style={[
+                styles.avatarCircle,
+                tierBorderColor && { borderColor: tierBorderColor, borderWidth: 4 }
+              ]}>
                 {viewedUser?.avatar && viewedUser.avatar.startsWith('http') ? (
                   <Image source={{ uri: viewedUser.avatar }} style={styles.avatarImage} />
                 ) : (
