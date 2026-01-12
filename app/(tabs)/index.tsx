@@ -875,7 +875,7 @@ export default function HomeScreen() {
             style={styles.headerIconButton}
             onPress={() => router.push('/notifications')}
           >
-            <IconSymbol size={24} name="bell.fill" color="#fff" />
+            <IconSymbol size={24} name="bell" color="#fff" />
             {unreadNotificationCount > 0 && (
               <View style={styles.notificationBadge}>
                 <ThemedText style={styles.notificationBadgeText}>

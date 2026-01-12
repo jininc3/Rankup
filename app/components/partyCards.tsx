@@ -104,14 +104,8 @@ export default function PartyCards({ leaderboard, onPress }: PartyCardsProps) {
       style={styles.leaderboardCard}
       onPress={() => onPress(leaderboard)}
     >
-      {/* Top section with icon and title */}
-      <View style={styles.cardHeader}>
-        <View style={styles.cardTitleSection}>
-          <ThemedText style={styles.leaderboardName}>{leaderboard.name}</ThemedText>
-          {leaderboard.partyId && (
-            <ThemedText style={styles.partyId}>ID: {leaderboard.partyId}</ThemedText>
-          )}
-        </View>
+      <View style={styles.cardContent}>
+        {/* Left: Icon */}
         <View style={styles.leaderboardIconContainer}>
           <Image
             source={GAME_LOGOS[leaderboard.game] || GAME_LOGOS['Valorant']}
@@ -119,31 +113,28 @@ export default function PartyCards({ leaderboard, onPress }: PartyCardsProps) {
             resizeMode="contain"
           />
         </View>
-      </View>
 
-      {/* Stats section */}
-      <View style={styles.statsContainer}>
-        {/* User Ranking */}
-        {leaderboard.userRank && (
-          <View style={[styles.statBox, { backgroundColor: '#424549' }]}>
-            <ThemedText style={styles.statLabel}>Your Rank</ThemedText>
-            <ThemedText style={styles.statValue}>#{leaderboard.userRank}</ThemedText>
-            <ThemedText style={styles.statSubtext}>of {leaderboard.members}</ThemedText>
+        {/* Middle: Title and info */}
+        <View style={styles.cardMainInfo}>
+          <ThemedText style={styles.leaderboardName}>{leaderboard.name}</ThemedText>
+          <View style={styles.statsRow}>
+            {leaderboard.userRank && (
+              <ThemedText style={styles.statText}>
+                Rank: <ThemedText style={styles.statValue}>#{leaderboard.userRank}</ThemedText>
+                <ThemedText style={styles.statLabel}> / {leaderboard.members}</ThemedText>
+              </ThemedText>
+            )}
+            {leaderboard.userRank && daysInfo.totalDays > 0 && (
+              <ThemedText style={styles.statDivider}>•</ThemedText>
+            )}
+            {daysInfo.totalDays > 0 && (
+              <ThemedText style={styles.statText}>
+                Day <ThemedText style={styles.statValue}>{daysInfo.currentDay}/{daysInfo.totalDays}</ThemedText>
+                <ThemedText style={styles.statLabel}> ({daysInfo.daysLeft}d left)</ThemedText>
+              </ThemedText>
+            )}
           </View>
-        )}
-
-        {/* Days Left */}
-        {daysInfo.totalDays > 0 && (
-          <View style={[styles.statBox, { backgroundColor: '#424549' }]}>
-            <ThemedText style={styles.statLabel}>Days</ThemedText>
-            <ThemedText style={styles.statValue}>
-              {daysInfo.currentDay}/{daysInfo.totalDays}
-            </ThemedText>
-            <ThemedText style={styles.statSubtext}>
-              {daysInfo.daysLeft} {daysInfo.daysLeft === 1 ? 'day' : 'days'} left
-            </ThemedText>
-          </View>
-        )}
+        </View>
       </View>
 
       {/* Progress bar */}
@@ -168,9 +159,9 @@ const styles = StyleSheet.create({
   leaderboardCard: {
     flexDirection: 'column',
     backgroundColor: '#36393e',
-    padding: 20,
-    borderRadius: 16,
-    marginBottom: 16,
+    padding: 10,
+    borderRadius: 10,
+    marginBottom: 10,
     overflow: 'visible',
     borderWidth: 1,
     borderColor: '#2c2f33',
@@ -181,105 +172,74 @@ const styles = StyleSheet.create({
     shadowColor: '#000',
     shadowOffset: {
       width: 0,
-      height: 12,
+      height: 4,
     },
-    shadowOpacity: 0.15,
-    shadowRadius: 20,
-    elevation: 10,
+    shadowOpacity: 0.1,
+    shadowRadius: 8,
+    elevation: 4,
   },
-  cardHeader: {
+  cardContent: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'flex-start',
-    marginBottom: 16,
-  },
-  cardTitleSection: {
-    flex: 1,
-    marginRight: 12,
+    alignItems: 'center',
+    marginBottom: 8,
   },
   leaderboardIconContainer: {
-    width: 56,
-    height: 56,
-    borderRadius: 12,
+    width: 36,
+    height: 36,
+    borderRadius: 8,
     backgroundColor: '#2c2f33',
     alignItems: 'center',
     justifyContent: 'center',
-    shadowColor: '#000',
-    shadowOffset: {
-      width: 0,
-      height: 2,
-    },
-    shadowOpacity: 0.08,
-    shadowRadius: 4,
-    elevation: 3,
+    marginRight: 10,
   },
   gameLogoImage: {
-    width: 48,
-    height: 48,
+    width: 28,
+    height: 28,
+  },
+  cardMainInfo: {
+    flex: 1,
   },
   leaderboardName: {
-    fontSize: 20,
+    fontSize: 15,
     fontWeight: '700',
     color: '#fff',
-    letterSpacing: -0.4,
-    marginBottom: 4,
+    letterSpacing: -0.2,
+    marginBottom: 3,
   },
-  partyId: {
-    fontSize: 12,
+  statsRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    flexWrap: 'wrap',
+  },
+  statText: {
+    fontSize: 11,
     fontWeight: '500',
     color: '#b9bbbe',
-    letterSpacing: 0.2,
   },
-  statsContainer: {
-    flexDirection: 'row',
-    gap: 12,
-    marginBottom: 16,
-  },
-  statBox: {
-    flex: 1,
-    backgroundColor: '#f8f9fa',
-    padding: 14,
-    borderRadius: 10,
-    alignItems: 'center',
-    borderWidth: 0,
-    shadowColor: '#000',
-    shadowOffset: {
-      width: 0,
-      height: 2,
-    },
-    shadowOpacity: 0.08,
-    shadowRadius: 4,
-    elevation: 2,
+  statValue: {
+    fontSize: 11,
+    fontWeight: '700',
+    color: '#fff',
   },
   statLabel: {
     fontSize: 11,
-    fontWeight: '600',
+    fontWeight: '400',
     color: '#72767d',
-    textTransform: 'uppercase',
-    letterSpacing: 0.5,
-    marginBottom: 4,
   },
-  statValue: {
-    fontSize: 24,
-    fontWeight: '700',
-    color: '#fff',
-    letterSpacing: -0.5,
-    marginBottom: 2,
-  },
-  statSubtext: {
+  statDivider: {
     fontSize: 11,
-    fontWeight: '500',
     color: '#72767d',
+    marginHorizontal: 6,
   },
   progressBarContainer: {
-    height: 6,
+    height: 3,
     backgroundColor: '#2c2f33',
-    borderRadius: 3,
+    borderRadius: 1.5,
     overflow: 'hidden',
   },
   progressBarFill: {
     height: '100%',
     backgroundColor: '#000',
-    borderRadius: 3,
+    borderRadius: 1.5,
   },
 });

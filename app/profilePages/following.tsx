@@ -73,7 +73,7 @@ export default function FollowingScreen() {
           style={styles.backButton}
           onPress={() => router.back()}
         >
-          <IconSymbol size={24} name="chevron.left" color="#000" />
+          <IconSymbol size={24} name="chevron.left" color="#fff" />
         </TouchableOpacity>
         <ThemedText style={styles.headerTitle}>Following</ThemedText>
         <View style={styles.headerSpacer} />
@@ -101,7 +101,7 @@ export default function FollowingScreen() {
       <ScrollView showsVerticalScrollIndicator={false}>
         {loading ? (
           <View style={styles.emptyState}>
-            <ActivityIndicator size="large" color="#000" />
+            <ActivityIndicator size="large" color="#c42743" />
             <ThemedText style={styles.loadingText}>Loading following...</ThemedText>
           </View>
         ) : filteredFollowing.length > 0 ? (
@@ -135,7 +135,7 @@ export default function FollowingScreen() {
           </View>
         ) : (
           <View style={styles.emptyState}>
-            <IconSymbol size={64} name={searchQuery ? "magnifyingglass" : "person.2"} color="#ccc" />
+            <IconSymbol size={64} name={searchQuery ? "magnifyingglass" : "person.2"} color="#72767d" />
             <ThemedText style={styles.emptyStateText}>
               {searchQuery ? 'No results found' : 'Not following anyone yet'}
             </ThemedText>
@@ -154,7 +154,7 @@ export default function FollowingScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#fff',
+    backgroundColor: '#1e2124',
   },
   header: {
     flexDirection: 'row',
@@ -163,9 +163,9 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20,
     paddingTop: 70,
     paddingBottom: 16,
-    backgroundColor: '#fff',
+    backgroundColor: '#1e2124',
     borderBottomWidth: 1,
-    borderBottomColor: '#e5e7eb',
+    borderBottomColor: '#2c2f33',
   },
   backButton: {
     padding: 4,
@@ -174,7 +174,7 @@ const styles = StyleSheet.create({
   headerTitle: {
     fontSize: 17,
     fontWeight: '600',
-    color: '#000',
+    color: '#fff',
     flex: 1,
     textAlign: 'center',
   },
@@ -186,7 +186,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     paddingHorizontal: 16,
     paddingVertical: 12,
-    backgroundColor: '#f5f5f5',
+    backgroundColor: '#2c2f33',
     marginHorizontal: 16,
     marginVertical: 12,
     borderRadius: 10,
@@ -195,7 +195,7 @@ const styles = StyleSheet.create({
   searchInput: {
     flex: 1,
     fontSize: 15,
-    color: '#000',
+    color: '#fff',
     paddingVertical: 0,
   },
   listContainer: {
@@ -211,7 +211,8 @@ const styles = StyleSheet.create({
     marginVertical: 4,
     borderRadius: 8,
     borderWidth: 1,
-    borderColor: '#e5e5e5',
+    borderColor: '#2c2f33',
+    backgroundColor: '#36393e',
   },
   userLeft: {
     flexDirection: 'row',
@@ -223,7 +224,7 @@ const styles = StyleSheet.create({
     width: 36,
     height: 36,
     borderRadius: 18,
-    backgroundColor: '#f5f5f5',
+    backgroundColor: '#2c2f33',
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -235,26 +236,27 @@ const styles = StyleSheet.create({
   avatarInitial: {
     fontSize: 16,
     fontWeight: '600',
+    color: '#fff',
   },
   username: {
     fontSize: 15,
     fontWeight: '500',
-    color: '#000',
+    color: '#fff',
   },
   followingButton: {
-    paddingHorizontal: 20,
-    paddingVertical: 6,
-    backgroundColor: '#fff',
+    paddingHorizontal: 12,
+    paddingVertical: 4,
+    backgroundColor: '#36393e',
     borderWidth: 1,
-    borderColor: '#e5e5e5',
+    borderColor: '#2c2f33',
     borderRadius: 6,
-    minWidth: 90,
+    minWidth: 75,
     alignItems: 'center',
   },
   followingButtonText: {
-    fontSize: 13,
+    fontSize: 12,
     fontWeight: '600',
-    color: '#000',
+    color: '#b9bbbe',
   },
   emptyState: {
     alignItems: 'center',
@@ -266,17 +268,17 @@ const styles = StyleSheet.create({
   emptyStateText: {
     fontSize: 20,
     fontWeight: '600',
-    color: '#000',
+    color: '#fff',
     marginTop: 16,
   },
   emptyStateSubtext: {
     fontSize: 14,
-    color: '#666',
+    color: '#b9bbbe',
     textAlign: 'center',
   },
   loadingText: {
     fontSize: 14,
-    color: '#666',
+    color: '#b9bbbe',
     marginTop: 12,
   },
 });

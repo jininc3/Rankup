@@ -663,9 +663,9 @@ export default function LeaderboardDetail() {
 
         {/* Column Headers */}
         <View style={styles.columnHeaders}>
-          <ThemedText style={[styles.columnHeaderText, { width: 50 }]}>RANK</ThemedText>
+          <ThemedText style={[styles.columnHeaderText, { width: 40 }]}>RANK</ThemedText>
           <ThemedText style={[styles.columnHeaderText, { flex: 1 }]}>PLAYER</ThemedText>
-          <ThemedText style={[styles.columnHeaderText, styles.alignRight, { width: 140 }]}>
+          <ThemedText style={[styles.columnHeaderText, styles.alignRight, { width: 120 }]}>
             CURRENT RANK
           </ThemedText>
         </View>
@@ -710,7 +710,7 @@ export default function LeaderboardDetail() {
               </View>
 
               {/* Current Rank with LP/RR based on game */}
-              <ThemedText style={[styles.currentRankText, styles.alignRight, { width: 140 }]}>
+              <ThemedText style={[styles.currentRankText, styles.alignRight, { width: 120 }]}>
                 {player.currentRank} ({isLeague ? `${player.lp || 0} lp` : `${player.rr || 0} rr`})
               </ThemedText>
             </TouchableOpacity>
@@ -733,9 +733,9 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    paddingHorizontal: 20,
-    paddingTop: 60,
-    paddingBottom: 16,
+    paddingHorizontal: 16,
+    paddingTop: 50,
+    paddingBottom: 10,
     backgroundColor: '#1e2124',
     borderBottomWidth: 1,
     borderBottomColor: '#2c2f33',
@@ -745,16 +745,16 @@ const styles = StyleSheet.create({
   },
   headerCenter: {
     alignItems: 'center',
-    gap: 4,
+    gap: 2,
   },
   headerTitle: {
-    fontSize: 20,
+    fontSize: 16,
     fontWeight: '700',
     color: '#fff',
     letterSpacing: -0.3,
   },
   headerSubtitle: {
-    fontSize: 12,
+    fontSize: 11,
     fontWeight: '400',
     color: '#b9bbbe',
     letterSpacing: 0,
@@ -769,41 +769,41 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   durationSection: {
-    paddingHorizontal: 20,
-    paddingVertical: 16,
+    paddingHorizontal: 16,
+    paddingVertical: 10,
     backgroundColor: '#1e2124',
   },
   progressCard: {
     backgroundColor: '#36393e',
     borderWidth: 1,
     borderColor: '#2c2f33',
-    borderRadius: 12,
-    padding: 16,
+    borderRadius: 10,
+    padding: 10,
     position: 'relative',
   },
   durationLabel: {
-    fontSize: 17,
+    fontSize: 13,
     fontWeight: '600',
     color: '#fff',
     textAlign: 'center',
-    marginBottom: 12,
-    letterSpacing: -0.3,
+    marginBottom: 8,
+    letterSpacing: -0.2,
   },
   progressBarContainer: {
-    marginBottom: 12,
+    marginBottom: 8,
   },
   progressBarBackground: {
     width: '100%',
-    height: 8,
+    height: 5,
     backgroundColor: '#2c2f33',
-    borderRadius: 4,
+    borderRadius: 2.5,
     position: 'relative',
     overflow: 'hidden',
   },
   progressBarFill: {
     height: '100%',
     backgroundColor: '#c42743',
-    borderRadius: 4,
+    borderRadius: 2.5,
     position: 'relative',
   },
   dateRangeContainer: {
@@ -812,7 +812,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   dateText: {
-    fontSize: 12,
+    fontSize: 10,
     color: '#b9bbbe',
     fontWeight: '500',
   },
@@ -820,17 +820,17 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    gap: 6,
-    marginTop: 12,
-    paddingVertical: 8,
-    paddingHorizontal: 12,
+    gap: 4,
+    marginTop: 8,
+    paddingVertical: 6,
+    paddingHorizontal: 10,
     backgroundColor: '#424549',
-    borderRadius: 8,
+    borderRadius: 6,
     borderWidth: 1,
     borderColor: '#2c2f33',
   },
   inviteActionButtonText: {
-    fontSize: 13,
+    fontSize: 12,
     fontWeight: '600',
     color: '#fff',
   },
@@ -838,15 +838,15 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 8,
-    paddingHorizontal: 20,
-    paddingVertical: 12,
+    paddingHorizontal: 16,
+    paddingVertical: 8,
     marginBottom: 0,
     backgroundColor: '#36393e',
     borderBottomWidth: 1,
     borderBottomColor: '#2c2f33',
   },
   columnHeaderText: {
-    fontSize: 11,
+    fontSize: 10,
     fontWeight: '600',
     color: '#b9bbbe',
     letterSpacing: 0.5,
@@ -861,25 +861,25 @@ const styles = StyleSheet.create({
   playerRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 8,
-    paddingVertical: 12,
-    paddingLeft: 16,
-    paddingRight: 20,
+    gap: 6,
+    paddingVertical: 8,
+    paddingLeft: 12,
+    paddingRight: 16,
     backgroundColor: '#36393e',
     borderBottomWidth: 1,
     borderBottomColor: '#2c2f33',
     position: 'relative',
-    borderLeftWidth: 4,
+    borderLeftWidth: 3,
   },
   currentUserRow: {
     backgroundColor: '#424549',
   },
   rankContainer: {
-    width: 50,
+    width: 40,
     alignItems: 'flex-start',
   },
   rankText: {
-    fontSize: 16,
+    fontSize: 14,
     fontWeight: '700',
     color: '#fff',
   },
@@ -887,13 +887,13 @@ const styles = StyleSheet.create({
     flex: 1,
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 8,
+    gap: 6,
   },
   playerAvatar: {
-    width: 32,
-    height: 32,
+    width: 28,
+    height: 28,
     backgroundColor: '#2c2f33',
-    borderRadius: 16,
+    borderRadius: 14,
     borderWidth: 1,
     borderColor: '#424549',
     alignItems: 'center',
@@ -903,20 +903,20 @@ const styles = StyleSheet.create({
   playerAvatarImage: {
     width: '100%',
     height: '100%',
-    borderRadius: 16,
+    borderRadius: 14,
   },
   avatarText: {
-    fontSize: 14,
+    fontSize: 12,
     textAlign: 'center',
   },
   playerName: {
-    fontSize: 14,
+    fontSize: 13,
     fontWeight: '600',
     color: '#fff',
     letterSpacing: -0.2,
   },
   currentRankText: {
-    fontSize: 13,
+    fontSize: 11,
     fontWeight: '600',
     color: '#fff',
   },
@@ -931,6 +931,6 @@ const styles = StyleSheet.create({
     color: '#b9bbbe',
   },
   bottomSpacer: {
-    height: 40,
+    height: 20,
   },
 });

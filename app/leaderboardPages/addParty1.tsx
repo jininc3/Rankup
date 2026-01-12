@@ -173,11 +173,12 @@ export default function AddParty1Screen() {
       searchSectionRef.current?.measureLayout(
         scrollViewRef.current as any,
         (x, y) => {
-          scrollViewRef.current?.scrollTo({ y: y - 20, animated: true });
+          // Scroll the Add Members section to the top of the page
+          scrollViewRef.current?.scrollTo({ y: y, animated: true });
         },
         () => {}
       );
-    }, 100);
+    }, 300);
   };
 
   const handleCopyInviteCode = async () => {
@@ -369,13 +370,7 @@ export default function AddParty1Screen() {
         showsVerticalScrollIndicator={false}
         keyboardShouldPersistTaps="handled"
       >
-        {/* Game Info */}
-        <View style={styles.gameInfoSection}>
-          <ThemedText style={styles.gameInfoLabel}>Game</ThemedText>
-          <ThemedText style={styles.gameInfoValue}>{gameName}</ThemedText>
-        </View>
-
-        {/* Party Name */}
+        {/* Party Name and Party ID */}
         <View style={styles.section}>
           <ThemedText style={styles.sectionTitle}>Party Name</ThemedText>
           <TextInput
@@ -386,14 +381,12 @@ export default function AddParty1Screen() {
             onChangeText={setPartyName}
             maxLength={30}
           />
-        </View>
 
-        {/* Party ID */}
-        <View style={styles.section}>
-          <ThemedText style={styles.sectionTitle}>Party ID</ThemedText>
+          <ThemedText style={[styles.sectionTitle, { marginTop: 20 }]}>Party ID</ThemedText>
           <ThemedText style={styles.sectionDescription}>
             5 letters, all caps (e.g., SQUAD)
           </ThemedText>
+          <ThemedText style={styles.characterCount}>{partyId.length}/5</ThemedText>
           <TextInput
             style={styles.input}
             placeholder="ABCDE"
@@ -403,10 +396,9 @@ export default function AddParty1Screen() {
             maxLength={5}
             autoCapitalize="characters"
           />
-          <ThemedText style={styles.characterCount}>{partyId.length}/5</ThemedText>
         </View>
 
-        {/* Start Date */}
+        {/* Start Date and End Date */}
         <View style={styles.section}>
           <ThemedText style={styles.sectionTitle}>Start Date</ThemedText>
           <ThemedText style={styles.sectionDescription}>
@@ -430,11 +422,8 @@ export default function AddParty1Screen() {
               minimumDate={new Date()}
             />
           )}
-        </View>
 
-        {/* End Date */}
-        <View style={styles.section}>
-          <ThemedText style={styles.sectionTitle}>End Date</ThemedText>
+          <ThemedText style={[styles.sectionTitle, { marginTop: 20 }]}>End Date</ThemedText>
           <ThemedText style={styles.sectionDescription}>
             When does this leaderboard competition end?
           </ThemedText>
@@ -633,18 +622,18 @@ export default function AddParty1Screen() {
           )}
         </View>
 
+        {/* Create Button */}
+        <View style={styles.createButtonContainer}>
+          <TouchableOpacity
+            style={styles.createButton}
+            onPress={handleCreateParty}
+          >
+            <ThemedText style={styles.createButtonText}>Create Party</ThemedText>
+          </TouchableOpacity>
+        </View>
+
         <View style={styles.bottomSpacer} />
       </ScrollView>
-
-      {/* Create Button */}
-      <View style={styles.footer}>
-        <TouchableOpacity
-          style={styles.createButton}
-          onPress={handleCreateParty}
-        >
-          <ThemedText style={styles.createButtonText}>Create Party</ThemedText>
-        </TouchableOpacity>
-      </View>
     </ThemedView>
   );
 }
@@ -678,26 +667,6 @@ const styles = StyleSheet.create({
   },
   scrollView: {
     flex: 1,
-  },
-  gameInfoSection: {
-    paddingHorizontal: 20,
-    paddingVertical: 16,
-    backgroundColor: '#1e2124',
-    borderBottomWidth: 1,
-    borderBottomColor: '#2c2f33',
-  },
-  gameInfoLabel: {
-    fontSize: 12,
-    color: '#b9bbbe',
-    marginBottom: 4,
-    textTransform: 'uppercase',
-    letterSpacing: 0.5,
-    fontWeight: '600',
-  },
-  gameInfoValue: {
-    fontSize: 17,
-    fontWeight: '600',
-    color: '#fff',
   },
   section: {
     paddingHorizontal: 20,
@@ -741,7 +710,7 @@ const styles = StyleSheet.create({
     fontSize: 12,
     color: '#b9bbbe',
     textAlign: 'right',
-    marginTop: 4,
+    marginBottom: 4,
   },
   inviteCodeContainer: {
     flexDirection: 'row',
@@ -860,12 +829,10 @@ const styles = StyleSheet.create({
     color: '#b9bbbe',
     textAlign: 'center',
   },
-  footer: {
+  createButtonContainer: {
     paddingHorizontal: 20,
-    paddingVertical: 16,
-    backgroundColor: '#1e2124',
-    borderTopWidth: 1,
-    borderTopColor: '#2c2f33',
+    paddingTop: 24,
+    paddingBottom: 16,
   },
   createButton: {
     backgroundColor: '#000',
@@ -880,7 +847,7 @@ const styles = StyleSheet.create({
     color: '#fff',
   },
   bottomSpacer: {
-    height: 400,
+    height: 40,
   },
   challengeTypeContainer: {
     gap: 12,
