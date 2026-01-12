@@ -8,10 +8,8 @@ import * as admin from "firebase-admin";
 import * as logger from "firebase-functions/logger";
 import {
   calculatePartyRankings,
-  detectRelevantRankChanges,
   PartyMember,
 } from "../utils/rankCalculator";
-import {sendBatchPushNotifications} from "./sendPushNotification";
 
 interface Top3Snapshot {
   userId: string;
@@ -170,122 +168,11 @@ async function processPartyUpdate(
   // Calculate new rankings
   const newRankings = calculatePartyRankings(members, isLeague);
 
-  // Get stored rankings snapshot
-  const oldRankings = partyData.rankings || [];
+  // Ranking change notifications have been disabled
+  // Rankings are still calculated and stored for leaderboard display
+  logger.info(`Skipping rank change notifications for party ${partyName} (notifications disabled)`);
 
-  // Detect relevant rank changes (only notifies affected users)
-  const relevantNotifications = detectRelevantRankChanges(
-    oldRankings.length > 0 ? oldRankings : undefined,
-    newRankings
-  );
-
-  if (relevantNotifications.length === 0) {
-    logger.info(`No relevant rank changes in party ${partyName}`);
-    // Still update stored rankings even if no notifications
-    await db.collection("parties").doc(partyDocId).update({
-      rankings: newRankings,
-      top3Rankings: newRankings.slice(0, 3).map((m) => ({
-        userId: m.userId,
-        username: m.username,
-        avatar: m.avatar,
-        rank: m.rank,
-        currentRank: m.currentRank,
-        lp: m.lp,
-        rr: m.rr,
-      })),
-      lastRankingUpdate: admin.firestore.FieldValue.serverTimestamp(),
-    });
-    return;
-  }
-
-  logger.info(`Detected ${relevantNotifications.length} relevant rank change notifications in party ${partyName}`);
-
-  // Prepare notifications for affected users only
-  const notifications: Array<{
-    recipientUserId: string;
-    title: string;
-    body: string;
-    data: Record<string, any>;
-  }> = [];
-
-  // Track which users we've notified to avoid duplicates
-  const notifiedUsers = new Set<string>();
-
-  for (const notification of relevantNotifications) {
-    // Defensive check: ensure newRank is defined
-    if (notification.newRank === undefined || notification.newRank === null) {
-      logger.error(`Invalid notification detected - newRank is undefined for user ${notification.movedUserId}`);
-      continue;
-    }
-
-    const rankEmoji = notification.newRank === 1 ? "🥇" : notification.newRank === 2 ? "🥈" : "🥉";
-
-    let notificationBody: string;
-    if (notification.recipientUserId === notification.movedUserId) {
-      // Notify the user who moved
-      if (notification.oldRank === undefined) {
-        // First time in top 3
-        notificationBody = `You're now ranked #${notification.newRank} in ${partyName}!`;
-      } else if (notification.newRank < notification.oldRank) {
-        // Moved up
-        notificationBody = `You moved up to #${notification.newRank} in ${partyName}!`;
-      } else {
-        // Moved down
-        notificationBody = `You dropped to #${notification.newRank} in ${partyName}`;
-      }
-    } else {
-      // Notify someone who was affected by the move
-      notificationBody = `${notification.movedUsername} moved to #${notification.newRank} in ${partyName}!`;
-    }
-
-    // Create unique key to avoid duplicate notifications
-    const notificationKey = `${notification.recipientUserId}-${notification.movedUserId}-${notification.newRank}`;
-    if (!notifiedUsers.has(notificationKey)) {
-      notifiedUsers.add(notificationKey);
-
-      notifications.push({
-        recipientUserId: notification.recipientUserId,
-        title: `${rankEmoji} Leaderboard Update`,
-        body: notificationBody,
-        data: {
-          type: "party_ranking_change",
-          partyId: partyData.partyId,
-          partyName: partyName,
-          game: gameName,
-          userId: notification.movedUserId,
-          username: notification.movedUsername,
-          newRank: notification.newRank,
-        },
-      });
-
-      // Also create in-app notification document
-      await db
-        .collection("users")
-        .doc(notification.recipientUserId)
-        .collection("notifications")
-        .add({
-          type: "party_ranking_change",
-          fromUserId: notification.movedUserId,
-          fromUsername: notification.movedUsername,
-          partyId: partyData.partyId,
-          partyName: partyName,
-          game: gameName,
-          newRank: notification.newRank,
-          read: false,
-          createdAt: admin.firestore.FieldValue.serverTimestamp(),
-        });
-    }
-  }
-
-  // Send batch push notifications
-  if (notifications.length > 0) {
-    try {
-      await sendBatchPushNotifications(notifications);
-      logger.info(`Sent ${notifications.length} notifications for party ${partyName}`);
-    } catch (error) {
-      logger.error(`Error sending notifications for party ${partyName}:`, error);
-    }
-  }
+  // No notifications will be sent for ranking changes
 
   // Update stored rankings snapshot (full rankings and top 3)
   const newTop3: Top3Snapshot[] = newRankings.slice(0, 3).map((m) => ({
