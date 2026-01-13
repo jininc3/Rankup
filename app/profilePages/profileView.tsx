@@ -17,7 +17,8 @@ import { followUser, unfollowUser, isFollowing as checkIsFollowing, getUserRecen
 import { createOrGetChat } from '@/services/chatService';
 import PostViewerModal from '@/app/components/postViewerModal';
 import PostFilterModal from '@/app/profilePages/postFilterModal';
-import { calculateTierBorderColor } from '@/utils/tierBorderUtils';
+import { calculateTierBorderColor, calculateTierBorderGradient } from '@/utils/tierBorderUtils';
+import GradientBorder from '@/components/GradientBorder';
 
 interface ViewedUser {
   id: string;
@@ -435,6 +436,12 @@ export default function ProfileViewScreen() {
     valorantStats?.currentRank
   );
 
+  // Calculate tier border gradient based on current ranks
+  const tierBorderGradient = calculateTierBorderGradient(
+    riotStats?.rankedSolo ? formatRank(riotStats.rankedSolo.tier, riotStats.rankedSolo.rank) : undefined,
+    valorantStats?.currentRank
+  );
+
   return (
     <ThemedView style={styles.container}>
       {/* Header with back button */}
@@ -474,11 +481,24 @@ export default function ProfileViewScreen() {
             <View style={styles.avatarContainer}>
               {loadingUser && !viewedUser ? (
                 <View style={[styles.avatarCircle, styles.skeletonAvatar]} />
+              ) : tierBorderGradient ? (
+                <GradientBorder
+                  colors={tierBorderGradient}
+                  borderWidth={4}
+                  borderRadius={40}
+                >
+                  <View style={styles.avatarCircleWithGradient}>
+                    {viewedUser?.avatar && viewedUser.avatar.startsWith('http') ? (
+                      <Image source={{ uri: viewedUser.avatar }} style={styles.avatarImage} />
+                    ) : (
+                      <ThemedText style={styles.avatarInitial}>
+                        {viewedUser?.avatar || viewedUser?.username?.[0]?.toUpperCase() || 'U'}
+                      </ThemedText>
+                    )}
+                  </View>
+                </GradientBorder>
               ) : (
-                <View style={[
-                  styles.avatarCircle,
-                  tierBorderColor && { borderColor: tierBorderColor, borderWidth: 4 }
-                ]}>
+                <View style={styles.avatarCircle}>
                   {viewedUser?.avatar && viewedUser.avatar.startsWith('http') ? (
                     <Image source={{ uri: viewedUser.avatar }} style={styles.avatarImage} />
                   ) : (
@@ -904,6 +924,14 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     borderWidth: 3,
     borderColor: '#1e2124',
+  },
+  avatarCircleWithGradient: {
+    width: 80,
+    height: 80,
+    borderRadius: 40,
+    backgroundColor: '#36393e',
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   avatarInitial: {
     fontSize: 40,

@@ -5,6 +5,7 @@ import { useRouter } from 'expo-router';
 import { ScrollView, StyleSheet, TouchableOpacity, View, Image } from 'react-native';
 import GradientBorder from '@/components/GradientBorder';
 import { TIER_GRADIENTS } from '@/utils/tierBorderUtils';
+import { useAuth } from '@/contexts/AuthContext';
 
 // League rank images mapping
 const leagueRankImages: { [key: string]: any } = {
@@ -94,6 +95,7 @@ const tierData = [
 
 export default function TierBordersScreen() {
   const router = useRouter();
+  const { user } = useAuth();
 
   return (
     <ThemedView style={styles.container}>
@@ -128,7 +130,14 @@ export default function TierBordersScreen() {
                 borderRadius={32}
               >
                 <View style={styles.tierAvatarPlaceholder}>
-                  <IconSymbol size={32} name="person.fill" color="#666" />
+                  {user?.avatar ? (
+                    <Image
+                      source={{ uri: user.avatar }}
+                      style={styles.tierAvatar}
+                    />
+                  ) : (
+                    <IconSymbol size={32} name="person.fill" color="#666" />
+                  )}
                 </View>
               </GradientBorder>
               <View style={styles.tierInfo}>
@@ -271,6 +280,11 @@ const styles = StyleSheet.create({
     backgroundColor: '#2c2f33',
     alignItems: 'center',
     justifyContent: 'center',
+  },
+  tierAvatar: {
+    width: 64,
+    height: 64,
+    borderRadius: 28,
   },
   tierInfo: {
     flex: 1,

@@ -9,7 +9,59 @@ import { collection, query, where, getDocs, doc, getDoc, limit, updateDoc, delet
 import * as Clipboard from 'expo-clipboard';
 import { useAuth } from '@/contexts/AuthContext';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { calculateTierBorderColor } from '@/utils/tierBorderUtils';
+
+// League of Legends rank icon mapping
+const LEAGUE_RANK_ICONS: { [key: string]: any } = {
+  iron: require('@/assets/images/leagueranks/iron.png'),
+  bronze: require('@/assets/images/leagueranks/bronze.png'),
+  silver: require('@/assets/images/leagueranks/silver.png'),
+  gold: require('@/assets/images/leagueranks/gold.png'),
+  platinum: require('@/assets/images/leagueranks/platinum.png'),
+  emerald: require('@/assets/images/leagueranks/emerald.png'),
+  diamond: require('@/assets/images/leagueranks/diamond.png'),
+  master: require('@/assets/images/leagueranks/masters.png'),
+  grandmaster: require('@/assets/images/leagueranks/grandmaster.png'),
+  challenger: require('@/assets/images/leagueranks/challenger.png'),
+  unranked: require('@/assets/images/leagueranks/unranked.png'),
+};
+
+// Valorant rank icon mapping
+const VALORANT_RANK_ICONS: { [key: string]: any } = {
+  iron: require('@/assets/images/valorantranks/iron.png'),
+  bronze: require('@/assets/images/valorantranks/bronze.png'),
+  silver: require('@/assets/images/valorantranks/silver.png'),
+  gold: require('@/assets/images/valorantranks/gold.png'),
+  platinum: require('@/assets/images/valorantranks/platinum.png'),
+  diamond: require('@/assets/images/valorantranks/diamond.png'),
+  ascendant: require('@/assets/images/valorantranks/ascendant.png'),
+  immortal: require('@/assets/images/valorantranks/immortal.png'),
+  radiant: require('@/assets/images/valorantranks/radiant.png'),
+  unranked: require('@/assets/images/valorantranks/unranked.png'),
+  iron1: require('@/assets/images/valorantranks/iron1.png'),
+  iron2: require('@/assets/images/valorantranks/iron2.png'),
+  iron3: require('@/assets/images/valorantranks/iron3.png'),
+  bronze1: require('@/assets/images/valorantranks/bronze1.png'),
+  bronze2: require('@/assets/images/valorantranks/bronze2.png'),
+  bronze3: require('@/assets/images/valorantranks/bronze3.png'),
+  silver1: require('@/assets/images/valorantranks/silver1.png'),
+  silver2: require('@/assets/images/valorantranks/silver2.png'),
+  silver3: require('@/assets/images/valorantranks/silver3.png'),
+  gold1: require('@/assets/images/valorantranks/gold1.png'),
+  gold2: require('@/assets/images/valorantranks/gold2.png'),
+  gold3: require('@/assets/images/valorantranks/gold3.png'),
+  platinum1: require('@/assets/images/valorantranks/platinum1.png'),
+  platinum2: require('@/assets/images/valorantranks/platinum2.png'),
+  platinum3: require('@/assets/images/valorantranks/platinum3.png'),
+  diamond1: require('@/assets/images/valorantranks/diamond1.png'),
+  diamond2: require('@/assets/images/valorantranks/diamond2.png'),
+  diamond3: require('@/assets/images/valorantranks/diamond3.png'),
+  ascendant1: require('@/assets/images/valorantranks/ascendant1.png'),
+  ascendant2: require('@/assets/images/valorantranks/ascendant2.png'),
+  ascendant3: require('@/assets/images/valorantranks/ascendant3.png'),
+  immortal1: require('@/assets/images/valorantranks/immortal1.png'),
+  immortal2: require('@/assets/images/valorantranks/immortal2.png'),
+  immortal3: require('@/assets/images/valorantranks/immortal3.png'),
+};
 
 interface Player {
   rank: number;
@@ -21,9 +73,38 @@ interface Player {
   lp?: number; // League Points (League of Legends)
   rr?: number; // Rank Rating (Valorant)
   dailyGain?: number;
-  leagueRank?: string; // For tier border calculation
-  valorantRank?: string; // For tier border calculation
 }
+
+// Helper function to get League rank icon
+const getLeagueRankIcon = (rank: string) => {
+  if (!rank || rank === 'Unranked') {
+    return LEAGUE_RANK_ICONS.unranked;
+  }
+  const tier = rank.split(' ')[0].toLowerCase();
+  return LEAGUE_RANK_ICONS[tier] || LEAGUE_RANK_ICONS.unranked;
+};
+
+// Helper function to get Valorant rank icon
+const getValorantRankIcon = (rank: string) => {
+  if (!rank || rank === 'Unranked') {
+    return VALORANT_RANK_ICONS.unranked;
+  }
+
+  const parts = rank.split(' ');
+  const tier = parts[0].toLowerCase();
+  const subdivision = parts[1];
+
+  // Try to get subdivision rank first (e.g., "gold3")
+  if (subdivision) {
+    const subdivisionKey = tier + subdivision;
+    if (VALORANT_RANK_ICONS[subdivisionKey]) {
+      return VALORANT_RANK_ICONS[subdivisionKey];
+    }
+  }
+
+  // Fallback to base tier or radiant
+  return VALORANT_RANK_ICONS[tier] || VALORANT_RANK_ICONS.unranked;
+};
 
 // Helper function to calculate League rank value for sorting
 const getLeagueRankValue = (currentRank: string, lp: number): number => {
@@ -244,32 +325,19 @@ export default function LeaderboardDetail() {
         let stats = userStatsDoc.data();
 
         // Fallback: If gameStats doesn't exist, read from main stats
-        let leagueRank = undefined;
-        let valorantRank = undefined;
-
         if (!stats || !stats.currentRank) {
           const userDoc = await getDoc(doc(db, 'users', member.userId));
           const userData = userDoc.data();
 
-          // Get League rank for tier border
-          if (userData?.riotStats?.rankedSolo) {
-            leagueRank = `${userData.riotStats.rankedSolo.tier} ${userData.riotStats.rankedSolo.rank}`;
-          }
-
-          // Get Valorant rank for tier border
-          if (userData?.valorantStats?.currentRank) {
-            valorantRank = userData.valorantStats.currentRank;
-          }
-
           if (isLeague && userData?.riotStats?.rankedSolo) {
             stats = {
-              currentRank: leagueRank,
+              currentRank: `${userData.riotStats.rankedSolo.tier} ${userData.riotStats.rankedSolo.rank}`,
               lp: userData.riotStats.rankedSolo.leaguePoints || 0,
               dailyGain: 0,
             };
           } else if (!isLeague && userData?.valorantStats) {
             stats = {
-              currentRank: valorantRank || 'Unranked',
+              currentRank: userData.valorantStats.currentRank || 'Unranked',
               rr: userData.valorantStats.rankRating || 0,
               dailyGain: 0,
             };
@@ -286,8 +354,6 @@ export default function LeaderboardDetail() {
           rr: !isLeague ? (stats?.rr || 0) : undefined,
           dailyGain: stats?.dailyGain || 0,
           isCurrentUser: member.userId === user?.id,
-          leagueRank,
-          valorantRank,
         };
       });
 
@@ -425,32 +491,19 @@ export default function LeaderboardDetail() {
             let stats = userStatsDoc.data();
 
             // Fallback: If gameStats doesn't exist, read from main stats
-            let leagueRank = undefined;
-            let valorantRank = undefined;
-
             if (!stats || !stats.currentRank) {
               const userDoc = await getDoc(doc(db, 'users', member.userId));
               const userData = userDoc.data();
 
-              // Get League rank for tier border
-              if (userData?.riotStats?.rankedSolo) {
-                leagueRank = `${userData.riotStats.rankedSolo.tier} ${userData.riotStats.rankedSolo.rank}`;
-              }
-
-              // Get Valorant rank for tier border
-              if (userData?.valorantStats?.currentRank) {
-                valorantRank = userData.valorantStats.currentRank;
-              }
-
               if (isLeague && userData?.riotStats?.rankedSolo) {
                 stats = {
-                  currentRank: leagueRank,
+                  currentRank: `${userData.riotStats.rankedSolo.tier} ${userData.riotStats.rankedSolo.rank}`,
                   lp: userData.riotStats.rankedSolo.leaguePoints || 0,
                   dailyGain: 0,
                 };
               } else if (!isLeague && userData?.valorantStats) {
                 stats = {
-                  currentRank: valorantRank || 'Unranked',
+                  currentRank: userData.valorantStats.currentRank || 'Unranked',
                   rr: userData.valorantStats.rankRating || 0,
                   dailyGain: 0,
                 };
@@ -467,8 +520,6 @@ export default function LeaderboardDetail() {
               rr: !isLeague ? (stats?.rr || 0) : undefined,
               dailyGain: stats?.dailyGain || 0,
               isCurrentUser: member.userId === user?.id,
-              leagueRank,
-              valorantRank,
             };
           });
 
@@ -664,7 +715,7 @@ export default function LeaderboardDetail() {
         {/* Column Headers */}
         <View style={styles.columnHeaders}>
           <ThemedText style={[styles.columnHeaderText, { width: 40 }]}>RANK</ThemedText>
-          <ThemedText style={[styles.columnHeaderText, { flex: 1 }]}>PLAYER</ThemedText>
+          <ThemedText style={[styles.columnHeaderText, { flex: 1, paddingLeft: 40 }]}>PLAYER</ThemedText>
           <ThemedText style={[styles.columnHeaderText, styles.alignRight, { width: 120 }]}>
             CURRENT RANK
           </ThemedText>
@@ -672,48 +723,57 @@ export default function LeaderboardDetail() {
 
         {/* Player Rows */}
         <View style={styles.playerList}>
-          {players.map((player) => {
-            const tierBorderColor = calculateTierBorderColor(player.leagueRank, player.valorantRank);
+          {players.map((player, index) => {
+            const rankIcon = isLeague
+              ? getLeagueRankIcon(player.currentRank)
+              : getValorantRankIcon(player.currentRank);
+
             return (
-            <TouchableOpacity
-              key={player.rank}
-              style={[
-                styles.playerRow,
-                player.isCurrentUser && styles.currentUserRow,
-                { borderLeftWidth: 4, borderLeftColor: getBorderColor(player.rank) },
-              ]}
-              onPress={() => handlePlayerPress(player)}
-              activeOpacity={0.7}
-            >
-              {/* Rank Number */}
-              <View style={styles.rankContainer}>
-                <ThemedText style={styles.rankText}>{player.rank}</ThemedText>
-              </View>
-
-              {/* Player Info */}
-              <View style={styles.playerInfo}>
-                <View style={[
-                  styles.playerAvatar,
-                  tierBorderColor && { borderColor: tierBorderColor, borderWidth: 2 }
-                ]}>
-                  {player.avatar && player.avatar.startsWith('http') ? (
-                    <Image source={{ uri: player.avatar }} style={styles.playerAvatarImage} />
-                  ) : (
-                    <ThemedText style={styles.avatarText}>
-                      {player.avatar || player.username[0].toUpperCase()}
-                    </ThemedText>
-                  )}
+              <TouchableOpacity
+                key={player.rank}
+                style={[
+                  styles.playerRow,
+                  index % 2 === 0 ? styles.evenRow : styles.oddRow,
+                  player.isCurrentUser && styles.currentUserRow,
+                  { borderLeftWidth: 4, borderLeftColor: getBorderColor(player.rank) },
+                ]}
+                onPress={() => handlePlayerPress(player)}
+                activeOpacity={0.7}
+              >
+                {/* Rank Number */}
+                <View style={styles.rankContainer}>
+                  <ThemedText style={styles.rankText}>{player.rank}</ThemedText>
                 </View>
-                <ThemedText style={styles.playerName} numberOfLines={1}>
-                  {player.username}
-                </ThemedText>
-              </View>
 
-              {/* Current Rank with LP/RR based on game */}
-              <ThemedText style={[styles.currentRankText, styles.alignRight, { width: 120 }]}>
-                {player.currentRank} ({isLeague ? `${player.lp || 0} lp` : `${player.rr || 0} rr`})
-              </ThemedText>
-            </TouchableOpacity>
+                {/* Player Info */}
+                <View style={styles.playerInfo}>
+                  <View style={styles.playerAvatar}>
+                    {player.avatar && player.avatar.startsWith('http') ? (
+                      <Image source={{ uri: player.avatar }} style={styles.playerAvatarImage} />
+                    ) : (
+                      <ThemedText style={styles.avatarText}>
+                        {player.avatar || player.username[0].toUpperCase()}
+                      </ThemedText>
+                    )}
+                  </View>
+                  <ThemedText style={styles.playerName} numberOfLines={1}>
+                    {player.username}
+                  </ThemedText>
+                </View>
+
+                {/* Current Rank with Icon and LP/RR based on game */}
+                <View style={styles.rankInfoContainer}>
+                  <Image source={rankIcon} style={styles.rankIconSmall} resizeMode="contain" />
+                  <View style={styles.rankTextContainer}>
+                    <ThemedText style={styles.currentRankText}>
+                      {player.currentRank}
+                    </ThemedText>
+                    <ThemedText style={styles.rankPointsText}>
+                      {isLeague ? `${player.lp || 0} lp` : `${player.rr || 0} rr`}
+                    </ThemedText>
+                  </View>
+                </View>
+              </TouchableOpacity>
             );
           })}
         </View>
@@ -865,11 +925,16 @@ const styles = StyleSheet.create({
     paddingVertical: 8,
     paddingLeft: 12,
     paddingRight: 16,
-    backgroundColor: '#36393e',
     borderBottomWidth: 1,
     borderBottomColor: '#2c2f33',
     position: 'relative',
     borderLeftWidth: 3,
+  },
+  evenRow: {
+    backgroundColor: '#2c2f33',
+  },
+  oddRow: {
+    backgroundColor: '#36393e',
   },
   currentUserRow: {
     backgroundColor: '#424549',
@@ -887,15 +952,13 @@ const styles = StyleSheet.create({
     flex: 1,
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 6,
+    gap: 12,
   },
   playerAvatar: {
     width: 28,
     height: 28,
     backgroundColor: '#2c2f33',
-    borderRadius: 14,
-    borderWidth: 1,
-    borderColor: '#424549',
+    borderRadius: 4,
     alignItems: 'center',
     justifyContent: 'center',
     overflow: 'hidden',
@@ -903,7 +966,7 @@ const styles = StyleSheet.create({
   playerAvatarImage: {
     width: '100%',
     height: '100%',
-    borderRadius: 14,
+    borderRadius: 4,
   },
   avatarText: {
     fontSize: 12,
@@ -915,10 +978,31 @@ const styles = StyleSheet.create({
     color: '#fff',
     letterSpacing: -0.2,
   },
+  rankInfoContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    width: 120,
+    justifyContent: 'flex-end',
+  },
+  rankIconSmall: {
+    width: 24,
+    height: 24,
+  },
+  rankTextContainer: {
+    alignItems: 'flex-end',
+  },
   currentRankText: {
     fontSize: 11,
     fontWeight: '600',
     color: '#fff',
+    lineHeight: 14,
+  },
+  rankPointsText: {
+    fontSize: 9,
+    fontWeight: '500',
+    color: '#b9bbbe',
+    lineHeight: 12,
   },
   loadingContainer: {
     flex: 1,

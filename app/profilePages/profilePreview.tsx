@@ -378,10 +378,7 @@ export default function ProfilePreviewScreen() {
           <View style={styles.profileTopRow}>
             {/* Avatar on the left, overlapping cover */}
             <View style={styles.avatarContainer}>
-              <View style={[
-                styles.avatarCircle,
-                tierBorderColor && { borderColor: tierBorderColor, borderWidth: 4 }
-              ]}>
+              <View style={styles.avatarCircle}>
                 {viewedUser?.avatar && viewedUser.avatar.startsWith('http') ? (
                   <Image source={{ uri: viewedUser.avatar }} style={styles.avatarImage} />
                 ) : (
@@ -868,8 +865,6 @@ const styles = StyleSheet.create({
     backgroundColor: '#36393e',
     alignItems: 'center',
     justifyContent: 'center',
-    borderWidth: 3,
-    borderColor: '#1e2124',
   },
   avatarInitial: {
     fontSize: 40,

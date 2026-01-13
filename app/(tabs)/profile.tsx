@@ -20,7 +20,8 @@ import { getLeagueStats, getTftStats, formatRank } from '@/services/riotService'
 import { getValorantStats } from '@/services/valorantService';
 import { deletePostMedia } from '@/services/storageService';
 import { deleteDoc } from 'firebase/firestore';
-import { calculateTierBorderColor } from '@/utils/tierBorderUtils';
+import { calculateTierBorderColor, calculateTierBorderGradient } from '@/utils/tierBorderUtils';
+import GradientBorder from '@/components/GradientBorder';
 
 const { width: screenWidth } = Dimensions.get('window');
 const CARD_PADDING = 20;
@@ -537,6 +538,12 @@ export default function ProfileScreen() {
     valorantStats?.currentRank
   );
 
+  // Calculate tier border gradient based on current ranks
+  const tierBorderGradient = calculateTierBorderGradient(
+    riotStats?.rankedSolo ? formatRank(riotStats.rankedSolo.tier, riotStats.rankedSolo.rank) : undefined,
+    valorantStats?.currentRank
+  );
+
   return (
     <ThemedView style={styles.container}>
       {/* Header with settings */}
@@ -593,18 +600,33 @@ export default function ProfileScreen() {
           <View style={styles.profileTopRow}>
             {/* Avatar on the left, overlapping cover */}
             <View style={styles.avatarContainer}>
-              <View style={[
-                styles.avatarCircle,
-                tierBorderColor && { borderColor: tierBorderColor, borderWidth: 4 }
-              ]}>
-                {user?.avatar && user.avatar.startsWith('http') ? (
-                  <Image source={{ uri: user.avatar }} style={styles.avatarImage} />
-                ) : (
-                  <ThemedText style={styles.avatarInitial}>
-                    {user?.avatar || user?.username?.[0]?.toUpperCase() || 'U'}
-                  </ThemedText>
-                )}
-              </View>
+              {tierBorderGradient ? (
+                <GradientBorder
+                  colors={tierBorderGradient}
+                  borderWidth={4}
+                  borderRadius={40}
+                >
+                  <View style={styles.avatarCircleWithGradient}>
+                    {user?.avatar && user.avatar.startsWith('http') ? (
+                      <Image source={{ uri: user.avatar }} style={styles.avatarImage} />
+                    ) : (
+                      <ThemedText style={styles.avatarInitial}>
+                        {user?.avatar || user?.username?.[0]?.toUpperCase() || 'U'}
+                      </ThemedText>
+                    )}
+                  </View>
+                </GradientBorder>
+              ) : (
+                <View style={styles.avatarCircle}>
+                  {user?.avatar && user.avatar.startsWith('http') ? (
+                    <Image source={{ uri: user.avatar }} style={styles.avatarImage} />
+                  ) : (
+                    <ThemedText style={styles.avatarInitial}>
+                      {user?.avatar || user?.username?.[0]?.toUpperCase() || 'U'}
+                    </ThemedText>
+                  )}
+                </View>
+              )}
             </View>
 
             {/* Username on the right */}
@@ -1125,6 +1147,14 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     borderWidth: 3,
     borderColor: '#fff',
+  },
+  avatarCircleWithGradient: {
+    width: 80,
+    height: 80,
+    borderRadius: 40,
+    backgroundColor: '#f5f5f5',
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   avatarInitial: {
     fontSize: 40,

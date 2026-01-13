@@ -676,8 +676,6 @@ const styles = StyleSheet.create({
     backgroundColor: '#36393e',
     alignItems: 'center',
     justifyContent: 'center',
-    borderWidth: 3,
-    borderColor: '#1e2124',
   },
   avatarInitial: {
     fontSize: 40,
