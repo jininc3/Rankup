@@ -23,6 +23,7 @@ interface Post {
   mediaType: 'image' | 'video';
   mediaTypes?: string[];
   thumbnailUrl?: string;
+  thumbnailType?: 'auto' | 'frame' | 'custom'; // Track thumbnail source
   caption?: string;
   taggedUsers?: any[];
   taggedGame?: string;
@@ -55,6 +56,12 @@ export default function NewPost({ visible, onClose, onPostCreated }: NewPostProp
   const [taggedUsers, setTaggedUsers] = useState<TaggedUser[]>([]);
   const [showTagUsersModal, setShowTagUsersModal] = useState(false);
   const [showGameOptions, setShowGameOptions] = useState(false);
+  const [thumbnailOption, setThumbnailOption] = useState<'auto' | 'frame' | 'custom'>('auto');
+  const [selectedThumbnailUri, setSelectedThumbnailUri] = useState<string | null>(null);
+  const [videoFrameOptions, setVideoFrameOptions] = useState<string[]>([]);
+  const [showThumbnailOptions, setShowThumbnailOptions] = useState(false);
+  const [showFrameSelector, setShowFrameSelector] = useState(false);
+  const [generatingFrames, setGeneratingFrames] = useState(false);
   const postPreviewScrollRef = useRef<ScrollView>(null);
   const captionInputRef = useRef<View>(null);
 
@@ -117,6 +124,87 @@ export default function NewPost({ visible, onClose, onPostCreated }: NewPostProp
     if (currentMediaIndex >= newMedia.length && newMedia.length > 0) {
       setCurrentMediaIndex(newMedia.length - 1);
     }
+
+    // Reset thumbnail selection when video is removed
+    if (newMedia.length === 0) {
+      setThumbnailOption('auto');
+      setSelectedThumbnailUri(null);
+      setVideoFrameOptions([]);
+    }
+  };
+
+  const generateVideoFrames = async () => {
+    if (selectedMedia.length === 0 || selectedMedia[0].type !== 'video') {
+      Alert.alert('Error', 'Please select a video first');
+      return;
+    }
+
+    const video = selectedMedia[0];
+    const duration = video.duration ? video.duration / 1000 : 30; // Convert to seconds, default to 30s
+
+    setGeneratingFrames(true);
+    const frames: string[] = [];
+    const timePoints = [0, 0.2, 0.4, 0.6, 0.8, 0.9]; // percentages
+
+    try {
+      for (const point of timePoints) {
+        const timeMs = Math.floor(duration * point * 1000);
+        const { uri } = await VideoThumbnails.getThumbnailAsync(video.uri, {
+          time: timeMs,
+          quality: 0.8,
+        });
+        frames.push(uri);
+      }
+      setVideoFrameOptions(frames);
+      setShowFrameSelector(true);
+    } catch (error) {
+      console.error('Error generating frames:', error);
+      Alert.alert('Error', 'Failed to generate video frames. Using auto-generated thumbnail.');
+    } finally {
+      setGeneratingFrames(false);
+    }
+  };
+
+  const pickCustomThumbnail = async () => {
+    const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
+
+    if (status !== 'granted') {
+      Alert.alert('Permission Required', 'Please allow access to your photo library');
+      return;
+    }
+
+    const result = await ImagePicker.launchImageLibraryAsync({
+      mediaTypes: ['images'],
+      allowsEditing: true,
+      aspect: [16, 9],
+      quality: 0.8,
+    });
+
+    if (!result.canceled && result.assets[0]) {
+      try {
+        // Validate file size (max 5MB)
+        const response = await fetch(result.assets[0].uri);
+        const blob = await response.blob();
+        if (blob.size > 5 * 1024 * 1024) {
+          Alert.alert('File Too Large', 'Please select an image under 5MB');
+          return;
+        }
+
+        setSelectedThumbnailUri(result.assets[0].uri);
+        setThumbnailOption('custom');
+        setShowThumbnailOptions(false);
+      } catch (error) {
+        console.error('Error validating thumbnail:', error);
+        Alert.alert('Error', 'Failed to process the selected image');
+      }
+    }
+  };
+
+  const handleSelectVideoFrame = (frameUri: string) => {
+    setSelectedThumbnailUri(frameUri);
+    setThumbnailOption('frame');
+    setShowFrameSelector(false);
+    setShowThumbnailOptions(false);
   };
 
   const handleSharePost = async () => {
@@ -177,22 +265,26 @@ export default function NewPost({ visible, onClose, onPostCreated }: NewPostProp
           }
 
           try {
-            const { uri } = await VideoThumbnails.getThumbnailAsync(
-              media.uri,
-              {
-                time: 1000, // Get thumbnail at 1 second
-              }
-            );
+            let thumbnailUri = selectedThumbnailUri;
+
+            // If no custom/frame selected, generate auto thumbnail
+            if (!thumbnailUri || thumbnailOption === 'auto') {
+              const { uri } = await VideoThumbnails.getThumbnailAsync(media.uri, {
+                time: 1000, // 1 second mark
+              });
+              thumbnailUri = uri;
+            }
 
             // Upload thumbnail to Firebase Storage
-            const thumbnailFileName = `posts/${user.id}/${timestamp}_thumb.jpg`;
+            const thumbnailSuffix = thumbnailOption === 'auto' ? '_thumb' : `_thumb_${thumbnailOption}`;
+            const thumbnailFileName = `posts/${user.id}/${timestamp}${thumbnailSuffix}.jpg`;
             const thumbnailRef = ref(storage, thumbnailFileName);
-            const thumbnailResponse = await fetch(uri);
+            const thumbnailResponse = await fetch(thumbnailUri);
             const thumbnailBlob = await thumbnailResponse.blob();
             const thumbnailUploadTask = await uploadBytesResumable(thumbnailRef, thumbnailBlob);
             thumbnailUrl = await getDownloadURL(thumbnailUploadTask.ref);
           } catch (thumbError) {
-            console.error('Error generating thumbnail:', thumbError);
+            console.error('Error uploading thumbnail:', thumbError);
           }
         }
 
@@ -220,6 +312,9 @@ export default function NewPost({ visible, onClose, onPostCreated }: NewPostProp
       // Only add optional fields if they have values
       if (thumbnailUrl) {
         postData.thumbnailUrl = thumbnailUrl;
+        if (thumbnailOption !== 'auto') {
+          postData.thumbnailType = thumbnailOption;
+        }
       }
       if (videoDuration) {
         postData.duration = videoDuration;
@@ -298,6 +393,11 @@ export default function NewPost({ visible, onClose, onPostCreated }: NewPostProp
       setSelectedPostGame(null);
       setTaggedUsers([]);
       setShowGameOptions(false);
+      setThumbnailOption('auto');
+      setSelectedThumbnailUri(null);
+      setVideoFrameOptions([]);
+      setShowThumbnailOptions(false);
+      setShowFrameSelector(false);
 
       Alert.alert('Success', 'Post shared successfully!');
 
@@ -334,6 +434,11 @@ export default function NewPost({ visible, onClose, onPostCreated }: NewPostProp
     setShowGameDropdown(false);
     setShowGameOptions(false);
     setShowTagUsersModal(false);
+    setThumbnailOption('auto');
+    setSelectedThumbnailUri(null);
+    setVideoFrameOptions([]);
+    setShowThumbnailOptions(false);
+    setShowFrameSelector(false);
     onClose();
   };
 
@@ -491,6 +596,102 @@ export default function NewPost({ visible, onClose, onPostCreated }: NewPostProp
               />
             </View>
 
+            {/* Thumbnail Selection Expandable Section - Only show when video is selected */}
+            {selectedMedia.length > 0 && selectedMedia[0].type === 'video' && (
+              <View style={styles.thumbnailSection}>
+                <TouchableOpacity
+                  style={styles.thumbnailHeader}
+                  onPress={() => setShowThumbnailOptions(!showThumbnailOptions)}
+                  activeOpacity={0.6}
+                >
+                  <View style={styles.thumbnailHeaderLeft}>
+                    <IconSymbol size={20} name="photo" color="#fff" />
+                    <ThemedText style={styles.thumbnailHeaderText}>Thumbnail</ThemedText>
+                    {selectedThumbnailUri && thumbnailOption !== 'auto' && (
+                      <View style={styles.thumbnailSelectedBadge}>
+                        <IconSymbol size={14} name="checkmark" color="#fff" />
+                      </View>
+                    )}
+                  </View>
+                  <IconSymbol
+                    size={18}
+                    name={showThumbnailOptions ? "chevron.up" : "chevron.down"}
+                    color="#b9bbbe"
+                  />
+                </TouchableOpacity>
+
+                {showThumbnailOptions && (
+                  <View style={styles.thumbnailOptionsContainer}>
+                    {/* Show selected thumbnail preview if exists */}
+                    {selectedThumbnailUri && thumbnailOption !== 'auto' && (
+                      <View style={styles.thumbnailPreviewContainer}>
+                        <Image
+                          source={{ uri: selectedThumbnailUri }}
+                          style={styles.thumbnailPreview}
+                          resizeMode="cover"
+                        />
+                        <ThemedText style={styles.thumbnailPreviewLabel}>
+                          {thumbnailOption === 'frame' ? 'Selected Frame' : 'Custom Thumbnail'}
+                        </ThemedText>
+                      </View>
+                    )}
+
+                    {/* Thumbnail option buttons */}
+                    <View style={styles.thumbnailButtonsContainer}>
+                      <TouchableOpacity
+                        style={styles.thumbnailButton}
+                        onPress={generateVideoFrames}
+                        disabled={generatingFrames}
+                        activeOpacity={0.7}
+                      >
+                        {generatingFrames ? (
+                          <ActivityIndicator size="small" color="#fff" />
+                        ) : (
+                          <>
+                            <IconSymbol size={20} name="film" color="#fff" />
+                            <ThemedText style={styles.thumbnailButtonText}>
+                              Select Video Frame
+                            </ThemedText>
+                          </>
+                        )}
+                      </TouchableOpacity>
+
+                      <TouchableOpacity
+                        style={styles.thumbnailButton}
+                        onPress={pickCustomThumbnail}
+                        activeOpacity={0.7}
+                      >
+                        <IconSymbol size={20} name="photo.on.rectangle" color="#fff" />
+                        <ThemedText style={styles.thumbnailButtonText}>
+                          Upload Custom Image
+                        </ThemedText>
+                      </TouchableOpacity>
+
+                      <TouchableOpacity
+                        style={[
+                          styles.thumbnailButton,
+                          thumbnailOption === 'auto' && styles.thumbnailButtonSelected
+                        ]}
+                        onPress={() => {
+                          setThumbnailOption('auto');
+                          setSelectedThumbnailUri(null);
+                        }}
+                        activeOpacity={0.7}
+                      >
+                        <IconSymbol size={20} name="wand.and.stars" color="#fff" />
+                        <ThemedText style={styles.thumbnailButtonText}>
+                          Use Auto-Generated
+                        </ThemedText>
+                        {thumbnailOption === 'auto' && (
+                          <IconSymbol size={16} name="checkmark" color="#fff" />
+                        )}
+                      </TouchableOpacity>
+                    </View>
+                  </View>
+                )}
+              </View>
+            )}
+
             {/* Tag Game Expandable Section */}
             <View style={styles.gameTagSection}>
               <TouchableOpacity
@@ -574,6 +775,69 @@ export default function NewPost({ visible, onClose, onPostCreated }: NewPostProp
             onTagsSelected={(users) => setTaggedUsers(users)}
             initialSelectedUsers={taggedUsers}
           />
+
+          {/* Frame Selector Modal - Nested inside Post Preview Modal */}
+          <Modal
+            visible={showFrameSelector}
+            animationType="slide"
+            transparent={false}
+            onRequestClose={() => setShowFrameSelector(false)}
+          >
+            <View style={styles.frameSelectorContainer}>
+              {/* Header */}
+              <View style={styles.frameSelectorHeader}>
+                <TouchableOpacity
+                  style={styles.frameSelectorCloseButton}
+                  onPress={() => setShowFrameSelector(false)}
+                >
+                  <IconSymbol size={28} name="xmark" color="#fff" />
+                </TouchableOpacity>
+                <ThemedText style={styles.frameSelectorTitle}>Select Frame</ThemedText>
+                <View style={{ width: 28 }} />
+              </View>
+
+              {/* Frame Grid */}
+              <ScrollView
+                style={styles.frameSelectorContent}
+                contentContainerStyle={styles.frameSelectorContentContainer}
+              >
+                <ThemedText style={styles.frameSelectorSubtitle}>
+                  Choose a thumbnail from your video
+                </ThemedText>
+                <View style={styles.frameGrid}>
+                  {videoFrameOptions.map((frameUri, index) => (
+                    <TouchableOpacity
+                      key={index}
+                      style={[
+                        styles.frameItem,
+                        selectedThumbnailUri === frameUri &&
+                        thumbnailOption === 'frame' &&
+                        styles.frameItemSelected
+                      ]}
+                      onPress={() => handleSelectVideoFrame(frameUri)}
+                      activeOpacity={0.8}
+                    >
+                      <Image
+                        source={{ uri: frameUri }}
+                        style={styles.frameImage}
+                        resizeMode="cover"
+                      />
+                      {selectedThumbnailUri === frameUri && thumbnailOption === 'frame' && (
+                        <View style={styles.frameSelectedOverlay}>
+                          <View style={styles.frameSelectedBadge}>
+                            <IconSymbol size={20} name="checkmark" color="#fff" />
+                          </View>
+                        </View>
+                      )}
+                      <ThemedText style={styles.frameLabel}>
+                        Frame {index + 1}
+                      </ThemedText>
+                    </TouchableOpacity>
+                  ))}
+                </View>
+              </ScrollView>
+            </View>
+          </Modal>
         </KeyboardAvoidingView>
       </Modal>
     </>
@@ -869,5 +1133,168 @@ const styles = StyleSheet.create({
   },
   gameButtonTextSelected: {
     color: '#fff',
+  },
+  // Thumbnail Section Styles
+  thumbnailSection: {
+    backgroundColor: '#1e2124',
+    borderBottomWidth: 1,
+    borderBottomColor: '#2c2f33',
+  },
+  thumbnailHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+  },
+  thumbnailHeaderLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  thumbnailHeaderText: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#fff',
+  },
+  thumbnailSelectedBadge: {
+    width: 20,
+    height: 20,
+    borderRadius: 10,
+    backgroundColor: '#c42743',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginLeft: 4,
+  },
+  thumbnailOptionsContainer: {
+    paddingHorizontal: 16,
+    paddingBottom: 12,
+  },
+  thumbnailPreviewContainer: {
+    marginBottom: 12,
+    alignItems: 'center',
+  },
+  thumbnailPreview: {
+    width: '100%',
+    height: 120,
+    borderRadius: 8,
+    backgroundColor: '#36393e',
+  },
+  thumbnailPreviewLabel: {
+    fontSize: 12,
+    color: '#b9bbbe',
+    marginTop: 6,
+  },
+  thumbnailButtonsContainer: {
+    gap: 8,
+  },
+  thumbnailButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    paddingVertical: 12,
+    paddingHorizontal: 16,
+    borderRadius: 8,
+    backgroundColor: '#36393e',
+    borderWidth: 1,
+    borderColor: '#36393e',
+  },
+  thumbnailButtonSelected: {
+    backgroundColor: '#c42743',
+    borderColor: '#c42743',
+  },
+  thumbnailButtonText: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#fff',
+  },
+  // Frame Selector Modal Styles
+  frameSelectorContainer: {
+    flex: 1,
+    backgroundColor: '#1e2124',
+  },
+  frameSelectorHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: 16,
+    paddingTop: 60,
+    paddingBottom: 16,
+    borderBottomWidth: 1,
+    borderBottomColor: '#2c2f33',
+    backgroundColor: '#1e2124',
+  },
+  frameSelectorCloseButton: {
+    padding: 4,
+  },
+  frameSelectorTitle: {
+    fontSize: 18,
+    fontWeight: '600',
+    color: '#fff',
+  },
+  frameSelectorContent: {
+    flex: 1,
+  },
+  frameSelectorContentContainer: {
+    padding: 16,
+  },
+  frameSelectorSubtitle: {
+    fontSize: 14,
+    color: '#b9bbbe',
+    marginBottom: 16,
+    textAlign: 'center',
+  },
+  frameGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 12,
+    justifyContent: 'space-between',
+  },
+  frameItem: {
+    width: '48%',
+    aspectRatio: 16 / 9,
+    borderRadius: 8,
+    overflow: 'hidden',
+    backgroundColor: '#36393e',
+    borderWidth: 2,
+    borderColor: '#36393e',
+  },
+  frameItemSelected: {
+    borderColor: '#c42743',
+  },
+  frameImage: {
+    width: '100%',
+    height: '100%',
+  },
+  frameSelectedOverlay: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    backgroundColor: 'rgba(196, 39, 67, 0.3)',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  frameSelectedBadge: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    backgroundColor: '#c42743',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  frameLabel: {
+    position: 'absolute',
+    bottom: 4,
+    left: 4,
+    fontSize: 11,
+    fontWeight: '600',
+    color: '#fff',
+    backgroundColor: 'rgba(0, 0, 0, 0.6)',
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderRadius: 4,
   },
 });
