@@ -7,7 +7,7 @@ import { ThemedView } from '@/components/themed-view';
 import { IconSymbol } from '@/components/ui/icon-symbol';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { useRef, useState, useEffect, useCallback } from 'react';
-import { Dimensions, Image, ScrollView, StyleSheet, TouchableOpacity, View, ActivityIndicator, Alert, Linking, Modal } from 'react-native';
+import { Dimensions, Image, ScrollView, StyleSheet, TouchableOpacity, View, ActivityIndicator, Alert, Linking, Modal, LayoutAnimation, Platform, UIManager } from 'react-native';
 import * as Clipboard from 'expo-clipboard';
 import { useAuth } from '@/contexts/AuthContext';
 import { useFocusEffect } from '@react-navigation/native';
@@ -92,6 +92,7 @@ export default function ProfileViewScreen() {
   const [showFilterMenu, setShowFilterMenu] = useState(false);
   const [selectedFilter, setSelectedFilter] = useState<'newest' | 'oldest' | 'most_viewed' | 'most_liked'>('newest');
   const [selectedGameFilter, setSelectedGameFilter] = useState<string | null>(null);
+  const [cardsExpanded, setCardsExpanded] = useState(false);
 
   // Dynamic games array based on Riot data and enabled rank cards
   const userGames = (riotAccount || valorantAccount) ? [
@@ -133,6 +134,25 @@ export default function ProfileViewScreen() {
   // Get optional preloaded data from params for instant display
   const preloadedUsername = params.username as string | undefined;
   const preloadedAvatar = params.avatar as string | undefined;
+
+  // Enable LayoutAnimation on Android
+  useEffect(() => {
+    if (Platform.OS === 'android' && UIManager.setLayoutAnimationEnabledExperimental) {
+      UIManager.setLayoutAnimationEnabledExperimental(true);
+    }
+  }, []);
+
+  // Toggle card stack expansion
+  const toggleCardExpansion = () => {
+    LayoutAnimation.configureNext(
+      LayoutAnimation.create(
+        300,
+        LayoutAnimation.Types.easeInEaseOut,
+        LayoutAnimation.Properties.opacity
+      )
+    );
+    setCardsExpanded(!cardsExpanded);
+  };
 
   // Redirect to own profile if trying to view yourself
   useEffect(() => {
@@ -633,23 +653,82 @@ export default function ProfileViewScreen() {
             </View>
           ) : (
             <View style={styles.verticalRankCardsContainer}>
-              {/* Vertical Stack of Rank Cards */}
-              {userGames.map((game) => {
-                // Use appropriate account username based on game
-                let displayUsername = viewedUser?.username || 'User';
+              {!cardsExpanded ? (
+                // Stacked Cards View (Apple Wallet style)
+                <TouchableOpacity
+                  style={styles.stackedCardsWrapper}
+                  onPress={toggleCardExpansion}
+                  activeOpacity={0.9}
+                >
+                  {userGames.map((game, index) => {
+                    // Use appropriate account username based on game
+                    let displayUsername = viewedUser?.username || 'User';
 
-                if (game.name === 'Valorant' && valorantAccount) {
-                  displayUsername = `${valorantAccount.gameName}#${valorantAccount.tag}`;
-                } else if ((game.name === 'League of Legends' || game.name === 'TFT') && riotAccount) {
-                  displayUsername = `${riotAccount.gameName}#${riotAccount.tagLine}`;
-                }
+                    if (game.name === 'Valorant' && valorantAccount) {
+                      displayUsername = `${valorantAccount.gameName}#${valorantAccount.tag}`;
+                    } else if ((game.name === 'League of Legends' || game.name === 'TFT') && riotAccount) {
+                      displayUsername = `${riotAccount.gameName}#${riotAccount.tagLine}`;
+                    }
 
-                return (
-                  <View key={game.id} style={styles.verticalCardWrapper}>
-                    <RankCard game={game} username={displayUsername} viewOnly={false} userId={viewedUser?.id} />
+                    // Calculate stacking offset - stack downwards (cards behind peek from above)
+                    const totalCards = userGames.length;
+                    const reverseIndex = totalCards - 1 - index;
+                    const topOffset = reverseIndex * -40; // Negative to stack upwards from bottom, increased spacing
+                    const scale = 1 - (reverseIndex * 0.02);
+
+                    return (
+                      <View
+                        key={game.id}
+                        style={[
+                          styles.stackedCardItem,
+                          {
+                            bottom: 0,
+                            top: topOffset,
+                            transform: [{ scale }],
+                            zIndex: index + 1, // First card has lowest z-index, last card highest
+                          }
+                        ]}
+                        pointerEvents="none"
+                      >
+                        <RankCard game={game} username={displayUsername} viewOnly={true} userId={viewedUser?.id} />
+                      </View>
+                    );
+                  })}
+                  <View style={styles.tapToExpandHint}>
+                    <ThemedText style={styles.tapToExpandText}>Tap to expand →</ThemedText>
                   </View>
-                );
-              })}
+                </TouchableOpacity>
+              ) : (
+                // Expanded Cards View
+                <>
+                  {/* Wallet View button */}
+                  <TouchableOpacity
+                    style={styles.walletViewButton}
+                    onPress={toggleCardExpansion}
+                    activeOpacity={0.7}
+                  >
+                    <ThemedText style={styles.walletViewButtonText}>Wallet View</ThemedText>
+                  </TouchableOpacity>
+
+                  {/* Individual Cards */}
+                  {userGames.map((game) => {
+                    // Use appropriate account username based on game
+                    let displayUsername = viewedUser?.username || 'User';
+
+                    if (game.name === 'Valorant' && valorantAccount) {
+                      displayUsername = `${valorantAccount.gameName}#${valorantAccount.tag}`;
+                    } else if ((game.name === 'League of Legends' || game.name === 'TFT') && riotAccount) {
+                      displayUsername = `${riotAccount.gameName}#${riotAccount.tagLine}`;
+                    }
+
+                    return (
+                      <View key={game.id} style={styles.verticalCardWrapper}>
+                        <RankCard game={game} username={displayUsername} viewOnly={false} userId={viewedUser?.id} />
+                      </View>
+                    );
+                  })}
+                </>
+              )}
             </View>
           )}
         </View>
@@ -1119,6 +1198,52 @@ const styles = StyleSheet.create({
     paddingTop: 16,
     paddingBottom: 20,
     gap: 16,
+  },
+  stackedCardsWrapper: {
+    position: 'relative',
+    height: 320,
+    width: '100%',
+    marginTop: 40,
+  },
+  stackedCardItem: {
+    position: 'absolute',
+    width: '100%',
+    left: 0,
+    shadowColor: '#000',
+    shadowOffset: {
+      width: 8,
+      height: 12,
+    },
+    shadowOpacity: 0.6,
+    shadowRadius: 16,
+    elevation: 16,
+  },
+  tapToExpandHint: {
+    position: 'absolute',
+    bottom: -40,
+    left: 0,
+    right: 0,
+    alignItems: 'center',
+  },
+  tapToExpandText: {
+    fontSize: 13,
+    color: '#72767d',
+    fontWeight: '500',
+  },
+  walletViewButton: {
+    alignSelf: 'flex-end',
+    paddingVertical: 6,
+    paddingHorizontal: 10,
+    backgroundColor: '#36393e',
+    borderRadius: 6,
+    borderWidth: 1,
+    borderColor: '#424549',
+    marginBottom: 12,
+  },
+  walletViewButtonText: {
+    fontSize: 11,
+    fontWeight: '600',
+    color: '#fff',
   },
   verticalCardWrapper: {
     width: '100%',
