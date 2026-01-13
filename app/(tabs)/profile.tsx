@@ -533,15 +533,28 @@ export default function ProfileScreen() {
 
           {/* Profile Info Card */}
           <View style={styles.profileCard}>
-            {/* Avatar */}
-            <View style={styles.avatarWrapper}>
-              {tierBorderGradient ? (
-                <GradientBorder
-                  colors={tierBorderGradient}
-                  borderWidth={3}
-                  borderRadius={30}
-                >
-                  <View style={styles.avatarCircleWithGradient}>
+            {/* Top Row: Avatar on Left, Username + Stats on Right */}
+            <View style={styles.profileTopRow}>
+              {/* Avatar */}
+              <View style={styles.avatarWrapper}>
+                {tierBorderGradient ? (
+                  <GradientBorder
+                    colors={tierBorderGradient}
+                    borderWidth={2}
+                    borderRadius={35}
+                  >
+                    <View style={styles.avatarCircleWithGradient}>
+                      {user?.avatar && user.avatar.startsWith('http') ? (
+                        <Image source={{ uri: user.avatar }} style={styles.avatarImage} />
+                      ) : (
+                        <ThemedText style={styles.avatarInitial}>
+                          {user?.avatar || user?.username?.[0]?.toUpperCase() || 'U'}
+                        </ThemedText>
+                      )}
+                    </View>
+                  </GradientBorder>
+                ) : (
+                  <View style={styles.avatarCircle}>
                     {user?.avatar && user.avatar.startsWith('http') ? (
                       <Image source={{ uri: user.avatar }} style={styles.avatarImage} />
                     ) : (
@@ -550,53 +563,45 @@ export default function ProfileScreen() {
                       </ThemedText>
                     )}
                   </View>
-                </GradientBorder>
-              ) : (
-                <View style={styles.avatarCircle}>
-                  {user?.avatar && user.avatar.startsWith('http') ? (
-                    <Image source={{ uri: user.avatar }} style={styles.avatarImage} />
-                  ) : (
-                    <ThemedText style={styles.avatarInitial}>
-                      {user?.avatar || user?.username?.[0]?.toUpperCase() || 'U'}
-                    </ThemedText>
-                  )}
+                )}
+              </View>
+
+              {/* Right Side: Username and Stats */}
+              <View style={styles.profileRightSide}>
+                <ThemedText style={styles.username}>{user?.username || 'User'}</ThemedText>
+
+                {/* Stats in individual cards */}
+                <View style={styles.statsContainer}>
+                  <View style={styles.statItem}>
+                    <ThemedText style={styles.statNumber}>{posts.length}</ThemedText>
+                    <ThemedText style={styles.statLabel}>Posts</ThemedText>
+                  </View>
+                  <TouchableOpacity
+                    style={styles.statItem}
+                    onPress={() => router.push('/profilePages/followers')}
+                    activeOpacity={0.7}
+                  >
+                    <ThemedText style={styles.statNumber}>{user?.followersCount || 0}</ThemedText>
+                    <ThemedText style={styles.statLabel}>Followers</ThemedText>
+                  </TouchableOpacity>
+                  <TouchableOpacity
+                    style={styles.statItem}
+                    onPress={() => router.push('/profilePages/following')}
+                    activeOpacity={0.7}
+                  >
+                    <ThemedText style={styles.statNumber}>{user?.followingCount || 0}</ThemedText>
+                    <ThemedText style={styles.statLabel}>Following</ThemedText>
+                  </TouchableOpacity>
                 </View>
-              )}
+              </View>
             </View>
 
-            {/* Username */}
-            <ThemedText style={styles.username}>{user?.username || 'User'}</ThemedText>
-
-            {/* Bio */}
+            {/* Bio Row */}
             {user?.bio ? (
               <ThemedText style={styles.bioText}>{user.bio}</ThemedText>
             ) : (
               <ThemedText style={styles.emptyBioText}>No bio added yet</ThemedText>
             )}
-
-            {/* Stats Cards Row */}
-            <View style={styles.statsCardsRow}>
-              <View style={styles.statCard}>
-                <ThemedText style={styles.statNumber}>{posts.length}</ThemedText>
-                <ThemedText style={styles.statLabel}>Posts</ThemedText>
-              </View>
-              <TouchableOpacity
-                style={styles.statCard}
-                onPress={() => router.push('/profilePages/followers')}
-                activeOpacity={0.7}
-              >
-                <ThemedText style={styles.statNumber}>{user?.followersCount || 0}</ThemedText>
-                <ThemedText style={styles.statLabel}>Followers</ThemedText>
-              </TouchableOpacity>
-              <TouchableOpacity
-                style={styles.statCard}
-                onPress={() => router.push('/profilePages/following')}
-                activeOpacity={0.7}
-              >
-                <ThemedText style={styles.statNumber}>{user?.followingCount || 0}</ThemedText>
-                <ThemedText style={styles.statLabel}>Following</ThemedText>
-              </TouchableOpacity>
-            </View>
 
             {/* Action Buttons Row */}
             <View style={styles.actionButtonsRow}>
@@ -793,9 +798,6 @@ export default function ProfileScreen() {
                       </View>
                     );
                   })}
-                  <View style={styles.tapToExpandHint}>
-                    <ThemedText style={styles.tapToExpandText}>Tap to expand →</ThemedText>
-                  </View>
                 </TouchableOpacity>
               ) : (
                 // Expanded Cards View
@@ -1014,7 +1016,7 @@ const styles = StyleSheet.create({
   },
   coverPhotoWrapper: {
     width: '100%',
-    height: 140,
+    height: 180,
     position: 'relative',
   },
   coverPhotoImage: {
@@ -1064,36 +1066,40 @@ const styles = StyleSheet.create({
     backdropFilter: 'blur(10px)',
   },
   profileCard: {
-    marginTop: -30,
-    marginHorizontal: 16,
-    backgroundColor: '#2c2f33',
-    borderRadius: 12,
-    padding: 12,
-    alignItems: 'center',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.3,
-    shadowRadius: 8,
-    elevation: 8,
+    marginTop: 0,
+    marginHorizontal: 0,
+    backgroundColor: '#1e2124',
+    borderRadius: 0,
+    padding: 16,
+    paddingTop: 12,
+  },
+  profileTopRow: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: 12,
+    marginBottom: 10,
   },
   avatarWrapper: {
-    marginTop: -30,
-    marginBottom: 6,
+    marginTop: 0,
+  },
+  profileRightSide: {
+    flex: 1,
+    justifyContent: 'center',
   },
   avatarCircle: {
-    width: 60,
-    height: 60,
-    borderRadius: 30,
+    width: 70,
+    height: 70,
+    borderRadius: 35,
     backgroundColor: '#36393e',
     alignItems: 'center',
     justifyContent: 'center',
-    borderWidth: 3,
+    borderWidth: 2,
     borderColor: '#2c2f33',
   },
   avatarCircleWithGradient: {
-    width: 60,
-    height: 60,
-    borderRadius: 30,
+    width: 70,
+    height: 70,
+    borderRadius: 35,
     backgroundColor: '#36393e',
     alignItems: 'center',
     justifyContent: 'center',
@@ -1101,10 +1107,10 @@ const styles = StyleSheet.create({
   avatarImage: {
     width: '100%',
     height: '100%',
-    borderRadius: 30,
+    borderRadius: 35,
   },
   avatarInitial: {
-    fontSize: 28,
+    fontSize: 30,
     fontWeight: '700',
     color: '#fff',
   },
@@ -1112,49 +1118,48 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: '700',
     color: '#fff',
-    marginBottom: 2,
+    marginBottom: 8,
     letterSpacing: -0.5,
+  },
+  statsContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 16,
+  },
+  statItem: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    minWidth: 50,
+  },
+  statDivider: {
+    display: 'none',
   },
   bioText: {
     fontSize: 12,
     color: '#b9bbbe',
-    textAlign: 'center',
+    textAlign: 'left',
     lineHeight: 16,
-    marginBottom: 8,
-    paddingHorizontal: 8,
+    marginBottom: 10,
   },
   emptyBioText: {
     fontSize: 12,
     color: '#72767d',
-    textAlign: 'center',
+    textAlign: 'left',
     fontStyle: 'italic',
-    marginBottom: 8,
-  },
-  statsCardsRow: {
-    flexDirection: 'row',
-    width: '100%',
-    gap: 6,
-    marginBottom: 8,
-  },
-  statCard: {
-    flex: 1,
-    backgroundColor: '#36393e',
-    borderRadius: 6,
-    padding: 8,
-    alignItems: 'center',
-    borderWidth: 1,
-    borderColor: '#424549',
+    marginBottom: 10,
   },
   statNumber: {
-    fontSize: 14,
+    fontSize: 18,
     fontWeight: '700',
     color: '#fff',
-    marginBottom: 1,
+    marginBottom: 2,
+    letterSpacing: -0.5,
   },
   statLabel: {
-    fontSize: 9,
-    color: '#72767d',
+    fontSize: 12,
+    color: '#b9bbbe',
     fontWeight: '500',
+    textTransform: 'capitalize',
   },
   actionButtonsRow: {
     flexDirection: 'row',
@@ -1167,8 +1172,8 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     gap: 5,
-    paddingVertical: 8,
-    backgroundColor: '#5865F2',
+    paddingVertical: 7,
+    backgroundColor: '#c42743',
     borderRadius: 6,
   },
   editButtonText: {
@@ -1182,7 +1187,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     gap: 5,
-    paddingVertical: 8,
+    paddingVertical: 7,
     backgroundColor: '#424549',
     borderRadius: 6,
   },
@@ -1192,8 +1197,8 @@ const styles = StyleSheet.create({
     color: '#fff',
   },
   shareButton: {
-    width: 36,
-    height: 36,
+    width: 33,
+    height: 33,
     alignItems: 'center',
     justifyContent: 'center',
     backgroundColor: '#424549',
@@ -1203,7 +1208,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginTop: 12,
+    marginTop: 8,
     marginHorizontal: 0,
     borderBottomWidth: 1,
     borderBottomColor: '#2c2f33',
@@ -1356,18 +1361,6 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.6,
     shadowRadius: 16,
     elevation: 16,
-  },
-  tapToExpandHint: {
-    position: 'absolute',
-    bottom: -40,
-    left: 0,
-    right: 0,
-    alignItems: 'center',
-  },
-  tapToExpandText: {
-    fontSize: 13,
-    color: '#72767d',
-    fontWeight: '500',
   },
   collapseButton: {
     flexDirection: 'row',

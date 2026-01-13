@@ -16,7 +16,6 @@ import { collection, query, where, getDocs, Timestamp, doc, getDoc, setDoc, dele
 import { followUser, unfollowUser, isFollowing as checkIsFollowing, getUserRecentPosts } from '@/services/followService';
 import { createOrGetChat } from '@/services/chatService';
 import PostViewerModal from '@/app/components/postViewerModal';
-import PostFilterModal from '@/app/profilePages/postFilterModal';
 import { calculateTierBorderColor, calculateTierBorderGradient } from '@/utils/tierBorderUtils';
 import GradientBorder from '@/components/GradientBorder';
 
@@ -89,9 +88,6 @@ export default function ProfileViewScreen() {
   const [valorantStats, setValorantStats] = useState<any>(null);
   const [enabledRankCards, setEnabledRankCards] = useState<string[]>([]);
   const [showSocialsSheet, setShowSocialsSheet] = useState(false);
-  const [showFilterMenu, setShowFilterMenu] = useState(false);
-  const [selectedFilter, setSelectedFilter] = useState<'newest' | 'oldest' | 'most_viewed' | 'most_liked'>('newest');
-  const [selectedGameFilter, setSelectedGameFilter] = useState<string | null>(null);
   const [cardsExpanded, setCardsExpanded] = useState(false);
 
   // Dynamic games array based on Riot data and enabled rank cards
@@ -204,27 +200,13 @@ export default function ProfileViewScreen() {
         setLoadingUser(false);
       }
 
-      // Update posts
+      // Update posts - sort by newest first
       let fetchedPosts: Post[] = postsSnapshot.docs.map(doc => ({
         id: doc.id,
         ...doc.data()
       } as Post));
 
-      // Filter by game if a game filter is selected
-      if (selectedGameFilter) {
-        fetchedPosts = fetchedPosts.filter(post => post.taggedGame === selectedGameFilter);
-      }
-
-      // Sort based on selected filter
-      if (selectedFilter === 'newest') {
-        fetchedPosts = fetchedPosts.sort((a, b) => b.createdAt.toMillis() - a.createdAt.toMillis());
-      } else if (selectedFilter === 'oldest') {
-        fetchedPosts = fetchedPosts.sort((a, b) => a.createdAt.toMillis() - b.createdAt.toMillis());
-      } else if (selectedFilter === 'most_liked') {
-        fetchedPosts = fetchedPosts.sort((a, b) => b.likes - a.likes);
-      } else if (selectedFilter === 'most_viewed') {
-        fetchedPosts = fetchedPosts.sort((a, b) => b.likes - a.likes);
-      }
+      fetchedPosts = fetchedPosts.sort((a, b) => b.createdAt.toMillis() - a.createdAt.toMillis());
 
       setPosts(fetchedPosts);
       setLoadingPosts(false);
@@ -255,22 +237,8 @@ export default function ProfileViewScreen() {
         ...doc.data()
       } as Post));
 
-      // Filter by game if a game filter is selected
-      if (selectedGameFilter) {
-        fetchedPosts = fetchedPosts.filter(post => post.taggedGame === selectedGameFilter);
-      }
-
-      // Sort client-side based on selected filter
-      if (selectedFilter === 'newest') {
-        fetchedPosts = fetchedPosts.sort((a, b) => b.createdAt.toMillis() - a.createdAt.toMillis());
-      } else if (selectedFilter === 'oldest') {
-        fetchedPosts = fetchedPosts.sort((a, b) => a.createdAt.toMillis() - b.createdAt.toMillis());
-      } else if (selectedFilter === 'most_liked') {
-        fetchedPosts = fetchedPosts.sort((a, b) => b.likes - a.likes);
-      } else if (selectedFilter === 'most_viewed') {
-        // Placeholder: would need a views field in the future
-        fetchedPosts = fetchedPosts.sort((a, b) => b.likes - a.likes);
-      }
+      // Sort by newest first
+      fetchedPosts = fetchedPosts.sort((a, b) => b.createdAt.toMillis() - a.createdAt.toMillis());
 
       setPosts(fetchedPosts);
     } catch (error) {
@@ -303,13 +271,6 @@ export default function ProfileViewScreen() {
     }
   }, [userId, currentUser?.id]);
 
-  // Refetch posts when filter changes
-  useEffect(() => {
-    if (userId) {
-      fetchPosts();
-    }
-  }, [selectedFilter, selectedGameFilter]);
-
   const handlePostPress = (post: Post, index: number) => {
     setSelectedPost(post);
     setSelectedPostIndex(index);
@@ -319,11 +280,6 @@ export default function ProfileViewScreen() {
   const closePostViewer = () => {
     setShowPostViewer(false);
     setSelectedPost(null);
-  };
-
-  const handleFilterChange = (filter: 'newest' | 'oldest' | 'most_viewed' | 'most_liked', gameFilter: string | null) => {
-    setSelectedFilter(filter);
-    setSelectedGameFilter(gameFilter);
   };
 
   // Follow/Unfollow handler
@@ -447,15 +403,6 @@ export default function ProfileViewScreen() {
         </TouchableOpacity>
       </View>
 
-      {/* Post Filter Modal */}
-      <PostFilterModal
-        visible={showFilterMenu}
-        onClose={() => setShowFilterMenu(false)}
-        selectedFilter={selectedFilter}
-        selectedGameFilter={selectedGameFilter}
-        onFilterChange={handleFilterChange}
-      />
-
       <ScrollView showsVerticalScrollIndicator={false}>
         {/* Cover Photo */}
         <View style={styles.coverPhotoContainer}>
@@ -477,8 +424,8 @@ export default function ProfileViewScreen() {
               ) : tierBorderGradient ? (
                 <GradientBorder
                   colors={tierBorderGradient}
-                  borderWidth={4}
-                  borderRadius={40}
+                  borderWidth={3}
+                  borderRadius={35}
                 >
                   <View style={styles.avatarCircleWithGradient}>
                     {viewedUser?.avatar && viewedUser.avatar.startsWith('http') ? (
@@ -512,16 +459,37 @@ export default function ProfileViewScreen() {
                 <ThemedText style={styles.username}>{viewedUser?.username || 'User'}</ThemedText>
               )}
 
-              {/* Stats in One Line */}
+              {/* Stats */}
               {loadingUser && !viewedUser ? (
                 <View style={[styles.skeletonText, { width: 200, height: 16 }]} />
               ) : (
-                <View style={styles.statsRow}>
-                  <ThemedText style={styles.statText}>{viewedUser?.postsCount || 0} Posts</ThemedText>
-                  <ThemedText style={styles.statDividerText}> | </ThemedText>
-                  <ThemedText style={styles.statText}>{viewedUser?.followersCount || 0} Followers</ThemedText>
-                  <ThemedText style={styles.statDividerText}> | </ThemedText>
-                  <ThemedText style={styles.statText}>{viewedUser?.followingCount || 0} Following</ThemedText>
+                <View style={styles.statsContainer}>
+                  <View style={styles.statItem}>
+                    <ThemedText style={styles.statNumber}>{viewedUser?.postsCount || 0}</ThemedText>
+                    <ThemedText style={styles.statLabel}>Posts</ThemedText>
+                  </View>
+                  <TouchableOpacity
+                    style={styles.statItem}
+                    onPress={() => router.push({
+                      pathname: '/profilePages/followers',
+                      params: { userId: viewedUser?.id }
+                    })}
+                    activeOpacity={0.7}
+                  >
+                    <ThemedText style={styles.statNumber}>{viewedUser?.followersCount || 0}</ThemedText>
+                    <ThemedText style={styles.statLabel}>Followers</ThemedText>
+                  </TouchableOpacity>
+                  <TouchableOpacity
+                    style={styles.statItem}
+                    onPress={() => router.push({
+                      pathname: '/profilePages/following',
+                      params: { userId: viewedUser?.id }
+                    })}
+                    activeOpacity={0.7}
+                  >
+                    <ThemedText style={styles.statNumber}>{viewedUser?.followingCount || 0}</ThemedText>
+                    <ThemedText style={styles.statLabel}>Following</ThemedText>
+                  </TouchableOpacity>
                 </View>
               )}
             </View>
@@ -532,19 +500,6 @@ export default function ProfileViewScreen() {
             <View style={styles.bioContainer}>
               <ThemedText style={styles.bioText}>{viewedUser.bio}</ThemedText>
             </View>
-          )}
-
-          {/* Socials button */}
-          {(viewedUser?.discordLink || viewedUser?.instagramLink) && (
-            <TouchableOpacity
-              style={styles.socialsButton}
-              onPress={() => setShowSocialsSheet(true)}
-              activeOpacity={0.7}
-            >
-              <IconSymbol size={18} name="link" color="#666" />
-              <ThemedText style={styles.socialsButtonText}>Socials</ThemedText>
-              <IconSymbol size={14} name="chevron.right" color="#999" />
-            </TouchableOpacity>
           )}
 
           {/* Action Buttons */}
@@ -559,42 +514,63 @@ export default function ProfileViewScreen() {
               </ThemedText>
             </TouchableOpacity>
 
+            {(viewedUser?.discordLink || viewedUser?.instagramLink) && (
+              <TouchableOpacity
+                style={styles.socialsButtonCompact}
+                onPress={() => setShowSocialsSheet(true)}
+                activeOpacity={0.8}
+              >
+                <IconSymbol size={14} name="link" color="#fff" />
+                <ThemedText style={styles.socialsButtonCompactText}>Socials</ThemedText>
+              </TouchableOpacity>
+            )}
+
             <TouchableOpacity style={styles.messageButton} onPress={handleMessage}>
-              <IconSymbol size={18} name="bubble.left.fill" color="#000" />
+              <IconSymbol size={18} name="bubble.left.fill" color="#fff" />
             </TouchableOpacity>
           </View>
         </View>
 
-        {/* Main Tabs: Clips and RankCards */}
+        {/* Main Tabs */}
         <View style={styles.mainTabsContainer}>
           <View style={styles.mainTabsLeft}>
             <TouchableOpacity
               style={styles.mainTab}
               onPress={() => setActiveMainTab('clips')}
+              activeOpacity={0.7}
             >
-              <ThemedText style={[styles.mainTabText, activeMainTab === 'clips' && styles.mainTabTextActive]}>
-                Clips
-              </ThemedText>
+              <View style={styles.tabInner}>
+                <IconSymbol
+                  size={18}
+                  name="play.rectangle.fill"
+                  color={activeMainTab === 'clips' ? '#fff' : '#72767d'}
+                />
+                <ThemedText style={[styles.mainTabText, activeMainTab === 'clips' && styles.mainTabTextActive]}>
+                  Clips
+                </ThemedText>
+              </View>
               {activeMainTab === 'clips' && <View style={styles.tabIndicator} />}
             </TouchableOpacity>
+
             <TouchableOpacity
               style={styles.mainTab}
               onPress={() => setActiveMainTab('rankCards')}
+              activeOpacity={0.7}
             >
-              <ThemedText style={[styles.mainTabText, activeMainTab === 'rankCards' && styles.mainTabTextActive]}>
-                RankCards
-              </ThemedText>
+              <View style={styles.tabInner}>
+                <IconSymbol
+                  size={18}
+                  name="star.fill"
+                  color={activeMainTab === 'rankCards' ? '#fff' : '#72767d'}
+                />
+                <ThemedText style={[styles.mainTabText, activeMainTab === 'rankCards' && styles.mainTabTextActive]}>
+                  Rank Cards
+                </ThemedText>
+              </View>
               {activeMainTab === 'rankCards' && <View style={styles.tabIndicator} />}
             </TouchableOpacity>
           </View>
-          {activeMainTab === 'clips' && (
-            <TouchableOpacity
-              style={styles.filterButton}
-              onPress={() => setShowFilterMenu(true)}
-            >
-              <IconSymbol size={20} name="line.3.horizontal.decrease.circle" color="#fff" />
-            </TouchableOpacity>
-          )}
+
           {/* Wallet View button - shown when cards are expanded on RankCards tab */}
           {cardsExpanded && activeMainTab === 'rankCards' && (
             <TouchableOpacity
@@ -704,9 +680,6 @@ export default function ProfileViewScreen() {
                       </View>
                     );
                   })}
-                  <View style={styles.tapToExpandHint}>
-                    <ThemedText style={styles.tapToExpandText}>Tap to expand →</ThemedText>
-                  </View>
                 </TouchableOpacity>
               ) : (
                 // Expanded Cards View
@@ -801,7 +774,7 @@ export default function ProfileViewScreen() {
                           resizeMode="contain"
                         />
                       </View>
-                      <View>
+                      <View style={{ flex: 1 }}>
                         <ThemedText style={styles.socialOptionTitle}>Instagram</ThemedText>
                         <ThemedText style={styles.socialOptionSubtitle}>
                           {viewedUser.instagramLink.replace(/^https?:\/\/(www\.)?instagram\.com\//, '').replace(/\/$/, '')}
@@ -839,7 +812,7 @@ export default function ProfileViewScreen() {
                           resizeMode="contain"
                         />
                       </View>
-                      <View>
+                      <View style={{ flex: 1 }}>
                         <ThemedText style={styles.socialOptionTitle}>Discord</ThemedText>
                         <ThemedText style={styles.socialOptionSubtitle}>
                           {viewedUser.discordLink}
@@ -916,23 +889,23 @@ const styles = StyleSheet.create({
   },
   profileContentWrapper: {
     backgroundColor: '#1e2124',
-    paddingHorizontal: 20,
+    paddingHorizontal: 16,
     paddingTop: 0,
     paddingBottom: 8,
   },
   profileTopRow: {
     flexDirection: 'row',
     alignItems: 'flex-start',
-    gap: 16,
-    marginBottom: 8,
+    gap: 12,
+    marginBottom: 10,
   },
   avatarContainer: {
     marginTop: -40,
   },
   avatarCircle: {
-    width: 80,
-    height: 80,
-    borderRadius: 40,
+    width: 70,
+    height: 70,
+    borderRadius: 35,
     backgroundColor: '#36393e',
     alignItems: 'center',
     justifyContent: 'center',
@@ -940,20 +913,22 @@ const styles = StyleSheet.create({
     borderColor: '#1e2124',
   },
   avatarCircleWithGradient: {
-    width: 80,
-    height: 80,
-    borderRadius: 40,
+    width: 70,
+    height: 70,
+    borderRadius: 35,
     backgroundColor: '#36393e',
     alignItems: 'center',
     justifyContent: 'center',
   },
   avatarInitial: {
-    fontSize: 40,
+    fontSize: 30,
+    fontWeight: '700',
+    color: '#fff',
   },
   avatarImage: {
     width: '100%',
     height: '100%',
-    borderRadius: 40,
+    borderRadius: 35,
   },
   profileInfo: {
     width: '100%',
@@ -966,48 +941,57 @@ const styles = StyleSheet.create({
     alignItems: 'flex-start',
   },
   username: {
-    fontSize: 20,
+    fontSize: 16,
     fontWeight: '700',
     color: '#fff',
-    marginBottom: 12,
+    marginBottom: 8,
     letterSpacing: -0.5,
   },
-  statsRow: {
+  statsContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginBottom: 4,
+    gap: 16,
   },
-  statText: {
-    fontSize: 14,
+  statItem: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    minWidth: 50,
+  },
+  statNumber: {
+    fontSize: 18,
+    fontWeight: '700',
+    color: '#fff',
+    marginBottom: 2,
+    letterSpacing: -0.5,
+  },
+  statLabel: {
+    fontSize: 12,
     color: '#b9bbbe',
-    fontWeight: '400',
-  },
-  statDividerText: {
-    fontSize: 14,
-    color: '#72767d',
-    fontWeight: '400',
+    fontWeight: '500',
+    textTransform: 'capitalize',
   },
   bioContainer: {
-    marginBottom: 0,
+    marginBottom: 10,
   },
   bioText: {
-    fontSize: 14,
-    color: '#dcddde',
-    lineHeight: 20,
+    fontSize: 12,
+    color: '#b9bbbe',
+    lineHeight: 16,
     fontWeight: '400',
+    textAlign: 'left',
   },
   actionButtonsContainer: {
     flexDirection: 'row',
-    gap: 8,
-    marginTop: 12,
+    gap: 6,
+    marginTop: 0,
     width: '100%',
   },
   followButton: {
     flex: 1,
-    paddingVertical: 6,
+    paddingVertical: 7,
     borderRadius: 6,
     alignItems: 'center',
-    backgroundColor: '#000',
+    backgroundColor: '#c42743',
   },
   unfollowButton: {
     backgroundColor: '#36393e',
@@ -1015,74 +999,69 @@ const styles = StyleSheet.create({
     borderColor: '#2c2f33',
   },
   followButtonText: {
-    fontSize: 13,
+    fontSize: 12,
     fontWeight: '600',
     color: '#fff',
   },
   unfollowButtonText: {
     color: '#fff',
   },
-  messageButton: {
-    width: 40,
-    height: 32,
+  socialsButtonCompact: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 5,
+    paddingVertical: 7,
+    backgroundColor: '#424549',
     borderRadius: 6,
-    backgroundColor: '#36393e',
-    borderWidth: 1,
-    borderColor: '#2c2f33',
+  },
+  socialsButtonCompactText: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: '#fff',
+  },
+  messageButton: {
+    width: 33,
+    height: 33,
+    borderRadius: 6,
+    backgroundColor: '#424549',
     alignItems: 'center',
     justifyContent: 'center',
   },
-  socialsButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-    paddingVertical: 10,
-    paddingHorizontal: 16,
-    backgroundColor: '#36393e',
-    borderRadius: 8,
-    borderWidth: 1,
-    borderColor: '#2c2f33',
-    marginTop: 12,
-  },
-  socialsButtonText: {
-    flex: 1,
-    fontSize: 14,
-    fontWeight: '500',
-    color: '#dcddde',
-  },
   modalOverlay: {
     flex: 1,
-    backgroundColor: 'transparent',
+    backgroundColor: 'rgba(0, 0, 0, 0.7)',
     justifyContent: 'flex-end',
   },
   bottomSheet: {
-    backgroundColor: '#fff',
-    borderTopLeftRadius: 20,
-    borderTopRightRadius: 20,
+    backgroundColor: '#2c2f33',
+    borderTopLeftRadius: 24,
+    borderTopRightRadius: 24,
     paddingBottom: 34,
   },
   sheetHeader: {
     alignItems: 'center',
     paddingTop: 12,
-    paddingBottom: 16,
+    paddingBottom: 20,
     borderBottomWidth: 1,
-    borderBottomColor: '#f0f0f0',
+    borderBottomColor: '#424549',
   },
   sheetHandle: {
     width: 40,
     height: 4,
-    backgroundColor: '#ddd',
+    backgroundColor: '#72767d',
     borderRadius: 2,
     marginBottom: 16,
   },
   sheetTitle: {
-    fontSize: 17,
-    fontWeight: '600',
-    color: '#000',
+    fontSize: 18,
+    fontWeight: '700',
+    color: '#fff',
   },
   socialLinksContainer: {
     paddingHorizontal: 20,
-    paddingTop: 8,
+    paddingTop: 12,
   },
   socialOption: {
     flexDirection: 'row',
@@ -1090,7 +1069,7 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     paddingVertical: 16,
     borderBottomWidth: 1,
-    borderBottomColor: '#f5f5f5',
+    borderBottomColor: '#424549',
   },
   socialOptionLeft: {
     flexDirection: 'row',
@@ -1099,51 +1078,51 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   instagramIconContainer: {
-    width: 48,
-    height: 48,
-    borderRadius: 24,
-    backgroundColor: '#fff',
+    width: 52,
+    height: 52,
+    borderRadius: 26,
+    backgroundColor: '#36393e',
     alignItems: 'center',
     justifyContent: 'center',
     borderWidth: 2,
     borderColor: '#E4405F',
   },
   discordIconContainer: {
-    width: 48,
-    height: 48,
-    borderRadius: 24,
-    backgroundColor: '#fff',
+    width: 52,
+    height: 52,
+    borderRadius: 26,
+    backgroundColor: '#36393e',
     alignItems: 'center',
     justifyContent: 'center',
     borderWidth: 2,
     borderColor: '#5865F2',
   },
   socialOptionIcon: {
-    width: 26,
-    height: 26,
+    width: 28,
+    height: 28,
   },
   socialOptionTitle: {
     fontSize: 16,
     fontWeight: '600',
-    color: '#000',
+    color: '#fff',
     marginBottom: 2,
   },
   socialOptionSubtitle: {
     fontSize: 13,
-    color: '#666',
+    color: '#b9bbbe',
   },
   cancelButton: {
     marginHorizontal: 20,
-    marginTop: 8,
-    paddingVertical: 14,
-    backgroundColor: '#f5f5f5',
-    borderRadius: 10,
+    marginTop: 12,
+    paddingVertical: 16,
+    backgroundColor: '#424549',
+    borderRadius: 12,
     alignItems: 'center',
   },
   cancelButtonText: {
     fontSize: 15,
-    fontWeight: '600',
-    color: '#666',
+    fontWeight: '700',
+    color: '#fff',
   },
   section: {
     paddingHorizontal: 12,
@@ -1157,43 +1136,46 @@ const styles = StyleSheet.create({
   },
   mainTabsContainer: {
     flexDirection: 'row',
-    alignItems: 'center',
     justifyContent: 'space-between',
-    backgroundColor: '#1e2124',
+    alignItems: 'center',
+    marginTop: 8,
+    marginHorizontal: 0,
     borderBottomWidth: 1,
     borderBottomColor: '#2c2f33',
-    paddingHorizontal: 20,
+    paddingHorizontal: 16,
   },
   mainTabsLeft: {
     flexDirection: 'row',
   },
   mainTab: {
-    paddingVertical: 12,
-    paddingHorizontal: 20,
     alignItems: 'center',
-    marginRight: 8,
+    justifyContent: 'center',
+    paddingVertical: 10,
+    paddingHorizontal: 16,
     position: 'relative',
+  },
+  tabInner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
   },
   tabIndicator: {
     position: 'absolute',
-    bottom: 0,
-    height: 2,
-    width: 30,
+    bottom: -1,
+    height: 3,
+    width: 50,
     backgroundColor: '#c42743',
-    borderRadius: 1,
+    borderRadius: 2,
   },
   mainTabText: {
     fontSize: 15,
     fontWeight: '500',
     color: '#72767d',
-    letterSpacing: -0.2,
+    letterSpacing: -0.3,
   },
   mainTabTextActive: {
     color: '#fff',
-    fontWeight: '600',
-  },
-  filterButton: {
-    padding: 8,
+    fontWeight: '700',
   },
   verticalRankCardsContainer: {
     paddingTop: 16,
@@ -1218,18 +1200,6 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.6,
     shadowRadius: 16,
     elevation: 16,
-  },
-  tapToExpandHint: {
-    position: 'absolute',
-    bottom: -40,
-    left: 0,
-    right: 0,
-    alignItems: 'center',
-  },
-  tapToExpandText: {
-    fontSize: 13,
-    color: '#72767d',
-    fontWeight: '500',
   },
   walletViewButtonInTab: {
     width: 40,
