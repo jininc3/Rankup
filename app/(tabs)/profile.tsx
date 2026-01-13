@@ -630,41 +630,54 @@ export default function ProfileScreen() {
 
         {/* Main Tabs */}
         <View style={styles.tabsContainer}>
-          <TouchableOpacity
-            style={styles.tab}
-            onPress={() => setActiveMainTab('clips')}
-            activeOpacity={0.7}
-          >
-            <View style={styles.tabInner}>
-              <IconSymbol
-                size={18}
-                name="play.rectangle.fill"
-                color={activeMainTab === 'clips' ? '#fff' : '#72767d'}
-              />
-              <ThemedText style={[styles.tabText, activeMainTab === 'clips' && styles.tabTextActive]}>
-                Clips
-              </ThemedText>
-            </View>
-            {activeMainTab === 'clips' && <View style={styles.tabUnderline} />}
-          </TouchableOpacity>
+          <View style={styles.tabsLeft}>
+            <TouchableOpacity
+              style={styles.tab}
+              onPress={() => setActiveMainTab('clips')}
+              activeOpacity={0.7}
+            >
+              <View style={styles.tabInner}>
+                <IconSymbol
+                  size={18}
+                  name="play.rectangle.fill"
+                  color={activeMainTab === 'clips' ? '#fff' : '#72767d'}
+                />
+                <ThemedText style={[styles.tabText, activeMainTab === 'clips' && styles.tabTextActive]}>
+                  Clips
+                </ThemedText>
+              </View>
+              {activeMainTab === 'clips' && <View style={styles.tabUnderline} />}
+            </TouchableOpacity>
 
-          <TouchableOpacity
-            style={styles.tab}
-            onPress={() => setActiveMainTab('rankCards')}
-            activeOpacity={0.7}
-          >
-            <View style={styles.tabInner}>
-              <IconSymbol
-                size={18}
-                name="star.fill"
-                color={activeMainTab === 'rankCards' ? '#fff' : '#72767d'}
-              />
-              <ThemedText style={[styles.tabText, activeMainTab === 'rankCards' && styles.tabTextActive]}>
-                Rank Cards
-              </ThemedText>
-            </View>
-            {activeMainTab === 'rankCards' && <View style={styles.tabUnderline} />}
-          </TouchableOpacity>
+            <TouchableOpacity
+              style={styles.tab}
+              onPress={() => setActiveMainTab('rankCards')}
+              activeOpacity={0.7}
+            >
+              <View style={styles.tabInner}>
+                <IconSymbol
+                  size={18}
+                  name="star.fill"
+                  color={activeMainTab === 'rankCards' ? '#fff' : '#72767d'}
+                />
+                <ThemedText style={[styles.tabText, activeMainTab === 'rankCards' && styles.tabTextActive]}>
+                  Rank Cards
+                </ThemedText>
+              </View>
+              {activeMainTab === 'rankCards' && <View style={styles.tabUnderline} />}
+            </TouchableOpacity>
+          </View>
+
+          {/* Wallet View button - shown when cards are expanded on RankCards tab */}
+          {cardsExpanded && activeMainTab === 'rankCards' && (
+            <TouchableOpacity
+              style={styles.walletViewButtonInTab}
+              onPress={toggleCardExpansion}
+              activeOpacity={0.7}
+            >
+              <IconSymbol size={22} name="creditcard.fill" color="#fff" />
+            </TouchableOpacity>
+          )}
         </View>
 
         {/* Clips Tab Content */}
@@ -787,15 +800,6 @@ export default function ProfileScreen() {
               ) : (
                 // Expanded Cards View
                 <>
-                  {/* Wallet View button */}
-                  <TouchableOpacity
-                    style={styles.walletViewButton}
-                    onPress={toggleCardExpansion}
-                    activeOpacity={0.7}
-                  >
-                    <ThemedText style={styles.walletViewButtonText}>Wallet View</ThemedText>
-                  </TouchableOpacity>
-
                   {/* Individual Cards */}
                   {userGames.map((game) => {
                     // Use appropriate account username based on game
@@ -1039,20 +1043,16 @@ const styles = StyleSheet.create({
   headerIconButton: {
     position: 'relative',
   },
-  walletViewButton: {
-    alignSelf: 'flex-end',
-    paddingVertical: 6,
-    paddingHorizontal: 10,
+  walletViewButtonInTab: {
+    width: 40,
+    height: 40,
+    alignItems: 'center',
+    justifyContent: 'center',
     backgroundColor: '#36393e',
-    borderRadius: 6,
+    borderRadius: 8,
     borderWidth: 1,
     borderColor: '#424549',
-    marginBottom: 12,
-  },
-  walletViewButtonText: {
-    fontSize: 11,
-    fontWeight: '600',
-    color: '#fff',
+    marginBottom: 4,
   },
   iconButtonBg: {
     width: 40,
@@ -1201,17 +1201,22 @@ const styles = StyleSheet.create({
   },
   tabsContainer: {
     flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
     marginTop: 12,
     marginHorizontal: 0,
     borderBottomWidth: 1,
     borderBottomColor: '#2c2f33',
     paddingHorizontal: 16,
   },
+  tabsLeft: {
+    flexDirection: 'row',
+  },
   tab: {
-    flex: 1,
     alignItems: 'center',
     justifyContent: 'center',
     paddingVertical: 10,
+    paddingHorizontal: 16,
     position: 'relative',
   },
   tabInner: {
@@ -1328,8 +1333,8 @@ const styles = StyleSheet.create({
     color: '#fff',
   },
   verticalRankCardsContainer: {
-    paddingHorizontal: 16,
-    paddingTop: 16,
+    paddingHorizontal: 12,
+    paddingTop: 12,
     paddingBottom: 20,
     gap: 16,
   },

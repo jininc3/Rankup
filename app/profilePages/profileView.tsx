@@ -595,6 +595,16 @@ export default function ProfileViewScreen() {
               <IconSymbol size={20} name="line.3.horizontal.decrease.circle" color="#fff" />
             </TouchableOpacity>
           )}
+          {/* Wallet View button - shown when cards are expanded on RankCards tab */}
+          {cardsExpanded && activeMainTab === 'rankCards' && (
+            <TouchableOpacity
+              style={styles.walletViewButtonInTab}
+              onPress={toggleCardExpansion}
+              activeOpacity={0.7}
+            >
+              <IconSymbol size={22} name="creditcard.fill" color="#fff" />
+            </TouchableOpacity>
+          )}
         </View>
 
         <View style={[styles.postsSection, { display: activeMainTab === 'clips' ? 'flex' : 'none' }]}>
@@ -701,15 +711,6 @@ export default function ProfileViewScreen() {
               ) : (
                 // Expanded Cards View
                 <>
-                  {/* Wallet View button */}
-                  <TouchableOpacity
-                    style={styles.walletViewButton}
-                    onPress={toggleCardExpansion}
-                    activeOpacity={0.7}
-                  >
-                    <ThemedText style={styles.walletViewButtonText}>Wallet View</ThemedText>
-                  </TouchableOpacity>
-
                   {/* Individual Cards */}
                   {userGames.map((game) => {
                     // Use appropriate account username based on game
@@ -1145,8 +1146,8 @@ const styles = StyleSheet.create({
     color: '#666',
   },
   section: {
-    paddingHorizontal: 20,
-    paddingTop: 16,
+    paddingHorizontal: 12,
+    paddingTop: 12,
     paddingBottom: 8,
   },
   postsSection: {
@@ -1230,20 +1231,16 @@ const styles = StyleSheet.create({
     color: '#72767d',
     fontWeight: '500',
   },
-  walletViewButton: {
-    alignSelf: 'flex-end',
-    paddingVertical: 6,
-    paddingHorizontal: 10,
+  walletViewButtonInTab: {
+    width: 40,
+    height: 40,
+    alignItems: 'center',
+    justifyContent: 'center',
     backgroundColor: '#36393e',
-    borderRadius: 6,
+    borderRadius: 8,
     borderWidth: 1,
     borderColor: '#424549',
-    marginBottom: 12,
-  },
-  walletViewButtonText: {
-    fontSize: 11,
-    fontWeight: '600',
-    color: '#fff',
+    marginBottom: 4,
   },
   verticalCardWrapper: {
     width: '100%',
