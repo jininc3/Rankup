@@ -110,7 +110,7 @@ export default function ValorantRankCard({ game, username, viewOnly = false, use
       <View style={styles.cardBackground}>
         {/* Valorant logo watermark */}
         <Image
-          source={require('@/assets/images/valorantlogo.png')}
+          source={require('@/assets/images/valorant-black.png')}
           style={styles.backgroundLogo}
           resizeMode="contain"
         />
@@ -122,7 +122,7 @@ export default function ValorantRankCard({ game, username, viewOnly = false, use
             {game.valorantCard ? (
               <Image
                 source={{ uri: game.valorantCard }}
-                defaultSource={require('@/assets/images/valorantlogo.png')}
+                defaultSource={require('@/assets/images/valorant-black.png')}
                 style={styles.cardProfileIcon}
               />
             ) : (
@@ -180,7 +180,8 @@ const styles = StyleSheet.create({
     left: '50%',
     marginTop: -133,
     marginLeft: -133,
-    opacity: 0.08,
+    opacity: 0.12,
+    tintColor: '#000',
   },
   cardFront: {
     flex: 1,

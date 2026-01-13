@@ -57,7 +57,6 @@ const formatDuration = (seconds?: number): string => {
 export default function ProfileScreen() {
   const router = useRouter();
   const { user, refreshUser, preloadedProfilePosts, preloadedRiotStats, clearPreloadedProfileData } = useAuth();
-  const [selectedGameIndex, setSelectedGameIndex] = useState(0);
   const [activeMainTab, setActiveMainTab] = useState<'rankCards' | 'clips'>('clips');
   const [posts, setPosts] = useState<Post[]>([]);
   const [loadingPosts, setLoadingPosts] = useState(false);
@@ -66,8 +65,6 @@ export default function ProfileScreen() {
   const [showPostViewer, setShowPostViewer] = useState(false);
   const [showNewPost, setShowNewPost] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
-  const scrollViewRef = useRef<ScrollView>(null);
-  const iconScrollViewRef = useRef<ScrollView>(null);
   const [riotAccount, setRiotAccount] = useState<any>(null);
   const [valorantAccount, setValorantAccount] = useState<any>(null);
   const [riotStats, setRiotStats] = useState<any>(null);
@@ -134,7 +131,7 @@ export default function ProfileScreen() {
       rank: valorantStats.currentRank || 'Unranked',
       trophies: valorantStats.rankRating || 0,
       icon: '🎯',
-      image: require('@/assets/images/valorant.png'),
+      image: require('@/assets/images/valorant-black.png'),
       wins: valorantStats.wins || 0,
       losses: valorantStats.losses || 0,
       winRate: valorantStats.winRate || 0,
@@ -143,52 +140,6 @@ export default function ProfileScreen() {
       peakRank: valorantStats.peakRank?.tier,
     }] : []),
   ] : [];
-
-  const handleScroll = (event: any) => {
-    const offsetX = event.nativeEvent.contentOffset.x;
-    const index = Math.round(offsetX / (CARD_WIDTH + CARD_GAP));
-    // Allow scrolling to add rank card (userGames.length is the index of the add card)
-    if (index !== selectedGameIndex && index >= 0 && index <= userGames.length) {
-      setSelectedGameIndex(index);
-    }
-  };
-
-  const handleScrollDrag = (event: any) => {
-    const offsetX = event.nativeEvent.contentOffset.x;
-    const index = Math.round(offsetX / (CARD_WIDTH + CARD_GAP));
-    // Allow scrolling to add rank card (userGames.length is the index of the add card)
-    if (index !== selectedGameIndex && index >= 0 && index <= userGames.length) {
-      setSelectedGameIndex(index);
-    }
-  };
-
-  const scrollToIndex = (index: number) => {
-    // Configure smooth layout animation for border transition
-    LayoutAnimation.configureNext(
-      LayoutAnimation.create(
-        200,
-        LayoutAnimation.Types.easeInEaseOut,
-        LayoutAnimation.Properties.opacity
-      )
-    );
-
-    // Update state for smooth border transition
-    setSelectedGameIndex(index);
-
-    // Scroll the cards view
-    scrollViewRef.current?.scrollTo({
-      x: index * (CARD_WIDTH + CARD_GAP),
-      animated: true,
-    });
-
-    // Scroll the icon view to center the selected icon
-    const ICON_WIDTH = 48 + 12; // icon circle (48) + gap (12)
-    const ICON_OFFSET = index * ICON_WIDTH - (screenWidth / 2) + (ICON_WIDTH / 2);
-    iconScrollViewRef.current?.scrollTo({
-      x: Math.max(0, ICON_OFFSET),
-      animated: true,
-    });
-  };
 
   // Fetch Riot account and stats (League and TFT)
   // Lightweight function to only fetch enabled rank cards (no API calls)
@@ -774,105 +725,38 @@ export default function ProfileScreen() {
               </TouchableOpacity>
             </View>
           ) : (
-            <>
-              {/* Game Icon Selector */}
-              <ScrollView
-                ref={iconScrollViewRef}
-                horizontal
-                showsHorizontalScrollIndicator={false}
-                style={styles.gameIconScroller}
-                contentContainerStyle={styles.gameIconScrollerContent}
-              >
-                {userGames.map((game, index) => (
-                  <TouchableOpacity
-                    key={game.id}
-                    style={styles.gameIconContainer}
-                    onPress={() => scrollToIndex(index)}
-                    activeOpacity={0.7}
-                  >
-                    <View style={[
-                      styles.gameIconCircle,
-                      selectedGameIndex === index && styles.gameIconCircleActive
-                    ]}>
-                      <Image
-                        source={game.image}
-                        style={styles.gameIconImage}
-                        resizeMode="contain"
-                      />
-                    </View>
-                  </TouchableOpacity>
-                ))}
-                {/* Add Rank Card Icon */}
-                <TouchableOpacity
-                  style={styles.gameIconContainer}
-                  onPress={() => scrollToIndex(userGames.length)}
-                  activeOpacity={0.7}
-                >
-                  <View style={[
-                    styles.gameIconCircle,
-                    selectedGameIndex === userGames.length && styles.gameIconCircleActive
-                  ]}>
-                    <IconSymbol
-                      size={24}
-                      name="plus.circle.fill"
-                      color={selectedGameIndex === userGames.length ? "#c42743" : "#72767d"}
-                    />
+            <View style={styles.verticalRankCardsContainer}>
+              {/* Vertical Stack of Rank Cards */}
+              {userGames.map((game) => {
+                // Use appropriate account username based on game
+                let displayUsername = user?.username || 'User';
+
+                if (game.name === 'Valorant' && valorantAccount) {
+                  displayUsername = `${valorantAccount.gameName}#${valorantAccount.tag}`;
+                } else if ((game.name === 'League of Legends' || game.name === 'TFT') && riotAccount) {
+                  displayUsername = `${riotAccount.gameName}#${riotAccount.tagLine}`;
+                }
+
+                return (
+                  <View key={game.id} style={styles.verticalCardWrapper}>
+                    <RankCard game={game} username={displayUsername} />
                   </View>
-                </TouchableOpacity>
-              </ScrollView>
+                );
+              })}
 
-              {/* Scrollable Rank Cards */}
-              <ScrollView
-                ref={scrollViewRef}
-                horizontal
-                pagingEnabled
-                showsHorizontalScrollIndicator={false}
-                onScroll={handleScrollDrag}
-                onMomentumScrollEnd={handleScroll}
-                scrollEventThrottle={16}
-                snapToInterval={CARD_WIDTH + CARD_GAP}
-                decelerationRate="fast"
-                contentContainerStyle={styles.cardsContainer}
+              {/* Add Rank Card Button */}
+              <TouchableOpacity
+                style={styles.addRankCardCardVertical}
+                onPress={() => router.push('/profilePages/newRankCard')}
+                activeOpacity={0.7}
               >
-                {userGames.map((game, index) => {
-                  // Use appropriate account username based on game
-                  let displayUsername = user?.username || 'User';
-
-                  if (game.name === 'Valorant' && valorantAccount) {
-                    displayUsername = `${valorantAccount.gameName}#${valorantAccount.tag}`;
-                  } else if ((game.name === 'League of Legends' || game.name === 'TFT') && riotAccount) {
-                    displayUsername = `${riotAccount.gameName}#${riotAccount.tagLine}`;
-                  }
-
-                  return (
-                    <View
-                      key={game.id}
-                      style={[
-                        styles.cardWrapper,
-                        {
-                          width: CARD_WIDTH,
-                          marginRight: CARD_GAP
-                        }
-                      ]}
-                    >
-                      <RankCard game={game} username={displayUsername} />
-                    </View>
-                  );
-                })}
-                {/* Add Rank Card Button */}
-                <TouchableOpacity
-                  style={[styles.cardWrapper, styles.addRankCardCard, { width: CARD_WIDTH }]}
-                  onPress={() => router.push('/profilePages/newRankCard')}
-                  activeOpacity={0.7}
-                >
-                  <View style={styles.addRankCardContent}>
-                    <IconSymbol size={56} name="plus.circle.fill" color="#c42743" />
-                    <ThemedText style={styles.addRankCardText}>Add Rank Card</ThemedText>
-                    <ThemedText style={styles.addRankCardSubtext}>Connect another game</ThemedText>
-                  </View>
-                </TouchableOpacity>
-              </ScrollView>
-            </>
+                <View style={styles.addRankCardContent}>
+                  <IconSymbol size={56} name="plus.circle.fill" color="#c42743" />
+                  <ThemedText style={styles.addRankCardText}>Add Rank Card</ThemedText>
+                  <ThemedText style={styles.addRankCardSubtext}>Connect another game</ThemedText>
+                </View>
+              </TouchableOpacity>
+            </View>
           )}
         </View>
       </ScrollView>
@@ -1356,45 +1240,26 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     color: '#fff',
   },
-  gameIconScroller: {
-    marginBottom: 16,
+  verticalRankCardsContainer: {
     paddingHorizontal: 16,
-  },
-  gameIconScrollerContent: {
-    gap: 12,
-    paddingVertical: 8,
-  },
-  gameIconContainer: {
-    alignItems: 'center',
-  },
-  gameIconCircle: {
-    width: 56,
-    height: 56,
-    borderRadius: 28,
-    backgroundColor: '#2c2f33',
-    borderWidth: 3,
-    borderColor: 'transparent',
-    alignItems: 'center',
-    justifyContent: 'center',
-    overflow: 'hidden',
-  },
-  gameIconCircleActive: {
-    borderColor: '#c42743',
-    backgroundColor: '#36393e',
-  },
-  gameIconImage: {
-    width: 36,
-    height: 36,
-  },
-  cardsContainer: {
-    paddingHorizontal: 16,
+    paddingTop: 16,
     paddingBottom: 20,
+    gap: 16,
   },
-  cardWrapper: {
-    paddingHorizontal: 0,
+  verticalCardWrapper: {
+    width: '100%',
+    shadowColor: '#000',
+    shadowOffset: {
+      width: 8,
+      height: 12,
+    },
+    shadowOpacity: 0.6,
+    shadowRadius: 16,
+    elevation: 16,
   },
-  addRankCardCard: {
-    height: 220,
+  addRankCardCardVertical: {
+    width: '100%',
+    height: 180,
     backgroundColor: '#2c2f33',
     borderRadius: 24,
     justifyContent: 'center',
@@ -1402,6 +1267,15 @@ const styles = StyleSheet.create({
     borderWidth: 3,
     borderColor: '#424549',
     borderStyle: 'dashed',
+    marginTop: 4,
+    shadowColor: '#000',
+    shadowOffset: {
+      width: 8,
+      height: 12,
+    },
+    shadowOpacity: 0.5,
+    shadowRadius: 14,
+    elevation: 14,
   },
   addRankCardContent: {
     alignItems: 'center',

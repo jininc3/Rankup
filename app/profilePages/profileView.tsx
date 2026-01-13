@@ -75,7 +75,6 @@ export default function ProfileViewScreen() {
   const { user: currentUser, refreshUser, setNewlyFollowedUserPosts, setNewlyUnfollowedUserId } = useAuth();
   const [viewedUser, setViewedUser] = useState<ViewedUser | null>(null);
   const [loadingUser, setLoadingUser] = useState(true);
-  const [selectedGameIndex, setSelectedGameIndex] = useState(0);
   const [activeMainTab, setActiveMainTab] = useState<'rankCards' | 'clips'>('clips'); // Default to clips tab
   const [posts, setPosts] = useState<Post[]>([]);
   const [loadingPosts, setLoadingPosts] = useState(true);
@@ -93,7 +92,6 @@ export default function ProfileViewScreen() {
   const [showFilterMenu, setShowFilterMenu] = useState(false);
   const [selectedFilter, setSelectedFilter] = useState<'newest' | 'oldest' | 'most_viewed' | 'most_liked'>('newest');
   const [selectedGameFilter, setSelectedGameFilter] = useState<string | null>(null);
-  const scrollViewRef = useRef<ScrollView>(null);
 
   // Dynamic games array based on Riot data and enabled rank cards
   const userGames = (riotAccount || valorantAccount) ? [
@@ -120,7 +118,7 @@ export default function ProfileViewScreen() {
       rank: valorantStats.currentRank || 'Unranked',
       trophies: 654,
       icon: '🎯',
-      image: require('@/assets/images/valorant.png'),
+      image: require('@/assets/images/valorant-black.png'),
       wins: valorantStats.wins || 0,
       losses: valorantStats.losses || 0,
       winRate: valorantStats.winRate || 0,
@@ -128,8 +126,6 @@ export default function ProfileViewScreen() {
       valorantCard: valorantStats.card?.small,
     }] : []),
   ] : [];
-
-  const selectedGame = userGames[selectedGameIndex];
 
   // Get userId from params - this is required for profileView
   const userId = params.userId as string;
@@ -145,29 +141,6 @@ export default function ProfileViewScreen() {
     }
   }, [userId, currentUser?.id]);
 
-  const handleScroll = (event: any) => {
-    const offsetX = event.nativeEvent.contentOffset.x;
-    const index = Math.round(offsetX / (CARD_WIDTH + CARD_GAP));
-    if (index !== selectedGameIndex && index >= 0 && index < userGames.length) {
-      setSelectedGameIndex(index);
-    }
-  };
-
-  const handleScrollDrag = (event: any) => {
-    const offsetX = event.nativeEvent.contentOffset.x;
-    const index = Math.round(offsetX / (CARD_WIDTH + CARD_GAP));
-    if (index !== selectedGameIndex && index >= 0 && index < userGames.length) {
-      setSelectedGameIndex(index);
-    }
-  };
-
-  const scrollToIndex = (index: number) => {
-    scrollViewRef.current?.scrollTo({
-      x: index * (CARD_WIDTH + CARD_GAP),
-      animated: true,
-    });
-    setSelectedGameIndex(index);
-  };
 
   // Parallel data fetching - fetch all data at once for faster load
   const fetchAllData = async () => {
@@ -659,64 +632,25 @@ export default function ProfileViewScreen() {
               <ThemedText style={styles.emptyStateSubtext}>This user hasn't added any rank cards yet</ThemedText>
             </View>
           ) : (
-            <>
-              {/* Game Icon Selector */}
-              <ScrollView
-                horizontal
-                showsHorizontalScrollIndicator={false}
-                style={styles.gameIconScroller}
-                contentContainerStyle={styles.gameIconScrollerContent}
-              >
-                {userGames.map((game, index) => (
-                  <TouchableOpacity
-                    key={game.id}
-                    style={styles.gameIconContainer}
-                    onPress={() => scrollToIndex(index)}
-                    activeOpacity={0.7}
-                  >
-                    <View style={[
-                      styles.gameIconCircle,
-                      selectedGameIndex === index && styles.gameIconCircleActive
-                    ]}>
-                      <Image
-                        source={game.image}
-                        style={styles.gameIconImage}
-                        resizeMode="contain"
-                      />
-                    </View>
-                  </TouchableOpacity>
-                ))}
-              </ScrollView>
+            <View style={styles.verticalRankCardsContainer}>
+              {/* Vertical Stack of Rank Cards */}
+              {userGames.map((game) => {
+                // Use appropriate account username based on game
+                let displayUsername = viewedUser?.username || 'User';
 
-              {/* Scrollable Rank Cards */}
-              <ScrollView
-                ref={scrollViewRef}
-                horizontal
-                pagingEnabled
-                showsHorizontalScrollIndicator={false}
-                onScroll={handleScrollDrag}
-                onMomentumScrollEnd={handleScroll}
-                scrollEventThrottle={16}
-                snapToInterval={CARD_WIDTH + CARD_GAP}
-                decelerationRate="fast"
-                contentContainerStyle={styles.cardsContainer}
-              >
-                {userGames.map((game, index) => (
-                  <View
-                    key={game.id}
-                    style={[
-                      styles.cardWrapper,
-                      {
-                        width: CARD_WIDTH,
-                        marginRight: index < userGames.length - 1 ? CARD_GAP : 0
-                      }
-                    ]}
-                  >
-                    <RankCard game={game} username={viewedUser?.username || 'User'} viewOnly={false} userId={viewedUser?.id} />
+                if (game.name === 'Valorant' && valorantAccount) {
+                  displayUsername = `${valorantAccount.gameName}#${valorantAccount.tag}`;
+                } else if ((game.name === 'League of Legends' || game.name === 'TFT') && riotAccount) {
+                  displayUsername = `${riotAccount.gameName}#${riotAccount.tagLine}`;
+                }
+
+                return (
+                  <View key={game.id} style={styles.verticalCardWrapper}>
+                    <RankCard game={game} username={displayUsername} viewOnly={false} userId={viewedUser?.id} />
                   </View>
-                ))}
-              </ScrollView>
-            </>
+                );
+              })}
+            </View>
           )}
         </View>
       </ScrollView>
@@ -1181,67 +1115,21 @@ const styles = StyleSheet.create({
   filterButton: {
     padding: 8,
   },
-  gameIconScroller: {
-    marginBottom: 16,
+  verticalRankCardsContainer: {
+    paddingTop: 16,
+    paddingBottom: 20,
+    gap: 16,
   },
-  gameIconScrollerContent: {
-    paddingVertical: 6,
-    gap: 12,
-  },
-  gameIconContainer: {
-    alignItems: 'center',
-  },
-  gameIconCircle: {
-    width: 48,
-    height: 48,
-    borderRadius: 24,
-    backgroundColor: '#36393e',
-    borderWidth: 2,
-    borderColor: 'transparent',
-    alignItems: 'center',
-    justifyContent: 'center',
-    overflow: 'hidden',
-  },
-  gameIconCircleActive: {
-    borderColor: '#c42743',
-    backgroundColor: '#36393e',
-  },
-  gameIconImage: {
-    width: 32,
-    height: 32,
-  },
-  gameTabs: {
-    marginBottom: 20,
-  },
-  gameTabsContent: {
-    gap: 10,
-    paddingBottom: 4,
-  },
-  gameTab: {
-    paddingVertical: 8,
-    paddingHorizontal: 12,
-    backgroundColor: 'transparent',
-    borderBottomWidth: 2,
-    borderBottomColor: 'transparent',
-  },
-  gameTabActive: {
-    borderBottomColor: '#c42743',
-  },
-  gameTabText: {
-    fontSize: 14,
-    color: '#72767d',
-    fontWeight: '500',
-    letterSpacing: -0.2,
-  },
-  gameTabTextActive: {
-    color: '#fff',
-    fontWeight: '600',
-  },
-  cardsContainer: {
-    paddingBottom: 4,
-  },
-  cardWrapper: {
-    paddingHorizontal: 0,
+  verticalCardWrapper: {
+    width: '100%',
+    shadowColor: '#000',
+    shadowOffset: {
+      width: 8,
+      height: 12,
+    },
+    shadowOpacity: 0.6,
+    shadowRadius: 16,
+    elevation: 16,
   },
   postsContainer: {
     alignItems: 'center',
