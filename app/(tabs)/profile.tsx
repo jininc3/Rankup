@@ -22,6 +22,7 @@ import { deletePostMedia } from '@/services/storageService';
 import { deleteDoc } from 'firebase/firestore';
 import { calculateTierBorderColor, calculateTierBorderGradient } from '@/utils/tierBorderUtils';
 import GradientBorder from '@/components/GradientBorder';
+import { LinearGradient } from 'expo-linear-gradient';
 
 const { width: screenWidth } = Dimensions.get('window');
 const CARD_PADDING = 20;
@@ -546,25 +547,6 @@ export default function ProfileScreen() {
 
   return (
     <ThemedView style={styles.container}>
-      {/* Header with settings */}
-      <View style={styles.header}>
-        <View style={styles.headerSpacer} />
-        <View style={styles.headerActions}>
-          <TouchableOpacity
-            style={styles.headerIconButton}
-            onPress={() => router.push('/chatPages/chatList')}
-          >
-            <IconSymbol size={24} name="paperplane.fill" color="#fff" />
-          </TouchableOpacity>
-          <TouchableOpacity
-            style={styles.headerIconButton}
-            onPress={() => router.push('/profilePages/settings')}
-          >
-            <IconSymbol size={28} name="gearshape.fill" color="#fff" />
-          </TouchableOpacity>
-        </View>
-      </View>
-
       {/* Post Filter Modal */}
       <PostFilterModal
         visible={showFilterMenu}
@@ -580,31 +562,60 @@ export default function ProfileScreen() {
           <RefreshControl
             refreshing={refreshing}
             onRefresh={onRefresh}
-            tintColor="#000"
-            colors={['#000']}
+            tintColor="#c42743"
+            colors={['#c42743']}
           />
         }
       >
-        {/* Cover Photo */}
-        <View style={styles.coverPhotoContainer}>
-          <View style={styles.coverPhoto}>
+        {/* Header Section with Cover Photo */}
+        <View style={styles.headerSection}>
+          {/* Cover Photo with Gradient Overlay */}
+          <View style={styles.coverPhotoWrapper}>
             {user?.coverPhoto ? (
               <Image source={{ uri: user.coverPhoto }} style={styles.coverPhotoImage} />
-            ) : null}
+            ) : (
+              <LinearGradient
+                colors={['#667eea', '#764ba2']}
+                start={{ x: 0, y: 0 }}
+                end={{ x: 1, y: 1 }}
+                style={styles.coverPhotoGradient}
+              />
+            )}
+            <LinearGradient
+              colors={['transparent', 'rgba(30, 33, 36, 0.8)']}
+              style={styles.coverPhotoOverlay}
+            />
           </View>
-        </View>
 
-        {/* Profile Content */}
-        <View style={styles.profileContentWrapper}>
-          {/* Top Row: Avatar and Username */}
-          <View style={styles.profileTopRow}>
-            {/* Avatar on the left, overlapping cover */}
-            <View style={styles.avatarContainer}>
+          {/* Header Icons */}
+          <View style={styles.headerIcons}>
+            <TouchableOpacity
+              style={styles.headerIconButton}
+              onPress={() => router.push('/chatPages/chatList')}
+            >
+              <View style={styles.iconButtonBg}>
+                <IconSymbol size={22} name="paperplane.fill" color="#fff" />
+              </View>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={styles.headerIconButton}
+              onPress={() => router.push('/profilePages/settings')}
+            >
+              <View style={styles.iconButtonBg}>
+                <IconSymbol size={24} name="gearshape.fill" color="#fff" />
+              </View>
+            </TouchableOpacity>
+          </View>
+
+          {/* Profile Info Card */}
+          <View style={styles.profileCard}>
+            {/* Avatar */}
+            <View style={styles.avatarWrapper}>
               {tierBorderGradient ? (
                 <GradientBorder
                   colors={tierBorderGradient}
                   borderWidth={4}
-                  borderRadius={40}
+                  borderRadius={50}
                 >
                   <View style={styles.avatarCircleWithGradient}>
                     {user?.avatar && user.avatar.startsWith('http') ? (
@@ -629,27 +640,9 @@ export default function ProfileScreen() {
               )}
             </View>
 
-            {/* Username on the right */}
-            <View style={styles.profileInfoRight}>
-              <ThemedText style={styles.username}>{user?.username || 'User'}</ThemedText>
-            </View>
-          </View>
+            {/* Username */}
+            <ThemedText style={styles.username}>{user?.username || 'User'}</ThemedText>
 
-          {/* Stats Row - aligned with bio */}
-          <View style={styles.statsRow}>
-            <ThemedText style={styles.statText}>{posts.length} Posts</ThemedText>
-            <ThemedText style={styles.statDividerText}> | </ThemedText>
-            <TouchableOpacity onPress={() => router.push('/profilePages/followers')}>
-              <ThemedText style={styles.statText}>{user?.followersCount || 0} Followers</ThemedText>
-            </TouchableOpacity>
-            <ThemedText style={styles.statDividerText}> | </ThemedText>
-            <TouchableOpacity onPress={() => router.push('/profilePages/following')}>
-              <ThemedText style={styles.statText}>{user?.followingCount || 0} Following</ThemedText>
-            </TouchableOpacity>
-          </View>
-
-          {/* Bio & Socials Section */}
-          <View style={styles.bioSocialsContainer}>
             {/* Bio */}
             {user?.bio ? (
               <ThemedText style={styles.bioText}>{user.bio}</ThemedText>
@@ -657,69 +650,109 @@ export default function ProfileScreen() {
               <ThemedText style={styles.emptyBioText}>No bio added yet</ThemedText>
             )}
 
-            {/* Socials button */}
-            <TouchableOpacity
-              style={styles.socialsButton}
-              onPress={() => setShowSocialsSheet(true)}
-              activeOpacity={0.7}
-            >
-              <IconSymbol size={18} name="link" color="#b9bbbe" />
-              <ThemedText style={styles.socialsButtonText}>Socials</ThemedText>
-              <IconSymbol size={14} name="chevron.right" color="#72767d" />
-            </TouchableOpacity>
-          </View>
+            {/* Stats Cards Row */}
+            <View style={styles.statsCardsRow}>
+              <View style={styles.statCard}>
+                <ThemedText style={styles.statNumber}>{posts.length}</ThemedText>
+                <ThemedText style={styles.statLabel}>Posts</ThemedText>
+              </View>
+              <TouchableOpacity
+                style={styles.statCard}
+                onPress={() => router.push('/profilePages/followers')}
+                activeOpacity={0.7}
+              >
+                <ThemedText style={styles.statNumber}>{user?.followersCount || 0}</ThemedText>
+                <ThemedText style={styles.statLabel}>Followers</ThemedText>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={styles.statCard}
+                onPress={() => router.push('/profilePages/following')}
+                activeOpacity={0.7}
+              >
+                <ThemedText style={styles.statNumber}>{user?.followingCount || 0}</ThemedText>
+                <ThemedText style={styles.statLabel}>Following</ThemedText>
+              </TouchableOpacity>
+            </View>
 
-          {/* Action Buttons */}
-          <View style={styles.actionButtons}>
-            <TouchableOpacity
-              style={styles.editProfileButton}
-              onPress={() => router.push('/profilePages/editProfile')}
-            >
-              <ThemedText style={styles.editProfileText}>Edit Profile</ThemedText>
-            </TouchableOpacity>
-            <TouchableOpacity style={styles.shareProfileButton}>
-              <IconSymbol size={20} name="square.and.arrow.up" color="#fff" />
-            </TouchableOpacity>
+            {/* Action Buttons Row */}
+            <View style={styles.actionButtonsRow}>
+              <TouchableOpacity
+                style={styles.editButton}
+                onPress={() => router.push('/profilePages/editProfile')}
+                activeOpacity={0.8}
+              >
+                <IconSymbol size={18} name="pencil" color="#fff" />
+                <ThemedText style={styles.editButtonText}>Edit Profile</ThemedText>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                style={styles.socialsButton}
+                onPress={() => setShowSocialsSheet(true)}
+                activeOpacity={0.8}
+              >
+                <IconSymbol size={18} name="link" color="#fff" />
+                <ThemedText style={styles.socialsButtonText}>Socials</ThemedText>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                style={styles.shareButton}
+                activeOpacity={0.8}
+              >
+                <IconSymbol size={20} name="square.and.arrow.up" color="#fff" />
+              </TouchableOpacity>
+            </View>
           </View>
         </View>
 
-        {/* Main Tabs: Clips and RankCards */}
-        <View style={styles.mainTabsContainer}>
-          <View style={styles.mainTabsLeft}>
-            <TouchableOpacity
-              style={styles.mainTab}
-              onPress={() => setActiveMainTab('clips')}
-            >
-              <ThemedText style={[styles.mainTabText, activeMainTab === 'clips' && styles.mainTabTextActive]}>
-                Clips
-              </ThemedText>
-              {activeMainTab === 'clips' && <View style={styles.tabIndicator} />}
-            </TouchableOpacity>
-            <TouchableOpacity
-              style={styles.mainTab}
-              onPress={() => setActiveMainTab('rankCards')}
-            >
-              <ThemedText style={[styles.mainTabText, activeMainTab === 'rankCards' && styles.mainTabTextActive]}>
-                RankCards
-              </ThemedText>
-              {activeMainTab === 'rankCards' && <View style={styles.tabIndicator} />}
-            </TouchableOpacity>
-          </View>
+        {/* Main Tabs */}
+        <View style={styles.tabsContainer}>
+          <TouchableOpacity
+            style={[styles.tab, activeMainTab === 'clips' && styles.tabActive]}
+            onPress={() => setActiveMainTab('clips')}
+            activeOpacity={0.7}
+          >
+            <IconSymbol
+              size={20}
+              name="play.rectangle.fill"
+              color={activeMainTab === 'clips' ? '#c42743' : '#72767d'}
+            />
+            <ThemedText style={[styles.tabText, activeMainTab === 'clips' && styles.tabTextActive]}>
+              Clips
+            </ThemedText>
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            style={[styles.tab, activeMainTab === 'rankCards' && styles.tabActive]}
+            onPress={() => setActiveMainTab('rankCards')}
+            activeOpacity={0.7}
+          >
+            <IconSymbol
+              size={20}
+              name="star.fill"
+              color={activeMainTab === 'rankCards' ? '#c42743' : '#72767d'}
+            />
+            <ThemedText style={[styles.tabText, activeMainTab === 'rankCards' && styles.tabTextActive]}>
+              Rank Cards
+            </ThemedText>
+          </TouchableOpacity>
+
           {activeMainTab === 'clips' && (
             <TouchableOpacity
-              style={styles.filterButton}
+              style={styles.filterIconButton}
               onPress={() => setShowFilterMenu(true)}
+              activeOpacity={0.7}
             >
               <IconSymbol size={20} name="line.3.horizontal.decrease.circle" color="#fff" />
             </TouchableOpacity>
           )}
         </View>
 
-        <View style={[styles.postsSection, { display: activeMainTab === 'clips' ? 'flex' : 'none' }]}>
+        {/* Clips Tab Content */}
+        <View style={[styles.tabContent, { display: activeMainTab === 'clips' ? 'flex' : 'none' }]}>
           {loadingPosts ? (
-            <View style={styles.postsContainer}>
+            <View style={styles.emptyState}>
               <ActivityIndicator size="large" color="#c42743" />
-              <ThemedText style={styles.loadingText}>Loading posts...</ThemedText>
+              <ThemedText style={styles.emptyStateText}>Loading posts...</ThemedText>
             </View>
           ) : posts.length > 0 ? (
             <View style={styles.postsGrid}>
@@ -728,7 +761,7 @@ export default function ProfileScreen() {
                   key={post.id}
                   style={styles.postItem}
                   onPress={() => handlePostPress(post)}
-                  activeOpacity={0.7}
+                  activeOpacity={0.9}
                 >
                   <Image
                     source={{ uri: post.mediaType === 'video' && post.thumbnailUrl ? post.thumbnailUrl : post.mediaUrl }}
@@ -736,79 +769,59 @@ export default function ProfileScreen() {
                     resizeMode="cover"
                   />
                   {post.mediaType === 'video' && (
-                    <View style={styles.videoDuration}>
-                      <ThemedText style={styles.videoDurationText}>
-                        {formatDuration(post.duration)}
-                      </ThemedText>
-                    </View>
+                    <>
+                      <View style={styles.playIconOverlay}>
+                        <IconSymbol size={32} name="play.fill" color="#fff" />
+                      </View>
+                      <View style={styles.videoDuration}>
+                        <ThemedText style={styles.videoDurationText}>
+                          {formatDuration(post.duration)}
+                        </ThemedText>
+                      </View>
+                    </>
                   )}
                   {post.mediaUrls && post.mediaUrls.length > 1 && (
-                    <View style={styles.multiplePostsIndicator}>
-                      <IconSymbol size={20} name="square.on.square" color="#fff" />
+                    <View style={styles.multipleIndicator}>
+                      <IconSymbol size={18} name="square.on.square" color="#fff" />
                     </View>
                   )}
                 </TouchableOpacity>
               ))}
             </View>
           ) : (
-            <View style={styles.postsContainer}>
-              <IconSymbol size={48} name="square.stack.3d.up" color="#fff" />
-              <ThemedText style={styles.emptyStateText}>No posts yet</ThemedText>
-              <ThemedText style={styles.emptyStateSubtext}>Share your gaming achievements with the community</ThemedText>
+            <View style={styles.emptyState}>
+              <View style={styles.emptyIconCircle}>
+                <IconSymbol size={48} name="photo.stack" color="#72767d" />
+              </View>
+              <ThemedText style={styles.emptyStateTitle}>No clips yet</ThemedText>
+              <ThemedText style={styles.emptyStateSubtext}>
+                Share your best gaming moments with the community
+              </ThemedText>
             </View>
           )}
         </View>
 
         {/* RankCards Tab Content */}
-        <View style={[styles.section, { display: activeMainTab === 'rankCards' ? 'flex' : 'none' }]}>
+        <View style={[styles.tabContent, { display: activeMainTab === 'rankCards' ? 'flex' : 'none' }]}>
           {!riotAccount && !valorantAccount ? (
-            // Empty state for new users without any gaming account - show add icon and add card
-            <>
-              {/* Add RankCard Icon */}
-              <ScrollView
-                horizontal
-                showsHorizontalScrollIndicator={false}
-                style={styles.gameIconScroller}
-                contentContainerStyle={styles.gameIconScrollerContent}
+            // Empty state for new users
+            <View style={styles.emptyState}>
+              <View style={styles.emptyIconCircle}>
+                <IconSymbol size={48} name="star.fill" color="#72767d" />
+              </View>
+              <ThemedText style={styles.emptyStateTitle}>No rank cards yet</ThemedText>
+              <ThemedText style={styles.emptyStateSubtext}>
+                Connect your gaming accounts to display your ranks
+              </ThemedText>
+              <TouchableOpacity
+                style={styles.addRankCardEmptyButton}
+                onPress={() => router.push('/profilePages/newRankCard')}
+                activeOpacity={0.8}
               >
-                <TouchableOpacity
-                  style={styles.gameIconContainer}
-                  onPress={() => router.push('/profilePages/newRankCard')}
-                  activeOpacity={0.7}
-                >
-                  <View style={[styles.gameIconCircle, styles.gameIconCircleActive]}>
-                    <IconSymbol
-                      size={24}
-                      name="plus.circle.fill"
-                      color="#fff"
-                    />
-                  </View>
-                </TouchableOpacity>
-              </ScrollView>
-
-              {/* Add Rank Card */}
-              <ScrollView
-                horizontal
-                pagingEnabled
-                showsHorizontalScrollIndicator={false}
-                scrollEnabled={false}
-                snapToInterval={CARD_WIDTH + CARD_GAP}
-                decelerationRate="fast"
-                contentContainerStyle={styles.cardsContainer}
-              >
-                <TouchableOpacity
-                  style={[styles.cardWrapper, styles.addRankCardCard, { width: CARD_WIDTH }]}
-                  onPress={() => router.push('/profilePages/newRankCard')}
-                  activeOpacity={0.7}
-                >
-                  <View style={styles.addRankCardCardContent}>
-                    <IconSymbol size={48} name="plus.circle.fill" color="#fff" />
-                    <ThemedText style={styles.addRankCardCardText}>Add Rank Card</ThemedText>
-                    <ThemedText style={styles.addRankCardCardSubtext}>Connect another game</ThemedText>
-                  </View>
-                </TouchableOpacity>
-              </ScrollView>
-            </>
+                <IconSymbol size={20} name="plus.circle.fill" color="#fff" />
+                <ThemedText style={styles.addRankCardEmptyText}>Add Rank Card</ThemedText>
+              </TouchableOpacity>
+            </View>
           ) : (
             <>
               {/* Game Icon Selector */}
@@ -901,10 +914,10 @@ export default function ProfileScreen() {
                   onPress={() => router.push('/profilePages/newRankCard')}
                   activeOpacity={0.7}
                 >
-                  <View style={styles.addRankCardCardContent}>
-                    <IconSymbol size={48} name="plus.circle.fill" color="#fff" />
-                    <ThemedText style={styles.addRankCardCardText}>Add Rank Card</ThemedText>
-                    <ThemedText style={styles.addRankCardCardSubtext}>Connect another game</ThemedText>
+                  <View style={styles.addRankCardContent}>
+                    <IconSymbol size={56} name="plus.circle.fill" color="#c42743" />
+                    <ThemedText style={styles.addRankCardText}>Add Rank Card</ThemedText>
+                    <ThemedText style={styles.addRankCardSubtext}>Connect another game</ThemedText>
                   </View>
                 </TouchableOpacity>
               </ScrollView>
@@ -918,9 +931,16 @@ export default function ProfileScreen() {
         <TouchableOpacity
           style={styles.fabButton}
           onPress={handleAddPost}
-          activeOpacity={0.8}
+          activeOpacity={0.9}
         >
-          <IconSymbol size={28} name="plus" color="#fff" />
+          <LinearGradient
+            colors={['#c42743', '#a81f35']}
+            start={{ x: 0, y: 0 }}
+            end={{ x: 1, y: 1 }}
+            style={styles.fabGradient}
+          >
+            <IconSymbol size={30} name="plus" color="#fff" />
+          </LinearGradient>
         </TouchableOpacity>
       )}
 
@@ -1078,174 +1098,419 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: '#1e2124',
   },
-  header: {
-    position: 'absolute',
-    top: 0,
-    left: 0,
-    right: 0,
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    paddingHorizontal: 20,
-    paddingTop: 60,
-    paddingBottom: 16,
-    backgroundColor: 'transparent',
-    zIndex: 10,
-  },
-  headerSpacer: {
-    width: 32,
-  },
-  headerTitle: {
-    fontSize: 20,
-    fontWeight: '700',
-    color: '#000',
-  },
-  headerActions: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 16,
-  },
-  headerIconButton: {
+  headerSection: {
     position: 'relative',
-    padding: 4,
   },
-  coverPhotoContainer: {
+  coverPhotoWrapper: {
     width: '100%',
-    height: 180,
-    backgroundColor: '#f5f5f5',
-  },
-  coverPhoto: {
-    width: '100%',
-    height: '100%',
-    backgroundColor: '#667eea',
+    height: 200,
+    position: 'relative',
   },
   coverPhotoImage: {
     width: '100%',
     height: '100%',
   },
-  profileContentWrapper: {
-    backgroundColor: '#1e2124',
-    paddingHorizontal: 20,
-    paddingTop: 0,
-    paddingBottom: 12,
+  coverPhotoGradient: {
+    width: '100%',
+    height: '100%',
   },
-  profileTopRow: {
+  coverPhotoOverlay: {
+    position: 'absolute',
+    bottom: 0,
+    left: 0,
+    right: 0,
+    height: 100,
+  },
+  headerIcons: {
+    position: 'absolute',
+    top: 50,
+    right: 16,
     flexDirection: 'row',
-    alignItems: 'flex-start',
-    gap: 16,
-    marginBottom: 8,
+    gap: 12,
+    zIndex: 10,
   },
-  avatarContainer: {
-    marginTop: -40,
+  headerIconButton: {
+    position: 'relative',
+  },
+  iconButtonBg: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backdropFilter: 'blur(10px)',
+  },
+  profileCard: {
+    marginTop: -60,
+    marginHorizontal: 16,
+    backgroundColor: '#2c2f33',
+    borderRadius: 20,
+    padding: 20,
+    alignItems: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    elevation: 8,
+  },
+  avatarWrapper: {
+    marginTop: -50,
+    marginBottom: 12,
   },
   avatarCircle: {
-    width: 80,
-    height: 80,
-    borderRadius: 40,
-    backgroundColor: '#f5f5f5',
+    width: 100,
+    height: 100,
+    borderRadius: 50,
+    backgroundColor: '#36393e',
     alignItems: 'center',
     justifyContent: 'center',
-    borderWidth: 3,
-    borderColor: '#fff',
+    borderWidth: 5,
+    borderColor: '#2c2f33',
   },
   avatarCircleWithGradient: {
-    width: 80,
-    height: 80,
-    borderRadius: 40,
-    backgroundColor: '#f5f5f5',
+    width: 100,
+    height: 100,
+    borderRadius: 50,
+    backgroundColor: '#36393e',
     alignItems: 'center',
     justifyContent: 'center',
-  },
-  avatarInitial: {
-    fontSize: 40,
   },
   avatarImage: {
     width: '100%',
     height: '100%',
-    borderRadius: 40,
+    borderRadius: 50,
   },
-  profileInfo: {
-    width: '100%',
-  },
-  profileInfoRight: {
-    flex: 1,
-    justifyContent: 'center',
-    paddingTop: 8,
-    paddingRight: 4,
-    alignItems: 'flex-start',
-  },
-  username: {
-    fontSize: 20,
+  avatarInitial: {
+    fontSize: 44,
     fontWeight: '700',
     color: '#fff',
+  },
+  username: {
+    fontSize: 24,
+    fontWeight: '700',
+    color: '#fff',
+    marginBottom: 8,
     letterSpacing: -0.5,
-  },
-  statsRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginBottom: 12,
-  },
-  statText: {
-    fontSize: 14,
-    color: '#b9bbbe',
-    fontWeight: '400',
-  },
-  statDividerText: {
-    fontSize: 14,
-    color: '#72767d',
-    fontWeight: '400',
-  },
-  bioSocialsContainer: {
-    marginBottom: 20,
   },
   bioText: {
     fontSize: 14,
-    color: '#dcddde',
+    color: '#b9bbbe',
+    textAlign: 'center',
     lineHeight: 20,
-    fontWeight: '400',
-    marginBottom: 10,
+    marginBottom: 16,
+    paddingHorizontal: 20,
   },
   emptyBioText: {
     fontSize: 14,
     color: '#72767d',
+    textAlign: 'center',
     fontStyle: 'italic',
-    marginBottom: 10,
+    marginBottom: 16,
+  },
+  statsCardsRow: {
+    flexDirection: 'row',
+    width: '100%',
+    gap: 12,
+    marginBottom: 16,
+  },
+  statCard: {
+    flex: 1,
+    backgroundColor: '#36393e',
+    borderRadius: 12,
+    padding: 16,
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: '#424549',
+  },
+  statNumber: {
+    fontSize: 20,
+    fontWeight: '700',
+    color: '#fff',
+    marginBottom: 4,
+  },
+  statLabel: {
+    fontSize: 12,
+    color: '#72767d',
+    fontWeight: '500',
+  },
+  actionButtonsRow: {
+    flexDirection: 'row',
+    width: '100%',
+    gap: 10,
+  },
+  editButton: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    paddingVertical: 12,
+    backgroundColor: '#5865F2',
+    borderRadius: 10,
+  },
+  editButtonText: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#fff',
   },
   socialsButton: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    paddingVertical: 12,
+    backgroundColor: '#424549',
+    borderRadius: 10,
+  },
+  socialsButtonText: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#fff',
+  },
+  shareButton: {
+    width: 48,
+    height: 48,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#424549',
+    borderRadius: 10,
+  },
+  tabsContainer: {
+    flexDirection: 'row',
+    marginTop: 20,
+    marginHorizontal: 16,
+    backgroundColor: '#2c2f33',
+    borderRadius: 12,
+    padding: 4,
+    position: 'relative',
+  },
+  tab: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    paddingVertical: 12,
+    borderRadius: 8,
+  },
+  tabActive: {
+    backgroundColor: '#36393e',
+  },
+  tabText: {
+    fontSize: 14,
+    fontWeight: '500',
+    color: '#72767d',
+  },
+  tabTextActive: {
+    color: '#c42743',
+    fontWeight: '700',
+  },
+  filterIconButton: {
+    position: 'absolute',
+    right: 8,
+    top: '50%',
+    transform: [{ translateY: -12 }],
+    width: 32,
+    height: 32,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  tabContent: {
+    marginTop: 16,
+  },
+  postsGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 2,
+    paddingHorizontal: 0,
+  },
+  postItem: {
+    width: (screenWidth - 4) / 3,
+    height: ((screenWidth - 4) / 3) * 1.3,
+    backgroundColor: '#36393e',
+    position: 'relative',
+    borderRadius: 4,
+    overflow: 'hidden',
+  },
+  postImage: {
+    width: '100%',
+    height: '100%',
+  },
+  playIconOverlay: {
+    position: 'absolute',
+    top: '50%',
+    left: '50%',
+    transform: [{ translateX: -16 }, { translateY: -16 }],
+    width: 32,
+    height: 32,
+    opacity: 0.9,
+  },
+  videoDuration: {
+    position: 'absolute',
+    bottom: 6,
+    right: 6,
+    backgroundColor: 'rgba(0, 0, 0, 0.8)',
+    borderRadius: 4,
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+  },
+  videoDurationText: {
+    fontSize: 10,
+    fontWeight: '700',
+    color: '#fff',
+  },
+  multipleIndicator: {
+    position: 'absolute',
+    top: 6,
+    right: 6,
+    backgroundColor: 'rgba(0, 0, 0, 0.7)',
+    borderRadius: 4,
+    padding: 4,
+  },
+  emptyState: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 80,
+    paddingHorizontal: 40,
+  },
+  emptyIconCircle: {
+    width: 96,
+    height: 96,
+    borderRadius: 48,
+    backgroundColor: '#2c2f33',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 20,
+  },
+  emptyStateTitle: {
+    fontSize: 20,
+    fontWeight: '700',
+    color: '#fff',
+    marginBottom: 8,
+  },
+  emptyStateText: {
+    fontSize: 16,
+    color: '#b9bbbe',
+    marginTop: 12,
+  },
+  emptyStateSubtext: {
+    fontSize: 14,
+    color: '#72767d',
+    textAlign: 'center',
+    lineHeight: 20,
+  },
+  addRankCardEmptyButton: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 8,
-    paddingVertical: 10,
-    paddingHorizontal: 16,
-    backgroundColor: '#36393e',
-    borderRadius: 8,
-    borderWidth: 1,
-    borderColor: '#2c2f33',
-    marginTop: 12,
+    marginTop: 24,
+    paddingVertical: 14,
+    paddingHorizontal: 24,
+    backgroundColor: '#5865F2',
+    borderRadius: 12,
   },
-  socialsButtonText: {
-    flex: 1,
+  addRankCardEmptyText: {
+    fontSize: 15,
+    fontWeight: '600',
+    color: '#fff',
+  },
+  gameIconScroller: {
+    marginBottom: 16,
+    paddingHorizontal: 16,
+  },
+  gameIconScrollerContent: {
+    gap: 12,
+    paddingVertical: 8,
+  },
+  gameIconContainer: {
+    alignItems: 'center',
+  },
+  gameIconCircle: {
+    width: 56,
+    height: 56,
+    borderRadius: 28,
+    backgroundColor: '#2c2f33',
+    borderWidth: 3,
+    borderColor: 'transparent',
+    alignItems: 'center',
+    justifyContent: 'center',
+    overflow: 'hidden',
+  },
+  gameIconCircleActive: {
+    borderColor: '#c42743',
+    backgroundColor: '#36393e',
+  },
+  gameIconImage: {
+    width: 36,
+    height: 36,
+  },
+  cardsContainer: {
+    paddingHorizontal: 16,
+    paddingBottom: 20,
+  },
+  cardWrapper: {
+    paddingHorizontal: 0,
+  },
+  addRankCardCard: {
+    height: 220,
+    backgroundColor: '#2c2f33',
+    borderRadius: 24,
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderWidth: 3,
+    borderColor: '#424549',
+    borderStyle: 'dashed',
+  },
+  addRankCardContent: {
+    alignItems: 'center',
+    gap: 12,
+  },
+  addRankCardText: {
+    fontSize: 20,
+    fontWeight: '700',
+    color: '#fff',
+  },
+  addRankCardSubtext: {
     fontSize: 14,
-    fontWeight: '500',
-    color: '#dcddde',
+    color: '#72767d',
+  },
+  fabButton: {
+    position: 'absolute',
+    bottom: 24,
+    right: 24,
+    borderRadius: 32,
+    shadowColor: '#c42743',
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.4,
+    shadowRadius: 12,
+    elevation: 12,
+  },
+  fabGradient: {
+    width: 64,
+    height: 64,
+    borderRadius: 32,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   modalOverlay: {
     flex: 1,
-    backgroundColor: 'transparent',
+    backgroundColor: 'rgba(0, 0, 0, 0.7)',
     justifyContent: 'flex-end',
   },
   bottomSheet: {
-    backgroundColor: '#36393e',
-    borderTopLeftRadius: 20,
-    borderTopRightRadius: 20,
+    backgroundColor: '#2c2f33',
+    borderTopLeftRadius: 24,
+    borderTopRightRadius: 24,
     paddingBottom: 34,
   },
   sheetHeader: {
     alignItems: 'center',
     paddingTop: 12,
-    paddingBottom: 16,
+    paddingBottom: 20,
     borderBottomWidth: 1,
-    borderBottomColor: '#2c2f33',
+    borderBottomColor: '#424549',
   },
   sheetHandle: {
     width: 40,
@@ -1255,13 +1520,13 @@ const styles = StyleSheet.create({
     marginBottom: 16,
   },
   sheetTitle: {
-    fontSize: 17,
-    fontWeight: '600',
+    fontSize: 18,
+    fontWeight: '700',
     color: '#fff',
   },
   socialLinksContainer: {
     paddingHorizontal: 20,
-    paddingTop: 8,
+    paddingTop: 12,
   },
   socialOption: {
     flexDirection: 'row',
@@ -1269,7 +1534,7 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     paddingVertical: 16,
     borderBottomWidth: 1,
-    borderBottomColor: '#2c2f33',
+    borderBottomColor: '#424549',
   },
   socialOptionLeft: {
     flexDirection: 'row',
@@ -1278,9 +1543,9 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   instagramIconContainer: {
-    width: 48,
-    height: 48,
-    borderRadius: 24,
+    width: 52,
+    height: 52,
+    borderRadius: 26,
     backgroundColor: '#36393e',
     alignItems: 'center',
     justifyContent: 'center',
@@ -1288,9 +1553,9 @@ const styles = StyleSheet.create({
     borderColor: '#E4405F',
   },
   discordIconContainer: {
-    width: 48,
-    height: 48,
-    borderRadius: 24,
+    width: 52,
+    height: 52,
+    borderRadius: 26,
     backgroundColor: '#36393e',
     alignItems: 'center',
     justifyContent: 'center',
@@ -1298,8 +1563,8 @@ const styles = StyleSheet.create({
     borderColor: '#5865F2',
   },
   socialOptionIcon: {
-    width: 26,
-    height: 26,
+    width: 28,
+    height: 28,
   },
   socialOptionTitle: {
     fontSize: 16,
@@ -1312,295 +1577,20 @@ const styles = StyleSheet.create({
     color: '#b9bbbe',
   },
   socialNotConfigured: {
-    borderColor: '#2c2f33',
+    borderColor: '#424549',
     opacity: 0.5,
   },
   cancelButton: {
     marginHorizontal: 20,
-    marginTop: 8,
-    paddingVertical: 14,
-    backgroundColor: '#2c2f33',
-    borderRadius: 10,
+    marginTop: 12,
+    paddingVertical: 16,
+    backgroundColor: '#424549',
+    borderRadius: 12,
     alignItems: 'center',
   },
   cancelButtonText: {
     fontSize: 15,
-    fontWeight: '600',
-    color: '#b9bbbe',
-  },
-  actionButtons: {
-    flexDirection: 'row',
-    width: '100%',
-    gap: 12,
-  },
-  editProfileButton: {
-    flex: 1,
-    paddingVertical: 6,
-    paddingHorizontal: 16,
-    borderRadius: 6,
-    alignItems: 'center',
-    backgroundColor: '#000',
-  },
-  editProfileText: {
-    fontSize: 13,
-    fontWeight: '600',
+    fontWeight: '700',
     color: '#fff',
-    letterSpacing: -0.2,
-  },
-  shareProfileButton: {
-    width: 34,
-    height: 34,
-    borderRadius: 6,
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: '#36393e',
-    borderWidth: 1,
-    borderColor: '#2c2f33',
-  },
-  shareProfileText: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: '#000',
-    letterSpacing: -0.2,
-  },
-  section: {
-    paddingHorizontal: 20,
-    paddingTop: 16,
-    paddingBottom: 8,
-  },
-  postsSection: {
-    paddingHorizontal: 0,
-    paddingTop: 0,
-    paddingBottom: 8,
-  },
-  sectionHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 20,
-  },
-  sectionTitle: {
-    fontSize: 17,
-    fontWeight: '600',
-    letterSpacing: -0.3,
-    color: '#000',
-  },
-  addButton: {
-    width: 32,
-    height: 32,
-    borderRadius: 16,
-    backgroundColor: '#000',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  gameIconScroller: {
-    marginBottom: 16,
-  },
-  gameIconScrollerContent: {
-    paddingVertical: 6,
-    gap: 12,
-  },
-  gameIconContainer: {
-    alignItems: 'center',
-  },
-  gameIconCircle: {
-    width: 48,
-    height: 48,
-    borderRadius: 24,
-    backgroundColor: '#36393e',
-    borderWidth: 2,
-    borderColor: 'transparent',
-    alignItems: 'center',
-    justifyContent: 'center',
-    overflow: 'hidden',
-  },
-  gameIconCircleActive: {
-    borderColor: '#c42743',
-    backgroundColor: '#36393e',
-  },
-  gameIconImage: {
-    width: 32,
-    height: 32,
-  },
-  cardsContainer: {
-    paddingBottom: 4,
-  },
-  cardWrapper: {
-    paddingHorizontal: 0,
-  },
-  addRankCardCard: {
-    height: 220,
-    backgroundColor: '#1a1a1a',
-    borderRadius: 24,
-    justifyContent: 'center',
-    alignItems: 'center',
-    borderWidth: 2,
-    borderColor: '#333',
-    borderStyle: 'dashed',
-  },
-  addRankCardCardContent: {
-    alignItems: 'center',
-    gap: 12,
-  },
-  addRankCardCardText: {
-    fontSize: 18,
-    fontWeight: '600',
-    color: '#fff',
-    letterSpacing: -0.3,
-  },
-  addRankCardCardSubtext: {
-    fontSize: 14,
-    fontWeight: '400',
-    color: '#999',
-    letterSpacing: -0.2,
-  },
-  mainTabsContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    backgroundColor: '#1e2124',
-    paddingHorizontal: 20,
-    borderBottomWidth: 1,
-    borderBottomColor: '#2c2f33',
-  },
-  mainTabsLeft: {
-    flexDirection: 'row',
-  },
-  mainTab: {
-    paddingVertical: 12,
-    paddingHorizontal: 20,
-    alignItems: 'center',
-    marginRight: 8,
-    position: 'relative',
-  },
-  tabIndicator: {
-    position: 'absolute',
-    bottom: 0,
-    height: 2,
-    width: 30,
-    backgroundColor: '#c42743',
-    borderRadius: 1,
-  },
-  mainTabText: {
-    fontSize: 15,
-    fontWeight: '500',
-    color: '#72767d',
-  },
-  mainTabTextActive: {
-    color: '#fff',
-    fontWeight: '600',
-  },
-  filterButton: {
-    padding: 8,
-  },
-  postsContainer: {
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingVertical: 80,
-    paddingHorizontal: 20,
-    gap: 12,
-  },
-  emptyStateText: {
-    fontSize: 17,
-    fontWeight: '600',
-    color: '#fff',
-    marginTop: 16,
-  },
-  emptyStateSubtext: {
-    fontSize: 14,
-    color: '#b9bbbe',
-    textAlign: 'center',
-    paddingHorizontal: 40,
-  },
-  loadingText: {
-    fontSize: 14,
-    color: '#b9bbbe',
-    marginTop: 12,
-  },
-  postsGrid: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 1,
-    marginTop: 0,
-  },
-  postItem: {
-    width: (screenWidth - 2) / 3,
-    height: ((screenWidth - 2) / 3) * 1.25,
-    backgroundColor: '#f5f5f5',
-    position: 'relative',
-  },
-  postImage: {
-    width: '100%',
-    height: '100%',
-  },
-  videoIndicator: {
-    position: 'absolute',
-    top: 8,
-    right: 8,
-    backgroundColor: 'rgba(0, 0, 0, 0.6)',
-    borderRadius: 12,
-    width: 32,
-    height: 32,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  videoDuration: {
-    position: 'absolute',
-    bottom: 8,
-    right: 8,
-    backgroundColor: 'rgba(0, 0, 0, 0.75)',
-    borderRadius: 4,
-    paddingHorizontal: 6,
-    paddingVertical: 3,
-  },
-  videoDurationText: {
-    fontSize: 11,
-    fontWeight: '600',
-    color: '#fff',
-    letterSpacing: 0.2,
-  },
-  multiplePostsIndicator: {
-    position: 'absolute',
-    bottom: 8,
-    right: 8,
-    backgroundColor: 'rgba(0, 0, 0, 0.6)',
-    borderRadius: 12,
-    width: 28,
-    height: 28,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  fabButton: {
-    position: 'absolute',
-    bottom: 24,
-    right: 24,
-    width: 60,
-    height: 60,
-    borderRadius: 30,
-    backgroundColor: '#000',
-    alignItems: 'center',
-    justifyContent: 'center',
-    shadowColor: '#000',
-    shadowOffset: {
-      width: 0,
-      height: 4,
-    },
-    shadowOpacity: 0.3,
-    shadowRadius: 4.65,
-    elevation: 8,
-  },
-  addRankCardButton: {
-    marginTop: 16,
-    paddingVertical: 12,
-    paddingHorizontal: 32,
-    borderRadius: 8,
-    backgroundColor: '#000',
-    alignItems: 'center',
-  },
-  addRankCardText: {
-    fontSize: 15,
-    fontWeight: '600',
-    color: '#fff',
-    letterSpacing: -0.2,
   },
 });
