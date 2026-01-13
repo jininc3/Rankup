@@ -12,7 +12,7 @@ const { width: screenWidth } = Dimensions.get('window');
 
 // Game data
 const gameData: { [key: string]: { name: string; icon?: string; image?: any } } = {
-  valorant: { name: 'Valorant', image: require('@/assets/images/valorantText.png') },
+  valorant: { name: 'Valorant', image: require('@/assets/images/valorant-text.png') },
   league: { name: 'League of Legends', image: require('@/assets/images/leagueoflegends.png') },
   apex: { name: 'Apex Legends', icon: '🎮' },
   fortnite: { name: 'Fortnite', icon: '🏆' },
@@ -674,10 +674,9 @@ const styles = StyleSheet.create({
     color: '#fff',
   },
   gameTag: {
-    backgroundColor: '#424549',
-    paddingHorizontal: 10,
-    paddingVertical: 4,
-    borderRadius: 12,
+    paddingHorizontal: 4,
+    paddingVertical: 2,
+    marginLeft: 30,
   },
   gameTagText: {
     fontSize: 12,
@@ -685,8 +684,8 @@ const styles = StyleSheet.create({
     color: '#fff',
   },
   gameTagImage: {
-    height: 28,
-    width: 100,
+    height: 36,
+    width: 120,
   },
   captionContainer: {
     paddingHorizontal: 16,

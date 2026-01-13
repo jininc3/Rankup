@@ -3,7 +3,6 @@ import rankCard from '@/app/components/rankCard';
 // Alias for JSX usage (React components must start with uppercase)
 const RankCard = rankCard;
 import NewPost from '@/app/components/newPost';
-import PostFilterModal from '@/app/profilePages/postFilterModal';
 import PostViewerModal from '@/app/components/postViewerModal';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
@@ -66,9 +65,6 @@ export default function ProfileScreen() {
   const [selectedPostIndex, setSelectedPostIndex] = useState(0);
   const [showPostViewer, setShowPostViewer] = useState(false);
   const [showNewPost, setShowNewPost] = useState(false);
-  const [showFilterMenu, setShowFilterMenu] = useState(false);
-  const [selectedFilter, setSelectedFilter] = useState<'newest' | 'oldest' | 'most_viewed' | 'most_liked'>('newest');
-  const [selectedGameFilter, setSelectedGameFilter] = useState<string | null>(null); // null means "All Games"
   const [refreshing, setRefreshing] = useState(false);
   const scrollViewRef = useRef<ScrollView>(null);
   const iconScrollViewRef = useRef<ScrollView>(null);
@@ -301,22 +297,8 @@ export default function ProfileScreen() {
         ...doc.data()
       } as Post));
 
-      // Filter by game if a game filter is selected
-      if (selectedGameFilter) {
-        fetchedPosts = fetchedPosts.filter(post => post.taggedGame === selectedGameFilter);
-      }
-
-      // Sort client-side based on selected filter
-      if (selectedFilter === 'newest') {
-        fetchedPosts = fetchedPosts.sort((a, b) => b.createdAt.toMillis() - a.createdAt.toMillis());
-      } else if (selectedFilter === 'oldest') {
-        fetchedPosts = fetchedPosts.sort((a, b) => a.createdAt.toMillis() - b.createdAt.toMillis());
-      } else if (selectedFilter === 'most_liked') {
-        fetchedPosts = fetchedPosts.sort((a, b) => b.likes - a.likes);
-      } else if (selectedFilter === 'most_viewed') {
-        // Placeholder: would need a views field in the future
-        fetchedPosts = fetchedPosts.sort((a, b) => b.likes - a.likes);
-      }
+      // Sort by newest first
+      fetchedPosts = fetchedPosts.sort((a, b) => b.createdAt.toMillis() - a.createdAt.toMillis());
 
       setPosts(fetchedPosts);
     } catch (error) {
@@ -404,15 +386,6 @@ export default function ProfileScreen() {
     }, [user?.id])
   );
 
-  // Refetch posts when filter or game filter changes
-  useEffect(() => {
-    if (user?.id) {
-      console.log('📊 Filter changed - selectedFilter:', selectedFilter, 'selectedGameFilter:', selectedGameFilter);
-      // Reset preload flag when filters change so we fetch fresh data
-      setHasConsumedPreloadPosts(false);
-      fetchPosts();
-    }
-  }, [selectedFilter, selectedGameFilter]);
 
   // Handle pull-to-refresh
   const onRefresh = useCallback(async () => {
@@ -528,10 +501,6 @@ export default function ProfileScreen() {
     }
   };
 
-  const handleFilterChange = (filter: 'newest' | 'oldest' | 'most_viewed' | 'most_liked', gameFilter: string | null) => {
-    setSelectedFilter(filter);
-    setSelectedGameFilter(gameFilter);
-  };
 
   // Calculate tier border color based on current ranks
   const tierBorderColor = calculateTierBorderColor(
@@ -547,15 +516,6 @@ export default function ProfileScreen() {
 
   return (
     <ThemedView style={styles.container}>
-      {/* Post Filter Modal */}
-      <PostFilterModal
-        visible={showFilterMenu}
-        onClose={() => setShowFilterMenu(false)}
-        selectedFilter={selectedFilter}
-        selectedGameFilter={selectedGameFilter}
-        onFilterChange={handleFilterChange}
-      />
-
       <ScrollView
         showsVerticalScrollIndicator={false}
         refreshControl={
@@ -614,8 +574,8 @@ export default function ProfileScreen() {
               {tierBorderGradient ? (
                 <GradientBorder
                   colors={tierBorderGradient}
-                  borderWidth={4}
-                  borderRadius={50}
+                  borderWidth={3}
+                  borderRadius={30}
                 >
                   <View style={styles.avatarCircleWithGradient}>
                     {user?.avatar && user.avatar.startsWith('http') ? (
@@ -681,7 +641,7 @@ export default function ProfileScreen() {
                 onPress={() => router.push('/profilePages/editProfile')}
                 activeOpacity={0.8}
               >
-                <IconSymbol size={18} name="pencil" color="#fff" />
+                <IconSymbol size={14} name="pencil" color="#fff" />
                 <ThemedText style={styles.editButtonText}>Edit Profile</ThemedText>
               </TouchableOpacity>
 
@@ -690,7 +650,7 @@ export default function ProfileScreen() {
                 onPress={() => setShowSocialsSheet(true)}
                 activeOpacity={0.8}
               >
-                <IconSymbol size={18} name="link" color="#fff" />
+                <IconSymbol size={14} name="link" color="#fff" />
                 <ThemedText style={styles.socialsButtonText}>Socials</ThemedText>
               </TouchableOpacity>
 
@@ -698,7 +658,7 @@ export default function ProfileScreen() {
                 style={styles.shareButton}
                 activeOpacity={0.8}
               >
-                <IconSymbol size={20} name="square.and.arrow.up" color="#fff" />
+                <IconSymbol size={16} name="square.and.arrow.up" color="#fff" />
               </TouchableOpacity>
             </View>
           </View>
@@ -707,48 +667,44 @@ export default function ProfileScreen() {
         {/* Main Tabs */}
         <View style={styles.tabsContainer}>
           <TouchableOpacity
-            style={[styles.tab, activeMainTab === 'clips' && styles.tabActive]}
+            style={styles.tab}
             onPress={() => setActiveMainTab('clips')}
             activeOpacity={0.7}
           >
-            <IconSymbol
-              size={20}
-              name="play.rectangle.fill"
-              color={activeMainTab === 'clips' ? '#c42743' : '#72767d'}
-            />
-            <ThemedText style={[styles.tabText, activeMainTab === 'clips' && styles.tabTextActive]}>
-              Clips
-            </ThemedText>
+            <View style={styles.tabInner}>
+              <IconSymbol
+                size={18}
+                name="play.rectangle.fill"
+                color={activeMainTab === 'clips' ? '#fff' : '#72767d'}
+              />
+              <ThemedText style={[styles.tabText, activeMainTab === 'clips' && styles.tabTextActive]}>
+                Clips
+              </ThemedText>
+            </View>
+            {activeMainTab === 'clips' && <View style={styles.tabUnderline} />}
           </TouchableOpacity>
 
           <TouchableOpacity
-            style={[styles.tab, activeMainTab === 'rankCards' && styles.tabActive]}
+            style={styles.tab}
             onPress={() => setActiveMainTab('rankCards')}
             activeOpacity={0.7}
           >
-            <IconSymbol
-              size={20}
-              name="star.fill"
-              color={activeMainTab === 'rankCards' ? '#c42743' : '#72767d'}
-            />
-            <ThemedText style={[styles.tabText, activeMainTab === 'rankCards' && styles.tabTextActive]}>
-              Rank Cards
-            </ThemedText>
+            <View style={styles.tabInner}>
+              <IconSymbol
+                size={18}
+                name="star.fill"
+                color={activeMainTab === 'rankCards' ? '#fff' : '#72767d'}
+              />
+              <ThemedText style={[styles.tabText, activeMainTab === 'rankCards' && styles.tabTextActive]}>
+                Rank Cards
+              </ThemedText>
+            </View>
+            {activeMainTab === 'rankCards' && <View style={styles.tabUnderline} />}
           </TouchableOpacity>
-
-          {activeMainTab === 'clips' && (
-            <TouchableOpacity
-              style={styles.filterIconButton}
-              onPress={() => setShowFilterMenu(true)}
-              activeOpacity={0.7}
-            >
-              <IconSymbol size={20} name="line.3.horizontal.decrease.circle" color="#fff" />
-            </TouchableOpacity>
-          )}
         </View>
 
         {/* Clips Tab Content */}
-        <View style={[styles.tabContent, { display: activeMainTab === 'clips' ? 'flex' : 'none' }]}>
+        <View style={[styles.tabContentArea, { display: activeMainTab === 'clips' ? 'flex' : 'none' }]}>
           {loadingPosts ? (
             <View style={styles.emptyState}>
               <ActivityIndicator size="large" color="#c42743" />
@@ -769,16 +725,11 @@ export default function ProfileScreen() {
                     resizeMode="cover"
                   />
                   {post.mediaType === 'video' && (
-                    <>
-                      <View style={styles.playIconOverlay}>
-                        <IconSymbol size={32} name="play.fill" color="#fff" />
-                      </View>
-                      <View style={styles.videoDuration}>
-                        <ThemedText style={styles.videoDurationText}>
-                          {formatDuration(post.duration)}
-                        </ThemedText>
-                      </View>
-                    </>
+                    <View style={styles.videoDuration}>
+                      <ThemedText style={styles.videoDurationText}>
+                        {formatDuration(post.duration)}
+                      </ThemedText>
+                    </View>
                   )}
                   {post.mediaUrls && post.mediaUrls.length > 1 && (
                     <View style={styles.multipleIndicator}>
@@ -802,7 +753,7 @@ export default function ProfileScreen() {
         </View>
 
         {/* RankCards Tab Content */}
-        <View style={[styles.tabContent, { display: activeMainTab === 'rankCards' ? 'flex' : 'none' }]}>
+        <View style={[styles.tabContentArea, { display: activeMainTab === 'rankCards' ? 'flex' : 'none' }]}>
           {!riotAccount && !valorantAccount ? (
             // Empty state for new users
             <View style={styles.emptyState}>
@@ -1103,7 +1054,7 @@ const styles = StyleSheet.create({
   },
   coverPhotoWrapper: {
     width: '100%',
-    height: 200,
+    height: 140,
     position: 'relative',
   },
   coverPhotoImage: {
@@ -1142,11 +1093,11 @@ const styles = StyleSheet.create({
     backdropFilter: 'blur(10px)',
   },
   profileCard: {
-    marginTop: -60,
+    marginTop: -30,
     marginHorizontal: 16,
     backgroundColor: '#2c2f33',
-    borderRadius: 20,
-    padding: 20,
+    borderRadius: 12,
+    padding: 12,
     alignItems: 'center',
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 4 },
@@ -1155,23 +1106,23 @@ const styles = StyleSheet.create({
     elevation: 8,
   },
   avatarWrapper: {
-    marginTop: -50,
-    marginBottom: 12,
+    marginTop: -30,
+    marginBottom: 6,
   },
   avatarCircle: {
-    width: 100,
-    height: 100,
-    borderRadius: 50,
+    width: 60,
+    height: 60,
+    borderRadius: 30,
     backgroundColor: '#36393e',
     alignItems: 'center',
     justifyContent: 'center',
-    borderWidth: 5,
+    borderWidth: 3,
     borderColor: '#2c2f33',
   },
   avatarCircleWithGradient: {
-    width: 100,
-    height: 100,
-    borderRadius: 50,
+    width: 60,
+    height: 60,
+    borderRadius: 30,
     backgroundColor: '#36393e',
     alignItems: 'center',
     justifyContent: 'center',
@@ -1179,78 +1130,78 @@ const styles = StyleSheet.create({
   avatarImage: {
     width: '100%',
     height: '100%',
-    borderRadius: 50,
+    borderRadius: 30,
   },
   avatarInitial: {
-    fontSize: 44,
+    fontSize: 28,
     fontWeight: '700',
     color: '#fff',
   },
   username: {
-    fontSize: 24,
+    fontSize: 16,
     fontWeight: '700',
     color: '#fff',
-    marginBottom: 8,
+    marginBottom: 2,
     letterSpacing: -0.5,
   },
   bioText: {
-    fontSize: 14,
+    fontSize: 12,
     color: '#b9bbbe',
     textAlign: 'center',
-    lineHeight: 20,
-    marginBottom: 16,
-    paddingHorizontal: 20,
+    lineHeight: 16,
+    marginBottom: 8,
+    paddingHorizontal: 8,
   },
   emptyBioText: {
-    fontSize: 14,
+    fontSize: 12,
     color: '#72767d',
     textAlign: 'center',
     fontStyle: 'italic',
-    marginBottom: 16,
+    marginBottom: 8,
   },
   statsCardsRow: {
     flexDirection: 'row',
     width: '100%',
-    gap: 12,
-    marginBottom: 16,
+    gap: 6,
+    marginBottom: 8,
   },
   statCard: {
     flex: 1,
     backgroundColor: '#36393e',
-    borderRadius: 12,
-    padding: 16,
+    borderRadius: 6,
+    padding: 8,
     alignItems: 'center',
     borderWidth: 1,
     borderColor: '#424549',
   },
   statNumber: {
-    fontSize: 20,
+    fontSize: 14,
     fontWeight: '700',
     color: '#fff',
-    marginBottom: 4,
+    marginBottom: 1,
   },
   statLabel: {
-    fontSize: 12,
+    fontSize: 9,
     color: '#72767d',
     fontWeight: '500',
   },
   actionButtonsRow: {
     flexDirection: 'row',
     width: '100%',
-    gap: 10,
+    gap: 6,
   },
   editButton: {
     flex: 1,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    gap: 8,
-    paddingVertical: 12,
+    gap: 5,
+    paddingVertical: 8,
     backgroundColor: '#5865F2',
-    borderRadius: 10,
+    borderRadius: 6,
   },
   editButtonText: {
-    fontSize: 14,
+    fontSize: 12,
     fontWeight: '600',
     color: '#fff',
   },
@@ -1259,66 +1210,64 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    gap: 8,
-    paddingVertical: 12,
+    gap: 5,
+    paddingVertical: 8,
     backgroundColor: '#424549',
-    borderRadius: 10,
+    borderRadius: 6,
   },
   socialsButtonText: {
-    fontSize: 14,
+    fontSize: 12,
     fontWeight: '600',
     color: '#fff',
   },
   shareButton: {
-    width: 48,
-    height: 48,
+    width: 36,
+    height: 36,
     alignItems: 'center',
     justifyContent: 'center',
     backgroundColor: '#424549',
-    borderRadius: 10,
+    borderRadius: 6,
   },
   tabsContainer: {
     flexDirection: 'row',
-    marginTop: 20,
-    marginHorizontal: 16,
-    backgroundColor: '#2c2f33',
-    borderRadius: 12,
-    padding: 4,
-    position: 'relative',
+    marginTop: 12,
+    marginHorizontal: 0,
+    borderBottomWidth: 1,
+    borderBottomColor: '#2c2f33',
+    paddingHorizontal: 16,
   },
   tab: {
     flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 10,
+    position: 'relative',
+  },
+  tabInner: {
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'center',
-    gap: 8,
-    paddingVertical: 12,
-    borderRadius: 8,
-  },
-  tabActive: {
-    backgroundColor: '#36393e',
+    gap: 6,
   },
   tabText: {
-    fontSize: 14,
+    fontSize: 15,
     fontWeight: '500',
     color: '#72767d',
+    letterSpacing: -0.3,
   },
   tabTextActive: {
-    color: '#c42743',
+    color: '#fff',
     fontWeight: '700',
   },
-  filterIconButton: {
+  tabUnderline: {
     position: 'absolute',
-    right: 8,
-    top: '50%',
-    transform: [{ translateY: -12 }],
-    width: 32,
-    height: 32,
-    alignItems: 'center',
-    justifyContent: 'center',
+    bottom: -1,
+    height: 3,
+    width: 50,
+    backgroundColor: '#c42743',
+    borderRadius: 2,
   },
-  tabContent: {
-    marginTop: 16,
+  tabContentArea: {
+    marginTop: 8,
   },
   postsGrid: {
     flexDirection: 'row',
@@ -1337,15 +1286,6 @@ const styles = StyleSheet.create({
   postImage: {
     width: '100%',
     height: '100%',
-  },
-  playIconOverlay: {
-    position: 'absolute',
-    top: '50%',
-    left: '50%',
-    transform: [{ translateX: -16 }, { translateY: -16 }],
-    width: 32,
-    height: 32,
-    opacity: 0.9,
   },
   videoDuration: {
     position: 'absolute',
