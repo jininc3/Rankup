@@ -1,7 +1,7 @@
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
-import { useState, useRef } from 'react';
-import { StyleSheet, TextInput, TouchableOpacity, View, Alert, ActivityIndicator, ScrollView, KeyboardAvoidingView, Platform, Keyboard } from 'react-native';
+import { useState, useRef, useEffect } from 'react';
+import { StyleSheet, TextInput, TouchableOpacity, View, Alert, ActivityIndicator, ScrollView, KeyboardAvoidingView, Platform, Keyboard, Animated, Easing } from 'react-native';
 import { useAuth } from '@/contexts/AuthContext';
 import { useRouter } from 'expo-router';
 import { doc, updateDoc, query, collection, where, getDocs } from 'firebase/firestore';
@@ -17,8 +17,80 @@ export default function GoogleSignUpScreen() {
   const [dateOfBirth, setDateOfBirth] = useState<Date | null>(null);
   const [showDatePicker, setShowDatePicker] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [isCheckingRealtime, setIsCheckingRealtime] = useState(false);
+  const [usernameAvailable, setUsernameAvailable] = useState<boolean | null>(null);
   const scrollViewRef = useRef<ScrollView>(null);
   const usernameInputRef = useRef<View>(null);
+  const debounceTimerRef = useRef<NodeJS.Timeout | null>(null);
+  const spinValue = useRef(new Animated.Value(0)).current;
+
+  // Spinning animation
+  useEffect(() => {
+    if (isCheckingRealtime) {
+      spinValue.setValue(0);
+      Animated.loop(
+        Animated.timing(spinValue, {
+          toValue: 1,
+          duration: 1000,
+          easing: Easing.linear,
+          useNativeDriver: true,
+        })
+      ).start();
+    } else {
+      spinValue.stopAnimation();
+    }
+  }, [isCheckingRealtime]);
+
+  const spin = spinValue.interpolate({
+    inputRange: [0, 1],
+    outputRange: ['0deg', '360deg'],
+  });
+
+  // Debounced real-time username check
+  useEffect(() => {
+    // Clear previous timer
+    if (debounceTimerRef.current) {
+      clearTimeout(debounceTimerRef.current);
+    }
+
+    // Reset state if username is too short or empty
+    if (!username.trim() || username.trim().length < 6) {
+      setUsernameAvailable(null);
+      setIsCheckingRealtime(false);
+      return;
+    }
+
+    // Validate format first
+    if (!validateUsername(username)) {
+      setUsernameAvailable(null);
+      setIsCheckingRealtime(false);
+      return;
+    }
+
+    // Start checking indicator
+    setIsCheckingRealtime(true);
+    setUsernameAvailable(null);
+
+    // Debounce the check by 500ms
+    debounceTimerRef.current = setTimeout(async () => {
+      try {
+        const isAvailable = await checkUsernameAvailability(username.trim());
+        setUsernameAvailable(isAvailable);
+      } catch (error) {
+        console.error('Error checking username:', error);
+        setUsernameAvailable(null);
+      } finally {
+        setIsCheckingRealtime(false);
+      }
+    }, 500);
+
+    // Cleanup on unmount
+    return () => {
+      if (debounceTimerRef.current) {
+        clearTimeout(debounceTimerRef.current);
+      }
+    };
+  }, [username]);
 
   const validateUsername = (text: string): boolean => {
     // Username should be 6-20 characters, alphanumeric and underscores only
@@ -81,16 +153,29 @@ export default function GoogleSignUpScreen() {
       return;
     }
 
+    // If we already know username is taken from real-time check
+    if (usernameAvailable === false) {
+      Alert.alert('Username Taken', 'This username is already in use. Please choose another one.');
+      return;
+    }
+
+    // If still checking, wait for check to complete
+    if (isCheckingRealtime) {
+      Alert.alert('Please Wait', 'Still checking username availability...');
+      return;
+    }
+
     setLoading(true);
 
     try {
-      // Check if username is already taken
-      const isAvailable = await checkUsernameAvailability(username);
-
-      if (!isAvailable) {
-        Alert.alert('Username Taken', 'This username is already in use. Please choose another one.');
-        setLoading(false);
-        return;
+      // Double-check if we don't have a definitive answer yet
+      if (usernameAvailable === null) {
+        const isAvailable = await checkUsernameAvailability(username);
+        if (!isAvailable) {
+          Alert.alert('Username Taken', 'This username is already in use. Please choose another one.');
+          setLoading(false);
+          return;
+        }
       }
 
       // Update user profile in Firestore
@@ -170,20 +255,57 @@ export default function GoogleSignUpScreen() {
             <View style={styles.form}>
           <View style={styles.inputContainer} ref={usernameInputRef}>
             <ThemedText style={styles.label}>Username *</ThemedText>
-            <TextInput
-              style={styles.input}
-              placeholder="Enter username"
-              placeholderTextColor="#999"
-              value={username}
-              onChangeText={(text) => setUsername(text.toLowerCase())}
-              autoCapitalize="none"
-              autoCorrect={false}
-              maxLength={20}
-              onFocus={handleUsernameFocus}
-            />
-            <ThemedText style={styles.hint}>
-              6-20 characters, letters, numbers, and underscores only
-            </ThemedText>
+            <View style={styles.inputWrapper}>
+              <TextInput
+                style={styles.inputWithSpinner}
+                placeholder="Enter username"
+                placeholderTextColor="#999"
+                value={username}
+                onChangeText={(text) => setUsername(text.toLowerCase())}
+                autoCapitalize="none"
+                autoCorrect={false}
+                maxLength={20}
+                onFocus={handleUsernameFocus}
+              />
+              {/* Loading spinner inside input */}
+              {isCheckingRealtime && username.trim().length >= 6 && (
+                <View style={styles.inputSpinner}>
+                  <Animated.View style={{ transform: [{ rotate: spin }] }}>
+                    <IconSymbol size={20} name="arrow.trianglehead.2.clockwise" color="#c42743" />
+                  </Animated.View>
+                </View>
+              )}
+            </View>
+            {/* Username availability feedback */}
+            {username.trim().length >= 6 && validateUsername(username) && !isCheckingRealtime && usernameAvailable !== null && (
+              <View style={styles.availabilityContainer}>
+                <IconSymbol
+                  size={16}
+                  name={usernameAvailable ? "checkmark.circle.fill" : "xmark.circle.fill"}
+                  color={usernameAvailable ? "#22c55e" : "#ef4444"}
+                />
+                <ThemedText style={[
+                  styles.availabilityText,
+                  usernameAvailable ? styles.availableText : styles.takenText
+                ]}>
+                  {usernameAvailable ? "Username is available" : "Username is already taken"}
+                </ThemedText>
+              </View>
+            )}
+            {/* Minimum length hint */}
+            {username.trim().length > 0 && username.trim().length < 6 && (
+              <View style={styles.availabilityContainer}>
+                <IconSymbol size={16} name="info.circle" color="#999" />
+                <ThemedText style={styles.hint}>
+                  Username must be at least 6 characters
+                </ThemedText>
+              </View>
+            )}
+            {username.trim().length === 0 && (
+              <ThemedText style={styles.hint}>
+                6-20 characters, letters, numbers, and underscores only
+              </ThemedText>
+            )}
           </View>
 
           <View style={styles.inputContainer}>
@@ -305,6 +427,9 @@ const styles = StyleSheet.create({
     color: '#fff',
     marginBottom: 4,
   },
+  inputWrapper: {
+    position: 'relative',
+  },
   input: {
     backgroundColor: '#2c2f33',
     paddingHorizontal: 16,
@@ -314,6 +439,39 @@ const styles = StyleSheet.create({
     color: '#fff',
     borderWidth: 1,
     borderColor: '#3a3f44',
+  },
+  inputWithSpinner: {
+    backgroundColor: '#2c2f33',
+    paddingHorizontal: 16,
+    paddingRight: 48,
+    paddingVertical: 14,
+    borderRadius: 12,
+    fontSize: 16,
+    color: '#fff',
+    borderWidth: 1,
+    borderColor: '#3a3f44',
+  },
+  inputSpinner: {
+    position: 'absolute',
+    right: 16,
+    top: 0,
+    bottom: 0,
+    justifyContent: 'center',
+  },
+  availabilityContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginTop: 8,
+    gap: 6,
+  },
+  availabilityText: {
+    fontSize: 14,
+  },
+  availableText: {
+    color: '#22c55e',
+  },
+  takenText: {
+    color: '#ef4444',
   },
   hint: {
     fontSize: 13,

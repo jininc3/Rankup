@@ -93,13 +93,6 @@ export default function ProfileScreen() {
     console.log('Profile - Enabled Rank Cards:', enabledRankCards);
   }, [riotAccount, valorantAccount, riotStats, valorantStats, enabledRankCards]);
 
-  // Reset rank cards to stacked view when screen comes into focus
-  useFocusEffect(
-    useCallback(() => {
-      setCardsExpanded(false);
-    }, [])
-  );
-
   // Dynamic games array based on Riot data and enabled rank cards
   // Show rank cards if user has either Riot account OR Valorant account
   // Cards are ordered according to the enabledRankCards array

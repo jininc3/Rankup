@@ -2,9 +2,9 @@ import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { IconSymbol } from '@/components/ui/icon-symbol';
 import { useRouter } from 'expo-router';
-import { StyleSheet, TouchableOpacity, View, TextInput, Alert, ActivityIndicator } from 'react-native';
+import { StyleSheet, TouchableOpacity, View, TextInput, Alert, ActivityIndicator, Animated, Easing } from 'react-native';
 import { useAuth } from '@/contexts/AuthContext';
-import { useState } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { doc, updateDoc, query, collection, where, getDocs } from 'firebase/firestore';
 import { db } from '@/config/firebase';
 
@@ -13,6 +13,78 @@ export default function EditUsernameScreen() {
   const { user, refreshUser } = useAuth();
   const [newUsername, setNewUsername] = useState(user?.username || '');
   const [isUpdating, setIsUpdating] = useState(false);
+  const [isCheckingRealtime, setIsCheckingRealtime] = useState(false);
+  const [usernameAvailable, setUsernameAvailable] = useState<boolean | null>(null);
+  const debounceTimerRef = useRef<NodeJS.Timeout | null>(null);
+  const spinValue = useRef(new Animated.Value(0)).current;
+
+  // Spinning animation
+  useEffect(() => {
+    if (isCheckingRealtime) {
+      spinValue.setValue(0);
+      Animated.loop(
+        Animated.timing(spinValue, {
+          toValue: 1,
+          duration: 1000,
+          easing: Easing.linear,
+          useNativeDriver: true,
+        })
+      ).start();
+    } else {
+      spinValue.stopAnimation();
+    }
+  }, [isCheckingRealtime]);
+
+  const spin = spinValue.interpolate({
+    inputRange: [0, 1],
+    outputRange: ['0deg', '360deg'],
+  });
+
+  // Debounced real-time username check
+  useEffect(() => {
+    // Clear previous timer
+    if (debounceTimerRef.current) {
+      clearTimeout(debounceTimerRef.current);
+    }
+
+    // Reset state if username is same as current, too short, or empty
+    if (!newUsername.trim() || newUsername.trim().length < 6 || newUsername === user?.username) {
+      setUsernameAvailable(null);
+      setIsCheckingRealtime(false);
+      return;
+    }
+
+    // Validate format first
+    if (!validateUsername(newUsername)) {
+      setUsernameAvailable(null);
+      setIsCheckingRealtime(false);
+      return;
+    }
+
+    // Start checking indicator
+    setIsCheckingRealtime(true);
+    setUsernameAvailable(null);
+
+    // Debounce the check by 500ms
+    debounceTimerRef.current = setTimeout(async () => {
+      try {
+        const isAvailable = await checkUsernameAvailable(newUsername.trim());
+        setUsernameAvailable(isAvailable);
+      } catch (error) {
+        console.error('Error checking username:', error);
+        setUsernameAvailable(null);
+      } finally {
+        setIsCheckingRealtime(false);
+      }
+    }, 500);
+
+    // Cleanup on unmount
+    return () => {
+      if (debounceTimerRef.current) {
+        clearTimeout(debounceTimerRef.current);
+      }
+    };
+  }, [newUsername, user?.username]);
 
   const validateUsername = (username: string): boolean => {
     // Username must be 6-20 characters, alphanumeric and underscores only
@@ -52,15 +124,29 @@ export default function EditUsernameScreen() {
       return;
     }
 
+    // If we already know username is taken from real-time check
+    if (usernameAvailable === false) {
+      Alert.alert('Username Taken', 'This username is already in use. Please choose another.');
+      return;
+    }
+
+    // If still checking, wait for check to complete
+    if (isCheckingRealtime) {
+      Alert.alert('Please Wait', 'Still checking username availability...');
+      return;
+    }
+
     setIsUpdating(true);
 
     try {
-      // Check if username is available
-      const isAvailable = await checkUsernameAvailable(newUsername);
-      if (!isAvailable) {
-        Alert.alert('Username Taken', 'This username is already in use. Please choose another.');
-        setIsUpdating(false);
-        return;
+      // Double-check if we don't have a definitive answer yet
+      if (usernameAvailable === null) {
+        const isAvailable = await checkUsernameAvailable(newUsername);
+        if (!isAvailable) {
+          Alert.alert('Username Taken', 'This username is already in use. Please choose another.');
+          setIsUpdating(false);
+          return;
+        }
       }
 
       // Update username in Firestore
@@ -118,16 +204,43 @@ export default function EditUsernameScreen() {
           </View>
 
           <ThemedText style={styles.label}>New Username</ThemedText>
-          <TextInput
-            style={styles.input}
-            placeholder="Enter new username"
-            placeholderTextColor="#999"
-            value={newUsername}
-            onChangeText={setNewUsername}
-            autoCapitalize="none"
-            autoCorrect={false}
-            maxLength={20}
-          />
+          <View style={styles.inputWrapper}>
+            <TextInput
+              style={styles.input}
+              placeholder="Enter new username"
+              placeholderTextColor="#999"
+              value={newUsername}
+              onChangeText={setNewUsername}
+              autoCapitalize="none"
+              autoCorrect={false}
+              maxLength={20}
+            />
+            {/* Loading spinner inside input */}
+            {isCheckingRealtime && newUsername.trim().length >= 6 && (
+              <View style={styles.inputSpinner}>
+                <Animated.View style={{ transform: [{ rotate: spin }] }}>
+                  <IconSymbol size={20} name="arrow.trianglehead.2.clockwise" color="#000" />
+                </Animated.View>
+              </View>
+            )}
+          </View>
+
+          {/* Username availability feedback */}
+          {newUsername !== user?.username && newUsername.trim().length >= 6 && validateUsername(newUsername) && !isCheckingRealtime && usernameAvailable !== null && (
+            <View style={styles.availabilityContainer}>
+              <IconSymbol
+                size={16}
+                name={usernameAvailable ? "checkmark.circle.fill" : "xmark.circle.fill"}
+                color={usernameAvailable ? "#22c55e" : "#ef4444"}
+              />
+              <ThemedText style={[
+                styles.availabilityText,
+                usernameAvailable ? styles.availableText : styles.takenText
+              ]}>
+                {usernameAvailable ? "Username is available" : "Username is already taken"}
+              </ThemedText>
+            </View>
+          )}
 
           <ThemedText style={styles.helperText}>
             {newUsername.length}/20 characters
@@ -220,15 +333,41 @@ const styles = StyleSheet.create({
     fontSize: 16,
     color: '#666',
   },
+  inputWrapper: {
+    position: 'relative',
+  },
   input: {
     borderWidth: 1,
     borderColor: '#e5e7eb',
     borderRadius: 8,
     paddingHorizontal: 16,
+    paddingRight: 48,
     paddingVertical: 12,
     fontSize: 16,
     color: '#000',
     backgroundColor: '#fff',
+  },
+  inputSpinner: {
+    position: 'absolute',
+    right: 16,
+    top: 0,
+    bottom: 0,
+    justifyContent: 'center',
+  },
+  availabilityContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginTop: 8,
+    gap: 6,
+  },
+  availabilityText: {
+    fontSize: 14,
+  },
+  availableText: {
+    color: '#22c55e',
+  },
+  takenText: {
+    color: '#ef4444',
   },
   helperText: {
     fontSize: 12,

@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import {
   View,
   StyleSheet,
@@ -8,6 +8,8 @@ import {
   KeyboardAvoidingView,
   Platform,
   ScrollView,
+  Animated,
+  Easing,
 } from 'react-native';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
@@ -20,11 +22,37 @@ export default function EmailSignUpStep1() {
   const router = useRouter();
   const [username, setUsername] = useState('');
   const [isChecking, setIsChecking] = useState(false);
+  const [isCheckingRealtime, setIsCheckingRealtime] = useState(false);
+  const [usernameAvailable, setUsernameAvailable] = useState<boolean | null>(null);
+  const debounceTimerRef = useRef<NodeJS.Timeout | null>(null);
+  const spinValue = useRef(new Animated.Value(0)).current;
 
-  const checkUsernameAvailability = async (username: string): Promise<boolean> => {
+  // Spinning animation
+  useEffect(() => {
+    if (isCheckingRealtime) {
+      spinValue.setValue(0);
+      Animated.loop(
+        Animated.timing(spinValue, {
+          toValue: 1,
+          duration: 1000,
+          easing: Easing.linear,
+          useNativeDriver: true,
+        })
+      ).start();
+    } else {
+      spinValue.stopAnimation();
+    }
+  }, [isCheckingRealtime]);
+
+  const spin = spinValue.interpolate({
+    inputRange: [0, 1],
+    outputRange: ['0deg', '360deg'],
+  });
+
+  const checkUsernameAvailability = async (usernameToCheck: string): Promise<boolean> => {
     try {
       const usersRef = collection(db, 'users');
-      const q = query(usersRef, where('username', '==', username.toLowerCase()));
+      const q = query(usersRef, where('username', '==', usernameToCheck.toLowerCase()));
       const querySnapshot = await getDocs(q);
       return querySnapshot.empty;
     } catch (error) {
@@ -32,6 +60,45 @@ export default function EmailSignUpStep1() {
       throw error;
     }
   };
+
+  // Debounced real-time username check
+  useEffect(() => {
+    // Clear previous timer
+    if (debounceTimerRef.current) {
+      clearTimeout(debounceTimerRef.current);
+    }
+
+    // Reset state if username is too short or empty
+    if (!username.trim() || username.trim().length < 6) {
+      setUsernameAvailable(null);
+      setIsCheckingRealtime(false);
+      return;
+    }
+
+    // Start checking indicator
+    setIsCheckingRealtime(true);
+    setUsernameAvailable(null);
+
+    // Debounce the check by 500ms
+    debounceTimerRef.current = setTimeout(async () => {
+      try {
+        const isAvailable = await checkUsernameAvailability(username.trim());
+        setUsernameAvailable(isAvailable);
+      } catch (error) {
+        console.error('Error checking username:', error);
+        setUsernameAvailable(null);
+      } finally {
+        setIsCheckingRealtime(false);
+      }
+    }, 500);
+
+    // Cleanup on unmount
+    return () => {
+      if (debounceTimerRef.current) {
+        clearTimeout(debounceTimerRef.current);
+      }
+    };
+  }, [username]);
 
   const handleContinue = async () => {
     if (!username.trim()) {
@@ -44,16 +111,29 @@ export default function EmailSignUpStep1() {
       return;
     }
 
+    // If we already know username is taken from real-time check
+    if (usernameAvailable === false) {
+      Alert.alert('Username Taken', 'This username is already in use. Please choose another one.');
+      return;
+    }
+
+    // If still checking, wait for check to complete
+    if (isCheckingRealtime) {
+      Alert.alert('Please Wait', 'Still checking username availability...');
+      return;
+    }
+
     try {
       setIsChecking(true);
 
-      // Check if username is already taken
-      const isAvailable = await checkUsernameAvailability(username.trim());
-
-      if (!isAvailable) {
-        Alert.alert('Username Taken', 'This username is already in use. Please choose another one.');
-        setIsChecking(false);
-        return;
+      // Double-check if we don't have a definitive answer yet
+      if (usernameAvailable === null) {
+        const isAvailable = await checkUsernameAvailability(username.trim());
+        if (!isAvailable) {
+          Alert.alert('Username Taken', 'This username is already in use. Please choose another one.');
+          setIsChecking(false);
+          return;
+        }
       }
 
       // Navigate to step 2 with username
@@ -101,16 +181,51 @@ export default function EmailSignUpStep1() {
             <View style={styles.form}>
               <View style={styles.inputContainer}>
                 <ThemedText style={styles.label}>Username *</ThemedText>
-                <TextInput
-                  style={styles.input}
-                  placeholder="Enter your username"
-                  placeholderTextColor="#999"
-                  value={username}
-                  onChangeText={(text) => setUsername(text.toLowerCase())}
-                  autoCapitalize="none"
-                  returnKeyType="done"
-                  onSubmitEditing={handleContinue}
-                />
+                <View style={styles.inputWrapper}>
+                  <TextInput
+                    style={styles.input}
+                    placeholder="Enter your username"
+                    placeholderTextColor="#999"
+                    value={username}
+                    onChangeText={(text) => setUsername(text.toLowerCase())}
+                    autoCapitalize="none"
+                    returnKeyType="done"
+                    onSubmitEditing={handleContinue}
+                  />
+                  {/* Loading spinner inside input */}
+                  {isCheckingRealtime && username.trim().length >= 6 && (
+                    <View style={styles.inputSpinner}>
+                      <Animated.View style={{ transform: [{ rotate: spin }] }}>
+                        <IconSymbol size={20} name="arrow.trianglehead.2.clockwise" color="#c42743" />
+                      </Animated.View>
+                    </View>
+                  )}
+                </View>
+                {/* Username availability feedback */}
+                {username.trim().length >= 6 && !isCheckingRealtime && usernameAvailable !== null && (
+                  <View style={styles.availabilityContainer}>
+                    <IconSymbol
+                      size={16}
+                      name={usernameAvailable ? "checkmark.circle.fill" : "xmark.circle.fill"}
+                      color={usernameAvailable ? "#22c55e" : "#ef4444"}
+                    />
+                    <ThemedText style={[
+                      styles.availabilityText,
+                      usernameAvailable ? styles.availableText : styles.takenText
+                    ]}>
+                      {usernameAvailable ? "Username is available" : "Username is already taken"}
+                    </ThemedText>
+                  </View>
+                )}
+                {/* Minimum length hint */}
+                {username.trim().length > 0 && username.trim().length < 6 && (
+                  <View style={styles.availabilityContainer}>
+                    <IconSymbol size={16} name="info.circle" color="#999" />
+                    <ThemedText style={styles.hintText}>
+                      Username must be at least 6 characters
+                    </ThemedText>
+                  </View>
+                )}
               </View>
 
               <TouchableOpacity
@@ -195,12 +310,42 @@ const styles = StyleSheet.create({
     color: '#fff',
     marginBottom: 8,
   },
+  inputWrapper: {
+    position: 'relative',
+  },
   input: {
     backgroundColor: '#2c2f33',
     borderRadius: 12,
     padding: 16,
+    paddingRight: 48,
     fontSize: 16,
     color: '#fff',
+  },
+  inputSpinner: {
+    position: 'absolute',
+    right: 16,
+    top: 0,
+    bottom: 0,
+    justifyContent: 'center',
+  },
+  availabilityContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginTop: 8,
+    gap: 6,
+  },
+  availabilityText: {
+    fontSize: 14,
+  },
+  availableText: {
+    color: '#22c55e',
+  },
+  takenText: {
+    color: '#ef4444',
+  },
+  hintText: {
+    fontSize: 14,
+    color: '#999',
   },
   continueButton: {
     backgroundColor: '#c42743',
