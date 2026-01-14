@@ -74,7 +74,7 @@ export default function ProfileScreen() {
   const [enabledRankCards, setEnabledRankCards] = useState<string[]>([]);
   const [hasConsumedPreloadPosts, setHasConsumedPreloadPosts] = useState(false);
   const [hasConsumedPreloadRiot, setHasConsumedPreloadRiot] = useState(false);
-  const [showSocialsSheet, setShowSocialsSheet] = useState(false);
+  const [showSocialsDropdown, setShowSocialsDropdown] = useState(false);
 
   // Enable LayoutAnimation on Android
   useEffect(() => {
@@ -92,55 +92,74 @@ export default function ProfileScreen() {
     console.log('Profile - Enabled Rank Cards:', enabledRankCards);
   }, [riotAccount, valorantAccount, riotStats, valorantStats, enabledRankCards]);
 
+  // Reset rank cards to stacked view when screen comes into focus
+  useFocusEffect(
+    useCallback(() => {
+      setCardsExpanded(false);
+    }, [])
+  );
+
   // Dynamic games array based on Riot data and enabled rank cards
   // Show rank cards if user has either Riot account OR Valorant account
-  const userGames = (riotAccount || valorantAccount) ? [
-    // League of Legends - only show if enabled and has stats
-    ...(enabledRankCards.includes('league') && riotStats ? [{
-      id: 2,
-      name: 'League of Legends',
-      rank: riotStats.rankedSolo
-        ? formatRank(riotStats.rankedSolo.tier, riotStats.rankedSolo.rank)
-        : 'Unranked',
-      trophies: riotStats.rankedSolo?.leaguePoints || 0,
-      icon: '⚔️',
-      image: require('@/assets/images/leagueoflegends.png'),
-      wins: riotStats.rankedSolo?.wins || 0,
-      losses: riotStats.rankedSolo?.losses || 0,
-      winRate: riotStats.rankedSolo?.winRate || 0,
-      recentMatches: ['+15', '-18', '+20', '+17', '-14'],
-      profileIconId: riotStats.profileIconId,
-    }] : []),
-    // TFT - only show if enabled (Placeholder - TODO: Implement TFT API)
-    ...(enabledRankCards.includes('tft') ? [{
-      id: 4,
-      name: 'TFT',
-      rank: 'Gold I',
-      trophies: 45,
-      icon: '♟️',
-      image: require('@/assets/images/tft.png'),
-      wins: 28,
-      losses: 22,
-      winRate: 56.0,
-      recentMatches: ['+12', '-10', '+15', '+18', '-8'],
-      profileIconId: riotStats?.profileIconId,
-    }] : []),
-    // Valorant - only show if enabled and has stats
-    ...(enabledRankCards.includes('valorant') && valorantStats ? [{
-      id: 3,
-      name: 'Valorant',
-      rank: valorantStats.currentRank || 'Unranked',
-      trophies: valorantStats.rankRating || 0,
-      icon: '🎯',
-      image: require('@/assets/images/valorant-black.png'),
-      wins: valorantStats.wins || 0,
-      losses: valorantStats.losses || 0,
-      winRate: valorantStats.winRate || 0,
-      recentMatches: ['+18', '+22', '-16', '+20', '-15'],
-      valorantCard: valorantStats.card?.small, // Valorant player card URL
-      peakRank: valorantStats.peakRank?.tier,
-    }] : []),
-  ] : [];
+  // Cards are ordered according to the enabledRankCards array
+  const userGames = (riotAccount || valorantAccount) ?
+    enabledRankCards
+      .map(gameType => {
+        // League of Legends
+        if (gameType === 'league' && riotStats) {
+          return {
+            id: 2,
+            name: 'League of Legends',
+            rank: riotStats.rankedSolo
+              ? formatRank(riotStats.rankedSolo.tier, riotStats.rankedSolo.rank)
+              : 'Unranked',
+            trophies: riotStats.rankedSolo?.leaguePoints || 0,
+            icon: '⚔️',
+            image: require('@/assets/images/leagueoflegends.png'),
+            wins: riotStats.rankedSolo?.wins || 0,
+            losses: riotStats.rankedSolo?.losses || 0,
+            winRate: riotStats.rankedSolo?.winRate || 0,
+            recentMatches: ['+15', '-18', '+20', '+17', '-14'],
+            profileIconId: riotStats.profileIconId,
+          };
+        }
+        // TFT (Placeholder - TODO: Implement TFT API)
+        if (gameType === 'tft') {
+          return {
+            id: 4,
+            name: 'TFT',
+            rank: 'Gold I',
+            trophies: 45,
+            icon: '♟️',
+            image: require('@/assets/images/tft.png'),
+            wins: 28,
+            losses: 22,
+            winRate: 56.0,
+            recentMatches: ['+12', '-10', '+15', '+18', '-8'],
+            profileIconId: riotStats?.profileIconId,
+          };
+        }
+        // Valorant
+        if (gameType === 'valorant' && valorantStats) {
+          return {
+            id: 3,
+            name: 'Valorant',
+            rank: valorantStats.currentRank || 'Unranked',
+            trophies: valorantStats.rankRating || 0,
+            icon: '🎯',
+            image: require('@/assets/images/valorant-black.png'),
+            wins: valorantStats.wins || 0,
+            losses: valorantStats.losses || 0,
+            winRate: valorantStats.winRate || 0,
+            recentMatches: ['+18', '+22', '-16', '+20', '-15'],
+            valorantCard: valorantStats.card?.small,
+            peakRank: valorantStats.peakRank?.tier,
+          };
+        }
+        return null;
+      })
+      .filter((game): game is NonNullable<typeof game> => game !== null)
+    : [];
 
   // Toggle card stack expansion
   const toggleCardExpansion = () => {
@@ -614,14 +633,113 @@ export default function ProfileScreen() {
                 <ThemedText style={styles.editButtonText}>Edit Profile</ThemedText>
               </TouchableOpacity>
 
-              <TouchableOpacity
-                style={styles.socialsButton}
-                onPress={() => setShowSocialsSheet(true)}
-                activeOpacity={0.8}
-              >
-                <IconSymbol size={14} name="link" color="#fff" />
-                <ThemedText style={styles.socialsButtonText}>Socials</ThemedText>
-              </TouchableOpacity>
+              <View style={styles.socialsButtonContainer}>
+                <TouchableOpacity
+                  style={styles.socialsButton}
+                  onPress={() => setShowSocialsDropdown(!showSocialsDropdown)}
+                  activeOpacity={0.8}
+                >
+                  <IconSymbol size={14} name="link" color="#fff" />
+                  <ThemedText style={styles.socialsButtonText}>Socials</ThemedText>
+                </TouchableOpacity>
+
+                {/* Socials Popover */}
+                {showSocialsDropdown && (
+                  <>
+                    {/* Dismiss overlay */}
+                    <TouchableOpacity
+                      style={styles.popoverOverlay}
+                      activeOpacity={1}
+                      onPress={() => setShowSocialsDropdown(false)}
+                    />
+                    <View style={styles.socialsPopover}>
+                      {/* Arrow pointing down */}
+                      <View style={styles.popoverArrow} />
+                {/* Instagram */}
+                <TouchableOpacity
+                  style={styles.socialDropdownOption}
+                  onPress={async () => {
+                    setShowSocialsDropdown(false);
+                    if (user?.instagramLink) {
+                      try {
+                        const username = user.instagramLink.replace(/^https?:\/\/(www\.)?instagram\.com\//, '').replace(/\/$/, '');
+                        const appUrl = `instagram://user?username=${username}`;
+                        const webUrl = `https://instagram.com/${username}`;
+
+                        const supported = await Linking.canOpenURL(appUrl);
+                        if (supported) {
+                          await Linking.openURL(appUrl);
+                        } else {
+                          await Linking.openURL(webUrl);
+                        }
+                      } catch (error) {
+                        console.error('Error opening Instagram:', error);
+                        Alert.alert('Error', 'Failed to open Instagram');
+                      }
+                    } else {
+                      Alert.alert('Not Configured', 'Add your Instagram username in Edit Profile');
+                    }
+                  }}
+                  activeOpacity={0.7}
+                >
+                  <View style={[styles.socialDropdownIconContainer, styles.instagramIconContainer, !user?.instagramLink && styles.socialNotConfigured]}>
+                    <Image
+                      source={require('@/assets/images/instagram.png')}
+                      style={styles.socialDropdownIcon}
+                      resizeMode="contain"
+                    />
+                  </View>
+                  <View style={{ flex: 1 }}>
+                    <ThemedText style={styles.socialDropdownTitle}>Instagram</ThemedText>
+                    <ThemedText style={styles.socialDropdownSubtitle}>
+                      {user?.instagramLink
+                        ? user.instagramLink.replace(/^https?:\/\/(www\.)?instagram\.com\//, '').replace(/\/$/, '')
+                        : 'Not configured'}
+                    </ThemedText>
+                  </View>
+                </TouchableOpacity>
+
+                {/* Discord */}
+                <TouchableOpacity
+                  style={styles.socialDropdownOption}
+                  onPress={async () => {
+                    setShowSocialsDropdown(false);
+                    if (user?.discordLink) {
+                      try {
+                        await Clipboard.setStringAsync(user.discordLink);
+                        Alert.alert(
+                          'Copied!',
+                          `Discord username "${user.discordLink}" copied to clipboard`,
+                          [{ text: 'OK' }]
+                        );
+                      } catch (error) {
+                        console.error('Error copying to clipboard:', error);
+                        Alert.alert('Error', 'Failed to copy Discord username');
+                      }
+                    } else {
+                      Alert.alert('Not Configured', 'Add your Discord username in Edit Profile');
+                    }
+                  }}
+                  activeOpacity={0.7}
+                >
+                  <View style={[styles.socialDropdownIconContainer, styles.discordIconContainer, !user?.discordLink && styles.socialNotConfigured]}>
+                    <Image
+                      source={require('@/assets/images/discord.png')}
+                      style={styles.socialDropdownIcon}
+                      resizeMode="contain"
+                    />
+                  </View>
+                  <View style={{ flex: 1 }}>
+                    <ThemedText style={styles.socialDropdownTitle}>Discord</ThemedText>
+                    <ThemedText style={styles.socialDropdownSubtitle}>
+                      {user?.discordLink || 'Not configured'}
+                    </ThemedText>
+                  </View>
+                </TouchableOpacity>
+                    </View>
+                  </>
+                )}
+              </View>
 
               <TouchableOpacity
                 style={styles.shareButton}
@@ -777,7 +895,7 @@ export default function ProfileScreen() {
                     // Calculate stacking offset - stack downwards (cards behind peek from above)
                     const totalCards = userGames.length;
                     const reverseIndex = totalCards - 1 - index;
-                    const topOffset = reverseIndex * -40; // Negative to stack upwards from bottom, increased spacing
+                    const topOffset = reverseIndex * -50; // Negative to stack upwards from bottom, increased spacing
                     const scale = 1 - (reverseIndex * 0.02);
 
                     return (
@@ -878,130 +996,6 @@ export default function ProfileScreen() {
         onPostCreated={handlePostCreated}
       />
 
-      {/* Socials Bottom Sheet */}
-      <Modal
-        visible={showSocialsSheet}
-        transparent={true}
-        animationType="slide"
-        onRequestClose={() => setShowSocialsSheet(false)}
-      >
-        <TouchableOpacity
-          style={styles.modalOverlay}
-          activeOpacity={1}
-          onPress={() => setShowSocialsSheet(false)}
-        >
-          <View style={styles.bottomSheet}>
-            <TouchableOpacity activeOpacity={1}>
-              {/* Sheet Header */}
-              <View style={styles.sheetHeader}>
-                <View style={styles.sheetHandle} />
-                <ThemedText style={styles.sheetTitle}>Socials</ThemedText>
-              </View>
-
-              {/* Social Links */}
-              <View style={styles.socialLinksContainer}>
-                {/* Instagram */}
-                <TouchableOpacity
-                  style={styles.socialOption}
-                  onPress={async () => {
-                    setShowSocialsSheet(false);
-                    if (user?.instagramLink) {
-                      try {
-                        const username = user.instagramLink.replace(/^https?:\/\/(www\.)?instagram\.com\//, '').replace(/\/$/, '');
-                        const appUrl = `instagram://user?username=${username}`;
-                        const webUrl = `https://instagram.com/${username}`;
-
-                        const supported = await Linking.canOpenURL(appUrl);
-                        if (supported) {
-                          await Linking.openURL(appUrl);
-                        } else {
-                          await Linking.openURL(webUrl);
-                        }
-                      } catch (error) {
-                        console.error('Error opening Instagram:', error);
-                        Alert.alert('Error', 'Failed to open Instagram');
-                      }
-                    } else {
-                      Alert.alert('Not Configured', 'Add your Instagram username in Edit Profile');
-                    }
-                  }}
-                  activeOpacity={0.7}
-                >
-                  <View style={styles.socialOptionLeft}>
-                    <View style={[styles.instagramIconContainer, !user?.instagramLink && styles.socialNotConfigured]}>
-                      <Image
-                        source={require('@/assets/images/instagram.png')}
-                        style={styles.socialOptionIcon}
-                        resizeMode="contain"
-                      />
-                    </View>
-                    <View style={{ flex: 1 }}>
-                      <ThemedText style={styles.socialOptionTitle}>Instagram</ThemedText>
-                      <ThemedText style={styles.socialOptionSubtitle}>
-                        {user?.instagramLink
-                          ? user.instagramLink.replace(/^https?:\/\/(www\.)?instagram\.com\//, '').replace(/\/$/, '')
-                          : 'Not configured'}
-                      </ThemedText>
-                    </View>
-                  </View>
-                </TouchableOpacity>
-
-                {/* Discord */}
-                <TouchableOpacity
-                  style={styles.socialOption}
-                  onPress={async () => {
-                    setShowSocialsSheet(false);
-                    if (user?.discordLink) {
-                      try {
-                        await Clipboard.setStringAsync(user.discordLink);
-                        Alert.alert(
-                          'Copied!',
-                          `Discord username "${user.discordLink}" copied to clipboard`,
-                          [{ text: 'OK' }]
-                        );
-                      } catch (error) {
-                        console.error('Error copying to clipboard:', error);
-                        Alert.alert('Error', 'Failed to copy Discord username');
-                      }
-                    } else {
-                      Alert.alert('Not Configured', 'Add your Discord username in Edit Profile');
-                    }
-                  }}
-                  activeOpacity={0.7}
-                >
-                  <View style={styles.socialOptionLeft}>
-                    <View style={[styles.discordIconContainer, !user?.discordLink && styles.socialNotConfigured]}>
-                      <Image
-                        source={require('@/assets/images/discord.png')}
-                        style={styles.socialOptionIcon}
-                        resizeMode="contain"
-                      />
-                    </View>
-                    <View style={{ flex: 1 }}>
-                      <ThemedText style={styles.socialOptionTitle}>Discord</ThemedText>
-                      <ThemedText style={styles.socialOptionSubtitle}>
-                        {user?.discordLink || 'Not configured'}
-                      </ThemedText>
-                    </View>
-                  </View>
-                  {user?.discordLink && (
-                    <IconSymbol size={20} name="doc.on.doc" color="#999" />
-                  )}
-                </TouchableOpacity>
-              </View>
-
-              {/* Cancel Button */}
-              <TouchableOpacity
-                style={styles.cancelButton}
-                onPress={() => setShowSocialsSheet(false)}
-                activeOpacity={0.7}
-              >
-                <ThemedText style={styles.cancelButtonText}>Cancel</ThemedText>
-              </TouchableOpacity>
-            </TouchableOpacity>
-          </View>
-        </TouchableOpacity>
-      </Modal>
     </ThemedView>
   );
 }
@@ -1181,8 +1175,11 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     color: '#fff',
   },
-  socialsButton: {
+  socialsButtonContainer: {
     flex: 1,
+    position: 'relative',
+  },
+  socialsButton: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
@@ -1442,103 +1439,86 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
-  modalOverlay: {
-    flex: 1,
-    backgroundColor: 'rgba(0, 0, 0, 0.7)',
-    justifyContent: 'flex-end',
+  popoverOverlay: {
+    position: 'absolute',
+    top: -1000,
+    left: -1000,
+    right: -1000,
+    bottom: -1000,
+    zIndex: 999,
   },
-  bottomSheet: {
+  socialsPopover: {
+    position: 'absolute',
+    bottom: '100%',
+    left: '50%',
+    marginLeft: -100,
+    marginBottom: 8,
+    width: 200,
     backgroundColor: '#2c2f33',
-    borderTopLeftRadius: 24,
-    borderTopRightRadius: 24,
-    paddingBottom: 34,
+    borderRadius: 12,
+    padding: 12,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.4,
+    shadowRadius: 12,
+    elevation: 12,
+    zIndex: 1000,
   },
-  sheetHeader: {
-    alignItems: 'center',
-    paddingTop: 12,
-    paddingBottom: 20,
-    borderBottomWidth: 1,
-    borderBottomColor: '#424549',
+  popoverArrow: {
+    position: 'absolute',
+    bottom: -6,
+    left: '50%',
+    marginLeft: -6,
+    width: 0,
+    height: 0,
+    backgroundColor: 'transparent',
+    borderStyle: 'solid',
+    borderLeftWidth: 6,
+    borderRightWidth: 6,
+    borderTopWidth: 6,
+    borderLeftColor: 'transparent',
+    borderRightColor: 'transparent',
+    borderTopColor: '#2c2f33',
   },
-  sheetHandle: {
-    width: 40,
-    height: 4,
-    backgroundColor: '#72767d',
-    borderRadius: 2,
-    marginBottom: 16,
-  },
-  sheetTitle: {
-    fontSize: 18,
-    fontWeight: '700',
-    color: '#fff',
-  },
-  socialLinksContainer: {
-    paddingHorizontal: 20,
-    paddingTop: 12,
-  },
-  socialOption: {
+  socialDropdownOption: {
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingVertical: 16,
-    borderBottomWidth: 1,
-    borderBottomColor: '#424549',
+    gap: 10,
+    paddingVertical: 10,
+    paddingHorizontal: 6,
+    borderRadius: 8,
   },
-  socialOptionLeft: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 14,
-    flex: 1,
-  },
-  instagramIconContainer: {
-    width: 52,
-    height: 52,
-    borderRadius: 26,
+  socialDropdownIconContainer: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
     backgroundColor: '#36393e',
     alignItems: 'center',
     justifyContent: 'center',
     borderWidth: 2,
+  },
+  instagramIconContainer: {
     borderColor: '#E4405F',
   },
   discordIconContainer: {
-    width: 52,
-    height: 52,
-    borderRadius: 26,
-    backgroundColor: '#36393e',
-    alignItems: 'center',
-    justifyContent: 'center',
-    borderWidth: 2,
     borderColor: '#5865F2',
   },
-  socialOptionIcon: {
-    width: 28,
-    height: 28,
+  socialDropdownIcon: {
+    width: 20,
+    height: 20,
   },
-  socialOptionTitle: {
-    fontSize: 16,
+  socialDropdownTitle: {
+    fontSize: 14,
     fontWeight: '600',
     color: '#fff',
     marginBottom: 2,
   },
-  socialOptionSubtitle: {
-    fontSize: 13,
+  socialDropdownSubtitle: {
+    fontSize: 12,
     color: '#b9bbbe',
   },
   socialNotConfigured: {
     borderColor: '#424549',
     opacity: 0.5,
-  },
-  cancelButton: {
-    marginHorizontal: 20,
-    marginTop: 12,
-    paddingVertical: 16,
-    backgroundColor: '#424549',
-    borderRadius: 12,
-    alignItems: 'center',
-  },
-  cancelButtonText: {
-    fontSize: 15,
-    fontWeight: '700',
-    color: '#fff',
   },
 });

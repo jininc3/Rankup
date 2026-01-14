@@ -77,6 +77,15 @@ export default function LeagueRankCard({ game, username, viewOnly = false, userI
 
         {/* Front of card - Credit card style */}
         <View style={styles.cardFront}>
+          {/* Game Logo - Top Left */}
+          <View style={styles.cardGameLogo}>
+            <Image
+              source={require('@/assets/images/lol-icon.png')}
+              style={styles.gameLogoLarge}
+              resizeMode="contain"
+            />
+          </View>
+
           {/* Profile Icon - Top Right */}
           <View style={styles.cardHeader}>
             {game.profileIconId ? (
@@ -147,6 +156,21 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
     padding: 30,
+  },
+  cardGameLogo: {
+    position: 'absolute',
+    top: 10,
+    left: 10,
+  },
+  gameLogo: {
+    width: 32,
+    height: 32,
+    opacity: 0.9,
+  },
+  gameLogoLarge: {
+    width: 38,
+    height: 38,
+    opacity: 0.9,
   },
   cardHeader: {
     position: 'absolute',

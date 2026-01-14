@@ -22,7 +22,7 @@ type GameType = 'league' | 'valorant' | 'tft';
 
 export default function NewRankCardScreen() {
   const router = useRouter();
-  const { user } = useAuth();
+  const { user, refreshUser } = useAuth();
   const [riotAccount, setRiotAccount] = useState<any>(null);
   const [valorantAccount, setValorantAccount] = useState<any>(null);
   const [enabledRankCards, setEnabledRankCards] = useState<string[]>([]);
@@ -113,13 +113,49 @@ export default function NewRankCardScreen() {
     if (!user?.id) return;
 
     try {
+      // Remove from the ordered array
+      const updatedCards = enabledRankCards.filter(g => g !== game);
       await updateDoc(doc(db, 'users', user.id), {
-        enabledRankCards: arrayRemove(game),
+        enabledRankCards: updatedCards,
       });
       // Update local state immediately
-      setEnabledRankCards(enabledRankCards.filter(g => g !== game));
+      setEnabledRankCards(updatedCards);
     } catch (error) {
       console.error('Error removing rank card:', error);
+    }
+  };
+
+  const handleMoveRankCard = async (game: GameType, direction: 'up' | 'down') => {
+    if (!user?.id) return;
+
+    const currentIndex = enabledRankCards.indexOf(game);
+    if (currentIndex === -1) return;
+
+    // Prevent moving beyond bounds
+    if (direction === 'up' && currentIndex === 0) return;
+    if (direction === 'down' && currentIndex === enabledRankCards.length - 1) return;
+
+    // Create new array with swapped positions
+    const newOrder = [...enabledRankCards];
+    const targetIndex = direction === 'up' ? currentIndex - 1 : currentIndex + 1;
+    [newOrder[currentIndex], newOrder[targetIndex]] = [newOrder[targetIndex], newOrder[currentIndex]];
+
+    try {
+      // Update local state immediately for instant UI feedback
+      setEnabledRankCards(newOrder);
+
+      // Update Firestore
+      await updateDoc(doc(db, 'users', user.id), {
+        enabledRankCards: newOrder,
+      });
+
+      // Refresh user data in AuthContext so profile screen sees the new order immediately
+      await refreshUser();
+    } catch (error) {
+      console.error('Error reordering rank cards:', error);
+      // Revert local state on error
+      const revertOrder = [...enabledRankCards];
+      setEnabledRankCards(revertOrder);
     }
   };
 
@@ -243,6 +279,94 @@ export default function NewRankCardScreen() {
           </View>
         ) : (
           <>
+            {/* Reorder Section - Only show if there are multiple enabled cards */}
+            {enabledRankCards.length > 1 && (
+              <View style={styles.reorderSection}>
+                <ThemedText style={styles.sectionTitle}>Card Order</ThemedText>
+                <ThemedText style={styles.sectionSubtitle}>
+                  Cards at the top will appear in front when stacked
+                </ThemedText>
+                {enabledRankCards.map((game, index) => {
+                  const gameNames = {
+                    league: 'League of Legends',
+                    valorant: 'Valorant',
+                    tft: 'TFT',
+                  };
+                  const gameIcons = {
+                    league: require('@/assets/images/lol-icon.png'),
+                    valorant: require('@/assets/images/valorant-text.png'),
+                    tft: require('@/assets/images/tft.png'),
+                  };
+                  const isFirst = index === 0;
+                  const isLast = index === enabledRankCards.length - 1;
+                  const totalCards = enabledRankCards.length;
+
+                  // For 2 cards, only show arrow on the first card
+                  if (totalCards === 2 && isLast) {
+                    return (
+                      <View key={game} style={styles.reorderCard}>
+                        <View style={styles.reorderCardLeft}>
+                          <Image
+                            source={gameIcons[game as GameType]}
+                            style={styles.reorderCardIcon}
+                            resizeMode="contain"
+                          />
+                          <ThemedText style={styles.reorderCardTitle}>
+                            {gameNames[game as GameType]}
+                          </ThemedText>
+                        </View>
+                        <View style={styles.reorderButtonPlaceholder} />
+                      </View>
+                    );
+                  }
+
+                  // Determine which arrow to show
+                  let arrowIcon = 'chevron.up';
+                  let arrowAction: 'up' | 'down' = 'up';
+
+                  if (isFirst) {
+                    arrowIcon = 'chevron.down';
+                    arrowAction = 'down';
+                  } else if (isLast) {
+                    arrowIcon = 'chevron.up';
+                    arrowAction = 'up';
+                  } else {
+                    // Middle cards show up arrow (move toward front)
+                    arrowIcon = 'chevron.up';
+                    arrowAction = 'up';
+                  }
+
+                  return (
+                    <View key={game} style={styles.reorderCard}>
+                      <View style={styles.reorderCardLeft}>
+                        <Image
+                          source={gameIcons[game as GameType]}
+                          style={styles.reorderCardIcon}
+                          resizeMode="contain"
+                        />
+                        <ThemedText style={styles.reorderCardTitle}>
+                          {gameNames[game as GameType]}
+                        </ThemedText>
+                      </View>
+                      <TouchableOpacity
+                        style={styles.reorderButton}
+                        onPress={() => handleMoveRankCard(game as GameType, arrowAction)}
+                        activeOpacity={0.6}
+                      >
+                        <IconSymbol
+                          size={20}
+                          name={arrowIcon}
+                          color="#fff"
+                        />
+                      </TouchableOpacity>
+                    </View>
+                  );
+                })}
+              </View>
+            )}
+
+            <ThemedText style={styles.sectionTitle}>Available Games</ThemedText>
+
             {/* League of Legends */}
             <TouchableOpacity
               style={[
@@ -407,6 +531,59 @@ const styles = StyleSheet.create({
     color: '#fff',
     lineHeight: 22,
     marginBottom: 24,
+  },
+  sectionTitle: {
+    fontSize: 17,
+    fontWeight: '700',
+    color: '#fff',
+    marginBottom: 8,
+  },
+  sectionSubtitle: {
+    fontSize: 13,
+    color: '#b9bbbe',
+    marginBottom: 12,
+    lineHeight: 18,
+  },
+  reorderSection: {
+    marginBottom: 32,
+  },
+  reorderCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    backgroundColor: '#2c2f33',
+    borderRadius: 12,
+    padding: 12,
+    marginBottom: 8,
+    borderWidth: 1,
+    borderColor: '#36393e',
+  },
+  reorderCardLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    flex: 1,
+  },
+  reorderCardIcon: {
+    width: 32,
+    height: 32,
+  },
+  reorderCardTitle: {
+    fontSize: 15,
+    fontWeight: '600',
+    color: '#fff',
+  },
+  reorderButton: {
+    width: 36,
+    height: 36,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#36393e',
+    borderRadius: 8,
+  },
+  reorderButtonPlaceholder: {
+    width: 36,
+    height: 36,
   },
   gameCard: {
     backgroundColor: '#2c2f33',

@@ -117,6 +117,15 @@ export default function ValorantRankCard({ game, username, viewOnly = false, use
 
         {/* Front of card - Credit card style */}
         <View style={styles.cardFront}>
+          {/* Game Logo - Top Left */}
+          <View style={styles.cardGameLogo}>
+            <Image
+              source={require('@/assets/images/valorant.png')}
+              style={styles.gameLogo}
+              resizeMode="contain"
+            />
+          </View>
+
           {/* Player Card - Top Right */}
           <View style={styles.cardHeader}>
             {game.valorantCard ? (
@@ -188,6 +197,16 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
     padding: 30,
+  },
+  cardGameLogo: {
+    position: 'absolute',
+    top: 10,
+    left: 10,
+  },
+  gameLogo: {
+    width: 32,
+    height: 32,
+    opacity: 0.9,
   },
   cardHeader: {
     position: 'absolute',

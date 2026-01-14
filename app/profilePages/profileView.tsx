@@ -91,38 +91,64 @@ export default function ProfileViewScreen() {
   const [cardsExpanded, setCardsExpanded] = useState(false);
 
   // Dynamic games array based on Riot data and enabled rank cards
-  const userGames = (riotAccount || valorantAccount) ? [
-    // League of Legends - only show if enabled and has stats
-    ...(enabledRankCards.includes('league') && riotStats ? [{
-      id: 2,
-      name: 'League of Legends',
-      rank: riotStats.rankedSolo
-        ? formatRank(riotStats.rankedSolo.tier, riotStats.rankedSolo.rank)
-        : 'Unranked',
-      trophies: 876,
-      icon: '⚔️',
-      image: require('@/assets/images/leagueoflegends.png'),
-      wins: riotStats.rankedSolo?.wins || 0,
-      losses: riotStats.rankedSolo?.losses || 0,
-      winRate: riotStats.rankedSolo ? Math.round((riotStats.rankedSolo.wins / (riotStats.rankedSolo.wins + riotStats.rankedSolo.losses)) * 100) : 0,
-      recentMatches: [],
-      profileIconId: riotStats.profileIconId,
-    }] : []),
-    // Valorant - only show if enabled and has stats
-    ...(enabledRankCards.includes('valorant') && valorantStats ? [{
-      id: 3,
-      name: 'Valorant',
-      rank: valorantStats.currentRank || 'Unranked',
-      trophies: 654,
-      icon: '🎯',
-      image: require('@/assets/images/valorant-black.png'),
-      wins: valorantStats.wins || 0,
-      losses: valorantStats.losses || 0,
-      winRate: valorantStats.winRate || 0,
-      recentMatches: [],
-      valorantCard: valorantStats.card?.small,
-    }] : []),
-  ] : [];
+  // Cards are ordered according to the enabledRankCards array
+  const userGames = (riotAccount || valorantAccount) ?
+    enabledRankCards
+      .map(gameType => {
+        // League of Legends
+        if (gameType === 'league' && riotStats) {
+          return {
+            id: 2,
+            name: 'League of Legends',
+            rank: riotStats.rankedSolo
+              ? formatRank(riotStats.rankedSolo.tier, riotStats.rankedSolo.rank)
+              : 'Unranked',
+            trophies: 876,
+            icon: '⚔️',
+            image: require('@/assets/images/leagueoflegends.png'),
+            wins: riotStats.rankedSolo?.wins || 0,
+            losses: riotStats.rankedSolo?.losses || 0,
+            winRate: riotStats.rankedSolo ? Math.round((riotStats.rankedSolo.wins / (riotStats.rankedSolo.wins + riotStats.rankedSolo.losses)) * 100) : 0,
+            recentMatches: [],
+            profileIconId: riotStats.profileIconId,
+          };
+        }
+        // TFT (Placeholder - TODO: Implement TFT API)
+        if (gameType === 'tft') {
+          return {
+            id: 4,
+            name: 'TFT',
+            rank: 'Gold I',
+            trophies: 45,
+            icon: '♟️',
+            image: require('@/assets/images/tft.png'),
+            wins: 28,
+            losses: 22,
+            winRate: 56.0,
+            recentMatches: [],
+            profileIconId: riotStats?.profileIconId,
+          };
+        }
+        // Valorant
+        if (gameType === 'valorant' && valorantStats) {
+          return {
+            id: 3,
+            name: 'Valorant',
+            rank: valorantStats.currentRank || 'Unranked',
+            trophies: 654,
+            icon: '🎯',
+            image: require('@/assets/images/valorant-black.png'),
+            wins: valorantStats.wins || 0,
+            losses: valorantStats.losses || 0,
+            winRate: valorantStats.winRate || 0,
+            recentMatches: [],
+            valorantCard: valorantStats.card?.small,
+          };
+        }
+        return null;
+      })
+      .filter((game): game is NonNullable<typeof game> => game !== null)
+    : [];
 
   // Get userId from params - this is required for profileView
   const userId = params.userId as string;
@@ -659,7 +685,7 @@ export default function ProfileViewScreen() {
                     // Calculate stacking offset - stack downwards (cards behind peek from above)
                     const totalCards = userGames.length;
                     const reverseIndex = totalCards - 1 - index;
-                    const topOffset = reverseIndex * -40; // Negative to stack upwards from bottom, increased spacing
+                    const topOffset = reverseIndex * -50; // Negative to stack upwards from bottom, increased spacing
                     const scale = 1 - (reverseIndex * 0.02);
 
                     return (
