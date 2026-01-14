@@ -13,7 +13,7 @@ import { useRouter } from 'expo-router';
 import { useFocusEffect } from '@react-navigation/native';
 import { collection, getDocs, query, Timestamp, where, doc, getDoc, updateDoc, increment } from 'firebase/firestore';
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { ActivityIndicator, Alert, Dimensions, Image, Linking, Modal, RefreshControl, ScrollView, StyleSheet, TouchableOpacity, View, LayoutAnimation, Platform, UIManager } from 'react-native';
+import { ActivityIndicator, Alert, Dimensions, Image, Linking, Modal, RefreshControl, ScrollView, StyleSheet, TouchableOpacity, View, LayoutAnimation, Platform, UIManager, Animated } from 'react-native';
 import * as Clipboard from 'expo-clipboard';
 import { getLeagueStats, getTftStats, formatRank } from '@/services/riotService';
 import { getValorantStats } from '@/services/valorantService';
@@ -75,6 +75,7 @@ export default function ProfileScreen() {
   const [hasConsumedPreloadPosts, setHasConsumedPreloadPosts] = useState(false);
   const [hasConsumedPreloadRiot, setHasConsumedPreloadRiot] = useState(false);
   const [showSocialsDropdown, setShowSocialsDropdown] = useState(false);
+  const scrollY = useRef(new Animated.Value(0)).current;
 
   // Enable LayoutAnimation on Android
   useEffect(() => {
@@ -497,10 +498,22 @@ export default function ProfileScreen() {
     valorantStats?.currentRank
   );
 
+  // Interpolate scroll position to create overlap effect
+  const profileCardTranslateY = scrollY.interpolate({
+    inputRange: [0, 100],
+    outputRange: [0, -60],
+    extrapolate: 'clamp',
+  });
+
   return (
     <ThemedView style={styles.container}>
-      <ScrollView
+      <Animated.ScrollView
         showsVerticalScrollIndicator={false}
+        scrollEventThrottle={16}
+        onScroll={Animated.event(
+          [{ nativeEvent: { contentOffset: { y: scrollY } } }],
+          { useNativeDriver: true }
+        )}
         refreshControl={
           <RefreshControl
             refreshing={refreshing}
@@ -550,8 +563,14 @@ export default function ProfileScreen() {
             </TouchableOpacity>
           </View>
 
-          {/* Profile Info Card */}
-          <View style={styles.profileCard}>
+          {/* Animated Content Wrapper - slides over cover photo on scroll */}
+          <Animated.View
+            style={{
+              transform: [{ translateY: profileCardTranslateY }],
+            }}
+          >
+            {/* Profile Info Card */}
+            <View style={styles.profileCard}>
             {/* Top Row: Avatar on Left, Username + Stats on Right */}
             <View style={styles.profileTopRow}>
               {/* Avatar */}
@@ -749,11 +768,10 @@ export default function ProfileScreen() {
               </TouchableOpacity>
             </View>
           </View>
-        </View>
 
-        {/* Main Tabs */}
-        <View style={styles.tabsContainer}>
-          <View style={styles.tabsLeft}>
+            {/* Main Tabs */}
+            <View style={styles.tabsContainer}>
+            <View style={styles.tabsLeft}>
             <TouchableOpacity
               style={styles.tab}
               onPress={() => setActiveMainTab('clips')}
@@ -801,10 +819,10 @@ export default function ProfileScreen() {
               <IconSymbol size={22} name="creditcard.fill" color="#fff" />
             </TouchableOpacity>
           )}
-        </View>
+          </View>
 
-        {/* Clips Tab Content */}
-        <View style={[styles.tabContentArea, { display: activeMainTab === 'clips' ? 'flex' : 'none' }]}>
+          {/* Clips Tab Content */}
+          <View style={[styles.tabContentArea, { display: activeMainTab === 'clips' ? 'flex' : 'none' }]}>
           {loadingPosts ? (
             <View style={styles.emptyState}>
               <ActivityIndicator size="large" color="#c42743" />
@@ -850,10 +868,10 @@ export default function ProfileScreen() {
               </ThemedText>
             </View>
           )}
-        </View>
+          </View>
 
-        {/* RankCards Tab Content */}
-        <View style={[styles.tabContentArea, { display: activeMainTab === 'rankCards' ? 'flex' : 'none' }]}>
+          {/* RankCards Tab Content */}
+          <View style={[styles.tabContentArea, { display: activeMainTab === 'rankCards' ? 'flex' : 'none' }]}>
           {!riotAccount && !valorantAccount ? (
             // Empty state for new users
             <View style={styles.emptyState}>
@@ -954,8 +972,10 @@ export default function ProfileScreen() {
               )}
             </View>
           )}
+          </View>
+          </Animated.View>
         </View>
-      </ScrollView>
+      </Animated.ScrollView>
 
       {/* Floating Add Post Button - only visible on Clips tab */}
       {activeMainTab === 'clips' && (
@@ -1063,7 +1083,8 @@ const styles = StyleSheet.create({
     marginTop: 0,
     marginHorizontal: 0,
     backgroundColor: '#1e2124',
-    borderRadius: 0,
+    borderTopLeftRadius: 24,
+    borderTopRightRadius: 24,
     padding: 16,
     paddingTop: 12,
   },
