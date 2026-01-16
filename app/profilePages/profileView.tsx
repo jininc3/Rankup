@@ -1259,7 +1259,7 @@ const styles = StyleSheet.create({
     fontWeight: '700',
   },
   verticalRankCardsContainer: {
-    paddingTop: 16,
+    paddingTop: 22,
     paddingBottom: 20,
     gap: 16,
   },
@@ -1267,7 +1267,7 @@ const styles = StyleSheet.create({
     position: 'relative',
     height: 320,
     width: '100%',
-    marginTop: 40,
+    marginTop: 46,
   },
   stackedCardItem: {
     position: 'absolute',

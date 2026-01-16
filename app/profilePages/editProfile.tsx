@@ -453,14 +453,18 @@ export default function EditProfileScreen() {
       </View>
 
       <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.scrollContent}>
-        {/* Cover Photo Container - matches profile.tsx */}
-        <View style={styles.coverPhotoContainer}>
-          <View style={styles.coverPhoto}>
-            {pendingRemoveCoverPhoto ? null : pendingCoverPhotoUri ? (
+        {/* Cover Photo Section */}
+        <View style={styles.headerSection}>
+          <View style={styles.coverPhotoWrapper}>
+            {pendingRemoveCoverPhoto ? (
+              <View style={styles.coverPhotoGradient} />
+            ) : pendingCoverPhotoUri ? (
               <Image source={{ uri: pendingCoverPhotoUri }} style={styles.coverPhotoImage} />
             ) : coverPhoto ? (
               <Image source={{ uri: coverPhoto }} style={styles.coverPhotoImage} />
-            ) : null}
+            ) : (
+              <View style={styles.coverPhotoGradient} />
+            )}
             <TouchableOpacity
               style={styles.editCoverButton}
               onPress={showCoverPhotoOptions}
@@ -469,61 +473,71 @@ export default function EditProfileScreen() {
               <IconSymbol size={24} name="camera.fill" color="#fff" />
             </TouchableOpacity>
           </View>
-        </View>
 
-        {/* Profile Content - matches profile.tsx */}
-        <View style={styles.profileContentWrapper}>
-          {/* Avatar on the left, overlapping cover */}
-          <View style={styles.avatarContainer}>
-            <View style={styles.avatarCircle}>
-              {pendingRemoveProfileImage ? (
-                <ThemedText style={styles.avatarInitial}>{user?.username?.[0] || 'U'}</ThemedText>
-              ) : pendingProfileImageUri ? (
-                <Image source={{ uri: pendingProfileImageUri }} style={styles.avatarImage} />
-              ) : profileImage ? (
-                <Image source={{ uri: profileImage }} style={styles.avatarImage} />
-              ) : (
-                <ThemedText style={styles.avatarInitial}>{avatar}</ThemedText>
-              )}
+          {/* Profile Card - matches profile.tsx */}
+          <View style={styles.profileCard}>
+            {/* Top Row: Avatar on Left, Username + Stats on Right */}
+            <View style={styles.profileTopRow}>
+              {/* Avatar */}
+              <View style={styles.avatarWrapper}>
+                <View style={styles.avatarCircle}>
+                  {pendingRemoveProfileImage ? (
+                    <ThemedText style={styles.avatarInitial}>{user?.username?.[0]?.toUpperCase() || 'U'}</ThemedText>
+                  ) : pendingProfileImageUri ? (
+                    <Image source={{ uri: pendingProfileImageUri }} style={styles.avatarImage} />
+                  ) : profileImage ? (
+                    <Image source={{ uri: profileImage }} style={styles.avatarImage} />
+                  ) : (
+                    <ThemedText style={styles.avatarInitial}>{avatar}</ThemedText>
+                  )}
+                </View>
+                <TouchableOpacity
+                  style={styles.editAvatarButton}
+                  onPress={showImageOptions}
+                  disabled={isLoading}
+                >
+                  <IconSymbol size={18} name="camera.fill" color="#fff" />
+                </TouchableOpacity>
+              </View>
+
+              {/* Right Side: Username and Stats */}
+              <View style={styles.profileRightSide}>
+                {/* Editable Username */}
+                <TextInput
+                  style={styles.usernameInput}
+                  value={username}
+                  onChangeText={(text) => setUsername(text.toLowerCase())}
+                  placeholder="Username"
+                  placeholderTextColor="#999"
+                  autoCapitalize="none"
+                />
+
+                {/* Stats in individual cards */}
+                <View style={styles.statsContainer}>
+                  <View style={styles.statItem}>
+                    <ThemedText style={styles.statNumber}>{postsCount}</ThemedText>
+                    <ThemedText style={styles.statLabel}>Posts</ThemedText>
+                  </View>
+                  <View style={styles.statItem}>
+                    <ThemedText style={styles.statNumber}>{user?.followersCount || 0}</ThemedText>
+                    <ThemedText style={styles.statLabel}>Followers</ThemedText>
+                  </View>
+                  <View style={styles.statItem}>
+                    <ThemedText style={styles.statNumber}>{user?.followingCount || 0}</ThemedText>
+                    <ThemedText style={styles.statLabel}>Following</ThemedText>
+                  </View>
+                </View>
+              </View>
             </View>
-            <TouchableOpacity
-              style={styles.editAvatarButton}
-              onPress={showImageOptions}
-              disabled={isLoading}
-            >
-              <IconSymbol size={20} name="camera.fill" color="#fff" />
-            </TouchableOpacity>
-          </View>
 
-          {/* Profile Info */}
-          <View style={styles.profileInfo}>
-            {/* Editable Username */}
-            <TextInput
-              style={styles.usernameInput}
-              value={username}
-              onChangeText={(text) => setUsername(text.toLowerCase())}
-              placeholder="Username"
-              placeholderTextColor="#999"
-              autoCapitalize="none"
-            />
-
-            {/* Stats Row - non-editable display */}
-            <View style={styles.statsRow}>
-              <ThemedText style={styles.statText}>{postsCount} Posts</ThemedText>
-              <ThemedText style={styles.statDividerText}> | </ThemedText>
-              <ThemedText style={styles.statText}>{user?.followersCount || 0} Followers</ThemedText>
-              <ThemedText style={styles.statDividerText}> | </ThemedText>
-              <ThemedText style={styles.statText}>{user?.followingCount || 0} Following</ThemedText>
-            </View>
-
-            {/* Editable Bio */}
+            {/* Bio Row */}
             <View style={styles.bioContainer}>
               <TextInput
                 style={styles.bioInput}
                 value={bio}
                 onChangeText={setBio}
                 placeholder="Add a bio..."
-                placeholderTextColor="#999"
+                placeholderTextColor="#72767d"
                 multiline
                 numberOfLines={3}
                 maxLength={150}
@@ -631,21 +645,22 @@ const styles = StyleSheet.create({
   scrollContent: {
     paddingBottom: 100,
   },
-  coverPhotoContainer: {
+  headerSection: {
+    position: 'relative',
+  },
+  coverPhotoWrapper: {
     width: '100%',
     height: 180,
-    backgroundColor: '#36393e',
-  },
-  coverPhoto: {
-    width: '100%',
-    height: '100%',
-    backgroundColor: '#667eea',
-    alignItems: 'center',
-    justifyContent: 'center',
+    position: 'relative',
   },
   coverPhotoImage: {
     width: '100%',
     height: '100%',
+  },
+  coverPhotoGradient: {
+    width: '100%',
+    height: '100%',
+    backgroundColor: '#667eea',
   },
   editCoverButton: {
     position: 'absolute',
@@ -656,87 +671,112 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
-  profileContentWrapper: {
+  profileCard: {
+    marginTop: -24,
+    marginHorizontal: 0,
     backgroundColor: '#1e2124',
-    paddingHorizontal: 20,
-    paddingTop: 0,
-    paddingBottom: 24,
+    borderTopLeftRadius: 24,
+    borderTopRightRadius: 24,
+    padding: 16,
+    paddingTop: 12,
   },
-  avatarContainer: {
-    marginTop: -40,
-    marginBottom: 16,
+  profileTopRow: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: 12,
+    marginBottom: 10,
+  },
+  avatarWrapper: {
+    marginTop: 0,
     position: 'relative',
-    width: 80,
-    height: 80,
+  },
+  profileRightSide: {
+    flex: 1,
+    justifyContent: 'center',
   },
   avatarCircle: {
-    width: 80,
-    height: 80,
-    borderRadius: 40,
+    width: 70,
+    height: 70,
+    borderRadius: 35,
     backgroundColor: '#36393e',
     alignItems: 'center',
     justifyContent: 'center',
-  },
-  avatarInitial: {
-    fontSize: 40,
+    borderWidth: 2,
+    borderColor: '#2c2f33',
   },
   avatarImage: {
     width: '100%',
     height: '100%',
-    borderRadius: 40,
+    borderRadius: 35,
+  },
+  avatarInitial: {
+    fontSize: 30,
+    fontWeight: '700',
+    color: '#fff',
   },
   editAvatarButton: {
     position: 'absolute',
     bottom: 0,
     right: 0,
-    width: 28,
-    height: 28,
-    borderRadius: 14,
+    width: 24,
+    height: 24,
+    borderRadius: 12,
     backgroundColor: '#c42743',
     alignItems: 'center',
     justifyContent: 'center',
     borderWidth: 2,
     borderColor: '#1e2124',
   },
-  profileInfo: {
-    width: '100%',
-  },
   usernameInput: {
-    fontSize: 20,
+    fontSize: 16,
     fontWeight: '700',
     color: '#fff',
-    marginBottom: 12,
+    marginBottom: 8,
     letterSpacing: -0.5,
     padding: 0,
   },
-  statsRow: {
+  statsContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginBottom: 12,
+    gap: 16,
   },
-  statText: {
-    fontSize: 14,
+  statItem: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    minWidth: 50,
+  },
+  statNumber: {
+    fontSize: 18,
+    fontWeight: '700',
+    color: '#fff',
+    marginBottom: 2,
+    letterSpacing: -0.5,
+  },
+  statLabel: {
+    fontSize: 12,
     color: '#b9bbbe',
-    fontWeight: '400',
-  },
-  statDividerText: {
-    fontSize: 14,
-    color: '#72767d',
-    fontWeight: '400',
+    fontWeight: '500',
+    textTransform: 'capitalize',
   },
   bioContainer: {
-    marginBottom: 20,
+    marginBottom: 10,
+    backgroundColor: '#2c2f33',
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: '#40444b',
+    padding: 10,
   },
   bioInput: {
-    fontSize: 14,
-    color: '#dcddde',
-    lineHeight: 20,
+    fontSize: 12,
+    color: '#b9bbbe',
+    lineHeight: 16,
     fontWeight: '400',
     padding: 0,
     textAlignVertical: 'top',
+    minHeight: 48,
   },
   characterCount: {
-    fontSize: 12,
+    fontSize: 10,
     color: '#72767d',
     marginTop: 4,
     textAlign: 'right',
@@ -745,7 +785,7 @@ const styles = StyleSheet.create({
     marginTop: 8,
   },
   socialsSectionTitle: {
-    fontSize: 14,
+    fontSize: 12,
     fontWeight: '600',
     color: '#fff',
     marginBottom: 12,
@@ -796,7 +836,7 @@ const styles = StyleSheet.create({
     elevation: 5,
   },
   saveButton: {
-    backgroundColor: '#000',
+    backgroundColor: '#c42743',
     paddingVertical: 16,
     borderRadius: 12,
     alignItems: 'center',

@@ -104,7 +104,6 @@ export default function TftRankCard({ game, username, viewOnly = false, userId }
             <View style={styles.cardUserInfo}>
               <ThemedText style={styles.cardUsername}>@{username}</ThemedText>
             </View>
-            <ThemedText style={styles.swipeHint}>Tap to view details →</ThemedText>
           </View>
         </View>
       </View>

@@ -1558,7 +1558,7 @@ const styles = StyleSheet.create({
   },
   verticalRankCardsContainer: {
     paddingHorizontal: 12,
-    paddingTop: 12,
+    paddingTop: 18,
     paddingBottom: 20,
     gap: 16,
   },
@@ -1566,7 +1566,7 @@ const styles = StyleSheet.create({
     position: 'relative',
     height: 320,
     width: '100%',
-    marginTop: 40,
+    marginTop: 46,
   },
   stackedCardItem: {
     position: 'absolute',

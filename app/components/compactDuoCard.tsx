@@ -90,8 +90,8 @@ export default function CompactDuoCard({
     <View style={styles.card}>
       <LinearGradient
         colors={['#4a4d52', '#36393e', '#2c2f33']}
-        start={{ x: 0, y: 0 }}
-        end={{ x: 1, y: 1 }}
+        start={{ x: 1, y: 0 }}
+        end={{ x: 0, y: 1 }}
         style={styles.cardGradient}
       >
         {/* Left Section - Avatar */}
@@ -176,11 +176,11 @@ const styles = StyleSheet.create({
     shadowColor: '#000',
     shadowOffset: {
       width: 0,
-      height: 4,
+      height: 8,
     },
-    shadowOpacity: 0.1,
-    shadowRadius: 8,
-    elevation: 4,
+    shadowOpacity: 0.3,
+    shadowRadius: 16,
+    elevation: 12,
   },
   cardGradient: {
     flexDirection: 'row',
