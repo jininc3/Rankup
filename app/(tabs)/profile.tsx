@@ -9,7 +9,7 @@ import { ThemedView } from '@/components/themed-view';
 import { IconSymbol } from '@/components/ui/icon-symbol';
 import { db } from '@/config/firebase';
 import { useAuth } from '@/contexts/AuthContext';
-import { useRouter } from 'expo-router';
+import { useRouter, useLocalSearchParams } from 'expo-router';
 import { useFocusEffect } from '@react-navigation/native';
 import { collection, getDocs, query, Timestamp, where, doc, getDoc, updateDoc, increment } from 'firebase/firestore';
 import { useCallback, useEffect, useRef, useState } from 'react';
@@ -56,6 +56,7 @@ const formatDuration = (seconds?: number): string => {
 
 export default function ProfileScreen() {
   const router = useRouter();
+  const { refresh } = useLocalSearchParams<{ refresh?: string }>();
   const { user, refreshUser, preloadedProfilePosts, preloadedRiotStats, clearPreloadedProfileData } = useAuth();
   const [activeMainTab, setActiveMainTab] = useState<'rankCards' | 'clips'>('clips');
   const [posts, setPosts] = useState<Post[]>([]);
@@ -363,6 +364,19 @@ export default function ProfileScreen() {
     }, [user?.id])
   );
 
+  // Handle refresh parameter from linking pages
+  // This forces a refresh of account data when returning from account linking
+  useEffect(() => {
+    if (refresh === 'true' && user?.id) {
+      console.log('Refresh parameter detected, forcing data refresh');
+      // Force refresh to get the newly linked account
+      fetchRiotData(true);
+      // Switch to rankCards tab to show the new card
+      setActiveMainTab('rankCards');
+      // Clear the refresh parameter by replacing the route without the param
+      router.replace('/(tabs)/profile');
+    }
+  }, [refresh, user?.id]);
 
   // Handle pull-to-refresh
   const onRefresh = useCallback(async () => {
@@ -852,13 +866,29 @@ export default function ProfileScreen() {
             </View>
           ) : (
             <View style={styles.emptyState}>
-              <View style={styles.emptyIconCircle}>
-                <IconSymbol size={48} name="photo.stack" color="#72767d" />
+              <View style={styles.emptyClipsIcons}>
+                <View style={styles.emptyClipsIconCircle}>
+                  <IconSymbol size={28} name="photo.fill" color="#72767d" />
+                </View>
+                <View style={[styles.emptyClipsIconCircle, styles.emptyClipsIconCircleCenter]}>
+                  <IconSymbol size={36} name="video.fill" color="#fff" />
+                </View>
+                <View style={styles.emptyClipsIconCircle}>
+                  <IconSymbol size={28} name="sparkles" color="#72767d" />
+                </View>
               </View>
-              <ThemedText style={styles.emptyStateTitle}>No clips yet</ThemedText>
+              <ThemedText style={styles.emptyStateTitle}>Share your clips</ThemedText>
               <ThemedText style={styles.emptyStateSubtext}>
-                Share your best gaming moments with the community
+                Post your best gaming moments, highlights, and achievements
               </ThemedText>
+              <TouchableOpacity
+                style={styles.addClipsEmptyButton}
+                onPress={() => setShowNewPost(true)}
+                activeOpacity={0.8}
+              >
+                <IconSymbol size={20} name="plus" color="#fff" />
+                <ThemedText style={styles.addClipsEmptyText}>Create Post</ThemedText>
+              </TouchableOpacity>
             </View>
           )}
           </View>
@@ -868,20 +898,40 @@ export default function ProfileScreen() {
           {!riotAccount && !valorantAccount ? (
             // Empty state for new users
             <View style={styles.emptyState}>
-              <View style={styles.emptyIconCircle}>
-                <IconSymbol size={48} name="star.fill" color="#72767d" />
+              <View style={styles.emptyGameLogos}>
+                <View style={styles.emptyGameLogoCircle}>
+                  <Image
+                    source={require('@/assets/images/valorant-logo.png')}
+                    style={styles.emptyGameLogo}
+                    resizeMode="contain"
+                  />
+                </View>
+                <View style={[styles.emptyGameLogoCircle, styles.emptyGameLogoCircleCenter]}>
+                  <Image
+                    source={require('@/assets/images/riotgames.png')}
+                    style={styles.emptyGameLogoLarge}
+                    resizeMode="contain"
+                  />
+                </View>
+                <View style={styles.emptyGameLogoCircle}>
+                  <Image
+                    source={require('@/assets/images/leagueoflegends.png')}
+                    style={styles.emptyGameLogo}
+                    resizeMode="contain"
+                  />
+                </View>
               </View>
-              <ThemedText style={styles.emptyStateTitle}>No rank cards yet</ThemedText>
+              <ThemedText style={styles.emptyStateTitle}>Show off your rank</ThemedText>
               <ThemedText style={styles.emptyStateSubtext}>
-                Connect your gaming accounts to display your ranks
+                Link your Riot account to display your Valorant and League of Legends ranks on your profile
               </ThemedText>
               <TouchableOpacity
                 style={styles.addRankCardEmptyButton}
                 onPress={() => router.push('/profilePages/newRankCard')}
                 activeOpacity={0.8}
               >
-                <IconSymbol size={20} name="plus.circle.fill" color="#fff" />
-                <ThemedText style={styles.addRankCardEmptyText}>Add Rank Card</ThemedText>
+                <IconSymbol size={20} name="link" color="#fff" />
+                <ThemedText style={styles.addRankCardEmptyText}>Link Account</ThemedText>
               </TouchableOpacity>
             </View>
           ) : (
@@ -1304,8 +1354,80 @@ const styles = StyleSheet.create({
   emptyState: {
     alignItems: 'center',
     justifyContent: 'center',
-    paddingVertical: 80,
-    paddingHorizontal: 40,
+    paddingVertical: 60,
+    paddingHorizontal: 32,
+  },
+  emptyGameLogos: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 24,
+    gap: -12,
+  },
+  emptyGameLogoCircle: {
+    width: 56,
+    height: 56,
+    borderRadius: 28,
+    backgroundColor: '#2c2f33',
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 3,
+    borderColor: '#1e2124',
+  },
+  emptyGameLogoCircleCenter: {
+    width: 72,
+    height: 72,
+    borderRadius: 36,
+    backgroundColor: '#c42743',
+    zIndex: 1,
+  },
+  emptyGameLogo: {
+    width: 32,
+    height: 32,
+    tintColor: '#72767d',
+  },
+  emptyGameLogoLarge: {
+    width: 40,
+    height: 40,
+  },
+  emptyClipsIcons: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 24,
+    gap: -12,
+  },
+  emptyClipsIconCircle: {
+    width: 56,
+    height: 56,
+    borderRadius: 28,
+    backgroundColor: '#2c2f33',
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 3,
+    borderColor: '#1e2124',
+  },
+  emptyClipsIconCircleCenter: {
+    width: 72,
+    height: 72,
+    borderRadius: 36,
+    backgroundColor: '#c42743',
+    zIndex: 1,
+  },
+  addClipsEmptyButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    marginTop: 28,
+    paddingVertical: 14,
+    paddingHorizontal: 28,
+    backgroundColor: '#c42743',
+    borderRadius: 12,
+  },
+  addClipsEmptyText: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#fff',
   },
   emptyIconCircle: {
     width: 96,
@@ -1317,10 +1439,10 @@ const styles = StyleSheet.create({
     marginBottom: 20,
   },
   emptyStateTitle: {
-    fontSize: 20,
+    fontSize: 22,
     fontWeight: '700',
     color: '#fff',
-    marginBottom: 8,
+    marginBottom: 10,
   },
   emptyStateText: {
     fontSize: 16,
@@ -1329,22 +1451,23 @@ const styles = StyleSheet.create({
   },
   emptyStateSubtext: {
     fontSize: 14,
-    color: '#72767d',
+    color: '#999',
     textAlign: 'center',
-    lineHeight: 20,
+    lineHeight: 21,
+    maxWidth: 280,
   },
   addRankCardEmptyButton: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 8,
-    marginTop: 24,
+    marginTop: 28,
     paddingVertical: 14,
-    paddingHorizontal: 24,
-    backgroundColor: '#5865F2',
+    paddingHorizontal: 28,
+    backgroundColor: '#c42743',
     borderRadius: 12,
   },
   addRankCardEmptyText: {
-    fontSize: 15,
+    fontSize: 16,
     fontWeight: '600',
     color: '#fff',
   },

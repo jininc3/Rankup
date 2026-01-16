@@ -503,9 +503,22 @@ export default function ProfilePreviewScreen() {
               ))}
             </View>
           ) : (
-            <View style={styles.postsContainer}>
-              <IconSymbol size={48} name="square.stack.3d.up" color="#fff" />
-              <ThemedText style={styles.emptyStateText}>No posts yet</ThemedText>
+            <View style={styles.emptyClipsState}>
+              <View style={styles.emptyClipsIcons}>
+                <View style={styles.emptyClipsIconCircle}>
+                  <IconSymbol size={28} name="photo.fill" color="#72767d" />
+                </View>
+                <View style={[styles.emptyClipsIconCircle, styles.emptyClipsIconCircleCenter]}>
+                  <IconSymbol size={36} name="video.fill" color="#fff" />
+                </View>
+                <View style={styles.emptyClipsIconCircle}>
+                  <IconSymbol size={28} name="sparkles" color="#72767d" />
+                </View>
+              </View>
+              <ThemedText style={styles.emptyClipsTitle}>No clips yet</ThemedText>
+              <ThemedText style={styles.emptyClipsSubtext}>
+                This user hasn't posted any clips
+              </ThemedText>
             </View>
           )}
         </View>
@@ -513,9 +526,34 @@ export default function ProfilePreviewScreen() {
         {/* RankCards Tab Content */}
         <View style={[styles.section, { display: activeMainTab === 'rankCards' ? 'flex' : 'none' }]}>
           {userGames.length === 0 ? (
-            <View style={styles.postsContainer}>
-              <IconSymbol size={48} name="gamecontroller" color="#fff" />
-              <ThemedText style={styles.emptyStateText}>No rank cards yet</ThemedText>
+            <View style={styles.emptyRankCardsState}>
+              <View style={styles.emptyGameLogos}>
+                <View style={styles.emptyGameLogoCircle}>
+                  <Image
+                    source={require('@/assets/images/valorant-logo.png')}
+                    style={styles.emptyGameLogo}
+                    resizeMode="contain"
+                  />
+                </View>
+                <View style={[styles.emptyGameLogoCircle, styles.emptyGameLogoCircleCenter]}>
+                  <Image
+                    source={require('@/assets/images/riotgames.png')}
+                    style={styles.emptyGameLogoLarge}
+                    resizeMode="contain"
+                  />
+                </View>
+                <View style={styles.emptyGameLogoCircle}>
+                  <Image
+                    source={require('@/assets/images/leagueoflegends.png')}
+                    style={styles.emptyGameLogo}
+                    resizeMode="contain"
+                  />
+                </View>
+              </View>
+              <ThemedText style={styles.emptyRankCardsTitle}>No rank cards yet</ThemedText>
+              <ThemedText style={styles.emptyRankCardsSubtext}>
+                This user hasn't linked any gaming accounts
+              </ThemedText>
             </View>
           ) : (
             <>
@@ -1152,6 +1190,99 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     color: '#fff',
     marginTop: 16,
+  },
+  emptyRankCardsState: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 60,
+    paddingHorizontal: 32,
+  },
+  emptyGameLogos: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 24,
+    gap: -12,
+  },
+  emptyGameLogoCircle: {
+    width: 56,
+    height: 56,
+    borderRadius: 28,
+    backgroundColor: '#2c2f33',
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 3,
+    borderColor: '#1e2124',
+  },
+  emptyGameLogoCircleCenter: {
+    width: 72,
+    height: 72,
+    borderRadius: 36,
+    backgroundColor: '#c42743',
+    zIndex: 1,
+  },
+  emptyGameLogo: {
+    width: 32,
+    height: 32,
+    tintColor: '#72767d',
+  },
+  emptyGameLogoLarge: {
+    width: 40,
+    height: 40,
+  },
+  emptyRankCardsTitle: {
+    fontSize: 20,
+    fontWeight: '700',
+    color: '#fff',
+    marginBottom: 8,
+  },
+  emptyRankCardsSubtext: {
+    fontSize: 14,
+    color: '#999',
+    textAlign: 'center',
+    lineHeight: 20,
+  },
+  emptyClipsState: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 60,
+    paddingHorizontal: 32,
+  },
+  emptyClipsIcons: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 24,
+    gap: -12,
+  },
+  emptyClipsIconCircle: {
+    width: 56,
+    height: 56,
+    borderRadius: 28,
+    backgroundColor: '#2c2f33',
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 3,
+    borderColor: '#1e2124',
+  },
+  emptyClipsIconCircleCenter: {
+    width: 72,
+    height: 72,
+    borderRadius: 36,
+    backgroundColor: '#c42743',
+    zIndex: 1,
+  },
+  emptyClipsTitle: {
+    fontSize: 20,
+    fontWeight: '700',
+    color: '#fff',
+    marginBottom: 8,
+  },
+  emptyClipsSubtext: {
+    fontSize: 14,
+    color: '#999',
+    textAlign: 'center',
+    lineHeight: 20,
   },
   loadingText: {
     fontSize: 14,

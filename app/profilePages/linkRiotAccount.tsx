@@ -54,16 +54,20 @@ export default function LinkRiotAccountScreen() {
       const response = await linkRiotAccount(gameName.trim(), tagLine.trim(), region);
 
       if (response.success && auth.currentUser) {
+        // Automatically add League to enabled rank cards
+        await updateDoc(doc(db, 'users', auth.currentUser.uid), {
+          enabledRankCards: arrayUnion('league')
+        });
+
         Alert.alert(
           'Success!',
-          `Linked account: ${response.account?.gameName}#${response.account?.tagLine}\n\nYou can now add rank cards from your profile settings.`,
+          `Linked account: ${response.account?.gameName}#${response.account?.tagLine}`,
           [
             {
               text: 'OK',
               onPress: () => {
-                // Navigate back to profile, going back twice (past newRankCard)
-                router.back();
-                router.back();
+                // Navigate directly to profile tab with refresh flag
+                router.replace('/(tabs)/profile?refresh=true');
               },
             },
           ]
@@ -94,7 +98,7 @@ export default function LinkRiotAccountScreen() {
       {/* Header */}
       <View style={styles.header}>
         <TouchableOpacity style={styles.backButton} onPress={() => router.back()}>
-          <IconSymbol size={24} name="chevron.left" color="#000" />
+          <IconSymbol size={24} name="chevron.left" color="#fff" />
         </TouchableOpacity>
         <ThemedText style={styles.headerTitle}>Link League Account</ThemedText>
       </View>
@@ -213,7 +217,7 @@ export default function LinkRiotAccountScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#fff',
+    backgroundColor: '#1e2124',
   },
   header: {
     flexDirection: 'row',
@@ -226,7 +230,7 @@ const styles = StyleSheet.create({
     width: 40,
     height: 40,
     borderRadius: 20,
-    backgroundColor: '#f5f5f5',
+    backgroundColor: '#2c2f33',
     alignItems: 'center',
     justifyContent: 'center',
     marginRight: 12,
@@ -234,7 +238,7 @@ const styles = StyleSheet.create({
   headerTitle: {
     fontSize: 20,
     fontWeight: '700',
-    color: '#000',
+    color: '#fff',
   },
   logoContainer: {
     alignItems: 'center',
@@ -245,21 +249,23 @@ const styles = StyleSheet.create({
     height: 80,
   },
   infoCard: {
-    backgroundColor: '#f9f9f9',
+    backgroundColor: '#2c2f33',
     marginHorizontal: 20,
     padding: 20,
     borderRadius: 12,
     marginBottom: 24,
+    borderWidth: 1,
+    borderColor: '#3a3f44',
   },
   infoTitle: {
     fontSize: 16,
     fontWeight: '600',
-    color: '#000',
+    color: '#fff',
     marginBottom: 8,
   },
   infoText: {
     fontSize: 14,
-    color: '#666',
+    color: '#ccc',
     lineHeight: 20,
   },
   form: {
@@ -271,18 +277,18 @@ const styles = StyleSheet.create({
   label: {
     fontSize: 14,
     fontWeight: '600',
-    color: '#000',
+    color: '#fff',
     marginBottom: 8,
   },
   input: {
-    backgroundColor: '#f9f9f9',
+    backgroundColor: '#2c2f33',
     borderWidth: 1,
-    borderColor: '#e5e5e5',
+    borderColor: '#3a3f44',
     borderRadius: 12,
     paddingHorizontal: 16,
     paddingVertical: 16,
     fontSize: 16,
-    color: '#000',
+    color: '#fff',
     lineHeight: 20,
   },
   hint: {
@@ -293,23 +299,23 @@ const styles = StyleSheet.create({
   tagLineContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#f9f9f9',
+    backgroundColor: '#2c2f33',
     borderWidth: 1,
-    borderColor: '#e5e5e5',
+    borderColor: '#3a3f44',
     borderRadius: 12,
     paddingHorizontal: 16,
   },
   hashSymbol: {
     fontSize: 20,
     fontWeight: '600',
-    color: '#666',
+    color: '#999',
     marginRight: 4,
   },
   tagLineInput: {
     flex: 1,
     paddingVertical: 14,
     fontSize: 16,
-    color: '#000',
+    color: '#fff',
   },
   regionScroll: {
     marginHorizontal: -20,
@@ -319,18 +325,18 @@ const styles = StyleSheet.create({
     paddingVertical: 10,
     paddingHorizontal: 16,
     borderRadius: 8,
-    backgroundColor: '#f9f9f9',
+    backgroundColor: '#2c2f33',
     marginRight: 8,
     borderWidth: 1,
-    borderColor: '#e5e5e5',
+    borderColor: '#3a3f44',
   },
   regionButtonActive: {
-    backgroundColor: '#000',
-    borderColor: '#000',
+    backgroundColor: '#c42743',
+    borderColor: '#c42743',
   },
   regionButtonText: {
     fontSize: 14,
-    color: '#666',
+    color: '#ccc',
     fontWeight: '500',
   },
   regionButtonTextActive: {
@@ -340,7 +346,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: '#000',
+    backgroundColor: '#c42743',
     paddingVertical: 16,
     borderRadius: 12,
     gap: 8,
@@ -355,28 +361,28 @@ const styles = StyleSheet.create({
     color: '#fff',
   },
   exampleCard: {
-    backgroundColor: '#f0f8ff',
+    backgroundColor: '#2c2f33',
     marginHorizontal: 20,
     marginTop: 32,
     padding: 16,
     borderRadius: 12,
     borderWidth: 1,
-    borderColor: '#b3d9ff',
+    borderColor: '#3a3f44',
   },
   exampleTitle: {
     fontSize: 14,
     fontWeight: '600',
-    color: '#000',
+    color: '#fff',
     marginBottom: 8,
   },
   exampleText: {
     fontSize: 13,
-    color: '#666',
+    color: '#ccc',
     marginBottom: 12,
   },
   exampleBold: {
     fontWeight: '700',
-    color: '#000',
+    color: '#c42743',
   },
   exampleRow: {
     flexDirection: 'row',
@@ -384,13 +390,13 @@ const styles = StyleSheet.create({
   },
   exampleLabel: {
     fontSize: 13,
-    color: '#666',
+    color: '#999',
     width: 100,
   },
   exampleValue: {
     fontSize: 13,
     fontWeight: '600',
-    color: '#000',
+    color: '#fff',
   },
   bottomSpacer: {
     height: 40,

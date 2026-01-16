@@ -45,16 +45,20 @@ export default function LinkValorantAccountScreen() {
       const response = await linkValorantAccount(gameName.trim(), tagLine.trim(), region);
 
       if (response.success && auth.currentUser) {
+        // Automatically add Valorant to enabled rank cards
+        await updateDoc(doc(db, 'users', auth.currentUser.uid), {
+          enabledRankCards: arrayUnion('valorant')
+        });
+
         Alert.alert(
           'Success!',
-          `Linked Valorant account: ${response.account?.gameName}#${response.account?.tag}\n\nYou can now add a Valorant rank card from your profile settings.`,
+          `Linked Valorant account: ${response.account?.gameName}#${response.account?.tag}`,
           [
             {
               text: 'OK',
               onPress: () => {
-                // Navigate back to profile, going back twice (past newRankCard)
-                router.back();
-                router.back();
+                // Navigate directly to profile tab with refresh flag
+                router.replace('/(tabs)/profile?refresh=true');
               },
             },
           ]
@@ -82,7 +86,7 @@ export default function LinkValorantAccountScreen() {
       {/* Logo */}
       <View style={styles.logoContainer}>
         <Image
-          source={require('@/assets/images/valorant-logo.png')}
+          source={require('@/assets/images/riotgames.png')}
           style={styles.logo}
           resizeMode="contain"
         />
@@ -194,7 +198,7 @@ export default function LinkValorantAccountScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#B2313B', // Valorant red background
+    backgroundColor: '#1e2124',
   },
   header: {
     flexDirection: 'row',
@@ -207,7 +211,7 @@ const styles = StyleSheet.create({
     width: 40,
     height: 40,
     borderRadius: 20,
-    backgroundColor: 'rgba(255,255,255,0.2)',
+    backgroundColor: '#2c2f33',
     alignItems: 'center',
     justifyContent: 'center',
     marginRight: 12,
@@ -222,18 +226,17 @@ const styles = StyleSheet.create({
     paddingVertical: 24,
   },
   logo: {
-    width: 100,
-    height: 100,
-    tintColor: '#fff',
+    width: 80,
+    height: 80,
   },
   infoCard: {
-    backgroundColor: 'rgba(255,255,255,0.1)',
+    backgroundColor: '#2c2f33',
     marginHorizontal: 20,
     padding: 20,
     borderRadius: 12,
     marginBottom: 24,
     borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.2)',
+    borderColor: '#3a3f44',
   },
   infoTitle: {
     fontSize: 16,
@@ -243,7 +246,7 @@ const styles = StyleSheet.create({
   },
   infoText: {
     fontSize: 14,
-    color: 'rgba(255,255,255,0.9)',
+    color: '#ccc',
     lineHeight: 20,
   },
   form: {
@@ -259,40 +262,40 @@ const styles = StyleSheet.create({
     marginBottom: 8,
   },
   input: {
-    backgroundColor: 'rgba(255,255,255,0.95)',
+    backgroundColor: '#2c2f33',
     borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.3)',
+    borderColor: '#3a3f44',
     borderRadius: 12,
     paddingHorizontal: 16,
     paddingVertical: 14,
     fontSize: 16,
-    color: '#000',
+    color: '#fff',
   },
   hint: {
     fontSize: 12,
-    color: 'rgba(255,255,255,0.7)',
+    color: '#999',
     marginTop: 6,
   },
   tagLineContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: 'rgba(255,255,255,0.95)',
+    backgroundColor: '#2c2f33',
     borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.3)',
+    borderColor: '#3a3f44',
     borderRadius: 12,
     paddingHorizontal: 16,
   },
   hashSymbol: {
     fontSize: 20,
     fontWeight: '600',
-    color: '#666',
+    color: '#999',
     marginRight: 4,
   },
   tagLineInput: {
     flex: 1,
     paddingVertical: 14,
     fontSize: 16,
-    color: '#000',
+    color: '#fff',
   },
   regionScroll: {
     marginHorizontal: -20,
@@ -302,28 +305,28 @@ const styles = StyleSheet.create({
     paddingVertical: 10,
     paddingHorizontal: 16,
     borderRadius: 8,
-    backgroundColor: 'rgba(255,255,255,0.1)',
+    backgroundColor: '#2c2f33',
     marginRight: 8,
     borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.2)',
+    borderColor: '#3a3f44',
   },
   regionButtonActive: {
-    backgroundColor: '#fff',
-    borderColor: '#fff',
+    backgroundColor: '#c42743',
+    borderColor: '#c42743',
   },
   regionButtonText: {
     fontSize: 14,
-    color: 'rgba(255,255,255,0.9)',
+    color: '#ccc',
     fontWeight: '500',
   },
   regionButtonTextActive: {
-    color: '#B2313B',
+    color: '#fff',
   },
   linkButton: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: '#fff',
+    backgroundColor: '#c42743',
     paddingVertical: 16,
     borderRadius: 12,
     gap: 8,
@@ -335,16 +338,16 @@ const styles = StyleSheet.create({
   linkButtonText: {
     fontSize: 16,
     fontWeight: '600',
-    color: '#B2313B',
+    color: '#fff',
   },
   exampleCard: {
-    backgroundColor: 'rgba(255,255,255,0.1)',
+    backgroundColor: '#2c2f33',
     marginHorizontal: 20,
     marginTop: 32,
     padding: 16,
     borderRadius: 12,
     borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.2)',
+    borderColor: '#3a3f44',
   },
   exampleTitle: {
     fontSize: 14,
@@ -354,12 +357,12 @@ const styles = StyleSheet.create({
   },
   exampleText: {
     fontSize: 13,
-    color: 'rgba(255,255,255,0.9)',
+    color: '#ccc',
     marginBottom: 12,
   },
   exampleBold: {
     fontWeight: '700',
-    color: '#fff',
+    color: '#c42743',
   },
   exampleRow: {
     flexDirection: 'row',
@@ -367,7 +370,7 @@ const styles = StyleSheet.create({
   },
   exampleLabel: {
     fontSize: 13,
-    color: 'rgba(255,255,255,0.7)',
+    color: '#999',
     width: 100,
   },
   exampleValue: {
