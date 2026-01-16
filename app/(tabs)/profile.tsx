@@ -78,12 +78,81 @@ export default function ProfileScreen() {
   const [showSocialsDropdown, setShowSocialsDropdown] = useState(false);
   const scrollY = useRef(new Animated.Value(0)).current;
 
+  // Post images loading state
+  const [postImagesLoadedCount, setPostImagesLoadedCount] = useState(0);
+  const [allPostImagesLoaded, setAllPostImagesLoaded] = useState(false);
+
+  // Avatar loading state
+  const [avatarLoaded, setAvatarLoaded] = useState(false);
+
+  // Cover photo loading state
+  const [coverPhotoLoaded, setCoverPhotoLoaded] = useState(false);
+
+  // Combined loading state - avatar, cover photo, and posts all loaded
+  const [allContentLoaded, setAllContentLoaded] = useState(false);
+
   // Enable LayoutAnimation on Android
   useEffect(() => {
     if (Platform.OS === 'android' && UIManager.setLayoutAnimationEnabledExperimental) {
       UIManager.setLayoutAnimationEnabledExperimental(true);
     }
   }, []);
+
+  // Track when all post images are loaded
+  useEffect(() => {
+    if (posts.length > 0 && postImagesLoadedCount >= posts.length) {
+      setAllPostImagesLoaded(true);
+    } else if (posts.length === 0) {
+      setAllPostImagesLoaded(true);
+    }
+  }, [postImagesLoadedCount, posts.length]);
+
+  // Reset all loading states when posts change
+  useEffect(() => {
+    setPostImagesLoadedCount(0);
+    setAllPostImagesLoaded(false);
+    setAllContentLoaded(false);
+  }, [posts]);
+
+  // Set avatar as loaded if it's not an image (emoji or letter)
+  useEffect(() => {
+    if (!user?.avatar || !user.avatar.startsWith('http')) {
+      setAvatarLoaded(true);
+    } else {
+      setAvatarLoaded(false);
+    }
+  }, [user?.avatar]);
+
+  // Set cover photo as loaded if there's no cover photo (gradient)
+  useEffect(() => {
+    if (!user?.coverPhoto) {
+      setCoverPhotoLoaded(true);
+    } else {
+      setCoverPhotoLoaded(false);
+    }
+  }, [user?.coverPhoto]);
+
+  // Coordinate avatar, cover photo, and posts loading - reveal together
+  useEffect(() => {
+    console.log('Loading status - Avatar:', avatarLoaded, 'Cover:', coverPhotoLoaded, 'Posts:', allPostImagesLoaded);
+    if (avatarLoaded && coverPhotoLoaded && allPostImagesLoaded) {
+      console.log('✅ All content loaded, revealing together');
+      setTimeout(() => {
+        setAllContentLoaded(true);
+      }, 50);
+    }
+  }, [avatarLoaded, coverPhotoLoaded, allPostImagesLoaded]);
+
+  // Timeout fallback - if images take too long (3 seconds), reveal anyway
+  useEffect(() => {
+    if (!allContentLoaded && user?.id) {
+      const timeout = setTimeout(() => {
+        setAllContentLoaded(true);
+      }, 3000);
+
+      return () => clearTimeout(timeout);
+    }
+  }, [allContentLoaded, user?.id]);
 
   // Debug logging - only when values change
   useEffect(() => {
@@ -381,6 +450,13 @@ export default function ProfileScreen() {
   // Handle pull-to-refresh
   const onRefresh = useCallback(async () => {
     setRefreshing(true);
+    // Reset all image loading states
+    setPostImagesLoadedCount(0);
+    setAllPostImagesLoaded(false);
+    setAvatarLoaded(false);
+    setCoverPhotoLoaded(false);
+    setAllContentLoaded(false);
+
     await refreshUser(); // Refresh user data from AuthContext
     await fetchRiotData(true); // Force refresh Riot data from API
     await fetchPosts(); // Refresh posts
@@ -535,7 +611,12 @@ export default function ProfileScreen() {
           {/* Cover Photo with Gradient Overlay */}
           <View style={styles.coverPhotoWrapper}>
             {user?.coverPhoto ? (
-              <Image source={{ uri: user.coverPhoto }} style={styles.coverPhotoImage} />
+              <Image
+                source={{ uri: user.coverPhoto }}
+                style={[styles.coverPhotoImage, { opacity: allContentLoaded ? 1 : 0 }]}
+                onLoad={() => setCoverPhotoLoaded(true)}
+                onError={() => setCoverPhotoLoaded(true)}
+              />
             ) : (
               <LinearGradient
                 colors={['#667eea', '#764ba2']}
@@ -590,7 +671,12 @@ export default function ProfileScreen() {
                   >
                     <View style={styles.avatarCircleWithGradient}>
                       {user?.avatar && user.avatar.startsWith('http') ? (
-                        <Image source={{ uri: user.avatar }} style={styles.avatarImage} />
+                        <Image
+                          source={{ uri: user.avatar }}
+                          style={[styles.avatarImage, { opacity: allContentLoaded ? 1 : 0 }]}
+                          onLoad={() => setAvatarLoaded(true)}
+                          onError={() => setAvatarLoaded(true)}
+                        />
                       ) : (
                         <ThemedText style={styles.avatarInitial}>
                           {user?.avatar || user?.username?.[0]?.toUpperCase() || 'U'}
@@ -601,7 +687,12 @@ export default function ProfileScreen() {
                 ) : (
                   <View style={styles.avatarCircle}>
                     {user?.avatar && user.avatar.startsWith('http') ? (
-                      <Image source={{ uri: user.avatar }} style={styles.avatarImage} />
+                      <Image
+                        source={{ uri: user.avatar }}
+                        style={[styles.avatarImage, { opacity: allContentLoaded ? 1 : 0 }]}
+                        onLoad={() => setAvatarLoaded(true)}
+                        onError={() => setAvatarLoaded(true)}
+                      />
                     ) : (
                       <ThemedText style={styles.avatarInitial}>
                         {user?.avatar || user?.username?.[0]?.toUpperCase() || 'U'}
@@ -858,7 +949,7 @@ export default function ProfileScreen() {
             </View>
           ) : posts.length > 0 ? (
             <View style={styles.postsGrid}>
-              {posts.map((post) => (
+              {posts.map((post, index) => (
                 <TouchableOpacity
                   key={post.id}
                   style={styles.postItem}
@@ -867,17 +958,22 @@ export default function ProfileScreen() {
                 >
                   <Image
                     source={{ uri: post.mediaType === 'video' && post.thumbnailUrl ? post.thumbnailUrl : post.mediaUrl }}
-                    style={styles.postImage}
+                    style={[
+                      styles.postImage,
+                      { opacity: allContentLoaded ? 1 : 0 }
+                    ]}
                     resizeMode="cover"
+                    onLoad={() => setPostImagesLoadedCount(prev => prev + 1)}
+                    onError={() => setPostImagesLoadedCount(prev => prev + 1)}
                   />
-                  {post.mediaType === 'video' && (
+                  {allContentLoaded && post.mediaType === 'video' && (
                     <View style={styles.videoDuration}>
                       <ThemedText style={styles.videoDurationText}>
                         {formatDuration(post.duration)}
                       </ThemedText>
                     </View>
                   )}
-                  {post.mediaUrls && post.mediaUrls.length > 1 && (
+                  {allContentLoaded && post.mediaUrls && post.mediaUrls.length > 1 && (
                     <View style={styles.multipleIndicator}>
                       <IconSymbol size={18} name="square.on.square" color="#fff" />
                     </View>
