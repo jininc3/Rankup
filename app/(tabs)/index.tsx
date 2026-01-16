@@ -12,6 +12,7 @@ import NewPost from '@/app/components/newPost';
 import { collection, getDocs, orderBy, query, Timestamp, where, onSnapshot, limit, startAfter, QueryDocumentSnapshot, DocumentData } from 'firebase/firestore';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { ActivityIndicator, Dimensions, Image, ScrollView, StyleSheet, TouchableOpacity, View, Alert, RefreshControl } from 'react-native';
+import { LinearGradient } from 'expo-linear-gradient';
 import { useRouter } from 'expo-router';
 import { useFocusEffect } from '@react-navigation/native';
 
@@ -919,25 +920,73 @@ export default function HomeScreen() {
             style={[styles.gameTab, selectedGameFilter === null && styles.gameTabActive]}
             onPress={() => setSelectedGameFilter(null)}
           >
-            <ThemedText style={[styles.gameTabText, selectedGameFilter === null && styles.gameTabTextActive]}>
-              All Games
-            </ThemedText>
+            {selectedGameFilter === null ? (
+              <LinearGradient
+                colors={['#D64350', '#C42743', '#B22038']}
+                start={{ x: 0, y: 0 }}
+                end={{ x: 1, y: 1 }}
+                style={styles.gameTabGradient}
+              >
+                <ThemedText style={styles.gameTabTextActive}>All Games</ThemedText>
+              </LinearGradient>
+            ) : (
+              <LinearGradient
+                colors={['#40444b', '#36393e', '#32353a']}
+                start={{ x: 0, y: 0 }}
+                end={{ x: 1, y: 1 }}
+                style={styles.gameTabGradient}
+              >
+                <ThemedText style={styles.gameTabText}>All Games</ThemedText>
+              </LinearGradient>
+            )}
           </TouchableOpacity>
           <TouchableOpacity
             style={[styles.gameTab, selectedGameFilter === 'valorant' && styles.gameTabActive]}
             onPress={() => setSelectedGameFilter(selectedGameFilter === 'valorant' ? null : 'valorant')}
           >
-            <ThemedText style={[styles.gameTabText, selectedGameFilter === 'valorant' && styles.gameTabTextActive]}>
-              Valorant
-            </ThemedText>
+            {selectedGameFilter === 'valorant' ? (
+              <LinearGradient
+                colors={['#D64350', '#C42743', '#B22038']}
+                start={{ x: 0, y: 0 }}
+                end={{ x: 1, y: 1 }}
+                style={styles.gameTabGradient}
+              >
+                <ThemedText style={styles.gameTabTextActive}>Valorant</ThemedText>
+              </LinearGradient>
+            ) : (
+              <LinearGradient
+                colors={['#40444b', '#36393e', '#32353a']}
+                start={{ x: 0, y: 0 }}
+                end={{ x: 1, y: 1 }}
+                style={styles.gameTabGradient}
+              >
+                <ThemedText style={styles.gameTabText}>Valorant</ThemedText>
+              </LinearGradient>
+            )}
           </TouchableOpacity>
           <TouchableOpacity
             style={[styles.gameTab, selectedGameFilter === 'league' && styles.gameTabActive]}
             onPress={() => setSelectedGameFilter(selectedGameFilter === 'league' ? null : 'league')}
           >
-            <ThemedText style={[styles.gameTabText, selectedGameFilter === 'league' && styles.gameTabTextActive]}>
-              League
-            </ThemedText>
+            {selectedGameFilter === 'league' ? (
+              <LinearGradient
+                colors={['#D64350', '#C42743', '#B22038']}
+                start={{ x: 0, y: 0 }}
+                end={{ x: 1, y: 1 }}
+                style={styles.gameTabGradient}
+              >
+                <ThemedText style={styles.gameTabTextActive}>League</ThemedText>
+              </LinearGradient>
+            ) : (
+              <LinearGradient
+                colors={['#40444b', '#36393e', '#32353a']}
+                start={{ x: 0, y: 0 }}
+                end={{ x: 1, y: 1 }}
+                style={styles.gameTabGradient}
+              >
+                <ThemedText style={styles.gameTabText}>League</ThemedText>
+              </LinearGradient>
+            )}
           </TouchableOpacity>
         </ScrollView>
 
@@ -1018,7 +1067,14 @@ export default function HomeScreen() {
         onPress={handleAddPost}
         activeOpacity={0.8}
       >
-        <IconSymbol size={28} name="plus" color="#fff" />
+        <LinearGradient
+          colors={['#D64350', '#C42743', '#B22038']}
+          start={{ x: 0, y: 0 }}
+          end={{ x: 1, y: 1 }}
+          style={styles.fabGradient}
+        >
+          <IconSymbol size={28} name="plus" color="#fff" />
+        </LinearGradient>
       </TouchableOpacity>
 
       {/* New Post Modal */}
@@ -1133,8 +1189,6 @@ const styles = StyleSheet.create({
     fontWeight: '600',
   },
   gameTab: {
-    paddingVertical: 6,
-    paddingHorizontal: 14,
     alignItems: 'center',
     justifyContent: 'center',
     borderRadius: 16,
@@ -1151,11 +1205,12 @@ const styles = StyleSheet.create({
     elevation: 3,
     minHeight: 32,
     minWidth: 90,
+    overflow: 'hidden',
   },
   gameTabActive: {
-    backgroundColor: '#c42743',
-    borderColor: '#c42743',
-    shadowColor: '#c42743',
+    backgroundColor: 'transparent',
+    borderColor: 'transparent',
+    shadowColor: '#DC3D4B',
     shadowOffset: {
       width: 0,
       height: 2,
@@ -1164,12 +1219,22 @@ const styles = StyleSheet.create({
     shadowRadius: 3,
     elevation: 5,
   },
+  gameTabGradient: {
+    flex: 1,
+    width: '100%',
+    paddingVertical: 6,
+    paddingHorizontal: 14,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderRadius: 16,
+  },
   gameTabText: {
     fontSize: 13,
     fontWeight: '500',
     color: '#999',
   },
   gameTabTextActive: {
+    fontSize: 13,
     color: '#fff',
     fontWeight: '600',
   },
@@ -1238,16 +1303,21 @@ const styles = StyleSheet.create({
     width: 60,
     height: 60,
     borderRadius: 30,
-    backgroundColor: '#000',
-    alignItems: 'center',
-    justifyContent: 'center',
-    shadowColor: '#000',
+    overflow: 'hidden',
+    shadowColor: '#DC3D4B',
     shadowOffset: {
       width: 0,
       height: 4,
     },
-    shadowOpacity: 0.3,
-    shadowRadius: 4.65,
+    shadowOpacity: 0.4,
+    shadowRadius: 6,
     elevation: 8,
+  },
+  fabGradient: {
+    width: '100%',
+    height: '100%',
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderRadius: 30,
   },
 });

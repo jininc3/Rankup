@@ -18,6 +18,7 @@ import { createOrGetChat } from '@/services/chatService';
 import PostViewerModal from '@/app/components/postViewerModal';
 import { calculateTierBorderColor, calculateTierBorderGradient } from '@/utils/tierBorderUtils';
 import GradientBorder from '@/components/GradientBorder';
+import { LinearGradient } from 'expo-linear-gradient';
 
 interface ViewedUser {
   id: string;
@@ -430,13 +431,24 @@ export default function ProfileViewScreen() {
       </View>
 
       <ScrollView showsVerticalScrollIndicator={false}>
-        {/* Cover Photo */}
+        {/* Cover Photo with Gradient Overlay */}
         <View style={styles.coverPhotoContainer}>
           <View style={styles.coverPhoto}>
             {viewedUser?.coverPhoto ? (
               <Image source={{ uri: viewedUser.coverPhoto }} style={styles.coverPhotoImage} />
-            ) : null}
+            ) : (
+              <LinearGradient
+                colors={['#667eea', '#764ba2']}
+                start={{ x: 0, y: 0 }}
+                end={{ x: 1, y: 1 }}
+                style={styles.coverPhotoGradient}
+              />
+            )}
           </View>
+          <LinearGradient
+            colors={['transparent', 'rgba(30, 33, 36, 0.8)']}
+            style={styles.coverPhotoOverlay}
+          />
         </View>
 
         {/* Profile Content */}
@@ -534,10 +546,18 @@ export default function ProfileViewScreen() {
               style={[styles.followButton, isFollowing && styles.unfollowButton]}
               onPress={handleFollowToggle}
               disabled={followLoading}
+              activeOpacity={0.8}
             >
-              <ThemedText style={[styles.followButtonText, isFollowing && styles.unfollowButtonText]}>
-                {followLoading ? 'Loading...' : isFollowing ? 'Unfollow' : 'Follow'}
-              </ThemedText>
+              <LinearGradient
+                colors={isFollowing ? ['#40444b', '#36393e', '#32353a'] : ['#D64350', '#C42743', '#B22038']}
+                start={{ x: 0, y: 0 }}
+                end={{ x: 1, y: 1 }}
+                style={styles.followButtonGradient}
+              >
+                <ThemedText style={styles.followButtonText}>
+                  {followLoading ? 'Loading...' : isFollowing ? 'Unfollow' : 'Follow'}
+                </ThemedText>
+              </LinearGradient>
             </TouchableOpacity>
 
             {(viewedUser?.discordLink || viewedUser?.instagramLink) && (
@@ -546,13 +566,27 @@ export default function ProfileViewScreen() {
                 onPress={() => setShowSocialsSheet(true)}
                 activeOpacity={0.8}
               >
-                <IconSymbol size={14} name="link" color="#fff" />
-                <ThemedText style={styles.socialsButtonCompactText}>Socials</ThemedText>
+                <LinearGradient
+                  colors={['#40444b', '#36393e', '#32353a']}
+                  start={{ x: 0, y: 0 }}
+                  end={{ x: 1, y: 1 }}
+                  style={styles.socialsButtonGradient}
+                >
+                  <IconSymbol size={14} name="link" color="#fff" />
+                  <ThemedText style={styles.socialsButtonCompactText}>Socials</ThemedText>
+                </LinearGradient>
               </TouchableOpacity>
             )}
 
-            <TouchableOpacity style={styles.messageButton} onPress={handleMessage}>
-              <IconSymbol size={18} name="bubble.left.fill" color="#fff" />
+            <TouchableOpacity style={styles.messageButton} onPress={handleMessage} activeOpacity={0.8}>
+              <LinearGradient
+                colors={['#40444b', '#36393e', '#32353a']}
+                start={{ x: 0, y: 0 }}
+                end={{ x: 1, y: 1 }}
+                style={styles.messageButtonGradient}
+              >
+                <IconSymbol size={18} name="bubble.left.fill" color="#fff" />
+              </LinearGradient>
             </TouchableOpacity>
           </View>
         </View>
@@ -902,31 +936,45 @@ const styles = StyleSheet.create({
   coverPhotoContainer: {
     width: '100%',
     height: 180,
-    backgroundColor: '#f5f5f5',
+    position: 'relative',
   },
   coverPhoto: {
     width: '100%',
     height: '100%',
-    backgroundColor: '#667eea',
   },
   coverPhotoImage: {
     width: '100%',
     height: '100%',
+  },
+  coverPhotoGradient: {
+    width: '100%',
+    height: '100%',
+  },
+  coverPhotoOverlay: {
+    position: 'absolute',
+    bottom: 0,
+    left: 0,
+    right: 0,
+    height: 60,
   },
   profileContentWrapper: {
     backgroundColor: '#1e2124',
     paddingHorizontal: 16,
     paddingTop: 0,
     paddingBottom: 8,
+    marginTop: -24,
+    borderTopLeftRadius: 24,
+    borderTopRightRadius: 24,
   },
   profileTopRow: {
     flexDirection: 'row',
     alignItems: 'flex-start',
     gap: 12,
     marginBottom: 10,
+    paddingTop: 12,
   },
   avatarContainer: {
-    marginTop: -40,
+    marginTop: 0,
   },
   avatarCircle: {
     width: 70,
@@ -962,9 +1010,6 @@ const styles = StyleSheet.create({
   profileInfoRight: {
     flex: 1,
     justifyContent: 'center',
-    paddingTop: 8,
-    paddingRight: 4,
-    alignItems: 'flex-start',
   },
   username: {
     fontSize: 16,
@@ -1014,15 +1059,17 @@ const styles = StyleSheet.create({
   },
   followButton: {
     flex: 1,
-    paddingVertical: 7,
     borderRadius: 6,
-    alignItems: 'center',
-    backgroundColor: '#c42743',
+    overflow: 'hidden',
   },
   unfollowButton: {
-    backgroundColor: '#36393e',
-    borderWidth: 1,
-    borderColor: '#2c2f33',
+    // No longer needed with gradient
+  },
+  followButtonGradient: {
+    paddingVertical: 7,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderRadius: 6,
   },
   followButtonText: {
     fontSize: 12,
@@ -1034,12 +1081,15 @@ const styles = StyleSheet.create({
   },
   socialsButtonCompact: {
     flex: 1,
+    borderRadius: 6,
+    overflow: 'hidden',
+  },
+  socialsButtonGradient: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
     gap: 5,
     paddingVertical: 7,
-    backgroundColor: '#424549',
     borderRadius: 6,
   },
   socialsButtonCompactText: {
@@ -1051,9 +1101,14 @@ const styles = StyleSheet.create({
     width: 33,
     height: 33,
     borderRadius: 6,
-    backgroundColor: '#424549',
+    overflow: 'hidden',
+  },
+  messageButtonGradient: {
+    width: '100%',
+    height: '100%',
     alignItems: 'center',
     justifyContent: 'center',
+    borderRadius: 6,
   },
   modalOverlay: {
     flex: 1,

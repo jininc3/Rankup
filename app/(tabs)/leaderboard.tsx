@@ -8,6 +8,7 @@ import { useRouter } from 'expo-router';
 import { collection, doc, getDoc, getDocs, limit, onSnapshot, query, where } from 'firebase/firestore';
 import { useEffect, useState } from 'react';
 import { ActivityIndicator, Image, ScrollView, StyleSheet, TouchableOpacity, View } from 'react-native';
+import { LinearGradient } from 'expo-linear-gradient';
 
 // Game logo mapping
 const GAME_LOGOS: { [key: string]: any } = {
@@ -266,17 +267,57 @@ export default function LeaderboardScreen() {
               style={[styles.tab, selectedTab === 'current' && styles.tabActive]}
               onPress={() => setSelectedTab('current')}
             >
-              <ThemedText style={[styles.tabText, selectedTab === 'current' && styles.tabTextActive]}>
-                Current ({currentParties.length})
-              </ThemedText>
+              {selectedTab === 'current' ? (
+                <LinearGradient
+                  colors={['#D64350', '#C42743', '#B22038']}
+                  start={{ x: 0, y: 0 }}
+                  end={{ x: 1, y: 1 }}
+                  style={styles.tabGradient}
+                >
+                  <ThemedText style={styles.tabTextActive}>
+                    Current ({currentParties.length})
+                  </ThemedText>
+                </LinearGradient>
+              ) : (
+                <LinearGradient
+                  colors={['#40444b', '#36393e', '#32353a']}
+                  start={{ x: 0, y: 0 }}
+                  end={{ x: 1, y: 1 }}
+                  style={styles.tabGradient}
+                >
+                  <ThemedText style={styles.tabText}>
+                    Current ({currentParties.length})
+                  </ThemedText>
+                </LinearGradient>
+              )}
             </TouchableOpacity>
             <TouchableOpacity
               style={[styles.tab, selectedTab === 'completed' && styles.tabActive]}
               onPress={() => setSelectedTab('completed')}
             >
-              <ThemedText style={[styles.tabText, selectedTab === 'completed' && styles.tabTextActive]}>
-                Completed ({completedParties.length})
-              </ThemedText>
+              {selectedTab === 'completed' ? (
+                <LinearGradient
+                  colors={['#D64350', '#C42743', '#B22038']}
+                  start={{ x: 0, y: 0 }}
+                  end={{ x: 1, y: 1 }}
+                  style={styles.tabGradient}
+                >
+                  <ThemedText style={styles.tabTextActive}>
+                    Completed ({completedParties.length})
+                  </ThemedText>
+                </LinearGradient>
+              ) : (
+                <LinearGradient
+                  colors={['#40444b', '#36393e', '#32353a']}
+                  start={{ x: 0, y: 0 }}
+                  end={{ x: 1, y: 1 }}
+                  style={styles.tabGradient}
+                >
+                  <ThemedText style={styles.tabText}>
+                    Completed ({completedParties.length})
+                  </ThemedText>
+                </LinearGradient>
+              )}
             </TouchableOpacity>
           </View>
 
@@ -376,15 +417,25 @@ const styles = StyleSheet.create({
   },
   tab: {
     flex: 1,
-    paddingVertical: 10,
-    paddingHorizontal: 16,
     borderRadius: 8,
-    backgroundColor: '#36393e',
     alignItems: 'center',
     justifyContent: 'center',
+    overflow: 'hidden',
   },
   tabActive: {
-    backgroundColor: '#c42743',
+    shadowColor: '#C42743',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.3,
+    shadowRadius: 3,
+    elevation: 5,
+  },
+  tabGradient: {
+    width: '100%',
+    paddingVertical: 10,
+    paddingHorizontal: 16,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderRadius: 8,
   },
   tabText: {
     fontSize: 14,
@@ -393,7 +444,10 @@ const styles = StyleSheet.create({
     letterSpacing: -0.2,
   },
   tabTextActive: {
+    fontSize: 14,
+    fontWeight: '600',
     color: '#fff',
+    letterSpacing: -0.2,
   },
   leaderboardsSection: {
     paddingHorizontal: 20,

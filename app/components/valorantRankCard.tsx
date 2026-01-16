@@ -1,6 +1,7 @@
 import { ThemedText } from '@/components/themed-text';
 import { useRouter } from 'expo-router';
 import { Image, StyleSheet, TouchableOpacity, View } from 'react-native';
+import { LinearGradient } from 'expo-linear-gradient';
 
 interface Game {
   id: number;
@@ -107,7 +108,12 @@ export default function ValorantRankCard({ game, username, viewOnly = false, use
       style={styles.rankCard}
       {...(!viewOnly && { onPress: handlePress, activeOpacity: 0.9 })}
     >
-      <View style={styles.cardBackground}>
+      <LinearGradient
+        colors={['#DC3D4B', '#8B1E2B', '#5C141D']}
+        start={{ x: 0, y: 0 }}
+        end={{ x: 1, y: 1 }}
+        style={styles.cardBackground}
+      >
         {/* Valorant logo watermark */}
         <Image
           source={require('@/assets/images/valorant-black.png')}
@@ -158,7 +164,7 @@ export default function ValorantRankCard({ game, username, viewOnly = false, use
             <ThemedText style={styles.swipeHint}>Tap to view details →</ThemedText>
           </View>
         </View>
-      </View>
+      </LinearGradient>
     </CardWrapper>
   );
 }
@@ -179,7 +185,6 @@ const styles = StyleSheet.create({
   cardBackground: {
     flex: 1,
     borderRadius: 24,
-    backgroundColor: '#B2313B', // Dark Valorant red
   },
   backgroundLogo: {
     position: 'absolute',

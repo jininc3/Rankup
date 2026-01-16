@@ -1,5 +1,6 @@
 import { ThemedText } from '@/components/themed-text';
 import { Image, StyleSheet, TouchableOpacity, View } from 'react-native';
+import { LinearGradient } from 'expo-linear-gradient';
 
 // Game logo mapping
 const GAME_LOGOS: { [key: string]: any } = {
@@ -103,54 +104,62 @@ export default function PartyCards({ leaderboard, onPress }: PartyCardsProps) {
     <TouchableOpacity
       style={styles.leaderboardCard}
       onPress={() => onPress(leaderboard)}
+      activeOpacity={0.9}
     >
-      <View style={styles.cardContent}>
-        {/* Left: Icon */}
-        <View style={styles.leaderboardIconContainer}>
-          <Image
-            source={GAME_LOGOS[leaderboard.game] || GAME_LOGOS['Valorant']}
-            style={styles.gameLogoImage}
-            resizeMode="contain"
-          />
-        </View>
+      <LinearGradient
+        colors={['#4a4d52', '#36393e', '#2c2f33']}
+        start={{ x: 0, y: 0 }}
+        end={{ x: 1, y: 1 }}
+        style={styles.cardGradient}
+      >
+        <View style={styles.cardContent}>
+          {/* Left: Icon */}
+          <View style={styles.leaderboardIconContainer}>
+            <Image
+              source={GAME_LOGOS[leaderboard.game] || GAME_LOGOS['Valorant']}
+              style={styles.gameLogoImage}
+              resizeMode="contain"
+            />
+          </View>
 
-        {/* Middle: Title and info */}
-        <View style={styles.cardMainInfo}>
-          <ThemedText style={styles.leaderboardName}>{leaderboard.name}</ThemedText>
-          <View style={styles.statsRow}>
-            {leaderboard.userRank && (
-              <ThemedText style={styles.statText}>
-                Rank: <ThemedText style={styles.statValue}>#{leaderboard.userRank}</ThemedText>
-                <ThemedText style={styles.statLabel}> / {leaderboard.members}</ThemedText>
-              </ThemedText>
-            )}
-            {leaderboard.userRank && daysInfo.totalDays > 0 && (
-              <ThemedText style={styles.statDivider}>•</ThemedText>
-            )}
-            {daysInfo.totalDays > 0 && (
-              <ThemedText style={styles.statText}>
-                Day <ThemedText style={styles.statValue}>{daysInfo.currentDay}/{daysInfo.totalDays}</ThemedText>
-                <ThemedText style={styles.statLabel}> ({daysInfo.daysLeft}d left)</ThemedText>
-              </ThemedText>
-            )}
+          {/* Middle: Title and info */}
+          <View style={styles.cardMainInfo}>
+            <ThemedText style={styles.leaderboardName}>{leaderboard.name}</ThemedText>
+            <View style={styles.statsRow}>
+              {leaderboard.userRank && (
+                <ThemedText style={styles.statText}>
+                  Rank: <ThemedText style={styles.statValue}>#{leaderboard.userRank}</ThemedText>
+                  <ThemedText style={styles.statLabel}> / {leaderboard.members}</ThemedText>
+                </ThemedText>
+              )}
+              {leaderboard.userRank && daysInfo.totalDays > 0 && (
+                <ThemedText style={styles.statDivider}>•</ThemedText>
+              )}
+              {daysInfo.totalDays > 0 && (
+                <ThemedText style={styles.statText}>
+                  Day <ThemedText style={styles.statValue}>{daysInfo.currentDay}/{daysInfo.totalDays}</ThemedText>
+                  <ThemedText style={styles.statLabel}> ({daysInfo.daysLeft}d left)</ThemedText>
+                </ThemedText>
+              )}
+            </View>
           </View>
         </View>
-      </View>
 
-      {/* Progress bar */}
-      {daysInfo.totalDays > 0 && (
-        <View style={styles.progressBarContainer}>
-          <View
-            style={[
-              styles.progressBarFill,
-              {
-                width: `${Math.min(100, (daysInfo.currentDay / daysInfo.totalDays) * 100)}%`,
-                backgroundColor: colors.progress
-              }
-            ]}
-          />
-        </View>
-      )}
+        {/* Progress bar */}
+        {daysInfo.totalDays > 0 && (
+          <View style={styles.progressBarContainer}>
+            <View
+              style={[
+                styles.progressBarFill,
+                {
+                  width: `${Math.min(100, (daysInfo.currentDay / daysInfo.totalDays) * 100)}%`,
+                  backgroundColor: colors.progress
+                }
+              ]}
+            />
+          </View>
+        )}
+      </LinearGradient>
     </TouchableOpacity>
   );
 }
@@ -158,11 +167,9 @@ export default function PartyCards({ leaderboard, onPress }: PartyCardsProps) {
 const styles = StyleSheet.create({
   leaderboardCard: {
     flexDirection: 'column',
-    backgroundColor: '#36393e',
-    padding: 10,
     borderRadius: 10,
     marginBottom: 10,
-    overflow: 'visible',
+    overflow: 'hidden',
     borderWidth: 1,
     borderColor: '#2c2f33',
     borderTopColor: '#40444b',
@@ -177,6 +184,10 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.1,
     shadowRadius: 8,
     elevation: 4,
+  },
+  cardGradient: {
+    padding: 10,
+    borderRadius: 10,
   },
   cardContent: {
     flexDirection: 'row',
@@ -239,7 +250,6 @@ const styles = StyleSheet.create({
   },
   progressBarFill: {
     height: '100%',
-    backgroundColor: '#000',
     borderRadius: 1.5,
   },
 });

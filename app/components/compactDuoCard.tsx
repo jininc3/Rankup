@@ -1,6 +1,7 @@
 import { ThemedText } from '@/components/themed-text';
 import { StyleSheet, View, Image, TouchableOpacity } from 'react-native';
 import { IconSymbol } from '@/components/ui/icon-symbol';
+import { LinearGradient } from 'expo-linear-gradient';
 
 interface CompactDuoCardProps {
   game: 'valorant' | 'league';
@@ -87,60 +88,67 @@ export default function CompactDuoCard({
 
   const CardContent = (
     <View style={styles.card}>
-      {/* Left Section - Avatar */}
-      <View style={styles.avatarContainer}>
-        {avatar && avatar.startsWith('http') ? (
-          <Image source={{ uri: avatar }} style={styles.avatar} />
-        ) : (
-          <View style={styles.avatarPlaceholder}>
-            <IconSymbol size={20} name="person.fill" color="#fff" />
-          </View>
-        )}
-      </View>
+      <LinearGradient
+        colors={['#4a4d52', '#36393e', '#2c2f33']}
+        start={{ x: 0, y: 0 }}
+        end={{ x: 1, y: 1 }}
+        style={styles.cardGradient}
+      >
+        {/* Left Section - Avatar */}
+        <View style={styles.avatarContainer}>
+          {avatar && avatar.startsWith('http') ? (
+            <Image source={{ uri: avatar }} style={styles.avatar} />
+          ) : (
+            <View style={styles.avatarPlaceholder}>
+              <IconSymbol size={20} name="person.fill" color="#fff" />
+            </View>
+          )}
+        </View>
 
-      {/* Right Section - Info */}
-      <View style={styles.infoSection}>
-        <ThemedText style={styles.username}>{username}</ThemedText>
-        <View style={styles.statsRow}>
-          {/* Peak Rank */}
-          <View style={styles.statItem}>
-            <Image
-              source={getRankIcon(peakRank)}
-              style={styles.rankIcon}
-              resizeMode="contain"
-            />
-            <ThemedText style={styles.statText}>{peakRank}</ThemedText>
-          </View>
-
-          <ThemedText style={styles.statDivider}>•</ThemedText>
-
-          {/* Main Role */}
-          <View style={styles.statItem}>
-            <Image
-              source={getRoleIcon(mainRole)}
-              style={styles.roleIcon}
-              resizeMode="contain"
-            />
-            <ThemedText style={styles.statText}>{mainRole}</ThemedText>
-          </View>
-
-          <ThemedText style={styles.statDivider}>•</ThemedText>
-
-          {/* Preferred Duo Role */}
-          <View style={styles.statItem}>
-            <ThemedText style={styles.statLabel}>Looking for: </ThemedText>
-            {preferredDuoRole === 'Any' ? (
-              <ThemedText style={styles.statText}>Any</ThemedText>
-            ) : (
+        {/* Right Section - Info */}
+        <View style={styles.infoSection}>
+          <ThemedText style={styles.username}>{username}</ThemedText>
+          <View style={styles.statsRow}>
+            {/* Peak Rank */}
+            <View style={styles.statItem}>
               <Image
-                source={getRoleIcon(preferredDuoRole)}
+                source={getRankIcon(peakRank)}
+                style={styles.rankIcon}
+                resizeMode="contain"
+              />
+              <ThemedText style={styles.statText}>{peakRank}</ThemedText>
+            </View>
+
+            <ThemedText style={styles.statDivider}>•</ThemedText>
+
+            {/* Main Role */}
+            <View style={styles.statItem}>
+              <Image
+                source={getRoleIcon(mainRole)}
                 style={styles.roleIcon}
                 resizeMode="contain"
               />
-            )}
+              <ThemedText style={styles.statText}>{mainRole}</ThemedText>
+            </View>
+
+            <ThemedText style={styles.statDivider}>•</ThemedText>
+
+            {/* Preferred Duo Role */}
+            <View style={styles.statItem}>
+              <ThemedText style={styles.statLabel}>Looking for: </ThemedText>
+              {preferredDuoRole === 'Any' ? (
+                <ThemedText style={styles.statText}>Any</ThemedText>
+              ) : (
+                <Image
+                  source={getRoleIcon(preferredDuoRole)}
+                  style={styles.roleIcon}
+                  resizeMode="contain"
+                />
+              )}
+            </View>
           </View>
         </View>
-      </View>
+      </LinearGradient>
     </View>
   );
 
@@ -157,11 +165,8 @@ export default function CompactDuoCard({
 
 const styles = StyleSheet.create({
   card: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: '#36393e',
-    padding: 10,
     borderRadius: 10,
+    overflow: 'hidden',
     borderWidth: 1,
     borderColor: '#2c2f33',
     borderTopColor: '#40444b',
@@ -176,6 +181,12 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.1,
     shadowRadius: 8,
     elevation: 4,
+  },
+  cardGradient: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: 10,
+    borderRadius: 10,
   },
   avatarContainer: {
     width: 36,

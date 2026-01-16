@@ -655,8 +655,15 @@ export default function ProfileScreen() {
                 onPress={() => router.push('/profilePages/editProfile')}
                 activeOpacity={0.8}
               >
-                <IconSymbol size={14} name="pencil" color="#fff" />
-                <ThemedText style={styles.editButtonText}>Edit Profile</ThemedText>
+                <LinearGradient
+                  colors={['#D64350', '#C42743', '#B22038']}
+                  start={{ x: 0, y: 0 }}
+                  end={{ x: 1, y: 1 }}
+                  style={styles.editButtonGradient}
+                >
+                  <IconSymbol size={14} name="pencil" color="#fff" />
+                  <ThemedText style={styles.editButtonText}>Edit Profile</ThemedText>
+                </LinearGradient>
               </TouchableOpacity>
 
               <View style={styles.socialsButtonContainer}>
@@ -665,8 +672,15 @@ export default function ProfileScreen() {
                   onPress={() => setShowSocialsDropdown(!showSocialsDropdown)}
                   activeOpacity={0.8}
                 >
-                  <IconSymbol size={14} name="link" color="#fff" />
-                  <ThemedText style={styles.socialsButtonText}>Socials</ThemedText>
+                  <LinearGradient
+                    colors={['#40444b', '#36393e', '#32353a']}
+                    start={{ x: 0, y: 0 }}
+                    end={{ x: 1, y: 1 }}
+                    style={styles.socialsButtonGradient}
+                  >
+                    <IconSymbol size={14} name="link" color="#fff" />
+                    <ThemedText style={styles.socialsButtonText}>Socials</ThemedText>
+                  </LinearGradient>
                 </TouchableOpacity>
 
                 {/* Socials Popover */}
@@ -771,7 +785,14 @@ export default function ProfileScreen() {
                 style={styles.shareButton}
                 activeOpacity={0.8}
               >
-                <IconSymbol size={16} name="square.and.arrow.up" color="#fff" />
+                <LinearGradient
+                  colors={['#40444b', '#36393e', '#32353a']}
+                  start={{ x: 0, y: 0 }}
+                  end={{ x: 1, y: 1 }}
+                  style={styles.shareButtonGradient}
+                >
+                  <IconSymbol size={16} name="square.and.arrow.up" color="#fff" />
+                </LinearGradient>
               </TouchableOpacity>
             </View>
           </View>
@@ -972,6 +993,19 @@ export default function ProfileScreen() {
                   </TouchableOpacity>
                 );
               })()}
+
+              {/* Add Rank Card Button */}
+              <TouchableOpacity
+                style={styles.addRankCardCardVertical}
+                onPress={() => router.push('/profilePages/newRankCard')}
+                activeOpacity={0.7}
+              >
+                <View style={styles.addRankCardContent}>
+                  <IconSymbol size={56} name="plus.circle.fill" color="#c42743" />
+                  <ThemedText style={styles.addRankCardText}>Add Rank Card</ThemedText>
+                  <ThemedText style={styles.addRankCardSubtext}>Connect another game</ThemedText>
+                </View>
+              </TouchableOpacity>
             </View>
           ) : (
             // Multiple Cards View - stacked/expandable
@@ -1129,7 +1163,7 @@ const styles = StyleSheet.create({
     bottom: 0,
     left: 0,
     right: 0,
-    height: 100,
+    height: 60,
   },
   headerIcons: {
     position: 'absolute',
@@ -1163,7 +1197,7 @@ const styles = StyleSheet.create({
     backdropFilter: 'blur(10px)',
   },
   profileCard: {
-    marginTop: 0,
+    marginTop: -24,
     marginHorizontal: 0,
     backgroundColor: '#1e2124',
     borderTopLeftRadius: 24,
@@ -1266,12 +1300,15 @@ const styles = StyleSheet.create({
   },
   editButton: {
     flex: 1,
+    borderRadius: 6,
+    overflow: 'hidden',
+  },
+  editButtonGradient: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
     gap: 5,
     paddingVertical: 7,
-    backgroundColor: '#c42743',
     borderRadius: 6,
   },
   editButtonText: {
@@ -1284,12 +1321,15 @@ const styles = StyleSheet.create({
     position: 'relative',
   },
   socialsButton: {
+    borderRadius: 6,
+    overflow: 'hidden',
+  },
+  socialsButtonGradient: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
     gap: 5,
     paddingVertical: 7,
-    backgroundColor: '#424549',
     borderRadius: 6,
   },
   socialsButtonText: {
@@ -1300,9 +1340,14 @@ const styles = StyleSheet.create({
   shareButton: {
     width: 33,
     height: 33,
+    borderRadius: 6,
+    overflow: 'hidden',
+  },
+  shareButtonGradient: {
+    width: '100%',
+    height: '100%',
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: '#424549',
     borderRadius: 6,
   },
   tabsContainer: {

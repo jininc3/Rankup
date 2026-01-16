@@ -2,6 +2,7 @@ import { ThemedText } from '@/components/themed-text';
 import { StyleSheet, TouchableOpacity, View, Image } from 'react-native';
 import { useRouter } from 'expo-router';
 import { getProfileIconUrl } from '@/services/riotService';
+import { LinearGradient } from 'expo-linear-gradient';
 
 interface Game {
   id: number;
@@ -67,7 +68,12 @@ export default function LeagueRankCard({ game, username, viewOnly = false, userI
       style={styles.rankCard}
       {...(!viewOnly && { onPress: handlePress, activeOpacity: 0.9 })}
     >
-      <View style={styles.cardBackground}>
+      <LinearGradient
+        colors={['#1a3a5c', '#0f1f3d', '#091428']}
+        start={{ x: 0, y: 0 }}
+        end={{ x: 1, y: 1 }}
+        style={styles.cardBackground}
+      >
         {/* League of Legends logo watermark */}
         <Image
           source={require('@/assets/images/lol.png')}
@@ -118,7 +124,7 @@ export default function LeagueRankCard({ game, username, viewOnly = false, userI
             <ThemedText style={styles.swipeHint}>Tap to view details →</ThemedText>
           </View>
         </View>
-      </View>
+      </LinearGradient>
     </CardWrapper>
   );
 }
@@ -139,7 +145,6 @@ const styles = StyleSheet.create({
   cardBackground: {
     flex: 1,
     borderRadius: 24,
-    backgroundColor: '#0f1f3d', // Navy blue
   },
   backgroundLogo: {
     position: 'absolute',
