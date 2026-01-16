@@ -934,7 +934,47 @@ export default function ProfileScreen() {
                 <ThemedText style={styles.addRankCardEmptyText}>Link Account</ThemedText>
               </TouchableOpacity>
             </View>
+          ) : userGames.length === 1 ? (
+            // Single Card View - clickable to open game stats
+            <View style={styles.verticalRankCardsContainer}>
+              {(() => {
+                const game = userGames[0];
+                let displayUsername = user?.username || 'User';
+
+                if (game.name === 'Valorant' && valorantAccount) {
+                  displayUsername = `${valorantAccount.gameName}#${valorantAccount.tag}`;
+                } else if ((game.name === 'League of Legends' || game.name === 'TFT') && riotAccount) {
+                  displayUsername = `${riotAccount.gameName}#${riotAccount.tagLine}`;
+                }
+
+                const handleSingleCardPress = () => {
+                  if (game.name === 'Valorant') {
+                    router.push({
+                      pathname: '/components/valorantGameStats',
+                      params: { game: JSON.stringify(game) },
+                    });
+                  } else if (game.name === 'League of Legends' || game.name === 'TFT') {
+                    router.push({
+                      pathname: '/components/leagueGameStats',
+                      params: { game: JSON.stringify(game) },
+                    });
+                  }
+                };
+
+                return (
+                  <TouchableOpacity
+                    key={game.id}
+                    style={styles.verticalCardWrapper}
+                    onPress={handleSingleCardPress}
+                    activeOpacity={0.9}
+                  >
+                    <RankCard game={game} username={displayUsername} viewOnly={true} />
+                  </TouchableOpacity>
+                );
+              })()}
+            </View>
           ) : (
+            // Multiple Cards View - stacked/expandable
             <View style={styles.verticalRankCardsContainer}>
               {!cardsExpanded ? (
                 // Stacked Cards View (Apple Wallet style)
