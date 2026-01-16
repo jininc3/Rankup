@@ -10,6 +10,8 @@ import {
   ScrollView,
   Animated,
   Easing,
+  Image,
+  Modal,
 } from 'react-native';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
@@ -17,6 +19,16 @@ import { IconSymbol } from '@/components/ui/icon-symbol';
 import { useRouter } from 'expo-router';
 import { db } from '@/config/firebase';
 import { collection, query, where, getDocs } from 'firebase/firestore';
+import * as ImagePicker from 'expo-image-picker';
+
+// Default avatar images
+const defaultAvatars = [
+  require('@/assets/images/avatar1.png'),
+  require('@/assets/images/avatar2.png'),
+  require('@/assets/images/avatar3.png'),
+  require('@/assets/images/avatar4.png'),
+  require('@/assets/images/avatar5.png'),
+];
 
 export default function EmailSignUpStep1() {
   const router = useRouter();
@@ -26,6 +38,11 @@ export default function EmailSignUpStep1() {
   const [usernameAvailable, setUsernameAvailable] = useState<boolean | null>(null);
   const debounceTimerRef = useRef<NodeJS.Timeout | null>(null);
   const spinValue = useRef(new Animated.Value(0)).current;
+
+  // Avatar selection state
+  const [selectedAvatarIndex, setSelectedAvatarIndex] = useState<number | null>(null);
+  const [customAvatarUri, setCustomAvatarUri] = useState<string | null>(null);
+  const [showAvatarModal, setShowAvatarModal] = useState(false);
 
   // Spinning animation
   useEffect(() => {
@@ -136,10 +153,14 @@ export default function EmailSignUpStep1() {
         }
       }
 
-      // Navigate to step 2 with username
+      // Navigate to step 2 with username and avatar info
       router.push({
         pathname: '/(auth)/emailSignUp2',
-        params: { username: username.trim() },
+        params: {
+          username: username.trim(),
+          avatarType: customAvatarUri ? 'custom' : (selectedAvatarIndex !== null ? 'default' : 'none'),
+          avatarValue: customAvatarUri || (selectedAvatarIndex !== null ? selectedAvatarIndex.toString() : ''),
+        },
       });
     } catch (error) {
       Alert.alert('Error', 'Failed to check username availability. Please try again.');
@@ -151,6 +172,49 @@ export default function EmailSignUpStep1() {
 
   const handleBack = () => {
     router.back();
+  };
+
+  const selectDefaultAvatar = (index: number) => {
+    setSelectedAvatarIndex(index);
+    setCustomAvatarUri(null);
+    setShowAvatarModal(false);
+  };
+
+  const pickCustomImage = async () => {
+    try {
+      const permissionResult = await ImagePicker.requestMediaLibraryPermissionsAsync();
+
+      if (!permissionResult.granted) {
+        Alert.alert('Permission Required', 'Please allow access to your photo library');
+        return;
+      }
+
+      const result = await ImagePicker.launchImageLibraryAsync({
+        mediaTypes: ImagePicker.MediaTypeOptions.Images,
+        allowsEditing: true,
+        aspect: [1, 1],
+        quality: 0.8,
+      });
+
+      if (!result.canceled && result.assets[0]) {
+        setCustomAvatarUri(result.assets[0].uri);
+        setSelectedAvatarIndex(null);
+        setShowAvatarModal(false);
+      }
+    } catch (error) {
+      console.error('Image picker error:', error);
+      Alert.alert('Error', 'Failed to pick image');
+    }
+  };
+
+  const getAvatarSource = () => {
+    if (customAvatarUri) {
+      return { uri: customAvatarUri };
+    }
+    if (selectedAvatarIndex !== null) {
+      return defaultAvatars[selectedAvatarIndex];
+    }
+    return null;
   };
 
   return (
@@ -176,6 +240,31 @@ export default function EmailSignUpStep1() {
               <ThemedText style={styles.subtitle}>
                 Step 1 of 3
               </ThemedText>
+            </View>
+
+            {/* Profile Icon Selection */}
+            <View style={styles.avatarSection}>
+              <ThemedText style={styles.label}>Profile Icon</ThemedText>
+              <TouchableOpacity
+                style={styles.avatarSelector}
+                onPress={() => setShowAvatarModal(true)}
+              >
+                <View style={styles.avatarPreview}>
+                  {getAvatarSource() ? (
+                    <Image source={getAvatarSource()!} style={styles.avatarImage} />
+                  ) : (
+                    <View style={styles.avatarPlaceholder}>
+                      <IconSymbol size={40} name="person.fill" color="#999" />
+                    </View>
+                  )}
+                  <View style={styles.editBadge}>
+                    <IconSymbol size={14} name="pencil" color="#fff" />
+                  </View>
+                </View>
+                <ThemedText style={styles.avatarHint}>
+                  {getAvatarSource() ? 'Tap to change' : 'Tap to select an avatar'}
+                </ThemedText>
+              </TouchableOpacity>
             </View>
 
             <View style={styles.form}>
@@ -250,6 +339,63 @@ export default function EmailSignUpStep1() {
           </View>
         </ScrollView>
       </KeyboardAvoidingView>
+
+      {/* Avatar Selection Modal */}
+      <Modal
+        visible={showAvatarModal}
+        transparent={true}
+        animationType="slide"
+        onRequestClose={() => setShowAvatarModal(false)}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalContent}>
+            <View style={styles.modalHeader}>
+              <ThemedText style={styles.modalTitle}>Choose Profile Icon</ThemedText>
+              <TouchableOpacity
+                style={styles.modalCloseButton}
+                onPress={() => setShowAvatarModal(false)}
+              >
+                <IconSymbol size={24} name="xmark" color="#fff" />
+              </TouchableOpacity>
+            </View>
+
+            <ThemedText style={styles.modalSectionTitle}>Default Avatars</ThemedText>
+            <View style={styles.avatarGrid}>
+              {defaultAvatars.map((avatar, index) => (
+                <TouchableOpacity
+                  key={index}
+                  style={[
+                    styles.avatarOption,
+                    selectedAvatarIndex === index && !customAvatarUri && styles.avatarOptionSelected,
+                  ]}
+                  onPress={() => selectDefaultAvatar(index)}
+                >
+                  <Image source={avatar} style={styles.avatarOptionImage} />
+                </TouchableOpacity>
+              ))}
+            </View>
+
+            <View style={styles.modalDivider} />
+
+            <TouchableOpacity
+              style={styles.customImageButton}
+              onPress={pickCustomImage}
+            >
+              <IconSymbol size={24} name="photo.on.rectangle" color="#c42743" />
+              <ThemedText style={styles.customImageButtonText}>
+                Choose from Library
+              </ThemedText>
+            </TouchableOpacity>
+
+            {customAvatarUri && (
+              <View style={styles.customPreviewContainer}>
+                <ThemedText style={styles.customPreviewLabel}>Your selected image:</ThemedText>
+                <Image source={{ uri: customAvatarUri }} style={styles.customPreviewImage} />
+              </View>
+            )}
+          </View>
+        </View>
+      </Modal>
     </ThemedView>
   );
 }
@@ -375,5 +521,142 @@ const styles = StyleSheet.create({
     color: '#c42743',
     fontSize: 14,
     fontWeight: '600',
+  },
+  // Avatar selection styles
+  avatarSection: {
+    alignItems: 'center',
+    marginBottom: 24,
+  },
+  avatarSelector: {
+    alignItems: 'center',
+  },
+  avatarPreview: {
+    width: 100,
+    height: 100,
+    borderRadius: 50,
+    backgroundColor: '#2c2f33',
+    alignItems: 'center',
+    justifyContent: 'center',
+    position: 'relative',
+  },
+  avatarImage: {
+    width: 100,
+    height: 100,
+    borderRadius: 50,
+  },
+  avatarPlaceholder: {
+    width: 100,
+    height: 100,
+    borderRadius: 50,
+    backgroundColor: '#2c2f33',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  editBadge: {
+    position: 'absolute',
+    bottom: 0,
+    right: 0,
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    backgroundColor: '#c42743',
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 3,
+    borderColor: '#1e2124',
+  },
+  avatarHint: {
+    fontSize: 14,
+    color: '#999',
+    marginTop: 8,
+  },
+  // Modal styles
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'transparent',
+    justifyContent: 'flex-end',
+  },
+  modalContent: {
+    backgroundColor: '#1e2124',
+    borderTopLeftRadius: 20,
+    borderTopRightRadius: 20,
+    padding: 24,
+    paddingBottom: 40,
+  },
+  modalHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 20,
+  },
+  modalTitle: {
+    fontSize: 20,
+    fontWeight: 'bold',
+    color: '#fff',
+  },
+  modalCloseButton: {
+    padding: 4,
+  },
+  modalSectionTitle: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#999',
+    marginBottom: 12,
+  },
+  avatarGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    justifyContent: 'space-between',
+    gap: 12,
+  },
+  avatarOption: {
+    width: 60,
+    height: 60,
+    borderRadius: 30,
+    borderWidth: 3,
+    borderColor: 'transparent',
+  },
+  avatarOptionSelected: {
+    borderColor: '#c42743',
+  },
+  avatarOptionImage: {
+    width: '100%',
+    height: '100%',
+    borderRadius: 30,
+  },
+  modalDivider: {
+    height: 1,
+    backgroundColor: '#3a3f44',
+    marginVertical: 20,
+  },
+  customImageButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    padding: 16,
+    backgroundColor: '#2c2f33',
+    borderRadius: 12,
+    gap: 10,
+  },
+  customImageButtonText: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#c42743',
+  },
+  customPreviewContainer: {
+    alignItems: 'center',
+    marginTop: 16,
+  },
+  customPreviewLabel: {
+    fontSize: 14,
+    color: '#999',
+    marginBottom: 8,
+  },
+  customPreviewImage: {
+    width: 60,
+    height: 60,
+    borderRadius: 30,
+    borderWidth: 3,
+    borderColor: '#c42743',
   },
 });

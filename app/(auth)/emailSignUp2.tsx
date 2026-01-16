@@ -16,7 +16,7 @@ import DateTimePicker from '@react-native-community/datetimepicker';
 
 export default function EmailSignUpStep2() {
   const router = useRouter();
-  const { username } = useLocalSearchParams();
+  const { username, avatarType, avatarValue } = useLocalSearchParams();
   const [dateOfBirth, setDateOfBirth] = useState<Date | null>(null);
   const [showDatePicker, setShowDatePicker] = useState(true);
 
@@ -50,12 +50,14 @@ export default function EmailSignUpStep2() {
       return;
     }
 
-    // Navigate to step 3 with username and dateOfBirth
+    // Navigate to step 3 with username, dateOfBirth, and avatar info
     router.push({
       pathname: '/(auth)/emailSignUp3',
       params: {
         username: username as string,
         dateOfBirth: dateOfBirth.toISOString(),
+        avatarType: avatarType as string,
+        avatarValue: avatarValue as string,
       },
     });
   };

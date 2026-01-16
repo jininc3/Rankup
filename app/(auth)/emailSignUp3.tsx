@@ -17,10 +17,21 @@ import { signUpWithEmail } from '@/services/authService';
 import { db, auth } from '@/config/firebase';
 import { doc, updateDoc } from 'firebase/firestore';
 import { sendEmailVerification } from 'firebase/auth';
+import { uploadProfilePicture } from '@/services/storageService';
+import { Asset } from 'expo-asset';
+
+// Default avatar assets - must match the order in emailSignUp1.tsx
+const defaultAvatarModules = [
+  require('@/assets/images/avatar1.png'),
+  require('@/assets/images/avatar2.png'),
+  require('@/assets/images/avatar3.png'),
+  require('@/assets/images/avatar4.png'),
+  require('@/assets/images/avatar5.png'),
+];
 
 export default function EmailSignUpStep3() {
   const router = useRouter();
-  const { username, dateOfBirth } = useLocalSearchParams();
+  const { username, dateOfBirth, avatarType, avatarValue } = useLocalSearchParams();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
@@ -67,10 +78,29 @@ export default function EmailSignUpStep3() {
         (username as string).toLowerCase()
       );
 
-      // Save date of birth to Firestore
+      // Save date of birth and avatar to Firestore
       if (user?.id) {
+        let avatarUrl = '';
+
+        // Handle avatar based on type
+        if (avatarType === 'custom' && avatarValue) {
+          // Upload custom image to Firebase Storage
+          avatarUrl = await uploadProfilePicture(user.id, avatarValue as string);
+        } else if (avatarType === 'default' && avatarValue) {
+          // For default avatars, get the asset URI and upload it
+          const avatarIndex = parseInt(avatarValue as string, 10);
+          if (avatarIndex >= 0 && avatarIndex < defaultAvatarModules.length) {
+            const asset = Asset.fromModule(defaultAvatarModules[avatarIndex]);
+            await asset.downloadAsync();
+            if (asset.localUri) {
+              avatarUrl = await uploadProfilePicture(user.id, asset.localUri);
+            }
+          }
+        }
+
         await updateDoc(doc(db, 'users', user.id), {
           dateOfBirth: dateOfBirth as string,
+          ...(avatarUrl && { avatar: avatarUrl }),
         });
       }
 
