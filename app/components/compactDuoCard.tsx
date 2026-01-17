@@ -2,6 +2,7 @@ import { ThemedText } from '@/components/themed-text';
 import { StyleSheet, View, Image, TouchableOpacity } from 'react-native';
 import { IconSymbol } from '@/components/ui/icon-symbol';
 import { LinearGradient } from 'expo-linear-gradient';
+import { useState, useEffect } from 'react';
 
 interface CompactDuoCardProps {
   game: 'valorant' | 'league';
@@ -11,6 +12,8 @@ interface CompactDuoCardProps {
   mainRole?: string;
   preferredDuoRole?: string;
   onPress?: () => void;
+  onAvatarLoad?: () => void;
+  showContent?: boolean;
 }
 
 // League rank icon mapping
@@ -67,7 +70,32 @@ export default function CompactDuoCard({
   mainRole = 'Mid',
   preferredDuoRole = 'Any',
   onPress,
+  onAvatarLoad,
+  showContent = true,
 }: CompactDuoCardProps) {
+  const [avatarLoaded, setAvatarLoaded] = useState(false);
+
+  // Track if we've already notified parent
+  const [hasNotifiedParent, setHasNotifiedParent] = useState(false);
+
+  // If no avatar URL (placeholder icon), mark as loaded immediately
+  useEffect(() => {
+    if (!avatar || !avatar.startsWith('http')) {
+      setAvatarLoaded(true);
+    } else {
+      setAvatarLoaded(false);
+      setHasNotifiedParent(false);
+    }
+  }, [avatar]);
+
+  // Notify parent when avatar loads (for coordination)
+  useEffect(() => {
+    if (avatarLoaded && onAvatarLoad && !hasNotifiedParent) {
+      onAvatarLoad();
+      setHasNotifiedParent(true);
+    }
+  }, [avatarLoaded, onAvatarLoad, hasNotifiedParent]);
+
   const getRankIcon = (rank: string) => {
     if (!rank || rank === 'Unranked') {
       return game === 'valorant' ? VALORANT_RANK_ICONS.unranked : LEAGUE_RANK_ICONS.unranked;
@@ -97,7 +125,12 @@ export default function CompactDuoCard({
         {/* Left Section - Avatar */}
         <View style={styles.avatarContainer}>
           {avatar && avatar.startsWith('http') ? (
-            <Image source={{ uri: avatar }} style={styles.avatar} />
+            <Image
+              source={{ uri: avatar }}
+              style={styles.avatar}
+              onLoad={() => setAvatarLoaded(true)}
+              onError={() => setAvatarLoaded(true)}
+            />
           ) : (
             <View style={styles.avatarPlaceholder}>
               <IconSymbol size={20} name="person.fill" color="#fff" />

@@ -7,7 +7,7 @@ import { ThemedView } from '@/components/themed-view';
 import { IconSymbol } from '@/components/ui/icon-symbol';
 import { useAuth } from '@/contexts/AuthContext';
 import { useState, useEffect, useCallback } from 'react';
-import { Alert, ScrollView, StyleSheet, TouchableOpacity, View, RefreshControl, Dimensions } from 'react-native';
+import { Alert, ScrollView, StyleSheet, TouchableOpacity, View, RefreshControl, Dimensions, ActivityIndicator } from 'react-native';
 import { doc, getDoc, setDoc, deleteDoc, serverTimestamp, collection, query, where, getDocs, orderBy, limit } from 'firebase/firestore';
 import { db } from '@/config/firebase';
 import { useRouter } from 'expo-router';
@@ -35,6 +35,11 @@ export default function DuoFinderScreen() {
   const [duoCards, setDuoCards] = useState<DuoCardWithId[]>([]);
   const [loadingDuoCards, setLoadingDuoCards] = useState(false);
   const [isEditMode, setIsEditMode] = useState(false);
+
+  // Avatar loading coordination
+  const [avatarsLoadedCount, setAvatarsLoadedCount] = useState(0);
+  const [allAvatarsLoaded, setAllAvatarsLoaded] = useState(false);
+  const [showCards, setShowCards] = useState(false);
   const [showDetailModal, setShowDetailModal] = useState(false);
   const [selectedCard, setSelectedCard] = useState<{ game: 'valorant' | 'league' } | null>(null);
   const [showFindDuoDetailModal, setShowFindDuoDetailModal] = useState(false);
@@ -238,6 +243,36 @@ export default function DuoFinderScreen() {
     }
   };
 
+
+  // Track when all avatars are loaded
+  useEffect(() => {
+    if (duoCards.length > 0 && avatarsLoadedCount >= duoCards.length) {
+      setAllAvatarsLoaded(true);
+      setShowCards(true);
+    } else if (duoCards.length === 0) {
+      setAllAvatarsLoaded(true);
+      setShowCards(false);
+    }
+  }, [avatarsLoadedCount, duoCards.length]);
+
+  // Reset avatar loading when duo cards change
+  useEffect(() => {
+    setAvatarsLoadedCount(0);
+    setAllAvatarsLoaded(false);
+    setShowCards(false);
+  }, [duoCards]);
+
+  // Timeout fallback - if avatars take too long (3 seconds), reveal anyway
+  useEffect(() => {
+    if (duoCards.length > 0 && !allAvatarsLoaded) {
+      const timeout = setTimeout(() => {
+        setAllAvatarsLoaded(true);
+        setShowCards(true);
+      }, 3000);
+
+      return () => clearTimeout(timeout);
+    }
+  }, [duoCards.length, allAvatarsLoaded]);
 
   // Check if user has Valorant or League accounts (RankCards)
   useEffect(() => {
@@ -534,9 +569,16 @@ export default function DuoFinderScreen() {
             </View>
 
             {/* Duo Cards List */}
-            {loadingDuoCards ? (
+            {loadingDuoCards || (duoCards.length > 0 && !showCards) ? (
               <View style={styles.loadingContainer}>
-                <ThemedText style={styles.loadingText}>Finding duo partners...</ThemedText>
+                <View style={styles.loadingContent}>
+                  <View style={styles.loadingIconContainer}>
+                    <IconSymbol size={48} name="person.2.fill" color="#c42743" />
+                  </View>
+                  <ActivityIndicator size="large" color="#c42743" style={styles.loadingSpinner} />
+                  <ThemedText style={styles.loadingTitle}>Finding Duo Partners</ThemedText>
+                  <ThemedText style={styles.loadingSubtext}>Searching for players in your rank...</ThemedText>
+                </View>
               </View>
             ) : duoCards.length === 0 ? (
               <View style={styles.emptyDuoState}>
@@ -569,6 +611,8 @@ export default function DuoFinderScreen() {
                       mainRole={card.mainRole}
                       preferredDuoRole={card.lookingFor || 'Any'}
                       onPress={() => handleFindDuoCardPress(card)}
+                      onAvatarLoad={() => setAvatarsLoadedCount(prev => prev + 1)}
+                      showContent={true}
                     />
                   </View>
                 ))}
@@ -962,6 +1006,35 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
     paddingVertical: 60,
+  },
+  loadingContent: {
+    alignItems: 'center',
+    gap: 16,
+  },
+  loadingIconContainer: {
+    width: 80,
+    height: 80,
+    borderRadius: 40,
+    backgroundColor: '#2c2f33',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 8,
+    borderWidth: 2,
+    borderColor: '#c42743',
+  },
+  loadingSpinner: {
+    marginVertical: 8,
+  },
+  loadingTitle: {
+    fontSize: 18,
+    fontWeight: '700',
+    color: '#fff',
+    letterSpacing: -0.5,
+  },
+  loadingSubtext: {
+    fontSize: 14,
+    color: '#72767d',
+    fontWeight: '500',
   },
   loadingText: {
     fontSize: 16,

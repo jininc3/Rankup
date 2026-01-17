@@ -279,7 +279,10 @@ export default function SearchScreen() {
                 activeOpacity={0.7}
               >
                 <View style={styles.historyLeft}>
-                  <View style={styles.historyAvatar}>
+                  <View style={[
+                    styles.historyAvatar,
+                    tierBorderColor ? { borderWidth: 2, borderColor: tierBorderColor } : {}
+                  ]}>
                     {user.avatar && user.avatar.startsWith('http') ? (
                       <Image source={{ uri: user.avatar }} style={styles.historyAvatarImage} />
                     ) : (
@@ -323,7 +326,10 @@ export default function SearchScreen() {
               activeOpacity={0.7}
             >
               <View style={styles.historyLeft}>
-                <View style={styles.historyAvatar}>
+                <View style={[
+                  styles.historyAvatar,
+                  tierBorderColor ? { borderWidth: 2, borderColor: tierBorderColor } : {}
+                ]}>
                   {user.avatar && user.avatar.startsWith('http') ? (
                     <Image source={{ uri: user.avatar }} style={styles.historyAvatarImage} />
                   ) : (

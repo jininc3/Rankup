@@ -15,6 +15,7 @@ import { collection, getDocs, query, Timestamp, where, doc, getDoc, updateDoc, i
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { ActivityIndicator, Alert, Dimensions, Image, Linking, Modal, RefreshControl, ScrollView, StyleSheet, TouchableOpacity, View, LayoutAnimation, Platform, UIManager, Animated } from 'react-native';
 import * as Clipboard from 'expo-clipboard';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { getLeagueStats, getTftStats, formatRank } from '@/services/riotService';
 import { getValorantStats } from '@/services/valorantService';
 import { deletePostMedia } from '@/services/storageService';
@@ -91,12 +92,44 @@ export default function ProfileScreen() {
   // Combined loading state - avatar, cover photo, and posts all loaded
   const [allContentLoaded, setAllContentLoaded] = useState(false);
 
+  // Track if this is the first time loading the profile
+  const [isFirstLoad, setIsFirstLoad] = useState(true);
+  const [hasCheckedFirstLoad, setHasCheckedFirstLoad] = useState(false);
+
   // Enable LayoutAnimation on Android
   useEffect(() => {
     if (Platform.OS === 'android' && UIManager.setLayoutAnimationEnabledExperimental) {
       UIManager.setLayoutAnimationEnabledExperimental(true);
     }
   }, []);
+
+  // Check if this is the first load
+  useEffect(() => {
+    const checkFirstLoad = async () => {
+      try {
+        const hasLoadedBefore = await AsyncStorage.getItem('profile_loaded_before');
+        if (hasLoadedBefore === 'true') {
+          setIsFirstLoad(false);
+          setAllContentLoaded(true); // Show content instantly if not first load
+        }
+        setHasCheckedFirstLoad(true);
+      } catch (error) {
+        console.error('Error checking first load:', error);
+        setHasCheckedFirstLoad(true);
+      }
+    };
+
+    checkFirstLoad();
+  }, []);
+
+  // Mark profile as loaded after first successful load
+  useEffect(() => {
+    if (allContentLoaded && isFirstLoad && hasCheckedFirstLoad) {
+      AsyncStorage.setItem('profile_loaded_before', 'true').catch(error => {
+        console.error('Error saving first load flag:', error);
+      });
+    }
+  }, [allContentLoaded, isFirstLoad, hasCheckedFirstLoad]);
 
   // Track when all post images are loaded
   useEffect(() => {
@@ -132,8 +165,17 @@ export default function ProfileScreen() {
     }
   }, [user?.coverPhoto]);
 
-  // Coordinate avatar, cover photo, and posts loading - reveal together
+  // Coordinate avatar, cover photo, and posts loading - reveal together (only on first load)
   useEffect(() => {
+    if (!hasCheckedFirstLoad) return; // Wait until we've checked first load status
+
+    // If not first load, show content immediately
+    if (!isFirstLoad) {
+      setAllContentLoaded(true);
+      return;
+    }
+
+    // On first load, wait for all content to load
     console.log('Loading status - Avatar:', avatarLoaded, 'Cover:', coverPhotoLoaded, 'Posts:', allPostImagesLoaded);
     if (avatarLoaded && coverPhotoLoaded && allPostImagesLoaded) {
       console.log('✅ All content loaded, revealing together');
@@ -141,18 +183,18 @@ export default function ProfileScreen() {
         setAllContentLoaded(true);
       }, 50);
     }
-  }, [avatarLoaded, coverPhotoLoaded, allPostImagesLoaded]);
+  }, [avatarLoaded, coverPhotoLoaded, allPostImagesLoaded, isFirstLoad, hasCheckedFirstLoad]);
 
-  // Timeout fallback - if images take too long (3 seconds), reveal anyway
+  // Timeout fallback - if images take too long (3 seconds), reveal anyway (only on first load)
   useEffect(() => {
-    if (!allContentLoaded && user?.id) {
+    if (!allContentLoaded && user?.id && isFirstLoad && hasCheckedFirstLoad) {
       const timeout = setTimeout(() => {
         setAllContentLoaded(true);
       }, 3000);
 
       return () => clearTimeout(timeout);
     }
-  }, [allContentLoaded, user?.id]);
+  }, [allContentLoaded, user?.id, isFirstLoad, hasCheckedFirstLoad]);
 
   // Debug logging - only when values change
   useEffect(() => {
@@ -456,6 +498,8 @@ export default function ProfileScreen() {
     setAvatarLoaded(false);
     setCoverPhotoLoaded(false);
     setAllContentLoaded(false);
+    // Treat pull-to-refresh like a first load (wait for images)
+    setIsFirstLoad(true);
 
     await refreshUser(); // Refresh user data from AuthContext
     await fetchRiotData(true); // Force refresh Riot data from API
