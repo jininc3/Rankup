@@ -31,13 +31,14 @@ export default function DuoCard({ duo }: DuoCardProps) {
   };
 
   return (
-    <View style={styles.duoCard}>
-      <LinearGradient
-        colors={['#40444b', '#36393e', '#32353a']}
-        start={{ x: 0, y: 0 }}
-        end={{ x: 1, y: 1 }}
-        style={styles.cardGradient}
-      >
+    <View style={styles.duoCardShadow}>
+      <View style={styles.duoCard}>
+        <LinearGradient
+          colors={['#40444b', '#36393e', '#32353a']}
+          start={{ x: 0, y: 0 }}
+          end={{ x: 1, y: 1 }}
+          style={styles.cardGradient}
+        >
         <View style={styles.duoHeader}>
           <TouchableOpacity style={styles.duoLeft}>
             <View style={styles.avatarContainer}>
@@ -96,16 +97,29 @@ export default function DuoCard({ duo }: DuoCardProps) {
           <IconSymbol size={16} name="paperplane.fill" color="#fff" />
           <ThemedText style={styles.inviteText}>Invite</ThemedText>
         </TouchableOpacity>
-      </LinearGradient>
+        </LinearGradient>
+      </View>
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  duoCard: {
+  duoCardShadow: {
     borderRadius: 10,
     height: cardHeight,
     marginBottom: 12,
+    shadowColor: '#000',
+    shadowOffset: {
+      width: 0,
+      height: 3,
+    },
+    shadowOpacity: 0.25,
+    shadowRadius: 6,
+    elevation: 4,
+  },
+  duoCard: {
+    flex: 1,
+    borderRadius: 10,
     overflow: 'hidden',
     borderWidth: 1,
     borderColor: '#2c2f33',
@@ -113,14 +127,6 @@ const styles = StyleSheet.create({
     borderLeftColor: '#40444b',
     borderBottomColor: '#202225',
     borderRightColor: '#202225',
-    shadowColor: '#000',
-    shadowOffset: {
-      width: 0,
-      height: 4,
-    },
-    shadowOpacity: 0.1,
-    shadowRadius: 8,
-    elevation: 4,
   },
   cardGradient: {
     flex: 1,

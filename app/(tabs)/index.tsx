@@ -863,31 +863,6 @@ export default function HomeScreen() {
 
   return (
     <ThemedView style={styles.container}>
-        <View style={styles.header}>
-        <ThemedText style={styles.headerTitle}>Following</ThemedText>
-        <View style={styles.headerActions}>
-          <TouchableOpacity
-            style={[styles.headerIconButton, { marginLeft: 30 }]}
-            onPress={() => router.push('/chatPages/chatList')}
-          >
-            <IconSymbol size={24} name="paperplane.fill" color="#fff" />
-          </TouchableOpacity>
-          <TouchableOpacity
-            style={[styles.headerIconButton, { marginLeft: 10 }]}
-            onPress={() => router.push('/notifications')}
-          >
-            <IconSymbol size={24} name="bell" color="#fff" />
-            {unreadNotificationCount > 0 && (
-              <View style={styles.notificationBadge}>
-                <ThemedText style={styles.notificationBadgeText}>
-                  {unreadNotificationCount > 9 ? '9+' : unreadNotificationCount}
-                </ThemedText>
-              </View>
-            )}
-          </TouchableOpacity>
-        </View>
-      </View>
-
       <ScrollView
         ref={scrollViewRef}
         style={styles.scrollView}
@@ -909,6 +884,31 @@ export default function HomeScreen() {
           />
         }
       >
+        <View style={styles.header}>
+          <ThemedText style={styles.headerTitle}>Following</ThemedText>
+          <View style={styles.headerActions}>
+            <TouchableOpacity
+              style={[styles.headerIconButton, { marginLeft: 30 }]}
+              onPress={() => router.push('/chatPages/chatList')}
+            >
+              <IconSymbol size={24} name="paperplane.fill" color="#fff" />
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={[styles.headerIconButton, { marginLeft: 10 }]}
+              onPress={() => router.push('/notifications')}
+            >
+              <IconSymbol size={24} name="bell" color="#fff" />
+              {unreadNotificationCount > 0 && (
+                <View style={styles.notificationBadge}>
+                  <ThemedText style={styles.notificationBadgeText}>
+                    {unreadNotificationCount > 9 ? '9+' : unreadNotificationCount}
+                  </ThemedText>
+                </View>
+              )}
+            </TouchableOpacity>
+          </View>
+        </View>
+
         {/* Game Filter Tabs */}
         <ScrollView
           horizontal
@@ -916,78 +916,84 @@ export default function HomeScreen() {
           contentContainerStyle={styles.tabScrollContent}
           style={styles.tabScrollContainer}
         >
-          <TouchableOpacity
-            style={[styles.gameTab, selectedGameFilter === null && styles.gameTabActive]}
-            onPress={() => setSelectedGameFilter(null)}
-          >
-            {selectedGameFilter === null ? (
-              <LinearGradient
-                colors={['#D64350', '#C42743', '#B22038']}
-                start={{ x: 0, y: 0 }}
-                end={{ x: 1, y: 1 }}
-                style={styles.gameTabGradient}
-              >
-                <ThemedText style={styles.gameTabTextActive}>All Games</ThemedText>
-              </LinearGradient>
-            ) : (
-              <LinearGradient
-                colors={['#40444b', '#36393e', '#32353a']}
-                start={{ x: 0, y: 0 }}
-                end={{ x: 1, y: 1 }}
-                style={styles.gameTabGradient}
-              >
-                <ThemedText style={styles.gameTabText}>All Games</ThemedText>
-              </LinearGradient>
-            )}
-          </TouchableOpacity>
-          <TouchableOpacity
-            style={[styles.gameTab, selectedGameFilter === 'valorant' && styles.gameTabActive]}
-            onPress={() => setSelectedGameFilter(selectedGameFilter === 'valorant' ? null : 'valorant')}
-          >
-            {selectedGameFilter === 'valorant' ? (
-              <LinearGradient
-                colors={['#D64350', '#C42743', '#B22038']}
-                start={{ x: 0, y: 0 }}
-                end={{ x: 1, y: 1 }}
-                style={styles.gameTabGradient}
-              >
-                <ThemedText style={styles.gameTabTextActive}>Valorant</ThemedText>
-              </LinearGradient>
-            ) : (
-              <LinearGradient
-                colors={['#40444b', '#36393e', '#32353a']}
-                start={{ x: 0, y: 0 }}
-                end={{ x: 1, y: 1 }}
-                style={styles.gameTabGradient}
-              >
-                <ThemedText style={styles.gameTabText}>Valorant</ThemedText>
-              </LinearGradient>
-            )}
-          </TouchableOpacity>
-          <TouchableOpacity
-            style={[styles.gameTab, selectedGameFilter === 'league' && styles.gameTabActive]}
-            onPress={() => setSelectedGameFilter(selectedGameFilter === 'league' ? null : 'league')}
-          >
-            {selectedGameFilter === 'league' ? (
-              <LinearGradient
-                colors={['#D64350', '#C42743', '#B22038']}
-                start={{ x: 0, y: 0 }}
-                end={{ x: 1, y: 1 }}
-                style={styles.gameTabGradient}
-              >
-                <ThemedText style={styles.gameTabTextActive}>League</ThemedText>
-              </LinearGradient>
-            ) : (
-              <LinearGradient
-                colors={['#40444b', '#36393e', '#32353a']}
-                start={{ x: 0, y: 0 }}
-                end={{ x: 1, y: 1 }}
-                style={styles.gameTabGradient}
-              >
-                <ThemedText style={styles.gameTabText}>League</ThemedText>
-              </LinearGradient>
-            )}
-          </TouchableOpacity>
+          <View style={[styles.gameTabShadow, selectedGameFilter === null && styles.gameTabShadowActive]}>
+            <TouchableOpacity
+              style={[styles.gameTab, selectedGameFilter === null && styles.gameTabActive]}
+              onPress={() => setSelectedGameFilter(null)}
+            >
+              {selectedGameFilter === null ? (
+                <LinearGradient
+                  colors={['#D64350', '#C42743', '#B22038']}
+                  start={{ x: 0, y: 0 }}
+                  end={{ x: 1, y: 1 }}
+                  style={styles.gameTabGradient}
+                >
+                  <ThemedText style={styles.gameTabTextActive}>All Games</ThemedText>
+                </LinearGradient>
+              ) : (
+                <LinearGradient
+                  colors={['#40444b', '#36393e', '#32353a']}
+                  start={{ x: 0, y: 0 }}
+                  end={{ x: 1, y: 1 }}
+                  style={styles.gameTabGradient}
+                >
+                  <ThemedText style={styles.gameTabText}>All Games</ThemedText>
+                </LinearGradient>
+              )}
+            </TouchableOpacity>
+          </View>
+          <View style={[styles.gameTabShadow, selectedGameFilter === 'valorant' && styles.gameTabShadowActive]}>
+            <TouchableOpacity
+              style={[styles.gameTab, selectedGameFilter === 'valorant' && styles.gameTabActive]}
+              onPress={() => setSelectedGameFilter(selectedGameFilter === 'valorant' ? null : 'valorant')}
+            >
+              {selectedGameFilter === 'valorant' ? (
+                <LinearGradient
+                  colors={['#D64350', '#C42743', '#B22038']}
+                  start={{ x: 0, y: 0 }}
+                  end={{ x: 1, y: 1 }}
+                  style={styles.gameTabGradient}
+                >
+                  <ThemedText style={styles.gameTabTextActive}>Valorant</ThemedText>
+                </LinearGradient>
+              ) : (
+                <LinearGradient
+                  colors={['#40444b', '#36393e', '#32353a']}
+                  start={{ x: 0, y: 0 }}
+                  end={{ x: 1, y: 1 }}
+                  style={styles.gameTabGradient}
+                >
+                  <ThemedText style={styles.gameTabText}>Valorant</ThemedText>
+                </LinearGradient>
+              )}
+            </TouchableOpacity>
+          </View>
+          <View style={[styles.gameTabShadow, selectedGameFilter === 'league' && styles.gameTabShadowActive]}>
+            <TouchableOpacity
+              style={[styles.gameTab, selectedGameFilter === 'league' && styles.gameTabActive]}
+              onPress={() => setSelectedGameFilter(selectedGameFilter === 'league' ? null : 'league')}
+            >
+              {selectedGameFilter === 'league' ? (
+                <LinearGradient
+                  colors={['#D64350', '#C42743', '#B22038']}
+                  start={{ x: 0, y: 0 }}
+                  end={{ x: 1, y: 1 }}
+                  style={styles.gameTabGradient}
+                >
+                  <ThemedText style={styles.gameTabTextActive}>League</ThemedText>
+                </LinearGradient>
+              ) : (
+                <LinearGradient
+                  colors={['#40444b', '#36393e', '#32353a']}
+                  start={{ x: 0, y: 0 }}
+                  end={{ x: 1, y: 1 }}
+                  style={styles.gameTabGradient}
+                >
+                  <ThemedText style={styles.gameTabText}>League</ThemedText>
+                </LinearGradient>
+              )}
+            </TouchableOpacity>
+          </View>
         </ScrollView>
 
         {loading ? (
@@ -1188,21 +1194,34 @@ const styles = StyleSheet.create({
     color: '#fff',
     fontWeight: '600',
   },
-  gameTab: {
-    alignItems: 'center',
-    justifyContent: 'center',
-    borderRadius: 16,
-    backgroundColor: '#2c2f33',
-    borderWidth: 1,
-    borderColor: '#2c2f33',
+  gameTabShadow: {
+    borderRadius: 6,
     shadowColor: '#000',
     shadowOffset: {
       width: 0,
-      height: 1,
+      height: 2,
+    },
+    shadowOpacity: 0.15,
+    shadowRadius: 3,
+    elevation: 2,
+  },
+  gameTabShadowActive: {
+    shadowColor: '#DC3D4B',
+    shadowOffset: {
+      width: 0,
+      height: 2,
     },
     shadowOpacity: 0.2,
-    shadowRadius: 2,
+    shadowRadius: 3,
     elevation: 3,
+  },
+  gameTab: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderRadius: 6,
+    backgroundColor: '#2c2f33',
+    borderWidth: 1,
+    borderColor: '#2c2f33',
     minHeight: 32,
     minWidth: 90,
     overflow: 'hidden',
@@ -1210,14 +1229,6 @@ const styles = StyleSheet.create({
   gameTabActive: {
     backgroundColor: 'transparent',
     borderColor: 'transparent',
-    shadowColor: '#DC3D4B',
-    shadowOffset: {
-      width: 0,
-      height: 2,
-    },
-    shadowOpacity: 0.3,
-    shadowRadius: 3,
-    elevation: 5,
   },
   gameTabGradient: {
     flex: 1,
@@ -1226,7 +1237,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 14,
     alignItems: 'center',
     justifyContent: 'center',
-    borderRadius: 16,
+    borderRadius: 6,
   },
   gameTabText: {
     fontSize: 13,

@@ -101,12 +101,13 @@ export default function PartyCards({ leaderboard, onPress }: PartyCardsProps) {
   const colors = GAME_COLORS[leaderboard.game] || GAME_COLORS['default'];
 
   return (
-    <TouchableOpacity
-      style={styles.leaderboardCard}
-      onPress={() => onPress(leaderboard)}
-      activeOpacity={0.9}
-    >
-      <LinearGradient
+    <View style={styles.leaderboardCardShadow}>
+      <TouchableOpacity
+        style={styles.leaderboardCard}
+        onPress={() => onPress(leaderboard)}
+        activeOpacity={0.9}
+      >
+        <LinearGradient
         colors={['#4a4d52', '#36393e', '#2c2f33']}
         start={{ x: 0, y: 0 }}
         end={{ x: 1, y: 1 }}
@@ -159,16 +160,28 @@ export default function PartyCards({ leaderboard, onPress }: PartyCardsProps) {
             />
           </View>
         )}
-      </LinearGradient>
-    </TouchableOpacity>
+        </LinearGradient>
+      </TouchableOpacity>
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
+  leaderboardCardShadow: {
+    borderRadius: 10,
+    marginBottom: 10,
+    shadowColor: '#000',
+    shadowOffset: {
+      width: 0,
+      height: 3,
+    },
+    shadowOpacity: 0.25,
+    shadowRadius: 6,
+    elevation: 4,
+  },
   leaderboardCard: {
     flexDirection: 'column',
     borderRadius: 10,
-    marginBottom: 10,
     overflow: 'hidden',
     borderWidth: 1,
     borderColor: '#2c2f33',
@@ -176,14 +189,6 @@ const styles = StyleSheet.create({
     borderLeftColor: '#40444b',
     borderBottomColor: '#202225',
     borderRightColor: '#202225',
-    shadowColor: '#000',
-    shadowOffset: {
-      width: 0,
-      height: 8,
-    },
-    shadowOpacity: 0.3,
-    shadowRadius: 16,
-    elevation: 12,
   },
   cardGradient: {
     padding: 10,
