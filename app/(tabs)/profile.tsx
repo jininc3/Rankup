@@ -673,25 +673,15 @@ export default function ProfileScreen() {
             />
           </View>
 
-          {/* Header Icons */}
-          <View style={styles.headerIcons}>
-            <TouchableOpacity
-              style={styles.headerIconButton}
-              onPress={() => router.push('/chatPages/chatList')}
-            >
-              <View style={styles.iconButtonBg}>
-                <IconSymbol size={22} name="paperplane.fill" color="#fff" />
-              </View>
-            </TouchableOpacity>
-            <TouchableOpacity
-              style={styles.headerIconButton}
-              onPress={() => router.push('/profilePages/settings')}
-            >
-              <View style={styles.iconButtonBg}>
-                <IconSymbol size={24} name="gearshape.fill" color="#fff" />
-              </View>
-            </TouchableOpacity>
-          </View>
+          {/* DM Icon */}
+          <TouchableOpacity
+            style={styles.headerDmButton}
+            onPress={() => router.push('/chatPages/chatList')}
+          >
+            <View style={styles.headerDmButtonBg}>
+              <IconSymbol size={22} name="paperplane.fill" color="#fff" />
+            </View>
+          </TouchableOpacity>
 
           {/* Animated Content Wrapper - slides over cover photo on scroll */}
           <Animated.View
@@ -783,136 +773,136 @@ export default function ProfileScreen() {
 
             {/* Action Buttons Row */}
             <View style={styles.actionButtonsRow}>
-              <TouchableOpacity
-                style={styles.editButton}
-                onPress={() => router.push('/profilePages/editProfile')}
-                activeOpacity={0.8}
-              >
-                <LinearGradient
-                  colors={['#D64350', '#C42743', '#B22038']}
-                  start={{ x: 0, y: 0 }}
-                  end={{ x: 1, y: 1 }}
-                  style={styles.editButtonGradient}
-                >
-                  <IconSymbol size={14} name="pencil" color="#fff" />
-                  <ThemedText style={styles.editButtonText}>Edit Profile</ThemedText>
-                </LinearGradient>
-              </TouchableOpacity>
-
-              <View style={styles.socialsButtonContainer}>
                 <TouchableOpacity
-                  style={styles.socialsButton}
-                  onPress={() => setShowSocialsDropdown(!showSocialsDropdown)}
+                  style={styles.editButton}
+                  onPress={() => router.push('/profilePages/editProfile')}
                   activeOpacity={0.8}
                 >
                   <LinearGradient
-                    colors={['#40444b', '#36393e', '#32353a']}
+                    colors={['#D64350', '#C42743', '#B22038']}
                     start={{ x: 0, y: 0 }}
                     end={{ x: 1, y: 1 }}
-                    style={styles.socialsButtonGradient}
+                    style={styles.editButtonGradient}
                   >
-                    <IconSymbol size={14} name="link" color="#fff" />
-                    <ThemedText style={styles.socialsButtonText}>Socials</ThemedText>
+                    <IconSymbol size={14} name="pencil" color="#fff" />
+                    <ThemedText style={styles.editButtonText}>Edit Profile</ThemedText>
                   </LinearGradient>
                 </TouchableOpacity>
 
-                {/* Socials Popover */}
-                {showSocialsDropdown && (
-                  <>
-                    {/* Dismiss overlay */}
-                    <TouchableOpacity
-                      style={styles.popoverOverlay}
-                      activeOpacity={1}
-                      onPress={() => setShowSocialsDropdown(false)}
-                    />
-                    <View style={styles.socialsPopover}>
-                      {/* Arrow pointing down */}
-                      <View style={styles.popoverArrow} />
-                {/* Instagram */}
-                <TouchableOpacity
-                  style={styles.socialDropdownOption}
-                  onPress={async () => {
-                    setShowSocialsDropdown(false);
-                    if (user?.instagramLink) {
-                      try {
-                        const username = user.instagramLink.replace(/^https?:\/\/(www\.)?instagram\.com\//, '').replace(/\/$/, '');
-                        const appUrl = `instagram://user?username=${username}`;
-                        const webUrl = `https://instagram.com/${username}`;
+                <View style={styles.socialsButtonContainer}>
+                  <TouchableOpacity
+                    style={styles.socialsButton}
+                    onPress={() => setShowSocialsDropdown(!showSocialsDropdown)}
+                    activeOpacity={0.8}
+                  >
+                    <LinearGradient
+                      colors={['#40444b', '#36393e', '#32353a']}
+                      start={{ x: 0, y: 0 }}
+                      end={{ x: 1, y: 1 }}
+                      style={styles.socialsButtonGradient}
+                    >
+                      <IconSymbol size={14} name="link" color="#fff" />
+                      <ThemedText style={styles.socialsButtonText}>Socials</ThemedText>
+                    </LinearGradient>
+                  </TouchableOpacity>
 
-                        const supported = await Linking.canOpenURL(appUrl);
-                        if (supported) {
-                          await Linking.openURL(appUrl);
-                        } else {
-                          await Linking.openURL(webUrl);
-                        }
-                      } catch (error) {
-                        console.error('Error opening Instagram:', error);
-                        Alert.alert('Error', 'Failed to open Instagram');
-                      }
-                    } else {
-                      Alert.alert('Not Configured', 'Add your Instagram username in Edit Profile');
-                    }
-                  }}
-                  activeOpacity={0.7}
-                >
-                  <View style={[styles.socialDropdownIconContainer, styles.instagramIconContainer, !user?.instagramLink && styles.socialNotConfigured]}>
-                    <Image
-                      source={require('@/assets/images/instagram.png')}
-                      style={styles.socialDropdownIcon}
-                      resizeMode="contain"
-                    />
-                  </View>
-                  <View style={{ flex: 1 }}>
-                    <ThemedText style={styles.socialDropdownTitle}>Instagram</ThemedText>
-                    <ThemedText style={styles.socialDropdownSubtitle}>
-                      {user?.instagramLink
-                        ? user.instagramLink.replace(/^https?:\/\/(www\.)?instagram\.com\//, '').replace(/\/$/, '')
-                        : 'Not configured'}
-                    </ThemedText>
-                  </View>
-                </TouchableOpacity>
+                  {/* Socials Popover */}
+                  {showSocialsDropdown && (
+                    <>
+                      {/* Dismiss overlay */}
+                      <TouchableOpacity
+                        style={styles.popoverOverlay}
+                        activeOpacity={1}
+                        onPress={() => setShowSocialsDropdown(false)}
+                      />
+                      <View style={styles.socialsPopover}>
+                        {/* Arrow pointing down */}
+                        <View style={styles.popoverArrow} />
+                        {/* Instagram */}
+                        <TouchableOpacity
+                          style={styles.socialDropdownOption}
+                          onPress={async () => {
+                            setShowSocialsDropdown(false);
+                            if (user?.instagramLink) {
+                              try {
+                                const username = user.instagramLink.replace(/^https?:\/\/(www\.)?instagram\.com\//, '').replace(/\/$/, '');
+                                const appUrl = `instagram://user?username=${username}`;
+                                const webUrl = `https://instagram.com/${username}`;
 
-                {/* Discord */}
-                <TouchableOpacity
-                  style={styles.socialDropdownOption}
-                  onPress={async () => {
-                    setShowSocialsDropdown(false);
-                    if (user?.discordLink) {
-                      try {
-                        await Clipboard.setStringAsync(user.discordLink);
-                        Alert.alert(
-                          'Copied!',
-                          `Discord username "${user.discordLink}" copied to clipboard`,
-                          [{ text: 'OK' }]
-                        );
-                      } catch (error) {
-                        console.error('Error copying to clipboard:', error);
-                        Alert.alert('Error', 'Failed to copy Discord username');
-                      }
-                    } else {
-                      Alert.alert('Not Configured', 'Add your Discord username in Edit Profile');
-                    }
-                  }}
-                  activeOpacity={0.7}
-                >
-                  <View style={[styles.socialDropdownIconContainer, styles.discordIconContainer, !user?.discordLink && styles.socialNotConfigured]}>
-                    <Image
-                      source={require('@/assets/images/discord.png')}
-                      style={styles.socialDropdownIcon}
-                      resizeMode="contain"
-                    />
-                  </View>
-                  <View style={{ flex: 1 }}>
-                    <ThemedText style={styles.socialDropdownTitle}>Discord</ThemedText>
-                    <ThemedText style={styles.socialDropdownSubtitle}>
-                      {user?.discordLink || 'Not configured'}
-                    </ThemedText>
-                  </View>
-                </TouchableOpacity>
-                    </View>
-                  </>
-                )}
-              </View>
+                                const supported = await Linking.canOpenURL(appUrl);
+                                if (supported) {
+                                  await Linking.openURL(appUrl);
+                                } else {
+                                  await Linking.openURL(webUrl);
+                                }
+                              } catch (error) {
+                                console.error('Error opening Instagram:', error);
+                                Alert.alert('Error', 'Failed to open Instagram');
+                              }
+                            } else {
+                              Alert.alert('Not Configured', 'Add your Instagram username in Edit Profile');
+                            }
+                          }}
+                          activeOpacity={0.7}
+                        >
+                          <View style={[styles.socialDropdownIconContainer, styles.instagramIconContainer, !user?.instagramLink && styles.socialNotConfigured]}>
+                            <Image
+                              source={require('@/assets/images/instagram.png')}
+                              style={styles.socialDropdownIcon}
+                              resizeMode="contain"
+                            />
+                          </View>
+                          <View style={{ flex: 1 }}>
+                            <ThemedText style={styles.socialDropdownTitle}>Instagram</ThemedText>
+                            <ThemedText style={styles.socialDropdownSubtitle}>
+                              {user?.instagramLink
+                                ? user.instagramLink.replace(/^https?:\/\/(www\.)?instagram\.com\//, '').replace(/\/$/, '')
+                                : 'Not configured'}
+                            </ThemedText>
+                          </View>
+                        </TouchableOpacity>
+
+                        {/* Discord */}
+                        <TouchableOpacity
+                          style={styles.socialDropdownOption}
+                          onPress={async () => {
+                            setShowSocialsDropdown(false);
+                            if (user?.discordLink) {
+                              try {
+                                await Clipboard.setStringAsync(user.discordLink);
+                                Alert.alert(
+                                  'Copied!',
+                                  `Discord username "${user.discordLink}" copied to clipboard`,
+                                  [{ text: 'OK' }]
+                                );
+                              } catch (error) {
+                                console.error('Error copying to clipboard:', error);
+                                Alert.alert('Error', 'Failed to copy Discord username');
+                              }
+                            } else {
+                              Alert.alert('Not Configured', 'Add your Discord username in Edit Profile');
+                            }
+                          }}
+                          activeOpacity={0.7}
+                        >
+                          <View style={[styles.socialDropdownIconContainer, styles.discordIconContainer, !user?.discordLink && styles.socialNotConfigured]}>
+                            <Image
+                              source={require('@/assets/images/discord.png')}
+                              style={styles.socialDropdownIcon}
+                              resizeMode="contain"
+                            />
+                          </View>
+                          <View style={{ flex: 1 }}>
+                            <ThemedText style={styles.socialDropdownTitle}>Discord</ThemedText>
+                            <ThemedText style={styles.socialDropdownSubtitle}>
+                              {user?.discordLink || 'Not configured'}
+                            </ThemedText>
+                          </View>
+                        </TouchableOpacity>
+                      </View>
+                    </>
+                  )}
+                </View>
 
               <TouchableOpacity
                 style={styles.shareButton}
@@ -925,6 +915,21 @@ export default function ProfileScreen() {
                   style={styles.shareButtonGradient}
                 >
                   <IconSymbol size={16} name="square.and.arrow.up" color="#fff" />
+                </LinearGradient>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                style={styles.settingsButton}
+                onPress={() => router.push('/profilePages/settings')}
+                activeOpacity={0.8}
+              >
+                <LinearGradient
+                  colors={['#40444b', '#36393e', '#32353a']}
+                  start={{ x: 0, y: 0 }}
+                  end={{ x: 1, y: 1 }}
+                  style={styles.settingsButtonGradient}
+                >
+                  <IconSymbol size={16} name="gearshape.fill" color="#fff" />
                 </LinearGradient>
               </TouchableOpacity>
             </View>
@@ -1266,36 +1271,19 @@ const styles = StyleSheet.create({
     right: 0,
     height: 60,
   },
-  headerIcons: {
+  headerDmButton: {
     position: 'absolute',
     top: 50,
     right: 16,
-    flexDirection: 'row',
-    gap: 12,
     zIndex: 10,
   },
-  headerIconButton: {
-    position: 'relative',
-  },
-  walletViewButtonInTab: {
-    width: 40,
-    height: 40,
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: '#36393e',
-    borderRadius: 8,
-    borderWidth: 1,
-    borderColor: '#424549',
-    marginBottom: 4,
-  },
-  iconButtonBg: {
+  headerDmButtonBg: {
     width: 40,
     height: 40,
     borderRadius: 20,
     backgroundColor: 'rgba(0, 0, 0, 0.5)',
     alignItems: 'center',
     justifyContent: 'center',
-    backdropFilter: 'blur(10px)',
   },
   profileCard: {
     marginTop: -24,
@@ -1351,8 +1339,8 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: '700',
     color: '#fff',
-    marginBottom: 8,
     letterSpacing: -0.5,
+    marginBottom: 8,
   },
   statsContainer: {
     flexDirection: 'row',
@@ -1445,6 +1433,19 @@ const styles = StyleSheet.create({
     overflow: 'hidden',
   },
   shareButtonGradient: {
+    width: '100%',
+    height: '100%',
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderRadius: 6,
+  },
+  settingsButton: {
+    width: 33,
+    height: 33,
+    borderRadius: 6,
+    overflow: 'hidden',
+  },
+  settingsButtonGradient: {
     width: '100%',
     height: '100%',
     alignItems: 'center',
