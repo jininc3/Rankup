@@ -106,6 +106,22 @@ export interface UnlinkAccountResponse {
   message: string;
 }
 
+// Recent matches types
+export interface RecentMatchResult {
+  won: boolean;
+}
+
+export interface GetRecentMatchesRequest {
+  targetUserId: string;
+  game: 'league' | 'valorant';
+}
+
+export interface GetRecentMatchesResponse {
+  success: boolean;
+  matches: RecentMatchResult[];
+  message?: string;
+}
+
 /**
  * Link a Riot account to the user's profile
  * @param gameName - Riot Game Name (e.g., "PlayerName")
@@ -278,6 +294,30 @@ export const unlinkRiotAccount = async (): Promise<UnlinkAccountResponse> => {
     }
 
     throw new Error(error.message || 'Failed to unlink Riot account');
+  }
+};
+
+/**
+ * Get the last 5 match results (win/loss) for a target user
+ * @param targetUserId - The Firestore user ID of the player
+ * @param game - 'league' or 'valorant'
+ */
+export const getRecentMatches = async (
+  targetUserId: string,
+  game: 'league' | 'valorant'
+): Promise<GetRecentMatchesResponse> => {
+  try {
+    const getRecentMatchesFn = httpsCallable<GetRecentMatchesRequest, GetRecentMatchesResponse>(
+      functions,
+      'getRecentMatches'
+    );
+
+    const result = await getRecentMatchesFn({ targetUserId, game });
+    return result.data;
+  } catch (error: any) {
+    console.error('Error fetching recent matches:', error);
+    // Return empty gracefully so the UI doesn't break
+    return { success: true, matches: [] };
   }
 };
 

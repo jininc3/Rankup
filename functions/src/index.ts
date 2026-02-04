@@ -20,6 +20,8 @@ export {getLeagueStatsFunction as getLeagueStats} from "./riot/getLeagueStats";
 export {getTftStatsFunction as getTftStats} from "./riot/getTftStats";
 export {unlinkRiotAccountFunction as unlinkRiotAccount} from "./riot/unlinkRiotAccount";
 
+export {getRecentMatchesFunction as getRecentMatches} from "./riot/getRecentMatches";
+
 // Export Valorant API functions (Henrik's API)
 export {linkValorantAccountFunction as linkValorantAccount} from "./valorant/linkValorantAccount";
 export {getValorantStatsFunction as getValorantStats} from "./valorant/getValorantStats";

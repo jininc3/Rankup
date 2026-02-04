@@ -214,6 +214,58 @@ export async function getTotalMasteryScore(
 }
 
 
+// ===== Match History API Functions =====
+
+/**
+ * Get recent match IDs by PUUID (match-v5)
+ * Uses regional routing (e.g. "europe", "americas") not platform routing
+ */
+export async function getRecentMatchIds(
+  puuid: string,
+  region: string = "euw1",
+  count: number = 5
+): Promise<string[]> {
+  const apiKey = getRiotApiKey();
+  const routing = getRegionalRouting(region);
+  const url = `https://${routing}.api.riotgames.com/lol/match/v5/matches/by-puuid/${puuid}?queue=420&type=ranked&count=${count}`;
+
+  try {
+    const response = await axios.get<string[]>(url, {
+      headers: {
+        "X-Riot-Token": apiKey,
+      },
+    });
+
+    return response.data;
+  } catch (error) {
+    handleRiotError(error as AxiosError, "getRecentMatchIds");
+  }
+}
+
+/**
+ * Get match details by match ID (match-v5)
+ */
+export async function getMatchById(
+  matchId: string,
+  region: string = "euw1"
+): Promise<any> {
+  const apiKey = getRiotApiKey();
+  const routing = getRegionalRouting(region);
+  const url = `https://${routing}.api.riotgames.com/lol/match/v5/matches/${matchId}`;
+
+  try {
+    const response = await axios.get<any>(url, {
+      headers: {
+        "X-Riot-Token": apiKey,
+      },
+    });
+
+    return response.data;
+  } catch (error) {
+    handleRiotError(error as AxiosError, "getMatchById");
+  }
+}
+
 // ===== TFT API Functions =====
 // Using official Riot TFT API
 

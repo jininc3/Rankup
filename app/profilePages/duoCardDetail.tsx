@@ -3,7 +3,8 @@ import { IconSymbol } from '@/components/ui/icon-symbol';
 import { Image, StyleSheet, TouchableOpacity, View, ScrollView } from 'react-native';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { LinearGradient } from 'expo-linear-gradient';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
+import { getRecentMatches, RecentMatchResult } from '@/services/riotService';
 
 // League rank icon mapping
 const LEAGUE_RANK_ICONS: { [key: string]: any } = {
@@ -112,6 +113,24 @@ export default function DuoCardDetailScreen() {
   const mainRole = params.mainRole as string;
   const mainAgent = params.mainAgent as string;
   const userId = params.userId as string | undefined;
+
+  const [recentMatches, setRecentMatches] = useState<RecentMatchResult[]>([]);
+  const [loadingMatches, setLoadingMatches] = useState(true);
+
+  useEffect(() => {
+    const fetchMatches = async () => {
+      if (!userId || userId.trim() === '') {
+        setLoadingMatches(false);
+        return;
+      }
+      setLoadingMatches(true);
+      const result = await getRecentMatches(userId, game);
+      setRecentMatches(result.matches);
+      setLoadingMatches(false);
+    };
+
+    fetchMatches();
+  }, [userId, game]);
 
   // Debug log
   console.log('DuoCardDetail - Raw avatar param:', rawAvatar);
@@ -236,6 +255,36 @@ export default function DuoCardDetailScreen() {
                 resizeMode="contain"
               />
               <ThemedText style={styles.rankText}>{currentRank}</ThemedText>
+            </View>
+          </View>
+        </View>
+
+        {/* Last 5 Games */}
+        <View style={styles.recentGamesSection}>
+          <View style={styles.recentGamesCard}>
+            <ThemedText style={styles.recentGamesTitle}>Last 5 Games</ThemedText>
+            <View style={styles.recentGamesRow}>
+              {loadingMatches ? (
+                [0, 1, 2, 3, 4].map((i) => (
+                  <View key={i} style={styles.gameCirclePlaceholder} />
+                ))
+              ) : recentMatches.length > 0 ? (
+                [0, 1, 2, 3, 4].map((i) => {
+                  const match = recentMatches[i];
+                  if (!match) {
+                    return <View key={i} style={styles.gameCirclePlaceholder} />;
+                  }
+                  return (
+                    <View key={i} style={[styles.gameCircle, match.won ? styles.gameCircleWin : styles.gameCircleLoss]}>
+                      <ThemedText style={styles.gameCircleIcon}>
+                        {match.won ? 'W' : 'L'}
+                      </ThemedText>
+                    </View>
+                  );
+                })
+              ) : (
+                <ThemedText style={styles.recentGamesEmpty}>No recent games</ThemedText>
+              )}
             </View>
           </View>
         </View>
@@ -478,5 +527,61 @@ const styles = StyleSheet.create({
     color: '#fff',
     fontWeight: '700',
     letterSpacing: -0.3,
+  },
+  recentGamesSection: {
+    paddingHorizontal: 20,
+    marginBottom: 24,
+  },
+  recentGamesCard: {
+    backgroundColor: 'rgba(44,47,51,0.55)',
+    borderRadius: 16,
+    padding: 16,
+    borderWidth: 1,
+    borderColor: 'rgba(64,68,75,0.6)',
+  },
+  recentGamesTitle: {
+    fontSize: 11,
+    fontWeight: '700',
+    color: '#94a3b8',
+    textTransform: 'uppercase',
+    letterSpacing: 0.8,
+    marginBottom: 14,
+  },
+  recentGamesRow: {
+    flexDirection: 'row',
+    gap: 10,
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+  gameCircle: {
+    width: 44,
+    height: 44,
+    borderRadius: 12,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  gameCircleWin: {
+    backgroundColor: '#15803d',
+  },
+  gameCircleLoss: {
+    backgroundColor: '#991b1b',
+  },
+  gameCirclePlaceholder: {
+    width: 44,
+    height: 44,
+    borderRadius: 12,
+    backgroundColor: '#23272a',
+    borderWidth: 1,
+    borderColor: '#40444b',
+  },
+  gameCircleIcon: {
+    fontSize: 16,
+    fontWeight: '700',
+    color: '#fff',
+    letterSpacing: -0.3,
+  },
+  recentGamesEmpty: {
+    fontSize: 13,
+    color: '#94a3b8',
   },
 });

@@ -10,7 +10,9 @@
       "Bash(firebase functions:log:*)",
       "WebFetch(domain:developer.riotgames.com)",
       "WebFetch(domain:github.com)",
-      "WebFetch(domain:docs.henrikdev.xyz)"
+      "WebFetch(domain:docs.henrikdev.xyz)",
+      "Bash(cat:*)",
+      "Bash(node -e:*)"
     ],
     "deny": [],
     "ask": []
