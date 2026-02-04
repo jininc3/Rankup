@@ -1507,7 +1507,7 @@ const styles = StyleSheet.create({
   },
   horizontalClipItem: {
     width: 160,
-    height: 220,
+    height: 160,
     backgroundColor: '#36393e',
     borderRadius: 12,
     overflow: 'hidden',
