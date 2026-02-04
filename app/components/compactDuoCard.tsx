@@ -210,7 +210,10 @@ const styles = StyleSheet.create({
     borderRadius: 16,
     overflow: 'hidden',
     borderWidth: 1,
-    borderColor: '#40444b',
+    borderTopColor: '#3a3f44',
+    borderLeftColor: '#3a3f44',
+    borderBottomColor: '#16191b',
+    borderRightColor: '#16191b',
     shadowColor: '#000',
     shadowOffset: {
       width: 0,

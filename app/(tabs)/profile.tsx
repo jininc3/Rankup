@@ -67,6 +67,8 @@ export default function ProfileScreen() {
   const [showNewPost, setShowNewPost] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
   const [cardsExpanded, setCardsExpanded] = useState(false);
+  const [achievements, setAchievements] = useState<{ partyName: string; game: string; placement: number; endDate: string }[]>([]);
+  const [loadingAchievements, setLoadingAchievements] = useState(false);
   const [riotAccount, setRiotAccount] = useState<any>(null);
   const [valorantAccount, setValorantAccount] = useState<any>(null);
   const [riotStats, setRiotStats] = useState<any>(null);
@@ -485,6 +487,56 @@ export default function ProfileScreen() {
       router.replace('/(tabs)/profile');
     }
   }, [refresh, user?.id]);
+
+  // Fetch achievements (completed parties where user placed top 3)
+  useEffect(() => {
+    if (!user?.id) return;
+
+    const fetchAchievements = async () => {
+      setLoadingAchievements(true);
+      try {
+        const partiesRef = collection(db, 'parties');
+        const partiesQuery = query(partiesRef, where('members', 'array-contains', user.id));
+        const snapshot = await getDocs(partiesQuery);
+
+        const today = new Date();
+        today.setHours(0, 0, 0, 0);
+
+        const results: { partyName: string; game: string; placement: number; endDate: string }[] = [];
+
+        snapshot.docs.forEach((doc) => {
+          const data = doc.data();
+          if (!data.endDate || !data.rankings) return;
+
+          // Parse endDate (MM/DD/YYYY)
+          const [month, day, year] = data.endDate.split('/').map(Number);
+          const endDate = new Date(year, month - 1, day);
+          if (endDate >= today) return; // Not completed yet
+
+          // Find user's ranking
+          const userRanking = data.rankings.find((r: any) => r.userId === user.id);
+          if (userRanking && userRanking.rank >= 1 && userRanking.rank <= 3) {
+            results.push({
+              partyName: data.partyName,
+              game: data.game,
+              placement: userRanking.rank,
+              endDate: data.endDate,
+            });
+          }
+        });
+
+        // Sort by placement (1st first), then by endDate (most recent first)
+        results.sort((a, b) => a.placement - b.placement || b.endDate.localeCompare(a.endDate));
+        setAchievements(results);
+      } catch (error) {
+        console.error('Error fetching achievements:', error);
+      } finally {
+        setLoadingAchievements(false);
+      }
+    };
+
+    fetchAchievements();
+  }, [user?.id]);
 
   // Handle pull-to-refresh
   const onRefresh = useCallback(async () => {
@@ -1052,7 +1104,7 @@ export default function ProfileScreen() {
           </View>
 
           {/* Rank Cards Content */}
-          <View style={styles.rankCardsSection}>
+          <View style={[styles.rankCardsSection, { marginBottom: (userGames.length > 1 && cardsExpanded) ? 20 : 4 }]}>
           {!riotAccount && !valorantAccount ? (
             // Empty state for new users
             <View style={styles.emptyState}>
@@ -1146,11 +1198,11 @@ export default function ProfileScreen() {
             </View>
           ) : (
             // Multiple Cards View - stacked/expandable
-            <View style={styles.verticalRankCardsContainer}>
+            <View style={[styles.verticalRankCardsContainer, !cardsExpanded && { paddingBottom: 0 }]}>
               {!cardsExpanded ? (
                 // Stacked Cards View (Apple Wallet style)
                 <TouchableOpacity
-                  style={styles.stackedCardsWrapper}
+                  style={[styles.stackedCardsWrapper, { height: 240 }]}
                   onPress={toggleCardExpansion}
                   activeOpacity={0.9}
                 >
@@ -1214,6 +1266,56 @@ export default function ProfileScreen() {
             </View>
           )}
           </View>
+
+          {/* Achievements Section Header */}
+          <View style={styles.sectionHeader}>
+            <View style={styles.sectionHeaderLeft}>
+              <IconSymbol size={18} name="trophy.fill" color="#fff" />
+              <ThemedText style={styles.sectionHeaderTitle}>Achievements</ThemedText>
+            </View>
+          </View>
+
+          {/* Achievements Content */}
+          <View style={styles.achievementsSection}>
+            {loadingAchievements ? (
+              <View style={styles.emptyState}>
+                <ActivityIndicator size="large" color="#c42743" />
+                <ThemedText style={styles.emptyStateText}>Loading achievements...</ThemedText>
+              </View>
+            ) : achievements.length > 0 ? (
+              <ScrollView
+                horizontal
+                showsHorizontalScrollIndicator={false}
+                contentContainerStyle={styles.horizontalAchievementsContainer}
+              >
+                {achievements.map((achievement, index) => (
+                  <View key={index} style={styles.achievementCard}>
+                    <ThemedText style={styles.achievementMedal}>
+                      {achievement.placement === 1 ? '\u{1F947}' : achievement.placement === 2 ? '\u{1F948}' : '\u{1F949}'}
+                    </ThemedText>
+                    <ThemedText style={styles.achievementPlacement}>
+                      {achievement.placement === 1 ? '1st Place' : achievement.placement === 2 ? '2nd Place' : '3rd Place'}
+                    </ThemedText>
+                    <ThemedText style={styles.achievementPartyName} numberOfLines={2}>
+                      {achievement.partyName}
+                    </ThemedText>
+                    <ThemedText style={styles.achievementGame}>
+                      {achievement.game}
+                    </ThemedText>
+                  </View>
+                ))}
+              </ScrollView>
+            ) : (
+              <View style={styles.emptyState}>
+                <IconSymbol size={36} name="trophy" color="#72767d" />
+                <ThemedText style={styles.emptyStateTitle}>No achievements yet</ThemedText>
+                <ThemedText style={styles.emptyStateSubtext}>
+                  Place top 3 in a party to earn achievements
+                </ThemedText>
+              </View>
+            )}
+          </View>
+
           </Animated.View>
         </View>
       </Animated.ScrollView>
@@ -1846,5 +1948,50 @@ const styles = StyleSheet.create({
   socialNotConfigured: {
     borderColor: '#424549',
     opacity: 0.5,
+  },
+  achievementsSection: {
+    marginBottom: 20,
+  },
+  horizontalAchievementsContainer: {
+    paddingHorizontal: 16,
+    gap: 12,
+  },
+  achievementCard: {
+    width: 140,
+    height: 140,
+    backgroundColor: '#2c2f33',
+    borderRadius: 12,
+    alignItems: 'center',
+    justifyContent: 'center',
+    padding: 12,
+    borderWidth: 1,
+    borderTopColor: '#3a3f44',
+    borderLeftColor: '#3a3f44',
+    borderBottomColor: '#16191b',
+    borderRightColor: '#16191b',
+  },
+  achievementMedal: {
+    fontSize: 32,
+    marginBottom: 6,
+  },
+  achievementPlacement: {
+    fontSize: 13,
+    fontWeight: '700',
+    color: '#fff',
+    letterSpacing: -0.3,
+    marginBottom: 4,
+  },
+  achievementPartyName: {
+    fontSize: 11,
+    fontWeight: '600',
+    color: '#b9bbbe',
+    textAlign: 'center',
+    lineHeight: 14,
+  },
+  achievementGame: {
+    fontSize: 10,
+    fontWeight: '600',
+    color: '#72767d',
+    marginTop: 4,
   },
 });
