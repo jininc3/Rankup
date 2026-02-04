@@ -1003,25 +1003,46 @@ export default function HomeScreen() {
           </View>
         ) : currentPosts.length > 0 ? (
           <>
-            {currentPosts.map((post) => (
-              <PostContent
-                key={post.id}
-                post={post}
-                playingVideoId={playingVideoId}
-                postRefs={postRefs}
-                onOpenComments={handleOpenComments}
-                onDirectMessage={handleDirectMessage}
-                onLikeToggle={handleLikeToggle}
-                onUserPress={handleUserPress}
-                formatTimeAgo={formatTimeAgo}
-                currentUserId={currentUser?.id}
-                isLiked={likedPosts.has(post.id)}
-                likeCount={post.likes}
-                isLiking={likingInProgress.has(post.id)}
-                onPlayerReady={handlePlayerReady}
-                showRecentComments={true}
-              />
-            ))}
+            {currentPosts.map((post, index) => {
+              const isTeaser = index === 7 && currentPosts.length === POSTS_PER_PAGE;
+
+              const postContent = (
+                <PostContent
+                  key={post.id}
+                  post={post}
+                  playingVideoId={playingVideoId}
+                  postRefs={postRefs}
+                  onOpenComments={handleOpenComments}
+                  onDirectMessage={handleDirectMessage}
+                  onLikeToggle={handleLikeToggle}
+                  onUserPress={handleUserPress}
+                  formatTimeAgo={formatTimeAgo}
+                  currentUserId={currentUser?.id}
+                  isLiked={likedPosts.has(post.id)}
+                  likeCount={post.likes}
+                  isLiking={likingInProgress.has(post.id)}
+                  onPlayerReady={handlePlayerReady}
+                  showRecentComments={true}
+                />
+              );
+
+              if (isTeaser) {
+                return (
+                  <View key={post.id} style={styles.teaserWrapper}>
+                    {postContent}
+                    <LinearGradient
+                      colors={['rgba(30,33,36,0)', 'rgba(30,33,36,0.6)', 'rgba(30,33,36,1)']}
+                      start={{ x: 0, y: 0 }}
+                      end={{ x: 0, y: 1 }}
+                      style={styles.teaserGradient}
+                      pointerEvents="none"
+                    />
+                  </View>
+                );
+              }
+
+              return postContent;
+            })}
             {loadingMore && (
               <View style={styles.loadingMoreContainer}>
                 <ActivityIndicator size="small" color="#000" />
@@ -1306,6 +1327,17 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: '#999',
     fontStyle: 'italic',
+  },
+  teaserWrapper: {
+    position: 'relative',
+  },
+  teaserGradient: {
+    position: 'absolute',
+    left: 0,
+    right: 0,
+    bottom: 0,
+    height: '50%',
+    pointerEvents: 'none',
   },
   fabButton: {
     position: 'absolute',

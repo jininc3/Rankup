@@ -75,7 +75,6 @@ export default function ProfileViewScreen() {
   const { user: currentUser, refreshUser, setNewlyFollowedUserPosts, setNewlyUnfollowedUserId } = useAuth();
   const [viewedUser, setViewedUser] = useState<ViewedUser | null>(null);
   const [loadingUser, setLoadingUser] = useState(true);
-  const [activeMainTab, setActiveMainTab] = useState<'rankCards' | 'clips'>('clips'); // Default to clips tab
   const [posts, setPosts] = useState<Post[]>([]);
   const [loadingPosts, setLoadingPosts] = useState(true);
   const [selectedPost, setSelectedPost] = useState<Post | null>(null);
@@ -430,7 +429,7 @@ export default function ProfileViewScreen() {
         </TouchableOpacity>
       </View>
 
-      <ScrollView showsVerticalScrollIndicator={false}>
+      <ScrollView showsVerticalScrollIndicator={false} decelerationRate="fast">
         {/* Cover Photo with Gradient Overlay */}
         <View style={styles.coverPhotoContainer}>
           <View style={styles.coverPhoto}>
@@ -591,76 +590,37 @@ export default function ProfileViewScreen() {
           </View>
         </View>
 
-        {/* Main Tabs */}
-        <View style={styles.mainTabsContainer}>
-          <View style={styles.mainTabsLeft}>
-            <TouchableOpacity
-              style={styles.mainTab}
-              onPress={() => setActiveMainTab('clips')}
-              activeOpacity={0.7}
-            >
-              <View style={styles.tabInner}>
-                <IconSymbol
-                  size={18}
-                  name="play.rectangle.fill"
-                  color={activeMainTab === 'clips' ? '#fff' : '#72767d'}
-                />
-                <ThemedText style={[styles.mainTabText, activeMainTab === 'clips' && styles.mainTabTextActive]}>
-                  Clips
-                </ThemedText>
-              </View>
-              {activeMainTab === 'clips' && <View style={styles.tabIndicator} />}
-            </TouchableOpacity>
-
-            <TouchableOpacity
-              style={styles.mainTab}
-              onPress={() => setActiveMainTab('rankCards')}
-              activeOpacity={0.7}
-            >
-              <View style={styles.tabInner}>
-                <IconSymbol
-                  size={18}
-                  name="star.fill"
-                  color={activeMainTab === 'rankCards' ? '#fff' : '#72767d'}
-                />
-                <ThemedText style={[styles.mainTabText, activeMainTab === 'rankCards' && styles.mainTabTextActive]}>
-                  Rank Cards
-                </ThemedText>
-              </View>
-              {activeMainTab === 'rankCards' && <View style={styles.tabIndicator} />}
-            </TouchableOpacity>
+        {/* Clips Section Header */}
+        <View style={styles.sectionHeader}>
+          <View style={styles.sectionHeaderLeft}>
+            <IconSymbol size={18} name="play.rectangle.fill" color="#fff" />
+            <ThemedText style={styles.sectionHeaderTitle}>Clips</ThemedText>
           </View>
-
-          {/* Wallet View button - shown when cards are expanded on RankCards tab */}
-          {cardsExpanded && activeMainTab === 'rankCards' && (
-            <TouchableOpacity
-              style={styles.walletViewButtonInTab}
-              onPress={toggleCardExpansion}
-              activeOpacity={0.7}
-            >
-              <IconSymbol size={22} name="creditcard.fill" color="#fff" />
-            </TouchableOpacity>
-          )}
         </View>
 
-        <View style={[styles.postsSection, { display: activeMainTab === 'clips' ? 'flex' : 'none' }]}>
+        {/* Clips Content */}
+        <View style={styles.clipsSection}>
           {loadingPosts ? (
             <View style={styles.postsContainer}>
               <ActivityIndicator size="large" color="#000" />
               <ThemedText style={styles.loadingText}>Loading posts...</ThemedText>
             </View>
           ) : posts.length > 0 ? (
-            <View style={styles.postsGrid}>
+            <ScrollView
+              horizontal
+              showsHorizontalScrollIndicator={false}
+              contentContainerStyle={styles.horizontalClipsContainer}
+            >
               {posts.map((post, index) => (
                 <TouchableOpacity
                   key={post.id}
-                  style={styles.postItem}
+                  style={styles.horizontalClipItem}
                   onPress={() => handlePostPress(post, index)}
-                  activeOpacity={0.7}
+                  activeOpacity={0.9}
                 >
                   <Image
                     source={{ uri: post.mediaType === 'video' && post.thumbnailUrl ? post.thumbnailUrl : post.mediaUrl }}
-                    style={styles.postImage}
+                    style={styles.horizontalClipImage}
                     resizeMode="cover"
                   />
                   {post.mediaType === 'video' && (
@@ -672,7 +632,7 @@ export default function ProfileViewScreen() {
                   )}
                 </TouchableOpacity>
               ))}
-            </View>
+            </ScrollView>
           ) : (
             <View style={styles.postsContainer}>
               <IconSymbol size={48} name="square.stack.3d.up" color="#ccc" />
@@ -681,8 +641,26 @@ export default function ProfileViewScreen() {
           )}
         </View>
 
-        {/* RankCards Tab Content */}
-        <View style={[styles.section, { display: activeMainTab === 'rankCards' ? 'flex' : 'none' }]}>
+        {/* Rank Cards Section Header */}
+        <View style={styles.sectionHeader}>
+          <View style={styles.sectionHeaderLeft}>
+            <IconSymbol size={18} name="star.fill" color="#fff" />
+            <ThemedText style={styles.sectionHeaderTitle}>Rank Cards</ThemedText>
+          </View>
+          {/* Wallet View button - shown when cards are expanded */}
+          {cardsExpanded && userGames.length > 1 && (
+            <TouchableOpacity
+              style={styles.walletViewButton}
+              onPress={toggleCardExpansion}
+              activeOpacity={0.7}
+            >
+              <IconSymbol size={20} name="creditcard.fill" color="#fff" />
+            </TouchableOpacity>
+          )}
+        </View>
+
+        {/* Rank Cards Content */}
+        <View style={styles.rankCardsSection}>
           {!riotAccount && !valorantAccount ? (
             // Empty state when user has no gaming accounts linked
             <View style={styles.emptyRankCardsContainer}>
@@ -1215,50 +1193,59 @@ const styles = StyleSheet.create({
     paddingTop: 0,
     paddingBottom: 8,
   },
-  mainTabsContainer: {
+  sectionHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginTop: 8,
-    marginHorizontal: 0,
-    borderBottomWidth: 1,
-    borderBottomColor: '#2c2f33',
     paddingHorizontal: 16,
+    paddingTop: 16,
+    paddingBottom: 12,
   },
-  mainTabsLeft: {
+  sectionHeaderLeft: {
     flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
   },
-  mainTab: {
+  sectionHeaderTitle: {
+    fontSize: 18,
+    fontWeight: '700',
+    color: '#fff',
+    letterSpacing: -0.5,
+  },
+  walletViewButton: {
+    width: 36,
+    height: 36,
     alignItems: 'center',
     justifyContent: 'center',
-    paddingVertical: 10,
+    backgroundColor: '#36393e',
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: '#424549',
+  },
+  clipsSection: {
+    marginBottom: 20,
+  },
+  rankCardsSection: {
+    marginBottom: 20,
+  },
+  horizontalClipsContainer: {
     paddingHorizontal: 16,
+    gap: 12,
+  },
+  horizontalClipItem: {
+    width: 160,
+    height: 220,
+    backgroundColor: '#36393e',
+    borderRadius: 12,
+    overflow: 'hidden',
     position: 'relative',
   },
-  tabInner: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-  },
-  tabIndicator: {
-    position: 'absolute',
-    bottom: -1,
-    height: 3,
-    width: 50,
-    backgroundColor: '#c42743',
-    borderRadius: 2,
-  },
-  mainTabText: {
-    fontSize: 15,
-    fontWeight: '500',
-    color: '#72767d',
-    letterSpacing: -0.3,
-  },
-  mainTabTextActive: {
-    color: '#fff',
-    fontWeight: '700',
+  horizontalClipImage: {
+    width: '100%',
+    height: '100%',
   },
   verticalRankCardsContainer: {
+    paddingHorizontal: 12,
     paddingTop: 22,
     paddingBottom: 20,
     gap: 16,

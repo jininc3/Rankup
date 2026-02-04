@@ -59,7 +59,6 @@ export default function ProfileScreen() {
   const router = useRouter();
   const { refresh } = useLocalSearchParams<{ refresh?: string }>();
   const { user, refreshUser, preloadedProfilePosts, preloadedRiotStats, clearPreloadedProfileData } = useAuth();
-  const [activeMainTab, setActiveMainTab] = useState<'rankCards' | 'clips'>('clips');
   const [posts, setPosts] = useState<Post[]>([]);
   const [loadingPosts, setLoadingPosts] = useState(false);
   const [selectedPost, setSelectedPost] = useState<Post | null>(null);
@@ -482,8 +481,6 @@ export default function ProfileScreen() {
       console.log('Refresh parameter detected, forcing data refresh');
       // Force refresh to get the newly linked account
       fetchRiotData(true);
-      // Switch to rankCards tab to show the new card
-      setActiveMainTab('rankCards');
       // Clear the refresh parameter by replacing the route without the param
       router.replace('/(tabs)/profile');
     }
@@ -637,6 +634,7 @@ export default function ProfileScreen() {
       <Animated.ScrollView
         showsVerticalScrollIndicator={false}
         scrollEventThrottle={16}
+        decelerationRate="fast"
         onScroll={Animated.event(
           [{ nativeEvent: { contentOffset: { y: scrollY } } }],
           { useNativeDriver: true }
@@ -932,78 +930,38 @@ export default function ProfileScreen() {
             </View>
           </View>
 
-            {/* Main Tabs */}
-            <View style={styles.tabsContainer}>
-            <View style={styles.tabsLeft}>
-            <TouchableOpacity
-              style={styles.tab}
-              onPress={() => setActiveMainTab('clips')}
-              activeOpacity={0.7}
-            >
-              <View style={styles.tabInner}>
-                <IconSymbol
-                  size={18}
-                  name="play.rectangle.fill"
-                  color={activeMainTab === 'clips' ? '#fff' : '#72767d'}
-                />
-                <ThemedText style={[styles.tabText, activeMainTab === 'clips' && styles.tabTextActive]}>
-                  Clips
-                </ThemedText>
+            {/* Clips Section Header */}
+            <View style={styles.sectionHeader}>
+              <View style={styles.sectionHeaderLeft}>
+                <IconSymbol size={18} name="play.rectangle.fill" color="#fff" />
+                <ThemedText style={styles.sectionHeaderTitle}>Clips</ThemedText>
               </View>
-              {activeMainTab === 'clips' && <View style={styles.tabUnderline} />}
-            </TouchableOpacity>
+            </View>
 
-            <TouchableOpacity
-              style={styles.tab}
-              onPress={() => setActiveMainTab('rankCards')}
-              activeOpacity={0.7}
-            >
-              <View style={styles.tabInner}>
-                <IconSymbol
-                  size={18}
-                  name="star.fill"
-                  color={activeMainTab === 'rankCards' ? '#fff' : '#72767d'}
-                />
-                <ThemedText style={[styles.tabText, activeMainTab === 'rankCards' && styles.tabTextActive]}>
-                  Rank Cards
-                </ThemedText>
-              </View>
-              {activeMainTab === 'rankCards' && <View style={styles.tabUnderline} />}
-            </TouchableOpacity>
-          </View>
-
-          {/* Wallet View button - shown when cards are expanded on RankCards tab */}
-          {cardsExpanded && activeMainTab === 'rankCards' && (
-            <TouchableOpacity
-              style={styles.walletViewButtonInTab}
-              onPress={toggleCardExpansion}
-              activeOpacity={0.7}
-            >
-              <IconSymbol size={22} name="creditcard.fill" color="#fff" />
-            </TouchableOpacity>
-          )}
-          </View>
-
-          {/* Clips Tab Content */}
-          <View style={[styles.tabContentArea, { display: activeMainTab === 'clips' ? 'flex' : 'none' }]}>
+          {/* Clips Content */}
+          <View style={styles.clipsSection}>
           {loadingPosts ? (
             <View style={styles.emptyState}>
               <ActivityIndicator size="large" color="#c42743" />
               <ThemedText style={styles.emptyStateText}>Loading posts...</ThemedText>
             </View>
           ) : posts.length > 0 ? (
-            <View style={styles.postsGrid}>
+            <ScrollView
+              horizontal
+              showsHorizontalScrollIndicator={false}
+              contentContainerStyle={styles.horizontalClipsContainer}
+            >
               {posts.map((post, index) => (
                 <TouchableOpacity
                   key={post.id}
-                  style={styles.postItem}
+                  style={styles.horizontalClipItem}
                   onPress={() => handlePostPress(post)}
                   activeOpacity={0.9}
                 >
                   <Image
                     source={{ uri: post.mediaType === 'video' && post.thumbnailUrl ? post.thumbnailUrl : post.mediaUrl }}
                     style={[
-                      styles.postImage,
+                      styles.horizontalClipImage,
                       { opacity: allContentLoaded ? 1 : 0 }
                     ]}
                     resizeMode="cover"
@@ -1024,7 +982,7 @@ export default function ProfileScreen() {
                   )}
                 </TouchableOpacity>
               ))}
-            </View>
+            </ScrollView>
           ) : (
             <View style={styles.emptyState}>
               <View style={styles.emptyClipsIcons}>
@@ -1054,8 +1012,26 @@ export default function ProfileScreen() {
           )}
           </View>
 
-          {/* RankCards Tab Content */}
-          <View style={[styles.tabContentArea, { display: activeMainTab === 'rankCards' ? 'flex' : 'none' }]}>
+          {/* Rank Cards Section Header */}
+          <View style={styles.sectionHeader}>
+            <View style={styles.sectionHeaderLeft}>
+              <IconSymbol size={18} name="star.fill" color="#fff" />
+              <ThemedText style={styles.sectionHeaderTitle}>Rank Cards</ThemedText>
+            </View>
+            {/* Wallet View button - shown when cards are expanded */}
+            {cardsExpanded && userGames.length > 1 && (
+              <TouchableOpacity
+                style={styles.walletViewButton}
+                onPress={toggleCardExpansion}
+                activeOpacity={0.7}
+              >
+                <IconSymbol size={20} name="creditcard.fill" color="#fff" />
+              </TouchableOpacity>
+            )}
+          </View>
+
+          {/* Rank Cards Content */}
+          <View style={styles.rankCardsSection}>
           {!riotAccount && !valorantAccount ? (
             // Empty state for new users
             <View style={styles.emptyState}>
@@ -1234,23 +1210,21 @@ export default function ProfileScreen() {
         </View>
       </Animated.ScrollView>
 
-      {/* Floating Add Post Button - only visible on Clips tab */}
-      {activeMainTab === 'clips' && (
-        <TouchableOpacity
-          style={styles.fabButton}
-          onPress={handleAddPost}
-          activeOpacity={0.9}
+      {/* Floating Add Post Button */}
+      <TouchableOpacity
+        style={styles.fabButton}
+        onPress={handleAddPost}
+        activeOpacity={0.9}
+      >
+        <LinearGradient
+          colors={['#c42743', '#a81f35']}
+          start={{ x: 0, y: 0 }}
+          end={{ x: 1, y: 1 }}
+          style={styles.fabGradient}
         >
-          <LinearGradient
-            colors={['#c42743', '#a81f35']}
-            start={{ x: 0, y: 0 }}
-            end={{ x: 1, y: 1 }}
-            style={styles.fabGradient}
-          >
-            <IconSymbol size={30} name="plus" color="#fff" />
-          </LinearGradient>
-        </TouchableOpacity>
-      )}
+          <IconSymbol size={30} name="plus" color="#fff" />
+        </LinearGradient>
+      </TouchableOpacity>
 
       {/* Post Viewer Modal */}
       <PostViewerModal
@@ -1490,51 +1464,56 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     borderRadius: 6,
   },
-  tabsContainer: {
+  sectionHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginTop: 8,
-    marginHorizontal: 0,
-    borderBottomWidth: 1,
-    borderBottomColor: '#2c2f33',
     paddingHorizontal: 16,
+    paddingTop: 16,
+    paddingBottom: 12,
   },
-  tabsLeft: {
+  sectionHeaderLeft: {
     flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
   },
-  tab: {
+  sectionHeaderTitle: {
+    fontSize: 18,
+    fontWeight: '700',
+    color: '#fff',
+    letterSpacing: -0.5,
+  },
+  walletViewButton: {
+    width: 36,
+    height: 36,
     alignItems: 'center',
     justifyContent: 'center',
-    paddingVertical: 10,
+    backgroundColor: '#36393e',
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: '#424549',
+  },
+  clipsSection: {
+    marginBottom: 20,
+  },
+  rankCardsSection: {
+    marginBottom: 20,
+  },
+  horizontalClipsContainer: {
     paddingHorizontal: 16,
+    gap: 12,
+  },
+  horizontalClipItem: {
+    width: 160,
+    height: 220,
+    backgroundColor: '#36393e',
+    borderRadius: 12,
+    overflow: 'hidden',
     position: 'relative',
   },
-  tabInner: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-  },
-  tabText: {
-    fontSize: 15,
-    fontWeight: '500',
-    color: '#72767d',
-    letterSpacing: -0.3,
-  },
-  tabTextActive: {
-    color: '#fff',
-    fontWeight: '700',
-  },
-  tabUnderline: {
-    position: 'absolute',
-    bottom: -1,
-    height: 3,
-    width: 50,
-    backgroundColor: '#c42743',
-    borderRadius: 2,
-  },
-  tabContentArea: {
-    marginTop: 8,
+  horizontalClipImage: {
+    width: '100%',
+    height: '100%',
   },
   postsGrid: {
     flexDirection: 'row',

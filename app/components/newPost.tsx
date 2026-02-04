@@ -1175,9 +1175,9 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   thumbnailPreview: {
-    width: '100%',
-    height: 120,
-    borderRadius: 8,
+    width: 160,
+    height: 220,
+    borderRadius: 12,
     backgroundColor: '#36393e',
   },
   thumbnailPreviewLabel: {

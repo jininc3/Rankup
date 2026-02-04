@@ -194,6 +194,7 @@ export default function LeagueGameStatsScreen() {
   return (
     <ScrollView
       style={styles.container}
+      contentContainerStyle={styles.scrollContent}
       showsVerticalScrollIndicator={false}
       refreshControl={
         isOwnProfile ? (
@@ -271,97 +272,97 @@ export default function LeagueGameStatsScreen() {
             )}
           </View>
         ) : riotStats ? (
-          // Display League of Legends stats
+          // Display League of Legends stats - Hierarchical Layout
           <>
-            {/* CURRENT RANK - Prominent Display */}
-            <View style={styles.currentRankSection}>
-              <ThemedText style={styles.rankSectionLabel}>CURRENT RANK</ThemedText>
+            {/* CURRENT RANK - Hero Card (Full Width) */}
+            <View style={styles.heroRankCard}>
+              <ThemedText style={styles.heroRankLabel}>CURRENT RANK</ThemedText>
               <Image
                 source={getRankIcon(
                   riotStats.rankedSolo
                     ? formatRank(riotStats.rankedSolo.tier, riotStats.rankedSolo.rank)
                     : 'Unranked'
                 )}
-                style={styles.rankIconLarge}
+                style={styles.heroRankIcon}
                 resizeMode="contain"
               />
-              <ThemedText style={styles.rankTitleLarge}>
+              <ThemedText style={styles.heroRankTitle}>
                 {riotStats.rankedSolo
                   ? formatRank(riotStats.rankedSolo.tier, riotStats.rankedSolo.rank)
                   : 'Unranked'}
               </ThemedText>
               {riotStats.rankedSolo && (
-                <View style={styles.lpContainer}>
-                  <ThemedText style={styles.lpText}>{riotStats.rankedSolo.leaguePoints} LP</ThemedText>
-                </View>
+                <ThemedText style={styles.heroRankSubtext}>
+                  {riotStats.rankedSolo.leaguePoints} LP
+                </ThemedText>
               )}
             </View>
 
-            {/* PEAK RANK - Secondary Prominent Display */}
-            {riotStats.peakRank && (
-              <View style={styles.peakRankSection}>
-                <ThemedText style={styles.rankSectionLabel}>PEAK RANK</ThemedText>
-                <View style={styles.peakRankContent}>
+            {/* Important Stats Row - Peak Rank & Win Rate */}
+            <View style={styles.importantStatsRow}>
+              {/* PEAK RANK Card */}
+              {riotStats.peakRank && (
+                <View style={styles.importantStatCard}>
+                  <ThemedText style={styles.importantStatLabel}>PEAK RANK</ThemedText>
                   <Image
                     source={getRankIcon(formatRank(riotStats.peakRank.tier, riotStats.peakRank.rank))}
-                    style={styles.rankIconMedium}
+                    style={styles.importantStatIcon}
                     resizeMode="contain"
                   />
-                  <View style={styles.peakRankText}>
-                    <ThemedText style={styles.rankTitleMedium}>
-                      {formatRank(riotStats.peakRank.tier, riotStats.peakRank.rank)}
-                    </ThemedText>
-                  </View>
+                  <ThemedText style={styles.importantStatTitle}>
+                    {formatRank(riotStats.peakRank.tier, riotStats.peakRank.rank)}
+                  </ThemedText>
                 </View>
-              </View>
-            )}
+              )}
 
-            {/* DIVIDER */}
-            <View style={styles.sectionDivider} />
-
-            {/* OTHER STATS - Compact Display */}
-            <View style={styles.statRow}>
-              <View style={styles.statRowIcon}>
-                <IconSymbol size={20} name="chart.line.uptrend.xyaxis" color="#b9bbbe" />
+              {/* Win Rate Card */}
+              <View style={styles.importantStatCard}>
+                <ThemedText style={styles.importantStatLabel}>WIN RATE</ThemedText>
+                <View style={styles.importantStatIconContainer}>
+                  <IconSymbol size={24} name="chart.line.uptrend.xyaxis" color="#fff" />
+                </View>
+                <ThemedText style={styles.importantStatTitle}>
+                  {riotStats.rankedSolo ? `${riotStats.rankedSolo.winRate}% (${riotStats.rankedSolo.wins}W)` : 'N/A'}
+                </ThemedText>
               </View>
-              <ThemedText style={styles.statRowLabel}>Win Rate</ThemedText>
-              <ThemedText style={styles.statRowValue}>
-                {riotStats.rankedSolo
-                  ? `${riotStats.rankedSolo.winRate}% (${riotStats.rankedSolo.wins}W)`
-                  : 'N/A'}
-              </ThemedText>
             </View>
 
-            <View style={styles.statRow}>
-              <View style={styles.statRowIcon}>
-                <IconSymbol size={20} name="gamecontroller.fill" color="#b9bbbe" />
+            {/* Secondary Stats Grid - Smaller cards */}
+            <View style={styles.secondaryStatsGrid}>
+              {/* Games Played */}
+              <View style={styles.secondaryStatCard}>
+                <View style={styles.secondaryStatIconContainer}>
+                  <IconSymbol size={16} name="gamecontroller.fill" color="#fff" />
+                </View>
+                <ThemedText style={styles.secondaryStatLabel}>Games</ThemedText>
+                <ThemedText style={styles.secondaryStatValue}>
+                  {riotStats.rankedSolo
+                    ? riotStats.rankedSolo.wins + riotStats.rankedSolo.losses
+                    : 0}
+                </ThemedText>
               </View>
-              <ThemedText style={styles.statRowLabel}>Games Played</ThemedText>
-              <ThemedText style={styles.statRowValue}>
-                {riotStats.rankedSolo
-                  ? riotStats.rankedSolo.wins + riotStats.rankedSolo.losses
-                  : 0}
-              </ThemedText>
-            </View>
 
-            <View style={styles.statRow}>
-              <View style={styles.statRowIcon}>
-                <IconSymbol size={20} name="person.fill" color="#b9bbbe" />
+              {/* Top Champion */}
+              <View style={styles.secondaryStatCard}>
+                <View style={styles.secondaryStatIconContainer}>
+                  <IconSymbol size={16} name="person.fill" color="#fff" />
+                </View>
+                <ThemedText style={styles.secondaryStatLabel}>Top Champion</ThemedText>
+                <ThemedText style={styles.secondaryStatValue}>
+                  {riotStats.topChampions && riotStats.topChampions.length > 0
+                    ? getChampionName(riotStats.topChampions[0].championId)
+                    : 'N/A'}
+                </ThemedText>
               </View>
-              <ThemedText style={styles.statRowLabel}>Top Champion</ThemedText>
-              <ThemedText style={styles.statRowValue}>
-                {riotStats.topChampions && riotStats.topChampions.length > 0
-                  ? getChampionName(riotStats.topChampions[0].championId)
-                  : 'N/A'}
-              </ThemedText>
-            </View>
 
-            <View style={styles.statRow}>
-              <View style={styles.statRowIcon}>
-                <IconSymbol size={20} name="number" color="#b9bbbe" />
+              {/* Summoner Level */}
+              <View style={styles.secondaryStatCard}>
+                <View style={styles.secondaryStatIconContainer}>
+                  <IconSymbol size={16} name="number" color="#fff" />
+                </View>
+                <ThemedText style={styles.secondaryStatLabel}>Level</ThemedText>
+                <ThemedText style={styles.secondaryStatValue}>{riotStats.summonerLevel}</ThemedText>
               </View>
-              <ThemedText style={styles.statRowLabel}>Summoner Level</ThemedText>
-              <ThemedText style={styles.statRowValue}>{riotStats.summonerLevel}</ThemedText>
             </View>
           </>
         ) : null}
@@ -384,13 +385,16 @@ export default function LeagueGameStatsScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#1e2124',
+    backgroundColor: '#0f1f3d',
+  },
+  scrollContent: {
+    flexGrow: 1,
   },
   heroSection: {
-    height: 240,
+    height: 200,
     justifyContent: 'space-between',
     paddingTop: 60,
-    paddingBottom: 40,
+    paddingBottom: 20,
     paddingHorizontal: 24,
   },
   backButton: {
@@ -412,7 +416,7 @@ const styles = StyleSheet.create({
   },
   summonerNameContainer: {
     position: 'absolute',
-    top: 75,
+    top: 90,
     left: 0,
     right: 0,
     alignItems: 'center',
@@ -450,18 +454,18 @@ const styles = StyleSheet.create({
     elevation: 5,
   },
   statsCard: {
-    backgroundColor: '#2c2f33',
+    backgroundColor: '#23262b',
     marginHorizontal: 20,
-    marginTop: -80,
-    borderRadius: 16,
+    marginTop: -60,
+    borderRadius: 24,
     padding: 20,
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.3,
-    shadowRadius: 8,
-    elevation: 8,
-    borderWidth: 1,
-    borderColor: '#2c2f33',
+    shadowOffset: { width: 0, height: 12 },
+    shadowOpacity: 0.6,
+    shadowRadius: 20,
+    elevation: 16,
+    borderWidth: 2,
+    borderColor: 'rgba(255, 255, 255, 0.1)',
   },
   statRow: {
     flexDirection: 'row',
@@ -495,30 +499,37 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: '#0f1f3d',
+    backgroundColor: '#2c2f33',
     marginHorizontal: 20,
-    marginTop: 32,
+    marginTop: 16,
     paddingVertical: 14,
     paddingHorizontal: 24,
-    borderRadius: 12,
+    borderRadius: 14,
     gap: 10,
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.1)',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    elevation: 5,
   },
   shareButtonText: {
     fontSize: 15,
-    fontWeight: '600',
+    fontWeight: '700',
     color: '#fff',
-    letterSpacing: -0.2,
+    letterSpacing: 0.5,
   },
   shareButtonIcon: {
-    width: 24,
-    height: 24,
-    borderRadius: 12,
-    backgroundColor: 'rgba(255,255,255,0.2)',
+    width: 26,
+    height: 26,
+    borderRadius: 13,
+    backgroundColor: 'rgba(255,255,255,0.15)',
     alignItems: 'center',
     justifyContent: 'center',
   },
   bottomSpacer: {
-    height: 40,
+    height: 20,
   },
   loadingContainer: {
     paddingVertical: 40,
@@ -553,78 +564,149 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: '600',
   },
-  // Current Rank Section - Prominent
-  currentRankSection: {
+  // Hero Rank Card - Current Rank (Full Width, Most Prominent)
+  heroRankCard: {
+    backgroundColor: '#1a1d21',
+    borderRadius: 18,
+    padding: 20,
     alignItems: 'center',
-    paddingVertical: 24,
-    paddingHorizontal: 20,
-    backgroundColor: '#36393e',
-    borderRadius: 12,
-    marginBottom: 16,
+    marginBottom: 12,
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.1)',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.4,
+    shadowRadius: 12,
+    elevation: 8,
   },
-  rankSectionLabel: {
-    fontSize: 11,
-    fontWeight: '700',
-    color: '#b9bbbe',
-    letterSpacing: 1.5,
-    marginBottom: 16,
+  heroRankLabel: {
+    fontSize: 10,
+    fontWeight: '800',
+    color: '#8e9297',
+    letterSpacing: 2,
+    marginBottom: 12,
     textTransform: 'uppercase',
   },
-  rankIconLarge: {
-    width: 120,
-    height: 120,
-    marginBottom: 12,
-  },
-  rankTitleLarge: {
-    fontSize: 28,
-    fontWeight: '800',
-    color: '#fff',
-    marginBottom: 8,
-    letterSpacing: -0.5,
-    lineHeight: 34,
-    includeFontPadding: false,
-  },
-  lpContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 12,
-  },
-  lpText: {
-    fontSize: 16,
-    fontWeight: '700',
-    color: '#0f1f3d',
-  },
-  // Peak Rank Section - Secondary Prominent
-  peakRankSection: {
-    paddingVertical: 20,
-    paddingHorizontal: 20,
-    backgroundColor: '#36393e',
-    borderRadius: 12,
-    marginBottom: 16,
-  },
-  peakRankContent: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 16,
-  },
-  rankIconMedium: {
+  heroRankIcon: {
     width: 80,
     height: 80,
+    marginBottom: 12,
   },
-  peakRankText: {
-    flex: 1,
-  },
-  rankTitleMedium: {
-    fontSize: 22,
-    fontWeight: '700',
+  heroRankTitle: {
+    fontSize: 20,
+    fontWeight: '900',
     color: '#fff',
-    marginBottom: 4,
-    letterSpacing: -0.3,
+    textAlign: 'center',
+    letterSpacing: -1,
   },
-  // Section Divider
-  sectionDivider: {
-    height: 1,
-    backgroundColor: '#36393e',
-    marginVertical: 16,
+  heroRankSubtext: {
+    fontSize: 14,
+    fontWeight: '700',
+    color: '#0f1f3d',
+    marginTop: 6,
+  },
+  // Important Stats Row - Peak Rank & Win Rate
+  importantStatsRow: {
+    flexDirection: 'row',
+    gap: 10,
+    marginBottom: 12,
+  },
+  importantStatCard: {
+    flex: 1,
+    backgroundColor: '#1a1d21',
+    borderRadius: 16,
+    padding: 16,
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.08)',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    elevation: 6,
+  },
+  importantStatLabel: {
+    fontSize: 9,
+    fontWeight: '800',
+    color: '#8e9297',
+    letterSpacing: 1.5,
+    marginBottom: 10,
+    textTransform: 'uppercase',
+  },
+  importantStatIcon: {
+    width: 50,
+    height: 50,
+    marginBottom: 10,
+  },
+  importantStatIconContainer: {
+    width: 50,
+    height: 50,
+    borderRadius: 25,
+    backgroundColor: '#0f1f3d',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 10,
+    shadowColor: '#0f1f3d',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.4,
+    shadowRadius: 6,
+    elevation: 4,
+  },
+  importantStatTitle: {
+    fontSize: 16,
+    fontWeight: '800',
+    color: '#fff',
+    textAlign: 'center',
+    letterSpacing: -0.5,
+  },
+  importantStatSubtext: {
+    fontSize: 11,
+    fontWeight: '600',
+    color: '#5c6066',
+    marginTop: 4,
+  },
+  // Secondary Stats Grid - Smaller, Less Prominent
+  secondaryStatsGrid: {
+    flexDirection: 'row',
+    gap: 10,
+  },
+  secondaryStatCard: {
+    flex: 1,
+    backgroundColor: '#1a1d21',
+    borderRadius: 14,
+    padding: 12,
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.05)',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.2,
+    shadowRadius: 4,
+    elevation: 3,
+  },
+  secondaryStatIconContainer: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    backgroundColor: '#0f1f3d',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 8,
+  },
+  secondaryStatLabel: {
+    fontSize: 9,
+    fontWeight: '700',
+    color: '#72767d',
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
+    marginBottom: 6,
+    textAlign: 'center',
+  },
+  secondaryStatValue: {
+    fontSize: 16,
+    fontWeight: '800',
+    color: '#fff',
+    letterSpacing: -0.5,
+    textAlign: 'center',
   },
 });

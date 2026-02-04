@@ -1,5 +1,4 @@
 import CompactDuoCard from '@/app/components/compactDuoCard';
-import DuoCardDetailModal from '@/app/components/duoCardDetailModal';
 import AddDuoCard, { DuoCardData } from '@/app/components/addDuoCard';
 import EditDuoCard from '@/app/components/editDuoCard';
 import { ThemedText } from '@/components/themed-text';
@@ -40,10 +39,6 @@ export default function DuoFinderScreen() {
   const [avatarsLoadedCount, setAvatarsLoadedCount] = useState(0);
   const [allAvatarsLoaded, setAllAvatarsLoaded] = useState(false);
   const [showCards, setShowCards] = useState(false);
-  const [showDetailModal, setShowDetailModal] = useState(false);
-  const [selectedCard, setSelectedCard] = useState<{ game: 'valorant' | 'league' } | null>(null);
-  const [showFindDuoDetailModal, setShowFindDuoDetailModal] = useState(false);
-  const [selectedFindDuoCard, setSelectedFindDuoCard] = useState<DuoCardWithId | null>(null);
   const [showEditModal, setShowEditModal] = useState(false);
   const [editingGame, setEditingGame] = useState<'valorant' | 'league' | null>(null);
 
@@ -409,25 +404,48 @@ export default function DuoFinderScreen() {
       setEditingGame(game);
       setShowEditModal(true);
     } else {
-      // Open detail modal
-      setSelectedCard({ game });
-      setShowDetailModal(true);
+      // Navigate to detail page
+      const cardData = game === 'valorant' ? valorantCard : leagueCard;
+      if (cardData) {
+        const avatarUrl = user?.avatar || '';
+        console.log('Navigating with user avatar:', avatarUrl);
+        console.log('User object:', user);
+        router.push({
+          pathname: '/profilePages/duoCardDetail',
+          params: {
+            game: cardData.game,
+            username: cardData.username,
+            avatar: avatarUrl,
+            peakRank: cardData.peakRank,
+            currentRank: cardData.currentRank,
+            region: cardData.region,
+            mainRole: cardData.mainRole,
+            mainAgent: cardData.mainAgent,
+            userId: user?.id || '',
+          },
+        });
+      }
     }
   };
 
-  const handleCloseDetailModal = () => {
-    setShowDetailModal(false);
-    setSelectedCard(null);
-  };
-
   const handleFindDuoCardPress = (card: DuoCardWithId) => {
-    setSelectedFindDuoCard(card);
-    setShowFindDuoDetailModal(true);
-  };
-
-  const handleCloseFindDuoDetailModal = () => {
-    setShowFindDuoDetailModal(false);
-    setSelectedFindDuoCard(null);
+    const avatarUrl = card.avatar || '';
+    console.log('Navigating with card avatar:', avatarUrl);
+    console.log('Full card object:', card);
+    router.push({
+      pathname: '/profilePages/duoCardDetail',
+      params: {
+        game: card.game,
+        username: card.username,
+        avatar: avatarUrl,
+        peakRank: card.peakRank,
+        currentRank: card.currentRank,
+        region: card.region,
+        mainRole: card.mainRole,
+        mainAgent: card.mainAgent || '',
+        userId: card.userId,
+      },
+    });
   };
 
   const handleSaveEdit = async (mainRole: string, mainAgent: string, lookingFor: string) => {
@@ -572,12 +590,15 @@ export default function DuoFinderScreen() {
             {loadingDuoCards || (duoCards.length > 0 && !showCards) ? (
               <View style={styles.loadingContainer}>
                 <View style={styles.loadingContent}>
-                  <View style={styles.loadingIconContainer}>
-                    <IconSymbol size={48} name="person.2.fill" color="#c42743" />
+                  {/* Animated dots */}
+                  <View style={styles.loadingDotsContainer}>
+                    <View style={[styles.loadingDot, styles.loadingDot1]} />
+                    <View style={[styles.loadingDot, styles.loadingDot2]} />
+                    <View style={[styles.loadingDot, styles.loadingDot3]} />
                   </View>
                   <ActivityIndicator size="large" color="#c42743" style={styles.loadingSpinner} />
                   <ThemedText style={styles.loadingTitle}>Finding Duo Partners</ThemedText>
-                  <ThemedText style={styles.loadingSubtext}>Searching for players in your rank...</ThemedText>
+                  <ThemedText style={styles.loadingSubtext}>Searching for players in your skill range...</ThemedText>
                 </View>
               </View>
             ) : duoCards.length === 0 ? (
@@ -715,46 +736,6 @@ export default function DuoFinderScreen() {
         hasValorantDuoCard={valorantCard !== null}
         hasLeagueDuoCard={leagueCard !== null}
       />
-
-      {/* Duo Card Detail Modal - My Duo Cards */}
-      {selectedCard && (
-        <DuoCardDetailModal
-          visible={showDetailModal}
-          onClose={handleCloseDetailModal}
-          game={selectedCard.game}
-          username={selectedCard.game === 'valorant' ? (valorantCard?.username || '') : (leagueCard?.username || '')}
-          avatar={user?.avatar}
-          peakRank={selectedCard.game === 'valorant' ? (valorantCard?.peakRank || 'Unranked') : (leagueCard?.peakRank || 'Unranked')}
-          currentRank={selectedCard.game === 'valorant' ? (valorantCard?.currentRank || 'Unranked') : (leagueCard?.currentRank || 'Unranked')}
-          region={selectedCard.game === 'valorant' ? (valorantCard?.region || 'NA') : (leagueCard?.region || 'NA')}
-          mainRole={selectedCard.game === 'valorant' ? (valorantCard?.mainRole || 'Duelist') : (leagueCard?.mainRole || 'Mid')}
-          mainAgent={selectedCard.game === 'valorant' ? (valorantCard?.mainAgent || '') : (leagueCard?.mainAgent || '')}
-          onUserPress={() => {
-            handleCloseDetailModal();
-            router.push('/(tabs)/profile');
-          }}
-        />
-      )}
-
-      {/* Duo Card Detail Modal - Find Duo */}
-      {selectedFindDuoCard && (
-        <DuoCardDetailModal
-          visible={showFindDuoDetailModal}
-          onClose={handleCloseFindDuoDetailModal}
-          game={selectedFindDuoCard.game}
-          username={selectedFindDuoCard.username}
-          avatar={selectedFindDuoCard.avatar}
-          peakRank={selectedFindDuoCard.peakRank}
-          currentRank={selectedFindDuoCard.currentRank}
-          region={selectedFindDuoCard.region}
-          mainRole={selectedFindDuoCard.mainRole}
-          mainAgent={selectedFindDuoCard.mainAgent || ''}
-          onUserPress={() => {
-            handleCloseFindDuoDetailModal();
-            router.push(`/profilePages/profileView?userId=${selectedFindDuoCard.userId}`);
-          }}
-        />
-      )}
 
       {/* Edit Duo Card Modal */}
       {editingGame && (
@@ -1009,32 +990,43 @@ const styles = StyleSheet.create({
   },
   loadingContent: {
     alignItems: 'center',
-    gap: 16,
+    gap: 20,
   },
-  loadingIconContainer: {
-    width: 80,
-    height: 80,
-    borderRadius: 40,
-    backgroundColor: '#2c2f33',
-    alignItems: 'center',
-    justifyContent: 'center',
+  loadingDotsContainer: {
+    flexDirection: 'row',
+    gap: 12,
     marginBottom: 8,
-    borderWidth: 2,
-    borderColor: '#c42743',
+  },
+  loadingDot: {
+    width: 12,
+    height: 12,
+    borderRadius: 6,
+    backgroundColor: '#c42743',
+  },
+  loadingDot1: {
+    opacity: 0.3,
+  },
+  loadingDot2: {
+    opacity: 0.6,
+  },
+  loadingDot3: {
+    opacity: 1,
   },
   loadingSpinner: {
     marginVertical: 8,
   },
   loadingTitle: {
-    fontSize: 18,
-    fontWeight: '700',
+    fontSize: 20,
+    fontWeight: '800',
     color: '#fff',
-    letterSpacing: -0.5,
+    letterSpacing: -0.8,
   },
   loadingSubtext: {
     fontSize: 14,
-    color: '#72767d',
+    color: '#94a3b8',
     fontWeight: '500',
+    textAlign: 'center',
+    maxWidth: 280,
   },
   loadingText: {
     fontSize: 16,

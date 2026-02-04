@@ -13,8 +13,8 @@ import PostViewerModal from '@/app/components/postViewerModal';
 interface Notification {
   id: string;
   type: 'follow' | 'like' | 'comment' | 'tag' | 'party_invite' | 'party_complete' | 'party_ranking_change';
-  fromUserId: string;
-  fromUsername: string;
+  fromUserId?: string; // Optional for system notifications like party_complete
+  fromUsername?: string; // Optional for system notifications like party_complete
   fromUserAvatar?: string;
   postId?: string;
   postThumbnail?: string;
@@ -104,6 +104,9 @@ export default function NotificationsScreen() {
 
       // Second pass: fetch current avatars for users without avatars
       for (const notif of notifs) {
+        // Skip avatar fetching for notifications without a fromUserId (system notifications)
+        if (!notif.fromUserId) continue;
+
         if (!notif.fromUserAvatar || !notif.fromUserAvatar.startsWith('http')) {
           // Check cache first
           if (userAvatarCache[notif.fromUserId] !== undefined) {
@@ -365,7 +368,7 @@ export default function NotificationsScreen() {
 
   // Navigate to appropriate page based on notification type
   const handleNotificationPress = (notification: Notification) => {
-    if (notification.type === 'follow') {
+    if (notification.type === 'follow' && notification.fromUserId) {
       // Navigate to user profile for follow notifications
       router.push(`/profilePages/profileView?userId=${notification.fromUserId}`);
     } else if ((notification.type === 'like' || notification.type === 'comment' || notification.type === 'tag') && notification.postId) {
@@ -445,6 +448,9 @@ export default function NotificationsScreen() {
 
       // Fetch current avatars for users without avatars
       for (const notif of newNotifs) {
+        // Skip avatar fetching for notifications without a fromUserId (system notifications)
+        if (!notif.fromUserId) continue;
+
         if (!notif.fromUserAvatar || !notif.fromUserAvatar.startsWith('http')) {
           if (userAvatarCache[notif.fromUserId] !== undefined) {
             notif.fromUserAvatar = userAvatarCache[notif.fromUserId];
@@ -607,31 +613,40 @@ export default function NotificationsScreen() {
                   >
                     <View style={styles.notificationLeft}>
                       {/* Avatar */}
-                      <TouchableOpacity
-                        style={styles.avatar}
-                        onPress={(e) => handleUserPress(notification.fromUserId, e)}
-                        activeOpacity={0.7}
-                      >
-                        {notification.fromUserAvatar && notification.fromUserAvatar.startsWith('http') ? (
-                          <Image source={{ uri: notification.fromUserAvatar }} style={styles.avatarImage} />
-                        ) : (
-                          <ThemedText style={styles.avatarInitial}>
-                            {notification.fromUsername[0].toUpperCase()}
-                          </ThemedText>
-                        )}
-                      </TouchableOpacity>
+                      {notification.fromUserId ? (
+                        <TouchableOpacity
+                          style={styles.avatar}
+                          onPress={(e) => handleUserPress(notification.fromUserId, e)}
+                          activeOpacity={0.7}
+                        >
+                          {notification.fromUserAvatar && notification.fromUserAvatar.startsWith('http') ? (
+                            <Image source={{ uri: notification.fromUserAvatar }} style={styles.avatarImage} />
+                          ) : (
+                            <ThemedText style={styles.avatarInitial}>
+                              {notification.fromUsername?.[0]?.toUpperCase() || '?'}
+                            </ThemedText>
+                          )}
+                        </TouchableOpacity>
+                      ) : (
+                        // System notification avatar (e.g., party complete)
+                        <View style={styles.avatar}>
+                          <ThemedText style={styles.avatarInitial}>🏆</ThemedText>
+                        </View>
+                      )}
 
                       {/* Notification content */}
                       <View style={styles.notificationContent}>
                         <View style={styles.notificationTextRow}>
                           <View style={{ flex: 1 }}>
                             <ThemedText style={styles.notificationText}>
-                              <ThemedText
-                                style={styles.usernameText}
-                                onPress={(e) => handleUserPress(notification.fromUserId, e)}
-                              >
-                                {notification.fromUsername}
-                              </ThemedText>
+                              {notification.fromUsername && notification.fromUserId ? (
+                                <ThemedText
+                                  style={styles.usernameText}
+                                  onPress={(e) => handleUserPress(notification.fromUserId, e)}
+                                >
+                                  {notification.fromUsername}
+                                </ThemedText>
+                              ) : null}
                               {notification.type === 'follow' && ' started following you'}
                               {notification.type === 'like' && ' liked your post'}
                               {notification.type === 'tag' && ' tagged you in a post'}
@@ -643,11 +658,11 @@ export default function NotificationsScreen() {
                                 </ThemedText>
                               )}
                               {notification.type === 'party_complete' && !notification.isWinner && (
-                                <ThemedText>
-                                  {` "${notification.partyName}" ended. You ranked #${notification.finalRank}`}
+                                <ThemedText style={{ color: '#fff' }}>
+                                  "{notification.partyName}" ended. You ranked #{notification.finalRank}
                                 </ThemedText>
                               )}
-                              {notification.type === 'party_ranking_change' && (
+                              {notification.type === 'party_ranking_change' && notification.fromUsername && (
                                 <ThemedText style={styles.rankingChangeText}>
                                   {` just moved `}
                                   {notification.newRank ? (
@@ -840,6 +855,7 @@ const styles = StyleSheet.create({
   avatarInitial: {
     fontSize: 16,
     fontWeight: '600',
+    color: '#fff',
   },
   notificationContent: {
     flex: 1,

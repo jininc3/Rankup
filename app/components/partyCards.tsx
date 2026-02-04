@@ -99,162 +99,164 @@ const calculateDaysInfo = (startDate: any, endDate: any): { currentDay: number; 
 export default function PartyCards({ leaderboard, onPress }: PartyCardsProps) {
   const daysInfo = calculateDaysInfo(leaderboard.startDate, leaderboard.endDate);
   const colors = GAME_COLORS[leaderboard.game] || GAME_COLORS['default'];
+  const progressPercentage = daysInfo.totalDays > 0
+    ? Math.min(100, (daysInfo.currentDay / daysInfo.totalDays) * 100)
+    : 0;
+
+  const getAccentColor = () => {
+    if (leaderboard.game === 'Valorant') return '#FF4655';
+    if (leaderboard.game === 'League of Legends') return '#0AC8B9';
+    return '#666';
+  };
 
   return (
-    <View style={styles.leaderboardCardShadow}>
-      <TouchableOpacity
-        style={styles.leaderboardCard}
-        onPress={() => onPress(leaderboard)}
-        activeOpacity={0.9}
-      >
-        <LinearGradient
-        colors={['#4a4d52', '#36393e', '#2c2f33']}
-        start={{ x: 0, y: 0 }}
-        end={{ x: 1, y: 1 }}
-        style={styles.cardGradient}
-      >
-        <View style={styles.cardContent}>
-          {/* Left: Icon */}
-          <View style={styles.leaderboardIconContainer}>
+    <TouchableOpacity
+      style={styles.card}
+      onPress={() => onPress(leaderboard)}
+      activeOpacity={0.8}
+    >
+      <View style={[styles.accentStrip, { backgroundColor: getAccentColor() }]} />
+
+      <View style={styles.cardContent}>
+        {/* Title Row */}
+        <View style={styles.titleRow}>
+          <ThemedText style={styles.title} numberOfLines={1}>{leaderboard.name}</ThemedText>
+          {GAME_LOGOS[leaderboard.game] && (
             <Image
-              source={GAME_LOGOS[leaderboard.game] || GAME_LOGOS['Valorant']}
-              style={styles.gameLogoImage}
+              source={GAME_LOGOS[leaderboard.game]}
+              style={styles.gameLogo}
               resizeMode="contain"
             />
-          </View>
-
-          {/* Middle: Title and info */}
-          <View style={styles.cardMainInfo}>
-            <ThemedText style={styles.leaderboardName}>{leaderboard.name}</ThemedText>
-            <View style={styles.statsRow}>
-              {leaderboard.userRank && (
-                <ThemedText style={styles.statText}>
-                  Rank: <ThemedText style={styles.statValue}>#{leaderboard.userRank}</ThemedText>
-                  <ThemedText style={styles.statLabel}> / {leaderboard.members}</ThemedText>
-                </ThemedText>
-              )}
-              {leaderboard.userRank && daysInfo.totalDays > 0 && (
-                <ThemedText style={styles.statDivider}>•</ThemedText>
-              )}
-              {daysInfo.totalDays > 0 && (
-                <ThemedText style={styles.statText}>
-                  Day <ThemedText style={styles.statValue}>{daysInfo.currentDay}/{daysInfo.totalDays}</ThemedText>
-                  <ThemedText style={styles.statLabel}> ({daysInfo.daysLeft}d left)</ThemedText>
-                </ThemedText>
-              )}
-            </View>
-          </View>
+          )}
         </View>
 
-        {/* Progress bar */}
+        {/* Stats Row */}
+        <View style={styles.statsRow}>
+          {/* Rank */}
+          {leaderboard.userRank && (
+            <View style={styles.stat}>
+              <ThemedText style={[styles.statValue, { color: getAccentColor() }]}>
+                #{leaderboard.userRank}
+              </ThemedText>
+              <ThemedText style={styles.statLabel}>Rank</ThemedText>
+            </View>
+          )}
+
+          {/* Members */}
+          <View style={styles.stat}>
+            <ThemedText style={styles.statValue}>{leaderboard.members}</ThemedText>
+            <ThemedText style={styles.statLabel}>Players</ThemedText>
+          </View>
+
+          {/* Days */}
+          {daysInfo.totalDays > 0 && (
+            <View style={styles.stat}>
+              <ThemedText style={styles.statValue}>
+                {daysInfo.currentDay}/{daysInfo.totalDays}
+              </ThemedText>
+              <ThemedText style={styles.statLabel}>Day</ThemedText>
+            </View>
+          )}
+
+          {/* Days Left */}
+          {daysInfo.daysLeft > 0 && (
+            <View style={styles.stat}>
+              <ThemedText style={styles.statValue}>{daysInfo.daysLeft}</ThemedText>
+              <ThemedText style={styles.statLabel}>Left</ThemedText>
+            </View>
+          )}
+        </View>
+
+        {/* Progress Bar */}
         {daysInfo.totalDays > 0 && (
-          <View style={styles.progressBarContainer}>
+          <View style={styles.progressBar}>
             <View
               style={[
-                styles.progressBarFill,
+                styles.progressFill,
                 {
-                  width: `${Math.min(100, (daysInfo.currentDay / daysInfo.totalDays) * 100)}%`,
-                  backgroundColor: colors.progress
+                  width: `${progressPercentage}%`,
+                  backgroundColor: getAccentColor(),
                 }
               ]}
             />
           </View>
         )}
-        </LinearGradient>
-      </TouchableOpacity>
-    </View>
+      </View>
+    </TouchableOpacity>
   );
 }
 
 const styles = StyleSheet.create({
-  leaderboardCardShadow: {
-    borderRadius: 10,
-    marginBottom: 10,
+  card: {
+    backgroundColor: '#2c2f33',
+    borderRadius: 12,
+    overflow: 'hidden',
+    borderWidth: 1,
+    borderColor: '#40444b',
+    marginBottom: 16,
     shadowColor: '#000',
     shadowOffset: {
       width: 0,
-      height: 3,
+      height: 8,
     },
-    shadowOpacity: 0.25,
-    shadowRadius: 6,
-    elevation: 4,
+    shadowOpacity: 0.35,
+    shadowRadius: 16,
+    elevation: 10,
   },
-  leaderboardCard: {
-    flexDirection: 'column',
-    borderRadius: 10,
-    overflow: 'hidden',
-    borderWidth: 1,
-    borderColor: '#2c2f33',
-    borderTopColor: '#40444b',
-    borderLeftColor: '#40444b',
-    borderBottomColor: '#202225',
-    borderRightColor: '#202225',
-  },
-  cardGradient: {
-    padding: 10,
-    borderRadius: 10,
+  accentStrip: {
+    height: 3,
+    width: '100%',
   },
   cardContent: {
+    padding: 14,
+    gap: 10,
+  },
+  titleRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginBottom: 8,
+    justifyContent: 'space-between',
   },
-  leaderboardIconContainer: {
-    width: 36,
-    height: 36,
-    borderRadius: 8,
-    backgroundColor: '#2c2f33',
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginRight: 10,
-  },
-  gameLogoImage: {
-    width: 28,
-    height: 28,
-  },
-  cardMainInfo: {
-    flex: 1,
-  },
-  leaderboardName: {
-    fontSize: 15,
+  title: {
+    fontSize: 16,
     fontWeight: '700',
     color: '#fff',
-    letterSpacing: -0.2,
-    marginBottom: 3,
+    letterSpacing: -0.5,
+    flex: 1,
+  },
+  gameLogo: {
+    width: 20,
+    height: 20,
   },
   statsRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    flexWrap: 'wrap',
+    gap: 16,
   },
-  statText: {
-    fontSize: 11,
-    fontWeight: '500',
-    color: '#b9bbbe',
+  stat: {
+    alignItems: 'center',
+    gap: 4,
   },
   statValue: {
-    fontSize: 11,
-    fontWeight: '700',
+    fontSize: 18,
+    fontWeight: '800',
     color: '#fff',
+    letterSpacing: -0.5,
   },
   statLabel: {
-    fontSize: 11,
-    fontWeight: '400',
-    color: '#72767d',
+    fontSize: 10,
+    fontWeight: '600',
+    color: '#94a3b8',
+    letterSpacing: 0.3,
+    textTransform: 'uppercase',
   },
-  statDivider: {
-    fontSize: 11,
-    color: '#72767d',
-    marginHorizontal: 6,
-  },
-  progressBarContainer: {
-    height: 3,
-    backgroundColor: '#2c2f33',
-    borderRadius: 1.5,
+  progressBar: {
+    height: 4,
+    backgroundColor: 'rgba(0, 0, 0, 0.3)',
+    borderRadius: 2,
     overflow: 'hidden',
   },
-  progressBarFill: {
+  progressFill: {
     height: '100%',
-    borderRadius: 1.5,
+    borderRadius: 2,
   },
 });

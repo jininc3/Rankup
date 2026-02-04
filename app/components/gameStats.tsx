@@ -427,9 +427,6 @@ export default function GameStatsScreen() {
           // Display real Riot stats for League of Legends
           <>
             <View style={styles.statRow}>
-              <View style={styles.statRowIcon}>
-                <IconSymbol size={20} name="trophy.fill" color="#666" />
-              </View>
               <ThemedText style={styles.statRowLabel}>Current Rank</ThemedText>
               <ThemedText style={styles.statRowValue}>
                 {riotStats.rankedSolo
@@ -439,9 +436,6 @@ export default function GameStatsScreen() {
             </View>
 
             <View style={styles.statRow}>
-              <View style={styles.statRowIcon}>
-                <IconSymbol size={20} name="star.fill" color="#666" />
-              </View>
               <ThemedText style={styles.statRowLabel}>Peak Rank</ThemedText>
               <ThemedText style={styles.statRowValue}>
                 {riotStats.peakRank
@@ -451,9 +445,6 @@ export default function GameStatsScreen() {
             </View>
 
             <View style={styles.statRow}>
-              <View style={styles.statRowIcon}>
-                <IconSymbol size={20} name="chart.line.uptrend.xyaxis" color="#666" />
-              </View>
               <ThemedText style={styles.statRowLabel}>Win Rate</ThemedText>
               <ThemedText style={styles.statRowValue}>
                 {riotStats.rankedSolo
@@ -463,9 +454,6 @@ export default function GameStatsScreen() {
             </View>
 
             <View style={styles.statRow}>
-              <View style={styles.statRowIcon}>
-                <IconSymbol size={20} name="gamecontroller.fill" color="#666" />
-              </View>
               <ThemedText style={styles.statRowLabel}>Games Played</ThemedText>
               <ThemedText style={styles.statRowValue}>
                 {riotStats.rankedSolo
@@ -475,9 +463,6 @@ export default function GameStatsScreen() {
             </View>
 
             <View style={styles.statRow}>
-              <View style={styles.statRowIcon}>
-                <IconSymbol size={20} name="person.fill" color="#666" />
-              </View>
               <ThemedText style={styles.statRowLabel}>Top Champion</ThemedText>
               <ThemedText style={styles.statRowValue}>
                 {riotStats.topChampions && riotStats.topChampions.length > 0
@@ -487,9 +472,6 @@ export default function GameStatsScreen() {
             </View>
 
             <View style={styles.statRow}>
-              <View style={styles.statRowIcon}>
-                <IconSymbol size={20} name="number" color="#666" />
-              </View>
               <ThemedText style={styles.statRowLabel}>Summoner Level</ThemedText>
               <ThemedText style={styles.statRowValue}>{riotStats.summonerLevel}</ThemedText>
             </View>
@@ -498,9 +480,6 @@ export default function GameStatsScreen() {
           // Display Valorant stats from Henrik's API
           <>
             <View style={styles.statRow}>
-              <View style={styles.statRowIcon}>
-                <IconSymbol size={20} name="trophy.fill" color="#666" />
-              </View>
               <ThemedText style={styles.statRowLabel}>Current Rank</ThemedText>
               <ThemedText style={styles.statRowValue}>
                 {valorantStats.currentRank} ({valorantStats.rankRating} RR)
@@ -508,17 +487,11 @@ export default function GameStatsScreen() {
             </View>
 
             <View style={styles.statRow}>
-              <View style={styles.statRowIcon}>
-                <IconSymbol size={20} name="chart.line.uptrend.xyaxis" color="#666" />
-              </View>
               <ThemedText style={styles.statRowLabel}>MMR</ThemedText>
               <ThemedText style={styles.statRowValue}>{valorantStats.mmr}</ThemedText>
             </View>
 
             <View style={styles.statRow}>
-              <View style={styles.statRowIcon}>
-                <IconSymbol size={20} name="star.fill" color="#666" />
-              </View>
               <ThemedText style={styles.statRowLabel}>Peak Rank</ThemedText>
               <ThemedText style={styles.statRowValue}>
                 {valorantStats.peakRank ? valorantStats.peakRank.tier : 'N/A'}
@@ -526,9 +499,6 @@ export default function GameStatsScreen() {
             </View>
 
             <View style={styles.statRow}>
-              <View style={styles.statRowIcon}>
-                <IconSymbol size={20} name="chart.line.uptrend.xyaxis" color="#666" />
-              </View>
               <ThemedText style={styles.statRowLabel}>Win Rate</ThemedText>
               <ThemedText style={styles.statRowValue}>
                 {valorantStats.winRate}% ({valorantStats.wins}W)
@@ -536,17 +506,11 @@ export default function GameStatsScreen() {
             </View>
 
             <View style={styles.statRow}>
-              <View style={styles.statRowIcon}>
-                <IconSymbol size={20} name="gamecontroller.fill" color="#666" />
-              </View>
               <ThemedText style={styles.statRowLabel}>Games Played</ThemedText>
               <ThemedText style={styles.statRowValue}>{valorantStats.gamesPlayed}</ThemedText>
             </View>
 
             <View style={styles.statRow}>
-              <View style={styles.statRowIcon}>
-                <IconSymbol size={20} name="number" color="#666" />
-              </View>
               <ThemedText style={styles.statRowLabel}>Account Level</ThemedText>
               <ThemedText style={styles.statRowValue}>{valorantStats.accountLevel}</ThemedText>
             </View>
@@ -556,25 +520,16 @@ export default function GameStatsScreen() {
           // TFT API temporarily disabled
           <>
             <View style={styles.statRow}>
-              <View style={styles.statRowIcon}>
-                <IconSymbol size={20} name="trophy.fill" color="#666" />
-              </View>
               <ThemedText style={styles.statRowLabel}>Current Rank</ThemedText>
               <ThemedText style={styles.statRowValue}>{game.rank}</ThemedText>
             </View>
 
             <View style={styles.statRow}>
-              <View style={styles.statRowIcon}>
-                <IconSymbol size={20} name="star.fill" color="#666" />
-              </View>
               <ThemedText style={styles.statRowLabel}>Peak Rank</ThemedText>
               <ThemedText style={styles.statRowValue}>{game.peakRank || 'Diamond 3'}</ThemedText>
             </View>
 
             <View style={styles.statRow}>
-              <View style={styles.statRowIcon}>
-                <IconSymbol size={20} name="chart.line.uptrend.xyaxis" color="#666" />
-              </View>
               <ThemedText style={styles.statRowLabel}>Win Rate</ThemedText>
               <ThemedText style={styles.statRowValue}>
                 {game.winRate}% ({game.wins}W)
@@ -582,17 +537,11 @@ export default function GameStatsScreen() {
             </View>
 
             <View style={styles.statRow}>
-              <View style={styles.statRowIcon}>
-                <IconSymbol size={20} name="gamecontroller.fill" color="#666" />
-              </View>
               <ThemedText style={styles.statRowLabel}>Games Played</ThemedText>
               <ThemedText style={styles.statRowValue}>{game.wins + game.losses}</ThemedText>
             </View>
 
             <View style={styles.statRow}>
-              <View style={styles.statRowIcon}>
-                <IconSymbol size={20} name="person.fill" color="#666" />
-              </View>
               <ThemedText style={styles.statRowLabel}>
                 Top{' '}
                 {game.name === 'League of Legends'
@@ -716,21 +665,13 @@ const styles = StyleSheet.create({
   statRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingVertical: 14,
+    justifyContent: 'space-between',
+    paddingVertical: 16,
+    paddingHorizontal: 4,
     borderBottomWidth: 1,
     borderBottomColor: '#f5f5f5',
   },
-  statRowIcon: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
-    backgroundColor: '#f9f9f9',
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginRight: 14,
-  },
   statRowLabel: {
-    flex: 1,
     fontSize: 14,
     color: '#666',
     fontWeight: '500',
