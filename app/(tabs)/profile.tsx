@@ -936,6 +936,13 @@ export default function ProfileScreen() {
                 <IconSymbol size={18} name="play.rectangle.fill" color="#fff" />
                 <ThemedText style={styles.sectionHeaderTitle}>Clips</ThemedText>
               </View>
+              <TouchableOpacity
+                style={styles.addClipsButton}
+                onPress={handleAddPost}
+                activeOpacity={0.7}
+              >
+                <IconSymbol size={20} name="plus" color="#fff" />
+              </TouchableOpacity>
             </View>
 
           {/* Clips Content */}
@@ -1018,16 +1025,25 @@ export default function ProfileScreen() {
               <IconSymbol size={18} name="star.fill" color="#fff" />
               <ThemedText style={styles.sectionHeaderTitle}>Rank Cards</ThemedText>
             </View>
-            {/* Wallet View button - shown when cards are expanded */}
-            {cardsExpanded && userGames.length > 1 && (
+            <View style={styles.sectionHeaderRight}>
+              {/* Wallet View button - shown when cards are expanded */}
+              {cardsExpanded && userGames.length > 1 && (
+                <TouchableOpacity
+                  style={styles.walletViewButton}
+                  onPress={toggleCardExpansion}
+                  activeOpacity={0.7}
+                >
+                  <IconSymbol size={20} name="creditcard.fill" color="#fff" />
+                </TouchableOpacity>
+              )}
               <TouchableOpacity
-                style={styles.walletViewButton}
-                onPress={toggleCardExpansion}
+                style={styles.addClipsButton}
+                onPress={() => router.push('/profilePages/newRankCard')}
                 activeOpacity={0.7}
               >
-                <IconSymbol size={20} name="creditcard.fill" color="#fff" />
+                <IconSymbol size={20} name="plus" color="#fff" />
               </TouchableOpacity>
-            )}
+            </View>
           </View>
 
           {/* Rank Cards Content */}
@@ -1188,19 +1204,6 @@ export default function ProfileScreen() {
                       </View>
                     );
                   })}
-
-                  {/* Add Rank Card Button */}
-                  <TouchableOpacity
-                    style={styles.addRankCardCardVertical}
-                    onPress={() => router.push('/profilePages/newRankCard')}
-                    activeOpacity={0.7}
-                  >
-                    <View style={styles.addRankCardContent}>
-                      <IconSymbol size={56} name="plus.circle.fill" color="#c42743" />
-                      <ThemedText style={styles.addRankCardText}>Add Rank Card</ThemedText>
-                      <ThemedText style={styles.addRankCardSubtext}>Connect another game</ThemedText>
-                    </View>
-                  </TouchableOpacity>
                 </>
               )}
             </View>
@@ -1209,22 +1212,6 @@ export default function ProfileScreen() {
           </Animated.View>
         </View>
       </Animated.ScrollView>
-
-      {/* Floating Add Post Button */}
-      <TouchableOpacity
-        style={styles.fabButton}
-        onPress={handleAddPost}
-        activeOpacity={0.9}
-      >
-        <LinearGradient
-          colors={['#c42743', '#a81f35']}
-          start={{ x: 0, y: 0 }}
-          end={{ x: 1, y: 1 }}
-          style={styles.fabGradient}
-        >
-          <IconSymbol size={30} name="plus" color="#fff" />
-        </LinearGradient>
-      </TouchableOpacity>
 
       {/* Post Viewer Modal */}
       <PostViewerModal
@@ -1477,6 +1464,11 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: 8,
   },
+  sectionHeaderRight: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
   sectionHeaderTitle: {
     fontSize: 18,
     fontWeight: '700',
@@ -1484,6 +1476,16 @@ const styles = StyleSheet.create({
     letterSpacing: -0.5,
   },
   walletViewButton: {
+    width: 36,
+    height: 36,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#36393e',
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: '#424549',
+  },
+  addClipsButton: {
     width: 36,
     height: 36,
     alignItems: 'center',
@@ -1761,24 +1763,6 @@ const styles = StyleSheet.create({
   addRankCardSubtext: {
     fontSize: 14,
     color: '#72767d',
-  },
-  fabButton: {
-    position: 'absolute',
-    bottom: 24,
-    right: 24,
-    borderRadius: 32,
-    shadowColor: '#c42743',
-    shadowOffset: { width: 0, height: 6 },
-    shadowOpacity: 0.4,
-    shadowRadius: 12,
-    elevation: 12,
-  },
-  fabGradient: {
-    width: 64,
-    height: 64,
-    borderRadius: 32,
-    alignItems: 'center',
-    justifyContent: 'center',
   },
   popoverOverlay: {
     position: 'absolute',
