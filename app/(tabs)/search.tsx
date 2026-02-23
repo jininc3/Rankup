@@ -236,6 +236,9 @@ export default function SearchScreen() {
 
   return (
     <ThemedView style={styles.container}>
+      <View style={styles.header}>
+        <ThemedText style={styles.headerTitle}>Search</ThemedText>
+      </View>
       <View style={styles.searchContainer}>
         <IconSymbol size={20} name="magnifyingglass" color="#fff" />
         <TextInput
@@ -365,11 +368,11 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     alignItems: 'center',
     paddingHorizontal: 20,
-    paddingTop: 60,
-    paddingBottom: 16,
+    paddingTop: 55,
+    paddingBottom: 15,
     backgroundColor: '#1e2124',
     borderBottomWidth: 1,
-    borderBottomColor: '#2c2f33',
+    borderBottomColor: '#c42743',
   },
   headerTitle: {
     fontSize: 20,
@@ -389,7 +392,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     backgroundColor: '#36393e',
     marginHorizontal: 20,
-    marginTop: 75,
+    marginTop: 16,
     marginBottom: 16,
     paddingHorizontal: 16,
     paddingVertical: 12,

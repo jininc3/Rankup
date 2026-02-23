@@ -254,6 +254,9 @@ export default function LeaderboardScreen() {
 
   return (
     <ThemedView style={styles.container}>
+      <View style={styles.header}>
+        <ThemedText style={styles.headerTitle}>Parties</ThemedText>
+      </View>
       {loading ? (
         <View style={styles.loadingContainer}>
           <ActivityIndicator size="large" color="#c42743" />
@@ -371,11 +374,11 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     alignItems: 'center',
     paddingHorizontal: 20,
-    paddingTop: 60,
-    paddingBottom: 16,
+    paddingTop: 55,
+    paddingBottom: 15,
     backgroundColor: '#1e2124',
     borderBottomWidth: 1,
-    borderBottomColor: '#2c2f33',
+    borderBottomColor: '#c42743',
   },
   headerTitle: {
     fontSize: 20,
@@ -409,11 +412,9 @@ const styles = StyleSheet.create({
   tabsContainer: {
     flexDirection: 'row',
     paddingHorizontal: 20,
-    paddingTop: 76,
+    paddingTop: 16,
     paddingBottom: 16,
     gap: 12,
-    borderBottomWidth: 1,
-    borderBottomColor: '#c42743',
   },
   tab: {
     flex: 1,

@@ -14,6 +14,7 @@ interface CompactDuoCardProps {
   onPress?: () => void;
   onAvatarLoad?: () => void;
   showContent?: boolean;
+  isEditMode?: boolean;
 }
 
 // League rank icon mapping
@@ -72,13 +73,11 @@ export default function CompactDuoCard({
   onPress,
   onAvatarLoad,
   showContent = true,
+  isEditMode = false,
 }: CompactDuoCardProps) {
   const [avatarLoaded, setAvatarLoaded] = useState(false);
-
-  // Track if we've already notified parent
   const [hasNotifiedParent, setHasNotifiedParent] = useState(false);
 
-  // If no avatar URL (placeholder icon), mark as loaded immediately
   useEffect(() => {
     if (!avatar || !avatar.startsWith('http')) {
       setAvatarLoaded(true);
@@ -88,7 +87,6 @@ export default function CompactDuoCard({
     }
   }, [avatar]);
 
-  // Notify parent when avatar loads (for coordination)
   useEffect(() => {
     if (avatarLoaded && onAvatarLoad && !hasNotifiedParent) {
       onAvatarLoad();
@@ -114,89 +112,111 @@ export default function CompactDuoCard({
     }
   };
 
+  const gameAccentColor = game === 'valorant' ? '#ff4655' : '#c89b3c';
+
   const CardContent = (
-    <View style={styles.card}>
+    <View style={[styles.card, isEditMode && styles.cardEditMode]}>
+      {/* Background gradient */}
       <LinearGradient
-        colors={game === 'valorant' ? ['#3a2c2f', '#2c2f33'] : ['#1e2a3d', '#2c2f33']}
+        colors={['#252830', '#1c1f24']}
         start={{ x: 0, y: 0 }}
         end={{ x: 1, y: 1 }}
-        style={styles.cardGradient}
-      >
-        {/* Game accent bar */}
-        <View style={[styles.accentBar, game === 'valorant' ? styles.valorantAccent : styles.leagueAccent]} />
+        style={styles.cardBackground}
+      />
 
-        {/* Left Section - Avatar */}
-        <View style={styles.avatarContainer}>
-          {avatar && avatar.startsWith('http') ? (
-            <Image
-              source={{ uri: avatar }}
-              style={styles.avatar}
-              onLoad={() => {
-                console.log('CompactDuoCard - Avatar loaded successfully:', avatar);
-                setAvatarLoaded(true);
-              }}
-              onError={(error) => {
-                console.log('CompactDuoCard - Avatar load error:', error.nativeEvent.error);
-                console.log('CompactDuoCard - Failed URL:', avatar);
-                setAvatarLoaded(true);
-              }}
-            />
-          ) : (
-            <View style={styles.avatarPlaceholder}>
-              <IconSymbol size={28} name="person.fill" color="#666" />
-            </View>
-          )}
+      {/* Left accent line */}
+      <View style={[styles.accentLine, { backgroundColor: isEditMode ? '#c42743' : gameAccentColor }]} />
+
+      {/* Edit mode indicator */}
+      {isEditMode && (
+        <View style={styles.editBadge}>
+          <IconSymbol size={12} name="pencil" color="#fff" />
+        </View>
+      )}
+
+      <View style={styles.cardContent}>
+        {/* Avatar Section */}
+        <View style={styles.avatarSection}>
+          <View style={[styles.avatarRing, { borderColor: gameAccentColor }]}>
+            {avatar && avatar.startsWith('http') ? (
+              <Image
+                source={{ uri: avatar }}
+                style={styles.avatar}
+                onLoad={() => setAvatarLoaded(true)}
+                onError={() => setAvatarLoaded(true)}
+              />
+            ) : (
+              <View style={styles.avatarPlaceholder}>
+                <ThemedText style={styles.avatarInitial}>
+                  {username[0]?.toUpperCase() || '?'}
+                </ThemedText>
+              </View>
+            )}
+          </View>
+          {/* Online indicator */}
+          <View style={styles.onlineIndicator} />
         </View>
 
-        {/* Right Section - Info */}
+        {/* Info Section */}
         <View style={styles.infoSection}>
-          <View style={styles.headerRow}>
-            <ThemedText style={styles.username}>{username}</ThemedText>
-            <View style={[styles.gameBadge, game === 'valorant' ? styles.valorantBadge : styles.leagueBadge]}>
-              <ThemedText style={styles.gameBadgeText}>
+          {/* Username Row */}
+          <View style={styles.usernameRow}>
+            <ThemedText style={styles.username} numberOfLines={1}>
+              {username}
+            </ThemedText>
+            <View style={[styles.gameTag, { backgroundColor: `${gameAccentColor}20` }]}>
+              <ThemedText style={[styles.gameTagText, { color: gameAccentColor }]}>
                 {game === 'valorant' ? 'VAL' : 'LOL'}
               </ThemedText>
             </View>
           </View>
 
-          {/* Rank Badge */}
-          <View style={styles.rankBadge}>
-            <Image
-              source={getRankIcon(peakRank)}
-              style={styles.rankIcon}
-              resizeMode="contain"
-            />
-            <ThemedText style={styles.rankText}>{peakRank}</ThemedText>
-          </View>
+          {/* Stats Row */}
+          <View style={styles.statsRow}>
+            {/* Rank */}
+            <View style={styles.statItem}>
+              <Image
+                source={getRankIcon(peakRank)}
+                style={styles.rankIcon}
+                resizeMode="contain"
+              />
+              <ThemedText style={styles.rankText}>{peakRank}</ThemedText>
+            </View>
 
-          {/* Details Row */}
-          <View style={styles.detailsRow}>
-            {/* Main Role */}
-            <View style={styles.detailItem}>
+            {/* Divider */}
+            <View style={styles.statDivider} />
+
+            {/* Role */}
+            <View style={styles.statItem}>
               <Image
                 source={getRoleIcon(mainRole)}
                 style={styles.roleIcon}
                 resizeMode="contain"
               />
-              <ThemedText style={styles.detailText}>{mainRole}</ThemedText>
-            </View>
-
-            {/* Looking For */}
-            <View style={styles.detailItem}>
-              <IconSymbol size={12} name="magnifyingglass" color="#94a3b8" />
-              <ThemedText style={styles.detailLabel}>
-                {preferredDuoRole === 'Any' ? 'Any Role' : preferredDuoRole}
-              </ThemedText>
+              <ThemedText style={styles.roleText}>{mainRole}</ThemedText>
             </View>
           </View>
+
+          {/* Looking For */}
+          <View style={styles.lookingForRow}>
+            <IconSymbol size={12} name="eyes" color="#666" />
+            <ThemedText style={styles.lookingForText}>
+              Looking for: <ThemedText style={styles.lookingForValue}>{preferredDuoRole}</ThemedText>
+            </ThemedText>
+          </View>
         </View>
-      </LinearGradient>
+
+        {/* Arrow indicator */}
+        <View style={styles.arrowContainer}>
+          <IconSymbol size={18} name="chevron.right" color="#444" />
+        </View>
+      </View>
     </View>
   );
 
   if (onPress) {
     return (
-      <TouchableOpacity activeOpacity={0.7} onPress={onPress}>
+      <TouchableOpacity activeOpacity={0.8} onPress={onPress}>
         {CardContent}
       </TouchableOpacity>
     );
@@ -209,138 +229,155 @@ const styles = StyleSheet.create({
   card: {
     borderRadius: 16,
     overflow: 'hidden',
-    borderWidth: 1,
-    borderTopColor: '#3a3f44',
-    borderLeftColor: '#3a3f44',
-    borderBottomColor: '#16191b',
-    borderRightColor: '#16191b',
-    shadowColor: '#000',
-    shadowOffset: {
-      width: 0,
-      height: 4,
-    },
-    shadowOpacity: 0.3,
-    shadowRadius: 12,
-    elevation: 8,
-  },
-  cardGradient: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    padding: 14,
-    borderRadius: 16,
     position: 'relative',
   },
-  accentBar: {
+  cardEditMode: {
+    borderWidth: 1,
+    borderColor: '#c42743',
+  },
+  editBadge: {
+    position: 'absolute',
+    top: 8,
+    right: 8,
+    width: 24,
+    height: 24,
+    borderRadius: 12,
+    backgroundColor: '#c42743',
+    alignItems: 'center',
+    justifyContent: 'center',
+    zIndex: 10,
+  },
+  cardBackground: {
+    ...StyleSheet.absoluteFillObject,
+  },
+  accentLine: {
     position: 'absolute',
     left: 0,
-    top: 0,
-    bottom: 0,
-    width: 4,
+    top: 12,
+    bottom: 12,
+    width: 3,
+    borderRadius: 2,
   },
-  valorantAccent: {
-    backgroundColor: '#B2313B',
+  cardContent: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 14,
+    paddingLeft: 16,
+    paddingRight: 12,
   },
-  leagueAccent: {
-    backgroundColor: '#1e40af',
-  },
-  avatarContainer: {
-    width: 56,
-    height: 56,
-    borderRadius: 12,
-    backgroundColor: '#2c2f33',
-    overflow: 'hidden',
+  avatarSection: {
+    position: 'relative',
     marginRight: 14,
+  },
+  avatarRing: {
+    width: 52,
+    height: 52,
+    borderRadius: 26,
     borderWidth: 2,
-    borderColor: '#40444b',
+    padding: 2,
+    backgroundColor: '#1a1d20',
   },
   avatar: {
     width: '100%',
     height: '100%',
+    borderRadius: 24,
   },
   avatarPlaceholder: {
     width: '100%',
     height: '100%',
-    backgroundColor: '#3a3a3a',
+    borderRadius: 24,
+    backgroundColor: '#2c2f33',
     alignItems: 'center',
     justifyContent: 'center',
+  },
+  avatarInitial: {
+    fontSize: 20,
+    fontWeight: '700',
+    color: '#666',
+  },
+  onlineIndicator: {
+    position: 'absolute',
+    bottom: 2,
+    right: 2,
+    width: 12,
+    height: 12,
+    borderRadius: 6,
+    backgroundColor: '#22c55e',
+    borderWidth: 2,
+    borderColor: '#1c1f24',
   },
   infoSection: {
     flex: 1,
     gap: 6,
   },
-  headerRow: {
+  usernameRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'space-between',
     gap: 8,
   },
   username: {
     fontSize: 16,
-    fontWeight: '800',
+    fontWeight: '700',
     color: '#fff',
-    letterSpacing: -0.5,
     flex: 1,
   },
-  gameBadge: {
+  gameTag: {
     paddingHorizontal: 8,
     paddingVertical: 3,
     borderRadius: 6,
   },
-  valorantBadge: {
-    backgroundColor: '#B2313B',
-  },
-  leagueBadge: {
-    backgroundColor: '#1e40af',
-  },
-  gameBadgeText: {
-    fontSize: 9,
+  gameTagText: {
+    fontSize: 10,
     fontWeight: '800',
-    color: '#fff',
     letterSpacing: 0.5,
   },
-  rankBadge: {
+  statsRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+  },
+  statItem: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 6,
-    backgroundColor: 'rgba(255,255,255,0.08)',
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    borderRadius: 8,
-    alignSelf: 'flex-start',
+  },
+  statDivider: {
+    width: 1,
+    height: 14,
+    backgroundColor: '#333',
   },
   rankIcon: {
-    width: 16,
-    height: 16,
+    width: 18,
+    height: 18,
   },
   rankText: {
-    fontSize: 12,
-    fontWeight: '700',
-    color: '#fff',
-    letterSpacing: -0.2,
-  },
-  detailsRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 12,
-    flexWrap: 'wrap',
-  },
-  detailItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 5,
-  },
-  roleIcon: {
-    width: 14,
-    height: 14,
-  },
-  detailText: {
-    fontSize: 12,
+    fontSize: 13,
     fontWeight: '600',
     color: '#e5e7eb',
   },
-  detailLabel: {
-    fontSize: 11,
+  roleIcon: {
+    width: 16,
+    height: 16,
+  },
+  roleText: {
+    fontSize: 13,
     fontWeight: '600',
+    color: '#e5e7eb',
+  },
+  lookingForRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+  },
+  lookingForText: {
+    fontSize: 12,
+    color: '#666',
+  },
+  lookingForValue: {
     color: '#94a3b8',
+    fontWeight: '600',
+  },
+  arrowContainer: {
+    paddingLeft: 8,
   },
 });
