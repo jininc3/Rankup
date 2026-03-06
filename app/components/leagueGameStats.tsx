@@ -166,7 +166,6 @@ export default function LeagueGameStatsScreen() {
         setRiotStats(response.stats);
       }
     } catch (err: any) {
-      console.error('Error fetching League stats:', err);
       setError(err.message);
       setHasFetched(false);
     } finally {

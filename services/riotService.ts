@@ -214,8 +214,6 @@ export const getLeagueStats = async (
 
     return result.data;
   } catch (error: any) {
-    console.error('Error fetching League stats:', error);
-
     // Provide more helpful error messages
     if (error.code === 'unauthenticated') {
       throw new Error('Authentication error. Please try logging out and back in.');

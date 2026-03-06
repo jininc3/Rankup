@@ -329,7 +329,6 @@ export default function ProfileScreen() {
               console.log('League stats not successful, using cached data');
             }
           } catch (error) {
-            console.error('Error fetching League stats, using cached data:', error);
             // Keep using cached data from Firestore
           }
 

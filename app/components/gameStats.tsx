@@ -200,7 +200,6 @@ export default function GameStatsScreen() {
         setHasFetched(false);
       }
     } catch (err: any) {
-      console.error('Error fetching League stats:', err);
       // Only show error if we don't have cached data
       if (!cachedData) {
         setError(err.message);
