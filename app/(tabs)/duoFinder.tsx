@@ -1,6 +1,7 @@
 import CompactDuoCard from '@/app/components/compactDuoCard';
 import AddDuoCard, { DuoCardData } from '@/app/components/addDuoCard';
 import EditDuoCard from '@/app/components/editDuoCard';
+import DuoFilterModal, { DuoFilterOptions } from '@/app/profilePages/duoFilterModal';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { IconSymbol } from '@/components/ui/icon-symbol';
@@ -30,11 +31,28 @@ export default function DuoFinderScreen() {
   const [refreshing, setRefreshing] = useState(false);
 
   // Find Duo state
-  const [showValorant, setShowValorant] = useState(true);
-  const [showLeague, setShowLeague] = useState(true);
   const [duoCards, setDuoCards] = useState<DuoCardWithId[]>([]);
   const [loadingDuoCards, setLoadingDuoCards] = useState(false);
   const [isEditMode, setIsEditMode] = useState(false);
+
+  // Filter state
+  const [showFilterModal, setShowFilterModal] = useState(false);
+  const [filters, setFilters] = useState<DuoFilterOptions>({
+    game: null,
+    role: null,
+    minRank: null,
+    maxRank: null,
+    language: null,
+  });
+
+  // Count active filters
+  const activeFilterCount = [
+    filters.game,
+    filters.role,
+    filters.minRank,
+    filters.maxRank,
+    filters.language,
+  ].filter(Boolean).length;
 
   // Avatar loading coordination
   const [avatarsLoadedCount, setAvatarsLoadedCount] = useState(0);
@@ -312,6 +330,32 @@ export default function DuoFinderScreen() {
     syncDuoCardsWithStats(true);
   }, [user?.id]);
 
+  // Helper to get rank tier from full rank string
+  const getRankTier = (rank: string): string => {
+    if (!rank) return '';
+    const tier = rank.split(' ')[0];
+    return tier.charAt(0).toUpperCase() + tier.slice(1).toLowerCase();
+  };
+
+  // Helper to compare ranks
+  const VALORANT_RANK_ORDER = ['Iron', 'Bronze', 'Silver', 'Gold', 'Platinum', 'Diamond', 'Ascendant', 'Immortal', 'Radiant'];
+  const LEAGUE_RANK_ORDER = ['Iron', 'Bronze', 'Silver', 'Gold', 'Platinum', 'Emerald', 'Diamond', 'Master', 'Grandmaster', 'Challenger'];
+
+  const isRankInRange = (rank: string, game: 'valorant' | 'league', minRank: string | null, maxRank: string | null): boolean => {
+    if (!minRank && !maxRank) return true;
+
+    const tier = getRankTier(rank);
+    const rankOrder = game === 'valorant' ? VALORANT_RANK_ORDER : LEAGUE_RANK_ORDER;
+    const rankIndex = rankOrder.findIndex(r => r.toLowerCase() === tier.toLowerCase());
+
+    if (rankIndex === -1) return true; // Unknown rank, include it
+
+    const minIndex = minRank ? rankOrder.findIndex(r => r.toLowerCase() === minRank.toLowerCase()) : 0;
+    const maxIndex = maxRank ? rankOrder.findIndex(r => r.toLowerCase() === maxRank.toLowerCase()) : rankOrder.length - 1;
+
+    return rankIndex >= minIndex && rankIndex <= maxIndex;
+  };
+
   // Fetch duo cards from Firebase
   const fetchDuoCards = async () => {
     if (!user?.id) return;
@@ -320,17 +364,10 @@ export default function DuoFinderScreen() {
     try {
       const duoCardsRef = collection(db, 'duoCards');
 
-      // Determine which games to fetch based on toggles
-      const gamesToFetch: ('valorant' | 'league')[] = [];
-      if (showValorant) gamesToFetch.push('valorant');
-      if (showLeague) gamesToFetch.push('league');
-
-      // If nothing selected, show nothing
-      if (gamesToFetch.length === 0) {
-        setDuoCards([]);
-        setLoadingDuoCards(false);
-        return;
-      }
+      // Determine which games to fetch based on filter
+      const gamesToFetch: ('valorant' | 'league')[] = filters.game
+        ? [filters.game]
+        : ['valorant', 'league'];
 
       let allCards: DuoCardWithId[] = [];
 
@@ -380,12 +417,22 @@ export default function DuoFinderScreen() {
             })
         ) as DuoCardWithId[];
 
-        // No rank filtering - show all cards
-        allCards = [...allCards, ...cards];
+        // Apply client-side filters
+        const filteredCards = cards.filter(card => {
+          // Role filter
+          if (filters.role && card.mainRole !== filters.role) return false;
+
+          // Rank filter
+          if (!isRankInRange(card.currentRank, card.game, filters.minRank, filters.maxRank)) return false;
+
+          return true;
+        });
+
+        allCards = [...allCards, ...filteredCards];
       }
 
-      // Limit to 5 cards
-      setDuoCards(allCards.slice(0, 5));
+      // Limit to 10 cards
+      setDuoCards(allCards.slice(0, 10));
     } catch (error) {
       console.error('Error fetching duo cards:', error);
       Alert.alert('Error', 'Failed to load duo cards. Please try again.');
@@ -399,7 +446,7 @@ export default function DuoFinderScreen() {
     if (activeTab === 'findDuo') {
       fetchDuoCards();
     }
-  }, [activeTab, showValorant, showLeague]);
+  }, [activeTab, filters]);
 
   const hasCards = valorantCard !== null || leagueCard !== null;
 
@@ -521,6 +568,7 @@ export default function DuoFinderScreen() {
 
   return (
     <ThemedView style={styles.container}>
+      {/* Header */}
       <View style={styles.header}>
         <ThemedText style={styles.headerTitle}>
           {activeTab === 'myCard' ? 'My Duo Cards' : 'Duo Finder'}
@@ -543,9 +591,9 @@ export default function DuoFinderScreen() {
             activeOpacity={0.7}
           >
             <IconSymbol
-              size={22}
+              size={20}
               name={activeTab === 'myCard' ? 'person.2.fill' : 'person.crop.rectangle.stack.fill'}
-              color={activeTab === 'myCard' ? '#c42743' : '#fff'}
+              color="#fff"
             />
           </TouchableOpacity>
         </View>
@@ -569,39 +617,41 @@ export default function DuoFinderScreen() {
       >
         {activeTab === 'findDuo' ? (
           <View style={styles.findDuoContent}>
-            {/* Game Filter Toggles */}
-            <View style={styles.gameFilterBar}>
-              <View style={styles.gameToggles}>
+            {/* Filter Bar */}
+            <View style={styles.filterBar}>
+              <View style={styles.filterBarLeft}>
+                <ThemedText style={styles.filterLabel}>
+                  {filters.game === 'valorant' ? 'VALORANT' : filters.game === 'league' ? 'LEAGUE' : 'ALL GAMES'}
+                  {filters.role && ` · ${filters.role}`}
+                </ThemedText>
+              </View>
+              <View style={styles.filterBarRight}>
+                <View style={styles.statusBadge}>
+                  <View style={styles.statusDot} />
+                  <ThemedText style={styles.statusText}>
+                    {duoCards.length} online
+                  </ThemedText>
+                </View>
                 <TouchableOpacity
-                  style={[styles.gameToggle, showValorant && styles.gameToggleActive]}
-                  onPress={() => setShowValorant(!showValorant)}
+                  style={[styles.filterBtn, activeFilterCount > 0 && styles.filterBtnActive]}
+                  onPress={() => setShowFilterModal(true)}
                   activeOpacity={0.7}
                 >
-                  <Image
-                    source={require('@/assets/images/valorant-red.png')}
-                    style={[styles.gameToggleImage, !showValorant && styles.gameToggleImageOff]}
-                  />
-                </TouchableOpacity>
-                <TouchableOpacity
-                  style={[styles.gameToggle, showLeague && styles.gameToggleActive]}
-                  onPress={() => setShowLeague(!showLeague)}
-                  activeOpacity={0.7}
-                >
-                  <Image
-                    source={require('@/assets/images/lol.png')}
-                    style={[styles.gameToggleImage, !showLeague && styles.gameToggleImageOff]}
-                  />
+                  <IconSymbol size={16} name="slider.horizontal.3" color={activeFilterCount > 0 ? '#fff' : '#888'} />
+                  {activeFilterCount > 0 && (
+                    <View style={styles.filterBadge}>
+                      <ThemedText style={styles.filterBadgeText}>{activeFilterCount}</ThemedText>
+                    </View>
+                  )}
                 </TouchableOpacity>
               </View>
             </View>
 
-            {/* Status Bar */}
-            <View style={styles.statusBar}>
-              <View style={styles.statusLeft}>
-                <View style={styles.statusDot} />
-                <ThemedText style={styles.statusText}>
-                  {duoCards.length} online
-                </ThemedText>
+            {/* Players Section */}
+            <View style={styles.sectionHeader}>
+              <View style={styles.sectionHeaderLeft}>
+                <IconSymbol size={18} name="person.2.fill" color="#fff" />
+                <ThemedText style={styles.sectionHeaderTitle}>Available Players</ThemedText>
               </View>
             </View>
 
@@ -613,12 +663,28 @@ export default function DuoFinderScreen() {
               </View>
             ) : duoCards.length === 0 ? (
               <View style={styles.emptyState}>
-                <View style={styles.emptyIconWrap}>
-                  <IconSymbol size={40} name="person.2" color="#555" />
+                <View style={styles.emptyIconsRow}>
+                  <View style={styles.emptyIconCircle}>
+                    <Image
+                      source={require('@/assets/images/valorant-logo.png')}
+                      style={styles.emptyGameLogo}
+                      resizeMode="contain"
+                    />
+                  </View>
+                  <View style={[styles.emptyIconCircle, styles.emptyIconCircleCenter]}>
+                    <IconSymbol size={32} name="person.2.fill" color="#fff" />
+                  </View>
+                  <View style={styles.emptyIconCircle}>
+                    <Image
+                      source={require('@/assets/images/leagueoflegends.png')}
+                      style={styles.emptyGameLogo}
+                      resizeMode="contain"
+                    />
+                  </View>
                 </View>
                 <ThemedText style={styles.emptyTitle}>No players found</ThemedText>
                 <ThemedText style={styles.emptySubtitle}>
-                  Create your duo card to start matching
+                  Create your duo card to start matching with other players
                 </ThemedText>
                 <TouchableOpacity
                   style={styles.emptyButton}
@@ -630,7 +696,8 @@ export default function DuoFinderScreen() {
                   }}
                   activeOpacity={0.8}
                 >
-                  <ThemedText style={styles.emptyButtonText}>Create Card</ThemedText>
+                  <IconSymbol size={18} name="plus" color="#fff" />
+                  <ThemedText style={styles.emptyButtonText}>Create Duo Card</ThemedText>
                 </TouchableOpacity>
               </View>
             ) : (
@@ -657,7 +724,25 @@ export default function DuoFinderScreen() {
             {!hasCards ? (
               // No cards - Show add button
               <View style={styles.emptyCardState}>
-                <IconSymbol size={64} name="person.crop.circle.badge.plus" color="#666" />
+                <View style={styles.emptyIconsRow}>
+                  <View style={styles.emptyIconCircle}>
+                    <Image
+                      source={require('@/assets/images/valorant-logo.png')}
+                      style={styles.emptyGameLogo}
+                      resizeMode="contain"
+                    />
+                  </View>
+                  <View style={[styles.emptyIconCircle, styles.emptyIconCircleCenter]}>
+                    <IconSymbol size={36} name="person.crop.rectangle.stack.fill" color="#fff" />
+                  </View>
+                  <View style={styles.emptyIconCircle}>
+                    <Image
+                      source={require('@/assets/images/leagueoflegends.png')}
+                      style={styles.emptyGameLogo}
+                      resizeMode="contain"
+                    />
+                  </View>
+                </View>
                 <ThemedText style={styles.emptyCardTitle}>Create Your Duo Card</ThemedText>
                 <ThemedText style={styles.emptyCardText}>
                   Share your rank and find teammates who match your skill level
@@ -666,7 +751,7 @@ export default function DuoFinderScreen() {
                   style={styles.addCardButton}
                   onPress={() => setShowAddCard(true)}
                 >
-                  <IconSymbol size={20} name="plus.circle.fill" color="#fff" />
+                  <IconSymbol size={20} name="plus" color="#fff" />
                   <ThemedText style={styles.addCardButtonText}>Create Duo Card</ThemedText>
                 </TouchableOpacity>
               </View>
@@ -676,7 +761,14 @@ export default function DuoFinderScreen() {
                 {/* Valorant Card */}
                 {valorantCard && (
                   <View style={styles.compactCardSection}>
-                    <ThemedText style={styles.cardSectionTitle}>Valorant</ThemedText>
+                    <View style={styles.cardSectionHeader}>
+                      <Image
+                        source={require('@/assets/images/valorant-red.png')}
+                        style={styles.cardSectionIcon}
+                        resizeMode="contain"
+                      />
+                      <ThemedText style={styles.cardSectionTitle}>Valorant</ThemedText>
+                    </View>
                     <CompactDuoCard
                       game="valorant"
                       username={valorantCard.username}
@@ -693,7 +785,14 @@ export default function DuoFinderScreen() {
                 {/* League Card */}
                 {leagueCard && (
                   <View style={styles.compactCardSection}>
-                    <ThemedText style={styles.cardSectionTitle}>League of Legends</ThemedText>
+                    <View style={styles.cardSectionHeader}>
+                      <Image
+                        source={require('@/assets/images/lol.png')}
+                        style={styles.cardSectionIcon}
+                        resizeMode="contain"
+                      />
+                      <ThemedText style={styles.cardSectionTitle}>League of Legends</ThemedText>
+                    </View>
                     <CompactDuoCard
                       game="league"
                       username={leagueCard.username}
@@ -713,10 +812,13 @@ export default function DuoFinderScreen() {
                     style={styles.addAnotherButtonCompact}
                     onPress={() => setShowAddCard(true)}
                   >
-                    <IconSymbol size={20} name="plus.circle" color="#c42743" />
-                    <ThemedText style={styles.addAnotherButtonText}>
-                      {valorantCard ? 'Add League Card' : 'Add Valorant Card'}
-                    </ThemedText>
+                    <IconSymbol size={24} name="plus.circle.fill" color="#c42743" />
+                    <View style={styles.addAnotherContent}>
+                      <ThemedText style={styles.addAnotherButtonText}>
+                        {valorantCard ? 'Add League Card' : 'Add Valorant Card'}
+                      </ThemedText>
+                      <ThemedText style={styles.addAnotherSubtext}>Connect another game</ThemedText>
+                    </View>
                   </TouchableOpacity>
                 )}
               </View>
@@ -753,6 +855,14 @@ export default function DuoFinderScreen() {
           initialLookingFor={editingGame === 'valorant' ? (valorantCard?.lookingFor || 'Any') : (leagueCard?.lookingFor || 'Any')}
         />
       )}
+
+      {/* Duo Filter Modal */}
+      <DuoFilterModal
+        visible={showFilterModal}
+        onClose={() => setShowFilterModal(false)}
+        filters={filters}
+        onApplyFilters={setFilters}
+      />
     </ThemedView>
   );
 }
@@ -762,6 +872,7 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: '#0f0f0f',
   },
+  // Header - matching leaderboard style
   header: {
     flexDirection: 'row',
     justifyContent: 'space-between',
@@ -791,47 +902,32 @@ const styles = StyleSheet.create({
     color: '#c42743',
   },
   headerIconBtn: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    backgroundColor: '#2a2d32',
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: '#2c2f33',
     alignItems: 'center',
     justifyContent: 'center',
   },
-  tabsContainer: {
+  // Section Headers - Profile style
+  sectionHeader: {
     flexDirection: 'row',
-    paddingHorizontal: 20,
-    paddingTop: 0,
-    paddingBottom: 0,
-    gap: 12,
-    borderBottomWidth: 1,
-    borderBottomColor: '#2c2f33',
-    backgroundColor: '#0f0f0f',
-  },
-  tab: {
-    flex: 1,
-    paddingVertical: 10,
+    justifyContent: 'space-between',
     alignItems: 'center',
+    paddingHorizontal: 20,
+    paddingTop: 20,
+    paddingBottom: 12,
   },
-  tabUnderline: {
-    width: '50%',
-    height: 3,
-    backgroundColor: 'transparent',
-    marginTop: 8,
-    borderRadius: 2,
+  sectionHeaderLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
   },
-  tabUnderlineActive: {
-    backgroundColor: '#c42743',
-  },
-  tabText: {
-    fontSize: 15,
-    fontWeight: '600',
-    color: '#666',
-    letterSpacing: 0.3,
-  },
-  tabTextActive: {
-    color: '#fff',
+  sectionHeaderTitle: {
+    fontSize: 18,
     fontWeight: '700',
+    color: '#fff',
+    letterSpacing: -0.5,
   },
   scrollView: {
     flex: 1,
@@ -841,164 +937,159 @@ const styles = StyleSheet.create({
     paddingVertical: 0,
     flexGrow: 1,
   },
-  emptyState: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    paddingVertical: 100,
-    gap: 12,
-  },
-  emptyStateTitle: {
-    fontSize: 20,
-    fontWeight: '700',
-    color: '#fff',
-    marginTop: 16,
-  },
-  emptyStateText: {
-    fontSize: 16,
-    color: '#999',
-    fontStyle: 'italic',
-  },
+  // My Card Content
   myCardContent: {
     flex: 1,
     padding: 20,
-  },
-  myCardHeader: {
-    flexDirection: 'row',
-    justifyContent: 'flex-end',
-    alignItems: 'center',
-    marginBottom: 12,
-  },
-  editButton: {
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-  },
-  editButtonText: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: '#c42743',
-  },
-  doneButtonText: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: '#c42743',
   },
   emptyCardState: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    paddingVertical: 100,
-    gap: 12,
+    paddingVertical: 60,
+    paddingHorizontal: 32,
   },
   emptyCardTitle: {
-    fontSize: 20,
+    fontSize: 22,
     fontWeight: '700',
     color: '#fff',
-    marginTop: 16,
+    marginBottom: 10,
   },
   emptyCardText: {
     fontSize: 14,
     color: '#999',
     textAlign: 'center',
-    paddingHorizontal: 40,
-    lineHeight: 20,
+    lineHeight: 21,
+    maxWidth: 280,
   },
   addCardButton: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 8,
-    backgroundColor: '#c42743',
-    paddingHorizontal: 24,
+    marginTop: 28,
     paddingVertical: 14,
+    paddingHorizontal: 28,
+    backgroundColor: '#c42743',
     borderRadius: 12,
-    marginTop: 20,
   },
   addCardButtonText: {
     fontSize: 16,
-    fontWeight: '700',
+    fontWeight: '600',
     color: '#fff',
   },
   compactCardsContainer: {
-    gap: 10,
+    gap: 20,
   },
   compactCardSection: {
-    gap: 8,
+    gap: 10,
+  },
+  cardSectionHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+  },
+  cardSectionIcon: {
+    width: 22,
+    height: 22,
   },
   cardSectionTitle: {
-    fontSize: 14,
+    fontSize: 16,
     fontWeight: '700',
     color: '#fff',
-    marginBottom: 4,
+    letterSpacing: -0.3,
   },
   addAnotherButtonCompact: {
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'center',
-    gap: 8,
-    paddingVertical: 16,
-    borderRadius: 12,
-    borderWidth: 2,
-    borderColor: '#c42743',
+    gap: 14,
+    paddingVertical: 20,
+    paddingHorizontal: 20,
+    borderRadius: 16,
+    borderWidth: 3,
+    borderColor: '#424549',
     borderStyle: 'dashed',
+    backgroundColor: '#2c2f33',
+  },
+  addAnotherContent: {
+    flex: 1,
   },
   addAnotherButtonText: {
     fontSize: 16,
-    fontWeight: '600',
-    color: '#c42743',
+    fontWeight: '700',
+    color: '#fff',
   },
+  addAnotherSubtext: {
+    fontSize: 13,
+    color: '#72767d',
+    marginTop: 2,
+  },
+  // Find Duo Content
   findDuoContent: {
     flex: 1,
   },
-  gameFilterBar: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: 20,
-    paddingVertical: 14,
-  },
-  gameToggles: {
-    flexDirection: 'row',
-    gap: 8,
-  },
-  gameToggle: {
-    width: 44,
-    height: 44,
-    borderRadius: 10,
-    backgroundColor: 'transparent',
-    alignItems: 'center',
-    justifyContent: 'center',
-    borderWidth: 1,
-    borderColor: '#2a2d32',
-  },
-  gameToggleActive: {
-    borderColor: '#c42743',
-  },
-  gameToggleImage: {
-    width: 24,
-    height: 24,
-    resizeMode: 'contain',
-  },
-  gameToggleImageOff: {
-    opacity: 0.2,
-  },
-  refreshBtn: {
-    width: 44,
-    height: 44,
-    borderRadius: 12,
-    backgroundColor: '#252830',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  statusBar: {
+  filterBar: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
     paddingHorizontal: 20,
-    paddingVertical: 12,
+    paddingTop: 16,
+    paddingBottom: 8,
   },
-  statusLeft: {
+  filterBarLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  filterBarRight: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+  },
+  filterLabel: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: '#888',
+    letterSpacing: 0.5,
+  },
+  filterBtn: {
+    width: 36,
+    height: 36,
+    borderRadius: 10,
+    backgroundColor: '#1a1a1a',
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 1,
+    borderColor: '#333',
+  },
+  filterBtnActive: {
+    backgroundColor: '#c42743',
+    borderColor: '#c42743',
+  },
+  filterBadge: {
+    position: 'absolute',
+    top: -4,
+    right: -4,
+    width: 16,
+    height: 16,
+    borderRadius: 8,
+    backgroundColor: '#fff',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  filterBadgeText: {
+    fontSize: 10,
+    fontWeight: '700',
+    color: '#c42743',
+  },
+  statusBadge: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 8,
+    backgroundColor: '#2c2f33',
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: 20,
+    borderWidth: 1,
+    borderColor: '#36393e',
   },
   statusDot: {
     width: 8,
@@ -1009,61 +1100,86 @@ const styles = StyleSheet.create({
   statusText: {
     fontSize: 13,
     fontWeight: '600',
-    color: '#888',
+    color: '#b9bbbe',
   },
   loadingContainer: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    paddingVertical: 100,
+    paddingVertical: 80,
     gap: 16,
   },
   loadingText: {
     fontSize: 14,
-    color: '#666',
+    color: '#72767d',
   },
+  // Empty States - Profile style
   emptyState: {
-    flex: 1,
-    justifyContent: 'center',
     alignItems: 'center',
-    paddingVertical: 80,
-    paddingHorizontal: 40,
-    gap: 12,
+    justifyContent: 'center',
+    paddingVertical: 60,
+    paddingHorizontal: 32,
   },
-  emptyIconWrap: {
-    width: 80,
-    height: 80,
-    borderRadius: 40,
-    backgroundColor: '#252830',
+  emptyIconsRow: {
+    flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    marginBottom: 8,
+    marginBottom: 24,
+    gap: -12,
+  },
+  emptyIconCircle: {
+    width: 56,
+    height: 56,
+    borderRadius: 28,
+    backgroundColor: '#2c2f33',
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 3,
+    borderColor: '#0f0f0f',
+  },
+  emptyIconCircleCenter: {
+    width: 72,
+    height: 72,
+    borderRadius: 36,
+    backgroundColor: '#c42743',
+    zIndex: 1,
+  },
+  emptyGameLogo: {
+    width: 28,
+    height: 28,
+    tintColor: '#72767d',
   },
   emptyTitle: {
-    fontSize: 18,
+    fontSize: 22,
     fontWeight: '700',
     color: '#fff',
+    marginBottom: 10,
   },
   emptySubtitle: {
     fontSize: 14,
-    color: '#666',
+    color: '#999',
     textAlign: 'center',
+    lineHeight: 21,
+    maxWidth: 280,
   },
   emptyButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    marginTop: 28,
+    paddingVertical: 14,
+    paddingHorizontal: 28,
     backgroundColor: '#c42743',
-    paddingHorizontal: 24,
-    paddingVertical: 12,
-    borderRadius: 24,
-    marginTop: 16,
+    borderRadius: 12,
   },
   emptyButtonText: {
-    fontSize: 14,
-    fontWeight: '700',
+    fontSize: 16,
+    fontWeight: '600',
     color: '#fff',
   },
   cardsList: {
-    paddingHorizontal: 16,
+    paddingHorizontal: 20,
     paddingBottom: 40,
-    gap: 10,
+    gap: 12,
   },
 });
