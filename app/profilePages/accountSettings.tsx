@@ -366,7 +366,6 @@ export default function AccountSettingsScreen() {
           onPress={() => router.back()}
         >
           <IconSymbol size={24} name="chevron.left" color="#fff" />
-          <ThemedText style={styles.backText}>Settings</ThemedText>
         </TouchableOpacity>
         <ThemedText style={styles.headerTitle}>Account Settings</ThemedText>
         <View style={styles.headerSpacer} />
@@ -377,7 +376,14 @@ export default function AccountSettingsScreen() {
         {accountSettingsData.map((section) => (
           <View key={section.id} style={styles.section}>
             {section.title && (
-              <ThemedText style={styles.sectionTitle}>{section.title}</ThemedText>
+              <View style={styles.sectionHeader}>
+                <IconSymbol
+                  size={18}
+                  name={section.id === 'profile' ? 'person.fill' : section.id === 'security' ? 'lock.shield' : 'doc.text'}
+                  color="#fff"
+                />
+                <ThemedText style={styles.sectionHeaderTitle}>{section.title}</ThemedText>
+              </View>
             )}
             <View style={styles.settingsGroup}>
               {section.items.map((item, index) => (
@@ -406,9 +412,9 @@ export default function AccountSettingsScreen() {
                   <View style={styles.settingLeft}>
                     <View style={styles.iconContainer}>
                       <IconSymbol
-                        size={22}
+                        size={20}
                         name={item.icon}
-                        color={item.isDangerous ? '#ef4444' : '#fff'}
+                        color={item.isDangerous ? '#c42743' : '#888'}
                       />
                     </View>
                     <View style={styles.settingTextContainer}>
@@ -424,7 +430,7 @@ export default function AccountSettingsScreen() {
                     </View>
                   </View>
                   {item.hasChevron && (
-                    <IconSymbol size={20} name="chevron.right" color="#b9bbbe" />
+                    <IconSymbol size={18} name="chevron.right" color="#444" />
                   )}
                 </TouchableOpacity>
               ))}
@@ -634,33 +640,24 @@ export default function AccountSettingsScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#1e2124',
+    backgroundColor: '#0f0f0f',
   },
   header: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
     paddingHorizontal: 20,
-    paddingTop: 60,
-    paddingBottom: 16,
-    backgroundColor: '#1e2124',
-    borderBottomWidth: 1,
-    borderBottomColor: '#2c2f33',
+    paddingTop: 55,
+    paddingBottom: 15,
+    backgroundColor: '#0f0f0f',
   },
   backButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 4,
+    padding: 4,
     flex: 1,
   },
-  backText: {
-    fontSize: 17,
-    color: '#fff',
-    fontWeight: '400',
-  },
   headerTitle: {
-    fontSize: 15,
-    fontWeight: '600',
+    fontSize: 20,
+    fontWeight: '700',
     color: '#fff',
     flex: 1,
     textAlign: 'center',
@@ -669,34 +666,45 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   section: {
-    marginTop: 24,
-    marginBottom: 24,
+    marginBottom: 8,
+  },
+  sectionHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    paddingHorizontal: 20,
+    paddingTop: 16,
+    paddingBottom: 12,
+  },
+  sectionHeaderTitle: {
+    fontSize: 18,
+    fontWeight: '700',
+    color: '#fff',
+    letterSpacing: -0.5,
   },
   sectionTitle: {
     fontSize: 13,
     fontWeight: '600',
-    color: '#b9bbbe',
+    color: '#888',
     textTransform: 'uppercase',
     letterSpacing: 0.5,
     marginBottom: 12,
-    marginHorizontal: 32,
+    marginHorizontal: 20,
   },
   settingsGroup: {
     marginHorizontal: 16,
-    backgroundColor: '#36393e',
-    borderRadius: 12,
-    borderWidth: 1,
-    borderColor: '#2c2f33',
+    backgroundColor: '#1a1a1a',
+    borderRadius: 16,
     overflow: 'hidden',
   },
   settingItem: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    paddingVertical: 16,
+    paddingVertical: 14,
     paddingHorizontal: 16,
     borderBottomWidth: 1,
-    borderBottomColor: '#2c2f33',
+    borderBottomColor: '#252525',
   },
   settingItemLast: {
     borderBottomWidth: 0,
@@ -710,6 +718,8 @@ const styles = StyleSheet.create({
   iconContainer: {
     width: 32,
     height: 32,
+    borderRadius: 8,
+    backgroundColor: '#252525',
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -717,18 +727,18 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   settingTitle: {
-    fontSize: 16,
+    fontSize: 15,
     fontWeight: '500',
     color: '#fff',
     letterSpacing: -0.2,
   },
   settingSubtitle: {
-    fontSize: 13,
-    color: '#b9bbbe',
+    fontSize: 12,
+    color: '#666',
     marginTop: 2,
   },
   dangerousText: {
-    color: '#ef4444',
+    color: '#c42743',
   },
   bottomSpacer: {
     height: 40,
@@ -741,7 +751,7 @@ const styles = StyleSheet.create({
     padding: 20,
   },
   modalContent: {
-    backgroundColor: '#36393e',
+    backgroundColor: '#1a1a1a',
     borderRadius: 16,
     padding: 24,
     width: '100%',
@@ -760,11 +770,11 @@ const styles = StyleSheet.create({
   },
   modalDescription: {
     fontSize: 15,
-    color: '#b9bbbe',
+    color: '#666',
     textAlign: 'center',
   },
   deleteListContainer: {
-    backgroundColor: '#2c2f33',
+    backgroundColor: '#252525',
     borderRadius: 12,
     padding: 16,
     marginBottom: 24,
@@ -777,7 +787,7 @@ const styles = StyleSheet.create({
   },
   deleteListText: {
     fontSize: 14,
-    color: '#dcddde',
+    color: '#999',
     flex: 1,
   },
   confirmInputContainer: {
@@ -791,18 +801,18 @@ const styles = StyleSheet.create({
   },
   confirmInput: {
     borderWidth: 1,
-    borderColor: '#2c2f33',
+    borderColor: '#252525',
     borderRadius: 8,
     padding: 12,
     fontSize: 16,
     color: '#fff',
-    backgroundColor: '#2c2f33',
+    backgroundColor: '#252525',
   },
   googleNotice: {
     fontSize: 14,
-    color: '#b9bbbe',
+    color: '#666',
     textAlign: 'center',
-    backgroundColor: '#2c2f33',
+    backgroundColor: '#252525',
     padding: 12,
     borderRadius: 8,
   },
@@ -814,7 +824,7 @@ const styles = StyleSheet.create({
     flex: 1,
     paddingVertical: 12,
     borderRadius: 8,
-    backgroundColor: '#2c2f33',
+    backgroundColor: '#252525',
     alignItems: 'center',
   },
   modalCancelText: {
@@ -826,11 +836,11 @@ const styles = StyleSheet.create({
     flex: 1,
     paddingVertical: 12,
     borderRadius: 8,
-    backgroundColor: '#ef4444',
+    backgroundColor: '#c42743',
     alignItems: 'center',
   },
   modalDeleteButtonDisabled: {
-    backgroundColor: '#fca5a5',
+    backgroundColor: '#c42743',
     opacity: 0.5,
   },
   modalDeleteText: {

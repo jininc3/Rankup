@@ -33,7 +33,6 @@ export default function DuoFinderScreen() {
   // Find Duo state
   const [duoCards, setDuoCards] = useState<DuoCardWithId[]>([]);
   const [loadingDuoCards, setLoadingDuoCards] = useState(false);
-  const [isEditMode, setIsEditMode] = useState(false);
 
   // Filter state
   const [showFilterModal, setShowFilterModal] = useState(false);
@@ -450,37 +449,27 @@ export default function DuoFinderScreen() {
 
   const hasCards = valorantCard !== null || leagueCard !== null;
 
-  const handleEditButtonPress = () => {
-    setIsEditMode(!isEditMode);
-  };
-
   const handleCardPress = (game: 'valorant' | 'league') => {
-    if (isEditMode) {
-      // Open edit modal
-      setEditingGame(game);
-      setShowEditModal(true);
-    } else {
-      // Navigate to detail page
-      const cardData = game === 'valorant' ? valorantCard : leagueCard;
-      if (cardData) {
-        const avatarUrl = user?.avatar || '';
-        console.log('Navigating with user avatar:', avatarUrl);
-        console.log('User object:', user);
-        router.push({
-          pathname: '/profilePages/duoCardDetail',
-          params: {
-            game: cardData.game,
-            username: cardData.username,
-            avatar: avatarUrl,
-            peakRank: cardData.peakRank,
-            currentRank: cardData.currentRank,
-            region: cardData.region,
-            mainRole: cardData.mainRole,
-            mainAgent: cardData.mainAgent,
-            userId: user?.id || '',
-          },
-        });
-      }
+    // Navigate to detail page with edit capability for own card
+    const cardData = game === 'valorant' ? valorantCard : leagueCard;
+    if (cardData) {
+      const avatarUrl = user?.avatar || '';
+      router.push({
+        pathname: '/profilePages/duoCardDetail',
+        params: {
+          game: cardData.game,
+          username: cardData.username,
+          avatar: avatarUrl,
+          peakRank: cardData.peakRank,
+          currentRank: cardData.currentRank,
+          region: cardData.region,
+          mainRole: cardData.mainRole,
+          mainAgent: cardData.mainAgent,
+          lookingFor: cardData.lookingFor || 'Any',
+          userId: user?.id || '',
+          isOwnCard: 'true',
+        },
+      });
     }
   };
 
@@ -527,8 +516,6 @@ export default function DuoFinderScreen() {
       Alert.alert('Success', 'Your duo card has been updated!');
       setShowEditModal(false);
       setEditingGame(null);
-      // Exit edit mode after saving
-      setIsEditMode(false);
     } catch (error) {
       console.error('Error updating duo card:', error);
       Alert.alert('Error', 'Failed to update your duo card. Please try again.');
@@ -553,8 +540,6 @@ export default function DuoFinderScreen() {
       Alert.alert('Success', 'Your duo card has been deleted.');
       setShowEditModal(false);
       setEditingGame(null);
-      // Exit edit mode after deleting
-      setIsEditMode(false);
     } catch (error) {
       console.error('Error deleting duo card:', error);
       Alert.alert('Error', 'Failed to delete your duo card. Please try again.');
@@ -574,27 +559,14 @@ export default function DuoFinderScreen() {
           {activeTab === 'myCard' ? 'My Duo Cards' : 'Duo Finder'}
         </ThemedText>
         <View style={styles.headerRight}>
-          {activeTab === 'myCard' && hasCards && (
-            <TouchableOpacity
-              style={styles.headerEditBtn}
-              onPress={handleEditButtonPress}
-              activeOpacity={0.7}
-            >
-              <ThemedText style={styles.headerEditText}>
-                {isEditMode ? 'Done' : 'Edit'}
-              </ThemedText>
-            </TouchableOpacity>
-          )}
           <TouchableOpacity
-            style={styles.headerIconBtn}
+            style={styles.headerTabBtn}
             onPress={() => setActiveTab(activeTab === 'myCard' ? 'findDuo' : 'myCard')}
             activeOpacity={0.7}
           >
-            <IconSymbol
-              size={20}
-              name={activeTab === 'myCard' ? 'person.2.fill' : 'person.crop.rectangle.stack.fill'}
-              color="#fff"
-            />
+            <ThemedText style={styles.headerTabBtnText}>
+              {activeTab === 'myCard' ? 'Find Duo' : 'My Cards'}
+            </ThemedText>
           </TouchableOpacity>
         </View>
       </View>
@@ -617,43 +589,34 @@ export default function DuoFinderScreen() {
       >
         {activeTab === 'findDuo' ? (
           <View style={styles.findDuoContent}>
-            {/* Filter Bar */}
-            <View style={styles.filterBar}>
-              <View style={styles.filterBarLeft}>
-                <ThemedText style={styles.filterLabel}>
-                  {filters.game === 'valorant' ? 'VALORANT' : filters.game === 'league' ? 'LEAGUE' : 'ALL GAMES'}
-                  {filters.role && ` · ${filters.role}`}
-                </ThemedText>
-              </View>
-              <View style={styles.filterBarRight}>
-                <View style={styles.statusBadge}>
-                  <View style={styles.statusDot} />
-                  <ThemedText style={styles.statusText}>
-                    {duoCards.length} online
-                  </ThemedText>
-                </View>
-                <TouchableOpacity
-                  style={[styles.filterBtn, activeFilterCount > 0 && styles.filterBtnActive]}
-                  onPress={() => setShowFilterModal(true)}
-                  activeOpacity={0.7}
-                >
-                  <IconSymbol size={16} name="slider.horizontal.3" color={activeFilterCount > 0 ? '#fff' : '#888'} />
-                  {activeFilterCount > 0 && (
-                    <View style={styles.filterBadge}>
-                      <ThemedText style={styles.filterBadgeText}>{activeFilterCount}</ThemedText>
-                    </View>
-                  )}
-                </TouchableOpacity>
-              </View>
-            </View>
-
-            {/* Players Section */}
+            {/* Players Section Header */}
             <View style={styles.sectionHeader}>
               <View style={styles.sectionHeaderLeft}>
                 <IconSymbol size={18} name="person.2.fill" color="#fff" />
                 <ThemedText style={styles.sectionHeaderTitle}>Available Players</ThemedText>
               </View>
+              <View style={styles.statusBadge}>
+                <View style={styles.statusDotOuter}>
+                  <View style={styles.statusDot} />
+                </View>
+                <ThemedText style={styles.statusText}>
+                  {duoCards.length} {duoCards.length === 1 ? 'Player' : 'Players'}
+                </ThemedText>
+              </View>
             </View>
+
+            {/* Filter Bar */}
+            <TouchableOpacity
+              style={styles.filterBar}
+              onPress={() => setShowFilterModal(true)}
+              activeOpacity={0.7}
+            >
+              <IconSymbol size={14} name="line.3.horizontal.decrease" color="#888" />
+              <ThemedText style={styles.filterLabel}>
+                Filters{activeFilterCount > 0 ? ` (${activeFilterCount})` : ''}
+              </ThemedText>
+              <IconSymbol size={10} name="chevron.down" color="#666" />
+            </TouchableOpacity>
 
             {/* Content Area */}
             {loadingDuoCards || (duoCards.length > 0 && !showCards) ? (
@@ -777,7 +740,6 @@ export default function DuoFinderScreen() {
                       mainRole={valorantCard.mainRole}
                       preferredDuoRole={valorantCard.lookingFor || 'Any'}
                       onPress={() => handleCardPress('valorant')}
-                      isEditMode={isEditMode}
                     />
                   </View>
                 )}
@@ -801,13 +763,12 @@ export default function DuoFinderScreen() {
                       mainRole={leagueCard.mainRole}
                       preferredDuoRole={leagueCard.lookingFor || 'Any'}
                       onPress={() => handleCardPress('league')}
-                      isEditMode={isEditMode}
                     />
                   </View>
                 )}
 
                 {/* Add Another Card Button */}
-                {!isEditMode && (valorantCard === null || leagueCard === null) && (
+                {(valorantCard === null || leagueCard === null) && (
                   <TouchableOpacity
                     style={styles.addAnotherButtonCompact}
                     onPress={() => setShowAddCard(true)}
@@ -892,22 +853,14 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: 12,
   },
-  headerEditBtn: {
-    paddingHorizontal: 4,
+  headerTabBtn: {
     paddingVertical: 4,
+    paddingHorizontal: 8,
   },
-  headerEditText: {
-    fontSize: 16,
+  headerTabBtnText: {
+    fontSize: 14,
     fontWeight: '600',
     color: '#c42743',
-  },
-  headerIconBtn: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
-    backgroundColor: '#2c2f33',
-    alignItems: 'center',
-    justifyContent: 'center',
   },
   // Section Headers - Profile style
   sectionHeader: {
@@ -915,8 +868,8 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     alignItems: 'center',
     paddingHorizontal: 20,
-    paddingTop: 20,
-    paddingBottom: 12,
+    paddingTop: 16,
+    paddingBottom: 10,
   },
   sectionHeaderLeft: {
     flexDirection: 'row',
@@ -981,7 +934,7 @@ const styles = StyleSheet.create({
     gap: 20,
   },
   compactCardSection: {
-    gap: 10,
+    gap: 16,
   },
   cardSectionHeader: {
     flexDirection: 'row',
@@ -1030,77 +983,43 @@ const styles = StyleSheet.create({
   filterBar: {
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingHorizontal: 20,
-    paddingTop: 16,
-    paddingBottom: 8,
-  },
-  filterBarLeft: {
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
-  filterBarRight: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 12,
+    alignSelf: 'flex-start',
+    gap: 6,
+    marginLeft: 20,
+    marginBottom: 12,
+    paddingVertical: 6,
+    paddingHorizontal: 12,
+    backgroundColor: '#1a1a1a',
+    borderRadius: 8,
   },
   filterLabel: {
     fontSize: 12,
-    fontWeight: '600',
+    fontWeight: '500',
     color: '#888',
-    letterSpacing: 0.5,
-  },
-  filterBtn: {
-    width: 36,
-    height: 36,
-    borderRadius: 10,
-    backgroundColor: '#1a1a1a',
-    alignItems: 'center',
-    justifyContent: 'center',
-    borderWidth: 1,
-    borderColor: '#333',
-  },
-  filterBtnActive: {
-    backgroundColor: '#c42743',
-    borderColor: '#c42743',
-  },
-  filterBadge: {
-    position: 'absolute',
-    top: -4,
-    right: -4,
-    width: 16,
-    height: 16,
-    borderRadius: 8,
-    backgroundColor: '#fff',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  filterBadgeText: {
-    fontSize: 10,
-    fontWeight: '700',
-    color: '#c42743',
   },
   statusBadge: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 8,
-    backgroundColor: '#2c2f33',
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-    borderRadius: 20,
-    borderWidth: 1,
-    borderColor: '#36393e',
+    gap: 6,
+  },
+  statusDotOuter: {
+    width: 14,
+    height: 14,
+    borderRadius: 7,
+    backgroundColor: 'rgba(74, 222, 128, 0.15)',
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   statusDot: {
-    width: 8,
-    height: 8,
-    borderRadius: 4,
-    backgroundColor: '#22c55e',
+    width: 6,
+    height: 6,
+    borderRadius: 3,
+    backgroundColor: '#4ade80',
   },
   statusText: {
-    fontSize: 13,
-    fontWeight: '600',
-    color: '#b9bbbe',
+    fontSize: 12,
+    fontWeight: '500',
+    color: '#6b7280',
   },
   loadingContainer: {
     flex: 1,

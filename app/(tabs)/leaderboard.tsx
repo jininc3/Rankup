@@ -315,7 +315,7 @@ export default function LeaderboardScreen() {
       {/* Floating Add Party Button */}
       <TouchableOpacity
         style={styles.fabButton}
-        onPress={() => router.push('/leaderboardPages/addParty')}
+        onPress={() => router.push('/leaderboardPages/createParty')}
         activeOpacity={0.8}
       >
         <IconSymbol size={28} name="plus" color="#fff" />

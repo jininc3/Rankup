@@ -93,6 +93,9 @@ export default function ProfileScreen() {
   // Combined loading state - avatar, cover photo, and posts all loaded
   const [allContentLoaded, setAllContentLoaded] = useState(false);
 
+  // Create modal state
+  const [showCreateModal, setShowCreateModal] = useState(false);
+
   // Track if this is the first time loading the profile
   const [isFirstLoad, setIsFirstLoad] = useState(true);
   const [hasCheckedFirstLoad, setHasCheckedFirstLoad] = useState(false);
@@ -705,17 +708,18 @@ export default function ProfileScreen() {
           <View style={styles.headerIconsRow}>
             <TouchableOpacity
               style={styles.headerIconButton}
+              onPress={() => setShowCreateModal(true)}
+              activeOpacity={0.7}
+            >
+              <IconSymbol size={26} name="plus" color="#fff" />
+            </TouchableOpacity>
+            <View style={styles.headerIconsSpacer} />
+            <TouchableOpacity
+              style={styles.headerIconButton}
               onPress={() => router.push('/profilePages/settings')}
               activeOpacity={0.7}
             >
-              <IconSymbol size={16} name="person.fill" color="#fff" />
-            </TouchableOpacity>
-            <TouchableOpacity
-              style={styles.shareIconButton}
-              onPress={() => {/* TODO: Share profile */}}
-              activeOpacity={0.7}
-            >
-              <IconSymbol size={16} name="square.and.arrow.up" color="#fff" />
+              <IconSymbol size={24} name="line.3.horizontal" color="#fff" />
             </TouchableOpacity>
           </View>
 
@@ -914,13 +918,6 @@ export default function ProfileScreen() {
                 <IconSymbol size={18} name="play.rectangle.fill" color="#fff" />
                 <ThemedText style={styles.sectionHeaderTitle}>Clips</ThemedText>
               </View>
-              <TouchableOpacity
-                style={styles.addClipsButton}
-                onPress={handleAddPost}
-                activeOpacity={0.7}
-              >
-                <IconSymbol size={20} name="plus" color="#fff" />
-              </TouchableOpacity>
             </View>
 
           {/* Clips Content */}
@@ -985,14 +982,6 @@ export default function ProfileScreen() {
               <ThemedText style={styles.emptyStateSubtext}>
                 Post your best gaming moments, highlights, and achievements
               </ThemedText>
-              <TouchableOpacity
-                style={styles.addClipsEmptyButton}
-                onPress={() => setShowNewPost(true)}
-                activeOpacity={0.8}
-              >
-                <IconSymbol size={20} name="plus" color="#000" />
-                <ThemedText style={styles.addClipsEmptyText}>Create Post</ThemedText>
-              </TouchableOpacity>
             </View>
           )}
           </View>
@@ -1003,25 +992,16 @@ export default function ProfileScreen() {
               <IconSymbol size={18} name="star.fill" color="#fff" />
               <ThemedText style={styles.sectionHeaderTitle}>Rank Cards</ThemedText>
             </View>
-            <View style={styles.sectionHeaderRight}>
-              {/* Wallet View button - shown when cards are expanded */}
-              {cardsExpanded && userGames.length > 1 && (
-                <TouchableOpacity
-                  style={styles.walletViewButton}
-                  onPress={toggleCardExpansion}
-                  activeOpacity={0.7}
-                >
-                  <IconSymbol size={20} name="creditcard.fill" color="#fff" />
-                </TouchableOpacity>
-              )}
+            {/* Wallet View button - shown when cards are expanded */}
+            {cardsExpanded && userGames.length > 1 && (
               <TouchableOpacity
-                style={styles.addClipsButton}
-                onPress={() => router.push('/profilePages/newRankCard')}
+                style={styles.walletViewButton}
+                onPress={toggleCardExpansion}
                 activeOpacity={0.7}
               >
-                <IconSymbol size={20} name="plus" color="#fff" />
+                <IconSymbol size={20} name="creditcard.fill" color="#fff" />
               </TouchableOpacity>
-            </View>
+            )}
           </View>
 
           {/* Rank Cards Content */}
@@ -1103,19 +1083,6 @@ export default function ProfileScreen() {
                   </TouchableOpacity>
                 );
               })()}
-
-              {/* Add Rank Card Button */}
-              <TouchableOpacity
-                style={styles.addRankCardCardVertical}
-                onPress={() => router.push('/profilePages/newRankCard')}
-                activeOpacity={0.7}
-              >
-                <View style={styles.addRankCardContent}>
-                  <IconSymbol size={56} name="plus.circle.fill" color="#c42743" />
-                  <ThemedText style={styles.addRankCardText}>Add Rank Card</ThemedText>
-                  <ThemedText style={styles.addRankCardSubtext}>Connect another game</ThemedText>
-                </View>
-              </TouchableOpacity>
             </View>
           ) : (
             // Multiple Cards View - stacked/expandable
@@ -1262,6 +1229,66 @@ export default function ProfileScreen() {
         onPostCreated={handlePostCreated}
       />
 
+      {/* Create Modal */}
+      <Modal
+        visible={showCreateModal}
+        animationType="slide"
+        transparent={true}
+        onRequestClose={() => setShowCreateModal(false)}
+      >
+        <TouchableOpacity
+          style={styles.createModalOverlay}
+          activeOpacity={1}
+          onPress={() => setShowCreateModal(false)}
+        >
+          <TouchableOpacity
+            style={styles.createModalContent}
+            activeOpacity={1}
+            onPress={(e) => e.stopPropagation()}
+          >
+            {/* Handle bar */}
+            <View style={styles.createModalHandle} />
+
+            {/* Title */}
+            <ThemedText style={styles.createModalTitle}>Create</ThemedText>
+
+            {/* Divider */}
+            <View style={styles.createModalDivider} />
+
+            {/* Options */}
+            <TouchableOpacity
+              style={styles.createModalOption}
+              onPress={() => {
+                setShowCreateModal(false);
+                setShowNewPost(true);
+              }}
+              activeOpacity={0.7}
+            >
+              <View style={styles.createModalIconWrapper}>
+                <IconSymbol size={24} name="play.rectangle" color="#fff" />
+              </View>
+              <ThemedText style={styles.createModalOptionText}>Clip</ThemedText>
+            </TouchableOpacity>
+
+            <View style={styles.createModalOptionDivider} />
+
+            <TouchableOpacity
+              style={styles.createModalOption}
+              onPress={() => {
+                setShowCreateModal(false);
+                router.push('/profilePages/newRankCard');
+              }}
+              activeOpacity={0.7}
+            >
+              <View style={styles.createModalIconWrapper}>
+                <IconSymbol size={24} name="rectangle.stack.badge.plus" color="#fff" />
+              </View>
+              <ThemedText style={styles.createModalOptionText}>Rank Card</ThemedText>
+            </TouchableOpacity>
+          </TouchableOpacity>
+        </TouchableOpacity>
+      </Modal>
+
     </ThemedView>
   );
 }
@@ -1278,11 +1305,13 @@ const styles = StyleSheet.create({
   // Header icons row
   headerIconsRow: {
     flexDirection: 'row',
-    justifyContent: 'flex-end',
+    justifyContent: 'space-between',
     alignItems: 'center',
     paddingHorizontal: 16,
     paddingBottom: 12,
-    gap: 12,
+  },
+  headerIconsSpacer: {
+    flex: 1,
   },
   headerIconButton: {
     padding: 6,
@@ -1427,19 +1456,13 @@ const styles = StyleSheet.create({
     height: 20,
   },
   editProfileButton: {
-    height: 36,
-    paddingHorizontal: 16,
-    backgroundColor: '#2c2f33',
-    borderRadius: 8,
-    alignItems: 'center',
-    justifyContent: 'center',
-    borderWidth: 1,
-    borderColor: '#36393e',
+    paddingVertical: 4,
+    paddingHorizontal: 8,
   },
   editProfileButtonText: {
-    fontSize: 13,
+    fontSize: 14,
     fontWeight: '600',
-    color: '#fff',
+    color: '#c42743',
   },
   // Small avatar on the right
   smallAvatarButton: {
@@ -1959,5 +1982,62 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     color: '#72767d',
     marginTop: 4,
+  },
+  // Create Modal styles
+  createModalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    justifyContent: 'flex-end',
+  },
+  createModalContent: {
+    backgroundColor: '#1a1a1a',
+    borderTopLeftRadius: 20,
+    borderTopRightRadius: 20,
+    paddingBottom: 40,
+  },
+  createModalHandle: {
+    width: 40,
+    height: 4,
+    backgroundColor: '#666',
+    borderRadius: 2,
+    alignSelf: 'center',
+    marginTop: 12,
+    marginBottom: 16,
+  },
+  createModalTitle: {
+    fontSize: 18,
+    fontWeight: '700',
+    color: '#fff',
+    textAlign: 'center',
+    marginBottom: 16,
+  },
+  createModalDivider: {
+    height: 1,
+    backgroundColor: '#333',
+    marginHorizontal: 20,
+    marginBottom: 8,
+  },
+  createModalOption: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 16,
+    paddingHorizontal: 24,
+    gap: 16,
+  },
+  createModalIconWrapper: {
+    width: 32,
+    height: 32,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  createModalOptionText: {
+    fontSize: 16,
+    fontWeight: '500',
+    color: '#fff',
+  },
+  createModalOptionDivider: {
+    height: 1,
+    backgroundColor: '#252525',
+    marginLeft: 72,
   },
 });

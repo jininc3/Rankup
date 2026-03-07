@@ -22,21 +22,17 @@ export default function LinkRiotAccountScreen() {
   const { selectedGame } = useLocalSearchParams<{ selectedGame?: string }>();
   const [gameName, setGameName] = useState('');
   const [tagLine, setTagLine] = useState('');
-  const [region, setRegion] = useState('euw1');
+  const [region, setRegion] = useState('na1');
   const [loading, setLoading] = useState(false);
 
   const regions = [
-    { value: 'euw1', label: 'Europe West' },
-    { value: 'eun1', label: 'Europe Nordic & East' },
-    { value: 'na1', label: 'North America' },
-    { value: 'kr', label: 'Korea' },
-    { value: 'br1', label: 'Brazil' },
-    { value: 'la1', label: 'Latin America North' },
-    { value: 'la2', label: 'Latin America South' },
-    { value: 'tr1', label: 'Turkey' },
-    { value: 'ru', label: 'Russia' },
-    { value: 'jp1', label: 'Japan' },
-    { value: 'oc1', label: 'Oceania' },
+    { value: 'na1', label: 'NA' },
+    { value: 'euw1', label: 'EUW' },
+    { value: 'eun1', label: 'EUNE' },
+    { value: 'kr', label: 'KR' },
+    { value: 'br1', label: 'BR' },
+    { value: 'jp1', label: 'JP' },
+    { value: 'oc1', label: 'OCE' },
   ];
 
   const handleLinkAccount = async () => {
@@ -80,276 +76,254 @@ export default function LinkRiotAccountScreen() {
     }
   };
 
-  const getGameDisplayName = (game: string) => {
-    switch (game) {
-      case 'league':
-        return 'League of Legends';
-      case 'valorant':
-        return 'Valorant';
-      case 'tft':
-        return 'TFT';
-      default:
-        return game;
-    }
-  };
-
   return (
-    <ScrollView style={styles.container} showsVerticalScrollIndicator={false}>
-      {/* Header */}
-      <View style={styles.header}>
-        <TouchableOpacity style={styles.backButton} onPress={() => router.back()}>
-          <IconSymbol size={24} name="chevron.left" color="#fff" />
-        </TouchableOpacity>
-        <ThemedText style={styles.headerTitle}>Link League Account</ThemedText>
-      </View>
-
-      {/* Logo */}
-      <View style={styles.logoContainer}>
-        <Image
-          source={require('@/assets/images/riotgames.png')}
-          style={styles.logo}
-          resizeMode="contain"
-        />
-      </View>
-
-      {/* Info Card */}
-      <View style={styles.infoCard}>
-        <ThemedText style={styles.infoTitle}>Connect Your Riot Account</ThemedText>
-        <ThemedText style={styles.infoText}>
-          Enter your Riot ID to link your Riot Games account and display your stats for League of Legends, TFT, and Valorant.
-        </ThemedText>
-      </View>
-
-      {/* Form */}
-      <View style={styles.form}>
-        {/* Game Name Input */}
-        <View style={styles.inputGroup}>
-          <ThemedText style={styles.label}>Game Name</ThemedText>
-          <TextInput
-            style={styles.input}
-            placeholder="PlayerName"
-            placeholderTextColor="#999"
-            value={gameName}
-            onChangeText={setGameName}
-            autoCapitalize="none"
-            autoCorrect={false}
-          />
-          <ThemedText style={styles.hint}>Your in-game name (3-16 characters)</ThemedText>
+    <ThemedView style={styles.container}>
+      <ScrollView showsVerticalScrollIndicator={false}>
+        {/* Header */}
+        <View style={styles.header}>
+          <TouchableOpacity style={styles.backButton} onPress={() => router.back()}>
+            <IconSymbol size={24} name="chevron.left" color="#fff" />
+          </TouchableOpacity>
         </View>
 
-        {/* Tag Line Input */}
-        <View style={styles.inputGroup}>
-          <ThemedText style={styles.label}>Tag Line</ThemedText>
-          <View style={styles.tagLineContainer}>
-            <ThemedText style={styles.hashSymbol}>#</ThemedText>
-            <TextInput
-              style={styles.tagLineInput}
-              placeholder="e.g., EUW"
-              placeholderTextColor="#999"
-              value={tagLine}
-              onChangeText={setTagLine}
-              autoCapitalize="characters"
-              autoCorrect={false}
-              maxLength={5}
+        {/* Logo and Title Section */}
+        <View style={styles.heroSection}>
+          <View style={styles.logoWrapper}>
+            <Image
+              source={require('@/assets/images/leagueoflegends.png')}
+              style={styles.logo}
+              resizeMode="contain"
             />
           </View>
-          <ThemedText style={styles.hint}>Your tag (2-5 characters)</ThemedText>
+          <ThemedText style={styles.heroTitle}>Link League</ThemedText>
+          <ThemedText style={styles.heroSubtitle}>
+            Connect your Riot ID to display your ranked stats and tier
+          </ThemedText>
         </View>
 
-        {/* Region Selector */}
-        <View style={styles.inputGroup}>
-          <ThemedText style={styles.label}>Region</ThemedText>
-          <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.regionScroll}>
-            {regions.map((r) => (
-              <TouchableOpacity
-                key={r.value}
-                style={[styles.regionButton, region === r.value && styles.regionButtonActive]}
-                onPress={() => setRegion(r.value)}
-              >
-                <ThemedText
-                  style={[styles.regionButtonText, region === r.value && styles.regionButtonTextActive]}
+        {/* Form Card */}
+        <View style={styles.formCard}>
+          {/* Game Name Input */}
+          <View style={styles.inputGroup}>
+            <ThemedText style={styles.label}>Game Name</ThemedText>
+            <View style={styles.inputWrapper}>
+              <TextInput
+                style={styles.input}
+                placeholder="HideOnBush"
+                placeholderTextColor="#555"
+                value={gameName}
+                onChangeText={setGameName}
+                autoCapitalize="none"
+                autoCorrect={false}
+              />
+            </View>
+          </View>
+
+          {/* Tag Line Input */}
+          <View style={styles.inputGroup}>
+            <ThemedText style={styles.label}>Tag Line</ThemedText>
+            <View style={styles.tagLineWrapper}>
+              <View style={styles.hashContainer}>
+                <ThemedText style={styles.hashSymbol}>#</ThemedText>
+              </View>
+              <TextInput
+                style={styles.tagLineInput}
+                placeholder="KR1"
+                placeholderTextColor="#555"
+                value={tagLine}
+                onChangeText={setTagLine}
+                autoCapitalize="characters"
+                autoCorrect={false}
+                maxLength={5}
+              />
+            </View>
+          </View>
+
+          {/* Region Selector */}
+          <View style={styles.inputGroup}>
+            <ThemedText style={styles.label}>Region</ThemedText>
+            <View style={styles.regionContainer}>
+              {regions.map((r) => (
+                <TouchableOpacity
+                  key={r.value}
+                  style={[styles.regionButton, region === r.value && styles.regionButtonActive]}
+                  onPress={() => setRegion(r.value)}
                 >
-                  {r.label}
-                </ThemedText>
-              </TouchableOpacity>
-            ))}
-          </ScrollView>
-        </View>
+                  <ThemedText
+                    style={[styles.regionButtonText, region === r.value && styles.regionButtonTextActive]}
+                  >
+                    {r.label}
+                  </ThemedText>
+                </TouchableOpacity>
+              ))}
+            </View>
+          </View>
 
-        {/* Link Button */}
-        <TouchableOpacity
-          style={[styles.linkButton, loading && styles.linkButtonDisabled]}
-          onPress={handleLinkAccount}
-          disabled={loading}
-        >
-          {loading ? (
-            <ActivityIndicator color="#fff" />
-          ) : (
-            <>
+          {/* Link Button */}
+          <TouchableOpacity
+            style={[styles.linkButton, loading && styles.linkButtonDisabled]}
+            onPress={handleLinkAccount}
+            disabled={loading}
+          >
+            {loading ? (
+              <ActivityIndicator color="#fff" />
+            ) : (
               <ThemedText style={styles.linkButtonText}>Link Account</ThemedText>
-              <IconSymbol size={20} name="arrow.right" color="#fff" />
-            </>
-          )}
-        </TouchableOpacity>
-      </View>
-
-      {/* Example */}
-      <View style={styles.exampleCard}>
-        <ThemedText style={styles.exampleTitle}>Example</ThemedText>
-        <ThemedText style={styles.exampleText}>
-          If your Riot ID is <ThemedText style={styles.exampleBold}>HideOnBush#KR1</ThemedText>:
-        </ThemedText>
-        <View style={styles.exampleRow}>
-          <ThemedText style={styles.exampleLabel}>Game Name:</ThemedText>
-          <ThemedText style={styles.exampleValue}>HideOnBush</ThemedText>
+            )}
+          </TouchableOpacity>
         </View>
-        <View style={styles.exampleRow}>
-          <ThemedText style={styles.exampleLabel}>Tag Line:</ThemedText>
-          <ThemedText style={styles.exampleValue}>KR1</ThemedText>
-        </View>
-      </View>
 
-      <View style={styles.bottomSpacer} />
-    </ScrollView>
+        {/* Example Card */}
+        <View style={styles.exampleCard}>
+          <View style={styles.exampleHeader}>
+            <IconSymbol size={16} name="info.circle" color="#666" />
+            <ThemedText style={styles.exampleTitle}>Example</ThemedText>
+          </View>
+          <ThemedText style={styles.exampleText}>
+            If your Riot ID is <ThemedText style={styles.exampleHighlight}>HideOnBush#KR1</ThemedText>
+          </ThemedText>
+          <View style={styles.exampleDivider} />
+          <View style={styles.exampleRow}>
+            <ThemedText style={styles.exampleLabel}>Game Name</ThemedText>
+            <ThemedText style={styles.exampleValue}>HideOnBush</ThemedText>
+          </View>
+          <View style={styles.exampleRow}>
+            <ThemedText style={styles.exampleLabel}>Tag Line</ThemedText>
+            <ThemedText style={styles.exampleValue}>KR1</ThemedText>
+          </View>
+        </View>
+
+        <View style={styles.bottomSpacer} />
+      </ScrollView>
+    </ThemedView>
   );
 }
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#1e2124',
+    backgroundColor: '#0f0f0f',
   },
   header: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingHorizontal: 20,
-    paddingTop: 60,
-    paddingBottom: 20,
+    paddingHorizontal: 16,
+    paddingTop: 55,
+    paddingBottom: 12,
   },
   backButton: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    backgroundColor: '#2c2f33',
+    padding: 6,
+  },
+  heroSection: {
     alignItems: 'center',
-    justifyContent: 'center',
-    marginRight: 12,
+    paddingHorizontal: 20,
+    paddingTop: 20,
+    paddingBottom: 32,
   },
-  headerTitle: {
-    fontSize: 20,
-    fontWeight: '700',
-    color: '#fff',
-  },
-  logoContainer: {
-    alignItems: 'center',
-    paddingVertical: 24,
-  },
-  logo: {
+  logoWrapper: {
     width: 80,
     height: 80,
+    borderRadius: 20,
+    backgroundColor: '#1a1a1a',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 20,
   },
-  infoCard: {
-    backgroundColor: '#2c2f33',
-    marginHorizontal: 20,
-    padding: 20,
-    borderRadius: 12,
-    marginBottom: 24,
-    borderWidth: 1,
-    borderColor: '#3a3f44',
+  logo: {
+    width: 50,
+    height: 50,
   },
-  infoTitle: {
-    fontSize: 16,
-    fontWeight: '600',
+  heroTitle: {
+    fontSize: 28,
+    fontWeight: '800',
     color: '#fff',
+    letterSpacing: -0.5,
     marginBottom: 8,
   },
-  infoText: {
+  heroSubtitle: {
     fontSize: 14,
-    color: '#ccc',
+    color: '#666',
+    textAlign: 'center',
     lineHeight: 20,
+    maxWidth: 280,
   },
-  form: {
-    paddingHorizontal: 20,
+  formCard: {
+    marginHorizontal: 16,
+    backgroundColor: '#1a1a1a',
+    borderRadius: 16,
+    padding: 20,
+    gap: 20,
   },
   inputGroup: {
-    marginBottom: 24,
+    gap: 8,
   },
   label: {
-    fontSize: 14,
+    fontSize: 13,
     fontWeight: '600',
-    color: '#fff',
-    marginBottom: 8,
+    color: '#888',
+    letterSpacing: 0.3,
+  },
+  inputWrapper: {
+    backgroundColor: '#252525',
+    borderRadius: 12,
+    overflow: 'hidden',
   },
   input: {
-    backgroundColor: '#2c2f33',
-    borderWidth: 1,
-    borderColor: '#3a3f44',
-    borderRadius: 12,
     paddingHorizontal: 16,
-    paddingVertical: 16,
-    fontSize: 16,
-    color: '#fff',
-    lineHeight: 20,
-  },
-  hint: {
-    fontSize: 12,
-    color: '#999',
-    marginTop: 6,
-  },
-  tagLineContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: '#2c2f33',
-    borderWidth: 1,
-    borderColor: '#3a3f44',
-    borderRadius: 12,
-    paddingHorizontal: 16,
-  },
-  hashSymbol: {
-    fontSize: 20,
-    fontWeight: '600',
-    color: '#999',
-    marginRight: 4,
-  },
-  tagLineInput: {
-    flex: 1,
     paddingVertical: 14,
     fontSize: 16,
     color: '#fff',
   },
-  regionScroll: {
-    marginHorizontal: -20,
-    paddingHorizontal: 20,
+  tagLineWrapper: {
+    flexDirection: 'row',
+    backgroundColor: '#252525',
+    borderRadius: 12,
+    overflow: 'hidden',
+  },
+  hashContainer: {
+    paddingLeft: 16,
+    justifyContent: 'center',
+  },
+  hashSymbol: {
+    fontSize: 18,
+    fontWeight: '600',
+    color: '#666',
+  },
+  tagLineInput: {
+    flex: 1,
+    paddingHorizontal: 8,
+    paddingVertical: 14,
+    fontSize: 16,
+    color: '#fff',
+  },
+  regionContainer: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8,
   },
   regionButton: {
     paddingVertical: 10,
     paddingHorizontal: 16,
-    borderRadius: 8,
-    backgroundColor: '#2c2f33',
-    marginRight: 8,
-    borderWidth: 1,
-    borderColor: '#3a3f44',
+    borderRadius: 10,
+    backgroundColor: '#252525',
   },
   regionButtonActive: {
     backgroundColor: '#c42743',
-    borderColor: '#c42743',
   },
   regionButtonText: {
-    fontSize: 14,
-    color: '#ccc',
-    fontWeight: '500',
+    fontSize: 13,
+    color: '#888',
+    fontWeight: '600',
   },
   regionButtonTextActive: {
     color: '#fff',
   },
   linkButton: {
-    flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
     backgroundColor: '#c42743',
     paddingVertical: 16,
     borderRadius: 12,
-    gap: 8,
     marginTop: 8,
   },
   linkButtonDisabled: {
@@ -357,41 +331,49 @@ const styles = StyleSheet.create({
   },
   linkButtonText: {
     fontSize: 16,
-    fontWeight: '600',
+    fontWeight: '700',
     color: '#fff',
   },
   exampleCard: {
-    backgroundColor: '#2c2f33',
-    marginHorizontal: 20,
-    marginTop: 32,
+    marginHorizontal: 16,
+    marginTop: 24,
+    backgroundColor: '#1a1a1a',
+    borderRadius: 16,
     padding: 16,
-    borderRadius: 12,
-    borderWidth: 1,
-    borderColor: '#3a3f44',
+  },
+  exampleHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    marginBottom: 12,
   },
   exampleTitle: {
     fontSize: 14,
     fontWeight: '600',
-    color: '#fff',
-    marginBottom: 8,
+    color: '#666',
   },
   exampleText: {
-    fontSize: 13,
-    color: '#ccc',
+    fontSize: 14,
+    color: '#888',
     marginBottom: 12,
   },
-  exampleBold: {
+  exampleHighlight: {
     fontWeight: '700',
     color: '#c42743',
   },
+  exampleDivider: {
+    height: 1,
+    backgroundColor: '#252525',
+    marginBottom: 12,
+  },
   exampleRow: {
     flexDirection: 'row',
-    marginBottom: 4,
+    justifyContent: 'space-between',
+    marginBottom: 8,
   },
   exampleLabel: {
     fontSize: 13,
-    color: '#999',
-    width: 100,
+    color: '#666',
   },
   exampleValue: {
     fontSize: 13,

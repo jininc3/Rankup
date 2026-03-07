@@ -2,20 +2,22 @@ import rankCard from '@/app/components/rankCard';
 
 // Alias for JSX usage (React components must start with uppercase)
 const RankCard = rankCard;
+import PostViewerModal from '@/app/components/postViewerModal';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { IconSymbol } from '@/components/ui/icon-symbol';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { useRef, useState, useEffect, useCallback } from 'react';
-import { Dimensions, Image, Modal, ScrollView, StyleSheet, TouchableOpacity, View, ActivityIndicator, Alert, Linking } from 'react-native';
+import { Dimensions, Image, ScrollView, StyleSheet, TouchableOpacity, View, ActivityIndicator, Alert, Linking, LayoutAnimation, Platform, UIManager } from 'react-native';
 import * as Clipboard from 'expo-clipboard';
 import { useAuth } from '@/contexts/AuthContext';
 import { useFocusEffect } from '@react-navigation/native';
-import { Video, ResizeMode } from 'expo-av';
 import { db } from '@/config/firebase';
-import { collection, query, where, orderBy, getDocs, Timestamp, doc, getDoc, setDoc, deleteDoc, updateDoc, increment } from 'firebase/firestore';
+import { collection, query, where, getDocs, Timestamp, doc, getDoc } from 'firebase/firestore';
 import { followUser, unfollowUser, isFollowing as checkIsFollowing } from '@/services/followService';
-import { calculateTierBorderColor } from '@/utils/tierBorderUtils';
+import { calculateTierBorderColor, calculateTierBorderGradient } from '@/utils/tierBorderUtils';
+import GradientBorder from '@/components/GradientBorder';
+import { LinearGradient } from 'expo-linear-gradient';
 
 interface ViewedUser {
   id: string;
@@ -68,7 +70,7 @@ interface Post {
   createdAt: Timestamp;
   likes: number;
   commentsCount?: number;
-  duration?: number; // Video duration in seconds
+  duration?: number;
 }
 
 // Helper function to format video duration
@@ -79,101 +81,108 @@ const formatDuration = (seconds?: number): string => {
   return `${mins}:${secs.toString().padStart(2, '0')}`;
 };
 
+// Helper function to format rank
+const formatRank = (tier: string, rank: string) => {
+  return `${tier.charAt(0).toUpperCase()}${tier.slice(1).toLowerCase()} ${rank}`;
+};
+
 export default function ProfilePreviewScreen() {
   const router = useRouter();
   const params = useLocalSearchParams();
   const { user: currentUser, refreshUser } = useAuth();
   const [viewedUser, setViewedUser] = useState<ViewedUser | null>(null);
   const [loadingUser, setLoadingUser] = useState(true);
-  const [selectedGameIndex, setSelectedGameIndex] = useState(0);
-  const [activeMainTab, setActiveMainTab] = useState<'rankCards' | 'clips'>('clips');
   const [posts, setPosts] = useState<Post[]>([]);
   const [loadingPosts, setLoadingPosts] = useState(false);
   const [selectedPost, setSelectedPost] = useState<Post | null>(null);
+  const [selectedPostIndex, setSelectedPostIndex] = useState(0);
   const [showPostViewer, setShowPostViewer] = useState(false);
   const [isFollowing, setIsFollowing] = useState(false);
   const [followLoading, setFollowLoading] = useState(false);
-  const scrollViewRef = useRef<ScrollView>(null);
-  const iconScrollViewRef = useRef<ScrollView>(null);
-  const [showSocialsSheet, setShowSocialsSheet] = useState(false);
   const [riotStats, setRiotStats] = useState<any>(null);
   const [valorantStats, setValorantStats] = useState<any>(null);
+  const [riotAccount, setRiotAccount] = useState<any>(null);
+  const [valorantAccount, setValorantAccount] = useState<any>(null);
+  const [enabledRankCards, setEnabledRankCards] = useState<string[]>([]);
+  const [cardsExpanded, setCardsExpanded] = useState(false);
 
-  // Create userGames array based on viewedUser data
-  const userGames = viewedUser?.gamesPlayed ? [
-    {
-      id: 1,
-      name: 'Valorant',
-      rank: viewedUser.gamesPlayed.valorant?.currentRank || 'Unranked',
-      trophies: 1245,
-      icon: '🎯',
-      wins: Math.floor((viewedUser.gamesPlayed.valorant?.gamesPlayed || 0) * ((viewedUser.gamesPlayed.valorant?.winRate || 0) / 100)),
-      losses: (viewedUser.gamesPlayed.valorant?.gamesPlayed || 0) - Math.floor((viewedUser.gamesPlayed.valorant?.gamesPlayed || 0) * ((viewedUser.gamesPlayed.valorant?.winRate || 0) / 100)),
-      winRate: viewedUser.gamesPlayed.valorant?.winRate || 0,
-      recentMatches: ['+25', '+18', '-12', '+22', '+19'],
-    },
-    {
-      id: 2,
-      name: 'League of Legends',
-      rank: viewedUser.gamesPlayed.league?.currentRank || 'Unranked',
-      trophies: 876,
-      icon: '⚔️',
-      wins: Math.floor((viewedUser.gamesPlayed.league?.gamesPlayed || 0) * ((viewedUser.gamesPlayed.league?.winRate || 0) / 100)),
-      losses: (viewedUser.gamesPlayed.league?.gamesPlayed || 0) - Math.floor((viewedUser.gamesPlayed.league?.gamesPlayed || 0) * ((viewedUser.gamesPlayed.league?.winRate || 0) / 100)),
-      winRate: viewedUser.gamesPlayed.league?.winRate || 0,
-      recentMatches: ['+15', '-18', '+20', '+17', '-14'],
-    },
-    {
-      id: 3,
-      name: 'Apex Legends',
-      rank: viewedUser.gamesPlayed.apex?.currentRank || 'Unranked',
-      trophies: 422,
-      icon: '🎮',
-      wins: Math.floor((viewedUser.gamesPlayed.apex?.gamesPlayed || 0) * ((viewedUser.gamesPlayed.apex?.winRate || 0) / 100)),
-      losses: (viewedUser.gamesPlayed.apex?.gamesPlayed || 0) - Math.floor((viewedUser.gamesPlayed.apex?.gamesPlayed || 0) * ((viewedUser.gamesPlayed.apex?.winRate || 0) / 100)),
-      winRate: viewedUser.gamesPlayed.apex?.winRate || 0,
-      recentMatches: ['+28', '+22', '-16', '-19', '+25'],
-    },
-  ] : [];
+  // Enable LayoutAnimation on Android
+  useEffect(() => {
+    if (Platform.OS === 'android' && UIManager.setLayoutAnimationEnabledExperimental) {
+      UIManager.setLayoutAnimationEnabledExperimental(true);
+    }
+  }, []);
 
-  const selectedGame = userGames[selectedGameIndex];
-
-  // Get userId from params, or use current user's id
+  // Get userId from params
   const userId = params.userId as string || currentUser?.id;
 
-  const handleScroll = (event: any) => {
-    const offsetX = event.nativeEvent.contentOffset.x;
-    const index = Math.round(offsetX / (CARD_WIDTH + CARD_GAP));
-    if (index !== selectedGameIndex && index >= 0 && index < userGames.length) {
-      setSelectedGameIndex(index);
-    }
-  };
+  // Dynamic games array based on Riot data and enabled rank cards
+  const userGames = (riotAccount || valorantAccount) ?
+    enabledRankCards
+      .map(gameType => {
+        if (gameType === 'league' && riotStats) {
+          return {
+            id: 2,
+            name: 'League of Legends',
+            rank: riotStats.rankedSolo
+              ? formatRank(riotStats.rankedSolo.tier, riotStats.rankedSolo.rank)
+              : 'Unranked',
+            trophies: riotStats.rankedSolo?.leaguePoints || 0,
+            icon: '⚔️',
+            image: require('@/assets/images/leagueoflegends.png'),
+            wins: riotStats.rankedSolo?.wins || 0,
+            losses: riotStats.rankedSolo?.losses || 0,
+            winRate: riotStats.rankedSolo?.winRate || 0,
+            recentMatches: ['+15', '-18', '+20', '+17', '-14'],
+            profileIconId: riotStats.profileIconId,
+          };
+        }
+        if (gameType === 'tft' && riotStats) {
+          return {
+            id: 4,
+            name: 'TFT',
+            rank: 'Gold I',
+            trophies: 45,
+            icon: '♟️',
+            image: require('@/assets/images/tft.png'),
+            wins: 28,
+            losses: 22,
+            winRate: 56.0,
+            recentMatches: ['+12', '-10', '+15', '+18', '-8'],
+            profileIconId: riotStats?.profileIconId,
+          };
+        }
+        if (gameType === 'valorant' && valorantStats) {
+          return {
+            id: 3,
+            name: 'Valorant',
+            rank: valorantStats.currentRank || 'Unranked',
+            trophies: valorantStats.rankRating || 0,
+            icon: '🎯',
+            image: require('@/assets/images/valorant-black.png'),
+            wins: valorantStats.wins || 0,
+            losses: valorantStats.losses || 0,
+            winRate: valorantStats.winRate || 0,
+            recentMatches: ['+18', '+22', '-16', '+20', '-15'],
+            valorantCard: valorantStats.card?.small,
+            peakRank: valorantStats.peakRank?.tier,
+          };
+        }
+        return null;
+      })
+      .filter((game): game is NonNullable<typeof game> => game !== null)
+    : [];
 
-  const handleScrollDrag = (event: any) => {
-    const offsetX = event.nativeEvent.contentOffset.x;
-    const index = Math.round(offsetX / (CARD_WIDTH + CARD_GAP));
-    if (index !== selectedGameIndex && index >= 0 && index < userGames.length) {
-      setSelectedGameIndex(index);
-    }
-  };
-
-  const scrollToIndex = (index: number) => {
-    // Update state for smooth border transition
-    setSelectedGameIndex(index);
-
-    // Scroll the cards view
-    scrollViewRef.current?.scrollTo({
-      x: index * (CARD_WIDTH + CARD_GAP),
-      animated: true,
-    });
-
-    // Scroll the icon view to center the selected icon
-    const ICON_WIDTH = 48 + 12; // icon circle (48) + gap (12)
-    const ICON_OFFSET = index * ICON_WIDTH - (screenWidth / 2) + (ICON_WIDTH / 2);
-    iconScrollViewRef.current?.scrollTo({
-      x: Math.max(0, ICON_OFFSET),
-      animated: true,
-    });
+  // Toggle card stack expansion
+  const toggleCardExpansion = () => {
+    LayoutAnimation.configureNext(
+      LayoutAnimation.create(
+        300,
+        LayoutAnimation.Types.easeInEaseOut,
+        LayoutAnimation.Properties.opacity
+      )
+    );
+    setCardsExpanded(!cardsExpanded);
   };
 
   // Fetch viewed user's profile data
@@ -200,12 +209,21 @@ export default function ProfilePreviewScreen() {
           gamesPlayed: data.gamesPlayed,
         });
 
-        // Fetch riot and valorant stats for tier border
+        // Fetch riot and valorant stats for tier border and rank cards
         if (data.riotStats) {
           setRiotStats(data.riotStats);
         }
         if (data.valorantStats) {
           setValorantStats(data.valorantStats);
+        }
+        if (data.riotAccount) {
+          setRiotAccount(data.riotAccount);
+        }
+        if (data.valorantAccount) {
+          setValorantAccount(data.valorantAccount);
+        }
+        if (data.enabledRankCards) {
+          setEnabledRankCards(data.enabledRankCards);
         }
       }
     } catch (error) {
@@ -223,15 +241,17 @@ export default function ProfilePreviewScreen() {
     try {
       const postsQuery = query(
         collection(db, 'posts'),
-        where('userId', '==', userId),
-        orderBy('createdAt', 'desc')
+        where('userId', '==', userId)
       );
 
       const querySnapshot = await getDocs(postsQuery);
-      const fetchedPosts: Post[] = querySnapshot.docs.map(doc => ({
+      let fetchedPosts: Post[] = querySnapshot.docs.map(doc => ({
         id: doc.id,
         ...doc.data()
       } as Post));
+
+      // Sort by newest first
+      fetchedPosts = fetchedPosts.sort((a, b) => b.createdAt.toMillis() - a.createdAt.toMillis());
 
       setPosts(fetchedPosts);
     } catch (error) {
@@ -260,8 +280,17 @@ export default function ProfilePreviewScreen() {
   );
 
   const handlePostPress = (post: Post) => {
+    const index = posts.findIndex(p => p.id === post.id);
+    setSelectedPostIndex(index);
     setSelectedPost(post);
     setShowPostViewer(true);
+  };
+
+  const handleNavigatePost = (index: number) => {
+    if (index >= 0 && index < posts.length) {
+      setSelectedPostIndex(index);
+      setSelectedPost(posts[index]);
+    }
   };
 
   const closePostViewer = () => {
@@ -294,18 +323,13 @@ export default function ProfilePreviewScreen() {
 
     try {
       if (isFollowing) {
-        // Unfollow
         await unfollowUser(currentUser.id, userId);
-
         setIsFollowing(false);
-
-        // Update local viewed user state
         setViewedUser({
           ...viewedUser,
           followersCount: (viewedUser.followersCount || 0) - 1,
         });
       } else {
-        // Follow
         await followUser(
           currentUser.id,
           currentUser.username || currentUser.email?.split('@')[0] || 'User',
@@ -314,17 +338,12 @@ export default function ProfilePreviewScreen() {
           viewedUser.username,
           viewedUser.avatar
         );
-
         setIsFollowing(true);
-
-        // Update local viewed user state
         setViewedUser({
           ...viewedUser,
           followersCount: (viewedUser.followersCount || 0) + 1,
         });
       }
-
-      // Refresh current user data
       await refreshUser();
     } catch (error) {
       console.error('Error toggling follow:', error);
@@ -339,497 +358,413 @@ export default function ProfilePreviewScreen() {
     checkFollowStatus();
   }, [currentUser?.id, userId]);
 
-  // Helper function to format rank
-  const formatRank = (tier: string, rank: string) => {
-    return `${tier.charAt(0).toUpperCase()}${tier.slice(1).toLowerCase()} ${rank}`;
-  };
-
   // Calculate tier border color based on current ranks
   const tierBorderColor = calculateTierBorderColor(
     riotStats?.rankedSolo ? formatRank(riotStats.rankedSolo.tier, riotStats.rankedSolo.rank) : undefined,
     valorantStats?.currentRank
   );
 
+  // Calculate tier border gradient with fallback
+  const tierBorderGradient = calculateTierBorderGradient(
+    riotStats?.rankedSolo ? formatRank(riotStats.rankedSolo.tier, riotStats.rankedSolo.rank) : undefined,
+    valorantStats?.currentRank
+  ) || ['#333', '#333', '#333'];
+
   return (
     <ThemedView style={styles.container}>
-      {/* Header with back button */}
-      <View style={styles.header}>
-        <TouchableOpacity
-          style={styles.backButton}
-          onPress={() => router.back()}
-        >
-          <IconSymbol size={24} name="chevron.left" color="#fff" />
-        </TouchableOpacity>
-      </View>
-
       <ScrollView showsVerticalScrollIndicator={false}>
-        {/* Cover Photo */}
-        <View style={styles.coverPhotoContainer}>
-          <View style={styles.coverPhoto}>
+        {/* Header Section */}
+        <View style={styles.headerSection}>
+          {/* Top Header Icons */}
+          <View style={styles.headerIconsRow}>
+            <TouchableOpacity
+              style={styles.headerIconButton}
+              onPress={() => router.back()}
+              activeOpacity={0.7}
+            >
+              <IconSymbol size={24} name="chevron.left" color="#fff" />
+            </TouchableOpacity>
+            <View style={styles.headerIconsSpacer} />
+          </View>
+
+          {/* Cover Photo Area */}
+          <View style={styles.coverPhotoWrapper}>
             {viewedUser?.coverPhoto ? (
-              <Image source={{ uri: viewedUser.coverPhoto }} style={styles.coverPhotoImage} />
-            ) : null}
-          </View>
-        </View>
-
-        {/* Profile Content */}
-        <View style={styles.profileContentWrapper}>
-          {/* Top Row: Avatar and Username/Stats */}
-          <View style={styles.profileTopRow}>
-            {/* Avatar on the left, overlapping cover */}
-            <View style={styles.avatarContainer}>
-              <View style={styles.avatarCircle}>
-                {viewedUser?.avatar && viewedUser.avatar.startsWith('http') ? (
-                  <Image source={{ uri: viewedUser.avatar }} style={styles.avatarImage} />
-                ) : (
-                  <ThemedText style={styles.avatarInitial}>
-                    {viewedUser?.avatar || viewedUser?.username?.[0]?.toUpperCase() || 'U'}
-                  </ThemedText>
-                )}
-              </View>
-            </View>
-
-            {/* Username and Stats on the right */}
-            <View style={styles.profileInfoRight}>
-              {/* Username */}
-              <ThemedText style={styles.username}>{viewedUser?.username || 'User'}</ThemedText>
-
-              {/* Stats in One Line */}
-              <View style={styles.statsRow}>
-                <ThemedText style={styles.statText}>{viewedUser?.postsCount || 0} Posts</ThemedText>
-                <ThemedText style={styles.statDividerText}> | </ThemedText>
-                <ThemedText style={styles.statText}>{viewedUser?.followersCount || 0} Followers</ThemedText>
-                <ThemedText style={styles.statDividerText}> | </ThemedText>
-                <ThemedText style={styles.statText}>{viewedUser?.followingCount || 0} Following</ThemedText>
-              </View>
-            </View>
-          </View>
-
-          {/* Bio & Socials Section */}
-          <View style={styles.bioSocialsContainer}>
-            {/* Bio */}
-            {viewedUser?.bio ? (
-              <ThemedText style={styles.bioText}>{viewedUser.bio}</ThemedText>
+              <Image
+                source={{ uri: viewedUser.coverPhoto }}
+                style={styles.coverPhotoImage}
+              />
             ) : (
-              <ThemedText style={styles.emptyBioText}>No bio added yet</ThemedText>
+              <LinearGradient
+                colors={['#2c2f33', '#0f0f0f']}
+                start={{ x: 0, y: 0 }}
+                end={{ x: 0, y: 1 }}
+                style={styles.coverPhotoGradient}
+              />
             )}
+            {/* Top fade */}
+            <LinearGradient
+              colors={['rgba(15, 15, 15, 0.6)', 'transparent']}
+              start={{ x: 0, y: 0 }}
+              end={{ x: 0, y: 1 }}
+              style={styles.coverPhotoFadeTop}
+            />
+            {/* Bottom fade */}
+            <LinearGradient
+              colors={['transparent', 'rgba(15, 15, 15, 0.4)']}
+              start={{ x: 0, y: 0 }}
+              end={{ x: 0, y: 1 }}
+              style={styles.coverPhotoFadeBottom}
+            />
+          </View>
 
-            {/* Socials button */}
-            {(viewedUser?.discordLink || viewedUser?.instagramLink) && (
+          {/* Username Row with Profile Avatar on Right */}
+          <View style={styles.usernameRow}>
+            <ThemedText style={styles.largeUsername}>{viewedUser?.username || 'User'}</ThemedText>
+
+            {/* Profile Avatar */}
+            <View style={styles.profileAvatarButton}>
+              {tierBorderGradient ? (
+                <GradientBorder
+                  colors={tierBorderGradient}
+                  borderWidth={2}
+                  borderRadius={28}
+                >
+                  <View style={styles.profileAvatarCircleWithGradient}>
+                    {viewedUser?.avatar && viewedUser.avatar.startsWith('http') ? (
+                      <Image
+                        source={{ uri: viewedUser.avatar }}
+                        style={styles.profileAvatarImage}
+                      />
+                    ) : (
+                      <ThemedText style={styles.profileAvatarInitial}>
+                        {viewedUser?.username?.[0]?.toUpperCase() || 'U'}
+                      </ThemedText>
+                    )}
+                  </View>
+                </GradientBorder>
+              ) : (
+                <View style={styles.profileAvatarCircle}>
+                  {viewedUser?.avatar && viewedUser.avatar.startsWith('http') ? (
+                    <Image
+                      source={{ uri: viewedUser.avatar }}
+                      style={styles.profileAvatarImage}
+                    />
+                  ) : (
+                    <ThemedText style={styles.profileAvatarInitial}>
+                      {viewedUser?.username?.[0]?.toUpperCase() || 'U'}
+                    </ThemedText>
+                  )}
+                </View>
+              )}
+            </View>
+          </View>
+
+          {/* Followers / Following Row */}
+          <View style={styles.followStatsRow}>
+            <View style={styles.followStatItem}>
+              <ThemedText style={styles.followStatNumber}>{viewedUser?.followersCount || 0}</ThemedText>
+              <ThemedText style={styles.followStatLabel}> Followers</ThemedText>
+            </View>
+            <View style={styles.followStatDivider} />
+            <View style={styles.followStatItem}>
+              <ThemedText style={styles.followStatNumber}>{viewedUser?.followingCount || 0}</ThemedText>
+              <ThemedText style={styles.followStatLabel}> Following</ThemedText>
+            </View>
+          </View>
+
+          {/* Social Icons Row with Follow Button */}
+          <View style={styles.socialIconsRow}>
+            {/* Instagram */}
+            <TouchableOpacity
+              style={[styles.socialIconButton, !viewedUser?.instagramLink && styles.socialIconInactive]}
+              onPress={async () => {
+                if (viewedUser?.instagramLink) {
+                  try {
+                    const username = viewedUser.instagramLink.replace(/^https?:\/\/(www\.)?instagram\.com\//, '').replace(/\/$/, '');
+                    await Linking.openURL(`https://instagram.com/${username}`);
+                  } catch (error) {
+                    Alert.alert('Error', 'Failed to open Instagram');
+                  }
+                }
+              }}
+              disabled={!viewedUser?.instagramLink}
+              activeOpacity={0.7}
+            >
+              <Image
+                source={require('@/assets/images/instagram.png')}
+                style={styles.socialIconImage}
+                resizeMode="contain"
+              />
+            </TouchableOpacity>
+
+            {/* Discord */}
+            <TouchableOpacity
+              style={[styles.socialIconButton, !viewedUser?.discordLink && styles.socialIconInactive]}
+              onPress={async () => {
+                if (viewedUser?.discordLink) {
+                  try {
+                    await Clipboard.setStringAsync(viewedUser.discordLink);
+                    Alert.alert('Copied!', `Discord username "${viewedUser.discordLink}" copied to clipboard`);
+                  } catch (error) {
+                    Alert.alert('Error', 'Failed to copy Discord username');
+                  }
+                }
+              }}
+              disabled={!viewedUser?.discordLink}
+              activeOpacity={0.7}
+            >
+              <Image
+                source={require('@/assets/images/discord.png')}
+                style={styles.socialIconImage}
+                resizeMode="contain"
+              />
+            </TouchableOpacity>
+
+            {/* Follow Button - replaces Edit Profile */}
+            {userId !== currentUser?.id && (
               <TouchableOpacity
-                style={styles.socialsButton}
-                onPress={() => setShowSocialsSheet(true)}
+                style={[styles.followButton, isFollowing && styles.followingButton]}
+                onPress={handleFollowToggle}
+                disabled={followLoading}
                 activeOpacity={0.7}
               >
-                <IconSymbol size={18} name="link" color="#b9bbbe" />
-                <ThemedText style={styles.socialsButtonText}>Socials</ThemedText>
-                <IconSymbol size={14} name="chevron.right" color="#72767d" />
+                <ThemedText style={[styles.followButtonText, isFollowing && styles.followingButtonText]}>
+                  {followLoading ? '...' : isFollowing ? 'Following' : 'Follow'}
+                </ThemedText>
               </TouchableOpacity>
             )}
           </View>
 
-          {/* Follow Button - Only show when viewing other users */}
-          {userId !== currentUser?.id && (
-            <TouchableOpacity
-              style={[styles.followButton, isFollowing && styles.unfollowButton]}
-              onPress={handleFollowToggle}
-              disabled={followLoading}
-            >
-              <ThemedText style={[styles.followButtonText, isFollowing && styles.unfollowButtonText]}>
-                {followLoading ? 'Loading...' : isFollowing ? 'Unfollow' : 'Follow'}
-              </ThemedText>
-            </TouchableOpacity>
-          )}
-        </View>
-
-        {/* Main Tabs: Clips and RankCards */}
-        <View style={styles.mainTabsContainer}>
-          <View style={styles.mainTabsLeft}>
-            <TouchableOpacity
-              style={styles.mainTab}
-              onPress={() => setActiveMainTab('clips')}
-            >
-              <ThemedText style={[styles.mainTabText, activeMainTab === 'clips' && styles.mainTabTextActive]}>
-                Clips
-              </ThemedText>
-              {activeMainTab === 'clips' && <View style={styles.tabIndicator} />}
-            </TouchableOpacity>
-            <TouchableOpacity
-              style={styles.mainTab}
-              onPress={() => setActiveMainTab('rankCards')}
-            >
-              <ThemedText style={[styles.mainTabText, activeMainTab === 'rankCards' && styles.mainTabTextActive]}>
-                RankCards
-              </ThemedText>
-              {activeMainTab === 'rankCards' && <View style={styles.tabIndicator} />}
-            </TouchableOpacity>
-          </View>
-        </View>
-
-        {/* Posts Tab Content */}
-        <View style={[styles.postsSection, { display: activeMainTab === 'clips' ? 'flex' : 'none' }]}>
-          {loadingPosts ? (
-            <View style={styles.postsContainer}>
-              <ActivityIndicator size="large" color="#c42743" />
-              <ThemedText style={styles.loadingText}>Loading posts...</ThemedText>
+          {/* Bio Section */}
+          {viewedUser?.bio && (
+            <View style={styles.bioSection}>
+              <ThemedText style={styles.bioText}>{viewedUser.bio}</ThemedText>
             </View>
-          ) : posts.length > 0 ? (
-            <View style={styles.postsGrid}>
-              {posts.map((post) => (
+          )}
+
+          {/* Content Section */}
+          <View>
+            {/* Clips Section Header */}
+            <View style={styles.sectionHeader}>
+              <View style={styles.sectionHeaderLeft}>
+                <IconSymbol size={18} name="play.rectangle.fill" color="#fff" />
+                <ThemedText style={styles.sectionHeaderTitle}>Clips</ThemedText>
+              </View>
+            </View>
+
+            {/* Clips Content */}
+            <View style={styles.clipsSection}>
+              {loadingPosts ? (
+                <View style={styles.emptyState}>
+                  <ActivityIndicator size="large" color="#c42743" />
+                  <ThemedText style={styles.emptyStateText}>Loading posts...</ThemedText>
+                </View>
+              ) : posts.length > 0 ? (
+                <ScrollView
+                  horizontal
+                  showsHorizontalScrollIndicator={false}
+                  contentContainerStyle={styles.horizontalClipsContainer}
+                >
+                  {posts.map((post, index) => (
+                    <TouchableOpacity
+                      key={post.id}
+                      style={styles.horizontalClipItem}
+                      onPress={() => handlePostPress(post)}
+                      activeOpacity={0.9}
+                    >
+                      <Image
+                        source={{ uri: post.mediaType === 'video' && post.thumbnailUrl ? post.thumbnailUrl : post.mediaUrl }}
+                        style={styles.horizontalClipImage}
+                        resizeMode="cover"
+                      />
+                      {post.mediaType === 'video' && (
+                        <View style={styles.videoDuration}>
+                          <ThemedText style={styles.videoDurationText}>
+                            {formatDuration(post.duration)}
+                          </ThemedText>
+                        </View>
+                      )}
+                      {post.mediaUrls && post.mediaUrls.length > 1 && (
+                        <View style={styles.multipleIndicator}>
+                          <IconSymbol size={18} name="square.on.square" color="#fff" />
+                        </View>
+                      )}
+                    </TouchableOpacity>
+                  ))}
+                </ScrollView>
+              ) : (
+                <View style={styles.emptyState}>
+                  <View style={styles.emptyClipsIcons}>
+                    <View style={styles.emptyClipsIconCircle}>
+                      <IconSymbol size={28} name="photo.fill" color="#72767d" />
+                    </View>
+                    <View style={[styles.emptyClipsIconCircle, styles.emptyClipsIconCircleCenter]}>
+                      <IconSymbol size={36} name="video.fill" color="#fff" />
+                    </View>
+                    <View style={styles.emptyClipsIconCircle}>
+                      <IconSymbol size={28} name="sparkles" color="#72767d" />
+                    </View>
+                  </View>
+                  <ThemedText style={styles.emptyStateTitle}>No clips yet</ThemedText>
+                  <ThemedText style={styles.emptyStateSubtext}>
+                    This user hasn't posted any clips
+                  </ThemedText>
+                </View>
+              )}
+            </View>
+
+            {/* Rank Cards Section Header */}
+            <View style={styles.sectionHeader}>
+              <View style={styles.sectionHeaderLeft}>
+                <IconSymbol size={18} name="star.fill" color="#fff" />
+                <ThemedText style={styles.sectionHeaderTitle}>Rank Cards</ThemedText>
+              </View>
+              {/* Wallet View button - shown when cards are expanded */}
+              {cardsExpanded && userGames.length > 1 && (
                 <TouchableOpacity
-                  key={post.id}
-                  style={styles.postItem}
-                  onPress={() => handlePostPress(post)}
+                  style={styles.walletViewButton}
+                  onPress={toggleCardExpansion}
                   activeOpacity={0.7}
                 >
-                  <Image
-                    source={{ uri: post.mediaType === 'video' && post.thumbnailUrl ? post.thumbnailUrl : post.mediaUrl }}
-                    style={styles.postImage}
-                    resizeMode="cover"
-                  />
-                  {post.mediaType === 'video' && (
-                    <View style={styles.videoDuration}>
-                      <ThemedText style={styles.videoDurationText}>
-                        {formatDuration(post.duration)}
-                      </ThemedText>
-                    </View>
-                  )}
-                  {post.mediaUrls && post.mediaUrls.length > 1 && (
-                    <View style={styles.multiplePostsIndicator}>
-                      <IconSymbol size={20} name="square.on.square" color="#fff" />
-                    </View>
-                  )}
+                  <IconSymbol size={20} name="creditcard.fill" color="#fff" />
                 </TouchableOpacity>
-              ))}
+              )}
             </View>
-          ) : (
-            <View style={styles.emptyClipsState}>
-              <View style={styles.emptyClipsIcons}>
-                <View style={styles.emptyClipsIconCircle}>
-                  <IconSymbol size={28} name="photo.fill" color="#72767d" />
-                </View>
-                <View style={[styles.emptyClipsIconCircle, styles.emptyClipsIconCircleCenter]}>
-                  <IconSymbol size={36} name="video.fill" color="#fff" />
-                </View>
-                <View style={styles.emptyClipsIconCircle}>
-                  <IconSymbol size={28} name="sparkles" color="#72767d" />
-                </View>
-              </View>
-              <ThemedText style={styles.emptyClipsTitle}>No clips yet</ThemedText>
-              <ThemedText style={styles.emptyClipsSubtext}>
-                This user hasn't posted any clips
-              </ThemedText>
-            </View>
-          )}
-        </View>
 
-        {/* RankCards Tab Content */}
-        <View style={[styles.section, { display: activeMainTab === 'rankCards' ? 'flex' : 'none' }]}>
-          {userGames.length === 0 ? (
-            <View style={styles.emptyRankCardsState}>
-              <View style={styles.emptyGameLogos}>
-                <View style={styles.emptyGameLogoCircle}>
-                  <Image
-                    source={require('@/assets/images/valorant-logo.png')}
-                    style={styles.emptyGameLogo}
-                    resizeMode="contain"
-                  />
-                </View>
-                <View style={[styles.emptyGameLogoCircle, styles.emptyGameLogoCircleCenter]}>
-                  <Image
-                    source={require('@/assets/images/riotgames.png')}
-                    style={styles.emptyGameLogoLarge}
-                    resizeMode="contain"
-                  />
-                </View>
-                <View style={styles.emptyGameLogoCircle}>
-                  <Image
-                    source={require('@/assets/images/leagueoflegends.png')}
-                    style={styles.emptyGameLogo}
-                    resizeMode="contain"
-                  />
-                </View>
-              </View>
-              <ThemedText style={styles.emptyRankCardsTitle}>No rank cards yet</ThemedText>
-              <ThemedText style={styles.emptyRankCardsSubtext}>
-                This user hasn't linked any gaming accounts
-              </ThemedText>
-            </View>
-          ) : (
-            <>
-              {/* Game Icon Selector */}
-              <ScrollView
-                ref={iconScrollViewRef}
-                horizontal
-                showsHorizontalScrollIndicator={false}
-                style={styles.gameIconScroller}
-                contentContainerStyle={styles.gameIconScrollerContent}
-              >
-                {userGames.map((game, index) => (
-                  <TouchableOpacity
-                    key={game.id}
-                    style={styles.gameIconContainer}
-                    onPress={() => scrollToIndex(index)}
-                    activeOpacity={0.7}
-                  >
-                    <View style={[
-                      styles.gameIconCircle,
-                      selectedGameIndex === index && styles.gameIconCircleActive
-                    ]}>
-                      <ThemedText style={styles.gameIconEmoji}>{game.icon}</ThemedText>
+            {/* Rank Cards Content */}
+            <View style={[styles.rankCardsSection, { marginBottom: (userGames.length > 1 && cardsExpanded) ? 20 : 4 }]}>
+              {!riotAccount && !valorantAccount ? (
+                <View style={styles.emptyState}>
+                  <View style={styles.emptyGameLogos}>
+                    <View style={styles.emptyGameLogoCircle}>
+                      <Image
+                        source={require('@/assets/images/valorant-logo.png')}
+                        style={styles.emptyGameLogo}
+                        resizeMode="contain"
+                      />
                     </View>
-                  </TouchableOpacity>
-                ))}
-              </ScrollView>
-
-              {/* Scrollable Rank Cards */}
-              <ScrollView
-                ref={scrollViewRef}
-                horizontal
-                pagingEnabled
-                showsHorizontalScrollIndicator={false}
-                onScroll={handleScrollDrag}
-                onMomentumScrollEnd={handleScroll}
-                scrollEventThrottle={16}
-                snapToInterval={CARD_WIDTH + CARD_GAP}
-                decelerationRate="fast"
-                contentContainerStyle={styles.cardsContainer}
-              >
-                {userGames.map((game, index) => (
-                  <View
-                    key={game.id}
-                    style={[
-                      styles.cardWrapper,
-                      {
-                        width: CARD_WIDTH,
-                        marginRight: index < userGames.length - 1 ? CARD_GAP : 0
-                      }
-                    ]}
-                  >
-                    <RankCard game={game} username={viewedUser?.username || 'User'} />
+                    <View style={[styles.emptyGameLogoCircle, styles.emptyGameLogoCircleCenter]}>
+                      <Image
+                        source={require('@/assets/images/riotgames.png')}
+                        style={styles.emptyGameLogoLarge}
+                        resizeMode="contain"
+                      />
+                    </View>
+                    <View style={styles.emptyGameLogoCircle}>
+                      <Image
+                        source={require('@/assets/images/leagueoflegends.png')}
+                        style={styles.emptyGameLogo}
+                        resizeMode="contain"
+                      />
+                    </View>
                   </View>
-                ))}
-              </ScrollView>
-            </>
-          )}
+                  <ThemedText style={styles.emptyStateTitle}>No rank cards yet</ThemedText>
+                  <ThemedText style={styles.emptyStateSubtext}>
+                    This user hasn't linked any gaming accounts
+                  </ThemedText>
+                </View>
+              ) : userGames.length === 1 ? (
+                // Single Card View
+                <View style={styles.verticalRankCardsContainer}>
+                  {(() => {
+                    const game = userGames[0];
+                    let displayUsername = viewedUser?.username || 'User';
+
+                    if (game.name === 'Valorant' && valorantAccount) {
+                      displayUsername = `${valorantAccount.gameName}#${valorantAccount.tag}`;
+                    } else if ((game.name === 'League of Legends' || game.name === 'TFT') && riotAccount) {
+                      displayUsername = `${riotAccount.gameName}#${riotAccount.tagLine}`;
+                    }
+
+                    return (
+                      <View key={game.id} style={styles.verticalCardWrapper}>
+                        <RankCard game={game} username={displayUsername} viewOnly={true} />
+                      </View>
+                    );
+                  })()}
+                </View>
+              ) : (
+                // Multiple Cards View - stacked/expandable
+                <View style={[styles.verticalRankCardsContainer, !cardsExpanded && { paddingBottom: 0 }]}>
+                  {!cardsExpanded ? (
+                    // Stacked Cards View
+                    <TouchableOpacity
+                      style={[styles.stackedCardsWrapper, { height: 240 }]}
+                      onPress={toggleCardExpansion}
+                      activeOpacity={0.9}
+                    >
+                      {userGames.map((game, index) => {
+                        let displayUsername = viewedUser?.username || 'User';
+
+                        if (game.name === 'Valorant' && valorantAccount) {
+                          displayUsername = `${valorantAccount.gameName}#${valorantAccount.tag}`;
+                        } else if ((game.name === 'League of Legends' || game.name === 'TFT') && riotAccount) {
+                          displayUsername = `${riotAccount.gameName}#${riotAccount.tagLine}`;
+                        }
+
+                        const totalCards = userGames.length;
+                        const reverseIndex = totalCards - 1 - index;
+                        const topOffset = reverseIndex * -50;
+                        const scale = 1 - (reverseIndex * 0.02);
+
+                        return (
+                          <View
+                            key={game.id}
+                            style={[
+                              styles.stackedCardItem,
+                              {
+                                bottom: 0,
+                                top: topOffset,
+                                transform: [{ scale }],
+                                zIndex: index + 1,
+                              }
+                            ]}
+                            pointerEvents="none"
+                          >
+                            <RankCard game={game} username={displayUsername} viewOnly={true} />
+                          </View>
+                        );
+                      })}
+                    </TouchableOpacity>
+                  ) : (
+                    // Expanded Cards View
+                    <>
+                      {userGames.map((game) => {
+                        let displayUsername = viewedUser?.username || 'User';
+
+                        if (game.name === 'Valorant' && valorantAccount) {
+                          displayUsername = `${valorantAccount.gameName}#${valorantAccount.tag}`;
+                        } else if ((game.name === 'League of Legends' || game.name === 'TFT') && riotAccount) {
+                          displayUsername = `${riotAccount.gameName}#${riotAccount.tagLine}`;
+                        }
+
+                        return (
+                          <View key={game.id} style={styles.verticalCardWrapper}>
+                            <RankCard game={game} username={displayUsername} viewOnly={true} />
+                          </View>
+                        );
+                      })}
+                    </>
+                  )}
+                </View>
+              )}
+            </View>
+          </View>
         </View>
       </ScrollView>
 
       {/* Post Viewer Modal */}
-      <Modal
+      <PostViewerModal
         visible={showPostViewer}
-        animationType="fade"
-        transparent={true}
-        onRequestClose={closePostViewer}
-      >
-        <View style={styles.postViewerOverlay}>
-          <TouchableOpacity
-            style={styles.postViewerCloseArea}
-            activeOpacity={1}
-            onPress={closePostViewer}
-          />
-          <View style={styles.postViewerContent}>
-            {/* Close Button */}
-            <TouchableOpacity
-              style={styles.postViewerCloseButton}
-              onPress={closePostViewer}
-            >
-              <IconSymbol size={28} name="xmark.circle.fill" color="#fff" />
-            </TouchableOpacity>
-
-            {selectedPost && (
-              <>
-                {/* Media */}
-                <View style={styles.postViewerMediaContainer}>
-                  {selectedPost.mediaType === 'video' ? (
-                    <Video
-                      source={{ uri: selectedPost.mediaUrl }}
-                      style={styles.postViewerImage}
-                      useNativeControls
-                      resizeMode={ResizeMode.CONTAIN}
-                      shouldPlay
-                    />
-                  ) : (
-                    <Image
-                      source={{ uri: selectedPost.mediaUrl }}
-                      style={styles.postViewerImage}
-                      resizeMode="contain"
-                    />
-                  )}
-                </View>
-
-                {/* Post Info */}
-                <View style={styles.postViewerInfo}>
-                  <View style={styles.postViewerHeader}>
-                    <View style={styles.postViewerUserInfo}>
-                      <View style={styles.postViewerAvatar}>
-                        {viewedUser?.avatar && viewedUser.avatar.startsWith('http') ? (
-                          <Image source={{ uri: viewedUser.avatar }} style={styles.postViewerAvatarImage} />
-                        ) : (
-                          <ThemedText style={styles.postViewerAvatarInitial}>
-                            {viewedUser?.username?.[0]?.toUpperCase() || 'U'}
-                          </ThemedText>
-                        )}
-                      </View>
-                      <ThemedText style={styles.postViewerUsername}>
-                        {selectedPost.username}
-                      </ThemedText>
-                    </View>
-                    <ThemedText style={styles.postViewerDate}>
-                      {selectedPost.createdAt?.toDate().toLocaleDateString()}
-                    </ThemedText>
-                  </View>
-
-                  {selectedPost.caption && (
-                    <View style={styles.postViewerCaptionContainer}>
-                      <ThemedText style={styles.postViewerCaption}>
-                        {selectedPost.caption}
-                      </ThemedText>
-                    </View>
-                  )}
-
-                  {/* Action Buttons */}
-                  <View style={styles.postViewerActions}>
-                    <TouchableOpacity style={styles.postViewerActionButton}>
-                      <IconSymbol size={28} name="heart" color="#fff" />
-                      <ThemedText style={styles.postViewerActionText}>
-                        {selectedPost.likes}
-                      </ThemedText>
-                    </TouchableOpacity>
-                    <TouchableOpacity style={styles.postViewerActionButton}>
-                      <IconSymbol size={28} name="bubble.left" color="#fff" />
-                    </TouchableOpacity>
-                    <TouchableOpacity style={styles.postViewerActionButton}>
-                      <IconSymbol size={28} name="paperplane" color="#fff" />
-                    </TouchableOpacity>
-                  </View>
-                </View>
-              </>
-            )}
-          </View>
-        </View>
-      </Modal>
-
-      {/* Socials Bottom Sheet */}
-      <Modal
-        visible={showSocialsSheet}
-        transparent={true}
-        animationType="slide"
-        onRequestClose={() => setShowSocialsSheet(false)}
-      >
-        <TouchableOpacity
-          style={styles.modalOverlay}
-          activeOpacity={1}
-          onPress={() => setShowSocialsSheet(false)}
-        >
-          <View style={styles.bottomSheet}>
-            <TouchableOpacity activeOpacity={1}>
-              {/* Sheet Header */}
-              <View style={styles.sheetHeader}>
-                <View style={styles.sheetHandle} />
-                <ThemedText style={styles.sheetTitle}>Socials</ThemedText>
-              </View>
-
-              {/* Social Links */}
-              <View style={styles.socialLinksContainer}>
-                {/* Instagram */}
-                <TouchableOpacity
-                  style={styles.socialOption}
-                  onPress={async () => {
-                    setShowSocialsSheet(false);
-                    if (viewedUser?.instagramLink) {
-                      try {
-                        const username = viewedUser.instagramLink.replace(/^https?:\/\/(www\.)?instagram\.com\//, '').replace(/\/$/, '');
-                        const appUrl = `instagram://user?username=${username}`;
-                        const webUrl = `https://instagram.com/${username}`;
-
-                        const supported = await Linking.canOpenURL(appUrl);
-                        if (supported) {
-                          await Linking.openURL(appUrl);
-                        } else {
-                          await Linking.openURL(webUrl);
-                        }
-                      } catch (error) {
-                        console.error('Error opening Instagram:', error);
-                        Alert.alert('Error', 'Failed to open Instagram');
-                      }
-                    }
-                  }}
-                  activeOpacity={0.7}
-                >
-                  <View style={styles.socialOptionLeft}>
-                    <View style={[styles.instagramIconContainer, !viewedUser?.instagramLink && styles.socialNotConfigured]}>
-                      <Image
-                        source={require('@/assets/images/instagram.png')}
-                        style={styles.socialOptionIcon}
-                        resizeMode="contain"
-                      />
-                    </View>
-                    <View style={{ flex: 1 }}>
-                      <ThemedText style={styles.socialOptionTitle}>Instagram</ThemedText>
-                      <ThemedText style={styles.socialOptionSubtitle}>
-                        {viewedUser?.instagramLink
-                          ? viewedUser.instagramLink.replace(/^https?:\/\/(www\.)?instagram\.com\//, '').replace(/\/$/, '')
-                          : 'Not configured'}
-                      </ThemedText>
-                    </View>
-                  </View>
-                </TouchableOpacity>
-
-                {/* Discord */}
-                <TouchableOpacity
-                  style={styles.socialOption}
-                  onPress={async () => {
-                    setShowSocialsSheet(false);
-                    if (viewedUser?.discordLink) {
-                      try {
-                        await Clipboard.setStringAsync(viewedUser.discordLink);
-                        Alert.alert(
-                          'Copied!',
-                          `Discord username "${viewedUser.discordLink}" copied to clipboard`,
-                          [{ text: 'OK' }]
-                        );
-                      } catch (error) {
-                        console.error('Error copying to clipboard:', error);
-                        Alert.alert('Error', 'Failed to copy Discord username');
-                      }
-                    }
-                  }}
-                  activeOpacity={0.7}
-                >
-                  <View style={styles.socialOptionLeft}>
-                    <View style={[styles.discordIconContainer, !viewedUser?.discordLink && styles.socialNotConfigured]}>
-                      <Image
-                        source={require('@/assets/images/discord.png')}
-                        style={styles.socialOptionIcon}
-                        resizeMode="contain"
-                      />
-                    </View>
-                    <View style={{ flex: 1 }}>
-                      <ThemedText style={styles.socialOptionTitle}>Discord</ThemedText>
-                      <ThemedText style={styles.socialOptionSubtitle}>
-                        {viewedUser?.discordLink || 'Not configured'}
-                      </ThemedText>
-                    </View>
-                  </View>
-                  {viewedUser?.discordLink && (
-                    <IconSymbol size={20} name="doc.on.doc" color="#999" />
-                  )}
-                </TouchableOpacity>
-              </View>
-
-              {/* Cancel Button */}
-              <TouchableOpacity
-                style={styles.cancelButton}
-                onPress={() => setShowSocialsSheet(false)}
-                activeOpacity={0.7}
-              >
-                <ThemedText style={styles.cancelButtonText}>Cancel</ThemedText>
-              </TouchableOpacity>
-            </TouchableOpacity>
-          </View>
-        </TouchableOpacity>
-      </Modal>
+        post={selectedPost}
+        posts={posts}
+        currentIndex={selectedPostIndex}
+        userAvatar={viewedUser?.avatar}
+        onClose={closePostViewer}
+        onNavigate={handleNavigatePost}
+        enableVideoScrubber={false}
+      />
     </ThemedView>
   );
 }
@@ -837,361 +772,255 @@ export default function ProfilePreviewScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#1e2124',
+    backgroundColor: '#0f0f0f',
   },
-  header: {
+  headerSection: {
+    backgroundColor: '#0f0f0f',
+    paddingTop: 50,
+  },
+  headerIconsRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingHorizontal: 16,
+    paddingBottom: 12,
+  },
+  headerIconsSpacer: {
+    flex: 1,
+  },
+  headerIconButton: {
+    padding: 6,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  coverPhotoWrapper: {
+    width: '100%',
+    height: 200,
+    backgroundColor: '#2c2f33',
+  },
+  coverPhotoImage: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    width: '100%',
+    height: '100%',
+  },
+  coverPhotoGradient: {
+    width: '100%',
+    height: '100%',
+  },
+  coverPhotoFadeTop: {
     position: 'absolute',
     top: 0,
     left: 0,
     right: 0,
+    height: 60,
+    zIndex: 1,
+  },
+  coverPhotoFadeBottom: {
+    position: 'absolute',
+    bottom: 0,
+    left: 0,
+    right: 0,
+    height: 80,
+    zIndex: 1,
+  },
+  usernameRow: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
     alignItems: 'center',
+    justifyContent: 'space-between',
     paddingHorizontal: 20,
-    paddingTop: 60,
-    paddingBottom: 16,
-    backgroundColor: 'transparent',
-    zIndex: 10,
-  },
-  backButton: {
-    padding: 4,
-  },
-  headerTitle: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: '#fff',
-    textShadowColor: 'rgba(0, 0, 0, 0.3)',
-    textShadowOffset: { width: 0, height: 1 },
-    textShadowRadius: 3,
-  },
-  headerSpacer: {
-    width: 32,
-  },
-  coverPhotoContainer: {
-    width: '100%',
-    height: 180,
-    backgroundColor: '#f5f5f5',
-  },
-  coverPhoto: {
-    width: '100%',
-    height: '100%',
-    backgroundColor: '#667eea',
-  },
-  coverPhotoImage: {
-    width: '100%',
-    height: '100%',
-  },
-  profileContentWrapper: {
-    backgroundColor: '#1e2124',
-    paddingHorizontal: 20,
-    paddingTop: 0,
-    paddingBottom: 8,
-  },
-  profileTopRow: {
-    flexDirection: 'row',
-    alignItems: 'flex-start',
-    gap: 16,
+    marginTop: 16,
     marginBottom: 8,
   },
-  avatarContainer: {
-    marginTop: -40,
+  largeUsername: {
+    fontSize: 28,
+    fontWeight: '800',
+    color: '#fff',
+    letterSpacing: -0.5,
+    flex: 1,
+    lineHeight: 36,
+    paddingTop: 4,
   },
-  avatarCircle: {
-    width: 80,
-    height: 80,
-    borderRadius: 40,
+  profileAvatarButton: {
+  },
+  profileAvatarCircle: {
+    width: 56,
+    height: 56,
+    borderRadius: 28,
+    backgroundColor: '#36393e',
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 2,
+    borderColor: '#2c2f33',
+  },
+  profileAvatarCircleWithGradient: {
+    width: 56,
+    height: 56,
+    borderRadius: 28,
     backgroundColor: '#36393e',
     alignItems: 'center',
     justifyContent: 'center',
   },
-  avatarInitial: {
-    fontSize: 40,
-  },
-  avatarImage: {
+  profileAvatarImage: {
     width: '100%',
     height: '100%',
-    borderRadius: 40,
+    borderRadius: 28,
   },
-  profileInfo: {
-    width: '100%',
-  },
-  profileInfoRight: {
-    flex: 1,
-    justifyContent: 'center',
-    paddingTop: 8,
-    paddingRight: 4,
-    alignItems: 'flex-start',
-  },
-  username: {
-    fontSize: 20,
+  profileAvatarInitial: {
+    fontSize: 22,
     fontWeight: '700',
     color: '#fff',
-    marginBottom: 12,
-    letterSpacing: -0.5,
   },
-  statsRow: {
+  followStatsRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginBottom: 4,
+    paddingHorizontal: 20,
+    marginBottom: 16,
   },
-  statText: {
+  followStatItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  followStatNumber: {
     fontSize: 14,
-    color: '#b9bbbe',
+    fontWeight: '700',
+    color: '#fff',
+  },
+  followStatLabel: {
+    fontSize: 14,
     fontWeight: '400',
-  },
-  statDividerText: {
-    fontSize: 14,
     color: '#72767d',
-    fontWeight: '400',
   },
-  bioSocialsContainer: {
+  followStatDivider: {
+    width: 1,
+    height: 14,
+    backgroundColor: '#72767d',
+    marginHorizontal: 12,
+  },
+  socialIconsRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 20,
     marginBottom: 20,
+    gap: 12,
+  },
+  socialIconButton: {
+    width: 36,
+    height: 36,
+    borderRadius: 8,
+    backgroundColor: '#2c2f33',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  socialIconInactive: {
+    opacity: 0.4,
+  },
+  socialIconImage: {
+    width: 20,
+    height: 20,
+  },
+  followButton: {
+    flex: 1,
+    paddingVertical: 8,
+    borderRadius: 8,
+    alignItems: 'center',
+    backgroundColor: '#c42743',
+  },
+  followingButton: {
+    backgroundColor: '#2c2f33',
+  },
+  followButtonText: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#fff',
+  },
+  followingButtonText: {
+    color: '#fff',
+  },
+  bioSection: {
+    paddingHorizontal: 20,
+    marginBottom: 8,
   },
   bioText: {
     fontSize: 14,
-    color: '#dcddde',
+    color: '#b9bbbe',
     lineHeight: 20,
-    fontWeight: '400',
-    marginBottom: 10,
   },
-  emptyBioText: {
-    fontSize: 14,
-    color: '#72767d',
-    fontStyle: 'italic',
-    marginBottom: 10,
+  sectionHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingHorizontal: 16,
+    paddingTop: 16,
+    paddingBottom: 12,
   },
-  socialsButton: {
+  sectionHeaderLeft: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 8,
-    paddingVertical: 10,
+  },
+  sectionHeaderTitle: {
+    fontSize: 18,
+    fontWeight: '700',
+    color: '#fff',
+    letterSpacing: -0.5,
+  },
+  walletViewButton: {
+    width: 36,
+    height: 36,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#36393e',
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: '#424549',
+  },
+  clipsSection: {
+    marginBottom: 20,
+  },
+  rankCardsSection: {
+    marginBottom: 20,
+  },
+  horizontalClipsContainer: {
     paddingHorizontal: 16,
+    gap: 12,
+  },
+  horizontalClipItem: {
+    width: 200,
+    height: 120,
     backgroundColor: '#36393e',
-    borderRadius: 8,
-    borderWidth: 1,
-    borderColor: '#2c2f33',
-    marginTop: 12,
-  },
-  socialsButtonText: {
-    flex: 1,
-    fontSize: 14,
-    fontWeight: '500',
-    color: '#dcddde',
-  },
-  followButton: {
-    width: '100%',
-    paddingVertical: 12,
-    borderRadius: 8,
-    alignItems: 'center',
-    backgroundColor: '#000',
-    marginTop: 12,
-  },
-  unfollowButton: {
-    backgroundColor: '#36393e',
-    borderWidth: 1,
-    borderColor: '#2c2f33',
-  },
-  followButtonText: {
-    fontSize: 15,
-    fontWeight: '600',
-    color: '#fff',
-  },
-  unfollowButtonText: {
-    color: '#fff',
-  },
-  modalOverlay: {
-    flex: 1,
-    backgroundColor: 'transparent',
-    justifyContent: 'flex-end',
-  },
-  bottomSheet: {
-    backgroundColor: '#36393e',
-    borderTopLeftRadius: 20,
-    borderTopRightRadius: 20,
-    paddingBottom: 34,
-  },
-  sheetHeader: {
-    alignItems: 'center',
-    paddingTop: 12,
-    paddingBottom: 16,
-    borderBottomWidth: 1,
-    borderBottomColor: '#2c2f33',
-  },
-  sheetHandle: {
-    width: 40,
-    height: 4,
-    backgroundColor: '#72767d',
-    borderRadius: 2,
-    marginBottom: 16,
-  },
-  sheetTitle: {
-    fontSize: 17,
-    fontWeight: '600',
-    color: '#fff',
-  },
-  socialLinksContainer: {
-    paddingHorizontal: 20,
-    paddingTop: 8,
-  },
-  socialOption: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingVertical: 16,
-    borderBottomWidth: 1,
-    borderBottomColor: '#2c2f33',
-  },
-  socialOptionLeft: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 14,
-    flex: 1,
-  },
-  instagramIconContainer: {
-    width: 48,
-    height: 48,
-    borderRadius: 24,
-    backgroundColor: '#36393e',
-    alignItems: 'center',
-    justifyContent: 'center',
-    borderWidth: 2,
-    borderColor: '#E4405F',
-  },
-  discordIconContainer: {
-    width: 48,
-    height: 48,
-    borderRadius: 24,
-    backgroundColor: '#36393e',
-    alignItems: 'center',
-    justifyContent: 'center',
-    borderWidth: 2,
-    borderColor: '#5865F2',
-  },
-  socialOptionIcon: {
-    width: 26,
-    height: 26,
-  },
-  socialOptionTitle: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: '#fff',
-    marginBottom: 2,
-  },
-  socialOptionSubtitle: {
-    fontSize: 13,
-    color: '#b9bbbe',
-  },
-  socialNotConfigured: {
-    borderColor: '#2c2f33',
-    opacity: 0.5,
-  },
-  cancelButton: {
-    marginHorizontal: 20,
-    marginTop: 8,
-    paddingVertical: 14,
-    backgroundColor: '#2c2f33',
-    borderRadius: 10,
-    alignItems: 'center',
-  },
-  cancelButtonText: {
-    fontSize: 15,
-    fontWeight: '600',
-    color: '#b9bbbe',
-  },
-  section: {
-    paddingHorizontal: 20,
-    paddingTop: 16,
-    paddingBottom: 8,
-  },
-  postsSection: {
-    paddingHorizontal: 0,
-    paddingTop: 0,
-    paddingBottom: 8,
-  },
-  mainTabsContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    backgroundColor: '#1e2124',
-    paddingHorizontal: 20,
-    borderBottomWidth: 1,
-    borderBottomColor: '#2c2f33',
-  },
-  mainTabsLeft: {
-    flexDirection: 'row',
-  },
-  mainTab: {
-    paddingVertical: 12,
-    paddingHorizontal: 20,
-    alignItems: 'center',
-    marginRight: 8,
+    borderRadius: 12,
+    overflow: 'hidden',
     position: 'relative',
   },
-  tabIndicator: {
+  horizontalClipImage: {
+    width: '100%',
+    height: '100%',
+  },
+  videoDuration: {
     position: 'absolute',
-    bottom: 0,
-    height: 2,
-    width: 30,
-    backgroundColor: '#c42743',
-    borderRadius: 1,
+    bottom: 6,
+    right: 6,
+    backgroundColor: 'rgba(0, 0, 0, 0.8)',
+    borderRadius: 4,
+    paddingHorizontal: 6,
+    paddingVertical: 2,
   },
-  mainTabText: {
-    fontSize: 15,
-    fontWeight: '500',
-    color: '#72767d',
-  },
-  mainTabTextActive: {
+  videoDurationText: {
+    fontSize: 10,
+    fontWeight: '700',
     color: '#fff',
-    fontWeight: '600',
   },
-  gameIconScroller: {
-    marginBottom: 16,
+  multipleIndicator: {
+    position: 'absolute',
+    top: 6,
+    right: 6,
+    backgroundColor: 'rgba(0, 0, 0, 0.7)',
+    borderRadius: 4,
+    padding: 4,
   },
-  gameIconScrollerContent: {
-    paddingVertical: 6,
-    gap: 12,
-  },
-  gameIconContainer: {
-    alignItems: 'center',
-  },
-  gameIconCircle: {
-    width: 48,
-    height: 48,
-    borderRadius: 24,
-    backgroundColor: '#36393e',
-    borderWidth: 2,
-    borderColor: 'transparent',
-    alignItems: 'center',
-    justifyContent: 'center',
-    overflow: 'hidden',
-  },
-  gameIconCircleActive: {
-    borderColor: '#c42743',
-    backgroundColor: '#36393e',
-  },
-  gameIconEmoji: {
-    fontSize: 24,
-  },
-  cardsContainer: {
-    paddingBottom: 4,
-  },
-  cardWrapper: {
-    paddingHorizontal: 0,
-  },
-  postsContainer: {
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingVertical: 80,
-    paddingHorizontal: 20,
-    gap: 12,
-  },
-  emptyStateText: {
-    fontSize: 17,
-    fontWeight: '600',
-    color: '#fff',
-    marginTop: 16,
-  },
-  emptyRankCardsState: {
+  emptyState: {
     alignItems: 'center',
     justifyContent: 'center',
     paddingVertical: 60,
@@ -1212,7 +1041,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     borderWidth: 3,
-    borderColor: '#1e2124',
+    borderColor: '#0f0f0f',
   },
   emptyGameLogoCircleCenter: {
     width: 72,
@@ -1230,24 +1059,6 @@ const styles = StyleSheet.create({
     width: 40,
     height: 40,
   },
-  emptyRankCardsTitle: {
-    fontSize: 20,
-    fontWeight: '700',
-    color: '#fff',
-    marginBottom: 8,
-  },
-  emptyRankCardsSubtext: {
-    fontSize: 14,
-    color: '#999',
-    textAlign: 'center',
-    lineHeight: 20,
-  },
-  emptyClipsState: {
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingVertical: 60,
-    paddingHorizontal: 32,
-  },
   emptyClipsIcons: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -1263,7 +1074,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     borderWidth: 3,
-    borderColor: '#1e2124',
+    borderColor: '#0f0f0f',
   },
   emptyClipsIconCircleCenter: {
     width: 72,
@@ -1272,161 +1083,58 @@ const styles = StyleSheet.create({
     backgroundColor: '#c42743',
     zIndex: 1,
   },
-  emptyClipsTitle: {
-    fontSize: 20,
+  emptyStateTitle: {
+    fontSize: 22,
     fontWeight: '700',
     color: '#fff',
-    marginBottom: 8,
+    marginBottom: 10,
   },
-  emptyClipsSubtext: {
-    fontSize: 14,
-    color: '#999',
-    textAlign: 'center',
-    lineHeight: 20,
-  },
-  loadingText: {
-    fontSize: 14,
+  emptyStateText: {
+    fontSize: 16,
     color: '#b9bbbe',
     marginTop: 12,
   },
-  postsGrid: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 1,
-    marginTop: 0,
-  },
-  postItem: {
-    width: (screenWidth - 2) / 3,
-    height: ((screenWidth - 2) / 3) * 1.25,
-    backgroundColor: '#f5f5f5',
-    position: 'relative',
-  },
-  postImage: {
-    width: '100%',
-    height: '100%',
-  },
-  videoDuration: {
-    position: 'absolute',
-    bottom: 8,
-    right: 8,
-    backgroundColor: 'rgba(0, 0, 0, 0.75)',
-    borderRadius: 4,
-    paddingHorizontal: 6,
-    paddingVertical: 3,
-  },
-  videoDurationText: {
-    fontSize: 11,
-    fontWeight: '600',
-    color: '#fff',
-    letterSpacing: 0.2,
-  },
-  multiplePostsIndicator: {
-    position: 'absolute',
-    bottom: 8,
-    right: 8,
-    backgroundColor: 'rgba(0, 0, 0, 0.6)',
-    borderRadius: 12,
-    width: 28,
-    height: 28,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  postViewerOverlay: {
-    flex: 1,
-    backgroundColor: 'rgba(0, 0, 0, 0.95)',
-  },
-  postViewerCloseArea: {
-    position: 'absolute',
-    top: 0,
-    left: 0,
-    right: 0,
-    bottom: 0,
-  },
-  postViewerContent: {
-    flex: 1,
-    justifyContent: 'center',
-  },
-  postViewerCloseButton: {
-    position: 'absolute',
-    top: 60,
-    right: 20,
-    zIndex: 100,
-  },
-  postViewerMediaContainer: {
-    width: '100%',
-    height: '60%',
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  postViewerImage: {
-    width: '100%',
-    height: '100%',
-  },
-  postViewerInfo: {
-    paddingHorizontal: 20,
-    paddingVertical: 20,
-  },
-  postViewerHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 16,
-  },
-  postViewerUserInfo: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 12,
-  },
-  postViewerAvatar: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    backgroundColor: '#333',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  postViewerAvatarImage: {
-    width: '100%',
-    height: '100%',
-    borderRadius: 20,
-  },
-  postViewerAvatarInitial: {
-    fontSize: 18,
-    fontWeight: '600',
-    color: '#fff',
-  },
-  postViewerUsername: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: '#fff',
-  },
-  postViewerDate: {
+  emptyStateSubtext: {
     fontSize: 14,
     color: '#999',
+    textAlign: 'center',
+    lineHeight: 21,
+    maxWidth: 280,
   },
-  postViewerCaptionContainer: {
-    marginBottom: 20,
+  verticalRankCardsContainer: {
+    paddingHorizontal: 12,
+    paddingTop: 18,
+    paddingBottom: 20,
+    gap: 16,
   },
-  postViewerCaption: {
-    fontSize: 15,
-    color: '#fff',
-    lineHeight: 22,
+  stackedCardsWrapper: {
+    position: 'relative',
+    height: 320,
+    width: '100%',
+    marginTop: 46,
   },
-  postViewerActions: {
-    flexDirection: 'row',
-    gap: 24,
-    paddingTop: 12,
-    borderTopWidth: 1,
-    borderTopColor: '#333',
+  stackedCardItem: {
+    position: 'absolute',
+    width: '100%',
+    left: 0,
+    shadowColor: '#000',
+    shadowOffset: {
+      width: 8,
+      height: 12,
+    },
+    shadowOpacity: 0.6,
+    shadowRadius: 16,
+    elevation: 16,
   },
-  postViewerActionButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-  },
-  postViewerActionText: {
-    fontSize: 15,
-    color: '#fff',
-    fontWeight: '500',
+  verticalCardWrapper: {
+    width: '100%',
+    shadowColor: '#000',
+    shadowOffset: {
+      width: 8,
+      height: 12,
+    },
+    shadowOpacity: 0.6,
+    shadowRadius: 16,
+    elevation: 16,
   },
 });

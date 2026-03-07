@@ -104,11 +104,17 @@ export default function ValorantRankCard({ game, username, viewOnly = false, use
   const CardWrapper = viewOnly ? View : TouchableOpacity;
 
   return (
-    <CardWrapper
-      style={styles.rankCard}
-      {...(!viewOnly && { onPress: handlePress, activeOpacity: 0.9 })}
-    >
-      <LinearGradient
+    <View style={styles.cardOuter}>
+      {/* 3D Shadow layers - light from right side */}
+      <View style={styles.shadow3} />
+      <View style={styles.shadow2} />
+      <View style={styles.shadow1} />
+
+      <CardWrapper
+        style={styles.rankCard}
+        {...(!viewOnly && { onPress: handlePress, activeOpacity: 0.9 })}
+      >
+        <LinearGradient
         colors={['#DC3D4B', '#8B1E2B', '#5C141D']}
         start={{ x: 0, y: 0 }}
         end={{ x: 1, y: 1 }}
@@ -165,18 +171,49 @@ export default function ValorantRankCard({ game, username, viewOnly = false, use
         </View>
       </LinearGradient>
     </CardWrapper>
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
+  cardOuter: {
+    position: 'relative',
+    height: 220,
+  },
+  // 3D Shadow layers - light from right side
+  shadow3: {
+    position: 'absolute',
+    top: 10,
+    left: -10,
+    right: 14,
+    bottom: -10,
+    backgroundColor: '#000',
+    borderRadius: 26,
+    opacity: 0.2,
+  },
+  shadow2: {
+    position: 'absolute',
+    top: 6,
+    left: -6,
+    right: 10,
+    bottom: -6,
+    backgroundColor: '#000',
+    borderRadius: 25,
+    opacity: 0.25,
+  },
+  shadow1: {
+    position: 'absolute',
+    top: 3,
+    left: -3,
+    right: 5,
+    bottom: -3,
+    backgroundColor: '#000',
+    borderRadius: 24,
+    opacity: 0.3,
+  },
   rankCard: {
     borderRadius: 24,
     height: 220,
-    shadowColor: '#6366f1',
-    shadowOffset: { width: 0, height: 10 },
-    shadowOpacity: 0.3,
-    shadowRadius: 20,
-    elevation: 12,
     borderWidth: 1,
     borderColor: 'rgba(255,255,255,0.1)',
     overflow: 'hidden',

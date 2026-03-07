@@ -4,13 +4,13 @@ export default function LeaderboardPagesLayout() {
   return (
     <Stack>
       <Stack.Screen
-        name="addParty"
+        name="createParty"
         options={{
           headerShown: false,
         }}
       />
       <Stack.Screen
-        name="addParty1"
+        name="createParty1"
         options={{
           headerShown: false,
         }}

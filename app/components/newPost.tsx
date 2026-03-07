@@ -10,6 +10,7 @@ import { addDoc, collection, doc, increment, setDoc, Timestamp, updateDoc } from
 import { getDownloadURL, ref, uploadBytesResumable } from 'firebase/storage';
 import { useRef, useState } from 'react';
 import { ActivityIndicator, Alert, Dimensions, Image, Keyboard, KeyboardAvoidingView, Modal, Platform, ScrollView, StyleSheet, TextInput, TouchableOpacity, View } from 'react-native';
+import { LinearGradient } from 'expo-linear-gradient';
 
 const { width: screenWidth } = Dimensions.get('window');
 
@@ -23,14 +24,14 @@ interface Post {
   mediaType: 'image' | 'video';
   mediaTypes?: string[];
   thumbnailUrl?: string;
-  thumbnailType?: 'auto' | 'frame' | 'custom'; // Track thumbnail source
+  thumbnailType?: 'auto' | 'frame' | 'custom';
   caption?: string;
   taggedUsers?: any[];
   taggedGame?: string;
   createdAt: any;
   likes: number;
   commentsCount?: number;
-  duration?: number; // Video duration in seconds
+  duration?: number;
 }
 
 interface NewPostProps {
@@ -39,7 +40,6 @@ interface NewPostProps {
   onPostCreated: (post: Post) => void;
 }
 
-// Available games for tagging
 const availableGames = [
   { id: 'valorant', name: 'Valorant', image: require('@/assets/images/valorantText.png') },
   { id: 'league', name: 'League of Legends', image: require('@/assets/images/leagueoflegends.png') },
@@ -66,7 +66,6 @@ export default function NewPost({ visible, onClose, onPostCreated }: NewPostProp
   const captionInputRef = useRef<View>(null);
 
   const handleAddPhoto = async () => {
-    // Request permissions
     const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
 
     if (status !== 'granted') {
@@ -78,23 +77,20 @@ export default function NewPost({ visible, onClose, onPostCreated }: NewPostProp
       return;
     }
 
-    // Launch image picker
     const result = await ImagePicker.launchImageLibraryAsync({
       mediaTypes: ['videos'],
       allowsEditing: true,
       aspect: [4, 3],
       quality: 1,
-      videoMaxDuration: 60, // 60 seconds max for videos
+      videoMaxDuration: 60,
     });
 
     if (!result.canceled && result.assets && result.assets.length > 0) {
       const MAX_VIDEO_SIZE_MB = 20;
       const MAX_VIDEO_SIZE_BYTES = MAX_VIDEO_SIZE_MB * 1024 * 1024;
 
-      // Check video file size
       for (const asset of result.assets) {
         if (asset.type === 'video') {
-          // Get file size
           const response = await fetch(asset.uri);
           const blob = await response.blob();
           const fileSizeInMB = (blob.size / (1024 * 1024)).toFixed(2);
@@ -105,7 +101,7 @@ export default function NewPost({ visible, onClose, onPostCreated }: NewPostProp
               `The selected video is ${fileSizeInMB} MB. Please select a video under ${MAX_VIDEO_SIZE_MB} MB.`,
               [{ text: 'OK' }]
             );
-            return; // Don't add the video
+            return;
           }
         }
       }
@@ -125,7 +121,6 @@ export default function NewPost({ visible, onClose, onPostCreated }: NewPostProp
       setCurrentMediaIndex(newMedia.length - 1);
     }
 
-    // Reset thumbnail selection when video is removed
     if (newMedia.length === 0) {
       setThumbnailOption('auto');
       setSelectedThumbnailUri(null);
@@ -140,11 +135,11 @@ export default function NewPost({ visible, onClose, onPostCreated }: NewPostProp
     }
 
     const video = selectedMedia[0];
-    const duration = video.duration ? video.duration / 1000 : 30; // Convert to seconds, default to 30s
+    const duration = video.duration ? video.duration / 1000 : 30;
 
     setGeneratingFrames(true);
     const frames: string[] = [];
-    const timePoints = [0, 0.2, 0.4, 0.6, 0.8, 0.9]; // percentages
+    const timePoints = [0, 0.2, 0.4, 0.6, 0.8, 0.9];
 
     try {
       for (const point of timePoints) {
@@ -182,7 +177,6 @@ export default function NewPost({ visible, onClose, onPostCreated }: NewPostProp
 
     if (!result.canceled && result.assets[0]) {
       try {
-        // Validate file size (max 5MB)
         const response = await fetch(result.assets[0].uri);
         const blob = await response.blob();
         if (blob.size > 5 * 1024 * 1024) {
@@ -210,7 +204,6 @@ export default function NewPost({ visible, onClose, onPostCreated }: NewPostProp
   const handleSharePost = async () => {
     if (!user?.id) return;
 
-    // Check post limit
     const MAX_POSTS = 5;
     const currentPostCount = user.postsCount || 0;
 
@@ -223,13 +216,11 @@ export default function NewPost({ visible, onClose, onPostCreated }: NewPostProp
       return;
     }
 
-    // Validate that at least one photo/video is selected
     if (selectedMedia.length === 0) {
       Alert.alert('Error', 'Please add at least one video');
       return;
     }
 
-    // Validate that a game tag is selected
     if (!selectedPostGame) {
       Alert.alert('Game Tag Required', 'Please select a game tag before posting');
       return;
@@ -238,7 +229,6 @@ export default function NewPost({ visible, onClose, onPostCreated }: NewPostProp
     setUploading(true);
 
     try {
-      // Upload all media files
       const uploadedMediaUrls: string[] = [];
       const mediaTypes: string[] = [];
       let thumbnailUrl: string | undefined;
@@ -246,20 +236,16 @@ export default function NewPost({ visible, onClose, onPostCreated }: NewPostProp
 
       for (let i = 0; i < selectedMedia.length; i++) {
         const media = selectedMedia[i];
-        const timestamp = Date.now() + i; // Ensure unique filenames
+        const timestamp = Date.now() + i;
         const fileExtension = media.uri.split('.').pop() || 'jpg';
         const fileName = `posts/${user.id}/${timestamp}.${fileExtension}`;
 
-        // Create a reference to Firebase Storage
         const storageRef = ref(storage, fileName);
 
-        // Fetch the file from the local URI
         const response = await fetch(media.uri);
         const blob = await response.blob();
 
-        // Generate thumbnail for first video and extract duration
         if (media.type === 'video' && i === 0) {
-          // Extract video duration (in milliseconds, convert to seconds)
           if (media.duration) {
             videoDuration = Math.round(media.duration / 1000);
           }
@@ -267,15 +253,13 @@ export default function NewPost({ visible, onClose, onPostCreated }: NewPostProp
           try {
             let thumbnailUri = selectedThumbnailUri;
 
-            // If no custom/frame selected, generate auto thumbnail
             if (!thumbnailUri || thumbnailOption === 'auto') {
               const { uri } = await VideoThumbnails.getThumbnailAsync(media.uri, {
-                time: 1000, // 1 second mark
+                time: 1000,
               });
               thumbnailUri = uri;
             }
 
-            // Upload thumbnail to Firebase Storage
             const thumbnailSuffix = thumbnailOption === 'auto' ? '_thumb' : `_thumb_${thumbnailOption}`;
             const thumbnailFileName = `posts/${user.id}/${timestamp}${thumbnailSuffix}.jpg`;
             const thumbnailRef = ref(storage, thumbnailFileName);
@@ -288,7 +272,6 @@ export default function NewPost({ visible, onClose, onPostCreated }: NewPostProp
           }
         }
 
-        // Upload the file
         const uploadTask = await uploadBytesResumable(storageRef, blob);
         const downloadURL = await getDownloadURL(uploadTask.ref);
 
@@ -296,20 +279,18 @@ export default function NewPost({ visible, onClose, onPostCreated }: NewPostProp
         mediaTypes.push(media.type || 'video');
       }
 
-      // Save post metadata to Firestore
       const postData: any = {
         userId: user.id,
         username: user.username || user.email?.split('@')[0] || 'User',
         avatar: user.avatar || null,
-        mediaUrl: uploadedMediaUrls[0], // First media as primary
-        mediaUrls: uploadedMediaUrls, // All media URLs
-        mediaType: mediaTypes[0], // First media type as primary
-        mediaTypes: mediaTypes, // All media types
+        mediaUrl: uploadedMediaUrls[0],
+        mediaUrls: uploadedMediaUrls,
+        mediaType: mediaTypes[0],
+        mediaTypes: mediaTypes,
         createdAt: Timestamp.now(),
         likes: 0,
       };
 
-      // Only add optional fields if they have values
       if (thumbnailUrl) {
         postData.thumbnailUrl = thumbnailUrl;
         if (thumbnailOption !== 'auto') {
@@ -326,7 +307,6 @@ export default function NewPost({ visible, onClose, onPostCreated }: NewPostProp
         postData.taggedGame = selectedPostGame;
       }
       if (taggedUsers.length > 0) {
-        // Store tagged users as plain objects (not class instances)
         postData.taggedUsers = taggedUsers.map(user => ({
           userId: user.userId,
           username: user.username,
@@ -337,18 +317,15 @@ export default function NewPost({ visible, onClose, onPostCreated }: NewPostProp
       const postDocRef = await addDoc(collection(db, 'posts'), postData);
       const newPostId = postDocRef.id;
 
-      // Increment user's post count in Firestore
       const userRef = doc(db, 'users', user.id);
       await updateDoc(userRef, {
         postsCount: increment(1),
       });
 
-      // Send notifications to tagged users
       if (taggedUsers.length > 0) {
         try {
           const now = Timestamp.now();
           const notificationPromises = taggedUsers.map(async (taggedUser) => {
-            // Don't notify yourself
             if (taggedUser.userId !== user.id) {
               try {
                 const notificationDocRef = doc(
@@ -373,20 +350,17 @@ export default function NewPost({ visible, onClose, onPostCreated }: NewPostProp
           await Promise.all(notificationPromises);
         } catch (error) {
           console.log('Error sending notifications to tagged users:', error);
-          // Don't fail the post creation if notifications fail
         }
       }
 
       setUploading(false);
 
-      // Create the complete post object to pass back
       const createdPost: Post = {
         id: newPostId,
         ...postData,
         commentsCount: 0,
       };
 
-      // Reset state
       setSelectedMedia([]);
       setCurrentMediaIndex(0);
       setCaption('');
@@ -401,7 +375,6 @@ export default function NewPost({ visible, onClose, onPostCreated }: NewPostProp
 
       Alert.alert('Success', 'Post shared successfully!');
 
-      // Refresh user data and notify parent with the new post
       await refreshUser();
       onPostCreated(createdPost);
       onClose();
@@ -425,7 +398,6 @@ export default function NewPost({ visible, onClose, onPostCreated }: NewPostProp
   };
 
   const handleClose = () => {
-    // Reset state when closing
     setSelectedMedia([]);
     setCurrentMediaIndex(0);
     setCaption('');
@@ -448,8 +420,9 @@ export default function NewPost({ visible, onClose, onPostCreated }: NewPostProp
       {uploading && (
         <View style={styles.uploadingOverlay}>
           <View style={styles.uploadingContainer}>
-            <ActivityIndicator size="large" color="#fff" />
+            <ActivityIndicator size="large" color="#c42743" />
             <ThemedText style={styles.uploadingText}>Uploading post...</ThemedText>
+            <ThemedText style={styles.uploadingSubtext}>Please wait</ThemedText>
           </View>
         </View>
       )}
@@ -463,70 +436,80 @@ export default function NewPost({ visible, onClose, onPostCreated }: NewPostProp
       >
         <KeyboardAvoidingView
           behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-          style={styles.postPreviewContainer}
+          style={styles.container}
         >
           {/* Header */}
-          <View style={styles.postPreviewHeader}>
+          <View style={styles.header}>
             <TouchableOpacity
-              style={styles.postPreviewBackButton}
+              style={styles.backButton}
               onPress={handleClose}
             >
-              <IconSymbol size={28} name="chevron.left" color="#fff" />
+              <IconSymbol size={24} name="xmark" color="#fff" />
             </TouchableOpacity>
-            <ThemedText style={styles.postPreviewTitle}>New Post</ThemedText>
+            <ThemedText style={styles.headerTitle}>New Post</ThemedText>
             <TouchableOpacity
-              style={styles.postPreviewShareButton}
+              style={[styles.shareButton, (!selectedMedia.length || !selectedPostGame) && styles.shareButtonDisabled]}
               onPress={handleSharePost}
-              disabled={uploading}
+              disabled={uploading || !selectedMedia.length || !selectedPostGame}
             >
-              <ThemedText style={[styles.postPreviewShareText, uploading && styles.postPreviewShareTextDisabled]}>
-                {uploading ? 'Sharing...' : 'Share'}
+              <ThemedText style={[styles.shareButtonText, (!selectedMedia.length || !selectedPostGame) && styles.shareButtonTextDisabled]}>
+                Share
               </ThemedText>
             </TouchableOpacity>
           </View>
 
           <ScrollView
             ref={postPreviewScrollRef}
-            style={styles.postPreviewContent}
+            style={styles.scrollContent}
             showsVerticalScrollIndicator={false}
             keyboardShouldPersistTaps="handled"
+            contentContainerStyle={styles.scrollContentContainer}
           >
-            {/* Add Photo Button - shown when no media */}
-            {selectedMedia.length === 0 ? (
-              <TouchableOpacity style={styles.addPhotoButton} onPress={handleAddPhoto}>
-                <View style={styles.addPhotoIconContainer}>
-                  <IconSymbol size={48} name="video" color="#b9bbbe" />
-                </View>
-                <ThemedText style={styles.addPhotoText}>Add Video</ThemedText>
-                <ThemedText style={styles.addPhotoSubtext}>Tap to select from your library</ThemedText>
-                <ThemedText style={styles.addPhotoLimitText}>Video limit: 20 MB</ThemedText>
-              </TouchableOpacity>
-            ) : (
-              <>
-                {/* Media Preview with Swipe */}
-                <View style={styles.mediaTopSpace} />
-                <View style={styles.postPreviewMediaContainer}>
+            {/* Media Selection Card */}
+            <View style={styles.card}>
+              <View style={styles.cardHeader}>
+                <IconSymbol size={18} name="video.fill" color="#fff" />
+                <ThemedText style={styles.cardHeaderTitle}>Video</ThemedText>
+              </View>
+
+              {selectedMedia.length === 0 ? (
+                <TouchableOpacity style={styles.addMediaButton} onPress={handleAddPhoto}>
+                  <LinearGradient
+                    colors={['#1a1d21', '#0f1114']}
+                    style={styles.addMediaGradient}
+                  >
+                    <View style={styles.addMediaIconContainer}>
+                      <IconSymbol size={40} name="video.badge.plus" color="#c42743" />
+                    </View>
+                    <ThemedText style={styles.addMediaTitle}>Add Video</ThemedText>
+                    <ThemedText style={styles.addMediaSubtext}>Tap to select from library</ThemedText>
+                    <View style={styles.addMediaBadge}>
+                      <ThemedText style={styles.addMediaBadgeText}>Max 20 MB</ThemedText>
+                    </View>
+                  </LinearGradient>
+                </TouchableOpacity>
+              ) : (
+                <View style={styles.mediaPreviewContainer}>
                   <ScrollView
                     horizontal
                     pagingEnabled
                     showsHorizontalScrollIndicator={false}
                     onMomentumScrollEnd={(event) => {
                       const offsetX = event.nativeEvent.contentOffset.x;
-                      const index = Math.round(offsetX / screenWidth);
+                      const index = Math.round(offsetX / (screenWidth - 32));
                       setCurrentMediaIndex(index);
                     }}
                     scrollEventThrottle={16}
                   >
                     {selectedMedia.map((media, index) => {
-                      // Use same dimensions as feed: 16:9 for videos, full width for images
-                      const mediaHeight = media.type === 'video' ? screenWidth * 0.5625 : screenWidth;
+                      const mediaHeight = media.type === 'video' ? (screenWidth - 32) * 0.5625 : screenWidth - 32;
 
                       return (
-                        <View key={index} style={{ width: screenWidth, height: mediaHeight }}>
+                        <View key={index} style={[styles.mediaItem, { width: screenWidth - 32, height: mediaHeight }]}>
                           {media.type === 'video' ? (
                             <Video
                               source={{ uri: media.uri }}
-                              style={styles.postPreviewMedia}
+                              style={styles.mediaPreview}
                               useNativeControls
                               resizeMode={ResizeMode.COVER}
                               shouldPlay={false}
@@ -534,7 +517,7 @@ export default function NewPost({ visible, onClose, onPostCreated }: NewPostProp
                           ) : (
                             <Image
                               source={{ uri: media.uri }}
-                              style={styles.postPreviewMedia}
+                              style={styles.mediaPreview}
                               resizeMode="cover"
                             />
                           )}
@@ -543,7 +526,6 @@ export default function NewPost({ visible, onClose, onPostCreated }: NewPostProp
                     })}
                   </ScrollView>
 
-                  {/* Dot indicators */}
                   {selectedMedia.length > 1 && (
                     <View style={styles.dotIndicatorContainer}>
                       {selectedMedia.map((_, index) => (
@@ -558,71 +540,135 @@ export default function NewPost({ visible, onClose, onPostCreated }: NewPostProp
                     </View>
                   )}
 
-                  {/* Remove photo button */}
                   <TouchableOpacity
-                    style={styles.removePhotoButton}
+                    style={styles.removeMediaButton}
                     onPress={() => handleRemovePhoto(currentMediaIndex)}
                   >
-                    <IconSymbol size={24} name="xmark.circle.fill" color="#fff" />
+                    <IconSymbol size={20} name="xmark" color="#fff" />
                   </TouchableOpacity>
                 </View>
-              </>
-            )}
-
-            {/* Caption Input */}
-            <View style={styles.postPreviewCaptionSection} ref={captionInputRef}>
-              <View style={styles.postPreviewUserInfo}>
-                <View style={styles.postPreviewAvatar}>
-                  {user?.avatar && user.avatar.startsWith('http') ? (
-                    <Image source={{ uri: user.avatar }} style={styles.postPreviewAvatarImage} />
-                  ) : (
-                    <ThemedText style={styles.postPreviewAvatarInitial}>
-                      {user?.username?.[0]?.toUpperCase() || 'U'}
-                    </ThemedText>
-                  )}
-                </View>
-                <ThemedText style={styles.postPreviewUsername}>{user?.username || 'User'}</ThemedText>
-              </View>
-
-              <TextInput
-                style={styles.postPreviewCaptionInput}
-                placeholder="Write a caption..."
-                placeholderTextColor="#72767d"
-                multiline
-                value={caption}
-                onChangeText={setCaption}
-                maxLength={500}
-                onFocus={handleCaptionFocus}
-              />
+              )}
             </View>
 
-            {/* Thumbnail Selection Expandable Section - Only show when video is selected */}
+            {/* Caption Card */}
+            <View style={styles.card} ref={captionInputRef}>
+              <View style={styles.cardHeader}>
+                <IconSymbol size={18} name="text.alignleft" color="#fff" />
+                <ThemedText style={styles.cardHeaderTitle}>Caption</ThemedText>
+              </View>
+
+              <View style={styles.captionSection}>
+                <View style={styles.userRow}>
+                  <View style={styles.avatar}>
+                    {user?.avatar && user.avatar.startsWith('http') ? (
+                      <Image source={{ uri: user.avatar }} style={styles.avatarImage} />
+                    ) : (
+                      <ThemedText style={styles.avatarInitial}>
+                        {user?.username?.[0]?.toUpperCase() || 'U'}
+                      </ThemedText>
+                    )}
+                  </View>
+                  <ThemedText style={styles.username}>{user?.username || 'User'}</ThemedText>
+                </View>
+
+                <TextInput
+                  style={styles.captionInput}
+                  placeholder="Write a caption..."
+                  placeholderTextColor="#4a4d52"
+                  multiline
+                  value={caption}
+                  onChangeText={setCaption}
+                  maxLength={500}
+                  onFocus={handleCaptionFocus}
+                />
+              </View>
+            </View>
+
+            {/* Game Tag Card */}
+            <View style={styles.card}>
+              <TouchableOpacity
+                style={styles.cardHeaderTouchable}
+                onPress={() => setShowGameOptions(!showGameOptions)}
+                activeOpacity={0.7}
+              >
+                <View style={styles.cardHeaderLeft}>
+                  <IconSymbol size={18} name="gamecontroller.fill" color="#fff" />
+                  <ThemedText style={styles.cardHeaderTitle}>Game Tag</ThemedText>
+                  {!selectedPostGame && (
+                    <View style={styles.requiredBadge}>
+                      <ThemedText style={styles.requiredText}>Required</ThemedText>
+                    </View>
+                  )}
+                </View>
+                <View style={styles.cardHeaderRight}>
+                  {selectedPostGame && (
+                    <View style={styles.selectedGameBadge}>
+                      <ThemedText style={styles.selectedGameText}>
+                        {availableGames.find(g => g.id === selectedPostGame)?.name}
+                      </ThemedText>
+                    </View>
+                  )}
+                  <IconSymbol
+                    size={16}
+                    name={showGameOptions ? "chevron.up" : "chevron.down"}
+                    color="#4a4d52"
+                  />
+                </View>
+              </TouchableOpacity>
+
+              {showGameOptions && (
+                <View style={styles.gameOptionsContainer}>
+                  {availableGames.map((game) => (
+                    <TouchableOpacity
+                      key={game.id}
+                      style={[
+                        styles.gameOption,
+                        selectedPostGame === game.id && styles.gameOptionSelected
+                      ]}
+                      onPress={() => setSelectedPostGame(selectedPostGame === game.id ? null : game.id)}
+                      activeOpacity={0.7}
+                    >
+                      <ThemedText style={[
+                        styles.gameOptionText,
+                        selectedPostGame === game.id && styles.gameOptionTextSelected
+                      ]}>
+                        {game.name}
+                      </ThemedText>
+                      {selectedPostGame === game.id && (
+                        <IconSymbol size={16} name="checkmark" color="#fff" />
+                      )}
+                    </TouchableOpacity>
+                  ))}
+                </View>
+              )}
+            </View>
+
+            {/* Thumbnail Card - Only show for videos */}
             {selectedMedia.length > 0 && selectedMedia[0].type === 'video' && (
-              <View style={styles.thumbnailSection}>
+              <View style={styles.card}>
                 <TouchableOpacity
-                  style={styles.thumbnailHeader}
+                  style={styles.cardHeaderTouchable}
                   onPress={() => setShowThumbnailOptions(!showThumbnailOptions)}
-                  activeOpacity={0.6}
+                  activeOpacity={0.7}
                 >
-                  <View style={styles.thumbnailHeaderLeft}>
-                    <IconSymbol size={20} name="photo" color="#fff" />
-                    <ThemedText style={styles.thumbnailHeaderText}>Thumbnail</ThemedText>
+                  <View style={styles.cardHeaderLeft}>
+                    <IconSymbol size={18} name="photo.fill" color="#fff" />
+                    <ThemedText style={styles.cardHeaderTitle}>Thumbnail</ThemedText>
                     {selectedThumbnailUri && thumbnailOption !== 'auto' && (
-                      <View style={styles.thumbnailSelectedBadge}>
-                        <IconSymbol size={14} name="checkmark" color="#fff" />
+                      <View style={styles.customBadge}>
+                        <IconSymbol size={12} name="checkmark" color="#fff" />
                       </View>
                     )}
                   </View>
                   <IconSymbol
-                    size={18}
+                    size={16}
                     name={showThumbnailOptions ? "chevron.up" : "chevron.down"}
-                    color="#b9bbbe"
+                    color="#4a4d52"
                   />
                 </TouchableOpacity>
 
                 {showThumbnailOptions && (
                   <View style={styles.thumbnailOptionsContainer}>
-                    {/* Show selected thumbnail preview if exists */}
                     {selectedThumbnailUri && thumbnailOption !== 'auto' && (
                       <View style={styles.thumbnailPreviewContainer}>
                         <Image
@@ -631,13 +677,12 @@ export default function NewPost({ visible, onClose, onPostCreated }: NewPostProp
                           resizeMode="cover"
                         />
                         <ThemedText style={styles.thumbnailPreviewLabel}>
-                          {thumbnailOption === 'frame' ? 'Selected Frame' : 'Custom Thumbnail'}
+                          {thumbnailOption === 'frame' ? 'Selected Frame' : 'Custom Image'}
                         </ThemedText>
                       </View>
                     )}
 
-                    {/* Thumbnail option buttons */}
-                    <View style={styles.thumbnailButtonsContainer}>
+                    <View style={styles.thumbnailButtonsRow}>
                       <TouchableOpacity
                         style={styles.thumbnailButton}
                         onPress={generateVideoFrames}
@@ -648,10 +693,8 @@ export default function NewPost({ visible, onClose, onPostCreated }: NewPostProp
                           <ActivityIndicator size="small" color="#fff" />
                         ) : (
                           <>
-                            <IconSymbol size={20} name="film" color="#fff" />
-                            <ThemedText style={styles.thumbnailButtonText}>
-                              Select Video Frame
-                            </ThemedText>
+                            <IconSymbol size={18} name="film" color="#9a9da2" />
+                            <ThemedText style={styles.thumbnailButtonText}>Video Frame</ThemedText>
                           </>
                         )}
                       </TouchableOpacity>
@@ -661,10 +704,8 @@ export default function NewPost({ visible, onClose, onPostCreated }: NewPostProp
                         onPress={pickCustomThumbnail}
                         activeOpacity={0.7}
                       >
-                        <IconSymbol size={20} name="photo.on.rectangle" color="#fff" />
-                        <ThemedText style={styles.thumbnailButtonText}>
-                          Upload Custom Image
-                        </ThemedText>
+                        <IconSymbol size={18} name="photo.on.rectangle" color="#9a9da2" />
+                        <ThemedText style={styles.thumbnailButtonText}>Custom</ThemedText>
                       </TouchableOpacity>
 
                       <TouchableOpacity
@@ -678,13 +719,8 @@ export default function NewPost({ visible, onClose, onPostCreated }: NewPostProp
                         }}
                         activeOpacity={0.7}
                       >
-                        <IconSymbol size={20} name="wand.and.stars" color="#fff" />
-                        <ThemedText style={styles.thumbnailButtonText}>
-                          Use Auto-Generated
-                        </ThemedText>
-                        {thumbnailOption === 'auto' && (
-                          <IconSymbol size={16} name="checkmark" color="#fff" />
-                        )}
+                        <IconSymbol size={18} name="wand.and.stars" color={thumbnailOption === 'auto' ? '#fff' : '#9a9da2'} />
+                        <ThemedText style={[styles.thumbnailButtonText, thumbnailOption === 'auto' && styles.thumbnailButtonTextSelected]}>Auto</ThemedText>
                       </TouchableOpacity>
                     </View>
                   </View>
@@ -692,83 +728,35 @@ export default function NewPost({ visible, onClose, onPostCreated }: NewPostProp
               </View>
             )}
 
-            {/* Tag Game Expandable Section */}
-            <View style={styles.gameTagSection}>
+            {/* Tag People Card */}
+            <View style={styles.card}>
               <TouchableOpacity
-                style={styles.gameTagHeader}
-                onPress={() => setShowGameOptions(!showGameOptions)}
-                activeOpacity={0.6}
+                style={styles.cardHeaderTouchable}
+                onPress={() => {
+                  Keyboard.dismiss();
+                  setShowTagUsersModal(true);
+                }}
+                activeOpacity={0.7}
               >
-                <View style={styles.gameTagHeaderLeft}>
-                  <IconSymbol size={20} name="gamecontroller.fill" color="#fff" />
-                  <ThemedText style={styles.gameTagHeaderText}>Tag Game</ThemedText>
+                <View style={styles.cardHeaderLeft}>
+                  <IconSymbol size={18} name="person.2.fill" color="#fff" />
+                  <ThemedText style={styles.cardHeaderTitle}>Tag People</ThemedText>
                 </View>
-                <IconSymbol
-                  size={18}
-                  name={showGameOptions ? "chevron.up" : "chevron.down"}
-                  color="#b9bbbe"
-                />
+                <View style={styles.cardHeaderRight}>
+                  {taggedUsers.length > 0 && (
+                    <View style={styles.taggedCountBadge}>
+                      <ThemedText style={styles.taggedCountText}>{taggedUsers.length}</ThemedText>
+                    </View>
+                  )}
+                  <IconSymbol size={16} name="chevron.right" color="#4a4d52" />
+                </View>
               </TouchableOpacity>
-
-              {showGameOptions && (
-                <View style={styles.gameButtonsContainer}>
-                  {availableGames.map((game) => (
-                    <TouchableOpacity
-                      key={game.id}
-                      style={[
-                        styles.gameButton,
-                        selectedPostGame === game.id && styles.gameButtonSelected
-                      ]}
-                      onPress={() => {
-                        setSelectedPostGame(selectedPostGame === game.id ? null : game.id);
-                      }}
-                      activeOpacity={0.7}
-                    >
-                      <ThemedText style={[
-                        styles.gameButtonText,
-                        selectedPostGame === game.id && styles.gameButtonTextSelected
-                      ]}>
-                        {game.name}
-                      </ThemedText>
-                      {selectedPostGame === game.id && (
-                        <IconSymbol size={16} name="checkmark" color="#fff" />
-                      )}
-                    </TouchableOpacity>
-                  ))}
-                </View>
-              )}
             </View>
 
-            {/* Tag People Button */}
-            <TouchableOpacity
-              style={styles.postPreviewOptionButton}
-              onPress={() => {
-                Keyboard.dismiss();
-                setShowTagUsersModal(true);
-              }}
-              activeOpacity={0.6}
-            >
-              <View style={styles.postPreviewOptionLeft}>
-                <IconSymbol size={20} name="person.2.fill" color="#fff" />
-                <ThemedText style={styles.postPreviewOptionText}>
-                  {taggedUsers.length > 0
-                    ? `${taggedUsers.length} ${taggedUsers.length === 1 ? 'Person' : 'People'} Tagged`
-                    : 'Tag People'}
-                </ThemedText>
-              </View>
-              <View style={styles.postPreviewOptionRight}>
-                {taggedUsers.length > 0 && (
-                  <ThemedText style={styles.taggedUsersPreview}>
-                    {taggedUsers.slice(0, 2).map(u => `@${u.username}`).join(', ')}
-                    {taggedUsers.length > 2 && '...'}
-                  </ThemedText>
-                )}
-                <IconSymbol size={18} name="chevron.right" color="#b9bbbe" />
-              </View>
-            </TouchableOpacity>
+            <View style={styles.bottomSpacer} />
           </ScrollView>
 
-          {/* Tag Users Modal - Nested inside Post Preview Modal */}
+          {/* Tag Users Modal */}
           <TagUsersModal
             visible={showTagUsersModal}
             onClose={() => setShowTagUsersModal(false)}
@@ -776,7 +764,7 @@ export default function NewPost({ visible, onClose, onPostCreated }: NewPostProp
             initialSelectedUsers={taggedUsers}
           />
 
-          {/* Frame Selector Modal - Nested inside Post Preview Modal */}
+          {/* Frame Selector Modal */}
           <Modal
             visible={showFrameSelector}
             animationType="slide"
@@ -784,19 +772,17 @@ export default function NewPost({ visible, onClose, onPostCreated }: NewPostProp
             onRequestClose={() => setShowFrameSelector(false)}
           >
             <View style={styles.frameSelectorContainer}>
-              {/* Header */}
               <View style={styles.frameSelectorHeader}>
                 <TouchableOpacity
                   style={styles.frameSelectorCloseButton}
                   onPress={() => setShowFrameSelector(false)}
                 >
-                  <IconSymbol size={28} name="xmark" color="#fff" />
+                  <IconSymbol size={24} name="xmark" color="#fff" />
                 </TouchableOpacity>
                 <ThemedText style={styles.frameSelectorTitle}>Select Frame</ThemedText>
-                <View style={{ width: 28 }} />
+                <View style={{ width: 24 }} />
               </View>
 
-              {/* Frame Grid */}
               <ScrollView
                 style={styles.frameSelectorContent}
                 contentContainerStyle={styles.frameSelectorContentContainer}
@@ -825,13 +811,10 @@ export default function NewPost({ visible, onClose, onPostCreated }: NewPostProp
                       {selectedThumbnailUri === frameUri && thumbnailOption === 'frame' && (
                         <View style={styles.frameSelectedOverlay}>
                           <View style={styles.frameSelectedBadge}>
-                            <IconSymbol size={20} name="checkmark" color="#fff" />
+                            <IconSymbol size={18} name="checkmark" color="#fff" />
                           </View>
                         </View>
                       )}
-                      <ThemedText style={styles.frameLabel}>
-                        Frame {index + 1}
-                      </ThemedText>
                     </TouchableOpacity>
                   ))}
                 </View>
@@ -845,86 +828,156 @@ export default function NewPost({ visible, onClose, onPostCreated }: NewPostProp
 }
 
 const styles = StyleSheet.create({
-  uploadingOverlay: {
-    position: 'absolute',
-    top: 0,
-    left: 0,
-    right: 0,
-    bottom: 0,
-    backgroundColor: 'rgba(0, 0, 0, 0.7)',
-    alignItems: 'center',
-    justifyContent: 'center',
-    zIndex: 1000,
-  },
-  uploadingContainer: {
-    backgroundColor: 'rgba(0, 0, 0, 0.9)',
-    borderRadius: 16,
-    padding: 32,
-    alignItems: 'center',
-    gap: 16,
-  },
-  uploadingText: {
-    fontSize: 16,
-    color: '#fff',
-    fontWeight: '600',
-  },
-  postPreviewContainer: {
+  container: {
     flex: 1,
-    backgroundColor: '#0f0f0f',
+    backgroundColor: '#0a0b0d',
   },
-  postPreviewHeader: {
+  // Header
+  header: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
     paddingHorizontal: 16,
-    paddingTop: 60,
-    paddingBottom: 16,
+    paddingTop: 54,
+    paddingBottom: 14,
+    backgroundColor: '#0f1114',
     borderBottomWidth: 1,
-    borderBottomColor: '#2c2f33',
-    backgroundColor: '#0f0f0f',
+    borderBottomColor: '#1e2023',
   },
-  postPreviewBackButton: {
-    padding: 4,
+  backButton: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: '#1a1d21',
+    alignItems: 'center',
+    justifyContent: 'center',
   },
-  postPreviewTitle: {
-    fontSize: 18,
-    fontWeight: '600',
+  headerTitle: {
+    fontSize: 17,
+    fontWeight: '700',
     color: '#fff',
+    letterSpacing: -0.3,
   },
-  postPreviewShareButton: {
+  shareButton: {
     paddingVertical: 8,
-    paddingHorizontal: 16,
+    paddingHorizontal: 18,
     backgroundColor: '#c42743',
     borderRadius: 8,
   },
-  postPreviewShareText: {
-    fontSize: 15,
+  shareButtonDisabled: {
+    backgroundColor: '#2a2d32',
+  },
+  shareButtonText: {
+    fontSize: 14,
+    fontWeight: '700',
+    color: '#fff',
+  },
+  shareButtonTextDisabled: {
+    color: '#4a4d52',
+  },
+  // Content
+  scrollContent: {
+    flex: 1,
+  },
+  scrollContentContainer: {
+    padding: 16,
+    gap: 12,
+  },
+  // Cards
+  card: {
+    backgroundColor: '#1a1d21',
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: '#232528',
+    overflow: 'hidden',
+  },
+  cardHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    paddingHorizontal: 14,
+    paddingVertical: 12,
+    borderBottomWidth: 1,
+    borderBottomColor: '#1e2023',
+  },
+  cardHeaderTouchable: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: 14,
+    paddingVertical: 12,
+  },
+  cardHeaderLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+  },
+  cardHeaderRight: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  cardHeaderTitle: {
+    fontSize: 14,
     fontWeight: '600',
     color: '#fff',
   },
-  postPreviewShareTextDisabled: {
-    opacity: 0.5,
+  // Add Media
+  addMediaButton: {
+    borderRadius: 0,
+    overflow: 'hidden',
   },
-  postPreviewContent: {
-    flex: 1,
-    backgroundColor: '#0f0f0f',
+  addMediaGradient: {
+    paddingVertical: 48,
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 12,
   },
-  mediaTopSpace: {
-    height: 12,
-    backgroundColor: '#0f0f0f',
+  addMediaIconContainer: {
+    width: 72,
+    height: 72,
+    borderRadius: 36,
+    backgroundColor: 'rgba(196, 39, 67, 0.15)',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 8,
   },
-  postPreviewMediaContainer: {
-    width: '100%',
-    backgroundColor: '#36393e',
+  addMediaTitle: {
+    fontSize: 18,
+    fontWeight: '700',
+    color: '#fff',
+  },
+  addMediaSubtext: {
+    fontSize: 13,
+    color: '#6a6d72',
+  },
+  addMediaBadge: {
+    marginTop: 8,
+    paddingHorizontal: 12,
+    paddingVertical: 4,
+    backgroundColor: '#232528',
+    borderRadius: 12,
+  },
+  addMediaBadgeText: {
+    fontSize: 11,
+    fontWeight: '600',
+    color: '#6a6d72',
+  },
+  // Media Preview
+  mediaPreviewContainer: {
     position: 'relative',
   },
-  postPreviewMedia: {
+  mediaItem: {
+    borderRadius: 0,
+    overflow: 'hidden',
+  },
+  mediaPreview: {
     width: '100%',
     height: '100%',
   },
   dotIndicatorContainer: {
     position: 'absolute',
-    bottom: 16,
+    bottom: 12,
     left: 0,
     right: 0,
     flexDirection: 'row',
@@ -936,7 +989,7 @@ const styles = StyleSheet.create({
     width: 6,
     height: 6,
     borderRadius: 3,
-    backgroundColor: 'rgba(255, 255, 255, 0.5)',
+    backgroundColor: 'rgba(255, 255, 255, 0.4)',
   },
   dotIndicatorActive: {
     backgroundColor: '#fff',
@@ -944,293 +997,247 @@ const styles = StyleSheet.create({
     height: 8,
     borderRadius: 4,
   },
-  removePhotoButton: {
+  removeMediaButton: {
     position: 'absolute',
-    top: 16,
-    right: 16,
+    top: 12,
+    right: 12,
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    backgroundColor: 'rgba(0, 0, 0, 0.7)',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  // Caption
+  captionSection: {
+    padding: 14,
+    gap: 12,
+  },
+  userRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+  },
+  avatar: {
     width: 36,
     height: 36,
     borderRadius: 18,
-    backgroundColor: 'rgba(0, 0, 0, 0.6)',
+    backgroundColor: '#2a2d32',
     alignItems: 'center',
     justifyContent: 'center',
   },
-  addPhotoButton: {
-    width: '100%',
-    height: 300,
-    backgroundColor: '#36393e',
-    alignItems: 'center',
-    justifyContent: 'center',
-    borderBottomWidth: 1,
-    borderBottomColor: '#2c2f33',
-  },
-  addPhotoIconContainer: {
-    width: 80,
-    height: 80,
-    borderRadius: 40,
-    backgroundColor: '#2c2f33',
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginBottom: 16,
-  },
-  addPhotoText: {
-    fontSize: 17,
-    fontWeight: '600',
-    color: '#fff',
-    marginBottom: 4,
-  },
-  addPhotoSubtext: {
-    fontSize: 14,
-    color: '#72767d',
-  },
-  addPhotoLimitText: {
-    fontSize: 12,
-    color: '#b9bbbe',
-    marginTop: 8,
-  },
-  addMorePhotosButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 8,
-    paddingVertical: 16,
-    borderBottomWidth: 1,
-    borderBottomColor: '#2c2f33',
-    backgroundColor: '#0f0f0f',
-  },
-  addMorePhotosText: {
-    fontSize: 15,
-    fontWeight: '600',
-    color: '#fff',
-  },
-  postPreviewCaptionSection: {
-    padding: 20,
-    borderBottomWidth: 1,
-    borderBottomColor: '#2c2f33',
-    backgroundColor: '#0f0f0f',
-  },
-  postPreviewUserInfo: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginBottom: 16,
-    gap: 12,
-  },
-  postPreviewAvatar: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    backgroundColor: '#36393e',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  postPreviewAvatarImage: {
+  avatarImage: {
     width: '100%',
     height: '100%',
-    borderRadius: 20,
+    borderRadius: 18,
   },
-  postPreviewAvatarInitial: {
-    fontSize: 18,
-    fontWeight: '600',
-  },
-  postPreviewUsername: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: '#fff',
-  },
-  postPreviewCaptionInput: {
+  avatarInitial: {
     fontSize: 15,
-    color: '#fff',
-    minHeight: 100,
-    textAlignVertical: 'top',
-    paddingTop: 12,
-    backgroundColor: '#2c2f33',
-    paddingHorizontal: 12,
-    paddingBottom: 12,
-    borderRadius: 8,
-  },
-  postPreviewOptionButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingHorizontal: 16,
-    paddingVertical: 10,
-    borderBottomWidth: 1,
-    borderBottomColor: '#2c2f33',
-    backgroundColor: '#0f0f0f',
-  },
-  postPreviewOptionLeft: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 10,
-  },
-  postPreviewOptionText: {
-    fontSize: 14,
+    fontWeight: '700',
     color: '#fff',
   },
-  postPreviewOptionRight: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-  },
-  selectedGameIcon: {
-    fontSize: 20,
-  },
-  taggedUsersPreview: {
-    fontSize: 13,
-    color: '#b9bbbe',
-    marginRight: 8,
-  },
-  gameTagSection: {
-    backgroundColor: '#0f0f0f',
-    borderBottomWidth: 1,
-    borderBottomColor: '#2c2f33',
-  },
-  gameTagHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingHorizontal: 16,
-    paddingVertical: 10,
-  },
-  gameTagHeaderLeft: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-  },
-  gameTagHeaderText: {
+  username: {
     fontSize: 14,
     fontWeight: '600',
+    color: '#e5e5e5',
+  },
+  captionInput: {
+    fontSize: 14,
+    color: '#9a9da2',
+    minHeight: 80,
+    textAlignVertical: 'top',
+    padding: 12,
+    backgroundColor: '#13151a',
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: '#1e2023',
+  },
+  // Game Tag
+  requiredBadge: {
+    backgroundColor: '#c42743',
+    paddingHorizontal: 8,
+    paddingVertical: 2,
+    borderRadius: 4,
+    marginLeft: 4,
+  },
+  requiredText: {
+    fontSize: 10,
+    fontWeight: '700',
     color: '#fff',
   },
-  gameButtonsContainer: {
-    flexDirection: 'row',
-    gap: 10,
-    paddingHorizontal: 16,
-    paddingTop: 8,
-    paddingBottom: 12,
+  selectedGameBadge: {
+    backgroundColor: '#232528',
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 6,
   },
-  gameButton: {
+  selectedGameText: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: '#9a9da2',
+  },
+  gameOptionsContainer: {
+    flexDirection: 'row',
+    gap: 8,
+    padding: 14,
+    paddingTop: 0,
+  },
+  gameOption: {
     flex: 1,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
     gap: 6,
     paddingVertical: 10,
-    paddingHorizontal: 12,
     borderRadius: 8,
-    backgroundColor: '#36393e',
-    borderWidth: 2,
-    borderColor: '#36393e',
+    backgroundColor: '#13151a',
+    borderWidth: 1,
+    borderColor: '#1e2023',
   },
-  gameButtonSelected: {
+  gameOptionSelected: {
     backgroundColor: '#c42743',
     borderColor: '#c42743',
   },
-  gameButtonText: {
-    fontSize: 13,
+  gameOptionText: {
+    fontSize: 12,
     fontWeight: '600',
-    color: '#b9bbbe',
+    color: '#6a6d72',
   },
-  gameButtonTextSelected: {
+  gameOptionTextSelected: {
     color: '#fff',
   },
-  // Thumbnail Section Styles
-  thumbnailSection: {
-    backgroundColor: '#0f0f0f',
-    borderBottomWidth: 1,
-    borderBottomColor: '#2c2f33',
-  },
-  thumbnailHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingHorizontal: 16,
-    paddingVertical: 10,
-  },
-  thumbnailHeaderLeft: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-  },
-  thumbnailHeaderText: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: '#fff',
-  },
-  thumbnailSelectedBadge: {
-    width: 20,
-    height: 20,
-    borderRadius: 10,
+  // Thumbnail
+  customBadge: {
+    width: 18,
+    height: 18,
+    borderRadius: 9,
     backgroundColor: '#c42743',
     alignItems: 'center',
     justifyContent: 'center',
     marginLeft: 4,
   },
   thumbnailOptionsContainer: {
-    paddingHorizontal: 16,
-    paddingBottom: 12,
+    padding: 14,
+    paddingTop: 0,
+    gap: 12,
   },
   thumbnailPreviewContainer: {
-    marginBottom: 12,
     alignItems: 'center',
+    gap: 8,
   },
   thumbnailPreview: {
-    width: 160,
-    height: 220,
-    borderRadius: 12,
-    backgroundColor: '#36393e',
+    width: 140,
+    height: 80,
+    borderRadius: 8,
+    backgroundColor: '#13151a',
   },
   thumbnailPreviewLabel: {
-    fontSize: 12,
-    color: '#b9bbbe',
-    marginTop: 6,
+    fontSize: 11,
+    color: '#6a6d72',
   },
-  thumbnailButtonsContainer: {
+  thumbnailButtonsRow: {
+    flexDirection: 'row',
     gap: 8,
   },
   thumbnailButton: {
+    flex: 1,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    gap: 8,
-    paddingVertical: 12,
-    paddingHorizontal: 16,
+    gap: 6,
+    paddingVertical: 10,
     borderRadius: 8,
-    backgroundColor: '#36393e',
+    backgroundColor: '#13151a',
     borderWidth: 1,
-    borderColor: '#36393e',
+    borderColor: '#1e2023',
   },
   thumbnailButtonSelected: {
     backgroundColor: '#c42743',
     borderColor: '#c42743',
   },
   thumbnailButtonText: {
-    fontSize: 14,
+    fontSize: 11,
     fontWeight: '600',
+    color: '#6a6d72',
+  },
+  thumbnailButtonTextSelected: {
     color: '#fff',
   },
-  // Frame Selector Modal Styles
+  // Tag People
+  taggedCountBadge: {
+    width: 22,
+    height: 22,
+    borderRadius: 11,
+    backgroundColor: '#c42743',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  taggedCountText: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: '#fff',
+  },
+  // Bottom Spacer
+  bottomSpacer: {
+    height: 40,
+  },
+  // Upload Overlay
+  uploadingOverlay: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    backgroundColor: 'rgba(0, 0, 0, 0.85)',
+    alignItems: 'center',
+    justifyContent: 'center',
+    zIndex: 1000,
+  },
+  uploadingContainer: {
+    backgroundColor: '#1a1d21',
+    borderRadius: 16,
+    padding: 32,
+    alignItems: 'center',
+    gap: 12,
+    borderWidth: 1,
+    borderColor: '#232528',
+  },
+  uploadingText: {
+    fontSize: 16,
+    fontWeight: '700',
+    color: '#fff',
+  },
+  uploadingSubtext: {
+    fontSize: 13,
+    color: '#6a6d72',
+  },
+  // Frame Selector Modal
   frameSelectorContainer: {
     flex: 1,
-    backgroundColor: '#0f0f0f',
+    backgroundColor: '#0a0b0d',
   },
   frameSelectorHeader: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
     paddingHorizontal: 16,
-    paddingTop: 60,
-    paddingBottom: 16,
+    paddingTop: 54,
+    paddingBottom: 14,
+    backgroundColor: '#0f1114',
     borderBottomWidth: 1,
-    borderBottomColor: '#2c2f33',
-    backgroundColor: '#0f0f0f',
+    borderBottomColor: '#1e2023',
   },
   frameSelectorCloseButton: {
-    padding: 4,
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: '#1a1d21',
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   frameSelectorTitle: {
-    fontSize: 18,
-    fontWeight: '600',
+    fontSize: 17,
+    fontWeight: '700',
     color: '#fff',
   },
   frameSelectorContent: {
@@ -1240,25 +1247,25 @@ const styles = StyleSheet.create({
     padding: 16,
   },
   frameSelectorSubtitle: {
-    fontSize: 14,
-    color: '#b9bbbe',
+    fontSize: 13,
+    color: '#6a6d72',
     marginBottom: 16,
     textAlign: 'center',
   },
   frameGrid: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-    gap: 12,
+    gap: 10,
     justifyContent: 'space-between',
   },
   frameItem: {
     width: '48%',
     aspectRatio: 16 / 9,
-    borderRadius: 8,
+    borderRadius: 10,
     overflow: 'hidden',
-    backgroundColor: '#36393e',
+    backgroundColor: '#1a1d21',
     borderWidth: 2,
-    borderColor: '#36393e',
+    borderColor: '#232528',
   },
   frameItemSelected: {
     borderColor: '#c42743',
@@ -1284,17 +1291,5 @@ const styles = StyleSheet.create({
     backgroundColor: '#c42743',
     alignItems: 'center',
     justifyContent: 'center',
-  },
-  frameLabel: {
-    position: 'absolute',
-    bottom: 4,
-    left: 4,
-    fontSize: 11,
-    fontWeight: '600',
-    color: '#fff',
-    backgroundColor: 'rgba(0, 0, 0, 0.6)',
-    paddingHorizontal: 6,
-    paddingVertical: 2,
-    borderRadius: 4,
   },
 });

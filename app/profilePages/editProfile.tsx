@@ -2,14 +2,25 @@ import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { IconSymbol } from '@/components/ui/icon-symbol';
 import { useRouter, useNavigation } from 'expo-router';
-import { useState, useEffect } from 'react';
-import { ScrollView, StyleSheet, TextInput, TouchableOpacity, View, Alert, ActivityIndicator, Image, Dimensions } from 'react-native';
+import { useState, useEffect, useCallback } from 'react';
+import { ScrollView, StyleSheet, TextInput, TouchableOpacity, View, Alert, ActivityIndicator, Image, Dimensions, Switch } from 'react-native';
 import { useAuth } from '@/contexts/AuthContext';
 import { updateUserProfile } from '@/services/authService';
 import { uploadProfilePicture, uploadCoverPhoto } from '@/services/storageService';
 import * as ImagePicker from 'expo-image-picker';
 import { db } from '@/config/firebase';
-import { doc } from 'firebase/firestore';
+import { doc, getDoc } from 'firebase/firestore';
+import { getLeagueStats, formatRank } from '@/services/riotService';
+import { getValorantStats } from '@/services/valorantService';
+import { LinearGradient } from 'expo-linear-gradient';
+import DraggableFlatList, { ScaleDecorator, RenderItemParams } from 'react-native-draggable-flatlist';
+import { GestureHandlerRootView } from 'react-native-gesture-handler';
+
+interface RankCardData {
+  type: string;
+  name: string;
+  isEnabled: boolean;
+}
 
 export default function EditProfileScreen() {
   const router = useRouter();
@@ -33,6 +44,15 @@ export default function EditProfileScreen() {
   const [pendingRemoveCoverPhoto, setPendingRemoveCoverPhoto] = useState(false);
   const [postsCount, setPostsCount] = useState(0);
 
+  // Rank cards state
+  const [riotAccount, setRiotAccount] = useState<any>(null);
+  const [valorantAccount, setValorantAccount] = useState<any>(null);
+  const [riotStats, setRiotStats] = useState<any>(null);
+  const [valorantStats, setValorantStats] = useState<any>(null);
+  const [enabledRankCards, setEnabledRankCards] = useState<string[]>([]);
+  const [originalEnabledRankCards, setOriginalEnabledRankCards] = useState<string[]>([]);
+  const [loadingRankCards, setLoadingRankCards] = useState(true);
+
   useEffect(() => {
     if (user) {
       setUsername(user.username || '');
@@ -45,6 +65,52 @@ export default function EditProfileScreen() {
     }
   }, [user]);
 
+  // Fetch rank cards data
+  useEffect(() => {
+    const fetchRankCardsData = async () => {
+      if (!user?.id) {
+        setLoadingRankCards(false);
+        return;
+      }
+
+      try {
+        const userDoc = await getDoc(doc(db, 'users', user.id));
+        if (userDoc.exists()) {
+          const data = userDoc.data();
+
+          // Set enabled rank cards
+          const cards = data.enabledRankCards || [];
+          setEnabledRankCards(cards);
+          setOriginalEnabledRankCards(cards);
+
+          // Set Riot account info
+          if (data.riotAccount) {
+            setRiotAccount(data.riotAccount);
+            // Load cached stats
+            if (data.riotStats) {
+              setRiotStats(data.riotStats);
+            }
+          }
+
+          // Set Valorant account info
+          if (data.valorantAccount) {
+            setValorantAccount(data.valorantAccount);
+            // Load cached stats
+            if (data.valorantStats) {
+              setValorantStats(data.valorantStats);
+            }
+          }
+        }
+      } catch (error) {
+        console.error('Error fetching rank cards data:', error);
+      } finally {
+        setLoadingRankCards(false);
+      }
+    };
+
+    fetchRankCardsData();
+  }, [user?.id]);
+
   // Intercept back navigation (including swipe gestures)
   useEffect(() => {
     const beforeRemoveListener = (e: any) => {
@@ -54,6 +120,9 @@ export default function EditProfileScreen() {
       }
 
       // Check if any field has changed from original user data
+      const rankCardsChangedCheck = enabledRankCards.length !== originalEnabledRankCards.length ||
+        !enabledRankCards.every(card => originalEnabledRankCards.includes(card));
+
       const changesExist =
         username !== (user?.username || '') ||
         bio !== (user?.bio || '') ||
@@ -62,7 +131,8 @@ export default function EditProfileScreen() {
         pendingProfileImageUri !== null ||
         pendingCoverPhotoUri !== null ||
         pendingRemoveProfileImage ||
-        pendingRemoveCoverPhoto;
+        pendingRemoveCoverPhoto ||
+        rankCardsChangedCheck;
 
       if (!changesExist) {
         // If no changes, allow navigation
@@ -100,7 +170,7 @@ export default function EditProfileScreen() {
     return () => {
       navigation.removeListener('beforeRemove', beforeRemoveListener);
     };
-  }, [navigation, username, bio, discord, instagram, pendingProfileImageUri, pendingCoverPhotoUri, pendingRemoveProfileImage, pendingRemoveCoverPhoto, user, changesSaved]);
+  }, [navigation, username, bio, discord, instagram, pendingProfileImageUri, pendingCoverPhotoUri, pendingRemoveProfileImage, pendingRemoveCoverPhoto, user, changesSaved, enabledRankCards, originalEnabledRankCards]);
 
   const showImageOptions = () => {
     const options: any[] = [
@@ -324,6 +394,140 @@ export default function EditProfileScreen() {
     );
   };
 
+  // Toggle rank card visibility
+  const toggleRankCard = (cardType: string) => {
+    setEnabledRankCards(prev => {
+      if (prev.includes(cardType)) {
+        return prev.filter(c => c !== cardType);
+      } else {
+        return [...prev, cardType];
+      }
+    });
+  };
+
+  // Get all available cards (for reordering display)
+  const getAvailableCards = useCallback((): RankCardData[] => {
+    const cards: RankCardData[] = [];
+
+    // Add enabled cards first, in their current order
+    enabledRankCards.forEach(cardType => {
+      if (cardType === 'league' && riotAccount) {
+        cards.push({ type: 'league', name: 'League of Legends', isEnabled: true });
+      } else if (cardType === 'valorant' && valorantAccount) {
+        cards.push({ type: 'valorant', name: 'Valorant', isEnabled: true });
+      }
+    });
+
+    // Add disabled cards
+    if (riotAccount && !enabledRankCards.includes('league')) {
+      cards.push({ type: 'league', name: 'League of Legends', isEnabled: false });
+    }
+    if (valorantAccount && !enabledRankCards.includes('valorant')) {
+      cards.push({ type: 'valorant', name: 'Valorant', isEnabled: false });
+    }
+
+    return cards;
+  }, [riotAccount, valorantAccount, enabledRankCards]);
+
+  // Handle drag end - reorder enabled cards
+  const handleDragEnd = useCallback(({ data }: { data: RankCardData[] }) => {
+    const newEnabledCards = data
+      .filter(card => card.isEnabled)
+      .map(card => card.type);
+    setEnabledRankCards(newEnabledCards);
+  }, []);
+
+  // Check if rank cards have changed (including order)
+  const rankCardsChanged = () => {
+    if (enabledRankCards.length !== originalEnabledRankCards.length) return true;
+    // Check both content and order
+    for (let i = 0; i < enabledRankCards.length; i++) {
+      if (enabledRankCards[i] !== originalEnabledRankCards[i]) return true;
+    }
+    return false;
+  };
+
+  // Render draggable rank card item
+  const renderRankCardItem = useCallback(({ item, drag, isActive }: RenderItemParams<RankCardData>) => {
+    const isEnabled = item.isEnabled;
+    const enabledIndex = enabledRankCards.indexOf(item.type);
+
+    const gradientColors = item.type === 'league'
+      ? ['#1a3a5c', '#0f1f3d', '#091428']
+      : ['#DC3D4B', '#8B1E2B', '#5C141D'];
+
+    const logoSource = item.type === 'league'
+      ? require('@/assets/images/lol-icon.png')
+      : require('@/assets/images/valorant.png');
+
+    const rankText = item.type === 'league'
+      ? (riotStats?.rankedSolo ? formatRank(riotStats.rankedSolo.tier, riotStats.rankedSolo.rank) : 'Unranked')
+      : (valorantStats?.currentRank || 'Unranked');
+
+    return (
+      <ScaleDecorator>
+        <TouchableOpacity
+          activeOpacity={1}
+          onLongPress={isEnabled ? drag : undefined}
+          delayLongPress={150}
+          disabled={isActive}
+          style={[
+            styles.rankCardItem,
+            !isEnabled && styles.rankCardItemDisabled,
+            isActive && styles.rankCardItemDragging,
+          ]}
+        >
+          {/* Drag handle */}
+          {isEnabled && enabledRankCards.length > 1 && (
+            <View style={styles.dragHandle}>
+              <IconSymbol size={20} name="line.3.horizontal" color="#666" />
+            </View>
+          )}
+
+          {/* Order number badge */}
+          {isEnabled && (
+            <View style={styles.orderBadge}>
+              <ThemedText style={styles.orderBadgeText}>{enabledIndex + 1}</ThemedText>
+            </View>
+          )}
+
+          {/* Card preview */}
+          <View style={[styles.rankCardPreview, !isEnabled && styles.rankCardPreviewDisabled]}>
+            <LinearGradient
+              colors={gradientColors as [string, string, ...string[]]}
+              start={{ x: 0, y: 0 }}
+              end={{ x: 1, y: 1 }}
+              style={styles.rankCardPreviewGradient}
+            >
+              <Image
+                source={logoSource}
+                style={styles.rankCardPreviewLogo}
+                resizeMode="contain"
+              />
+              <View style={styles.rankCardPreviewInfo}>
+                <ThemedText style={styles.rankCardPreviewName}>{item.name}</ThemedText>
+                <ThemedText style={styles.rankCardPreviewRank}>{rankText}</ThemedText>
+              </View>
+            </LinearGradient>
+          </View>
+
+          {/* Toggle */}
+          <View style={styles.rankCardToggle}>
+            <ThemedText style={styles.rankCardToggleLabel}>
+              {isEnabled ? 'Visible' : 'Hidden'}
+            </ThemedText>
+            <Switch
+              value={isEnabled}
+              onValueChange={() => toggleRankCard(item.type)}
+              trackColor={{ false: '#252525', true: '#c42743' }}
+              thumbColor="#fff"
+            />
+          </View>
+        </TouchableOpacity>
+      </ScaleDecorator>
+    );
+  }, [enabledRankCards, riotStats, valorantStats, toggleRankCard]);
+
   const hasChanges = () => {
     // Check if any field has changed from original user data
     if (username !== (user?.username || '')) return true;
@@ -334,6 +538,7 @@ export default function EditProfileScreen() {
     if (pendingCoverPhotoUri !== null) return true;
     if (pendingRemoveProfileImage) return true;
     if (pendingRemoveCoverPhoto) return true;
+    if (rankCardsChanged()) return true;
     return false;
   };
 
@@ -396,6 +601,7 @@ export default function EditProfileScreen() {
                 bio: bio.trim(),
                 discordLink: discord.trim(),
                 instagramLink: instagram.trim(),
+                enabledRankCards: enabledRankCards,
               };
 
               // Handle profile image changes
@@ -605,6 +811,67 @@ export default function EditProfileScreen() {
               </View>
             </View>
           </View>
+
+          {/* Rank Cards Section */}
+          <View style={styles.sectionContainer}>
+            <View style={styles.sectionHeaderRow}>
+              <View style={styles.sectionHeaderLeft}>
+                <IconSymbol size={18} name="star.fill" color="#fff" />
+                <ThemedText style={styles.sectionTitleLarge}>Rank Cards</ThemedText>
+              </View>
+              <TouchableOpacity
+                style={styles.linkAccountButton}
+                onPress={() => router.push('/profilePages/newRankCard')}
+                activeOpacity={0.7}
+              >
+                <IconSymbol size={14} name="plus" color="#c42743" />
+                <ThemedText style={styles.linkAccountText}>Link Account</ThemedText>
+              </TouchableOpacity>
+            </View>
+            <ThemedText style={styles.sectionSubtitle}>
+              Choose which rank cards to display on your profile
+            </ThemedText>
+
+            {loadingRankCards ? (
+              <View style={styles.rankCardsLoading}>
+                <ActivityIndicator size="small" color="#c42743" />
+              </View>
+            ) : !riotAccount && !valorantAccount ? (
+              <View style={styles.noAccountsContainer}>
+                <View style={styles.noAccountsIconRow}>
+                  <Image
+                    source={require('@/assets/images/valorant-logo.png')}
+                    style={styles.noAccountsIcon}
+                    resizeMode="contain"
+                  />
+                  <Image
+                    source={require('@/assets/images/leagueoflegends.png')}
+                    style={styles.noAccountsIcon}
+                    resizeMode="contain"
+                  />
+                </View>
+                <ThemedText style={styles.noAccountsText}>
+                  Link your Riot or Valorant account to display rank cards
+                </ThemedText>
+              </View>
+            ) : (
+              <GestureHandlerRootView style={styles.rankCardsContainer}>
+                <DraggableFlatList
+                  data={getAvailableCards()}
+                  onDragEnd={handleDragEnd}
+                  keyExtractor={(item) => item.type}
+                  renderItem={renderRankCardItem}
+                  scrollEnabled={false}
+                  containerStyle={styles.draggableList}
+                />
+                {enabledRankCards.length > 1 && (
+                  <ThemedText style={styles.dragHint}>
+                    Hold and drag to reorder
+                  </ThemedText>
+                )}
+              </GestureHandlerRootView>
+            )}
+          </View>
         </View>
       </ScrollView>
 
@@ -640,19 +907,16 @@ const styles = StyleSheet.create({
   // Header icons row
   headerIconsRow: {
     flexDirection: 'row',
-    justifyContent: 'flex-end',
+    justifyContent: 'flex-start',
     alignItems: 'center',
     paddingHorizontal: 16,
     paddingTop: 50,
     paddingBottom: 12,
   },
   headerIconButton: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    backgroundColor: 'rgba(44, 47, 51, 0.8)',
     alignItems: 'center',
     justifyContent: 'center',
+    padding: 4,
   },
   // Cover photo area
   coverPhotoWrapper: {
@@ -868,5 +1132,163 @@ const styles = StyleSheet.create({
     color: '#fff',
     fontSize: 16,
     fontWeight: '700',
+  },
+  // Rank Cards Section Styles
+  sectionHeaderRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 4,
+  },
+  sectionHeaderLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  sectionTitleLarge: {
+    fontSize: 18,
+    fontWeight: '700',
+    color: '#fff',
+    letterSpacing: -0.5,
+  },
+  sectionSubtitle: {
+    fontSize: 13,
+    color: '#666',
+    marginBottom: 16,
+  },
+  linkAccountButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    paddingVertical: 6,
+    paddingHorizontal: 10,
+    backgroundColor: 'rgba(196, 39, 67, 0.15)',
+    borderRadius: 8,
+  },
+  linkAccountText: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: '#c42743',
+  },
+  rankCardsLoading: {
+    paddingVertical: 40,
+    alignItems: 'center',
+  },
+  noAccountsContainer: {
+    alignItems: 'center',
+    paddingVertical: 32,
+    paddingHorizontal: 20,
+    backgroundColor: '#1a1a1a',
+    borderRadius: 16,
+  },
+  noAccountsIconRow: {
+    flexDirection: 'row',
+    gap: 16,
+    marginBottom: 16,
+  },
+  noAccountsIcon: {
+    width: 40,
+    height: 40,
+    opacity: 0.5,
+  },
+  noAccountsText: {
+    fontSize: 14,
+    color: '#666',
+    textAlign: 'center',
+    lineHeight: 20,
+  },
+  rankCardsContainer: {
+    gap: 12,
+  },
+  rankCardItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#1a1a1a',
+    borderRadius: 16,
+    padding: 12,
+    gap: 10,
+  },
+  rankCardItemDisabled: {
+    opacity: 0.6,
+  },
+  rankCardItemDragging: {
+    backgroundColor: '#252525',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.4,
+    shadowRadius: 12,
+    elevation: 8,
+  },
+  dragHandle: {
+    width: 28,
+    height: 40,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  draggableList: {
+    gap: 12,
+  },
+  dragHint: {
+    fontSize: 12,
+    color: '#666',
+    textAlign: 'center',
+    marginTop: 12,
+    fontStyle: 'italic',
+  },
+  orderBadge: {
+    width: 24,
+    height: 24,
+    borderRadius: 12,
+    backgroundColor: '#c42743',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  orderBadgeText: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: '#fff',
+  },
+  rankCardPreview: {
+    flex: 1,
+    height: 70,
+    borderRadius: 12,
+    overflow: 'hidden',
+  },
+  rankCardPreviewDisabled: {
+    opacity: 0.5,
+  },
+  rankCardPreviewGradient: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 14,
+    gap: 12,
+  },
+  rankCardPreviewLogo: {
+    width: 36,
+    height: 36,
+  },
+  rankCardPreviewInfo: {
+    flex: 1,
+  },
+  rankCardPreviewName: {
+    fontSize: 14,
+    fontWeight: '700',
+    color: '#fff',
+    marginBottom: 2,
+  },
+  rankCardPreviewRank: {
+    fontSize: 12,
+    fontWeight: '500',
+    color: 'rgba(255, 255, 255, 0.7)',
+  },
+  rankCardToggle: {
+    alignItems: 'center',
+    gap: 4,
+  },
+  rankCardToggleLabel: {
+    fontSize: 11,
+    fontWeight: '500',
+    color: '#666',
   },
 });

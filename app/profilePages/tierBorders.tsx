@@ -153,7 +153,7 @@ export default function TierBordersScreen() {
               {/* League of Legends */}
               <View style={styles.gameSection}>
                 <View style={styles.gameTitleRow}>
-                  <IconSymbol size={16} name="gamecontroller" color="#b9bbbe" />
+                  <IconSymbol size={16} name="gamecontroller" color="#888" />
                   <ThemedText style={styles.gameTitle}>League of Legends</ThemedText>
                 </View>
                 <View style={styles.ranksList}>
@@ -173,7 +173,7 @@ export default function TierBordersScreen() {
               {/* Valorant */}
               <View style={styles.gameSection}>
                 <View style={styles.gameTitleRow}>
-                  <IconSymbol size={16} name="target" color="#b9bbbe" />
+                  <IconSymbol size={16} name="target" color="#888" />
                   <ThemedText style={styles.gameTitle}>Valorant</ThemedText>
                 </View>
                 <View style={styles.ranksList}>
@@ -196,7 +196,7 @@ export default function TierBordersScreen() {
         {/* Bottom Info */}
         <View style={styles.bottomInfo}>
           <View style={styles.infoBox}>
-            <IconSymbol size={20} name="info.circle" color="#3B82F6" />
+            <IconSymbol size={20} name="info.circle" color="#c42743" />
             <ThemedText style={styles.infoText}>
               Your tier is automatically updated based on your peak rank. Connect your accounts to display your border.
             </ThemedText>
@@ -213,26 +213,24 @@ export default function TierBordersScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#1e2124',
+    backgroundColor: '#0f0f0f',
   },
   header: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
     paddingHorizontal: 20,
-    paddingTop: 60,
-    paddingBottom: 16,
-    backgroundColor: '#1e2124',
-    borderBottomWidth: 1,
-    borderBottomColor: '#2c2f33',
+    paddingTop: 55,
+    paddingBottom: 15,
+    backgroundColor: '#0f0f0f',
   },
   backButton: {
     padding: 4,
     flex: 1,
   },
   headerTitle: {
-    fontSize: 17,
-    fontWeight: '600',
+    fontSize: 20,
+    fontWeight: '700',
     color: '#fff',
     flex: 1,
     textAlign: 'center',
@@ -242,27 +240,23 @@ const styles = StyleSheet.create({
   },
   descriptionContainer: {
     marginHorizontal: 16,
-    marginTop: 20,
+    marginTop: 16,
     marginBottom: 8,
     padding: 16,
-    backgroundColor: '#36393e',
-    borderRadius: 12,
-    borderWidth: 1,
-    borderColor: '#2c2f33',
+    backgroundColor: '#1a1a1a',
+    borderRadius: 16,
   },
   descriptionText: {
     fontSize: 14,
-    color: '#b9bbbe',
+    color: '#666',
     lineHeight: 20,
     textAlign: 'center',
   },
   tierCard: {
     marginHorizontal: 16,
     marginVertical: 8,
-    backgroundColor: '#36393e',
-    borderRadius: 12,
-    borderWidth: 1,
-    borderColor: '#2c2f33',
+    backgroundColor: '#1a1a1a',
+    borderRadius: 16,
     overflow: 'hidden',
   },
   tierHeader: {
@@ -271,13 +265,13 @@ const styles = StyleSheet.create({
     padding: 16,
     gap: 16,
     borderBottomWidth: 1,
-    borderBottomColor: '#2c2f33',
+    borderBottomColor: '#252525',
   },
   tierAvatarPlaceholder: {
     width: 64,
     height: 64,
     borderRadius: 28,
-    backgroundColor: '#2c2f33',
+    backgroundColor: '#252525',
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -296,8 +290,8 @@ const styles = StyleSheet.create({
     marginBottom: 4,
   },
   tierSubtext: {
-    fontSize: 13,
-    color: '#b9bbbe',
+    fontSize: 12,
+    color: '#666',
   },
   ranksContainer: {
     padding: 16,
@@ -315,7 +309,7 @@ const styles = StyleSheet.create({
   gameTitle: {
     fontSize: 13,
     fontWeight: '600',
-    color: '#b9bbbe',
+    color: '#888',
     textTransform: 'uppercase',
     letterSpacing: 0.5,
   },
@@ -335,7 +329,7 @@ const styles = StyleSheet.create({
   rankImageText: {
     fontSize: 11,
     fontWeight: '500',
-    color: '#b9bbbe',
+    color: '#666',
   },
   bottomInfo: {
     marginHorizontal: 16,
@@ -346,15 +340,13 @@ const styles = StyleSheet.create({
     alignItems: 'flex-start',
     gap: 12,
     padding: 16,
-    backgroundColor: '#36393e',
-    borderRadius: 12,
-    borderWidth: 1,
-    borderColor: '#2c2f33',
+    backgroundColor: '#1a1a1a',
+    borderRadius: 16,
   },
   infoText: {
     flex: 1,
     fontSize: 13,
-    color: '#b9bbbe',
+    color: '#666',
     lineHeight: 18,
   },
   bottomSpacer: {

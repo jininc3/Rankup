@@ -489,11 +489,11 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20,
     paddingTop: 60,
     paddingBottom: 16,
-    borderBottomWidth: 1,
-    borderBottomColor: '#2c2f33',
   },
   backButton: {
-    padding: 4,
+    paddingVertical: 4,
+    paddingRight: 8,
+    marginTop: 4,
   },
   headerTitle: {
     fontSize: 18,

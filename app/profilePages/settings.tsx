@@ -163,7 +163,10 @@ export default function SettingsScreen() {
         {/* Account Section with merged user info */}
         {user && (
           <View style={styles.section}>
-            <ThemedText style={styles.sectionTitle}>Account</ThemedText>
+            <View style={styles.sectionHeader}>
+              <IconSymbol size={18} name="person.fill" color="#fff" />
+              <ThemedText style={styles.sectionHeaderTitle}>Account</ThemedText>
+            </View>
             <View style={styles.settingsGroup}>
               {/* User Info - Centered */}
               <View style={[styles.settingItem, styles.userInfoItem]}>
@@ -185,13 +188,13 @@ export default function SettingsScreen() {
               >
                 <View style={styles.settingLeft}>
                   <View style={styles.iconContainer}>
-                    <IconSymbol size={22} name="eye" color="#fff" />
+                    <IconSymbol size={20} name="eye" color="#888" />
                   </View>
                   <View style={styles.settingTextContainer}>
                     <ThemedText style={styles.settingTitle}>View Profile Preview</ThemedText>
                   </View>
                 </View>
-                <IconSymbol size={20} name="chevron.right" color="#666" />
+                <IconSymbol size={18} name="chevron.right" color="#444" />
               </TouchableOpacity>
 
               {/* Account Settings */}
@@ -201,13 +204,13 @@ export default function SettingsScreen() {
               >
                 <View style={styles.settingLeft}>
                   <View style={styles.iconContainer}>
-                    <IconSymbol size={22} name="gearshape" color="#fff" />
+                    <IconSymbol size={20} name="gearshape" color="#888" />
                   </View>
                   <View style={styles.settingTextContainer}>
                     <ThemedText style={styles.settingTitle}>Account Settings</ThemedText>
                   </View>
                 </View>
-                <IconSymbol size={20} name="chevron.right" color="#666" />
+                <IconSymbol size={18} name="chevron.right" color="#444" />
               </TouchableOpacity>
             </View>
           </View>
@@ -215,11 +218,14 @@ export default function SettingsScreen() {
 
         {/* Connected Accounts Section */}
         <View style={styles.section}>
-          <ThemedText style={styles.sectionTitle}>Connected Accounts</ThemedText>
+          <View style={styles.sectionHeader}>
+            <IconSymbol size={18} name="link" color="#fff" />
+            <ThemedText style={styles.sectionHeaderTitle}>Connected Accounts</ThemedText>
+          </View>
           <View style={styles.settingsGroup}>
             {/* Info message */}
             <View style={styles.infoMessageContainer}>
-              <IconSymbol size={18} name="info.circle" color="#666" />
+              <IconSymbol size={16} name="info.circle" color="#666" />
               <ThemedText style={styles.infoMessageText}>
                 Manage account connections from your Rank Cards page
               </ThemedText>
@@ -229,7 +235,7 @@ export default function SettingsScreen() {
             <View style={styles.settingItem}>
               <View style={styles.settingLeft}>
                 <View style={styles.iconContainer}>
-                  <IconSymbol size={22} name="gamecontroller" color="#fff" />
+                  <IconSymbol size={20} name="gamecontroller" color="#888" />
                 </View>
                 <View style={styles.settingTextContainer}>
                   <ThemedText style={styles.settingTitle}>League of Legends</ThemedText>
@@ -259,7 +265,7 @@ export default function SettingsScreen() {
             <View style={[styles.settingItem, styles.settingItemLast]}>
               <View style={styles.settingLeft}>
                 <View style={styles.iconContainer}>
-                  <IconSymbol size={22} name="target" color="#fff" />
+                  <IconSymbol size={20} name="target" color="#888" />
                 </View>
                 <View style={styles.settingTextContainer}>
                   <ThemedText style={styles.settingTitle}>Valorant</ThemedText>
@@ -291,7 +297,14 @@ export default function SettingsScreen() {
         {settingsData.map((section) => (
           <View key={section.id} style={styles.section}>
             {section.title && (
-              <ThemedText style={styles.sectionTitle}>{section.title}</ThemedText>
+              <View style={styles.sectionHeader}>
+                <IconSymbol
+                  size={18}
+                  name={section.id === 'preferences' ? 'slider.horizontal.3' : section.id === 'info' ? 'info.circle.fill' : 'questionmark.circle.fill'}
+                  color="#fff"
+                />
+                <ThemedText style={styles.sectionHeaderTitle}>{section.title}</ThemedText>
+              </View>
             )}
             <View style={styles.settingsGroup}>
               {section.items.map((item, index) => (
@@ -305,7 +318,7 @@ export default function SettingsScreen() {
                 >
                   <View style={styles.settingLeft}>
                     <View style={styles.iconContainer}>
-                      <IconSymbol size={22} name={item.icon} color="#fff" />
+                      <IconSymbol size={20} name={item.icon} color="#888" />
                     </View>
                     <View style={styles.settingTextContainer}>
                       <ThemedText style={styles.settingTitle}>{item.title}</ThemedText>
@@ -315,7 +328,7 @@ export default function SettingsScreen() {
                     </View>
                   </View>
                   {item.hasChevron && (
-                    <IconSymbol size={20} name="chevron.right" color="#666" />
+                    <IconSymbol size={18} name="chevron.right" color="#444" />
                   )}
                 </TouchableOpacity>
               ))}
@@ -332,7 +345,7 @@ export default function SettingsScreen() {
             >
               <View style={styles.settingLeft}>
                 <View style={styles.iconContainer}>
-                  <IconSymbol size={22} name="rectangle.portrait.and.arrow.right" color="#ef4444" />
+                  <IconSymbol size={20} name="rectangle.portrait.and.arrow.right" color="#c42743" />
                 </View>
                 <ThemedText style={[styles.settingTitle, styles.signOutText]}>Sign Out</ThemedText>
               </View>
@@ -350,26 +363,24 @@ export default function SettingsScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#1e2124',
+    backgroundColor: '#0f0f0f',
   },
   header: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
     paddingHorizontal: 20,
-    paddingTop: 60,
-    paddingBottom: 16,
-    backgroundColor: '#1e2124',
-    borderBottomWidth: 1,
-    borderBottomColor: '#2c2f33',
+    paddingTop: 55,
+    paddingBottom: 15,
+    backgroundColor: '#0f0f0f',
   },
   backButton: {
     padding: 4,
     flex: 1,
   },
   headerTitle: {
-    fontSize: 17,
-    fontWeight: '600',
+    fontSize: 20,
+    fontWeight: '700',
     color: '#fff',
     flex: 1,
     textAlign: 'center',
@@ -378,34 +389,45 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   section: {
-    marginTop: 24,
-    marginBottom: 24,
+    marginBottom: 8,
+  },
+  sectionHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    paddingHorizontal: 20,
+    paddingTop: 16,
+    paddingBottom: 12,
+  },
+  sectionHeaderTitle: {
+    fontSize: 18,
+    fontWeight: '700',
+    color: '#fff',
+    letterSpacing: -0.5,
   },
   sectionTitle: {
     fontSize: 13,
     fontWeight: '600',
-    color: '#b9bbbe',
+    color: '#888',
     textTransform: 'uppercase',
     letterSpacing: 0.5,
     marginBottom: 12,
-    marginHorizontal: 32,
+    marginHorizontal: 20,
   },
   settingsGroup: {
     marginHorizontal: 16,
-    backgroundColor: '#36393e',
-    borderRadius: 12,
-    borderWidth: 1,
-    borderColor: '#2c2f33',
+    backgroundColor: '#1a1a1a',
+    borderRadius: 16,
     overflow: 'hidden',
   },
   settingItem: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    paddingVertical: 16,
+    paddingVertical: 14,
     paddingHorizontal: 16,
     borderBottomWidth: 1,
-    borderBottomColor: '#2c2f33',
+    borderBottomColor: '#252525',
   },
   settingItemLast: {
     borderBottomWidth: 0,
@@ -428,45 +450,47 @@ const styles = StyleSheet.create({
     gap: 8,
   },
   connectedBadge: {
-    backgroundColor: '#e8f5e9',
+    backgroundColor: 'rgba(34, 197, 94, 0.15)',
     paddingHorizontal: 10,
     paddingVertical: 4,
-    borderRadius: 6,
+    borderRadius: 8,
   },
   connectedBadgeText: {
-    fontSize: 12,
+    fontSize: 11,
     fontWeight: '600',
-    color: '#2e7d32',
+    color: '#22c55e',
   },
   notConnectedBadge: {
-    backgroundColor: '#2c2f33',
+    backgroundColor: '#252525',
     paddingHorizontal: 10,
     paddingVertical: 4,
-    borderRadius: 6,
+    borderRadius: 8,
   },
   notConnectedBadgeText: {
-    fontSize: 12,
+    fontSize: 11,
     fontWeight: '600',
-    color: '#b9bbbe',
+    color: '#666',
   },
   infoMessageContainer: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 8,
-    paddingVertical: 12,
+    paddingVertical: 10,
     paddingHorizontal: 16,
-    backgroundColor: '#2c2f33',
+    backgroundColor: '#151515',
     borderBottomWidth: 1,
-    borderBottomColor: '#2c2f33',
+    borderBottomColor: '#252525',
   },
   infoMessageText: {
-    fontSize: 13,
-    color: '#b9bbbe',
+    fontSize: 12,
+    color: '#666',
     flex: 1,
   },
   iconContainer: {
     width: 32,
     height: 32,
+    borderRadius: 8,
+    backgroundColor: '#252525',
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -474,31 +498,31 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   settingTitle: {
-    fontSize: 16,
+    fontSize: 15,
     fontWeight: '500',
     color: '#fff',
     letterSpacing: -0.2,
   },
   settingSubtitle: {
-    fontSize: 13,
-    color: '#b9bbbe',
+    fontSize: 12,
+    color: '#666',
     marginTop: 2,
   },
   bottomSpacer: {
     height: 40,
   },
   signOutButton: {
-    backgroundColor: '#36393e',
+    backgroundColor: 'rgba(196, 39, 67, 0.1)',
   },
   signOutText: {
-    color: '#ef4444',
+    color: '#c42743',
     fontWeight: '600',
   },
   unlinkButton: {
-    backgroundColor: '#36393e',
+    backgroundColor: '#1a1a1a',
   },
   unlinkText: {
-    color: '#ef4444',
+    color: '#c42743',
     fontWeight: '600',
   },
   compactUnlinkButton: {
@@ -514,15 +538,15 @@ const styles = StyleSheet.create({
   compactUnlinkText: {
     fontSize: 13,
     fontWeight: '500',
-    color: '#ef4444',
+    color: '#c42743',
   },
   userInfoItem: {
     justifyContent: 'center',
-    paddingVertical: 24,
+    paddingVertical: 20,
   },
   userInfoContent: {
     alignItems: 'center',
-    gap: 8,
+    gap: 6,
   },
   userInfoRow: {
     flexDirection: 'row',
@@ -531,11 +555,11 @@ const styles = StyleSheet.create({
   },
   userInfoTitle: {
     fontSize: 18,
-    fontWeight: '600',
-    color: '#000',
+    fontWeight: '700',
+    color: '#fff',
   },
   userInfoSubtitle: {
-    fontSize: 13,
+    fontSize: 12,
     color: '#666',
     textAlign: 'center',
   },

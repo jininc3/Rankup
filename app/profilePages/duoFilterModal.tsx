@@ -150,6 +150,9 @@ export default function DuoFilterModal({
             style={styles.scrollView}
             contentContainerStyle={styles.scrollContent}
             showsVerticalScrollIndicator={false}
+            bounces={true}
+            scrollEventThrottle={16}
+            nestedScrollEnabled={true}
           >
             {/* Game Filter */}
             <View style={styles.filterSection}>
@@ -192,38 +195,64 @@ export default function DuoFilterModal({
               </View>
             </View>
 
-            {/* Role/Position Filter - Only show if game is selected */}
-            {localFilters.game && (
-              <View style={styles.filterSection}>
-                <ThemedText style={styles.sectionTitle}>
-                  {localFilters.game === 'valorant' ? 'Role' : 'Position'}
-                </ThemedText>
-                <View style={styles.chipRow}>
-                  <TouchableOpacity
-                    style={[styles.chip, localFilters.role === null && styles.chipActive]}
-                    onPress={() => setLocalFilters({ ...localFilters, role: null })}
-                  >
-                    <ThemedText style={[styles.chipText, localFilters.role === null && styles.chipTextActive]}>
-                      Any
-                    </ThemedText>
-                  </TouchableOpacity>
-                  {getRoles().map((role) => (
-                    <TouchableOpacity
-                      key={role}
-                      style={[styles.chip, localFilters.role === role && styles.chipActive]}
-                      onPress={() => setLocalFilters({ ...localFilters, role })}
-                    >
-                      {getRoleIcon(role) && (
-                        <Image source={getRoleIcon(role)} style={styles.roleIcon} resizeMode="contain" />
-                      )}
-                      <ThemedText style={[styles.chipText, localFilters.role === role && styles.chipTextActive]}>
-                        {role}
-                      </ThemedText>
-                    </TouchableOpacity>
-                  ))}
-                </View>
+            {/* Position Filter - Always show */}
+            <View style={styles.filterSection}>
+              <ThemedText style={styles.sectionTitle}>Position</ThemedText>
+
+              {/* Any option */}
+              <View style={styles.chipRow}>
+                <TouchableOpacity
+                  style={[styles.chip, localFilters.role === null && styles.chipActive]}
+                  onPress={() => setLocalFilters({ ...localFilters, role: null })}
+                >
+                  <ThemedText style={[styles.chipText, localFilters.role === null && styles.chipTextActive]}>
+                    Any
+                  </ThemedText>
+                </TouchableOpacity>
               </View>
-            )}
+
+              {/* Valorant Roles */}
+              {(localFilters.game === null || localFilters.game === 'valorant') && (
+                <>
+                  <ThemedText style={styles.subSectionTitle}>Valorant</ThemedText>
+                  <View style={styles.chipRow}>
+                    {VALORANT_ROLES.map((role) => (
+                      <TouchableOpacity
+                        key={role}
+                        style={[styles.chip, localFilters.role === role && styles.chipActive]}
+                        onPress={() => setLocalFilters({ ...localFilters, role })}
+                      >
+                        <Image source={VALORANT_ROLE_ICONS[role]} style={styles.roleIcon} resizeMode="contain" />
+                        <ThemedText style={[styles.chipText, localFilters.role === role && styles.chipTextActive]}>
+                          {role}
+                        </ThemedText>
+                      </TouchableOpacity>
+                    ))}
+                  </View>
+                </>
+              )}
+
+              {/* League Roles */}
+              {(localFilters.game === null || localFilters.game === 'league') && (
+                <>
+                  <ThemedText style={styles.subSectionTitle}>League of Legends</ThemedText>
+                  <View style={styles.chipRow}>
+                    {LEAGUE_ROLES.map((role) => (
+                      <TouchableOpacity
+                        key={role}
+                        style={[styles.chip, localFilters.role === role && styles.chipActive]}
+                        onPress={() => setLocalFilters({ ...localFilters, role })}
+                      >
+                        <Image source={LEAGUE_LANE_ICONS[role]} style={styles.roleIcon} resizeMode="contain" />
+                        <ThemedText style={[styles.chipText, localFilters.role === role && styles.chipTextActive]}>
+                          {role}
+                        </ThemedText>
+                      </TouchableOpacity>
+                    ))}
+                  </View>
+                </>
+              )}
+            </View>
 
             {/* Rank Filter - Only show if game is selected */}
             {localFilters.game && (
@@ -333,6 +362,7 @@ const styles = StyleSheet.create({
     borderTopLeftRadius: 20,
     borderTopRightRadius: 20,
     maxHeight: '85%',
+    minHeight: 400,
   },
   header: {
     flexDirection: 'row',
@@ -368,10 +398,12 @@ const styles = StyleSheet.create({
     color: '#c42743',
   },
   scrollView: {
-    flexGrow: 0,
+    flexGrow: 1,
+    flexShrink: 1,
   },
   scrollContent: {
     paddingVertical: 8,
+    paddingBottom: 20,
   },
   filterSection: {
     paddingHorizontal: 20,
@@ -384,6 +416,13 @@ const styles = StyleSheet.create({
     marginBottom: 12,
     textTransform: 'uppercase',
     letterSpacing: 0.5,
+  },
+  subSectionTitle: {
+    fontSize: 11,
+    fontWeight: '600',
+    color: '#666',
+    marginTop: 12,
+    marginBottom: 8,
   },
   chipRow: {
     flexDirection: 'row',
