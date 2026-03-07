@@ -146,19 +146,6 @@ export default function CompactDuoCard({
           </View>
         </View>
 
-        {/* Rank Badge - Top Right */}
-        <View style={styles.rankBadgeContainer}>
-          <View style={[styles.rankGlow, { backgroundColor: gameAccentColor }]} />
-          <View style={[styles.rankBadge, { borderColor: gameAccentColor }]}>
-            <Image
-              source={getRankIcon(peakRank)}
-              style={styles.rankIcon}
-              resizeMode="contain"
-            />
-          </View>
-          <ThemedText style={styles.rankText}>{peakRank}</ThemedText>
-        </View>
-
         {/* Edit mode indicator */}
         {isEditMode && (
           <View style={styles.editBadge}>
@@ -168,38 +155,38 @@ export default function CompactDuoCard({
 
         {/* Main Content Area */}
         <View style={styles.mainContent}>
-          {/* Left: Photo */}
-          <View style={styles.photoSection}>
-            <View style={styles.photoFrame}>
-              {avatar && avatar.startsWith('http') ? (
-                <Image
-                  source={{ uri: avatar }}
-                  style={styles.photo}
-                  onLoad={() => setAvatarLoaded(true)}
-                  onError={() => setAvatarLoaded(true)}
-                />
-              ) : (
-                <View style={styles.photoPlaceholder}>
-                  <ThemedText style={styles.photoInitial}>
-                    {username[0]?.toUpperCase() || '?'}
-                  </ThemedText>
-                </View>
-              )}
-            </View>
-            {/* Online indicator */}
-            <View style={styles.onlineBadge}>
-              <View style={styles.onlineDot} />
-            </View>
-          </View>
+          {/* Username - Top Row */}
+          <ThemedText style={styles.name} numberOfLines={1}>
+            {username}
+          </ThemedText>
 
-          {/* Right: Info Column */}
-          <View style={styles.infoColumn}>
-            {/* Username */}
-            <ThemedText style={styles.name} numberOfLines={1}>
-              {username}
-            </ThemedText>
+          {/* Content Row: Photo | Roles | Rank */}
+          <View style={styles.contentRow}>
+            {/* Left: Photo */}
+            <View style={styles.photoSection}>
+              <View style={styles.photoFrame}>
+                {avatar && avatar.startsWith('http') ? (
+                  <Image
+                    source={{ uri: avatar }}
+                    style={styles.photo}
+                    onLoad={() => setAvatarLoaded(true)}
+                    onError={() => setAvatarLoaded(true)}
+                  />
+                ) : (
+                  <View style={styles.photoPlaceholder}>
+                    <ThemedText style={styles.photoInitial}>
+                      {username[0]?.toUpperCase() || '?'}
+                    </ThemedText>
+                  </View>
+                )}
+              </View>
+              {/* Online indicator */}
+              <View style={styles.onlineBadge}>
+                <View style={styles.onlineDot} />
+              </View>
+            </View>
 
-            {/* Role Info Row */}
+            {/* Center: Role Info */}
             <View style={styles.roleInfoContainer}>
               <View style={styles.roleItem}>
                 <ThemedText style={styles.roleLabel}>MAIN</ThemedText>
@@ -212,7 +199,6 @@ export default function CompactDuoCard({
                   <ThemedText style={styles.roleValue}>{mainRole}</ThemedText>
                 </View>
               </View>
-              <View style={styles.roleDivider} />
               <View style={styles.roleItem}>
                 <ThemedText style={styles.roleLabel}>LOOKING FOR</ThemedText>
                 <View style={styles.roleValueRow}>
@@ -222,6 +208,21 @@ export default function CompactDuoCard({
                     resizeMode="contain"
                   />
                   <ThemedText style={styles.roleValue}>{preferredDuoRole}</ThemedText>
+                </View>
+              </View>
+            </View>
+
+            {/* Right: Rank */}
+            <View style={styles.rankSection}>
+              <ThemedText style={styles.rankText}>{peakRank}</ThemedText>
+              <View style={styles.rankIconContainer}>
+                <View style={[styles.rankGlow, { backgroundColor: gameAccentColor }]} />
+                <View style={[styles.rankBadge, { borderColor: gameAccentColor }]}>
+                  <Image
+                    source={getRankIcon(peakRank)}
+                    style={styles.rankIconMain}
+                    resizeMode="contain"
+                  />
                 </View>
               </View>
             </View>
@@ -335,8 +336,8 @@ const styles = StyleSheet.create({
   },
   editBadge: {
     position: 'absolute',
-    top: 42,
-    right: 70,
+    top: 44,
+    right: 12,
     width: 24,
     height: 24,
     borderRadius: 12,
@@ -347,19 +348,31 @@ const styles = StyleSheet.create({
   },
   // Main Content Area
   mainContent: {
+    paddingHorizontal: 14,
+    paddingTop: 8,
+    paddingBottom: 10,
+    gap: 6,
+  },
+  // Username at top
+  name: {
+    fontSize: 16,
+    fontWeight: '700',
+    color: '#e5e5e5',
+    letterSpacing: -0.2,
+  },
+  // Content Row: Photo | Roles | Rank
+  contentRow: {
     flexDirection: 'row',
-    padding: 14,
-    paddingTop: 12,
-    gap: 14,
     alignItems: 'center',
+    gap: 12,
   },
   // Photo Section
   photoSection: {
     position: 'relative',
   },
   photoFrame: {
-    width: 72,
-    height: 80,
+    width: 56,
+    height: 56,
     borderRadius: 6,
     overflow: 'hidden',
     backgroundColor: '#1a1c1e',
@@ -377,7 +390,7 @@ const styles = StyleSheet.create({
     backgroundColor: '#151719',
   },
   photoInitial: {
-    fontSize: 28,
+    fontSize: 22,
     fontWeight: '700',
     color: '#2a2d32',
   },
@@ -385,9 +398,9 @@ const styles = StyleSheet.create({
     position: 'absolute',
     bottom: -3,
     right: -3,
-    width: 16,
-    height: 16,
-    borderRadius: 8,
+    width: 14,
+    height: 14,
+    borderRadius: 7,
     backgroundColor: '#0f1114',
     alignItems: 'center',
     justifyContent: 'center',
@@ -398,30 +411,18 @@ const styles = StyleSheet.create({
     borderRadius: 4,
     backgroundColor: '#3d7a4a',
   },
-  // Center Info Column
-  infoColumn: {
-    flex: 1,
-    justifyContent: 'center',
-    gap: 8,
-  },
-  name: {
-    fontSize: 17,
-    fontWeight: '700',
-    color: '#e5e5e5',
-    letterSpacing: -0.2,
-  },
-  // Role Info Row
+  // Role Info - Horizontal Row in Center
   roleInfoContainer: {
+    flex: 1,
     flexDirection: 'row',
     alignItems: 'flex-start',
-    gap: 14,
+    gap: 16,
   },
   roleItem: {
-    gap: 3,
-    minWidth: 75,
+    gap: 1,
   },
   roleLabel: {
-    fontSize: 9,
+    fontSize: 8,
     fontWeight: '600',
     color: '#4a4d52',
     letterSpacing: 0.5,
@@ -429,57 +430,53 @@ const styles = StyleSheet.create({
   roleValueRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 5,
+    gap: 4,
   },
   roleValue: {
-    fontSize: 12,
+    fontSize: 11,
     fontWeight: '600',
-    color: '#8a8d92',
+    color: '#9a9da2',
   },
   roleIcon: {
-    width: 15,
-    height: 15,
-    opacity: 0.8,
+    width: 13,
+    height: 13,
+    opacity: 0.85,
   },
-  roleDivider: {
-    width: 1,
-    height: 28,
-    backgroundColor: '#252729',
-    marginTop: 2,
-  },
-  // Rank Badge - Top Right Position
-  rankBadgeContainer: {
-    position: 'absolute',
-    top: 56,
-    right: 12,
+  // Rank Section - Right Side
+  rankSection: {
     alignItems: 'center',
-    zIndex: 5,
+    justifyContent: 'center',
+    marginTop: -8,
+  },
+  rankIconContainer: {
+    position: 'relative',
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   rankGlow: {
     position: 'absolute',
-    width: 56,
-    height: 56,
-    borderRadius: 28,
-    opacity: 0.25,
-    top: -4,
+    width: 50,
+    height: 50,
+    borderRadius: 25,
+    opacity: 0.2,
   },
   rankBadge: {
     alignItems: 'center',
     justifyContent: 'center',
     backgroundColor: '#13151a',
-    borderRadius: 10,
-    padding: 6,
+    borderRadius: 8,
+    padding: 5,
     borderWidth: 2,
   },
-  rankIcon: {
-    width: 40,
-    height: 40,
+  rankIconMain: {
+    width: 36,
+    height: 36,
   },
   rankText: {
-    fontSize: 9,
+    fontSize: 8,
     fontWeight: '700',
     color: '#7a7d82',
-    marginTop: 3,
+    marginBottom: 3,
     textAlign: 'center',
     letterSpacing: 0.2,
   },
