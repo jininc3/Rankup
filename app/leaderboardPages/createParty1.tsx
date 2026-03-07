@@ -60,12 +60,25 @@ export default function CreateParty1Screen() {
   const [searchQuery, setSearchQuery] = useState('');
   const [startDate, setStartDate] = useState<Date>(defaultDates.start);
   const [endDate, setEndDate] = useState<Date>(defaultDates.end);
-  const [showStartDatePicker, setShowStartDatePicker] = useState(false);
   const [showEndDatePicker, setShowEndDatePicker] = useState(false);
   const [challengeType, setChallengeType] = useState<'climbing' | 'rank'>('climbing');
+  const [selectedDuration, setSelectedDuration] = useState<number>(30);
 
   const formatDateShort = (date: Date) => {
     return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+  };
+
+  const handleDurationSelect = (days: number) => {
+    setSelectedDuration(days);
+    setShowEndDatePicker(false);
+    const newEndDate = new Date(startDate);
+    newEndDate.setDate(startDate.getDate() + days);
+    setEndDate(newEndDate);
+  };
+
+  const handleCustomDuration = () => {
+    setSelectedDuration(0);
+    setShowEndDatePicker(!showEndDatePicker);
   };
 
   useEffect(() => {
@@ -154,14 +167,15 @@ export default function CreateParty1Screen() {
     }
   };
 
-  const handleStartDateChange = (event: any, selectedDate?: Date) => {
-    setShowStartDatePicker(Platform.OS === 'ios');
-    if (selectedDate) setStartDate(selectedDate);
-  };
-
   const handleEndDateChange = (event: any, selectedDate?: Date) => {
     setShowEndDatePicker(Platform.OS === 'ios');
-    if (selectedDate) setEndDate(selectedDate);
+    if (selectedDate) {
+      setEndDate(selectedDate);
+      // Calculate days difference for custom selection
+      const diffTime = selectedDate.getTime() - startDate.getTime();
+      const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+      setSelectedDuration(diffDays);
+    }
   };
 
   const handleCreateParty = async () => {
@@ -316,15 +330,19 @@ export default function CreateParty1Screen() {
           <View style={styles.row}>
             <View style={[styles.inputGroup, { flex: 1 }]}>
               <ThemedText style={styles.label}>Party ID</ThemedText>
-              <TextInput
-                style={styles.input}
-                placeholder="ABCDE"
-                placeholderTextColor="#555"
-                value={partyId}
-                onChangeText={handlePartyIdChange}
-                maxLength={5}
-                autoCapitalize="characters"
-              />
+              <View style={styles.idInputContainer}>
+                <TextInput
+                  style={styles.idInput}
+                  placeholder="ABCDE"
+                  placeholderTextColor="#666"
+                  value={partyId}
+                  onChangeText={handlePartyIdChange}
+                  maxLength={5}
+                  autoCapitalize="characters"
+                  textAlign="left"
+                />
+                <ThemedText style={styles.idCount}>{partyId.length}/5</ThemedText>
+              </View>
             </View>
             <View style={[styles.inputGroup, { flex: 1 }]}>
               <ThemedText style={styles.label}>Invite Code</ThemedText>
@@ -339,34 +357,48 @@ export default function CreateParty1Screen() {
         {/* Duration Card */}
         <View style={styles.card}>
           <ThemedText style={styles.cardTitle}>Duration</ThemedText>
-          <View style={styles.row}>
+          <View style={styles.durationRow}>
             <TouchableOpacity
-              style={[styles.dateButton, { flex: 1 }]}
-              onPress={() => setShowStartDatePicker(true)}
+              style={[
+                styles.durationButton,
+                selectedDuration === 10 && styles.durationButtonActive
+              ]}
+              onPress={() => handleDurationSelect(10)}
             >
-              <ThemedText style={styles.dateLabel}>Start</ThemedText>
-              <ThemedText style={styles.dateValue}>{formatDateShort(startDate)}</ThemedText>
+              <ThemedText style={[
+                styles.durationButtonText,
+                selectedDuration === 10 && styles.durationButtonTextActive
+              ]}>10 days</ThemedText>
             </TouchableOpacity>
-            <View style={styles.dateDivider}>
-              <IconSymbol size={16} name="arrow.right" color="#555" />
-            </View>
             <TouchableOpacity
-              style={[styles.dateButton, { flex: 1 }]}
-              onPress={() => setShowEndDatePicker(true)}
+              style={[
+                styles.durationButton,
+                selectedDuration === 30 && styles.durationButtonActive
+              ]}
+              onPress={() => handleDurationSelect(30)}
             >
-              <ThemedText style={styles.dateLabel}>End</ThemedText>
-              <ThemedText style={styles.dateValue}>{formatDateShort(endDate)}</ThemedText>
+              <ThemedText style={[
+                styles.durationButtonText,
+                selectedDuration === 30 && styles.durationButtonTextActive
+              ]}>30 days</ThemedText>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={[
+                styles.durationButton,
+                selectedDuration !== 10 && selectedDuration !== 30 && styles.durationButtonActive
+              ]}
+              onPress={handleCustomDuration}
+            >
+              <ThemedText style={[
+                styles.durationButtonText,
+                selectedDuration !== 10 && selectedDuration !== 30 && styles.durationButtonTextActive
+              ]}>Custom</ThemedText>
             </TouchableOpacity>
           </View>
-          {showStartDatePicker && (
-            <DateTimePicker
-              value={startDate}
-              mode="date"
-              display={Platform.OS === 'ios' ? 'spinner' : 'default'}
-              onChange={handleStartDateChange}
-              minimumDate={new Date()}
-            />
-          )}
+          <View style={styles.endDateRow}>
+            <ThemedText style={styles.endDateLabel}>Ends on</ThemedText>
+            <ThemedText style={styles.endDateValue}>{formatDateShort(endDate)}</ThemedText>
+          </View>
           {showEndDatePicker && (
             <DateTimePicker
               value={endDate}
@@ -374,6 +406,8 @@ export default function CreateParty1Screen() {
               display={Platform.OS === 'ios' ? 'spinner' : 'default'}
               onChange={handleEndDateChange}
               minimumDate={startDate}
+              textColor="#fff"
+              themeVariant="dark"
             />
           )}
         </View>
@@ -575,6 +609,28 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     gap: 10,
   },
+  idInputContainer: {
+    backgroundColor: '#252525',
+    borderRadius: 8,
+    padding: 12,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+  idInput: {
+    flex: 1,
+    fontSize: 15,
+    fontWeight: '600',
+    color: '#fff',
+    letterSpacing: 1,
+    padding: 0,
+    margin: 0,
+    minHeight: 20,
+  },
+  idCount: {
+    fontSize: 11,
+    color: '#555',
+  },
   codeButton: {
     backgroundColor: '#252525',
     borderRadius: 8,
@@ -589,25 +645,48 @@ const styles = StyleSheet.create({
     color: '#c42743',
     letterSpacing: 2,
   },
-  dateButton: {
+  durationRow: {
+    flexDirection: 'row',
+    gap: 8,
+    marginBottom: 12,
+  },
+  durationButton: {
+    flex: 1,
     backgroundColor: '#252525',
     borderRadius: 8,
-    padding: 10,
+    paddingVertical: 10,
     alignItems: 'center',
+    borderWidth: 1.5,
+    borderColor: 'transparent',
   },
-  dateLabel: {
-    fontSize: 11,
-    color: '#666',
-    marginBottom: 2,
+  durationButtonActive: {
+    backgroundColor: '#c42743',
+    borderColor: '#c42743',
   },
-  dateValue: {
+  durationButtonText: {
     fontSize: 13,
     fontWeight: '600',
+    color: '#888',
+  },
+  durationButtonTextActive: {
     color: '#fff',
   },
-  dateDivider: {
-    justifyContent: 'center',
-    paddingHorizontal: 4,
+  endDateRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    backgroundColor: '#252525',
+    borderRadius: 8,
+    padding: 12,
+  },
+  endDateLabel: {
+    fontSize: 13,
+    color: '#666',
+  },
+  endDateValue: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#fff',
   },
   challengeRow: {
     flexDirection: 'row',
