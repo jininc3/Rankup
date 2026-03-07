@@ -537,7 +537,7 @@ export default function NotificationsScreen() {
         >
           <IconSymbol size={24} name="chevron.left" color="#fff" />
         </TouchableOpacity>
-        <ThemedText style={styles.headerTitle}>Notifications</ThemedText>
+        <ThemedText style={styles.headerTitle} numberOfLines={1}>Notifications</ThemedText>
         {notifications.length > 0 && (
           <TouchableOpacity onPress={clearAllNotifications}>
             <ThemedText style={styles.clearAllButton}>Clear All</ThemedText>

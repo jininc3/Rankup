@@ -25,7 +25,6 @@ export default function NotificationsPreferencesScreen() {
   const [challengesEnabled, setChallengesEnabled] = useState(true);
 
   // Email preferences
-  const [emailDigestEnabled, setEmailDigestEnabled] = useState(false);
   const [emailUpdatesEnabled, setEmailUpdatesEnabled] = useState(true);
   const [emailMarketingEnabled, setEmailMarketingEnabled] = useState(false);
 
@@ -51,7 +50,6 @@ export default function NotificationsPreferencesScreen() {
             if (prefs.rankUps !== undefined) setRankUpsEnabled(prefs.rankUps);
             if (prefs.achievements !== undefined) setAchievementsEnabled(prefs.achievements);
             if (prefs.challenges !== undefined) setChallengesEnabled(prefs.challenges);
-            if (prefs.emailDigest !== undefined) setEmailDigestEnabled(prefs.emailDigest);
             if (prefs.emailUpdates !== undefined) setEmailUpdatesEnabled(prefs.emailUpdates);
             if (prefs.emailMarketing !== undefined) setEmailMarketingEnabled(prefs.emailMarketing);
           }
@@ -115,11 +113,6 @@ export default function NotificationsPreferencesScreen() {
   const handleChallengesChange = (value: boolean) => {
     setChallengesEnabled(value);
     savePreference('challenges', value);
-  };
-
-  const handleEmailDigestChange = (value: boolean) => {
-    setEmailDigestEnabled(value);
-    savePreference('emailDigest', value);
   };
 
   const handleEmailUpdatesChange = (value: boolean) => {
@@ -194,8 +187,8 @@ export default function NotificationsPreferencesScreen() {
         {
           id: 7,
           icon: 'gamecontroller',
-          title: 'Challenge Invites',
-          subtitle: 'When someone challenges you',
+          title: 'Party Invites',
+          subtitle: 'When someone invites you to a party',
           value: challengesEnabled,
           onValueChange: handleChallengesChange,
         },
@@ -207,14 +200,6 @@ export default function NotificationsPreferencesScreen() {
       items: [
         {
           id: 8,
-          icon: 'envelope.badge',
-          title: 'Weekly Digest',
-          subtitle: 'Summary of your activity',
-          value: emailDigestEnabled,
-          onValueChange: handleEmailDigestChange,
-        },
-        {
-          id: 9,
           icon: 'envelope',
           title: 'Product Updates',
           subtitle: 'New features and improvements',
@@ -222,7 +207,7 @@ export default function NotificationsPreferencesScreen() {
           onValueChange: handleEmailUpdatesChange,
         },
         {
-          id: 10,
+          id: 9,
           icon: 'megaphone',
           title: 'Marketing Emails',
           subtitle: 'Promotions and offers',

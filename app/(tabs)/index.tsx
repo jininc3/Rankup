@@ -864,6 +864,33 @@ export default function HomeScreen() {
 
   return (
     <ThemedView style={styles.container}>
+      <View style={styles.header}>
+        <ThemedText style={styles.headerTitle}>Following</ThemedText>
+        <View style={styles.headerActions}>
+          <TouchableOpacity
+            style={styles.headerIconButton}
+            onPress={() => router.push('/chatPages/chatList')}
+            activeOpacity={0.7}
+          >
+            <IconSymbol size={22} name="paperplane.fill" color="#fff" />
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={styles.headerIconButton}
+            onPress={() => router.push('/notifications')}
+            activeOpacity={0.7}
+          >
+            <IconSymbol size={22} name="bell" color="#fff" />
+            {unreadNotificationCount > 0 && (
+              <View style={styles.notificationBadge}>
+                <ThemedText style={styles.notificationBadgeText}>
+                  {unreadNotificationCount > 9 ? '9+' : unreadNotificationCount}
+                </ThemedText>
+              </View>
+            )}
+          </TouchableOpacity>
+        </View>
+      </View>
+
       <ScrollView
         ref={scrollViewRef}
         style={styles.scrollView}
@@ -885,33 +912,6 @@ export default function HomeScreen() {
           />
         }
       >
-        <View style={styles.header}>
-          <ThemedText style={styles.headerTitle}>Following</ThemedText>
-          <View style={styles.headerActions}>
-            <TouchableOpacity
-              style={styles.headerIconButton}
-              onPress={() => router.push('/chatPages/chatList')}
-              activeOpacity={0.7}
-            >
-              <IconSymbol size={22} name="paperplane.fill" color="#fff" />
-            </TouchableOpacity>
-            <TouchableOpacity
-              style={styles.headerIconButton}
-              onPress={() => router.push('/notifications')}
-              activeOpacity={0.7}
-            >
-              <IconSymbol size={22} name="bell" color="#fff" />
-              {unreadNotificationCount > 0 && (
-                <View style={styles.notificationBadge}>
-                  <ThemedText style={styles.notificationBadgeText}>
-                    {unreadNotificationCount > 9 ? '9+' : unreadNotificationCount}
-                  </ThemedText>
-                </View>
-              )}
-            </TouchableOpacity>
-          </View>
-        </View>
-
         {/* Game Filter Dropdown */}
         <View style={styles.gameFilterContainer}>
           <View style={styles.gameDropdownWrapper}>
@@ -1119,10 +1119,11 @@ const styles = StyleSheet.create({
     backgroundColor: '#0f0f0f',
   },
   headerTitle: {
-    fontSize: 24,
-    fontWeight: '700',
+    fontSize: 22,
+    fontWeight: '600',
     color: '#fff',
-    letterSpacing: -0.5,
+    letterSpacing: 0.3,
+    textTransform: 'uppercase',
   },
   headerActions: {
     flexDirection: 'row',
