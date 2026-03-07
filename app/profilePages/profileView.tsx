@@ -481,7 +481,7 @@ export default function ProfileViewScreen() {
               onPress={() => router.back()}
               activeOpacity={0.7}
             >
-              <IconSymbol size={22} name="chevron.left" color="#fff" />
+              <IconSymbol size={20} name="chevron.left" color="#fff" />
             </TouchableOpacity>
           </View>
 
@@ -491,12 +491,26 @@ export default function ProfileViewScreen() {
               <Image source={{ uri: viewedUser.coverPhoto }} style={styles.coverPhotoImage} />
             ) : (
               <LinearGradient
-                colors={['#2c2f33', '#1e2124']}
+                colors={['#2c2f33', '#0f0f0f']}
                 start={{ x: 0, y: 0 }}
                 end={{ x: 0, y: 1 }}
                 style={styles.coverPhotoGradient}
               />
             )}
+            {/* Top fade */}
+            <LinearGradient
+              colors={['rgba(15, 15, 15, 0.6)', 'transparent']}
+              start={{ x: 0, y: 0 }}
+              end={{ x: 0, y: 1 }}
+              style={styles.coverPhotoFadeTop}
+            />
+            {/* Bottom fade */}
+            <LinearGradient
+              colors={['transparent', 'rgba(15, 15, 15, 0.4)']}
+              start={{ x: 0, y: 0 }}
+              end={{ x: 0, y: 1 }}
+              style={styles.coverPhotoFadeBottom}
+            />
           </View>
 
           {/* Username Row with Profile Avatar on Right */}
@@ -991,10 +1005,10 @@ export default function ProfileViewScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#1e2124',
+    backgroundColor: '#0f0f0f',
   },
   headerSection: {
-    backgroundColor: '#1e2124',
+    backgroundColor: '#0f0f0f',
   },
   // Header icons row
   headerIconsRow: {
@@ -1006,10 +1020,7 @@ const styles = StyleSheet.create({
     paddingBottom: 12,
   },
   headerIconButton: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    backgroundColor: 'rgba(44, 47, 51, 0.8)',
+    padding: 8,
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -1020,12 +1031,31 @@ const styles = StyleSheet.create({
     backgroundColor: '#2c2f33',
   },
   coverPhotoImage: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
     width: '100%',
     height: '100%',
   },
   coverPhotoGradient: {
     width: '100%',
     height: '100%',
+  },
+  coverPhotoFadeTop: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    height: 60,
+    zIndex: 1,
+  },
+  coverPhotoFadeBottom: {
+    position: 'absolute',
+    bottom: 0,
+    left: 0,
+    right: 0,
+    height: 80,
+    zIndex: 1,
   },
   // Username row with avatar
   usernameRow: {

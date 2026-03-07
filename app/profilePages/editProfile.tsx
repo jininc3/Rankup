@@ -629,13 +629,13 @@ export default function EditProfileScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#1e2124',
+    backgroundColor: '#0f0f0f',
   },
   scrollContent: {
     paddingBottom: 120,
   },
   headerSection: {
-    backgroundColor: '#1e2124',
+    backgroundColor: '#0f0f0f',
   },
   // Header icons row
   headerIconsRow: {
@@ -735,7 +735,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     borderWidth: 2,
-    borderColor: '#1e2124',
+    borderColor: '#0f0f0f',
   },
   // Followers / Following row
   followStatsRow: {
@@ -847,7 +847,7 @@ const styles = StyleSheet.create({
     bottom: 0,
     left: 0,
     right: 0,
-    backgroundColor: '#1e2124',
+    backgroundColor: '#0f0f0f',
     paddingHorizontal: 20,
     paddingVertical: 16,
     paddingBottom: 36,

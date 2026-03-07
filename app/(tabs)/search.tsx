@@ -240,11 +240,11 @@ export default function SearchScreen() {
         <ThemedText style={styles.headerTitle}>Search</ThemedText>
       </View>
       <View style={styles.searchContainer}>
-        <IconSymbol size={20} name="magnifyingglass" color="#fff" />
+        <IconSymbol size={18} name="magnifyingglass" color="#666" />
         <TextInput
           style={styles.searchInput}
-          placeholder="Search by username..."
-          placeholderTextColor="#999"
+          placeholder="Search users..."
+          placeholderTextColor="#555"
           value={searchQuery}
           onChangeText={(text) => handleSearch(text.toLowerCase())}
           autoCapitalize="none"
@@ -253,7 +253,7 @@ export default function SearchScreen() {
           <TouchableOpacity onPress={() => {
             handleSearch('');
           }}>
-            <IconSymbol size={20} name="xmark.circle.fill" color="#fff" />
+            <IconSymbol size={18} name="xmark.circle.fill" color="#555" />
           </TouchableOpacity>
         )}
       </View>
@@ -261,8 +261,7 @@ export default function SearchScreen() {
       <ScrollView style={styles.scrollView} showsVerticalScrollIndicator={false}>
         {searchQuery.trim() === '' && loadingHistory ? (
           <View style={styles.loadingState}>
-            <ActivityIndicator size="large" color="#c42743" />
-            <ThemedText style={styles.loadingText}>Loading...</ThemedText>
+            <ActivityIndicator size="small" color="#666" />
           </View>
         ) : searchQuery.trim() === '' && searchHistory.length > 0 ? (
           <View>
@@ -301,7 +300,7 @@ export default function SearchScreen() {
                   style={styles.deleteButton}
                   hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
                 >
-                  <IconSymbol size={16} name="xmark" color="#b9bbbe" />
+                  <IconSymbol size={14} name="xmark" color="#444" />
                 </TouchableOpacity>
               </TouchableOpacity>
               );
@@ -309,14 +308,13 @@ export default function SearchScreen() {
           </View>
         ) : searchQuery.trim() === '' && searchHistory.length === 0 ? (
           <View style={styles.emptyState}>
-            <IconSymbol size={64} name="magnifyingglass" color="#fff" />
+            <IconSymbol size={48} name="magnifyingglass" color="#333" />
             <ThemedText style={styles.emptyText}>No recent searches</ThemedText>
-            <ThemedText style={styles.emptySubtext}>Your search history will appear here</ThemedText>
+            <ThemedText style={styles.emptySubtext}>Search history will appear here</ThemedText>
           </View>
         ) : searching ? (
           <View style={styles.loadingState}>
-            <ActivityIndicator size="large" color="#c42743" />
-            <ThemedText style={styles.loadingText}>Searching...</ThemedText>
+            <ActivityIndicator size="small" color="#666" />
           </View>
         ) : searchResults.length > 0 ? (
           searchResults.map((user) => {
@@ -348,7 +346,7 @@ export default function SearchScreen() {
           })
         ) : (
           <View style={styles.emptyState}>
-            <IconSymbol size={64} name="magnifyingglass" color="#fff" />
+            <IconSymbol size={48} name="person.slash" color="#333" />
             <ThemedText style={styles.emptyText}>No users found</ThemedText>
             <ThemedText style={styles.emptySubtext}>Try a different search term</ThemedText>
           </View>
@@ -361,58 +359,54 @@ export default function SearchScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#1e2124',
+    backgroundColor: '#0f0f0f',
   },
   header: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    paddingHorizontal: 20,
+    paddingHorizontal: 16,
     paddingTop: 55,
-    paddingBottom: 15,
-    backgroundColor: '#1e2124',
-    borderBottomWidth: 1,
-    borderBottomColor: '#c42743',
+    paddingBottom: 4,
+    backgroundColor: '#0f0f0f',
   },
   headerTitle: {
-    fontSize: 20,
+    fontSize: 24,
     fontWeight: '700',
     color: '#fff',
+    letterSpacing: -0.5,
   },
   headerActions: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 16,
+    gap: 8,
   },
   headerIconButton: {
-    padding: 4,
+    padding: 8,
   },
   searchContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#36393e',
-    marginHorizontal: 20,
+    backgroundColor: 'rgba(255, 255, 255, 0.06)',
+    marginHorizontal: 16,
     marginTop: 16,
-    marginBottom: 16,
-    paddingHorizontal: 16,
-    paddingVertical: 12,
-    borderRadius: 12,
+    marginBottom: 8,
+    paddingHorizontal: 14,
+    paddingVertical: 10,
+    borderRadius: 10,
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.08)',
     gap: 10,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.3,
-    shadowRadius: 6,
-    elevation: 8,
   },
   searchInput: {
     flex: 1,
-    fontSize: 16,
+    fontSize: 15,
     color: '#fff',
     padding: 0,
   },
   scrollView: {
     flex: 1,
-    paddingHorizontal: 20,
+    paddingHorizontal: 16,
   },
   userCard: {
     flexDirection: 'row',
@@ -470,77 +464,80 @@ const styles = StyleSheet.create({
   loadingState: {
     alignItems: 'center',
     justifyContent: 'center',
-    paddingTop: 100,
-    gap: 12,
+    paddingTop: 120,
+    gap: 16,
   },
   loadingText: {
-    fontSize: 16,
-    color: '#b9bbbe',
+    fontSize: 14,
+    color: '#666',
+    letterSpacing: 0.3,
   },
   emptyState: {
     alignItems: 'center',
     justifyContent: 'center',
-    paddingTop: 100,
+    paddingTop: 120,
   },
   emptyText: {
-    fontSize: 18,
+    fontSize: 16,
     fontWeight: '600',
     color: '#fff',
-    marginTop: 16,
+    marginTop: 20,
   },
   emptySubtext: {
-    fontSize: 14,
-    color: '#b9bbbe',
-    marginTop: 8,
+    fontSize: 13,
+    color: '#555',
+    marginTop: 6,
   },
   historyHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: 16,
-    paddingTop: 8,
+    marginBottom: 12,
+    marginTop: 8,
   },
   historyTitle: {
-    fontSize: 16,
+    fontSize: 12,
     fontWeight: '600',
-    color: '#fff',
+    color: '#666',
+    letterSpacing: 0.5,
+    textTransform: 'uppercase',
   },
   clearButton: {
-    fontSize: 14,
+    fontSize: 12,
     fontWeight: '500',
-    color: '#c42743',
+    color: '#666',
   },
   historyCard: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    paddingVertical: 8,
-    paddingHorizontal: 12,
-    marginBottom: 4,
-    borderRadius: 8,
+    paddingVertical: 10,
+    paddingHorizontal: 0,
+    marginBottom: 2,
   },
   historyLeft: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 10,
+    gap: 12,
     flex: 1,
   },
   historyAvatar: {
-    width: 32,
-    height: 32,
-    borderRadius: 16,
-    backgroundColor: '#f0f0f0',
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: '#1a1a1a',
     alignItems: 'center',
     justifyContent: 'center',
   },
   historyAvatarImage: {
     width: '100%',
     height: '100%',
-    borderRadius: 16,
+    borderRadius: 20,
   },
   historyAvatarInitial: {
-    fontSize: 14,
+    fontSize: 15,
     fontWeight: '600',
+    color: '#666',
   },
   historyUsername: {
     fontSize: 15,
@@ -549,6 +546,6 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   deleteButton: {
-    padding: 4,
+    padding: 8,
   },
 });

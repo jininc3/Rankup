@@ -270,57 +270,17 @@ export default function LeaderboardScreen() {
               style={[styles.tab, selectedTab === 'current' && styles.tabActive]}
               onPress={() => setSelectedTab('current')}
             >
-              {selectedTab === 'current' ? (
-                <LinearGradient
-                  colors={['#D64350', '#C42743', '#B22038']}
-                  start={{ x: 0, y: 0 }}
-                  end={{ x: 1, y: 1 }}
-                  style={styles.tabGradient}
-                >
-                  <ThemedText style={styles.tabTextActive}>
-                    Current ({currentParties.length})
-                  </ThemedText>
-                </LinearGradient>
-              ) : (
-                <LinearGradient
-                  colors={['#40444b', '#36393e', '#32353a']}
-                  start={{ x: 0, y: 0 }}
-                  end={{ x: 1, y: 1 }}
-                  style={styles.tabGradient}
-                >
-                  <ThemedText style={styles.tabText}>
-                    Current ({currentParties.length})
-                  </ThemedText>
-                </LinearGradient>
-              )}
+              <ThemedText style={[styles.tabText, selectedTab === 'current' && styles.tabTextActive]}>
+                Current ({currentParties.length})
+              </ThemedText>
             </TouchableOpacity>
             <TouchableOpacity
               style={[styles.tab, selectedTab === 'completed' && styles.tabActive]}
               onPress={() => setSelectedTab('completed')}
             >
-              {selectedTab === 'completed' ? (
-                <LinearGradient
-                  colors={['#D64350', '#C42743', '#B22038']}
-                  start={{ x: 0, y: 0 }}
-                  end={{ x: 1, y: 1 }}
-                  style={styles.tabGradient}
-                >
-                  <ThemedText style={styles.tabTextActive}>
-                    Completed ({completedParties.length})
-                  </ThemedText>
-                </LinearGradient>
-              ) : (
-                <LinearGradient
-                  colors={['#40444b', '#36393e', '#32353a']}
-                  start={{ x: 0, y: 0 }}
-                  end={{ x: 1, y: 1 }}
-                  style={styles.tabGradient}
-                >
-                  <ThemedText style={styles.tabText}>
-                    Completed ({completedParties.length})
-                  </ThemedText>
-                </LinearGradient>
-              )}
+              <ThemedText style={[styles.tabText, selectedTab === 'completed' && styles.tabTextActive]}>
+                Completed ({completedParties.length})
+              </ThemedText>
             </TouchableOpacity>
           </View>
 
@@ -367,7 +327,7 @@ export default function LeaderboardScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#1e2124',
+    backgroundColor: '#0f0f0f',
   },
   header: {
     flexDirection: 'row',
@@ -376,9 +336,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20,
     paddingTop: 55,
     paddingBottom: 15,
-    backgroundColor: '#1e2124',
-    borderBottomWidth: 1,
-    borderBottomColor: '#c42743',
+    backgroundColor: '#0f0f0f',
   },
   headerTitle: {
     fontSize: 20,
@@ -411,44 +369,33 @@ const styles = StyleSheet.create({
   },
   tabsContainer: {
     flexDirection: 'row',
-    paddingHorizontal: 20,
-    paddingTop: 16,
-    paddingBottom: 16,
-    gap: 12,
+    paddingHorizontal: 16,
+    paddingTop: 12,
+    paddingBottom: 8,
+    gap: 8,
   },
   tab: {
-    flex: 1,
+    paddingVertical: 8,
+    paddingHorizontal: 16,
     borderRadius: 8,
     alignItems: 'center',
     justifyContent: 'center',
-    overflow: 'hidden',
+    backgroundColor: 'rgba(255, 255, 255, 0.05)',
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.08)',
   },
   tabActive: {
-    shadowColor: '#C42743',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.3,
-    shadowRadius: 3,
-    elevation: 5,
-  },
-  tabGradient: {
-    width: '100%',
-    paddingVertical: 10,
-    paddingHorizontal: 16,
-    alignItems: 'center',
-    justifyContent: 'center',
-    borderRadius: 8,
+    backgroundColor: 'rgba(255, 255, 255, 0.1)',
+    borderColor: 'rgba(255, 255, 255, 0.15)',
   },
   tabText: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: '#b9bbbe',
-    letterSpacing: -0.2,
+    fontSize: 13,
+    fontWeight: '500',
+    color: '#666',
   },
   tabTextActive: {
-    fontSize: 14,
-    fontWeight: '600',
     color: '#fff',
-    letterSpacing: -0.2,
+    fontWeight: '600',
   },
   leaderboardsSection: {
     paddingHorizontal: 20,

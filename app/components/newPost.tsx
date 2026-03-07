@@ -870,7 +870,7 @@ const styles = StyleSheet.create({
   },
   postPreviewContainer: {
     flex: 1,
-    backgroundColor: '#1e2124',
+    backgroundColor: '#0f0f0f',
   },
   postPreviewHeader: {
     flexDirection: 'row',
@@ -881,7 +881,7 @@ const styles = StyleSheet.create({
     paddingBottom: 16,
     borderBottomWidth: 1,
     borderBottomColor: '#2c2f33',
-    backgroundColor: '#1e2124',
+    backgroundColor: '#0f0f0f',
   },
   postPreviewBackButton: {
     padding: 4,
@@ -907,11 +907,11 @@ const styles = StyleSheet.create({
   },
   postPreviewContent: {
     flex: 1,
-    backgroundColor: '#1e2124',
+    backgroundColor: '#0f0f0f',
   },
   mediaTopSpace: {
     height: 12,
-    backgroundColor: '#1e2124',
+    backgroundColor: '#0f0f0f',
   },
   postPreviewMediaContainer: {
     width: '100%',
@@ -996,7 +996,7 @@ const styles = StyleSheet.create({
     paddingVertical: 16,
     borderBottomWidth: 1,
     borderBottomColor: '#2c2f33',
-    backgroundColor: '#1e2124',
+    backgroundColor: '#0f0f0f',
   },
   addMorePhotosText: {
     fontSize: 15,
@@ -1007,7 +1007,7 @@ const styles = StyleSheet.create({
     padding: 20,
     borderBottomWidth: 1,
     borderBottomColor: '#2c2f33',
-    backgroundColor: '#1e2124',
+    backgroundColor: '#0f0f0f',
   },
   postPreviewUserInfo: {
     flexDirection: 'row',
@@ -1056,7 +1056,7 @@ const styles = StyleSheet.create({
     paddingVertical: 10,
     borderBottomWidth: 1,
     borderBottomColor: '#2c2f33',
-    backgroundColor: '#1e2124',
+    backgroundColor: '#0f0f0f',
   },
   postPreviewOptionLeft: {
     flexDirection: 'row',
@@ -1081,7 +1081,7 @@ const styles = StyleSheet.create({
     marginRight: 8,
   },
   gameTagSection: {
-    backgroundColor: '#1e2124',
+    backgroundColor: '#0f0f0f',
     borderBottomWidth: 1,
     borderBottomColor: '#2c2f33',
   },
@@ -1136,7 +1136,7 @@ const styles = StyleSheet.create({
   },
   // Thumbnail Section Styles
   thumbnailSection: {
-    backgroundColor: '#1e2124',
+    backgroundColor: '#0f0f0f',
     borderBottomWidth: 1,
     borderBottomColor: '#2c2f33',
   },
@@ -1212,7 +1212,7 @@ const styles = StyleSheet.create({
   // Frame Selector Modal Styles
   frameSelectorContainer: {
     flex: 1,
-    backgroundColor: '#1e2124',
+    backgroundColor: '#0f0f0f',
   },
   frameSelectorHeader: {
     flexDirection: 'row',
@@ -1223,7 +1223,7 @@ const styles = StyleSheet.create({
     paddingBottom: 16,
     borderBottomWidth: 1,
     borderBottomColor: '#2c2f33',
-    backgroundColor: '#1e2124',
+    backgroundColor: '#0f0f0f',
   },
   frameSelectorCloseButton: {
     padding: 4,

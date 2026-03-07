@@ -1085,14 +1085,9 @@ export default function HomeScreen() {
         onPress={handleAddPost}
         activeOpacity={0.8}
       >
-        <LinearGradient
-          colors={['#D64350', '#C42743', '#B22038']}
-          start={{ x: 0, y: 0 }}
-          end={{ x: 1, y: 1 }}
-          style={styles.fabGradient}
-        >
+        <View style={styles.fabInner}>
           <IconSymbol size={28} name="plus" color="#fff" />
-        </LinearGradient>
+        </View>
       </TouchableOpacity>
 
       {/* New Post Modal */}
@@ -1405,20 +1400,23 @@ const styles = StyleSheet.create({
     height: 60,
     borderRadius: 30,
     overflow: 'hidden',
-    shadowColor: '#DC3D4B',
+    shadowColor: '#000',
     shadowOffset: {
       width: 0,
       height: 4,
     },
-    shadowOpacity: 0.4,
+    shadowOpacity: 0.3,
     shadowRadius: 6,
     elevation: 8,
   },
-  fabGradient: {
+  fabInner: {
     width: '100%',
     height: '100%',
     alignItems: 'center',
     justifyContent: 'center',
     borderRadius: 30,
+    backgroundColor: '#2c2f33',
+    borderWidth: 1,
+    borderColor: '#424549',
   },
 });

@@ -760,7 +760,7 @@ export default function DuoFinderScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#1e2124',
+    backgroundColor: '#0f0f0f',
   },
   header: {
     flexDirection: 'row',
@@ -769,9 +769,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20,
     paddingTop: 55,
     paddingBottom: 15,
-    backgroundColor: '#1e2124',
-    borderBottomWidth: 1,
-    borderBottomColor: '#c42743',
+    backgroundColor: '#0f0f0f',
   },
   headerTitle: {
     fontSize: 20,
@@ -808,7 +806,7 @@ const styles = StyleSheet.create({
     gap: 12,
     borderBottomWidth: 1,
     borderBottomColor: '#2c2f33',
-    backgroundColor: '#1e2124',
+    backgroundColor: '#0f0f0f',
   },
   tab: {
     flex: 1,

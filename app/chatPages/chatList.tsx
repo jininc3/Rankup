@@ -235,7 +235,7 @@ export default function ChatListScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#1e2124',
+    backgroundColor: '#0f0f0f',
   },
   header: {
     flexDirection: 'row',
@@ -244,7 +244,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 8,
     paddingTop: 60,
     paddingBottom: 12,
-    backgroundColor: '#1e2124',
+    backgroundColor: '#0f0f0f',
     borderBottomWidth: 1,
     borderBottomColor: '#2c2f33',
   },
@@ -265,7 +265,7 @@ const styles = StyleSheet.create({
   searchContainer: {
     paddingHorizontal: 20,
     paddingVertical: 12,
-    backgroundColor: '#1e2124',
+    backgroundColor: '#0f0f0f',
     borderBottomWidth: 1,
     borderBottomColor: '#2c2f33',
   },
@@ -314,7 +314,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     paddingHorizontal: 20,
     paddingVertical: 14,
-    backgroundColor: '#1e2124',
+    backgroundColor: '#0f0f0f',
     borderBottomWidth: 1,
     borderBottomColor: '#2c2f33',
   },

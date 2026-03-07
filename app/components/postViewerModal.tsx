@@ -473,7 +473,7 @@ export default function PostViewerModal({
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#1e2124',
+    backgroundColor: '#0f0f0f',
   },
   flatListContent: {
     paddingBottom: 250,
@@ -494,7 +494,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 8,
     paddingTop: 60,
     paddingBottom: 12,
-    backgroundColor: '#1e2124',
+    backgroundColor: '#0f0f0f',
     borderBottomWidth: 1,
     borderBottomColor: '#2c2f33',
   },

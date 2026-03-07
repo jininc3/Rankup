@@ -708,14 +708,14 @@ export default function ProfileScreen() {
               onPress={() => router.push('/profilePages/settings')}
               activeOpacity={0.7}
             >
-              <IconSymbol size={18} name="person.fill" color="#fff" />
+              <IconSymbol size={16} name="person.fill" color="#fff" />
             </TouchableOpacity>
             <TouchableOpacity
               style={styles.shareIconButton}
               onPress={() => {/* TODO: Share profile */}}
               activeOpacity={0.7}
             >
-              <IconSymbol size={18} name="square.and.arrow.up" color="#fff" />
+              <IconSymbol size={16} name="square.and.arrow.up" color="#fff" />
             </TouchableOpacity>
           </View>
 
@@ -730,12 +730,26 @@ export default function ProfileScreen() {
               />
             ) : (
               <LinearGradient
-                colors={['#2c2f33', '#1e2124']}
+                colors={['#2c2f33', '#0f0f0f']}
                 start={{ x: 0, y: 0 }}
                 end={{ x: 0, y: 1 }}
                 style={styles.coverPhotoGradient}
               />
             )}
+            {/* Top fade */}
+            <LinearGradient
+              colors={['rgba(15, 15, 15, 0.6)', 'transparent']}
+              start={{ x: 0, y: 0 }}
+              end={{ x: 0, y: 1 }}
+              style={styles.coverPhotoFadeTop}
+            />
+            {/* Bottom fade */}
+            <LinearGradient
+              colors={['transparent', 'rgba(15, 15, 15, 0.4)']}
+              start={{ x: 0, y: 0 }}
+              end={{ x: 0, y: 1 }}
+              style={styles.coverPhotoFadeBottom}
+            />
           </View>
 
           {/* Username Row with Profile Avatar on Right */}
@@ -976,7 +990,7 @@ export default function ProfileScreen() {
                 onPress={() => setShowNewPost(true)}
                 activeOpacity={0.8}
               >
-                <IconSymbol size={20} name="plus" color="#fff" />
+                <IconSymbol size={20} name="plus" color="#000" />
                 <ThemedText style={styles.addClipsEmptyText}>Create Post</ThemedText>
               </TouchableOpacity>
             </View>
@@ -1255,10 +1269,10 @@ export default function ProfileScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#1e2124',
+    backgroundColor: '#0f0f0f',
   },
   headerSection: {
-    backgroundColor: '#1e2124',
+    backgroundColor: '#0f0f0f',
     paddingTop: 50,
   },
   // Header icons row
@@ -1271,16 +1285,12 @@ const styles = StyleSheet.create({
     gap: 12,
   },
   headerIconButton: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    backgroundColor: 'rgba(44, 47, 51, 0.8)',
+    padding: 6,
     alignItems: 'center',
     justifyContent: 'center',
   },
   shareIconButton: {
-    width: 40,
-    height: 40,
+    padding: 6,
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -1291,12 +1301,31 @@ const styles = StyleSheet.create({
     backgroundColor: '#2c2f33',
   },
   coverPhotoImage: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
     width: '100%',
     height: '100%',
   },
   coverPhotoGradient: {
     width: '100%',
     height: '100%',
+  },
+  coverPhotoFadeTop: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    height: 60,
+    zIndex: 1,
+  },
+  coverPhotoFadeBottom: {
+    position: 'absolute',
+    bottom: 0,
+    left: 0,
+    right: 0,
+    height: 80,
+    zIndex: 1,
   },
   // Username row with avatar
   usernameRow: {
@@ -1618,7 +1647,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     borderWidth: 3,
-    borderColor: '#1e2124',
+    borderColor: '#0f0f0f',
   },
   emptyGameLogoCircleCenter: {
     width: 72,
@@ -1651,7 +1680,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     borderWidth: 3,
-    borderColor: '#1e2124',
+    borderColor: '#0f0f0f',
   },
   emptyClipsIconCircleCenter: {
     width: 72,
@@ -1667,13 +1696,13 @@ const styles = StyleSheet.create({
     marginTop: 28,
     paddingVertical: 14,
     paddingHorizontal: 28,
-    backgroundColor: '#c42743',
+    backgroundColor: '#fff',
     borderRadius: 12,
   },
   addClipsEmptyText: {
     fontSize: 16,
     fontWeight: '600',
-    color: '#fff',
+    color: '#000',
   },
   emptyIconCircle: {
     width: 96,
