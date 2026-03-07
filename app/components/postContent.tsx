@@ -9,6 +9,7 @@ import { TaggedUser } from '@/app/components/tagUsersModal';
 import { calculateTierBorderColor } from '@/utils/tierBorderUtils';
 
 const { width: screenWidth } = Dimensions.get('window');
+const mediaWidth = screenWidth - 32; // Account for horizontal margins
 
 // Game data
 const gameData: { [key: string]: { name: string; icon?: string; image?: any } } = {
@@ -23,6 +24,32 @@ const gameData: { [key: string]: { name: string; icon?: string; image?: any } } 
 const getGameIcon = (gameId: string) => gameData[gameId]?.icon || '🎮';
 const getGameName = (gameId: string) => gameData[gameId]?.name || gameId;
 const getGameImage = (gameId: string) => gameData[gameId]?.image || null;
+
+// Format post date - shows "X days ago" if less than a month, otherwise actual date
+const formatPostDate = (timestamp: any): string => {
+  if (!timestamp) return '';
+
+  const now = new Date();
+  const date = timestamp.toDate ? timestamp.toDate() : new Date(timestamp);
+  const diffInMs = now.getTime() - date.getTime();
+  const diffInDays = Math.floor(diffInMs / (1000 * 60 * 60 * 24));
+
+  if (diffInDays === 0) {
+    const diffInHours = Math.floor(diffInMs / (1000 * 60 * 60));
+    if (diffInHours === 0) {
+      const diffInMinutes = Math.floor(diffInMs / (1000 * 60));
+      if (diffInMinutes <= 1) return 'Just now';
+      return `${diffInMinutes}m ago`;
+    }
+    return `${diffInHours}h ago`;
+  } else if (diffInDays === 1) {
+    return '1 day ago';
+  } else if (diffInDays < 30) {
+    return `${diffInDays} days ago`;
+  } else {
+    return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+  }
+};
 
 // Video Player Component for expo-video
 const VideoPlayerComponent = ({
@@ -343,7 +370,7 @@ export default function PostContent({
 
   const [activeMediaIndex, setActiveMediaIndex] = useState(0);
   const [mediaHeight, setMediaHeight] = useState(
-    post.mediaType === 'video' ? screenWidth * 0.5625 : screenWidth
+    post.mediaType === 'video' ? mediaWidth * 0.5625 : mediaWidth
   );
   const mediaFlatListRef = useRef<FlatList>(null);
   const [recentComments, setRecentComments] = useState<CommentData[]>([]);
@@ -415,34 +442,28 @@ export default function PostContent({
               </ThemedText>
             )}
           </View>
-          <ThemedText style={styles.username}>{post.username}</ThemedText>
+          <View style={styles.userTextContainer}>
+            <ThemedText style={styles.username}>{post.username}</ThemedText>
+            <View style={styles.postMetaRow}>
+              {post.taggedGame && (
+                <>
+                  <ThemedText style={styles.postGameTag}>{getGameName(post.taggedGame).toUpperCase()}</ThemedText>
+                  <ThemedText style={styles.postMetaDot}>·</ThemedText>
+                </>
+              )}
+              <ThemedText style={styles.postDate}>{formatPostDate(post.createdAt)}</ThemedText>
+            </View>
+          </View>
         </TouchableOpacity>
         <View style={styles.headerRight}>
-          {post.taggedGame && (
-            <View style={styles.gameTag}>
-              {getGameImage(post.taggedGame) ? (
-                <Image
-                  source={getGameImage(post.taggedGame)}
-                  style={styles.gameTagImage}
-                  resizeMode="contain"
-                />
-              ) : (
-                <ThemedText style={styles.gameTagText}>
-                  {getGameIcon(post.taggedGame)} {getGameName(post.taggedGame)}
-                </ThemedText>
-              )}
-            </View>
-          )}
-          {post.userId === currentUserId && onDelete && (
-            <TouchableOpacity
-              style={styles.menuButton}
-              onPress={handlePostOptions}
-              activeOpacity={0.6}
-              hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
-            >
-              <IconSymbol size={20} name="ellipsis" color="#fff" />
-            </TouchableOpacity>
-          )}
+          <TouchableOpacity
+            style={styles.menuButton}
+            onPress={post.userId === currentUserId && onDelete ? handlePostOptions : undefined}
+            activeOpacity={0.6}
+            hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+          >
+            <IconSymbol size={20} name="ellipsis" color="#888" />
+          </TouchableOpacity>
         </View>
       </View>
 
@@ -466,13 +487,13 @@ export default function PostContent({
               keyExtractor={(_, index) => `media-${index}`}
               onMomentumScrollEnd={(event) => {
                 const offsetX = event.nativeEvent.contentOffset.x;
-                const index = Math.round(offsetX / screenWidth);
+                const index = Math.round(offsetX / mediaWidth);
                 setActiveMediaIndex(index);
               }}
               renderItem={({ item: url, index }) => {
                 const mediaType = post.mediaTypes?.[index] || 'image';
                 return (
-                  <View style={[styles.mediaItem, { width: screenWidth, height: mediaHeight }]}>
+                  <View style={[styles.mediaItem, { width: mediaWidth, height: mediaHeight }]}>
                     {mediaType === 'video' ? (
                       <VideoPlayerComponent
                         postId={`${post.id}-${index}`}
@@ -507,7 +528,7 @@ export default function PostContent({
             </View>
           </>
         ) : (
-          <View style={[styles.mediaItem, { width: screenWidth, height: mediaHeight }]}>
+          <View style={[styles.mediaItem, { width: mediaWidth, height: mediaHeight }]}>
             {post.mediaType === 'video' ? (
               <VideoPlayerComponent
                 postId={post.id}
@@ -539,7 +560,7 @@ export default function PostContent({
             hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
           >
             <IconSymbol
-              size={24}
+              size={26}
               name={isLiked ? "heart.fill" : "heart"}
               color={isLiked ? "#ff3b30" : "#fff"}
             />
@@ -550,17 +571,19 @@ export default function PostContent({
             activeOpacity={0.6}
             hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
           >
-            <IconSymbol size={24} name="bubble.left" color="#fff" />
+            <IconSymbol size={26} name="bubble.left" color="#fff" />
           </TouchableOpacity>
+          {post.userId !== currentUserId && onDirectMessage && (
+            <TouchableOpacity
+              style={styles.actionButton}
+              onPress={() => onDirectMessage(post)}
+              activeOpacity={0.6}
+              hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+            >
+              <IconSymbol size={26} name="paperplane" color="#fff" />
+            </TouchableOpacity>
+          )}
         </View>
-        {post.userId !== currentUserId && onDirectMessage && (
-          <TouchableOpacity
-            style={styles.shareButton}
-            onPress={() => onDirectMessage(post)}
-          >
-            <IconSymbol size={24} name="paperplane" color="#fff" />
-          </TouchableOpacity>
-        )}
       </View>
 
       {/* Likes and Comments Count */}
@@ -608,9 +631,6 @@ export default function PostContent({
               <ThemedText style={styles.commentText} numberOfLines={1}>
                 {comment.text}
               </ThemedText>
-              <ThemedText style={styles.commentTime}>
-                {formatTimeAgo(comment.createdAt)}
-              </ThemedText>
             </View>
           ))}
           {(post.commentsCount ?? 0) > 2 && (
@@ -622,6 +642,9 @@ export default function PostContent({
           )}
         </View>
       )}
+
+      {/* Post Divider */}
+      <View style={styles.postDivider} />
     </View>
   );
 }
@@ -629,15 +652,21 @@ export default function PostContent({
 const styles = StyleSheet.create({
   postContainer: {
     width: screenWidth,
-    backgroundColor: '#1e2124',
+    backgroundColor: '#0f0f0f',
+  },
+  postDivider: {
+    height: 1,
+    backgroundColor: 'rgba(255, 255, 255, 0.1)',
+    marginHorizontal: 40,
+    marginTop: 8,
   },
   postHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
     paddingHorizontal: 16,
-    paddingTop: 12,
-    paddingBottom: 4,
+    paddingTop: 16,
+    paddingBottom: 8,
   },
   userInfo: {
     flexDirection: 'row',
@@ -648,44 +677,66 @@ const styles = StyleSheet.create({
   headerRight: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 8,
+    gap: 12,
   },
   avatar: {
-    width: 32,
-    height: 32,
-    borderRadius: 16,
-    backgroundColor: '#f0f0f0',
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    backgroundColor: '#2c2f33',
     alignItems: 'center',
     justifyContent: 'center',
   },
   avatarImage: {
-    width: 32,
-    height: 32,
-    borderRadius: 16,
+    width: 44,
+    height: 44,
+    borderRadius: 22,
   },
   avatarInitial: {
-    fontSize: 14,
-    fontWeight: '600',
+    fontSize: 16,
+    fontWeight: '700',
     color: '#fff',
+  },
+  userTextContainer: {
+    flexDirection: 'column',
+    justifyContent: 'center',
   },
   username: {
-    fontSize: 14,
-    fontWeight: '600',
+    fontSize: 15,
+    fontWeight: '700',
     color: '#fff',
   },
+  postMetaRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginTop: 2,
+  },
+  postGameTag: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: '#888',
+  },
+  postMetaDot: {
+    fontSize: 12,
+    color: '#888',
+    marginHorizontal: 6,
+  },
+  postDate: {
+    fontSize: 12,
+    color: '#888',
+  },
   gameTag: {
-    paddingHorizontal: 4,
-    paddingVertical: 2,
-    marginLeft: 30,
+    paddingHorizontal: 0,
+    paddingVertical: 0,
   },
   gameTagText: {
     fontSize: 12,
     fontWeight: '500',
-    color: '#fff',
+    color: '#888',
   },
   gameTagImage: {
-    height: 36,
-    width: 120,
+    height: 20,
+    width: 80,
   },
   captionContainer: {
     paddingHorizontal: 16,
@@ -694,12 +745,15 @@ const styles = StyleSheet.create({
   captionText: {
     fontSize: 14,
     color: '#fff',
-    lineHeight: 18,
+    lineHeight: 20,
   },
   mediaContainer: {
-    width: screenWidth,
+    width: mediaWidth,
+    marginHorizontal: 16,
     backgroundColor: '#000',
     position: 'relative',
+    borderRadius: 12,
+    overflow: 'hidden',
   },
   mediaItem: {
     justifyContent: 'center',
@@ -827,34 +881,34 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    paddingHorizontal: 16,
-    paddingTop: 4,
+    paddingHorizontal: 12,
+    paddingTop: 12,
   },
   leftActions: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 4,
+    gap: 2,
   },
   actionButton: {
-    padding: 6,
-    marginRight: 2,
+    padding: 4,
   },
   shareButton: {
     marginLeft: 'auto',
-    padding: 6,
+    padding: 4,
   },
   menuButton: {
-    padding: 8,
+    padding: 4,
   },
   likesContainer: {
     flexDirection: 'row',
     alignItems: 'center',
     paddingHorizontal: 16,
-    paddingTop: 2,
+    paddingTop: 8,
+    paddingBottom: 4,
     gap: 4,
   },
   likesText: {
-    fontSize: 13,
+    fontSize: 14,
     fontWeight: '600',
     color: '#fff',
   },
@@ -865,22 +919,6 @@ const styles = StyleSheet.create({
   commentsText: {
     fontSize: 13,
     color: '#b9bbbe',
-  },
-  captionContainer: {
-    flexDirection: 'row',
-    paddingHorizontal: 16,
-    paddingTop: 8,
-    gap: 6,
-  },
-  captionUsername: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: '#fff',
-  },
-  captionText: {
-    fontSize: 14,
-    color: '#fff',
-    flex: 1,
   },
   taggedUsersContainer: {
     flexDirection: 'row',
@@ -900,9 +938,9 @@ const styles = StyleSheet.create({
   },
   commentsPreviewContainer: {
     paddingHorizontal: 16,
-    paddingTop: 6,
-    paddingBottom: 10,
-    gap: 2,
+    paddingTop: 0,
+    paddingBottom: 16,
+    gap: 4,
   },
   commentPreview: {
     flexDirection: 'row',

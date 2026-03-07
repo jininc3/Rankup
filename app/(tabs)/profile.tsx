@@ -699,9 +699,27 @@ export default function ProfileScreen() {
           />
         }
       >
-        {/* Header Section with Cover Photo */}
+        {/* Header Section - New Design */}
         <View style={styles.headerSection}>
-          {/* Cover Photo with Gradient Overlay */}
+          {/* Top Header Icons */}
+          <View style={styles.headerIconsRow}>
+            <TouchableOpacity
+              style={styles.headerIconButton}
+              onPress={() => router.push('/profilePages/settings')}
+              activeOpacity={0.7}
+            >
+              <IconSymbol size={18} name="person.fill" color="#fff" />
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={styles.shareIconButton}
+              onPress={() => {/* TODO: Share profile */}}
+              activeOpacity={0.7}
+            >
+              <IconSymbol size={18} name="square.and.arrow.up" color="#fff" />
+            </TouchableOpacity>
+          </View>
+
+          {/* Cover Photo Area */}
           <View style={styles.coverPhotoWrapper}>
             {user?.coverPhoto ? (
               <Image
@@ -712,280 +730,170 @@ export default function ProfileScreen() {
               />
             ) : (
               <LinearGradient
-                colors={['#667eea', '#764ba2']}
+                colors={['#2c2f33', '#1e2124']}
                 start={{ x: 0, y: 0 }}
-                end={{ x: 1, y: 1 }}
+                end={{ x: 0, y: 1 }}
                 style={styles.coverPhotoGradient}
               />
             )}
-            <LinearGradient
-              colors={['transparent', 'rgba(30, 33, 36, 0.8)']}
-              style={styles.coverPhotoOverlay}
-            />
           </View>
 
-          {/* DM Icon */}
-          <TouchableOpacity
-            style={styles.headerDmButton}
-            onPress={() => router.push('/chatPages/chatList')}
-          >
-            <View style={styles.headerDmButtonBg}>
-              <IconSymbol size={22} name="paperplane.fill" color="#fff" />
-            </View>
-          </TouchableOpacity>
+          {/* Username Row with Profile Avatar on Right */}
+          <View style={styles.usernameRow}>
+            <ThemedText style={styles.largeUsername}>{user?.username || 'User'}</ThemedText>
 
-          {/* Animated Content Wrapper - slides over cover photo on scroll */}
-          <Animated.View
-            style={{
-              transform: [{ translateY: profileCardTranslateY }],
-            }}
-          >
-            {/* Profile Info Card */}
-            <View style={styles.profileCard}>
-            {/* Top Row: Avatar on Left, Username + Stats on Right */}
-            <View style={styles.profileTopRow}>
-              {/* Avatar */}
-              <View style={styles.avatarWrapper}>
-                {tierBorderGradient ? (
-                  <GradientBorder
-                    colors={tierBorderGradient}
-                    borderWidth={2}
-                    borderRadius={35}
-                  >
-                    <View style={styles.avatarCircleWithGradient}>
-                      {user?.avatar && user.avatar.startsWith('http') ? (
-                        <Image
-                          source={{ uri: user.avatar }}
-                          style={[styles.avatarImage, { opacity: allContentLoaded ? 1 : 0 }]}
-                          onLoad={() => setAvatarLoaded(true)}
-                          onError={() => setAvatarLoaded(true)}
-                        />
-                      ) : (
-                        <ThemedText style={styles.avatarInitial}>
-                          {user?.avatar || user?.username?.[0]?.toUpperCase() || 'U'}
-                        </ThemedText>
-                      )}
-                    </View>
-                  </GradientBorder>
-                ) : (
-                  <View style={styles.avatarCircle}>
+            {/* Profile Avatar */}
+            <TouchableOpacity
+              style={styles.profileAvatarButton}
+              onPress={() => router.push('/profilePages/settings')}
+              activeOpacity={0.7}
+            >
+              {tierBorderGradient ? (
+                <GradientBorder
+                  colors={tierBorderGradient}
+                  borderWidth={2}
+                  borderRadius={28}
+                >
+                  <View style={styles.profileAvatarCircleWithGradient}>
                     {user?.avatar && user.avatar.startsWith('http') ? (
                       <Image
                         source={{ uri: user.avatar }}
-                        style={[styles.avatarImage, { opacity: allContentLoaded ? 1 : 0 }]}
+                        style={[styles.profileAvatarImage, { opacity: allContentLoaded ? 1 : 0 }]}
                         onLoad={() => setAvatarLoaded(true)}
                         onError={() => setAvatarLoaded(true)}
                       />
                     ) : (
-                      <ThemedText style={styles.avatarInitial}>
+                      <ThemedText style={styles.profileAvatarInitial}>
                         {user?.avatar || user?.username?.[0]?.toUpperCase() || 'U'}
                       </ThemedText>
                     )}
                   </View>
-                )}
-              </View>
-
-              {/* Right Side: Username and Stats */}
-              <View style={styles.profileRightSide}>
-                <ThemedText style={styles.username}>{user?.username || 'User'}</ThemedText>
-
-                {/* Stats in individual cards */}
-                <View style={styles.statsContainer}>
-                  <View style={styles.statItem}>
-                    <ThemedText style={styles.statNumber}>{posts.length}</ThemedText>
-                    <ThemedText style={styles.statLabel}>Posts</ThemedText>
-                  </View>
-                  <TouchableOpacity
-                    style={styles.statItem}
-                    onPress={() => router.push('/profilePages/followers')}
-                    activeOpacity={0.7}
-                  >
-                    <ThemedText style={styles.statNumber}>{user?.followersCount || 0}</ThemedText>
-                    <ThemedText style={styles.statLabel}>Followers</ThemedText>
-                  </TouchableOpacity>
-                  <TouchableOpacity
-                    style={styles.statItem}
-                    onPress={() => router.push('/profilePages/following')}
-                    activeOpacity={0.7}
-                  >
-                    <ThemedText style={styles.statNumber}>{user?.followingCount || 0}</ThemedText>
-                    <ThemedText style={styles.statLabel}>Following</ThemedText>
-                  </TouchableOpacity>
-                </View>
-              </View>
-            </View>
-
-            {/* Bio Row */}
-            {user?.bio ? (
-              <ThemedText style={styles.bioText}>{user.bio}</ThemedText>
-            ) : (
-              <ThemedText style={styles.emptyBioText}>No bio added yet</ThemedText>
-            )}
-
-            {/* Action Buttons Row */}
-            <View style={styles.actionButtonsRow}>
-                <TouchableOpacity
-                  style={styles.editButton}
-                  onPress={() => router.push('/profilePages/editProfile')}
-                  activeOpacity={0.8}
-                >
-                  <LinearGradient
-                    colors={['#D64350', '#C42743', '#B22038']}
-                    start={{ x: 0, y: 0 }}
-                    end={{ x: 1, y: 1 }}
-                    style={styles.editButtonGradient}
-                  >
-                    <IconSymbol size={14} name="pencil" color="#fff" />
-                    <ThemedText style={styles.editButtonText}>Edit Profile</ThemedText>
-                  </LinearGradient>
-                </TouchableOpacity>
-
-                <View style={styles.socialsButtonContainer}>
-                  <TouchableOpacity
-                    style={styles.socialsButton}
-                    onPress={() => setShowSocialsDropdown(!showSocialsDropdown)}
-                    activeOpacity={0.8}
-                  >
-                    <LinearGradient
-                      colors={['#40444b', '#36393e', '#32353a']}
-                      start={{ x: 0, y: 0 }}
-                      end={{ x: 1, y: 1 }}
-                      style={styles.socialsButtonGradient}
-                    >
-                      <IconSymbol size={14} name="link" color="#fff" />
-                      <ThemedText style={styles.socialsButtonText}>Socials</ThemedText>
-                    </LinearGradient>
-                  </TouchableOpacity>
-
-                  {/* Socials Popover */}
-                  {showSocialsDropdown && (
-                    <>
-                      {/* Dismiss overlay */}
-                      <TouchableOpacity
-                        style={styles.popoverOverlay}
-                        activeOpacity={1}
-                        onPress={() => setShowSocialsDropdown(false)}
-                      />
-                      <View style={styles.socialsPopover}>
-                        {/* Arrow pointing down */}
-                        <View style={styles.popoverArrow} />
-                        {/* Instagram */}
-                        <TouchableOpacity
-                          style={styles.socialDropdownOption}
-                          onPress={async () => {
-                            setShowSocialsDropdown(false);
-                            if (user?.instagramLink) {
-                              try {
-                                const username = user.instagramLink.replace(/^https?:\/\/(www\.)?instagram\.com\//, '').replace(/\/$/, '');
-                                const appUrl = `instagram://user?username=${username}`;
-                                const webUrl = `https://instagram.com/${username}`;
-
-                                const supported = await Linking.canOpenURL(appUrl);
-                                if (supported) {
-                                  await Linking.openURL(appUrl);
-                                } else {
-                                  await Linking.openURL(webUrl);
-                                }
-                              } catch (error) {
-                                console.error('Error opening Instagram:', error);
-                                Alert.alert('Error', 'Failed to open Instagram');
-                              }
-                            } else {
-                              Alert.alert('Not Configured', 'Add your Instagram username in Edit Profile');
-                            }
-                          }}
-                          activeOpacity={0.7}
-                        >
-                          <View style={[styles.socialDropdownIconContainer, styles.instagramIconContainer, !user?.instagramLink && styles.socialNotConfigured]}>
-                            <Image
-                              source={require('@/assets/images/instagram.png')}
-                              style={styles.socialDropdownIcon}
-                              resizeMode="contain"
-                            />
-                          </View>
-                          <View style={{ flex: 1 }}>
-                            <ThemedText style={styles.socialDropdownTitle}>Instagram</ThemedText>
-                            <ThemedText style={styles.socialDropdownSubtitle}>
-                              {user?.instagramLink
-                                ? user.instagramLink.replace(/^https?:\/\/(www\.)?instagram\.com\//, '').replace(/\/$/, '')
-                                : 'Not configured'}
-                            </ThemedText>
-                          </View>
-                        </TouchableOpacity>
-
-                        {/* Discord */}
-                        <TouchableOpacity
-                          style={styles.socialDropdownOption}
-                          onPress={async () => {
-                            setShowSocialsDropdown(false);
-                            if (user?.discordLink) {
-                              try {
-                                await Clipboard.setStringAsync(user.discordLink);
-                                Alert.alert(
-                                  'Copied!',
-                                  `Discord username "${user.discordLink}" copied to clipboard`,
-                                  [{ text: 'OK' }]
-                                );
-                              } catch (error) {
-                                console.error('Error copying to clipboard:', error);
-                                Alert.alert('Error', 'Failed to copy Discord username');
-                              }
-                            } else {
-                              Alert.alert('Not Configured', 'Add your Discord username in Edit Profile');
-                            }
-                          }}
-                          activeOpacity={0.7}
-                        >
-                          <View style={[styles.socialDropdownIconContainer, styles.discordIconContainer, !user?.discordLink && styles.socialNotConfigured]}>
-                            <Image
-                              source={require('@/assets/images/discord.png')}
-                              style={styles.socialDropdownIcon}
-                              resizeMode="contain"
-                            />
-                          </View>
-                          <View style={{ flex: 1 }}>
-                            <ThemedText style={styles.socialDropdownTitle}>Discord</ThemedText>
-                            <ThemedText style={styles.socialDropdownSubtitle}>
-                              {user?.discordLink || 'Not configured'}
-                            </ThemedText>
-                          </View>
-                        </TouchableOpacity>
-                      </View>
-                    </>
+                </GradientBorder>
+              ) : (
+                <View style={styles.profileAvatarCircle}>
+                  {user?.avatar && user.avatar.startsWith('http') ? (
+                    <Image
+                      source={{ uri: user.avatar }}
+                      style={[styles.profileAvatarImage, { opacity: allContentLoaded ? 1 : 0 }]}
+                      onLoad={() => setAvatarLoaded(true)}
+                      onError={() => setAvatarLoaded(true)}
+                    />
+                  ) : (
+                    <ThemedText style={styles.profileAvatarInitial}>
+                      {user?.avatar || user?.username?.[0]?.toUpperCase() || 'U'}
+                    </ThemedText>
                   )}
                 </View>
-
-              <TouchableOpacity
-                style={styles.shareButton}
-                activeOpacity={0.8}
-              >
-                <LinearGradient
-                  colors={['#40444b', '#36393e', '#32353a']}
-                  start={{ x: 0, y: 0 }}
-                  end={{ x: 1, y: 1 }}
-                  style={styles.shareButtonGradient}
-                >
-                  <IconSymbol size={16} name="square.and.arrow.up" color="#fff" />
-                </LinearGradient>
-              </TouchableOpacity>
-
-              <TouchableOpacity
-                style={styles.settingsButton}
-                onPress={() => router.push('/profilePages/settings')}
-                activeOpacity={0.8}
-              >
-                <LinearGradient
-                  colors={['#40444b', '#36393e', '#32353a']}
-                  start={{ x: 0, y: 0 }}
-                  end={{ x: 1, y: 1 }}
-                  style={styles.settingsButtonGradient}
-                >
-                  <IconSymbol size={16} name="gearshape.fill" color="#fff" />
-                </LinearGradient>
-              </TouchableOpacity>
-            </View>
+              )}
+            </TouchableOpacity>
           </View>
 
+          {/* Followers / Following Row */}
+          <View style={styles.followStatsRow}>
+            <TouchableOpacity
+              style={styles.followStatItem}
+              onPress={() => router.push('/profilePages/followers')}
+              activeOpacity={0.7}
+            >
+              <ThemedText style={styles.followStatNumber}>{user?.followersCount || 0}</ThemedText>
+              <ThemedText style={styles.followStatLabel}> Followers</ThemedText>
+            </TouchableOpacity>
+            <View style={styles.followStatDivider} />
+            <TouchableOpacity
+              style={styles.followStatItem}
+              onPress={() => router.push('/profilePages/following')}
+              activeOpacity={0.7}
+            >
+              <ThemedText style={styles.followStatNumber}>{user?.followingCount || 0}</ThemedText>
+              <ThemedText style={styles.followStatLabel}> Following</ThemedText>
+            </TouchableOpacity>
+          </View>
+
+          {/* Social Icons Row with Edit Profile */}
+          <View style={styles.socialIconsRow}>
+            {/* Instagram */}
+            <TouchableOpacity
+              style={[styles.socialIconButton, !user?.instagramLink && styles.socialIconInactive]}
+              onPress={async () => {
+                if (user?.instagramLink) {
+                  try {
+                    const username = user.instagramLink.replace(/^https?:\/\/(www\.)?instagram\.com\//, '').replace(/\/$/, '');
+                    const appUrl = `instagram://user?username=${username}`;
+                    const webUrl = `https://instagram.com/${username}`;
+                    const supported = await Linking.canOpenURL(appUrl);
+                    if (supported) {
+                      await Linking.openURL(appUrl);
+                    } else {
+                      await Linking.openURL(webUrl);
+                    }
+                  } catch (error) {
+                    Alert.alert('Error', 'Failed to open Instagram');
+                  }
+                } else {
+                  Alert.alert('Not Configured', 'Add your Instagram username in Edit Profile');
+                }
+              }}
+              activeOpacity={0.7}
+            >
+              <Image
+                source={require('@/assets/images/instagram.png')}
+                style={styles.socialIconImage}
+                resizeMode="contain"
+              />
+            </TouchableOpacity>
+
+            {/* Discord */}
+            <TouchableOpacity
+              style={[styles.socialIconButton, !user?.discordLink && styles.socialIconInactive]}
+              onPress={async () => {
+                if (user?.discordLink) {
+                  try {
+                    await Clipboard.setStringAsync(user.discordLink);
+                    Alert.alert('Copied!', `Discord username "${user.discordLink}" copied to clipboard`);
+                  } catch (error) {
+                    Alert.alert('Error', 'Failed to copy Discord username');
+                  }
+                } else {
+                  Alert.alert('Not Configured', 'Add your Discord username in Edit Profile');
+                }
+              }}
+              activeOpacity={0.7}
+            >
+              <Image
+                source={require('@/assets/images/discord.png')}
+                style={styles.socialIconImage}
+                resizeMode="contain"
+              />
+            </TouchableOpacity>
+
+            {/* Messages */}
+            <TouchableOpacity
+              style={styles.socialIconButton}
+              onPress={() => router.push('/chatPages/chatList')}
+              activeOpacity={0.7}
+            >
+              <IconSymbol size={20} name="envelope.fill" color="#fff" />
+            </TouchableOpacity>
+
+            {/* Edit Profile */}
+            <TouchableOpacity
+              style={styles.editProfileButton}
+              onPress={() => router.push('/profilePages/editProfile')}
+              activeOpacity={0.7}
+            >
+              <ThemedText style={styles.editProfileButtonText}>Edit Profile</ThemedText>
+            </TouchableOpacity>
+          </View>
+
+          {/* Bio Section */}
+          {user?.bio && (
+            <View style={styles.bioSection}>
+              <ThemedText style={styles.bioText}>{user.bio}</ThemedText>
+            </View>
+          )}
+
+          {/* Content Section */}
+          <View>
             {/* Clips Section Header */}
             <View style={styles.sectionHeader}>
               <View style={styles.sectionHeaderLeft}>
@@ -1315,7 +1223,7 @@ export default function ProfileScreen() {
             )}
           </View>
 
-          </Animated.View>
+          </View>
         </View>
       </Animated.ScrollView>
 
@@ -1350,12 +1258,37 @@ const styles = StyleSheet.create({
     backgroundColor: '#1e2124',
   },
   headerSection: {
-    position: 'relative',
+    backgroundColor: '#1e2124',
+    paddingTop: 50,
   },
+  // Header icons row
+  headerIconsRow: {
+    flexDirection: 'row',
+    justifyContent: 'flex-end',
+    alignItems: 'center',
+    paddingHorizontal: 16,
+    paddingBottom: 12,
+    gap: 12,
+  },
+  headerIconButton: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: 'rgba(44, 47, 51, 0.8)',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  shareIconButton: {
+    width: 40,
+    height: 40,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  // Cover photo area
   coverPhotoWrapper: {
     width: '100%',
-    height: 180,
-    position: 'relative',
+    height: 200,
+    backgroundColor: '#2c2f33',
   },
   coverPhotoImage: {
     width: '100%',
@@ -1365,193 +1298,198 @@ const styles = StyleSheet.create({
     width: '100%',
     height: '100%',
   },
-  coverPhotoOverlay: {
-    position: 'absolute',
-    bottom: 0,
-    left: 0,
-    right: 0,
-    height: 60,
-  },
-  headerDmButton: {
-    position: 'absolute',
-    top: 50,
-    right: 16,
-    zIndex: 10,
-  },
-  headerDmButtonBg: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    backgroundColor: 'rgba(0, 0, 0, 0.5)',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  profileCard: {
-    marginTop: -24,
-    marginHorizontal: 0,
-    backgroundColor: '#1e2124',
-    borderTopLeftRadius: 24,
-    borderTopRightRadius: 24,
-    padding: 16,
-    paddingTop: 12,
-  },
-  profileTopRow: {
+  // Username row with avatar
+  usernameRow: {
     flexDirection: 'row',
-    alignItems: 'flex-start',
-    gap: 12,
-    marginBottom: 10,
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: 20,
+    marginTop: 16,
+    marginBottom: 8,
   },
-  avatarWrapper: {
-    marginTop: 0,
-  },
-  profileRightSide: {
+  largeUsername: {
+    fontSize: 28,
+    fontWeight: '800',
+    color: '#fff',
+    letterSpacing: -0.5,
     flex: 1,
-    justifyContent: 'center',
+    lineHeight: 36,
+    paddingTop: 4,
   },
-  avatarCircle: {
-    width: 70,
-    height: 70,
-    borderRadius: 35,
+  // Profile avatar (next to username)
+  profileAvatarButton: {
+  },
+  profileAvatarCircle: {
+    width: 56,
+    height: 56,
+    borderRadius: 28,
     backgroundColor: '#36393e',
     alignItems: 'center',
     justifyContent: 'center',
     borderWidth: 2,
     borderColor: '#2c2f33',
   },
-  avatarCircleWithGradient: {
-    width: 70,
-    height: 70,
-    borderRadius: 35,
+  profileAvatarCircleWithGradient: {
+    width: 56,
+    height: 56,
+    borderRadius: 28,
     backgroundColor: '#36393e',
     alignItems: 'center',
     justifyContent: 'center',
   },
-  avatarImage: {
+  profileAvatarImage: {
     width: '100%',
     height: '100%',
-    borderRadius: 35,
+    borderRadius: 28,
   },
-  avatarInitial: {
-    fontSize: 30,
+  profileAvatarInitial: {
+    fontSize: 22,
     fontWeight: '700',
     color: '#fff',
   },
-  username: {
+  // Followers / Following row
+  followStatsRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 20,
+    marginBottom: 16,
+  },
+  followStatItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  followStatNumber: {
+    fontSize: 14,
+    fontWeight: '700',
+    color: '#fff',
+  },
+  followStatLabel: {
+    fontSize: 14,
+    fontWeight: '400',
+    color: '#72767d',
+  },
+  followStatDivider: {
+    width: 1,
+    height: 14,
+    backgroundColor: '#72767d',
+    marginHorizontal: 12,
+  },
+  // Social icons row
+  socialIconsRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 20,
+    marginBottom: 20,
+    gap: 12,
+  },
+  socialIconButton: {
+    width: 36,
+    height: 36,
+    borderRadius: 8,
+    backgroundColor: '#2c2f33',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  socialIconInactive: {
+    opacity: 0.4,
+  },
+  socialIconImage: {
+    width: 20,
+    height: 20,
+  },
+  editProfileButton: {
+    height: 36,
+    paddingHorizontal: 16,
+    backgroundColor: '#2c2f33',
+    borderRadius: 8,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 1,
+    borderColor: '#36393e',
+  },
+  editProfileButtonText: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: '#fff',
+  },
+  // Small avatar on the right
+  smallAvatarButton: {
+  },
+  smallAvatarCircle: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: '#36393e',
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 2,
+    borderColor: '#2c2f33',
+  },
+  smallAvatarCircleWithGradient: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: '#36393e',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  smallAvatarImage: {
+    width: '100%',
+    height: '100%',
+    borderRadius: 20,
+  },
+  smallAvatarInitial: {
     fontSize: 16,
     fontWeight: '700',
     color: '#fff',
-    letterSpacing: -0.5,
+  },
+  // Category tabs
+  categoryTabsContainer: {
+    paddingHorizontal: 16,
+    gap: 10,
+    marginBottom: 16,
+  },
+  categoryTab: {
+    paddingVertical: 10,
+    paddingHorizontal: 20,
+    borderRadius: 8,
+    backgroundColor: '#2c2f33',
+    borderWidth: 1,
+    borderColor: '#36393e',
+  },
+  categoryTabActive: {
+    backgroundColor: 'transparent',
+    borderColor: '#fff',
+  },
+  categoryTabText: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: '#b9bbbe',
+  },
+  categoryTabTextActive: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: '#fff',
+  },
+  categoryTabIcon: {
+    width: 40,
+    height: 40,
+    borderRadius: 8,
+    backgroundColor: '#2c2f33',
+    borderWidth: 1,
+    borderColor: '#36393e',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  // Bio section
+  bioSection: {
+    paddingHorizontal: 20,
     marginBottom: 8,
   },
-  statsContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 16,
-  },
-  statItem: {
-    alignItems: 'center',
-    justifyContent: 'center',
-    minWidth: 50,
-  },
-  statDivider: {
-    display: 'none',
-  },
   bioText: {
-    fontSize: 12,
+    fontSize: 14,
     color: '#b9bbbe',
-    textAlign: 'left',
-    lineHeight: 16,
-    marginBottom: 10,
-  },
-  emptyBioText: {
-    fontSize: 12,
-    color: '#72767d',
-    textAlign: 'left',
-    fontStyle: 'italic',
-    marginBottom: 10,
-  },
-  statNumber: {
-    fontSize: 18,
-    fontWeight: '700',
-    color: '#fff',
-    marginBottom: 2,
-    letterSpacing: -0.5,
-  },
-  statLabel: {
-    fontSize: 12,
-    color: '#b9bbbe',
-    fontWeight: '500',
-    textTransform: 'capitalize',
-  },
-  actionButtonsRow: {
-    flexDirection: 'row',
-    width: '100%',
-    gap: 6,
-  },
-  editButton: {
-    flex: 1,
-    borderRadius: 6,
-    overflow: 'hidden',
-  },
-  editButtonGradient: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 5,
-    paddingVertical: 7,
-    borderRadius: 6,
-  },
-  editButtonText: {
-    fontSize: 12,
-    fontWeight: '600',
-    color: '#fff',
-  },
-  socialsButtonContainer: {
-    flex: 1,
-    position: 'relative',
-  },
-  socialsButton: {
-    borderRadius: 6,
-    overflow: 'hidden',
-  },
-  socialsButtonGradient: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 5,
-    paddingVertical: 7,
-    borderRadius: 6,
-  },
-  socialsButtonText: {
-    fontSize: 12,
-    fontWeight: '600',
-    color: '#fff',
-  },
-  shareButton: {
-    width: 33,
-    height: 33,
-    borderRadius: 6,
-    overflow: 'hidden',
-  },
-  shareButtonGradient: {
-    width: '100%',
-    height: '100%',
-    alignItems: 'center',
-    justifyContent: 'center',
-    borderRadius: 6,
-  },
-  settingsButton: {
-    width: 33,
-    height: 33,
-    borderRadius: 6,
-    overflow: 'hidden',
-  },
-  settingsButtonGradient: {
-    width: '100%',
-    height: '100%',
-    alignItems: 'center',
-    justifyContent: 'center',
-    borderRadius: 6,
+    lineHeight: 20,
   },
   sectionHeader: {
     flexDirection: 'row',
@@ -1608,8 +1546,8 @@ const styles = StyleSheet.create({
     gap: 12,
   },
   horizontalClipItem: {
-    width: 160,
-    height: 160,
+    width: 200,
+    height: 120,
     backgroundColor: '#36393e',
     borderRadius: 12,
     overflow: 'hidden',

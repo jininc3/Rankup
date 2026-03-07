@@ -443,18 +443,21 @@ export default function EditProfileScreen() {
 
   return (
     <ThemedView style={styles.container}>
-      {/* Header with back button */}
-      <View style={styles.header}>
-        <TouchableOpacity onPress={handleBack} style={styles.backButton}>
-          <IconSymbol size={28} name="chevron.left" color="#fff" />
-        </TouchableOpacity>
-        <ThemedText style={styles.headerTitle}>Edit Profile</ThemedText>
-        <View style={styles.headerPlaceholder} />
-      </View>
-
       <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.scrollContent}>
-        {/* Cover Photo Section */}
+        {/* Header Section - New Design */}
         <View style={styles.headerSection}>
+          {/* Top Header Icon - Back Button */}
+          <View style={styles.headerIconsRow}>
+            <TouchableOpacity
+              style={styles.headerIconButton}
+              onPress={handleBack}
+              activeOpacity={0.7}
+            >
+              <IconSymbol size={22} name="chevron.left" color="#fff" />
+            </TouchableOpacity>
+          </View>
+
+          {/* Cover Photo Area */}
           <View style={styles.coverPhotoWrapper}>
             {pendingRemoveCoverPhoto ? (
               <View style={styles.coverPhotoGradient} />
@@ -470,123 +473,135 @@ export default function EditProfileScreen() {
               onPress={showCoverPhotoOptions}
               disabled={isLoading}
             >
-              <IconSymbol size={24} name="camera.fill" color="#fff" />
+              <IconSymbol size={20} name="camera.fill" color="#fff" />
             </TouchableOpacity>
           </View>
 
-          {/* Profile Card - matches profile.tsx */}
-          <View style={styles.profileCard}>
-            {/* Top Row: Avatar on Left, Username + Stats on Right */}
-            <View style={styles.profileTopRow}>
-              {/* Avatar */}
-              <View style={styles.avatarWrapper}>
-                <View style={styles.avatarCircle}>
-                  {pendingRemoveProfileImage ? (
-                    <ThemedText style={styles.avatarInitial}>{user?.username?.[0]?.toUpperCase() || 'U'}</ThemedText>
-                  ) : pendingProfileImageUri ? (
-                    <Image source={{ uri: pendingProfileImageUri }} style={styles.avatarImage} />
-                  ) : profileImage ? (
-                    <Image source={{ uri: profileImage }} style={styles.avatarImage} />
-                  ) : (
-                    <ThemedText style={styles.avatarInitial}>{avatar}</ThemedText>
-                  )}
-                </View>
-                <TouchableOpacity
-                  style={styles.editAvatarButton}
-                  onPress={showImageOptions}
-                  disabled={isLoading}
-                >
-                  <IconSymbol size={18} name="camera.fill" color="#fff" />
-                </TouchableOpacity>
-              </View>
+          {/* Username Row with Profile Avatar on Right */}
+          <View style={styles.usernameRow}>
+            <TextInput
+              style={styles.largeUsernameInput}
+              value={username}
+              onChangeText={(text) => setUsername(text.toLowerCase())}
+              placeholder="Username"
+              placeholderTextColor="#72767d"
+              autoCapitalize="none"
+            />
 
-              {/* Right Side: Username and Stats */}
-              <View style={styles.profileRightSide}>
-                {/* Editable Username */}
-                <TextInput
-                  style={styles.usernameInput}
-                  value={username}
-                  onChangeText={(text) => setUsername(text.toLowerCase())}
-                  placeholder="Username"
-                  placeholderTextColor="#999"
-                  autoCapitalize="none"
-                />
-
-                {/* Stats in individual cards */}
-                <View style={styles.statsContainer}>
-                  <View style={styles.statItem}>
-                    <ThemedText style={styles.statNumber}>{postsCount}</ThemedText>
-                    <ThemedText style={styles.statLabel}>Posts</ThemedText>
-                  </View>
-                  <View style={styles.statItem}>
-                    <ThemedText style={styles.statNumber}>{user?.followersCount || 0}</ThemedText>
-                    <ThemedText style={styles.statLabel}>Followers</ThemedText>
-                  </View>
-                  <View style={styles.statItem}>
-                    <ThemedText style={styles.statNumber}>{user?.followingCount || 0}</ThemedText>
-                    <ThemedText style={styles.statLabel}>Following</ThemedText>
-                  </View>
-                </View>
+            {/* Profile Avatar */}
+            <TouchableOpacity
+              style={styles.profileAvatarButton}
+              onPress={showImageOptions}
+              disabled={isLoading}
+              activeOpacity={0.7}
+            >
+              <View style={styles.profileAvatarCircle}>
+                {pendingRemoveProfileImage ? (
+                  <ThemedText style={styles.profileAvatarInitial}>{user?.username?.[0]?.toUpperCase() || 'U'}</ThemedText>
+                ) : pendingProfileImageUri ? (
+                  <Image source={{ uri: pendingProfileImageUri }} style={styles.profileAvatarImage} />
+                ) : profileImage ? (
+                  <Image source={{ uri: profileImage }} style={styles.profileAvatarImage} />
+                ) : (
+                  <ThemedText style={styles.profileAvatarInitial}>{avatar}</ThemedText>
+                )}
               </View>
+              <View style={styles.editAvatarBadge}>
+                <IconSymbol size={12} name="camera.fill" color="#fff" />
+              </View>
+            </TouchableOpacity>
+          </View>
+
+          {/* Followers / Following Row */}
+          <View style={styles.followStatsRow}>
+            <View style={styles.followStatItem}>
+              <ThemedText style={styles.followStatNumber}>{user?.followersCount || 0}</ThemedText>
+              <ThemedText style={styles.followStatLabel}> Followers</ThemedText>
             </View>
+            <View style={styles.followStatDivider} />
+            <View style={styles.followStatItem}>
+              <ThemedText style={styles.followStatNumber}>{user?.followingCount || 0}</ThemedText>
+              <ThemedText style={styles.followStatLabel}> Following</ThemedText>
+            </View>
+          </View>
 
-            {/* Bio Row */}
-            <View style={styles.bioContainer}>
-              <TextInput
-                style={styles.bioInput}
-                value={bio}
-                onChangeText={setBio}
-                placeholder="Add a bio..."
-                placeholderTextColor="#72767d"
-                multiline
-                numberOfLines={3}
-                maxLength={150}
+          {/* Social Icons Row */}
+          <View style={styles.socialIconsRow}>
+            <View style={[styles.socialIconButton, !instagram && styles.socialIconInactive]}>
+              <Image
+                source={require('@/assets/images/instagram.png')}
+                style={styles.socialIconImage}
+                resizeMode="contain"
               />
-              <ThemedText style={styles.characterCount}>{bio.length}/150</ThemedText>
+            </View>
+            <View style={[styles.socialIconButton, !discord && styles.socialIconInactive]}>
+              <Image
+                source={require('@/assets/images/discord.png')}
+                style={styles.socialIconImage}
+                resizeMode="contain"
+              />
+            </View>
+            <View style={styles.socialIconButton}>
+              <IconSymbol size={20} name="envelope.fill" color="#fff" />
+            </View>
+          </View>
+
+          {/* Bio Section */}
+          <View style={styles.bioSection}>
+            <TextInput
+              style={styles.bioText}
+              value={bio}
+              onChangeText={setBio}
+              placeholder="Add a bio..."
+              placeholderTextColor="#72767d"
+              multiline
+              numberOfLines={3}
+              maxLength={150}
+            />
+            <ThemedText style={styles.characterCount}>{bio.length}/150</ThemedText>
+          </View>
+
+          {/* Socials Input Section */}
+          <View style={styles.sectionContainer}>
+            <ThemedText style={styles.sectionTitle}>Social Links</ThemedText>
+
+            {/* Instagram */}
+            <View style={styles.socialInputContainer}>
+              <View style={styles.socialIconInputWrapper}>
+                <Image
+                  source={require('@/assets/images/instagram.png')}
+                  style={styles.socialInputIcon}
+                  resizeMode="contain"
+                />
+                <TextInput
+                  style={styles.socialInput}
+                  value={instagram}
+                  onChangeText={setInstagram}
+                  placeholder="Instagram username"
+                  placeholderTextColor="#72767d"
+                  autoCapitalize="none"
+                  autoCorrect={false}
+                />
+              </View>
             </View>
 
-            {/* Socials Section */}
-            <View style={styles.socialsSection}>
-              <ThemedText style={styles.socialsSectionTitle}>Socials</ThemedText>
-
-              {/* Instagram */}
-              <View style={styles.socialInputContainer}>
-                <View style={styles.socialIconInputWrapper}>
-                  <Image
-                    source={require('@/assets/images/instagram.png')}
-                    style={styles.socialInputIcon}
-                    resizeMode="contain"
-                  />
-                  <TextInput
-                    style={styles.socialInput}
-                    value={instagram}
-                    onChangeText={setInstagram}
-                    placeholder="Instagram username"
-                    placeholderTextColor="#999"
-                    autoCapitalize="none"
-                    autoCorrect={false}
-                  />
-                </View>
-              </View>
-
-              {/* Discord */}
-              <View style={styles.socialInputContainer}>
-                <View style={styles.socialIconInputWrapper}>
-                  <Image
-                    source={require('@/assets/images/discord.png')}
-                    style={styles.socialInputIcon}
-                    resizeMode="contain"
-                  />
-                  <TextInput
-                    style={styles.socialInput}
-                    value={discord}
-                    onChangeText={setDiscord}
-                    placeholder="Discord username"
-                    placeholderTextColor="#999"
-                    autoCapitalize="none"
-                    autoCorrect={false}
-                  />
-                </View>
+            {/* Discord */}
+            <View style={styles.socialInputContainer}>
+              <View style={styles.socialIconInputWrapper}>
+                <Image
+                  source={require('@/assets/images/discord.png')}
+                  style={styles.socialInputIcon}
+                  resizeMode="contain"
+                />
+                <TextInput
+                  style={styles.socialInput}
+                  value={discord}
+                  onChangeText={setDiscord}
+                  placeholder="Discord username"
+                  placeholderTextColor="#72767d"
+                  autoCapitalize="none"
+                  autoCorrect={false}
+                />
               </View>
             </View>
           </View>
@@ -616,41 +631,34 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: '#1e2124',
   },
-  header: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingHorizontal: 16,
-    paddingTop: 60,
-    paddingBottom: 16,
-    backgroundColor: '#1e2124',
-    borderBottomWidth: 1,
-    borderBottomColor: '#2c2f33',
+  scrollContent: {
+    paddingBottom: 120,
   },
-  backButton: {
+  headerSection: {
+    backgroundColor: '#1e2124',
+  },
+  // Header icons row
+  headerIconsRow: {
+    flexDirection: 'row',
+    justifyContent: 'flex-end',
+    alignItems: 'center',
+    paddingHorizontal: 16,
+    paddingTop: 50,
+    paddingBottom: 12,
+  },
+  headerIconButton: {
     width: 40,
     height: 40,
+    borderRadius: 20,
+    backgroundColor: 'rgba(44, 47, 51, 0.8)',
     alignItems: 'center',
     justifyContent: 'center',
   },
-  headerTitle: {
-    fontSize: 17,
-    fontWeight: '600',
-    color: '#fff',
-    letterSpacing: -0.4,
-  },
-  headerPlaceholder: {
-    width: 40,
-  },
-  scrollContent: {
-    paddingBottom: 100,
-  },
-  headerSection: {
-    position: 'relative',
-  },
+  // Cover photo area
   coverPhotoWrapper: {
     width: '100%',
-    height: 180,
+    height: 200,
+    backgroundColor: '#2c2f33',
     position: 'relative',
   },
   coverPhotoImage: {
@@ -660,150 +668,168 @@ const styles = StyleSheet.create({
   coverPhotoGradient: {
     width: '100%',
     height: '100%',
-    backgroundColor: '#667eea',
+    backgroundColor: '#2c2f33',
   },
   editCoverButton: {
     position: 'absolute',
-    width: 48,
-    height: 48,
-    borderRadius: 24,
+    bottom: 12,
+    right: 12,
+    width: 40,
+    height: 40,
+    borderRadius: 20,
     backgroundColor: 'rgba(0, 0, 0, 0.6)',
     alignItems: 'center',
     justifyContent: 'center',
   },
-  profileCard: {
-    marginTop: -24,
-    marginHorizontal: 0,
-    backgroundColor: '#1e2124',
-    borderTopLeftRadius: 24,
-    borderTopRightRadius: 24,
-    padding: 16,
-    paddingTop: 12,
-  },
-  profileTopRow: {
+  // Username row with avatar
+  usernameRow: {
     flexDirection: 'row',
-    alignItems: 'flex-start',
-    gap: 12,
-    marginBottom: 10,
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: 20,
+    marginTop: 16,
+    marginBottom: 8,
   },
-  avatarWrapper: {
-    marginTop: 0,
+  largeUsernameInput: {
+    fontSize: 28,
+    fontWeight: '800',
+    color: '#fff',
+    letterSpacing: -0.5,
+    flex: 1,
+    lineHeight: 36,
+    paddingTop: 4,
+    padding: 0,
+  },
+  // Profile avatar (next to username)
+  profileAvatarButton: {
     position: 'relative',
   },
-  profileRightSide: {
-    flex: 1,
-    justifyContent: 'center',
-  },
-  avatarCircle: {
-    width: 70,
-    height: 70,
-    borderRadius: 35,
+  profileAvatarCircle: {
+    width: 56,
+    height: 56,
+    borderRadius: 28,
     backgroundColor: '#36393e',
     alignItems: 'center',
     justifyContent: 'center',
     borderWidth: 2,
     borderColor: '#2c2f33',
   },
-  avatarImage: {
+  profileAvatarImage: {
     width: '100%',
     height: '100%',
-    borderRadius: 35,
+    borderRadius: 28,
   },
-  avatarInitial: {
-    fontSize: 30,
+  profileAvatarInitial: {
+    fontSize: 22,
     fontWeight: '700',
     color: '#fff',
   },
-  editAvatarButton: {
+  editAvatarBadge: {
     position: 'absolute',
-    bottom: 0,
-    right: 0,
-    width: 24,
-    height: 24,
-    borderRadius: 12,
+    bottom: -2,
+    right: -2,
+    width: 22,
+    height: 22,
+    borderRadius: 11,
     backgroundColor: '#c42743',
     alignItems: 'center',
     justifyContent: 'center',
     borderWidth: 2,
     borderColor: '#1e2124',
   },
-  usernameInput: {
-    fontSize: 16,
-    fontWeight: '700',
-    color: '#fff',
-    marginBottom: 8,
-    letterSpacing: -0.5,
-    padding: 0,
-  },
-  statsContainer: {
+  // Followers / Following row
+  followStatsRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 16,
+    paddingHorizontal: 20,
+    marginBottom: 16,
   },
-  statItem: {
+  followStatItem: {
+    flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'center',
-    minWidth: 50,
   },
-  statNumber: {
-    fontSize: 18,
+  followStatNumber: {
+    fontSize: 14,
     fontWeight: '700',
     color: '#fff',
-    marginBottom: 2,
-    letterSpacing: -0.5,
   },
-  statLabel: {
-    fontSize: 12,
-    color: '#b9bbbe',
-    fontWeight: '500',
-    textTransform: 'capitalize',
-  },
-  bioContainer: {
-    marginBottom: 10,
-    backgroundColor: '#2c2f33',
-    borderRadius: 8,
-    borderWidth: 1,
-    borderColor: '#40444b',
-    padding: 10,
-  },
-  bioInput: {
-    fontSize: 12,
-    color: '#b9bbbe',
-    lineHeight: 16,
+  followStatLabel: {
+    fontSize: 14,
     fontWeight: '400',
+    color: '#72767d',
+  },
+  followStatDivider: {
+    width: 1,
+    height: 14,
+    backgroundColor: '#72767d',
+    marginHorizontal: 12,
+  },
+  // Social icons row
+  socialIconsRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 20,
+    marginBottom: 20,
+    gap: 12,
+  },
+  socialIconButton: {
+    width: 36,
+    height: 36,
+    borderRadius: 8,
+    backgroundColor: '#2c2f33',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  socialIconInactive: {
+    opacity: 0.4,
+  },
+  socialIconImage: {
+    width: 20,
+    height: 20,
+  },
+  // Bio section
+  bioSection: {
+    paddingHorizontal: 20,
+    marginBottom: 20,
+  },
+  bioText: {
+    fontSize: 14,
+    color: '#b9bbbe',
+    lineHeight: 20,
     padding: 0,
     textAlignVertical: 'top',
-    minHeight: 48,
+    minHeight: 40,
   },
   characterCount: {
-    fontSize: 10,
+    fontSize: 11,
     color: '#72767d',
-    marginTop: 4,
+    marginTop: 8,
     textAlign: 'right',
   },
-  socialsSection: {
-    marginTop: 8,
+  // Section container
+  sectionContainer: {
+    paddingHorizontal: 20,
+    marginBottom: 20,
   },
-  socialsSectionTitle: {
-    fontSize: 12,
+  sectionTitle: {
+    fontSize: 14,
     fontWeight: '600',
     color: '#fff',
     marginBottom: 12,
     letterSpacing: -0.2,
   },
+  // Social input
   socialInputContainer: {
     marginBottom: 12,
   },
   socialIconInputWrapper: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#36393e',
-    borderRadius: 10,
-    borderWidth: 1,
-    borderColor: '#2c2f33',
-    paddingHorizontal: 12,
-    paddingVertical: 10,
-    gap: 10,
+    backgroundColor: '#2c2f33',
+    borderRadius: 12,
+    paddingHorizontal: 14,
+    paddingVertical: 12,
+    gap: 12,
   },
   socialInputIcon: {
     width: 24,
@@ -815,6 +841,7 @@ const styles = StyleSheet.create({
     color: '#fff',
     padding: 0,
   },
+  // Save button
   saveButtonContainer: {
     position: 'absolute',
     bottom: 0,
@@ -823,17 +850,9 @@ const styles = StyleSheet.create({
     backgroundColor: '#1e2124',
     paddingHorizontal: 20,
     paddingVertical: 16,
-    paddingBottom: 32,
+    paddingBottom: 36,
     borderTopWidth: 1,
     borderTopColor: '#2c2f33',
-    shadowColor: '#000',
-    shadowOffset: {
-      width: 0,
-      height: -2,
-    },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 5,
   },
   saveButton: {
     backgroundColor: '#c42743',
@@ -843,7 +862,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   saveButtonDisabled: {
-    backgroundColor: '#999',
+    opacity: 0.5,
   },
   saveButtonText: {
     color: '#fff',
