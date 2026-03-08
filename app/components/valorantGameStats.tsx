@@ -298,79 +298,70 @@ export default function ValorantGameStatsScreen() {
             )}
           </View>
         ) : valorantStats ? (
-          // Display Valorant stats - Hierarchical Layout
+          // Display Valorant stats - Compact 2-Container Layout
           <>
-            {/* CURRENT RANK - Hero Card (Full Width) */}
-            <View style={styles.heroRankCard}>
-              <ThemedText style={styles.heroRankLabel}>CURRENT RANK</ThemedText>
-              <Image
-                source={getRankIcon(valorantStats.currentRank)}
-                style={styles.heroRankIcon}
-                resizeMode="contain"
-              />
-              <ThemedText style={styles.heroRankTitle}>{valorantStats.currentRank}</ThemedText>
-              <ThemedText style={styles.heroRankSubtext}>
-                {valorantStats.rankRating} RR
-              </ThemedText>
-            </View>
-
-            {/* Important Stats Row - Peak Rank & Win Rate */}
-            <View style={styles.importantStatsRow}>
-              {/* PEAK RANK Card */}
-              {valorantStats.peakRank && (
-                <View style={styles.importantStatCard}>
-                  <ThemedText style={styles.importantStatLabel}>PEAK RANK</ThemedText>
-                  <Image
-                    source={getRankIcon(valorantStats.peakRank.tier)}
-                    style={styles.importantStatIcon}
-                    resizeMode="contain"
-                  />
-                  <ThemedText style={styles.importantStatTitle}>{valorantStats.peakRank.tier}</ThemedText>
-                  <ThemedText style={styles.importantStatSubtext}>
-                    Season {valorantStats.peakRank.season}
-                  </ThemedText>
-                </View>
-              )}
-
-              {/* Win Rate Card */}
-              <View style={styles.importantStatCard}>
-                <ThemedText style={styles.importantStatLabel}>WIN RATE</ThemedText>
-                <View style={styles.importantStatIconContainer}>
-                  <IconSymbol size={24} name="chart.line.uptrend.xyaxis" color="#fff" />
-                </View>
-                <ThemedText style={styles.importantStatTitle}>
-                  {valorantStats.winRate}% ({valorantStats.wins}W)
+            {/* Top Container: Current Rank, Peak Rank, Win Rate */}
+            <View style={styles.compactStatsContainer}>
+              <View style={styles.compactStatItem}>
+                <ThemedText style={styles.compactStatLabel}>CURRENT</ThemedText>
+                <Image
+                  source={getRankIcon(valorantStats.currentRank)}
+                  style={styles.compactRankIcon}
+                  resizeMode="contain"
+                />
+                <ThemedText style={styles.compactStatValue}>{valorantStats.currentRank}</ThemedText>
+                <ThemedText style={styles.compactStatSubtext}>{valorantStats.rankRating} RR</ThemedText>
+              </View>
+              <View style={styles.compactStatDivider} />
+              <View style={styles.compactStatItem}>
+                <ThemedText style={styles.compactStatLabel}>PEAK</ThemedText>
+                <Image
+                  source={getRankIcon(valorantStats.peakRank?.tier || 'Unranked')}
+                  style={styles.compactRankIcon}
+                  resizeMode="contain"
+                />
+                <ThemedText style={styles.compactStatValue}>
+                  {valorantStats.peakRank ? valorantStats.peakRank.tier : 'N/A'}
                 </ThemedText>
+                {valorantStats.peakRank && (
+                  <ThemedText style={styles.compactStatSubtext}>S{valorantStats.peakRank.season}</ThemedText>
+                )}
+              </View>
+              <View style={styles.compactStatDivider} />
+              <View style={styles.compactStatItem}>
+                <ThemedText style={styles.compactStatLabel}>WIN RATE</ThemedText>
+                <View style={styles.compactWinRateIcon}>
+                  <IconSymbol size={28} name="chart.line.uptrend.xyaxis" color="#fff" />
+                </View>
+                <ThemedText style={styles.compactStatValue}>{valorantStats.winRate}%</ThemedText>
+                <ThemedText style={styles.compactStatSubtext}>{valorantStats.wins}W</ThemedText>
               </View>
             </View>
 
-            {/* Secondary Stats Grid - Smaller cards */}
-            <View style={styles.secondaryStatsGrid}>
-              {/* Games Played */}
-              <View style={styles.secondaryStatCard}>
-                <View style={styles.secondaryStatIconContainer}>
-                  <IconSymbol size={16} name="gamecontroller.fill" color="#fff" />
+            {/* Second Container: Games, MMR, Level */}
+            <View style={styles.compactStatsContainer}>
+              <View style={styles.compactStatItem}>
+                <ThemedText style={styles.compactStatLabel}>GAMES</ThemedText>
+                <View style={styles.compactSecondaryIcon}>
+                  <IconSymbol size={20} name="gamecontroller.fill" color="#fff" />
                 </View>
-                <ThemedText style={styles.secondaryStatLabel}>Games</ThemedText>
-                <ThemedText style={styles.secondaryStatValue}>{valorantStats.gamesPlayed}</ThemedText>
+                <ThemedText style={styles.compactStatValue}>{valorantStats.gamesPlayed}</ThemedText>
               </View>
-
-              {/* MMR */}
-              <View style={styles.secondaryStatCard}>
-                <View style={styles.secondaryStatIconContainer}>
-                  <IconSymbol size={16} name="chart.bar.fill" color="#fff" />
+              <View style={styles.compactStatDivider} />
+              <View style={styles.compactStatItem}>
+                <ThemedText style={styles.compactStatLabel}>MMR</ThemedText>
+                <View style={styles.compactSecondaryIcon}>
+                  <IconSymbol size={20} name="chart.bar.fill" color="#fff" />
                 </View>
-                <ThemedText style={styles.secondaryStatLabel}>MMR</ThemedText>
-                <ThemedText style={styles.secondaryStatValue}>{valorantStats.mmr}</ThemedText>
+                <ThemedText style={styles.compactStatValue}>{valorantStats.mmr}</ThemedText>
               </View>
-
-              {/* Account Level */}
-              <View style={styles.secondaryStatCard}>
-                <View style={styles.secondaryStatIconContainer}>
-                  <IconSymbol size={16} name="number" color="#fff" />
+              <View style={styles.compactStatDivider} />
+              <View style={styles.compactStatItem}>
+                <ThemedText style={styles.compactStatLabel}>LEVEL</ThemedText>
+                <View style={styles.compactSecondaryIcon}>
+                  <IconSymbol size={20} name="number" color="#fff" />
                 </View>
-                <ThemedText style={styles.secondaryStatLabel}>Level</ThemedText>
-                <ThemedText style={styles.secondaryStatValue}>{valorantStats.accountLevel}</ThemedText>
+                <ThemedText style={styles.compactStatValue}>{valorantStats.accountLevel}</ThemedText>
               </View>
             </View>
           </>
@@ -573,149 +564,73 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: '600',
   },
-  // Hero Rank Card - Current Rank (Full Width, Most Prominent)
-  heroRankCard: {
-    backgroundColor: '#1a1d21',
-    borderRadius: 18,
-    padding: 20,
-    alignItems: 'center',
-    marginBottom: 12,
-    borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.1)',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 6 },
-    shadowOpacity: 0.4,
-    shadowRadius: 12,
-    elevation: 8,
-  },
-  heroRankLabel: {
-    fontSize: 10,
-    fontWeight: '800',
-    color: '#8e9297',
-    letterSpacing: 2,
-    marginBottom: 12,
-    textTransform: 'uppercase',
-  },
-  heroRankIcon: {
-    width: 80,
-    height: 80,
-    marginBottom: 12,
-  },
-  heroRankTitle: {
-    fontSize: 20,
-    fontWeight: '900',
-    color: '#fff',
-    textAlign: 'center',
-    letterSpacing: -1,
-  },
-  heroRankSubtext: {
-    fontSize: 14,
-    fontWeight: '700',
-    color: '#B2313B',
-    marginTop: 6,
-  },
-  // Important Stats Row - Peak Rank & Win Rate
-  importantStatsRow: {
+  // Compact 2-Container Layout Styles
+  compactStatsContainer: {
     flexDirection: 'row',
-    gap: 10,
-    marginBottom: 12,
-  },
-  importantStatCard: {
-    flex: 1,
     backgroundColor: '#1a1d21',
     borderRadius: 16,
     padding: 16,
-    alignItems: 'center',
+    marginBottom: 12,
     borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.08)',
+    borderColor: 'rgba(255, 255, 255, 0.1)',
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.3,
     shadowRadius: 8,
     elevation: 6,
   },
-  importantStatLabel: {
+  compactStatItem: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  compactStatDivider: {
+    width: 1,
+    backgroundColor: 'rgba(255, 255, 255, 0.1)',
+    marginVertical: 4,
+  },
+  compactStatLabel: {
     fontSize: 9,
     fontWeight: '800',
     color: '#8e9297',
-    letterSpacing: 1.5,
-    marginBottom: 10,
+    letterSpacing: 1,
+    marginBottom: 8,
     textTransform: 'uppercase',
   },
-  importantStatIcon: {
-    width: 50,
-    height: 50,
-    marginBottom: 10,
+  compactRankIcon: {
+    width: 44,
+    height: 44,
+    marginBottom: 6,
   },
-  importantStatIconContainer: {
-    width: 50,
-    height: 50,
-    borderRadius: 25,
+  compactWinRateIcon: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
     backgroundColor: '#B2313B',
     alignItems: 'center',
     justifyContent: 'center',
-    marginBottom: 10,
-    shadowColor: '#B2313B',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.4,
-    shadowRadius: 6,
-    elevation: 4,
+    marginBottom: 6,
   },
-  importantStatTitle: {
-    fontSize: 16,
+  compactSecondaryIcon: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: '#B2313B',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 6,
+  },
+  compactStatValue: {
+    fontSize: 13,
     fontWeight: '800',
     color: '#fff',
     textAlign: 'center',
-    letterSpacing: -0.5,
+    letterSpacing: -0.3,
   },
-  importantStatSubtext: {
+  compactStatSubtext: {
     fontSize: 11,
     fontWeight: '600',
     color: '#5c6066',
-    marginTop: 4,
-  },
-  // Secondary Stats Grid - Smaller, Less Prominent
-  secondaryStatsGrid: {
-    flexDirection: 'row',
-    gap: 10,
-  },
-  secondaryStatCard: {
-    flex: 1,
-    backgroundColor: '#1a1d21',
-    borderRadius: 14,
-    padding: 12,
-    alignItems: 'center',
-    borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.05)',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.2,
-    shadowRadius: 4,
-    elevation: 3,
-  },
-  secondaryStatIconContainer: {
-    width: 32,
-    height: 32,
-    borderRadius: 16,
-    backgroundColor: '#B2313B',
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginBottom: 8,
-  },
-  secondaryStatLabel: {
-    fontSize: 9,
-    fontWeight: '700',
-    color: '#72767d',
-    textTransform: 'uppercase',
-    letterSpacing: 0.5,
-    marginBottom: 6,
-    textAlign: 'center',
-  },
-  secondaryStatValue: {
-    fontSize: 16,
-    fontWeight: '800',
-    color: '#fff',
-    letterSpacing: -0.5,
-    textAlign: 'center',
+    marginTop: 2,
   },
 });
