@@ -101,7 +101,8 @@ export default function ValorantRankCard({ game, username, viewOnly = false, use
     return VALORANT_RANK_ICONS[tier] || VALORANT_RANK_ICONS.unranked;
   };
 
-  const CardWrapper = viewOnly ? View : TouchableOpacity;
+  // Navigation temporarily disabled
+  // const CardWrapper = viewOnly ? View : TouchableOpacity;
 
   return (
     <View style={styles.cardOuter}>
@@ -110,10 +111,7 @@ export default function ValorantRankCard({ game, username, viewOnly = false, use
       <View style={styles.shadow2} />
       <View style={styles.shadow1} />
 
-      <CardWrapper
-        style={styles.rankCard}
-        {...(!viewOnly && { onPress: handlePress, activeOpacity: 0.9 })}
-      >
+      <View style={styles.rankCard}>
         <LinearGradient
         colors={['#DC3D4B', '#8B1E2B', '#5C141D']}
         start={{ x: 0, y: 0 }}
@@ -170,7 +168,7 @@ export default function ValorantRankCard({ game, username, viewOnly = false, use
           </View>
         </View>
       </LinearGradient>
-    </CardWrapper>
+    </View>
     </View>
   );
 }

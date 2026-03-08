@@ -28,7 +28,7 @@ export default function rankCard({ game, username, viewOnly = false, userId }: R
     case 'Valorant':
       return <ValorantRankCard game={game} username={username} viewOnly={viewOnly} userId={userId} />;
     case 'TFT':
-      return <TftRankCard game={game} username={username} />;
+      return <TftRankCard game={game} username={username} viewOnly={viewOnly} userId={userId} />;
     case 'League of Legends':
     default:
       return <LeagueRankCard game={game} username={username} viewOnly={viewOnly} userId={userId} />;

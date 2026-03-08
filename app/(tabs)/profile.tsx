@@ -66,7 +66,8 @@ export default function ProfileScreen() {
   const [showPostViewer, setShowPostViewer] = useState(false);
   const [showNewPost, setShowNewPost] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
-  const [cardsExpanded, setCardsExpanded] = useState(false);
+  const [focusedCardIndex, setFocusedCardIndex] = useState<number | null>(null);
+  const cardAnimations = useRef<Animated.Value[]>([]).current;
   const [achievements, setAchievements] = useState<{ partyName: string; game: string; placement: number; endDate: string }[]>([]);
   const [loadingAchievements, setLoadingAchievements] = useState(false);
   const [riotAccount, setRiotAccount] = useState<any>(null);
@@ -212,7 +213,7 @@ export default function ProfileScreen() {
   // Dynamic games array based on Riot data and enabled rank cards
   // Show rank cards if user has either Riot account OR Valorant account
   // Cards are ordered according to the enabledRankCards array
-  const userGames = (riotAccount || valorantAccount) ?
+  const userGamesBase = (riotAccount || valorantAccount) ?
     enabledRankCards
       .map(gameType => {
         // League of Legends
@@ -271,16 +272,144 @@ export default function ProfileScreen() {
       .filter((game): game is NonNullable<typeof game> => game !== null)
     : [];
 
-  // Toggle card stack expansion
-  const toggleCardExpansion = () => {
-    LayoutAnimation.configureNext(
-      LayoutAnimation.create(
-        300,
-        LayoutAnimation.Types.easeInEaseOut,
-        LayoutAnimation.Properties.opacity
-      )
-    );
-    setCardsExpanded(!cardsExpanded);
+  // TODO: Remove this dummy card - for testing 3 card interaction only
+  const userGames = userGamesBase.length > 0 ? [
+    ...userGamesBase,
+    {
+      id: 99,
+      name: 'TFT',
+      rank: 'Master',
+      trophies: 150,
+      icon: '♟️',
+      image: require('@/assets/images/tft.png'),
+      wins: 85,
+      losses: 45,
+      winRate: 65.4,
+      recentMatches: ['+20', '+15', '-10', '+25', '+18'],
+      profileIconId: riotStats?.profileIconId,
+    }
+  ] : [];
+
+  // Initialize card animations when userGames changes
+  useEffect(() => {
+    // Ensure we have the right number of animation values
+    while (cardAnimations.length < userGames.length) {
+      cardAnimations.push(new Animated.Value(0));
+    }
+    // Reset animations when games change
+    cardAnimations.forEach(anim => anim.setValue(0));
+  }, [userGames.length]);
+
+  // Handle card press - Apple Wallet style focus
+  const handleCardPress = (pressedIndex: number) => {
+    const totalCards = userGames.length;
+
+    if (focusedCardIndex !== null) {
+      if (pressedIndex === focusedCardIndex) {
+        // Clicking the focused card - navigate to game stats
+        const game = userGames[pressedIndex];
+        if (game.name === 'Valorant') {
+          router.push({
+            pathname: '/components/valorantGameStats',
+            params: { game: JSON.stringify(game) },
+          });
+        } else if (game.name === 'League of Legends' || game.name === 'TFT') {
+          router.push({
+            pathname: '/components/leagueGameStats',
+            params: { game: JSON.stringify(game) },
+          });
+        }
+      } else {
+        // Clicking a non-focused card - collapse back to stack
+        LayoutAnimation.configureNext(
+          LayoutAnimation.create(
+            300,
+            LayoutAnimation.Types.easeInEaseOut,
+            LayoutAnimation.Properties.opacity
+          )
+        );
+
+        // Animate all cards back to original position
+        const animations = cardAnimations.slice(0, totalCards).map(anim =>
+          Animated.spring(anim, {
+            toValue: 0,
+            useNativeDriver: true,
+            tension: 50,
+            friction: 8,
+          })
+        );
+        Animated.parallel(animations).start();
+        setFocusedCardIndex(null);
+      }
+    } else {
+      // Clicking a new card - focus on it
+      LayoutAnimation.configureNext(
+        LayoutAnimation.create(
+          300,
+          LayoutAnimation.Types.easeInEaseOut,
+          LayoutAnimation.Properties.opacity
+        )
+      );
+
+      // Focused card moves to back card position, others stack below
+      const CARD_HEIGHT = 220;
+      const STACK_OFFSET = 50;
+      const GAP = 20; // Gap between focused card and pushed cards
+
+      // Back card position (top of stack, closest to title)
+      const backCardTopOffset = (totalCards - 1) * -STACK_OFFSET;
+
+      // Focused card will move to back card position
+      const focusedTargetTop = backCardTopOffset;
+      const focusedBottomEdge = focusedTargetTop + CARD_HEIGHT;
+
+      // Get all pushed card indices (sorted by index to maintain stack order)
+      const pushedCardIndices: number[] = [];
+      for (let i = 0; i < totalCards; i++) {
+        if (i !== pressedIndex) pushedCardIndices.push(i);
+      }
+
+      const animations = cardAnimations.slice(0, totalCards).map((anim, index) => {
+        // Current position of this card
+        const thisReverseIndex = totalCards - 1 - index;
+        const thisTopOffset = thisReverseIndex * -STACK_OFFSET;
+
+        if (index === pressedIndex) {
+          // Focused card moves to the back card's position (top)
+          const moveAmount = focusedTargetTop - thisTopOffset;
+          return Animated.spring(anim, {
+            toValue: moveAmount,
+            useNativeDriver: true,
+            tension: 50,
+            friction: 8,
+          });
+        } else {
+          // Find this card's position in the pushed stack (0 = back/top, higher = front/bottom)
+          const positionInPushedStack = pushedCardIndices.indexOf(index);
+
+          // Target position: stacked below focused card with proper offsets
+          const targetTop = focusedBottomEdge + GAP + (positionInPushedStack * STACK_OFFSET);
+          const pushAmount = targetTop - thisTopOffset;
+
+          return Animated.spring(anim, {
+            toValue: pushAmount,
+            useNativeDriver: true,
+            tension: 50,
+            friction: 8,
+          });
+        }
+      });
+
+      Animated.parallel(animations).start();
+      setFocusedCardIndex(pressedIndex);
+    }
+  };
+
+  // Collapse cards (for wallet button)
+  const collapseCards = () => {
+    if (focusedCardIndex !== null) {
+      handleCardPress(focusedCardIndex);
+    }
   };
 
   // Fetch Riot account and stats (League and TFT)
@@ -992,20 +1121,14 @@ export default function ProfileScreen() {
               <IconSymbol size={18} name="star.fill" color="#fff" />
               <ThemedText style={styles.sectionHeaderTitle}>Rank Cards</ThemedText>
             </View>
-            {/* Wallet View button - shown when cards are expanded */}
-            {cardsExpanded && userGames.length > 1 && (
-              <TouchableOpacity
-                style={styles.walletViewButton}
-                onPress={toggleCardExpansion}
-                activeOpacity={0.7}
-              >
-                <IconSymbol size={20} name="creditcard.fill" color="#fff" />
-              </TouchableOpacity>
-            )}
           </View>
 
           {/* Rank Cards Content */}
-          <View style={[styles.rankCardsSection, { marginBottom: (userGames.length > 1 && cardsExpanded) ? 20 : 4 }]}>
+          <View style={[styles.rankCardsSection, {
+            marginBottom: focusedCardIndex !== null
+              ? (userGames.length > 2 ? -60 : userGames.length > 1 ? -50 : 0)
+              : (userGames.length > 2 ? 15 : userGames.length > 1 ? 20 : 25)
+          }]}>
           {!riotAccount && !valorantAccount ? (
             // Empty state for new users
             <View style={styles.emptyState}>
@@ -1085,73 +1208,96 @@ export default function ProfileScreen() {
               })()}
             </View>
           ) : (
-            // Multiple Cards View - stacked/expandable
-            <View style={[styles.verticalRankCardsContainer, !cardsExpanded && { paddingBottom: 0 }]}>
-              {!cardsExpanded ? (
-                // Stacked Cards View (Apple Wallet style)
-                <TouchableOpacity
-                  style={[styles.stackedCardsWrapper, { height: 240 }]}
-                  onPress={toggleCardExpansion}
-                  activeOpacity={0.9}
-                >
-                  {userGames.map((game, index) => {
-                    // Use appropriate account username based on game
-                    let displayUsername = user?.username || 'User';
+            // Multiple Cards View - Apple Wallet style stacked cards
+            (() => {
+              const totalCards = userGames.length;
+              const CARD_HEIGHT = 220;
+              const STACK_OFFSET = 50; // How much each card peeks from behind
+              const GAP = 20; // Gap between focused card and pushed cards
 
-                    if (game.name === 'Valorant' && valorantAccount) {
-                      displayUsername = `${valorantAccount.gameName}#${valorantAccount.tag}`;
-                    } else if ((game.name === 'League of Legends' || game.name === 'TFT') && riotAccount) {
-                      displayUsername = `${riotAccount.gameName}#${riotAccount.tagLine}`;
-                    }
+              // Calculate dynamic height based on focus state
+              // When collapsed: just the front card height (back cards peek above with negative offset)
+              // When focused: focused card + gap + pushed cards stacked below
+              let containerHeight = CARD_HEIGHT; // Just the front card height when collapsed
+              if (focusedCardIndex !== null) {
+                // Focused card at top + gap + pushed cards (maintaining their stack peek)
+                const pushedCardsCount = totalCards - 1;
+                // Pushed cards: one full card height + peeking offsets for others
+                const pushedStackHeight = pushedCardsCount > 0
+                  ? CARD_HEIGHT + ((pushedCardsCount - 1) * STACK_OFFSET)
+                  : 0;
 
-                    // Calculate stacking offset - stack downwards (cards behind peek from above)
-                    const totalCards = userGames.length;
-                    const reverseIndex = totalCards - 1 - index;
-                    const topOffset = reverseIndex * -50; // Negative to stack upwards from bottom, increased spacing
-                    const scale = 1 - (reverseIndex * 0.02);
+                // Total: focused card + gap + pushed stack
+                containerHeight = CARD_HEIGHT + GAP + pushedStackHeight;
+              }
 
-                    return (
-                      <View
-                        key={game.id}
-                        style={[
-                          styles.stackedCardItem,
-                          {
-                            bottom: 0,
-                            top: topOffset,
-                            transform: [{ scale }],
-                            zIndex: index + 1, // First card has lowest z-index, last card highest
-                          }
-                        ]}
-                        pointerEvents="none"
-                      >
-                        <RankCard game={game} username={displayUsername} viewOnly={true} />
-                      </View>
-                    );
-                  })}
-                </TouchableOpacity>
-              ) : (
-                // Expanded Cards View
-                <>
-                  {/* Individual Cards */}
-                  {userGames.map((game) => {
-                    // Use appropriate account username based on game
-                    let displayUsername = user?.username || 'User';
+              // Calculate top margin to prevent cards from overlapping the title
+              // Back cards have negative offsets, so we need margin to compensate
+              const stackMarginTop = (totalCards - 1) * STACK_OFFSET;
 
-                    if (game.name === 'Valorant' && valorantAccount) {
-                      displayUsername = `${valorantAccount.gameName}#${valorantAccount.tag}`;
-                    } else if ((game.name === 'League of Legends' || game.name === 'TFT') && riotAccount) {
-                      displayUsername = `${riotAccount.gameName}#${riotAccount.tagLine}`;
-                    }
+              return (
+                <View style={[styles.verticalRankCardsContainer, { paddingBottom: 0 }]}>
+                  <View style={[styles.stackedCardsWrapper, { height: containerHeight, marginTop: stackMarginTop }]}>
+                    {userGames.map((game, index) => {
+                      // Use appropriate account username based on game
+                      let displayUsername = user?.username || 'User';
 
-                    return (
-                      <View key={game.id} style={styles.verticalCardWrapper}>
-                        <RankCard game={game} username={displayUsername} viewOnly={false} />
-                      </View>
-                    );
-                  })}
-                </>
-              )}
-            </View>
+                      if (game.name === 'Valorant' && valorantAccount) {
+                        displayUsername = `${valorantAccount.gameName}#${valorantAccount.tag}`;
+                      } else if ((game.name === 'League of Legends' || game.name === 'TFT') && riotAccount) {
+                        displayUsername = `${riotAccount.gameName}#${riotAccount.tagLine}`;
+                      }
+
+                      // Calculate stacking offset - cards behind peek from above
+                      const reverseIndex = totalCards - 1 - index;
+                      const topOffset = reverseIndex * -STACK_OFFSET;
+                      const scale = 1 - (reverseIndex * 0.02);
+
+                      // Get animation value for this card (or create a default)
+                      const animatedTranslateY = cardAnimations[index] || new Animated.Value(0);
+
+                      // Calculate z-index: when focused, pushed cards need higher z-index to be tappable
+                      let cardZIndex = index + 1;
+                      if (focusedCardIndex !== null) {
+                        if (index === focusedCardIndex) {
+                          // Focused card gets lowest z-index (it's at top, doesn't need to be above others)
+                          cardZIndex = 1;
+                        } else {
+                          // Pushed cards get higher z-index to ensure they're tappable
+                          cardZIndex = totalCards + 1;
+                        }
+                      }
+
+                      return (
+                        <Animated.View
+                          key={game.id}
+                          style={[
+                            styles.stackedCardItem,
+                            {
+                              bottom: 0,
+                              top: topOffset,
+                              transform: [
+                                { scale },
+                                { translateY: animatedTranslateY }
+                              ],
+                              zIndex: cardZIndex,
+                            }
+                          ]}
+                        >
+                          <TouchableOpacity
+                            onPress={() => handleCardPress(index)}
+                            activeOpacity={0.9}
+                            style={{ width: '100%' }}
+                          >
+                            <RankCard game={game} username={displayUsername} viewOnly={true} />
+                          </TouchableOpacity>
+                        </Animated.View>
+                      );
+                    })}
+                  </View>
+                </View>
+              );
+            })()
           )}
           </View>
 
@@ -1779,7 +1925,6 @@ const styles = StyleSheet.create({
     position: 'relative',
     height: 320,
     width: '100%',
-    marginTop: 46,
   },
   stackedCardItem: {
     position: 'absolute',

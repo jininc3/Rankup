@@ -61,7 +61,8 @@ export default function LeagueRankCard({ game, username, viewOnly = false, userI
     return LEAGUE_RANK_ICONS[tier] || LEAGUE_RANK_ICONS.unranked;
   };
 
-  const CardWrapper = viewOnly ? View : TouchableOpacity;
+  // Navigation temporarily disabled
+  // const CardWrapper = viewOnly ? View : TouchableOpacity;
 
   return (
     <View style={styles.cardOuter}>
@@ -70,10 +71,7 @@ export default function LeagueRankCard({ game, username, viewOnly = false, userI
       <View style={styles.shadow2} />
       <View style={styles.shadow1} />
 
-      <CardWrapper
-        style={styles.rankCard}
-        {...(!viewOnly && { onPress: handlePress, activeOpacity: 0.9 })}
-      >
+      <View style={styles.rankCard}>
         <LinearGradient
         colors={['#1a3a5c', '#0f1f3d', '#091428']}
         start={{ x: 0, y: 0 }}
@@ -130,7 +128,7 @@ export default function LeagueRankCard({ game, username, viewOnly = false, userI
           </View>
         </View>
       </LinearGradient>
-    </CardWrapper>
+    </View>
     </View>
   );
 }

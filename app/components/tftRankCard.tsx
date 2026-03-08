@@ -2,6 +2,7 @@ import { ThemedText } from '@/components/themed-text';
 import { getProfileIconUrl } from '@/services/riotService';
 import { useRouter } from 'expo-router';
 import { Image, StyleSheet, TouchableOpacity, View } from 'react-native';
+import { LinearGradient } from 'expo-linear-gradient';
 
 interface Game {
   id: number;
@@ -72,7 +73,12 @@ export default function TftRankCard({ game, username, viewOnly = false, userId }
         style={styles.rankCard}
         {...(!viewOnly && { onPress: handlePress, activeOpacity: 0.9 })}
       >
-        <View style={styles.cardBackground}>
+        <LinearGradient
+          colors={['#2A2A2A', '#1A1A1A', '#0A0A0A']}
+          start={{ x: 0, y: 0 }}
+          end={{ x: 1, y: 1 }}
+          style={styles.cardBackground}
+        >
         {/* TFT logo watermark */}
         <Image
           source={require('@/assets/images/tft.png')}
@@ -112,7 +118,7 @@ export default function TftRankCard({ game, username, viewOnly = false, userId }
             </View>
           </View>
         </View>
-      </View>
+      </LinearGradient>
     </CardWrapper>
     </View>
   );
@@ -164,7 +170,6 @@ const styles = StyleSheet.create({
   cardBackground: {
     flex: 1,
     borderRadius: 24,
-    backgroundColor: '#7C3AED', // Dark purple for TFT
   },
   backgroundLogo: {
     position: 'absolute',
