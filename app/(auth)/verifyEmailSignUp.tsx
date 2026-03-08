@@ -164,7 +164,7 @@ export default function VerifyEmailSignUp() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#1e2124',
+    backgroundColor: '#0f0f0f',
   },
   closeButton: {
     position: 'absolute',

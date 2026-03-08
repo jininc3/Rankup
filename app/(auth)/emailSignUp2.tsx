@@ -135,7 +135,7 @@ export default function EmailSignUpStep2() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#1e2124',
+    backgroundColor: '#0f0f0f',
   },
   keyboardView: {
     flex: 1,

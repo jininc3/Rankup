@@ -97,8 +97,8 @@ export default function ValorantRankCard({ game, username, viewOnly = false, use
     return VALORANT_RANK_ICONS[tier] || VALORANT_RANK_ICONS.unranked;
   };
 
-  const gameAccentColor = '#8b3d47';
-  const gameAccentLight = '#a85561';
+  const gameAccentColor = '#8c2a38';
+  const gameAccentLight = '#a03542';
 
   return (
     <View style={styles.cardOuter}>
@@ -111,9 +111,9 @@ export default function ValorantRankCard({ game, username, viewOnly = false, use
       <View style={styles.card}>
         {/* Background */}
         <LinearGradient
-          colors={['#1a1d21', '#0f1114']}
+          colors={['#8c2a38', '#6d2230', '#5a1c28']}
           start={{ x: 0, y: 0 }}
-          end={{ x: 0, y: 1 }}
+          end={{ x: 1, y: 1 }}
           style={styles.cardBackground}
         />
 
@@ -185,7 +185,7 @@ export default function ValorantRankCard({ game, username, viewOnly = false, use
           <View style={styles.footerContent}>
             <ThemedText style={styles.footerText}>RANKUP</ThemedText>
             <View style={styles.arrowSection}>
-              <IconSymbol size={14} name="chevron.right" color="#444" />
+              <IconSymbol size={14} name="chevron.right" color="rgba(255,255,255,0.5)" />
             </View>
           </View>
         </View>
@@ -388,8 +388,8 @@ const styles = StyleSheet.create({
   // Footer Bar
   footerBar: {
     borderTopWidth: 1,
-    borderTopColor: '#1a1c1e',
-    backgroundColor: '#0c0d0f',
+    borderTopColor: '#6d2230',
+    backgroundColor: '#5a1c28',
   },
   footerAccent: {
     height: 2,
@@ -406,14 +406,14 @@ const styles = StyleSheet.create({
   footerText: {
     fontSize: 9,
     fontWeight: '600',
-    color: '#3a3d42',
+    color: 'rgba(255,255,255,0.5)',
     letterSpacing: 2,
   },
   arrowSection: {
     width: 22,
     height: 22,
     borderRadius: 11,
-    backgroundColor: '#151719',
+    backgroundColor: '#6d2230',
     alignItems: 'center',
     justifyContent: 'center',
   },

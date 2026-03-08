@@ -403,7 +403,7 @@ export default function EmailSignUpStep1() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#1e2124',
+    backgroundColor: '#0f0f0f',
   },
   keyboardView: {
     flex: 1,
@@ -563,7 +563,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     borderWidth: 3,
-    borderColor: '#1e2124',
+    borderColor: '#0f0f0f',
   },
   avatarHint: {
     fontSize: 14,
@@ -577,7 +577,7 @@ const styles = StyleSheet.create({
     justifyContent: 'flex-end',
   },
   modalContent: {
-    backgroundColor: '#1e2124',
+    backgroundColor: '#0f0f0f',
     borderTopLeftRadius: 20,
     borderTopRightRadius: 20,
     padding: 24,
