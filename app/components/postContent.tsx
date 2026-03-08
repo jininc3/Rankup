@@ -25,29 +25,47 @@ const getGameIcon = (gameId: string) => gameData[gameId]?.icon || '🎮';
 const getGameName = (gameId: string) => gameData[gameId]?.name || gameId;
 const getGameImage = (gameId: string) => gameData[gameId]?.image || null;
 
-// Format post date - shows "X days ago" if less than a month, otherwise actual date
+// Format post date - shows time if today, "X days ago" if within a week, otherwise date
 const formatPostDate = (timestamp: any): string => {
   if (!timestamp) return '';
 
   const now = new Date();
   const date = timestamp.toDate ? timestamp.toDate() : new Date(timestamp);
   const diffInMs = now.getTime() - date.getTime();
+  const diffInSeconds = Math.floor(diffInMs / 1000);
   const diffInDays = Math.floor(diffInMs / (1000 * 60 * 60 * 24));
 
-  if (diffInDays === 0) {
-    const diffInHours = Math.floor(diffInMs / (1000 * 60 * 60));
-    if (diffInHours === 0) {
-      const diffInMinutes = Math.floor(diffInMs / (1000 * 60));
-      if (diffInMinutes <= 1) return 'Just now';
-      return `${diffInMinutes}m ago`;
-    }
-    return `${diffInHours}h ago`;
-  } else if (diffInDays === 1) {
-    return '1 day ago';
-  } else if (diffInDays < 30) {
-    return `${diffInDays} days ago`;
+  // Within the last minute
+  if (diffInSeconds < 60) {
+    return 'now';
+  }
+
+  // Check if it's today (same calendar day)
+  const isToday = date.getDate() === now.getDate() &&
+                  date.getMonth() === now.getMonth() &&
+                  date.getFullYear() === now.getFullYear();
+
+  if (isToday) {
+    // Show time for today's posts
+    return date.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true });
+  }
+
+  // Within a week (1-7 days ago)
+  if (diffInDays < 7) {
+    return diffInDays === 1 ? '1 day ago' : `${diffInDays} days ago`;
+  }
+
+  // More than a week ago - show date
+  const day = date.getDate();
+  const month = date.toLocaleDateString('en-US', { month: 'short' });
+  const year = date.getFullYear();
+  const currentYear = now.getFullYear();
+
+  if (year === currentYear) {
+    return `${day} ${month}`;
   } else {
-    return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+    const shortYear = year.toString().slice(-2);
+    return `${day} ${month} ${shortYear}`;
   }
 };
 

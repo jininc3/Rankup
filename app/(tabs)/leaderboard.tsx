@@ -84,6 +84,7 @@ export default function LeaderboardScreen() {
           startDate: data.startDate,
           endDate: data.endDate,
           partyId: data.partyId,
+          type: data.type || 'leaderboard', // 'party' or 'leaderboard'
         };
       });
 
@@ -230,26 +231,34 @@ export default function LeaderboardScreen() {
   const handleLeaderboardPress = (leaderboard: any) => {
     console.log('Navigating to party:', leaderboard.name);
     console.log('Party ID:', leaderboard.partyId);
-    console.log('Full leaderboard data:', leaderboard);
+    console.log('Party type:', leaderboard.type);
 
-    const params = {
-      name: leaderboard.name,
-      icon: leaderboard.icon,
-      game: leaderboard.game,
-      members: leaderboard.members.toString(),
-      players: JSON.stringify(leaderboard.players),
-      partyId: leaderboard.partyId,
-      startDate: leaderboard.startDate,
-      endDate: leaderboard.endDate,
-    };
-
-    console.log('Navigation params:', params);
-
-    // Route to unified leaderboard detail page
-    const pathname = '/leaderboardPages/leaderboardDetail';
-
-    console.log('Navigating to:', pathname);
-    router.push({ pathname, params });
+    // Route based on party type
+    if (leaderboard.type === 'party') {
+      router.push({
+        pathname: '/partyPages/partyDetail',
+        params: {
+          name: leaderboard.name,
+          partyId: leaderboard.partyId,
+          game: leaderboard.game,
+        },
+      });
+    } else {
+      // Leaderboard type
+      router.push({
+        pathname: '/partyPages/leaderboardDetail',
+        params: {
+          name: leaderboard.name,
+          icon: leaderboard.icon,
+          game: leaderboard.game,
+          members: leaderboard.members.toString(),
+          players: JSON.stringify(leaderboard.players),
+          partyId: leaderboard.partyId,
+          startDate: leaderboard.startDate,
+          endDate: leaderboard.endDate,
+        },
+      });
+    }
   };
 
   return (
@@ -266,22 +275,44 @@ export default function LeaderboardScreen() {
         <ScrollView style={styles.scrollView} showsVerticalScrollIndicator={false}>
           {/* Tabs */}
           <View style={styles.tabsContainer}>
-            <TouchableOpacity
-              style={[styles.tab, selectedTab === 'current' && styles.tabActive]}
-              onPress={() => setSelectedTab('current')}
-            >
-              <ThemedText style={[styles.tabText, selectedTab === 'current' && styles.tabTextActive]}>
-                Current ({currentParties.length})
-              </ThemedText>
-            </TouchableOpacity>
-            <TouchableOpacity
-              style={[styles.tab, selectedTab === 'completed' && styles.tabActive]}
-              onPress={() => setSelectedTab('completed')}
-            >
-              <ThemedText style={[styles.tabText, selectedTab === 'completed' && styles.tabTextActive]}>
-                Completed ({completedParties.length})
-              </ThemedText>
-            </TouchableOpacity>
+            <View style={styles.tabsWrapper}>
+              <TouchableOpacity
+                style={[styles.tab, selectedTab === 'current' && styles.tabActive]}
+                onPress={() => setSelectedTab('current')}
+              >
+                <IconSymbol
+                  size={16}
+                  name="play.circle.fill"
+                  color={selectedTab === 'current' ? '#fff' : '#666'}
+                />
+                <ThemedText style={[styles.tabText, selectedTab === 'current' && styles.tabTextActive]}>
+                  Current
+                </ThemedText>
+                <View style={[styles.tabBadge, selectedTab === 'current' && styles.tabBadgeActive]}>
+                  <ThemedText style={[styles.tabBadgeText, selectedTab === 'current' && styles.tabBadgeTextActive]}>
+                    {currentParties.length}
+                  </ThemedText>
+                </View>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={[styles.tab, selectedTab === 'completed' && styles.tabActive]}
+                onPress={() => setSelectedTab('completed')}
+              >
+                <IconSymbol
+                  size={16}
+                  name="checkmark.circle.fill"
+                  color={selectedTab === 'completed' ? '#fff' : '#666'}
+                />
+                <ThemedText style={[styles.tabText, selectedTab === 'completed' && styles.tabTextActive]}>
+                  Completed
+                </ThemedText>
+                <View style={[styles.tabBadge, selectedTab === 'completed' && styles.tabBadgeActive]}>
+                  <ThemedText style={[styles.tabBadgeText, selectedTab === 'completed' && styles.tabBadgeTextActive]}>
+                    {completedParties.length}
+                  </ThemedText>
+                </View>
+              </TouchableOpacity>
+            </View>
           </View>
 
           {/* Parties List */}
@@ -315,7 +346,7 @@ export default function LeaderboardScreen() {
       {/* Floating Add Party Button */}
       <TouchableOpacity
         style={styles.fabButton}
-        onPress={() => router.push('/leaderboardPages/createParty')}
+        onPress={() => router.push('/partyPages/createPartyType')}
         activeOpacity={0.8}
       >
         <IconSymbol size={28} name="plus" color="#fff" />
@@ -370,25 +401,29 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   tabsContainer: {
-    flexDirection: 'row',
     paddingHorizontal: 16,
     paddingTop: 12,
     paddingBottom: 8,
-    gap: 8,
+  },
+  tabsWrapper: {
+    flexDirection: 'row',
+    backgroundColor: '#1a1a1a',
+    borderRadius: 12,
+    padding: 4,
+    gap: 4,
   },
   tab: {
-    paddingVertical: 8,
-    paddingHorizontal: 16,
-    borderRadius: 8,
+    flex: 1,
+    flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: 'rgba(255, 255, 255, 0.05)',
-    borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.08)',
+    paddingVertical: 10,
+    paddingHorizontal: 12,
+    borderRadius: 10,
+    gap: 6,
   },
   tabActive: {
-    backgroundColor: 'rgba(255, 255, 255, 0.1)',
-    borderColor: 'rgba(255, 255, 255, 0.15)',
+    backgroundColor: '#c42743',
   },
   tabText: {
     fontSize: 13,
@@ -398,6 +433,25 @@ const styles = StyleSheet.create({
   tabTextActive: {
     color: '#fff',
     fontWeight: '600',
+  },
+  tabBadge: {
+    backgroundColor: '#252525',
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderRadius: 6,
+    minWidth: 20,
+    alignItems: 'center',
+  },
+  tabBadgeActive: {
+    backgroundColor: 'rgba(255, 255, 255, 0.2)',
+  },
+  tabBadgeText: {
+    fontSize: 11,
+    fontWeight: '600',
+    color: '#666',
+  },
+  tabBadgeTextActive: {
+    color: '#fff',
   },
   leaderboardsSection: {
     paddingHorizontal: 20,

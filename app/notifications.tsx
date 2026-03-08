@@ -310,7 +310,7 @@ export default function NotificationsScreen() {
 
       // Navigate to the leaderboard detail page
       router.push({
-        pathname: '/leaderboardPages/leaderboardDetail',
+        pathname: '/partyPages/leaderboardDetail',
         params: {
           name: notification.partyName,
           partyId: notification.partyId,
@@ -377,7 +377,7 @@ export default function NotificationsScreen() {
     } else if ((notification.type === 'party_invite' || notification.type === 'party_complete' || notification.type === 'party_ranking_change') && notification.partyId) {
       // Navigate to party detail page
       router.push({
-        pathname: '/leaderboardPages/leaderboardDetail',
+        pathname: '/partyPages/leaderboardDetail',
         params: {
           partyId: notification.partyId,
           name: notification.partyName || 'Party',

@@ -1,33 +1,12 @@
 import { ThemedText } from '@/components/themed-text';
 import { Image, StyleSheet, TouchableOpacity, View } from 'react-native';
-import { LinearGradient } from 'expo-linear-gradient';
+import { IconSymbol } from '@/components/ui/icon-symbol';
 
 // Game logo mapping
 const GAME_LOGOS: { [key: string]: any } = {
-  'Valorant': require('@/assets/images/valorant-red.png'),
-  'League of Legends': require('@/assets/images/lol.png'),
+  'Valorant': require('@/assets/images/valorant.png'),
+  'League of Legends': require('@/assets/images/lol-icon.png'),
   'Apex Legends': require('@/assets/images/apex.png'),
-  'CS2': require('@/assets/images/valorant.png'), // placeholder
-  'Overwatch 2': require('@/assets/images/valorant.png'), // placeholder
-};
-
-// Game color themes
-const GAME_COLORS: { [key: string]: { light: string; border: string; progress: string } } = {
-  'Valorant': {
-    light: '#FFF5F5',
-    border: '#FFE4E6',
-    progress: '#FF4654',
-  },
-  'League of Legends': {
-    light: '#F0FDFA',
-    border: '#CCFBF1',
-    progress: '#0AC8B9',
-  },
-  'default': {
-    light: '#f8f9fa',
-    border: '#e5e7eb',
-    progress: '#000',
-  },
 };
 
 interface Leaderboard {
@@ -42,6 +21,7 @@ interface Leaderboard {
   partyId?: string;
   startDate?: any;
   endDate?: any;
+  type?: 'party' | 'leaderboard';
 }
 
 interface PartyCardsProps {
@@ -50,12 +30,11 @@ interface PartyCardsProps {
 }
 
 // Helper function to calculate days information
-const calculateDaysInfo = (startDate: any, endDate: any): { currentDay: number; totalDays: number; daysLeft: number } => {
+const calculateDaysInfo = (startDate: any, endDate: any): { currentDay: number; totalDays: number; daysLeft: number } | null => {
   if (!startDate || !endDate) {
-    return { currentDay: 0, totalDays: 0, daysLeft: 0 };
+    return null;
   }
 
-  // Parse dates
   const parseDate = (date: any): Date | null => {
     if (date.toDate && typeof date.toDate === 'function') {
       return date.toDate();
@@ -78,7 +57,7 @@ const calculateDaysInfo = (startDate: any, endDate: any): { currentDay: number; 
   const endDateObj = parseDate(endDate);
 
   if (!startDateObj || !endDateObj || isNaN(startDateObj.getTime()) || isNaN(endDateObj.getTime())) {
-    return { currentDay: 0, totalDays: 0, daysLeft: 0 };
+    return null;
   }
 
   const today = new Date();
@@ -98,89 +77,84 @@ const calculateDaysInfo = (startDate: any, endDate: any): { currentDay: number; 
 
 export default function PartyCards({ leaderboard, onPress }: PartyCardsProps) {
   const daysInfo = calculateDaysInfo(leaderboard.startDate, leaderboard.endDate);
-  const colors = GAME_COLORS[leaderboard.game] || GAME_COLORS['default'];
-  const progressPercentage = daysInfo.totalDays > 0
+  const isLeaderboard = leaderboard.type !== 'party' && daysInfo !== null;
+  const progressPercentage = daysInfo && daysInfo.totalDays > 0
     ? Math.min(100, (daysInfo.currentDay / daysInfo.totalDays) * 100)
     : 0;
 
   const getAccentColor = () => {
     if (leaderboard.game === 'Valorant') return '#FF4655';
-    if (leaderboard.game === 'League of Legends') return '#0AC8B9';
-    return '#666';
+    if (leaderboard.game === 'League of Legends') return '#C89B3C';
+    return '#888';
   };
+
+  const accentColor = getAccentColor();
 
   return (
     <TouchableOpacity
-      style={styles.card}
+      activeOpacity={0.7}
       onPress={() => onPress(leaderboard)}
-      activeOpacity={0.8}
+      style={styles.card}
     >
-      <View style={[styles.accentStrip, { backgroundColor: getAccentColor() }]} />
+      {/* Left Section - Game Icon */}
+      <View style={[styles.iconSection, { backgroundColor: accentColor + '15' }]}>
+        {GAME_LOGOS[leaderboard.game] ? (
+          <Image
+            source={GAME_LOGOS[leaderboard.game]}
+            style={styles.gameIcon}
+            resizeMode="contain"
+          />
+        ) : (
+          <IconSymbol size={28} name="gamecontroller.fill" color={accentColor} />
+        )}
+      </View>
 
-      <View style={styles.cardContent}>
-        {/* Title Row */}
-        <View style={styles.titleRow}>
-          <ThemedText style={styles.title} numberOfLines={1}>{leaderboard.name}</ThemedText>
-          {GAME_LOGOS[leaderboard.game] && (
-            <Image
-              source={GAME_LOGOS[leaderboard.game]}
-              style={styles.gameLogo}
-              resizeMode="contain"
-            />
-          )}
-        </View>
+      {/* Middle Section - Info */}
+      <View style={styles.infoSection}>
+        {/* Party Name */}
+        <ThemedText style={styles.partyName} numberOfLines={1}>
+          {leaderboard.name}
+        </ThemedText>
 
-        {/* Stats Row */}
-        <View style={styles.statsRow}>
-          {/* Rank */}
-          {leaderboard.userRank && (
-            <View style={styles.stat}>
-              <ThemedText style={[styles.statValue, { color: getAccentColor() }]}>
-                #{leaderboard.userRank}
-              </ThemedText>
-              <ThemedText style={styles.statLabel}>Rank</ThemedText>
-            </View>
-          )}
-
-          {/* Members */}
-          <View style={styles.stat}>
-            <ThemedText style={styles.statValue}>{leaderboard.members}</ThemedText>
-            <ThemedText style={styles.statLabel}>Players</ThemedText>
+        {/* Meta Row */}
+        <View style={styles.metaRow}>
+          <View style={styles.metaItem}>
+            <IconSymbol size={12} name="person.2.fill" color="#666" />
+            <ThemedText style={styles.metaText}>{leaderboard.members}</ThemedText>
           </View>
 
-          {/* Days */}
-          {daysInfo.totalDays > 0 && (
-            <View style={styles.stat}>
-              <ThemedText style={styles.statValue}>
-                {daysInfo.currentDay}/{daysInfo.totalDays}
-              </ThemedText>
-              <ThemedText style={styles.statLabel}>Day</ThemedText>
+          {isLeaderboard && daysInfo && (
+            <View style={styles.metaItem}>
+              <IconSymbol size={12} name="clock" color="#666" />
+              <ThemedText style={styles.metaText}>{daysInfo.daysLeft}d</ThemedText>
             </View>
           )}
 
-          {/* Days Left */}
-          {daysInfo.daysLeft > 0 && (
-            <View style={styles.stat}>
-              <ThemedText style={styles.statValue}>{daysInfo.daysLeft}</ThemedText>
-              <ThemedText style={styles.statLabel}>Left</ThemedText>
+          {leaderboard.userRank && (
+            <View style={[styles.rankBadge, { backgroundColor: accentColor + '20' }]}>
+              <ThemedText style={[styles.rankText, { color: accentColor }]}>
+                #{leaderboard.userRank}
+              </ThemedText>
             </View>
           )}
         </View>
 
-        {/* Progress Bar */}
-        {daysInfo.totalDays > 0 && (
+        {/* Progress Bar (for leaderboards) */}
+        {isLeaderboard && daysInfo && (
           <View style={styles.progressBar}>
             <View
               style={[
                 styles.progressFill,
-                {
-                  width: `${progressPercentage}%`,
-                  backgroundColor: getAccentColor(),
-                }
+                { width: `${progressPercentage}%`, backgroundColor: accentColor }
               ]}
             />
           </View>
         )}
+      </View>
+
+      {/* Right Section - Arrow */}
+      <View style={styles.arrowSection}>
+        <IconSymbol size={16} name="chevron.right" color="#444" />
       </View>
     </TouchableOpacity>
   );
@@ -188,75 +162,73 @@ export default function PartyCards({ leaderboard, onPress }: PartyCardsProps) {
 
 const styles = StyleSheet.create({
   card: {
-    backgroundColor: '#2c2f33',
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#161616',
     borderRadius: 12,
+    marginBottom: 10,
     overflow: 'hidden',
-    borderWidth: 1,
-    borderColor: '#40444b',
-    marginBottom: 16,
-    shadowColor: '#000',
-    shadowOffset: {
-      width: 0,
-      height: 8,
-    },
-    shadowOpacity: 0.35,
-    shadowRadius: 16,
-    elevation: 10,
   },
-  accentStrip: {
-    height: 3,
-    width: '100%',
-  },
-  cardContent: {
-    padding: 14,
-    gap: 10,
-  },
-  titleRow: {
-    flexDirection: 'row',
+  iconSection: {
+    width: 56,
+    height: 56,
     alignItems: 'center',
-    justifyContent: 'space-between',
+    justifyContent: 'center',
+    marginLeft: 12,
+    marginVertical: 12,
+    borderRadius: 10,
   },
-  title: {
-    fontSize: 16,
-    fontWeight: '700',
-    color: '#fff',
-    letterSpacing: -0.5,
+  gameIcon: {
+    width: 30,
+    height: 30,
+  },
+  infoSection: {
     flex: 1,
+    paddingVertical: 12,
+    paddingHorizontal: 12,
+    gap: 6,
   },
-  gameLogo: {
-    width: 20,
-    height: 20,
+  partyName: {
+    fontSize: 15,
+    fontWeight: '600',
+    color: '#fff',
   },
-  statsRow: {
+  metaRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 16,
+    gap: 12,
   },
-  stat: {
+  metaItem: {
+    flexDirection: 'row',
     alignItems: 'center',
     gap: 4,
   },
-  statValue: {
-    fontSize: 18,
-    fontWeight: '800',
-    color: '#fff',
-    letterSpacing: -0.5,
+  metaText: {
+    fontSize: 12,
+    fontWeight: '500',
+    color: '#666',
   },
-  statLabel: {
-    fontSize: 10,
-    fontWeight: '600',
-    color: '#94a3b8',
-    letterSpacing: 0.3,
-    textTransform: 'uppercase',
+  rankBadge: {
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderRadius: 4,
+  },
+  rankText: {
+    fontSize: 11,
+    fontWeight: '700',
   },
   progressBar: {
-    height: 4,
-    backgroundColor: 'rgba(0, 0, 0, 0.3)',
+    height: 3,
+    backgroundColor: '#252525',
     borderRadius: 2,
+    marginTop: 2,
     overflow: 'hidden',
   },
   progressFill: {
     height: '100%',
     borderRadius: 2,
+  },
+  arrowSection: {
+    paddingRight: 14,
   },
 });

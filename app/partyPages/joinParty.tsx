@@ -87,7 +87,7 @@ export default function JoinPartyScreen() {
             onPress: () => {
               // Navigate to the party detail page
               router.push({
-                pathname: '/leaderboardPages/leaderboardDetail',
+                pathname: '/partyPages/leaderboardDetail',
                 params: {
                   name: partyData.partyName,
                   partyId: partyData.partyId,

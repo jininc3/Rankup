@@ -1,7 +1,7 @@
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { IconSymbol } from '@/components/ui/icon-symbol';
-import { useLocalSearchParams, useRouter } from 'expo-router';
+import { useRouter } from 'expo-router';
 import { useState, useEffect, useRef } from 'react';
 import {
   ScrollView,
@@ -12,13 +12,25 @@ import {
   Alert,
   ActivityIndicator,
   Image,
-  Platform
 } from 'react-native';
-import DateTimePicker from '@react-native-community/datetimepicker';
 import * as Clipboard2 from 'expo-clipboard';
 import { useAuth } from '@/contexts/AuthContext';
 import { db } from '@/config/firebase';
 import { collection, query, where, getDocs, doc, getDoc, addDoc, serverTimestamp, limit } from 'firebase/firestore';
+
+// Available games
+const AVAILABLE_GAMES = [
+  {
+    id: 'valorant',
+    name: 'Valorant',
+    logo: require('@/assets/images/valorant.png'),
+  },
+  {
+    id: 'league',
+    name: 'League of Legends',
+    logo: require('@/assets/images/lol-icon.png'),
+  },
+];
 
 interface Follower {
   id: string;
@@ -26,31 +38,13 @@ interface Follower {
   avatar: string;
 }
 
-export default function CreateParty1Screen() {
+export default function CreatePartySimpleScreen() {
   const router = useRouter();
-  const params = useLocalSearchParams();
   const { user } = useAuth();
-  const gameName = params.game as string;
-  const gameId = params.gameId as string;
 
   const scrollViewRef = useRef<ScrollView>(null);
 
-  const formatDate = (date: Date) => {
-    const month = String(date.getMonth() + 1).padStart(2, '0');
-    const day = String(date.getDate()).padStart(2, '0');
-    const year = date.getFullYear();
-    return `${month}/${day}/${year}`;
-  };
-
-  const getDefaultDates = () => {
-    const today = new Date();
-    const thirtyDaysLater = new Date(today);
-    thirtyDaysLater.setDate(today.getDate() + 30);
-    return { start: today, end: thirtyDaysLater };
-  };
-
-  const defaultDates = getDefaultDates();
-
+  const [selectedGame, setSelectedGame] = useState<typeof AVAILABLE_GAMES[0] | null>(null);
   const [partyName, setPartyName] = useState('');
   const [partyId, setPartyId] = useState('');
   const [inviteCode, setInviteCode] = useState('');
@@ -58,28 +52,6 @@ export default function CreateParty1Screen() {
   const [followers, setFollowers] = useState<Follower[]>([]);
   const [loadingFollowers, setLoadingFollowers] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
-  const [startDate, setStartDate] = useState<Date>(defaultDates.start);
-  const [endDate, setEndDate] = useState<Date>(defaultDates.end);
-  const [showEndDatePicker, setShowEndDatePicker] = useState(false);
-  const [challengeType, setChallengeType] = useState<'climbing' | 'rank'>('climbing');
-  const [selectedDuration, setSelectedDuration] = useState<number>(30);
-
-  const formatDateShort = (date: Date) => {
-    return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
-  };
-
-  const handleDurationSelect = (days: number) => {
-    setSelectedDuration(days);
-    setShowEndDatePicker(false);
-    const newEndDate = new Date(startDate);
-    newEndDate.setDate(startDate.getDate() + days);
-    setEndDate(newEndDate);
-  };
-
-  const handleCustomDuration = () => {
-    setSelectedDuration(0);
-    setShowEndDatePicker(!showEndDatePicker);
-  };
 
   useEffect(() => {
     const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
@@ -167,18 +139,11 @@ export default function CreateParty1Screen() {
     }
   };
 
-  const handleEndDateChange = (event: any, selectedDate?: Date) => {
-    setShowEndDatePicker(Platform.OS === 'ios');
-    if (selectedDate) {
-      setEndDate(selectedDate);
-      // Calculate days difference for custom selection
-      const diffTime = selectedDate.getTime() - startDate.getTime();
-      const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-      setSelectedDuration(diffDays);
-    }
-  };
-
   const handleCreateParty = async () => {
+    if (!selectedGame) {
+      Alert.alert('Error', 'Please select a game');
+      return;
+    }
     if (!partyName.trim()) {
       Alert.alert('Error', 'Please enter a party name');
       return;
@@ -231,11 +196,9 @@ export default function CreateParty1Screen() {
       const partyData = {
         partyId,
         partyName,
-        game: gameName,
-        gameId,
-        startDate: formatDate(startDate),
-        endDate: formatDate(endDate),
-        challengeType,
+        game: selectedGame.name,
+        gameId: selectedGame.id,
+        type: 'party',
         inviteCode: inviteCode || '',
         createdBy: user.id,
         createdAt: serverTimestamp(),
@@ -257,7 +220,7 @@ export default function CreateParty1Screen() {
               fromAvatar: userData?.avatar || '',
               partyId,
               partyName,
-              game: gameName,
+              game: selectedGame.name,
               read: false,
               createdAt: serverTimestamp(),
             });
@@ -276,15 +239,11 @@ export default function CreateParty1Screen() {
           text: 'OK',
           onPress: () => {
             router.push({
-              pathname: '/leaderboardPages/leaderboardDetail',
+              pathname: '/partyPages/partyDetail',
               params: {
                 name: partyName,
                 partyId,
-                game: gameName,
-                members: '1',
-                startDate: formatDate(startDate),
-                endDate: formatDate(endDate),
-                players: JSON.stringify([]),
+                game: selectedGame.name,
               },
             });
           },
@@ -303,7 +262,7 @@ export default function CreateParty1Screen() {
         <TouchableOpacity style={styles.backButton} onPress={() => router.back()}>
           <IconSymbol size={20} name="chevron.left" color="#fff" />
         </TouchableOpacity>
-        <ThemedText style={styles.headerTitle}>Party Details</ThemedText>
+        <ThemedText style={styles.headerTitle}>Create Party</ThemedText>
         <View style={styles.headerSpacer} />
       </View>
 
@@ -313,6 +272,29 @@ export default function CreateParty1Screen() {
         showsVerticalScrollIndicator={false}
         keyboardShouldPersistTaps="handled"
       >
+        {/* Game Selection Card */}
+        <View style={styles.card}>
+          <ThemedText style={styles.cardTitle}>Select Game</ThemedText>
+          <View style={styles.gameSelectionRow}>
+            {AVAILABLE_GAMES.map((game) => (
+              <TouchableOpacity
+                key={game.id}
+                style={[
+                  styles.gameOption,
+                  selectedGame?.id === game.id && styles.gameOptionSelected
+                ]}
+                onPress={() => setSelectedGame(game)}
+              >
+                <Image source={game.logo} style={styles.gameOptionLogo} />
+                <ThemedText style={[
+                  styles.gameOptionName,
+                  selectedGame?.id === game.id && styles.gameOptionNameSelected
+                ]}>{game.name}</ThemedText>
+              </TouchableOpacity>
+            ))}
+          </View>
+        </View>
+
         {/* Party Info Card */}
         <View style={styles.card}>
           <View style={styles.inputGroup}>
@@ -351,118 +333,6 @@ export default function CreateParty1Screen() {
                 <IconSymbol size={14} name="doc.on.doc" color="#888" />
               </TouchableOpacity>
             </View>
-          </View>
-        </View>
-
-        {/* Duration Card */}
-        <View style={styles.card}>
-          <ThemedText style={styles.cardTitle}>Duration</ThemedText>
-          <View style={styles.durationRow}>
-            <TouchableOpacity
-              style={[
-                styles.durationButton,
-                selectedDuration === 10 && styles.durationButtonActive
-              ]}
-              onPress={() => handleDurationSelect(10)}
-            >
-              <ThemedText style={[
-                styles.durationButtonText,
-                selectedDuration === 10 && styles.durationButtonTextActive
-              ]}>10 days</ThemedText>
-            </TouchableOpacity>
-            <TouchableOpacity
-              style={[
-                styles.durationButton,
-                selectedDuration === 30 && styles.durationButtonActive
-              ]}
-              onPress={() => handleDurationSelect(30)}
-            >
-              <ThemedText style={[
-                styles.durationButtonText,
-                selectedDuration === 30 && styles.durationButtonTextActive
-              ]}>30 days</ThemedText>
-            </TouchableOpacity>
-            <TouchableOpacity
-              style={[
-                styles.durationButton,
-                selectedDuration !== 10 && selectedDuration !== 30 && styles.durationButtonActive
-              ]}
-              onPress={handleCustomDuration}
-            >
-              <ThemedText style={[
-                styles.durationButtonText,
-                selectedDuration !== 10 && selectedDuration !== 30 && styles.durationButtonTextActive
-              ]}>Custom</ThemedText>
-            </TouchableOpacity>
-          </View>
-          <View style={styles.endDateRow}>
-            <ThemedText style={styles.endDateLabel}>Ends on</ThemedText>
-            <ThemedText style={styles.endDateValue}>{formatDateShort(endDate)}</ThemedText>
-          </View>
-          {showEndDatePicker && (
-            <DateTimePicker
-              value={endDate}
-              mode="date"
-              display={Platform.OS === 'ios' ? 'spinner' : 'default'}
-              onChange={handleEndDateChange}
-              minimumDate={startDate}
-              textColor="#fff"
-              themeVariant="dark"
-            />
-          )}
-        </View>
-
-        {/* Challenge Type Card */}
-        <View style={styles.card}>
-          <ThemedText style={styles.cardTitle}>Challenge Type</ThemedText>
-          <View style={styles.challengeRow}>
-            <TouchableOpacity
-              style={[
-                styles.challengeButton,
-                challengeType === 'climbing' && styles.challengeButtonActive
-              ]}
-              onPress={() => setChallengeType('climbing')}
-            >
-              <IconSymbol
-                size={18}
-                name="chart.line.uptrend.xyaxis"
-                color={challengeType === 'climbing' ? '#fff' : '#888'}
-              />
-              <View style={styles.challengeInfo}>
-                <ThemedText style={[
-                  styles.challengeTitle,
-                  challengeType === 'climbing' && styles.challengeTitleActive
-                ]}>Climbing</ThemedText>
-                <ThemedText style={[
-                  styles.challengeDesc,
-                  challengeType === 'climbing' && styles.challengeDescActive
-                ]}>Most LP/RR gained</ThemedText>
-              </View>
-            </TouchableOpacity>
-
-            <TouchableOpacity
-              style={[
-                styles.challengeButton,
-                challengeType === 'rank' && styles.challengeButtonActive
-              ]}
-              onPress={() => setChallengeType('rank')}
-            >
-              <IconSymbol
-                size={18}
-                name="trophy.fill"
-                color={challengeType === 'rank' ? '#fff' : '#888'}
-              />
-              <View style={styles.challengeInfo}>
-                <ThemedText style={[
-                  styles.challengeTitle,
-                  challengeType === 'rank' && styles.challengeTitleActive
-                ]}>Rank</ThemedText>
-                <ThemedText style={[
-                  styles.challengeDesc,
-                  challengeType === 'rank' && styles.challengeDescActive
-                ]}>Highest rank wins</ThemedText>
-              </View>
-            </TouchableOpacity>
           </View>
         </View>
 
@@ -589,6 +459,37 @@ const styles = StyleSheet.create({
     textTransform: 'uppercase',
     letterSpacing: 0.5,
   },
+  gameSelectionRow: {
+    flexDirection: 'row',
+    gap: 10,
+  },
+  gameOption: {
+    flex: 1,
+    backgroundColor: '#252525',
+    borderRadius: 10,
+    padding: 12,
+    alignItems: 'center',
+    borderWidth: 1.5,
+    borderColor: 'transparent',
+  },
+  gameOptionSelected: {
+    backgroundColor: '#2a2020',
+    borderColor: '#c42743',
+  },
+  gameOptionLogo: {
+    width: 40,
+    height: 40,
+    marginBottom: 8,
+  },
+  gameOptionName: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: '#888',
+    textAlign: 'center',
+  },
+  gameOptionNameSelected: {
+    color: '#fff',
+  },
   inputGroup: {
     marginBottom: 12,
   },
@@ -644,87 +545,6 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     color: '#c42743',
     letterSpacing: 2,
-  },
-  durationRow: {
-    flexDirection: 'row',
-    gap: 8,
-    marginBottom: 12,
-  },
-  durationButton: {
-    flex: 1,
-    backgroundColor: '#252525',
-    borderRadius: 8,
-    paddingVertical: 10,
-    alignItems: 'center',
-    borderWidth: 1.5,
-    borderColor: 'transparent',
-  },
-  durationButtonActive: {
-    backgroundColor: '#c42743',
-    borderColor: '#c42743',
-  },
-  durationButtonText: {
-    fontSize: 13,
-    fontWeight: '600',
-    color: '#888',
-  },
-  durationButtonTextActive: {
-    color: '#fff',
-  },
-  endDateRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    backgroundColor: '#252525',
-    borderRadius: 8,
-    padding: 12,
-  },
-  endDateLabel: {
-    fontSize: 13,
-    color: '#666',
-  },
-  endDateValue: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: '#fff',
-  },
-  challengeRow: {
-    flexDirection: 'row',
-    gap: 10,
-  },
-  challengeButton: {
-    flex: 1,
-    backgroundColor: '#252525',
-    borderRadius: 10,
-    padding: 12,
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 10,
-    borderWidth: 1.5,
-    borderColor: 'transparent',
-  },
-  challengeButtonActive: {
-    backgroundColor: '#c42743',
-    borderColor: '#c42743',
-  },
-  challengeInfo: {
-    flex: 1,
-  },
-  challengeTitle: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: '#fff',
-  },
-  challengeTitleActive: {
-    color: '#fff',
-  },
-  challengeDesc: {
-    fontSize: 11,
-    color: '#666',
-    marginTop: 1,
-  },
-  challengeDescActive: {
-    color: 'rgba(255,255,255,0.8)',
   },
   searchInput: {
     backgroundColor: '#252525',

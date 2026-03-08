@@ -4,19 +4,31 @@ export default function LeaderboardPagesLayout() {
   return (
     <Stack>
       <Stack.Screen
-        name="createParty"
+        name="createPartyType"
         options={{
           headerShown: false,
         }}
       />
       <Stack.Screen
-        name="createParty1"
+        name="createLeaderboard"
+        options={{
+          headerShown: false,
+        }}
+      />
+      <Stack.Screen
+        name="createPartySimple"
         options={{
           headerShown: false,
         }}
       />
       <Stack.Screen
         name="leaderboardDetail"
+        options={{
+          headerShown: false,
+        }}
+      />
+      <Stack.Screen
+        name="partyDetail"
         options={{
           headerShown: false,
         }}
