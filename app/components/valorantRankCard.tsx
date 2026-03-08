@@ -1,7 +1,10 @@
 import { ThemedText } from '@/components/themed-text';
 import { useRouter } from 'expo-router';
-import { Image, StyleSheet, TouchableOpacity, View } from 'react-native';
+import { Image, StyleSheet, TouchableOpacity, View, Dimensions } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
+import { IconSymbol } from '@/components/ui/icon-symbol';
+
+const { width: screenWidth } = Dimensions.get('window');
 
 interface Game {
   id: number;
@@ -14,19 +17,17 @@ interface Game {
   winRate: number;
   recentMatches: string[];
   profileIconId?: number;
-  valorantCard?: string; // Valorant player card URL
+  valorantCard?: string;
 }
 
 interface ValorantRankCardProps {
   game: Game;
   username: string;
-  viewOnly?: boolean; // If true, card is not clickable (for viewing other users)
-  userId?: string; // ID of the user whose stats to view (for viewing other users)
+  viewOnly?: boolean;
+  userId?: string;
 }
 
-// Valorant rank icon mapping - Includes subdivision ranks
 const VALORANT_RANK_ICONS: { [key: string]: any } = {
-  // Base ranks (fallback)
   iron: require('@/assets/images/valorantranks/iron.png'),
   bronze: require('@/assets/images/valorantranks/bronze.png'),
   silver: require('@/assets/images/valorantranks/silver.png'),
@@ -37,8 +38,6 @@ const VALORANT_RANK_ICONS: { [key: string]: any } = {
   immortal: require('@/assets/images/valorantranks/immortal.png'),
   radiant: require('@/assets/images/valorantranks/radiant.png'),
   unranked: require('@/assets/images/valorantranks/unranked.png'),
-
-  // Subdivision ranks
   iron1: require('@/assets/images/valorantranks/iron1.png'),
   iron2: require('@/assets/images/valorantranks/iron2.png'),
   iron3: require('@/assets/images/valorantranks/iron3.png'),
@@ -69,12 +68,12 @@ export default function ValorantRankCard({ game, username, viewOnly = false, use
   const router = useRouter();
 
   const handlePress = () => {
-    if (viewOnly) return; // Don't navigate if view only
+    if (viewOnly) return;
     router.push({
       pathname: '/components/valorantGameStats',
       params: {
         game: JSON.stringify(game),
-        ...(userId && { userId }), // Only include userId if provided
+        ...(userId && { userId }),
       },
     });
   };
@@ -84,91 +83,113 @@ export default function ValorantRankCard({ game, username, viewOnly = false, use
       return VALORANT_RANK_ICONS.unranked;
     }
 
-    // Extract tier and subdivision (e.g., "Gold 3" → "gold3")
     const parts = rank.split(' ');
-    const tier = parts[0].toLowerCase(); // e.g., "gold"
-    const subdivision = parts[1]; // e.g., "3"
+    const tier = parts[0].toLowerCase();
+    const subdivision = parts[1];
 
-    // Try to get subdivision rank first (e.g., "gold3")
     if (subdivision) {
-      const subdivisionKey = tier + subdivision; // e.g., "gold3"
+      const subdivisionKey = tier + subdivision;
       if (VALORANT_RANK_ICONS[subdivisionKey]) {
         return VALORANT_RANK_ICONS[subdivisionKey];
       }
     }
 
-    // Fallback to base tier (e.g., "gold") or radiant (which has no subdivision)
     return VALORANT_RANK_ICONS[tier] || VALORANT_RANK_ICONS.unranked;
   };
 
-  // Navigation temporarily disabled
-  // const CardWrapper = viewOnly ? View : TouchableOpacity;
+  const gameAccentColor = '#8b3d47';
+  const gameAccentLight = '#a85561';
 
   return (
     <View style={styles.cardOuter}>
-      {/* 3D Shadow layers - light from right side */}
+      {/* 3D Shadow layers */}
       <View style={styles.shadow3} />
       <View style={styles.shadow2} />
       <View style={styles.shadow1} />
 
-      <View style={styles.rankCard}>
+      {/* Main Card */}
+      <View style={styles.card}>
+        {/* Background */}
         <LinearGradient
-        colors={['#DC3D4B', '#8B1E2B', '#5C141D']}
-        start={{ x: 0, y: 0 }}
-        end={{ x: 1, y: 1 }}
-        style={styles.cardBackground}
-      >
+          colors={['#1a1d21', '#0f1114']}
+          start={{ x: 0, y: 0 }}
+          end={{ x: 0, y: 1 }}
+          style={styles.cardBackground}
+        />
+
         {/* Valorant logo watermark */}
         <Image
-          source={require('@/assets/images/valorant-black.png')}
+          source={require('@/assets/images/valorant.png')}
           style={styles.backgroundLogo}
           resizeMode="contain"
         />
 
-        {/* Front of card - Credit card style */}
-        <View style={styles.cardFront}>
-          {/* Game Logo - Top Left */}
-          <View style={styles.cardGameLogo}>
-            <Image
-              source={require('@/assets/images/valorant.png')}
-              style={styles.gameLogo}
-              resizeMode="contain"
-            />
+        {/* Header Bar */}
+        <View style={styles.headerBar}>
+          <ThemedText style={styles.headerTitle}>VALORANT</ThemedText>
+          <View style={styles.headerDivider} />
+          <ThemedText style={styles.headerSubtitle}>RANKCARD</ThemedText>
+          <View style={styles.headerAccent}>
+            <ThemedText style={[styles.headerAccentText, { color: gameAccentLight }]}>&gt;&gt;&gt;</ThemedText>
+          </View>
+        </View>
+
+        {/* Divider Line */}
+        <View style={styles.sectionDivider}>
+          <View style={[styles.dividerAccent, { backgroundColor: gameAccentColor }]} />
+          <View style={styles.dividerLine} />
+        </View>
+
+        {/* Main Content Area - Side by Side Layout */}
+        <View style={styles.mainContent}>
+          {/* Left: Photo + Username */}
+          <View style={styles.leftSection}>
+            <View style={styles.photoFrame}>
+              {game.valorantCard ? (
+                <Image
+                  source={{ uri: game.valorantCard }}
+                  defaultSource={require('@/assets/images/valorant-black.png')}
+                  style={styles.photo}
+                />
+              ) : (
+                <View style={styles.photoPlaceholder}>
+                  <ThemedText style={styles.photoInitial}>
+                    {username[0]?.toUpperCase() || '?'}
+                  </ThemedText>
+                </View>
+              )}
+            </View>
+            <ThemedText style={styles.username} numberOfLines={1}>
+              {username}
+            </ThemedText>
           </View>
 
-          {/* Player Card - Top Right */}
-          <View style={styles.cardHeader}>
-            {game.valorantCard ? (
+          {/* Right: Rank Display */}
+          <View style={styles.rankSection}>
+            <ThemedText style={styles.rankLabel}>CURRENT RANK</ThemedText>
+            <View style={styles.rankIconContainer}>
+              <View style={[styles.rankGlow, { backgroundColor: gameAccentColor }]} />
               <Image
-                source={{ uri: game.valorantCard }}
-                defaultSource={require('@/assets/images/valorant-black.png')}
-                style={styles.cardProfileIcon}
+                source={getRankIcon(game.rank)}
+                style={styles.rankIconMain}
+                resizeMode="contain"
               />
-            ) : (
-              <ThemedText style={styles.cardGameIcon}>{game.icon}</ThemedText>
-            )}
+            </View>
+            <ThemedText style={styles.rankValue}>{game.rank}</ThemedText>
           </View>
+        </View>
 
-          {/* Current Rank - Centered */}
-          <View style={styles.cardMiddle}>
-            <ThemedText style={styles.cardRankLabel}>CURRENT RANK</ThemedText>
-            <ThemedText style={styles.cardRankValue}>{game.rank}</ThemedText>
-            <Image
-              source={getRankIcon(game.rank)}
-              style={styles.rankIcon}
-              resizeMode="contain"
-            />
-          </View>
-
-          {/* Footer - Bottom */}
-          <View style={styles.cardFooter}>
-            <View style={styles.cardUserInfo}>
-              <ThemedText style={styles.cardUsername}>{username}</ThemedText>
+        {/* Footer Bar */}
+        <View style={styles.footerBar}>
+          <View style={[styles.footerAccent, { backgroundColor: gameAccentColor }]} />
+          <View style={styles.footerContent}>
+            <ThemedText style={styles.footerText}>RANKUP</ThemedText>
+            <View style={styles.arrowSection}>
+              <IconSymbol size={14} name="chevron.right" color="#444" />
             </View>
           </View>
         </View>
-      </LinearGradient>
-    </View>
+      </View>
     </View>
   );
 }
@@ -178,137 +199,222 @@ const styles = StyleSheet.create({
     position: 'relative',
     height: 220,
   },
-  // 3D Shadow layers - light from right side
   shadow3: {
     position: 'absolute',
-    top: 10,
-    left: -10,
-    right: 14,
-    bottom: -10,
+    top: 8,
+    left: -8,
+    right: 12,
+    bottom: -8,
     backgroundColor: '#000',
-    borderRadius: 26,
+    borderRadius: 14,
     opacity: 0.2,
   },
   shadow2: {
     position: 'absolute',
-    top: 6,
-    left: -6,
-    right: 10,
-    bottom: -6,
+    top: 5,
+    left: -5,
+    right: 8,
+    bottom: -5,
     backgroundColor: '#000',
-    borderRadius: 25,
+    borderRadius: 13,
     opacity: 0.25,
   },
   shadow1: {
     position: 'absolute',
-    top: 3,
-    left: -3,
-    right: 5,
-    bottom: -3,
+    top: 2,
+    left: -2,
+    right: 4,
+    bottom: -2,
     backgroundColor: '#000',
-    borderRadius: 24,
+    borderRadius: 12,
     opacity: 0.3,
   },
-  rankCard: {
-    borderRadius: 24,
+  card: {
+    borderRadius: 12,
     height: 220,
-    borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.1)',
     overflow: 'hidden',
+    position: 'relative',
+    borderWidth: 1,
+    borderColor: '#232528',
   },
   cardBackground: {
-    flex: 1,
-    borderRadius: 24,
+    ...StyleSheet.absoluteFillObject,
   },
   backgroundLogo: {
     position: 'absolute',
-    width: 266,
-    height: 266,
+    width: 100,
+    height: 100,
+    right: 16,
     top: '50%',
-    left: '50%',
-    marginTop: -133,
-    marginLeft: -133,
+    marginTop: -50,
     opacity: 0.12,
-    tintColor: '#000',
   },
-  cardFront: {
-    flex: 1,
-    justifyContent: 'center',
+  // Header Bar
+  headerBar: {
+    flexDirection: 'row',
     alignItems: 'center',
-    padding: 30,
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+    gap: 8,
   },
-  cardGameLogo: {
-    position: 'absolute',
-    top: 10,
-    left: 10,
+  headerTitle: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: '#888',
+    letterSpacing: 1.5,
   },
-  gameLogo: {
-    width: 32,
-    height: 32,
-    opacity: 0.9,
+  headerDivider: {
+    width: 1,
+    height: 12,
+    backgroundColor: '#3a3d42',
   },
-  cardHeader: {
-    position: 'absolute',
-    top: 10,
-    right: 10,
-  },
-  cardGameIcon: {
-    fontSize: 42,
-  },
-  cardProfileIcon: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
-    borderWidth: 2,
-    borderColor: 'rgba(255,255,255,0.3)',
-  },
-  cardMiddle: {
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginTop: -40, // Position for Valorant card
-  },
-  cardRankLabel: {
-    fontSize: 11,
-    color: '#94a3b8',
-    letterSpacing: 2,
+  headerSubtitle: {
+    fontSize: 12,
     fontWeight: '600',
+    color: '#555',
+    letterSpacing: 0.5,
+  },
+  headerAccent: {
+    marginLeft: 'auto',
+  },
+  headerAccentText: {
+    fontSize: 12,
+    fontWeight: '800',
+    letterSpacing: 1,
+  },
+  // Section Divider
+  sectionDivider: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    height: 1,
+  },
+  dividerAccent: {
+    width: 40,
+    height: 2,
+    opacity: 0.7,
+  },
+  dividerLine: {
+    flex: 1,
+    height: 1,
+    backgroundColor: '#2a2d32',
+  },
+  // Main Content Area
+  mainContent: {
+    flex: 1,
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    position: 'relative',
+  },
+  // Left Section: Photo + Username (positioned absolutely)
+  leftSection: {
+    position: 'absolute',
+    left: 16,
+    top: 0,
+    bottom: 0,
+    width: 70,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  photoFrame: {
+    width: 56,
+    height: 56,
+    borderRadius: 8,
+    overflow: 'hidden',
+    backgroundColor: '#1a1c1e',
+    borderWidth: 1,
+    borderColor: '#2a2d30',
+    marginBottom: 8,
+  },
+  photo: {
+    width: '100%',
+    height: '100%',
+  },
+  photoPlaceholder: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#151719',
+  },
+  photoInitial: {
+    fontSize: 20,
+    fontWeight: '700',
+    color: '#2a2d32',
+  },
+  username: {
+    fontSize: 10,
+    fontWeight: '600',
+    color: '#8a8d92',
+    textAlign: 'center',
+  },
+  // Right Section: Rank Display
+  rankSection: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  rankIconContainer: {
+    position: 'relative',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 4,
+  },
+  rankGlow: {
+    position: 'absolute',
+    width: 85,
+    height: 85,
+    borderRadius: 42,
+    opacity: 0.3,
+  },
+  rankIconMain: {
+    width: 65,
+    height: 65,
+  },
+  rankLabel: {
+    fontSize: 9,
+    fontWeight: '600',
+    color: '#5a5d62',
+    letterSpacing: 1.5,
+    marginBottom: 6,
+    textAlign: 'center',
+  },
+  rankValue: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: '#fff',
+    letterSpacing: 1.5,
+    textAlign: 'center',
     textTransform: 'uppercase',
   },
-  rankIcon: {
-    width: 70,
-    height: 70,
-    marginTop: 5,
-    marginBottom: 2,
+  // Footer Bar
+  footerBar: {
+    borderTopWidth: 1,
+    borderTopColor: '#1a1c1e',
+    backgroundColor: '#0c0d0f',
   },
-  cardRankValue: {
-    fontSize: 24,
-    fontWeight: '700',
-    color: '#fff',
-    letterSpacing: -1,
-    marginTop: 0,
-    lineHeight: 28,
-    includeFontPadding: false,
+  footerAccent: {
+    height: 2,
+    width: '100%',
+    opacity: 0.6,
   },
-  cardFooter: {
-    position: 'absolute',
-    bottom: 10,
-    left: 10,
-    right: 10,
+  footerContent: {
     flexDirection: 'row',
+    alignItems: 'center',
     justifyContent: 'space-between',
-    alignItems: 'flex-end',
+    paddingHorizontal: 16,
+    paddingVertical: 8,
   },
-  cardUserInfo: {
-    flex: 1,
-  },
-  cardUsername: {
-    fontSize: 10,
-    color: 'rgba(255,255,255,0.8)',
-    fontWeight: '600',
-  },
-  swipeHint: {
+  footerText: {
     fontSize: 9,
-    color: 'rgba(255,255,255,0.4)',
-    fontStyle: 'italic',
+    fontWeight: '600',
+    color: '#3a3d42',
+    letterSpacing: 2,
+  },
+  arrowSection: {
+    width: 22,
+    height: 22,
+    borderRadius: 11,
+    backgroundColor: '#151719',
+    alignItems: 'center',
+    justifyContent: 'center',
   },
 });
