@@ -125,6 +125,9 @@ export default function ValorantRankCard({ game, username, viewOnly = false, use
           resizeMode="contain"
         />
 
+        {/* Inside border */}
+        <View style={styles.innerBorder} />
+
         {/* Front of card - Credit card style */}
         <View style={styles.cardFront}>
           {/* Game Logo - Top Left */}
@@ -219,6 +222,16 @@ const styles = StyleSheet.create({
   cardBackground: {
     flex: 1,
     borderRadius: 24,
+  },
+  innerBorder: {
+    position: 'absolute',
+    top: 4,
+    left: 4,
+    right: 4,
+    bottom: 4,
+    borderRadius: 21,
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.08)',
   },
   backgroundLogo: {
     position: 'absolute',

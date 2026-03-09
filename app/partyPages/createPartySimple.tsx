@@ -14,9 +14,11 @@ import {
   Image,
 } from 'react-native';
 import * as Clipboard2 from 'expo-clipboard';
+import * as ImagePicker from 'expo-image-picker';
 import { useAuth } from '@/contexts/AuthContext';
 import { db } from '@/config/firebase';
-import { collection, query, where, getDocs, doc, getDoc, addDoc, serverTimestamp, limit } from 'firebase/firestore';
+import { collection, getDocs, doc, getDoc, addDoc, serverTimestamp } from 'firebase/firestore';
+import { uploadPartyCoverPhoto } from '@/services/storageService';
 
 // Available games
 const AVAILABLE_GAMES = [
@@ -46,12 +48,13 @@ export default function CreatePartySimpleScreen() {
 
   const [selectedGame, setSelectedGame] = useState<typeof AVAILABLE_GAMES[0] | null>(null);
   const [partyName, setPartyName] = useState('');
-  const [partyId, setPartyId] = useState('');
   const [inviteCode, setInviteCode] = useState('');
   const [selectedFollowers, setSelectedFollowers] = useState<string[]>([]);
   const [followers, setFollowers] = useState<Follower[]>([]);
   const [loadingFollowers, setLoadingFollowers] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
+  const [coverPhoto, setCoverPhoto] = useState<string | null>(null);
+  const [uploadingCover, setUploadingCover] = useState(false);
 
   useEffect(() => {
     const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
@@ -110,11 +113,6 @@ export default function CreatePartySimpleScreen() {
     fetchFollowers();
   }, [user?.id]);
 
-  const handlePartyIdChange = (text: string) => {
-    const uppercased = text.toUpperCase().replace(/[^A-Z]/g, '').slice(0, 5);
-    setPartyId(uppercased);
-  };
-
   const toggleFollower = (followerId: string) => {
     if (selectedFollowers.includes(followerId)) {
       setSelectedFollowers(selectedFollowers.filter(id => id !== followerId));
@@ -139,6 +137,28 @@ export default function CreatePartySimpleScreen() {
     }
   };
 
+  const handlePickCoverPhoto = async () => {
+    try {
+      const result = await ImagePicker.launchImageLibraryAsync({
+        mediaTypes: ImagePicker.MediaTypeOptions.Images,
+        allowsEditing: true,
+        aspect: [16, 9],
+        quality: 0.8,
+      });
+
+      if (!result.canceled && result.assets[0]) {
+        setCoverPhoto(result.assets[0].uri);
+      }
+    } catch (error) {
+      console.error('Error picking cover photo:', error);
+      Alert.alert('Error', 'Failed to select cover photo');
+    }
+  };
+
+  const handleRemoveCoverPhoto = () => {
+    setCoverPhoto(null);
+  };
+
   const handleCreateParty = async () => {
     if (!selectedGame) {
       Alert.alert('Error', 'Please select a game');
@@ -148,10 +168,6 @@ export default function CreatePartySimpleScreen() {
       Alert.alert('Error', 'Please enter a party name');
       return;
     }
-    if (!partyId.trim() || partyId.length < 5) {
-      Alert.alert('Error', 'Party ID must be 5 letters');
-      return;
-    }
     if (!user?.id) {
       Alert.alert('Error', 'You must be logged in to create a party');
       return;
@@ -159,13 +175,6 @@ export default function CreatePartySimpleScreen() {
 
     try {
       const partiesRef = collection(db, 'parties');
-      const partyIdQuery = query(partiesRef, where('partyId', '==', partyId), limit(1));
-      const existingParties = await getDocs(partyIdQuery);
-
-      if (!existingParties.empty) {
-        Alert.alert('Error', 'Party ID already exists. Please choose a different ID.');
-        return;
-      }
 
       const userDoc = await getDoc(doc(db, 'users', user.id));
       const userData = userDoc.data();
@@ -194,7 +203,6 @@ export default function CreatePartySimpleScreen() {
       }
 
       const partyData = {
-        partyId,
         partyName,
         game: selectedGame.name,
         gameId: selectedGame.id,
@@ -207,7 +215,27 @@ export default function CreatePartySimpleScreen() {
         pendingInvites,
       };
 
-      await addDoc(partiesRef, partyData);
+      // Create the party first to get the document ID
+      const partyDocRef = await addDoc(partiesRef, partyData);
+      const generatedPartyId = partyDocRef.id;
+
+      // Update the party with the partyId field (document ID)
+      const { updateDoc } = await import('firebase/firestore');
+      await updateDoc(partyDocRef, { partyId: generatedPartyId });
+
+      // Upload cover photo if selected (using the generated party ID)
+      if (coverPhoto) {
+        setUploadingCover(true);
+        try {
+          const coverPhotoUrl = await uploadPartyCoverPhoto(generatedPartyId, coverPhoto);
+          // Update the party with the cover photo URL
+          await updateDoc(partyDocRef, { coverPhoto: coverPhotoUrl });
+        } catch (uploadError) {
+          console.error('Error uploading cover photo:', uploadError);
+          // Continue without cover photo if upload fails
+        }
+        setUploadingCover(false);
+      }
 
       if (selectedFollowers.length > 0) {
         for (const invite of pendingInvites) {
@@ -218,7 +246,7 @@ export default function CreatePartySimpleScreen() {
               fromUserId: user.id,
               fromUsername: userData?.username || 'Unknown',
               fromAvatar: userData?.avatar || '',
-              partyId,
+              partyId: generatedPartyId,
               partyName,
               game: selectedGame.name,
               read: false,
@@ -242,7 +270,7 @@ export default function CreatePartySimpleScreen() {
               pathname: '/partyPages/partyDetail',
               params: {
                 name: partyName,
-                partyId,
+                partyId: generatedPartyId,
                 game: selectedGame.name,
               },
             });
@@ -295,6 +323,33 @@ export default function CreatePartySimpleScreen() {
           </View>
         </View>
 
+        {/* Cover Photo Card */}
+        <View style={styles.card}>
+          <ThemedText style={styles.cardTitle}>Cover Photo</ThemedText>
+          <ThemedText style={styles.cardSubtitle}>Add a cover photo to make your party stand out</ThemedText>
+
+          {coverPhoto ? (
+            <View style={styles.coverPhotoPreviewContainer}>
+              <Image source={{ uri: coverPhoto }} style={styles.coverPhotoPreview} />
+              <View style={styles.coverPhotoActions}>
+                <TouchableOpacity style={styles.coverPhotoActionButton} onPress={handlePickCoverPhoto}>
+                  <IconSymbol size={16} name="arrow.triangle.2.circlepath" color="#fff" />
+                  <ThemedText style={styles.coverPhotoActionText}>Change</ThemedText>
+                </TouchableOpacity>
+                <TouchableOpacity style={[styles.coverPhotoActionButton, styles.coverPhotoRemoveButton]} onPress={handleRemoveCoverPhoto}>
+                  <IconSymbol size={16} name="xmark" color="#ff4444" />
+                  <ThemedText style={[styles.coverPhotoActionText, { color: '#ff4444' }]}>Remove</ThemedText>
+                </TouchableOpacity>
+              </View>
+            </View>
+          ) : (
+            <TouchableOpacity style={styles.coverPhotoPlaceholder} onPress={handlePickCoverPhoto}>
+              <IconSymbol size={32} name="photo.badge.plus" color="#666" />
+              <ThemedText style={styles.coverPhotoPlaceholderText}>Tap to add cover photo</ThemedText>
+            </TouchableOpacity>
+          )}
+        </View>
+
         {/* Party Info Card */}
         <View style={styles.card}>
           <View style={styles.inputGroup}>
@@ -309,30 +364,12 @@ export default function CreatePartySimpleScreen() {
             />
           </View>
 
-          <View style={styles.row}>
-            <View style={[styles.inputGroup, { flex: 1 }]}>
-              <ThemedText style={styles.label}>Party ID</ThemedText>
-              <View style={styles.idInputContainer}>
-                <TextInput
-                  style={styles.idInput}
-                  placeholder="ABCDE"
-                  placeholderTextColor="#666"
-                  value={partyId}
-                  onChangeText={handlePartyIdChange}
-                  maxLength={5}
-                  autoCapitalize="characters"
-                  textAlign="left"
-                />
-                <ThemedText style={styles.idCount}>{partyId.length}/5</ThemedText>
-              </View>
-            </View>
-            <View style={[styles.inputGroup, { flex: 1 }]}>
-              <ThemedText style={styles.label}>Invite Code</ThemedText>
-              <TouchableOpacity style={styles.codeButton} onPress={handleCopyInviteCode}>
-                <ThemedText style={styles.codeText}>{inviteCode}</ThemedText>
-                <IconSymbol size={14} name="doc.on.doc" color="#888" />
-              </TouchableOpacity>
-            </View>
+          <View style={styles.inputGroup}>
+            <ThemedText style={styles.label}>Invite Code</ThemedText>
+            <TouchableOpacity style={styles.codeButton} onPress={handleCopyInviteCode}>
+              <ThemedText style={styles.codeText}>{inviteCode}</ThemedText>
+              <IconSymbol size={14} name="doc.on.doc" color="#888" />
+            </TouchableOpacity>
           </View>
         </View>
 
@@ -400,8 +437,19 @@ export default function CreatePartySimpleScreen() {
         </View>
 
         {/* Create Button */}
-        <TouchableOpacity style={styles.createButton} onPress={handleCreateParty}>
-          <ThemedText style={styles.createButtonText}>Create Party</ThemedText>
+        <TouchableOpacity
+          style={[styles.createButton, uploadingCover && styles.createButtonDisabled]}
+          onPress={handleCreateParty}
+          disabled={uploadingCover}
+        >
+          {uploadingCover ? (
+            <View style={styles.createButtonLoading}>
+              <ActivityIndicator size="small" color="#fff" />
+              <ThemedText style={styles.createButtonText}>Uploading...</ThemedText>
+            </View>
+          ) : (
+            <ThemedText style={styles.createButtonText}>Create Party</ThemedText>
+          )}
         </TouchableOpacity>
 
         <View style={styles.bottomSpacer} />
@@ -455,9 +503,61 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: '600',
     color: '#888',
-    marginBottom: 10,
+    marginBottom: 4,
     textTransform: 'uppercase',
     letterSpacing: 0.5,
+  },
+  cardSubtitle: {
+    fontSize: 12,
+    color: '#555',
+    marginBottom: 12,
+  },
+  coverPhotoPreviewContainer: {
+    borderRadius: 10,
+    overflow: 'hidden',
+  },
+  coverPhotoPreview: {
+    width: '100%',
+    height: 140,
+    borderRadius: 10,
+  },
+  coverPhotoActions: {
+    flexDirection: 'row',
+    gap: 10,
+    marginTop: 10,
+  },
+  coverPhotoActionButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    paddingVertical: 8,
+    paddingHorizontal: 14,
+    backgroundColor: '#252525',
+    borderRadius: 8,
+  },
+  coverPhotoRemoveButton: {
+    backgroundColor: 'rgba(255, 68, 68, 0.1)',
+  },
+  coverPhotoActionText: {
+    fontSize: 13,
+    fontWeight: '500',
+    color: '#fff',
+  },
+  coverPhotoPlaceholder: {
+    width: '100%',
+    height: 120,
+    backgroundColor: '#252525',
+    borderRadius: 10,
+    borderWidth: 2,
+    borderColor: '#333',
+    borderStyle: 'dashed',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+  },
+  coverPhotoPlaceholderText: {
+    fontSize: 13,
+    color: '#666',
   },
   gameSelectionRow: {
     flexDirection: 'row',
@@ -505,32 +605,6 @@ const styles = StyleSheet.create({
     padding: 12,
     fontSize: 15,
     color: '#fff',
-  },
-  row: {
-    flexDirection: 'row',
-    gap: 10,
-  },
-  idInputContainer: {
-    backgroundColor: '#252525',
-    borderRadius: 8,
-    padding: 12,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-  },
-  idInput: {
-    flex: 1,
-    fontSize: 15,
-    fontWeight: '600',
-    color: '#fff',
-    letterSpacing: 1,
-    padding: 0,
-    margin: 0,
-    minHeight: 20,
-  },
-  idCount: {
-    fontSize: 11,
-    color: '#555',
   },
   codeButton: {
     backgroundColor: '#252525',
@@ -628,6 +702,14 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: '700',
     color: '#fff',
+  },
+  createButtonDisabled: {
+    opacity: 0.7,
+  },
+  createButtonLoading: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
   },
   bottomSpacer: {
     height: 40,

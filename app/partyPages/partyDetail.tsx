@@ -3,11 +3,19 @@ import { ThemedView } from '@/components/themed-view';
 import { IconSymbol } from '@/components/ui/icon-symbol';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { ScrollView, StyleSheet, TouchableOpacity, View, Image, Alert, RefreshControl } from 'react-native';
+import { LinearGradient } from 'expo-linear-gradient';
 import { useState, useEffect } from 'react';
 import { db } from '@/config/firebase';
 import { collection, query, where, getDocs, doc, getDoc, limit, updateDoc, deleteDoc, onSnapshot } from 'firebase/firestore';
 import * as Clipboard from 'expo-clipboard';
 import { useAuth } from '@/contexts/AuthContext';
+
+// Game logo mapping
+const GAME_LOGOS: { [key: string]: any } = {
+  'Valorant': require('@/assets/images/valorant.png'),
+  'League of Legends': require('@/assets/images/lol-icon.png'),
+  'Apex Legends': require('@/assets/images/apex.png'),
+};
 
 interface Member {
   userId: string;
@@ -140,17 +148,27 @@ export default function PartyDetail() {
 
     const setupRealtimeListener = async () => {
       try {
-        // Query for party by partyId
+        // Query for party by partyId field
         const partiesRef = collection(db, 'parties');
         const partyQuery = query(partiesRef, where('partyId', '==', partyIdParam), limit(1));
-        const partySnapshot = await getDocs(partyQuery);
+        let partySnapshot = await getDocs(partyQuery);
+
+        let partyDocumentId: string;
 
         if (partySnapshot.empty) {
-          console.log('Party not found for ID:', partyIdParam);
-          return;
-        }
+          // Fallback: try to get the document directly by ID
+          const directDocRef = doc(db, 'parties', partyIdParam);
+          const directDocSnap = await getDoc(directDocRef);
 
-        const partyDocumentId = partySnapshot.docs[0].id;
+          if (!directDocSnap.exists()) {
+            console.log('Party not found for ID:', partyIdParam);
+            return;
+          }
+
+          partyDocumentId = directDocSnap.id;
+        } else {
+          partyDocumentId = partySnapshot.docs[0].id;
+        }
         const partyRef = doc(db, 'parties', partyDocumentId);
 
         // Set up real-time listener
@@ -220,22 +238,11 @@ export default function PartyDetail() {
     }
   };
 
+  const coverPhoto = partyData?.coverPhoto;
+  const gameLogo = GAME_LOGOS[game];
+
   return (
     <ThemedView style={styles.container}>
-      {/* Header */}
-      <View style={styles.header}>
-        <TouchableOpacity style={styles.backButton} onPress={() => router.replace('/(tabs)/leaderboard')}>
-          <IconSymbol size={20} name="chevron.left" color="#fff" />
-        </TouchableOpacity>
-        <View style={styles.headerCenter}>
-          <ThemedText style={styles.headerTitle}>{partyName}</ThemedText>
-          <ThemedText style={styles.headerSubtitle}>{game} • {memberCount} Members</ThemedText>
-        </View>
-        <TouchableOpacity style={styles.headerButton} onPress={handleLeaveParty}>
-          <IconSymbol size={20} name="rectangle.portrait.and.arrow.right" color="#ef4444" />
-        </TouchableOpacity>
-      </View>
-
       <ScrollView
         style={styles.scrollView}
         showsVerticalScrollIndicator={false}
@@ -243,10 +250,63 @@ export default function PartyDetail() {
           <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor="#c42743" />
         }
       >
+        {/* Cover Photo Section */}
+        <View style={styles.coverPhotoSection}>
+          {/* Header Icons - Overlaid on cover */}
+          <View style={styles.headerIconsRow}>
+            <TouchableOpacity style={styles.headerIconButton} onPress={() => router.replace('/(tabs)/leaderboard')}>
+              <IconSymbol size={20} name="chevron.left" color="#fff" />
+            </TouchableOpacity>
+            <TouchableOpacity style={styles.headerIconButton} onPress={handleLeaveParty}>
+              <IconSymbol size={20} name="rectangle.portrait.and.arrow.right" color="#ef4444" />
+            </TouchableOpacity>
+          </View>
+
+          {/* Cover Photo Area */}
+          <View style={styles.coverPhotoWrapper}>
+            {coverPhoto ? (
+              <Image
+                source={{ uri: coverPhoto }}
+                style={styles.coverPhotoImage}
+              />
+            ) : (
+              <LinearGradient
+                colors={['#2c2f33', '#1a1a1a']}
+                start={{ x: 0, y: 0 }}
+                end={{ x: 0, y: 1 }}
+                style={styles.coverPhotoGradient}
+              />
+            )}
+            {/* Top fade */}
+            <LinearGradient
+              colors={['rgba(15, 15, 15, 0.7)', 'transparent']}
+              start={{ x: 0, y: 0 }}
+              end={{ x: 0, y: 1 }}
+              style={styles.coverPhotoFadeTop}
+            />
+            {/* Bottom fade */}
+            <LinearGradient
+              colors={['transparent', 'rgba(15, 15, 15, 0.95)']}
+              start={{ x: 0, y: 0 }}
+              end={{ x: 0, y: 1 }}
+              style={styles.coverPhotoFadeBottom}
+            />
+
+            {/* Party Info Overlay */}
+            <View style={styles.partyInfoOverlay}>
+              {gameLogo && (
+                <Image source={gameLogo} style={styles.gameLogoSmall} resizeMode="contain" />
+              )}
+              <ThemedText style={styles.partyNameLarge}>{partyName}</ThemedText>
+              <ThemedText style={styles.partySubtitle}>{game} • {memberCount} Members</ThemedText>
+            </View>
+          </View>
+        </View>
+
         {/* Invite Section */}
         <View style={styles.inviteSection}>
           <TouchableOpacity style={styles.inviteButton} onPress={handleShowInviteCode}>
-            <IconSymbol size={18} name="person.badge.plus" color="#fff" />
+            <IconSymbol size={16} name="person.badge.plus" color="rgba(255, 255, 255, 0.6)" />
             <ThemedText style={styles.inviteButtonText}>Invite Friends</ThemedText>
           </TouchableOpacity>
         </View>
@@ -257,17 +317,19 @@ export default function PartyDetail() {
 
           <View style={styles.membersList}>
             {members.map((member, index) => (
-              <TouchableOpacity
+              <View
                 key={member.userId}
                 style={[
                   styles.memberRow,
                   member.isCurrentUser && styles.currentUserRow,
                 ]}
-                onPress={() => handleMemberPress(member)}
-                activeOpacity={0.7}
               >
-                {/* Member Avatar */}
-                <View style={styles.memberAvatar}>
+                {/* Member Avatar - Clickable */}
+                <TouchableOpacity
+                  style={styles.memberAvatar}
+                  onPress={() => handleMemberPress(member)}
+                  activeOpacity={0.7}
+                >
                   {member.avatar && member.avatar.startsWith('http') ? (
                     <Image source={{ uri: member.avatar }} style={styles.memberAvatarImage} />
                   ) : (
@@ -275,21 +337,20 @@ export default function PartyDetail() {
                       {member.username[0].toUpperCase()}
                     </ThemedText>
                   )}
-                </View>
+                </TouchableOpacity>
 
                 {/* Member Info */}
                 <View style={styles.memberInfo}>
-                  <ThemedText style={styles.memberName}>{member.username}</ThemedText>
+                  <TouchableOpacity onPress={() => handleMemberPress(member)} activeOpacity={0.7}>
+                    <ThemedText style={styles.memberName}>{member.username}</ThemedText>
+                  </TouchableOpacity>
                   {partyData?.createdBy === member.userId && (
                     <View style={styles.leaderBadge}>
                       <ThemedText style={styles.leaderBadgeText}>Leader</ThemedText>
                     </View>
                   )}
                 </View>
-
-                {/* Arrow */}
-                <IconSymbol size={16} name="chevron.right" color="#444" />
-              </TouchableOpacity>
+              </View>
             ))}
           </View>
         </View>
@@ -305,57 +366,105 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: '#0f0f0f',
   },
-  header: {
+  scrollView: {
+    flex: 1,
+  },
+  // Cover Photo Section
+  coverPhotoSection: {
+    position: 'relative',
+  },
+  headerIconsRow: {
+    position: 'absolute',
+    top: 50,
+    left: 0,
+    right: 0,
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
     paddingHorizontal: 16,
-    paddingTop: 55,
-    paddingBottom: 12,
-    backgroundColor: '#0f0f0f',
+    zIndex: 10,
   },
-  backButton: {
-    padding: 4,
-  },
-  headerCenter: {
+  headerIconButton: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
     alignItems: 'center',
-    gap: 2,
+    justifyContent: 'center',
   },
-  headerTitle: {
-    fontSize: 18,
-    fontWeight: '700',
+  coverPhotoWrapper: {
+    width: '100%',
+    height: 220,
+    backgroundColor: '#1a1a1a',
+  },
+  coverPhotoImage: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    width: '100%',
+    height: '100%',
+  },
+  coverPhotoGradient: {
+    width: '100%',
+    height: '100%',
+  },
+  coverPhotoFadeTop: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    height: 100,
+    zIndex: 1,
+  },
+  coverPhotoFadeBottom: {
+    position: 'absolute',
+    bottom: 0,
+    left: 0,
+    right: 0,
+    height: 120,
+    zIndex: 1,
+  },
+  partyInfoOverlay: {
+    position: 'absolute',
+    bottom: 16,
+    left: 16,
+    right: 16,
+    zIndex: 2,
+  },
+  gameLogoSmall: {
+    width: 28,
+    height: 28,
+    marginBottom: 8,
+    opacity: 0.9,
+  },
+  partyNameLarge: {
+    fontSize: 26,
+    fontWeight: '800',
     color: '#fff',
-    letterSpacing: -0.3,
+    letterSpacing: -0.5,
+    marginBottom: 4,
   },
-  headerSubtitle: {
-    fontSize: 12,
+  partySubtitle: {
+    fontSize: 14,
     fontWeight: '500',
-    color: '#666',
-  },
-  headerButton: {
-    padding: 4,
-  },
-  scrollView: {
-    flex: 1,
+    color: 'rgba(255, 255, 255, 0.7)',
   },
   inviteSection: {
     paddingHorizontal: 16,
-    paddingVertical: 16,
+    paddingVertical: 12,
   },
   inviteButton: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    gap: 8,
-    paddingVertical: 14,
-    paddingHorizontal: 20,
-    backgroundColor: '#c42743',
-    borderRadius: 12,
+    gap: 6,
+    paddingVertical: 10,
+    paddingHorizontal: 16,
+    alignSelf: 'flex-start',
   },
   inviteButtonText: {
-    fontSize: 15,
-    fontWeight: '600',
-    color: '#fff',
+    fontSize: 14,
+    fontWeight: '500',
+    color: 'rgba(255, 255, 255, 0.6)',
   },
   membersSection: {
     paddingHorizontal: 16,
@@ -368,36 +477,35 @@ const styles = StyleSheet.create({
     marginBottom: 12,
   },
   membersList: {
-    backgroundColor: '#1a1a1a',
-    borderRadius: 12,
-    overflow: 'hidden',
+    gap: 6,
   },
   memberRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    padding: 14,
-    borderBottomWidth: 1,
-    borderBottomColor: '#252525',
+    paddingVertical: 8,
+    paddingHorizontal: 10,
+    backgroundColor: '#1a1a1a',
+    borderRadius: 10,
   },
   currentUserRow: {
     backgroundColor: '#1f1f1f',
   },
   memberAvatar: {
-    width: 40,
-    height: 40,
+    width: 28,
+    height: 28,
     backgroundColor: '#252525',
-    borderRadius: 20,
+    borderRadius: 14,
     alignItems: 'center',
     justifyContent: 'center',
     overflow: 'hidden',
-    marginRight: 12,
+    marginRight: 10,
   },
   memberAvatarImage: {
     width: '100%',
     height: '100%',
   },
   avatarText: {
-    fontSize: 16,
+    fontSize: 11,
     fontWeight: '600',
     color: '#888',
   },
@@ -405,21 +513,21 @@ const styles = StyleSheet.create({
     flex: 1,
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 8,
+    gap: 6,
   },
   memberName: {
-    fontSize: 15,
+    fontSize: 13,
     fontWeight: '600',
     color: '#fff',
   },
   leaderBadge: {
     backgroundColor: '#c42743',
-    paddingHorizontal: 8,
+    paddingHorizontal: 6,
     paddingVertical: 2,
     borderRadius: 4,
   },
   leaderBadgeText: {
-    fontSize: 10,
+    fontSize: 9,
     fontWeight: '600',
     color: '#fff',
     textTransform: 'uppercase',

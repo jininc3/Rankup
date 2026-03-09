@@ -3,12 +3,20 @@ import { ThemedView } from '@/components/themed-view';
 import { IconSymbol } from '@/components/ui/icon-symbol';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { ScrollView, StyleSheet, TouchableOpacity, View, Image, ActivityIndicator, Alert, RefreshControl } from 'react-native';
+import { LinearGradient } from 'expo-linear-gradient';
 import { useState, useEffect } from 'react';
 import { db } from '@/config/firebase';
 import { collection, query, where, getDocs, doc, getDoc, limit, updateDoc, deleteDoc, onSnapshot } from 'firebase/firestore';
 import * as Clipboard from 'expo-clipboard';
 import { useAuth } from '@/contexts/AuthContext';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+
+// Game logo mapping
+const GAME_LOGOS: { [key: string]: any } = {
+  'Valorant': require('@/assets/images/valorant.png'),
+  'League of Legends': require('@/assets/images/lol-icon.png'),
+  'Apex Legends': require('@/assets/images/apex.png'),
+};
 
 // League of Legends rank icon mapping
 const LEAGUE_RANK_ICONS: { [key: string]: any } = {
@@ -444,18 +452,29 @@ export default function LeaderboardDetail() {
 
     const setupRealtimeListener = async () => {
       try {
-        // Query for party by partyId
+        // Query for party by partyId field
         const partiesRef = collection(db, 'parties');
         const partyQuery = query(partiesRef, where('partyId', '==', partyIdParam), limit(1));
-        const partySnapshot = await getDocs(partyQuery);
+        let partySnapshot = await getDocs(partyQuery);
+
+        let partyDocumentId: string;
 
         if (partySnapshot.empty) {
-          console.log('Party not found for ID:', partyIdParam);
-          setLoading(false);
-          return;
+          // Fallback: try to get the document directly by ID
+          const directDocRef = doc(db, 'parties', partyIdParam);
+          const directDocSnap = await getDoc(directDocRef);
+
+          if (!directDocSnap.exists()) {
+            console.log('Party not found for ID:', partyIdParam);
+            setLoading(false);
+            return;
+          }
+
+          partyDocumentId = directDocSnap.id;
+        } else {
+          partyDocumentId = partySnapshot.docs[0].id;
         }
 
-        const partyDocumentId = partySnapshot.docs[0].id;
         const partyRef = doc(db, 'parties', partyDocumentId);
 
         // Set up real-time listener
@@ -657,22 +676,11 @@ export default function LeaderboardDetail() {
     }
   };
 
+  const coverPhoto = partyData?.coverPhoto;
+  const gameLogo = GAME_LOGOS[game];
+
   return (
     <ThemedView style={styles.container}>
-      {/* Header */}
-      <View style={styles.header}>
-        <TouchableOpacity style={styles.backButton} onPress={() => router.replace('/(tabs)/leaderboard')}>
-          <IconSymbol size={20} name="chevron.left" color="#fff" />
-        </TouchableOpacity>
-        <View style={styles.headerCenter}>
-          <ThemedText style={styles.headerTitle}>{leaderboardName}</ThemedText>
-          <ThemedText style={styles.headerSubtitle}>{game} • {members} Players</ThemedText>
-        </View>
-        <TouchableOpacity style={styles.headerButton} onPress={handleLeaveParty}>
-          <IconSymbol size={20} name="rectangle.portrait.and.arrow.right" color="#ef4444" />
-        </TouchableOpacity>
-      </View>
-
       <ScrollView
         style={styles.scrollView}
         showsVerticalScrollIndicator={false}
@@ -680,37 +688,90 @@ export default function LeaderboardDetail() {
           <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor="#c42743" />
         }
       >
+        {/* Cover Photo Section */}
+        <View style={styles.coverPhotoSection}>
+          {/* Header Icons - Overlaid on cover */}
+          <View style={styles.headerIconsRow}>
+            <TouchableOpacity style={styles.headerIconButton} onPress={() => router.replace('/(tabs)/leaderboard')}>
+              <IconSymbol size={20} name="chevron.left" color="#fff" />
+            </TouchableOpacity>
+            <TouchableOpacity style={styles.headerIconButton} onPress={handleLeaveParty}>
+              <IconSymbol size={20} name="rectangle.portrait.and.arrow.right" color="#ef4444" />
+            </TouchableOpacity>
+          </View>
+
+          {/* Cover Photo Area */}
+          <View style={styles.coverPhotoWrapper}>
+            {coverPhoto ? (
+              <Image
+                source={{ uri: coverPhoto }}
+                style={styles.coverPhotoImage}
+              />
+            ) : (
+              <LinearGradient
+                colors={['#2c2f33', '#1a1a1a']}
+                start={{ x: 0, y: 0 }}
+                end={{ x: 0, y: 1 }}
+                style={styles.coverPhotoGradient}
+              />
+            )}
+            {/* Top fade */}
+            <LinearGradient
+              colors={['rgba(15, 15, 15, 0.7)', 'transparent']}
+              start={{ x: 0, y: 0 }}
+              end={{ x: 0, y: 1 }}
+              style={styles.coverPhotoFadeTop}
+            />
+            {/* Bottom fade */}
+            <LinearGradient
+              colors={['transparent', 'rgba(15, 15, 15, 0.95)']}
+              start={{ x: 0, y: 0 }}
+              end={{ x: 0, y: 1 }}
+              style={styles.coverPhotoFadeBottom}
+            />
+
+            {/* Party Info Overlay */}
+            <View style={styles.partyInfoOverlay}>
+              {gameLogo && (
+                <Image source={gameLogo} style={styles.gameLogoSmall} resizeMode="contain" />
+              )}
+              <ThemedText style={styles.partyNameLarge}>{leaderboardName}</ThemedText>
+              <ThemedText style={styles.partySubtitle}>{game} • {members} Players</ThemedText>
+            </View>
+          </View>
+        </View>
+
         {/* Duration Section */}
         {daysInfo && (
           <View style={styles.durationSection}>
-            <View style={styles.progressCard}>
-              <ThemedText style={styles.durationLabel}>
-                DAY {daysInfo.currentDay}/{daysInfo.totalDays}
-              </ThemedText>
-              <View style={styles.progressBarContainer}>
-                <View style={styles.progressBarBackground}>
-                  <View style={[styles.progressBarFill, { width: `${progress}%` }]} />
-                </View>
+            <ThemedText style={styles.durationLabel}>
+              DAY {daysInfo.currentDay}/{daysInfo.totalDays}
+            </ThemedText>
+            <View style={styles.progressBarContainer}>
+              <View style={styles.progressBarBackground}>
+                <View style={[styles.progressBarFill, { width: `${progress}%` }]} />
               </View>
-              {startDate && endDate && daysInfo && (
-                <View style={styles.dateRangeContainer}>
-                  <ThemedText style={styles.dateText}>
-                    Day 1
-                  </ThemedText>
-                  <ThemedText style={styles.dateText}>
-                    Day {daysInfo.totalDays}
-                  </ThemedText>
-                </View>
-              )}
             </View>
-
-            {/* Invite Button */}
-            <TouchableOpacity style={styles.inviteActionButton} onPress={handleShowInviteCode}>
-              <IconSymbol size={16} name="person.badge.plus" color="#fff" />
-              <ThemedText style={styles.inviteActionButtonText}>Invite Code</ThemedText>
-            </TouchableOpacity>
+            {startDate && endDate && daysInfo && (
+              <View style={styles.dateRangeContainer}>
+                <ThemedText style={styles.dateText}>
+                  Day 1
+                </ThemedText>
+                <ThemedText style={styles.dateText}>
+                  Day {daysInfo.totalDays}
+                </ThemedText>
+              </View>
+            )}
           </View>
         )}
+
+        {/* Invite Section */}
+        <View style={styles.inviteSection}>
+          <TouchableOpacity style={styles.inviteButton} onPress={handleShowInviteCode}>
+            <IconSymbol size={16} name="person.badge.plus" color="rgba(255, 255, 255, 0.6)" />
+            <ThemedText style={styles.inviteButtonText}>Invite Friends</ThemedText>
+          </TouchableOpacity>
+        </View>
 
         {/* Column Headers */}
         <View style={styles.columnHeaders}>
@@ -756,9 +817,17 @@ export default function LeaderboardDetail() {
                       </ThemedText>
                     )}
                   </View>
-                  <ThemedText style={styles.playerName} numberOfLines={1}>
-                    {player.username}
-                  </ThemedText>
+                  <View style={styles.playerNameContainer}>
+                    <ThemedText style={styles.playerName} numberOfLines={1}>
+                      {player.username}
+                    </ThemedText>
+                    {player.userId === partyData?.createdBy && (
+                      <View style={styles.leaderBadge}>
+                        <IconSymbol size={10} name="crown.fill" color="#FFD700" />
+                        <ThemedText style={styles.leaderBadgeText}>Leader</ThemedText>
+                      </View>
+                    )}
+                  </View>
                 </View>
 
                 {/* Current Rank with Icon and LP/RR based on game */}
@@ -789,60 +858,97 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: '#0f0f0f',
   },
-  header: {
+  scrollView: {
+    flex: 1,
+  },
+  // Cover Photo Section
+  coverPhotoSection: {
+    position: 'relative',
+  },
+  headerIconsRow: {
+    position: 'absolute',
+    top: 50,
+    left: 0,
+    right: 0,
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
     paddingHorizontal: 16,
-    paddingTop: 55,
-    paddingBottom: 12,
-    backgroundColor: '#0f0f0f',
+    zIndex: 10,
   },
-  backButton: {
-    padding: 4,
-  },
-  headerCenter: {
-    alignItems: 'center',
-    gap: 2,
-  },
-  headerTitle: {
-    fontSize: 18,
-    fontWeight: '700',
-    color: '#fff',
-    letterSpacing: -0.3,
-  },
-  headerSubtitle: {
-    fontSize: 12,
-    fontWeight: '500',
-    color: '#666',
-    letterSpacing: 0,
-  },
-  headerSpacer: {
+  headerIconButton: {
     width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    alignItems: 'center',
+    justifyContent: 'center',
   },
-  headerButton: {
-    padding: 4,
+  coverPhotoWrapper: {
+    width: '100%',
+    height: 220,
+    backgroundColor: '#1a1a1a',
   },
-  scrollView: {
-    flex: 1,
+  coverPhotoImage: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    width: '100%',
+    height: '100%',
+  },
+  coverPhotoGradient: {
+    width: '100%',
+    height: '100%',
+  },
+  coverPhotoFadeTop: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    height: 100,
+    zIndex: 1,
+  },
+  coverPhotoFadeBottom: {
+    position: 'absolute',
+    bottom: 0,
+    left: 0,
+    right: 0,
+    height: 120,
+    zIndex: 1,
+  },
+  partyInfoOverlay: {
+    position: 'absolute',
+    bottom: 16,
+    left: 16,
+    right: 16,
+    zIndex: 2,
+  },
+  gameLogoSmall: {
+    width: 28,
+    height: 28,
+    marginBottom: 8,
+    opacity: 0.9,
+  },
+  partyNameLarge: {
+    fontSize: 26,
+    fontWeight: '800',
+    color: '#fff',
+    letterSpacing: -0.5,
+    marginBottom: 4,
+  },
+  partySubtitle: {
+    fontSize: 14,
+    fontWeight: '500',
+    color: 'rgba(255, 255, 255, 0.7)',
   },
   durationSection: {
     paddingHorizontal: 16,
     paddingVertical: 12,
-    backgroundColor: '#0f0f0f',
-  },
-  progressCard: {
-    backgroundColor: '#1a1a1a',
-    borderWidth: 1,
-    borderColor: '#252525',
-    borderRadius: 12,
-    padding: 14,
-    position: 'relative',
   },
   durationLabel: {
     fontSize: 13,
     fontWeight: '600',
-    color: '#fff',
+    color: 'rgba(255, 255, 255, 0.6)',
     textAlign: 'center',
     marginBottom: 10,
     letterSpacing: -0.2,
@@ -852,16 +958,16 @@ const styles = StyleSheet.create({
   },
   progressBarBackground: {
     width: '100%',
-    height: 6,
-    backgroundColor: '#252525',
-    borderRadius: 3,
+    height: 4,
+    backgroundColor: 'rgba(255, 255, 255, 0.1)',
+    borderRadius: 2,
     position: 'relative',
     overflow: 'hidden',
   },
   progressBarFill: {
     height: '100%',
-    backgroundColor: '#c42743',
-    borderRadius: 3,
+    backgroundColor: 'rgba(255, 255, 255, 0.4)',
+    borderRadius: 2,
     position: 'relative',
   },
   dateRangeContainer: {
@@ -871,26 +977,26 @@ const styles = StyleSheet.create({
   },
   dateText: {
     fontSize: 11,
-    color: '#666',
+    color: 'rgba(255, 255, 255, 0.4)',
     fontWeight: '500',
   },
-  inviteActionButton: {
+  inviteSection: {
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+  },
+  inviteButton: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
     gap: 6,
-    marginTop: 10,
     paddingVertical: 10,
-    paddingHorizontal: 14,
-    backgroundColor: '#1a1a1a',
-    borderRadius: 10,
-    borderWidth: 1,
-    borderColor: '#252525',
+    paddingHorizontal: 16,
+    alignSelf: 'flex-start',
   },
-  inviteActionButtonText: {
-    fontSize: 13,
-    fontWeight: '600',
-    color: '#fff',
+  inviteButtonText: {
+    fontSize: 14,
+    fontWeight: '500',
+    color: 'rgba(255, 255, 255, 0.6)',
   },
   columnHeaders: {
     flexDirection: 'row',
@@ -971,11 +1077,26 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     color: '#888',
   },
+  playerNameContainer: {
+    flexDirection: 'column',
+    flex: 1,
+  },
   playerName: {
     fontSize: 14,
     fontWeight: '600',
     color: '#fff',
     letterSpacing: -0.2,
+  },
+  leaderBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 3,
+    marginTop: 2,
+  },
+  leaderBadgeText: {
+    fontSize: 10,
+    fontWeight: '600',
+    color: '#FFD700',
   },
   rankInfoContainer: {
     flexDirection: 'row',

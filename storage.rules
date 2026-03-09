@@ -66,6 +66,19 @@ service firebase.storage {
                     && request.auth.uid == userId;
     }
 
+    // Party cover photos: authenticated users can upload party covers
+    match /party-covers/{fileName} {
+      allow read: if true;
+
+      // Limit party covers to 10MB and only images
+      allow create, update: if request.auth != null
+                            && request.resource.size < 10 * 1024 * 1024
+                            && request.resource.contentType.matches('image/.*');
+
+      // Allow authenticated users to delete party covers
+      allow delete: if request.auth != null;
+    }
+
     // Default: deny all other access
     match /{allPaths=**} {
       allow read, write: if false;

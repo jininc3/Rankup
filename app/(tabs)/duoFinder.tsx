@@ -440,12 +440,15 @@ export default function DuoFinderScreen() {
     }
   };
 
-  // Fetch duo cards when tab or filter changes
+  // Fetch duo cards on mount and when filters change
   useEffect(() => {
-    if (activeTab === 'findDuo') {
-      fetchDuoCards();
-    }
-  }, [activeTab, filters]);
+    fetchDuoCards();
+  }, [filters]);
+
+  // Manual refresh for duo cards
+  const handleRefreshDuoCards = () => {
+    fetchDuoCards();
+  };
 
   const hasCards = valorantCard !== null || leagueCard !== null;
 
@@ -595,13 +598,23 @@ export default function DuoFinderScreen() {
                 <IconSymbol size={18} name="person.2.fill" color="#fff" />
                 <ThemedText style={styles.sectionHeaderTitle}>Available Players</ThemedText>
               </View>
-              <View style={styles.statusBadge}>
-                <View style={styles.statusDotOuter}>
-                  <View style={styles.statusDot} />
+              <View style={styles.headerRightSection}>
+                <View style={styles.statusBadge}>
+                  <View style={styles.statusDotOuter}>
+                    <View style={styles.statusDot} />
+                  </View>
+                  <ThemedText style={styles.statusText}>
+                    {duoCards.length} {duoCards.length === 1 ? 'Player' : 'Players'}
+                  </ThemedText>
                 </View>
-                <ThemedText style={styles.statusText}>
-                  {duoCards.length} {duoCards.length === 1 ? 'Player' : 'Players'}
-                </ThemedText>
+                <TouchableOpacity
+                  style={styles.refreshButton}
+                  onPress={handleRefreshDuoCards}
+                  activeOpacity={0.7}
+                  disabled={loadingDuoCards}
+                >
+                  <IconSymbol size={14} name="arrow.clockwise" color={loadingDuoCards ? '#444' : '#888'} />
+                </TouchableOpacity>
               </View>
             </View>
 
@@ -999,10 +1012,23 @@ const styles = StyleSheet.create({
     fontWeight: '500',
     color: '#888',
   },
+  headerRightSection: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+  },
   statusBadge: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 6,
+  },
+  refreshButton: {
+    width: 28,
+    height: 28,
+    borderRadius: 14,
+    backgroundColor: '#1a1a1a',
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   statusDotOuter: {
     width: 14,

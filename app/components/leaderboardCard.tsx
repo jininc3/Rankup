@@ -10,25 +10,25 @@ const GAME_LOGOS: { [key: string]: any } = {
   'Apex Legends': require('@/assets/images/apex.png'),
 };
 
-// Game watermark logos (darker/larger versions for background)
+// Game watermark logos
 const GAME_WATERMARKS: { [key: string]: any } = {
   'Valorant': require('@/assets/images/valorant-red.png'),
   'League of Legends': require('@/assets/images/lol.png'),
   'Apex Legends': require('@/assets/images/apex.png'),
 };
 
-// Subtle game-specific gradient colors (more muted/darker)
+// Game-specific gradient colors
 const GAME_GRADIENTS: { [key: string]: [string, string, string] } = {
   'Valorant': ['#2a1a1c', '#1f1214', '#151010'],
-  'League of Legends': ['#2a2418', '#1f1a12', '#15120d'],
+  'League of Legends': ['#1a1c2a', '#12141f', '#0d0e15'],
   'Apex Legends': ['#2a1818', '#1f1212', '#150e0e'],
   'default': ['#252525', '#1c1c1c', '#141414'],
 };
 
-// Game accent colors for progress bar and highlights
+// Game accent colors
 const GAME_ACCENT_COLORS: { [key: string]: string } = {
   'Valorant': '#FF4655',
-  'League of Legends': '#C89B3C',
+  'League of Legends': '#4A90D9',
   'Apex Legends': '#DA292A',
   'default': '#888',
 };
@@ -46,19 +46,17 @@ interface Leaderboard {
   startDate?: any;
   endDate?: any;
   type?: 'party' | 'leaderboard';
-  coverPhoto?: string; // URL for custom cover photo
+  coverPhoto?: string;
 }
 
-interface PartyCardsProps {
+interface LeaderboardCardProps {
   leaderboard: Leaderboard;
   onPress: (leaderboard: Leaderboard) => void;
 }
 
 // Helper function to calculate days information
 const calculateDaysInfo = (startDate: any, endDate: any): { currentDay: number; totalDays: number; daysLeft: number } | null => {
-  if (!startDate || !endDate) {
-    return null;
-  }
+  if (!startDate || !endDate) return null;
 
   const parseDate = (date: any): Date | null => {
     if (date.toDate && typeof date.toDate === 'function') {
@@ -100,10 +98,8 @@ const calculateDaysInfo = (startDate: any, endDate: any): { currentDay: number; 
   return { currentDay: Math.max(1, currentDay), totalDays, daysLeft };
 };
 
-export default function PartyCards({ leaderboard, onPress }: PartyCardsProps) {
+export default function LeaderboardCard({ leaderboard, onPress }: LeaderboardCardProps) {
   const daysInfo = calculateDaysInfo(leaderboard.startDate, leaderboard.endDate);
-  const isLeaderboard = leaderboard.type === 'leaderboard';
-  const isParty = leaderboard.type === 'party';
   const progressPercentage = daysInfo && daysInfo.totalDays > 0
     ? Math.min(100, (daysInfo.currentDay / daysInfo.totalDays) * 100)
     : 0;
@@ -112,87 +108,6 @@ export default function PartyCards({ leaderboard, onPress }: PartyCardsProps) {
   const accentColor = GAME_ACCENT_COLORS[leaderboard.game] || GAME_ACCENT_COLORS['default'];
   const watermarkLogo = GAME_WATERMARKS[leaderboard.game];
   const gameLogo = GAME_LOGOS[leaderboard.game];
-  const hasCoverPhoto = !!leaderboard.coverPhoto;
-
-  const renderCardContent = () => (
-    <>
-      {/* Background - Cover photo or watermark logo */}
-      {hasCoverPhoto ? (
-        <Image
-          source={{ uri: leaderboard.coverPhoto }}
-          style={styles.backgroundCover}
-          resizeMode="cover"
-        />
-      ) : watermarkLogo ? (
-        <Image
-          source={watermarkLogo}
-          style={styles.backgroundLogo}
-          resizeMode="contain"
-        />
-      ) : null}
-
-      {/* Inside border */}
-      <View style={styles.innerBorder} />
-
-      {/* Card Content */}
-      <View style={styles.cardContent}>
-        {/* Header Row - Game Logo only */}
-        <View style={styles.cardHeader}>
-          <View style={styles.gameLogoContainer}>
-            {gameLogo ? (
-              <Image
-                source={gameLogo}
-                style={styles.gameLogo}
-                resizeMode="contain"
-              />
-            ) : (
-              <IconSymbol size={24} name="gamecontroller.fill" color="#fff" />
-            )}
-          </View>
-        </View>
-
-        {/* Body - Party Name & Meta */}
-        <View style={styles.cardBody}>
-          <ThemedText style={styles.partyName} numberOfLines={1}>
-            {leaderboard.name}
-          </ThemedText>
-          <ThemedText style={styles.subtitle} numberOfLines={1}>
-            {leaderboard.game}
-            {isLeaderboard && daysInfo && ` • ${daysInfo.daysLeft} days left`}
-            {isParty && ` • ${leaderboard.members} members`}
-          </ThemedText>
-        </View>
-
-        {/* Footer - Progress Bar & Rank (only for leaderboard) */}
-        <View style={styles.cardFooter}>
-          {isLeaderboard && daysInfo ? (
-            <View style={styles.progressContainer}>
-              <View style={styles.progressBar}>
-                <LinearGradient
-                  colors={[accentColor, accentColor + 'CC']}
-                  start={{ x: 0, y: 0 }}
-                  end={{ x: 1, y: 0 }}
-                  style={[styles.progressFill, { width: `${progressPercentage}%` }]}
-                />
-              </View>
-              <ThemedText style={styles.progressText}>
-                Day {daysInfo.currentDay}/{daysInfo.totalDays}
-              </ThemedText>
-            </View>
-          ) : (
-            <View style={styles.progressContainer} />
-          )}
-
-          {/* Only show rank for leaderboards */}
-          {isLeaderboard && leaderboard.userRank && (
-            <View style={[styles.rankBadge, { borderColor: accentColor + '40' }]}>
-              <ThemedText style={[styles.rankText, { color: accentColor }]}>#{leaderboard.userRank}</ThemedText>
-            </View>
-          )}
-        </View>
-      </View>
-    </>
-  );
 
   return (
     <TouchableOpacity
@@ -200,7 +115,7 @@ export default function PartyCards({ leaderboard, onPress }: PartyCardsProps) {
       onPress={() => onPress(leaderboard)}
       style={styles.cardOuter}
     >
-      {/* 3D Shadow layers - light from right side */}
+      {/* 3D Shadow layers */}
       <View style={styles.shadow3} />
       <View style={styles.shadow2} />
       <View style={styles.shadow1} />
@@ -212,7 +127,81 @@ export default function PartyCards({ leaderboard, onPress }: PartyCardsProps) {
           end={{ x: 1, y: 1 }}
           style={styles.cardBackground}
         >
-          {renderCardContent()}
+          {/* Background watermark logo */}
+          {watermarkLogo && (
+            <Image
+              source={watermarkLogo}
+              style={styles.backgroundLogo}
+              resizeMode="contain"
+            />
+          )}
+
+          {/* Inside border */}
+          <View style={styles.innerBorder} />
+
+          {/* Card Content */}
+          <View style={styles.cardContent}>
+            {/* Header - Game Logo */}
+            <View style={styles.cardHeader}>
+              <View style={styles.gameLogoContainer}>
+                {gameLogo ? (
+                  <Image
+                    source={gameLogo}
+                    style={styles.gameLogo}
+                    resizeMode="contain"
+                  />
+                ) : (
+                  <IconSymbol size={24} name="gamecontroller.fill" color="#fff" />
+                )}
+              </View>
+
+              {/* Rank Badge - Top Right */}
+              {leaderboard.userRank && (
+                <View style={styles.rankBadge}>
+                  <ThemedText style={[styles.rankHash, { color: accentColor }]}>#</ThemedText>
+                  <ThemedText style={[styles.rankNumber, { color: accentColor }]}>
+                    {leaderboard.userRank}
+                  </ThemedText>
+                </View>
+              )}
+            </View>
+
+            {/* Body - Name & Meta */}
+            <View style={styles.cardBody}>
+              <ThemedText style={styles.leaderboardName} numberOfLines={1}>
+                {leaderboard.name}
+              </ThemedText>
+              <ThemedText style={styles.subtitle} numberOfLines={1}>
+                {leaderboard.game} • {leaderboard.members} players
+              </ThemedText>
+            </View>
+
+            {/* Footer - Progress Bar */}
+            <View style={styles.cardFooter}>
+              {daysInfo ? (
+                <View style={styles.progressContainer}>
+                  <View style={styles.progressBar}>
+                    <LinearGradient
+                      colors={[accentColor, accentColor + 'AA']}
+                      start={{ x: 0, y: 0 }}
+                      end={{ x: 1, y: 0 }}
+                      style={[styles.progressFill, { width: `${progressPercentage}%` }]}
+                    />
+                  </View>
+                  <View style={styles.progressMeta}>
+                    <ThemedText style={styles.progressText}>
+                      Day {daysInfo.currentDay}/{daysInfo.totalDays}
+                    </ThemedText>
+                    <ThemedText style={[styles.daysLeftText, { color: accentColor }]}>
+                      {daysInfo.daysLeft}d left
+                    </ThemedText>
+                  </View>
+                </View>
+              ) : (
+                <View style={styles.progressContainer} />
+              )}
+            </View>
+          </View>
         </LinearGradient>
       </View>
     </TouchableOpacity>
@@ -225,7 +214,7 @@ const styles = StyleSheet.create({
     height: 150,
     marginBottom: 16,
   },
-  // 3D Shadow layers - light from right side
+  // 3D Shadow layers
   shadow3: {
     position: 'absolute',
     top: 8,
@@ -267,15 +256,6 @@ const styles = StyleSheet.create({
     flex: 1,
     borderRadius: 18,
   },
-  backgroundCover: {
-    position: 'absolute',
-    top: 0,
-    left: 0,
-    right: 0,
-    bottom: 0,
-    borderRadius: 17,
-    opacity: 0.04,
-  },
   innerBorder: {
     position: 'absolute',
     top: 3,
@@ -300,13 +280,14 @@ const styles = StyleSheet.create({
   cardContent: {
     flex: 1,
     paddingHorizontal: 16,
-    paddingTop: 14,
+    paddingTop: 16,
     paddingBottom: 14,
   },
   cardHeader: {
     flexDirection: 'row',
-    justifyContent: 'flex-start',
-    alignItems: 'center',
+    justifyContent: 'space-between',
+    alignItems: 'flex-start',
+    minHeight: 32,
   },
   gameLogoContainer: {
     width: 32,
@@ -319,11 +300,29 @@ const styles = StyleSheet.create({
     height: 28,
     opacity: 0.9,
   },
+  rankBadge: {
+    flexDirection: 'row',
+    alignItems: 'flex-end',
+  },
+  rankHash: {
+    fontSize: 14,
+    fontWeight: '300',
+    fontStyle: 'italic',
+    marginRight: 1,
+    marginBottom: 4,
+  },
+  rankNumber: {
+    fontSize: 26,
+    fontWeight: '300',
+    fontStyle: 'italic',
+    letterSpacing: -1,
+    lineHeight: 28,
+  },
   cardBody: {
     flex: 1,
     justifyContent: 'flex-end',
   },
-  partyName: {
+  leaderboardName: {
     fontSize: 20,
     fontWeight: '700',
     color: '#fff',
@@ -336,16 +335,13 @@ const styles = StyleSheet.create({
     marginTop: 2,
   },
   cardFooter: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
+    marginTop: 10,
   },
   progressContainer: {
-    flex: 1,
-    marginRight: 12,
+    gap: 6,
   },
   progressBar: {
-    height: 4,
+    height: 3,
     backgroundColor: 'rgba(255,255,255,0.1)',
     borderRadius: 2,
     overflow: 'hidden',
@@ -354,21 +350,18 @@ const styles = StyleSheet.create({
     height: '100%',
     borderRadius: 2,
   },
+  progressMeta: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
   progressText: {
     fontSize: 10,
     fontWeight: '500',
     color: 'rgba(255,255,255,0.4)',
-    marginTop: 4,
   },
-  rankBadge: {
-    backgroundColor: 'rgba(255,255,255,0.08)',
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 10,
-    borderWidth: 1,
-  },
-  rankText: {
-    fontSize: 14,
-    fontWeight: '700',
+  daysLeftText: {
+    fontSize: 10,
+    fontWeight: '600',
   },
 });

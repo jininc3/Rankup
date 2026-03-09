@@ -468,14 +468,14 @@ export default function NewPost({ visible, onClose, onPostCreated }: NewPostProp
             {/* Media Selection Card */}
             <View style={styles.card}>
               <View style={styles.cardHeader}>
-                <IconSymbol size={18} name="video.fill" color="#fff" />
+                <IconSymbol size={18} name="video.fill" color="#72767d" />
                 <ThemedText style={styles.cardHeaderTitle}>Video</ThemedText>
               </View>
 
               {selectedMedia.length === 0 ? (
                 <TouchableOpacity style={styles.addMediaButton} onPress={handleAddPhoto}>
                   <LinearGradient
-                    colors={['#1a1d21', '#0f1114']}
+                    colors={['#1a1a1a', '#0f0f0f']}
                     style={styles.addMediaGradient}
                   >
                     <View style={styles.addMediaIconContainer}>
@@ -553,7 +553,7 @@ export default function NewPost({ visible, onClose, onPostCreated }: NewPostProp
             {/* Caption Card */}
             <View style={styles.card} ref={captionInputRef}>
               <View style={styles.cardHeader}>
-                <IconSymbol size={18} name="text.alignleft" color="#fff" />
+                <IconSymbol size={18} name="text.alignleft" color="#72767d" />
                 <ThemedText style={styles.cardHeaderTitle}>Caption</ThemedText>
               </View>
 
@@ -592,7 +592,7 @@ export default function NewPost({ visible, onClose, onPostCreated }: NewPostProp
                 activeOpacity={0.7}
               >
                 <View style={styles.cardHeaderLeft}>
-                  <IconSymbol size={18} name="gamecontroller.fill" color="#fff" />
+                  <IconSymbol size={18} name="gamecontroller.fill" color="#72767d" />
                   <ThemedText style={styles.cardHeaderTitle}>Game Tag</ThemedText>
                   {!selectedPostGame && (
                     <View style={styles.requiredBadge}>
@@ -652,7 +652,7 @@ export default function NewPost({ visible, onClose, onPostCreated }: NewPostProp
                   activeOpacity={0.7}
                 >
                   <View style={styles.cardHeaderLeft}>
-                    <IconSymbol size={18} name="photo.fill" color="#fff" />
+                    <IconSymbol size={18} name="photo.fill" color="#72767d" />
                     <ThemedText style={styles.cardHeaderTitle}>Thumbnail</ThemedText>
                     {selectedThumbnailUri && thumbnailOption !== 'auto' && (
                       <View style={styles.customBadge}>
@@ -739,7 +739,7 @@ export default function NewPost({ visible, onClose, onPostCreated }: NewPostProp
                 activeOpacity={0.7}
               >
                 <View style={styles.cardHeaderLeft}>
-                  <IconSymbol size={18} name="person.2.fill" color="#fff" />
+                  <IconSymbol size={18} name="person.2.fill" color="#72767d" />
                   <ThemedText style={styles.cardHeaderTitle}>Tag People</ThemedText>
                 </View>
                 <View style={styles.cardHeaderRight}>
@@ -830,7 +830,7 @@ export default function NewPost({ visible, onClose, onPostCreated }: NewPostProp
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#0a0b0d',
+    backgroundColor: '#0f0f0f',
   },
   // Header
   header: {
@@ -840,15 +840,13 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     paddingTop: 54,
     paddingBottom: 14,
-    backgroundColor: '#0f1114',
-    borderBottomWidth: 1,
-    borderBottomColor: '#1e2023',
+    backgroundColor: '#0f0f0f',
   },
   backButton: {
     width: 36,
     height: 36,
     borderRadius: 18,
-    backgroundColor: '#1a1d21',
+    backgroundColor: '#2c2f33',
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -865,7 +863,7 @@ const styles = StyleSheet.create({
     borderRadius: 8,
   },
   shareButtonDisabled: {
-    backgroundColor: '#2a2d32',
+    backgroundColor: '#36393e',
   },
   shareButtonText: {
     fontSize: 14,
@@ -873,7 +871,7 @@ const styles = StyleSheet.create({
     color: '#fff',
   },
   shareButtonTextDisabled: {
-    color: '#4a4d52',
+    color: '#72767d',
   },
   // Content
   scrollContent: {
@@ -885,27 +883,23 @@ const styles = StyleSheet.create({
   },
   // Cards
   card: {
-    backgroundColor: '#1a1d21',
-    borderRadius: 12,
-    borderWidth: 1,
-    borderColor: '#232528',
+    backgroundColor: '#1a1a1a',
+    borderRadius: 16,
     overflow: 'hidden',
   },
   cardHeader: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 10,
-    paddingHorizontal: 14,
-    paddingVertical: 12,
-    borderBottomWidth: 1,
-    borderBottomColor: '#1e2023',
+    paddingHorizontal: 16,
+    paddingVertical: 14,
   },
   cardHeaderTouchable: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    paddingHorizontal: 14,
-    paddingVertical: 12,
+    paddingHorizontal: 16,
+    paddingVertical: 14,
   },
   cardHeaderLeft: {
     flexDirection: 'row',
@@ -920,7 +914,7 @@ const styles = StyleSheet.create({
   cardHeaderTitle: {
     fontSize: 14,
     fontWeight: '600',
-    color: '#fff',
+    color: '#b9bbbe',
   },
   // Add Media
   addMediaButton: {
@@ -937,7 +931,7 @@ const styles = StyleSheet.create({
     width: 72,
     height: 72,
     borderRadius: 36,
-    backgroundColor: 'rgba(196, 39, 67, 0.15)',
+    backgroundColor: '#2c2f33',
     alignItems: 'center',
     justifyContent: 'center',
     marginBottom: 8,
@@ -949,19 +943,19 @@ const styles = StyleSheet.create({
   },
   addMediaSubtext: {
     fontSize: 13,
-    color: '#6a6d72',
+    color: '#72767d',
   },
   addMediaBadge: {
     marginTop: 8,
     paddingHorizontal: 12,
     paddingVertical: 4,
-    backgroundColor: '#232528',
+    backgroundColor: '#2c2f33',
     borderRadius: 12,
   },
   addMediaBadgeText: {
     fontSize: 11,
     fontWeight: '600',
-    color: '#6a6d72',
+    color: '#72767d',
   },
   // Media Preview
   mediaPreviewContainer: {
@@ -1010,7 +1004,7 @@ const styles = StyleSheet.create({
   },
   // Caption
   captionSection: {
-    padding: 14,
+    padding: 16,
     gap: 12,
   },
   userRow: {
@@ -1022,7 +1016,7 @@ const styles = StyleSheet.create({
     width: 36,
     height: 36,
     borderRadius: 18,
-    backgroundColor: '#2a2d32',
+    backgroundColor: '#36393e',
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -1039,18 +1033,16 @@ const styles = StyleSheet.create({
   username: {
     fontSize: 14,
     fontWeight: '600',
-    color: '#e5e5e5',
+    color: '#fff',
   },
   captionInput: {
     fontSize: 14,
-    color: '#9a9da2',
+    color: '#b9bbbe',
     minHeight: 80,
     textAlignVertical: 'top',
     padding: 12,
-    backgroundColor: '#13151a',
-    borderRadius: 8,
-    borderWidth: 1,
-    borderColor: '#1e2023',
+    backgroundColor: '#0f0f0f',
+    borderRadius: 12,
   },
   // Game Tag
   requiredBadge: {
@@ -1066,7 +1058,7 @@ const styles = StyleSheet.create({
     color: '#fff',
   },
   selectedGameBadge: {
-    backgroundColor: '#232528',
+    backgroundColor: '#2c2f33',
     paddingHorizontal: 10,
     paddingVertical: 4,
     borderRadius: 6,
@@ -1074,12 +1066,12 @@ const styles = StyleSheet.create({
   selectedGameText: {
     fontSize: 12,
     fontWeight: '600',
-    color: '#9a9da2',
+    color: '#b9bbbe',
   },
   gameOptionsContainer: {
     flexDirection: 'row',
     gap: 8,
-    padding: 14,
+    padding: 16,
     paddingTop: 0,
   },
   gameOption: {
@@ -1089,19 +1081,16 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     gap: 6,
     paddingVertical: 10,
-    borderRadius: 8,
-    backgroundColor: '#13151a',
-    borderWidth: 1,
-    borderColor: '#1e2023',
+    borderRadius: 10,
+    backgroundColor: '#0f0f0f',
   },
   gameOptionSelected: {
     backgroundColor: '#c42743',
-    borderColor: '#c42743',
   },
   gameOptionText: {
     fontSize: 12,
     fontWeight: '600',
-    color: '#6a6d72',
+    color: '#72767d',
   },
   gameOptionTextSelected: {
     color: '#fff',
@@ -1117,7 +1106,7 @@ const styles = StyleSheet.create({
     marginLeft: 4,
   },
   thumbnailOptionsContainer: {
-    padding: 14,
+    padding: 16,
     paddingTop: 0,
     gap: 12,
   },
@@ -1128,12 +1117,12 @@ const styles = StyleSheet.create({
   thumbnailPreview: {
     width: 140,
     height: 80,
-    borderRadius: 8,
-    backgroundColor: '#13151a',
+    borderRadius: 10,
+    backgroundColor: '#0f0f0f',
   },
   thumbnailPreviewLabel: {
     fontSize: 11,
-    color: '#6a6d72',
+    color: '#72767d',
   },
   thumbnailButtonsRow: {
     flexDirection: 'row',
@@ -1146,19 +1135,16 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     gap: 6,
     paddingVertical: 10,
-    borderRadius: 8,
-    backgroundColor: '#13151a',
-    borderWidth: 1,
-    borderColor: '#1e2023',
+    borderRadius: 10,
+    backgroundColor: '#0f0f0f',
   },
   thumbnailButtonSelected: {
     backgroundColor: '#c42743',
-    borderColor: '#c42743',
   },
   thumbnailButtonText: {
     fontSize: 11,
     fontWeight: '600',
-    color: '#6a6d72',
+    color: '#72767d',
   },
   thumbnailButtonTextSelected: {
     color: '#fff',
@@ -1194,13 +1180,11 @@ const styles = StyleSheet.create({
     zIndex: 1000,
   },
   uploadingContainer: {
-    backgroundColor: '#1a1d21',
-    borderRadius: 16,
+    backgroundColor: '#1a1a1a',
+    borderRadius: 20,
     padding: 32,
     alignItems: 'center',
     gap: 12,
-    borderWidth: 1,
-    borderColor: '#232528',
   },
   uploadingText: {
     fontSize: 16,
@@ -1209,12 +1193,12 @@ const styles = StyleSheet.create({
   },
   uploadingSubtext: {
     fontSize: 13,
-    color: '#6a6d72',
+    color: '#72767d',
   },
   // Frame Selector Modal
   frameSelectorContainer: {
     flex: 1,
-    backgroundColor: '#0a0b0d',
+    backgroundColor: '#0f0f0f',
   },
   frameSelectorHeader: {
     flexDirection: 'row',
@@ -1223,15 +1207,13 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     paddingTop: 54,
     paddingBottom: 14,
-    backgroundColor: '#0f1114',
-    borderBottomWidth: 1,
-    borderBottomColor: '#1e2023',
+    backgroundColor: '#0f0f0f',
   },
   frameSelectorCloseButton: {
     width: 36,
     height: 36,
     borderRadius: 18,
-    backgroundColor: '#1a1d21',
+    backgroundColor: '#2c2f33',
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -1248,7 +1230,7 @@ const styles = StyleSheet.create({
   },
   frameSelectorSubtitle: {
     fontSize: 13,
-    color: '#6a6d72',
+    color: '#72767d',
     marginBottom: 16,
     textAlign: 'center',
   },
@@ -1261,11 +1243,11 @@ const styles = StyleSheet.create({
   frameItem: {
     width: '48%',
     aspectRatio: 16 / 9,
-    borderRadius: 10,
+    borderRadius: 12,
     overflow: 'hidden',
-    backgroundColor: '#1a1d21',
+    backgroundColor: '#1a1a1a',
     borderWidth: 2,
-    borderColor: '#232528',
+    borderColor: 'transparent',
   },
   frameItemSelected: {
     borderColor: '#c42743',

@@ -16,9 +16,11 @@ import {
 } from 'react-native';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import * as Clipboard2 from 'expo-clipboard';
+import * as ImagePicker from 'expo-image-picker';
 import { useAuth } from '@/contexts/AuthContext';
 import { db } from '@/config/firebase';
 import { collection, query, where, getDocs, doc, getDoc, addDoc, serverTimestamp, limit } from 'firebase/firestore';
+import { uploadPartyCoverPhoto } from '@/services/storageService';
 
 // Available games
 const AVAILABLE_GAMES = [
@@ -76,6 +78,8 @@ export default function CreateParty1Screen() {
   const [showEndDatePicker, setShowEndDatePicker] = useState(false);
   const [challengeType, setChallengeType] = useState<'climbing' | 'rank'>('climbing');
   const [selectedDuration, setSelectedDuration] = useState<number>(30);
+  const [coverPhoto, setCoverPhoto] = useState<string | null>(null);
+  const [uploadingCover, setUploadingCover] = useState(false);
 
   const formatDateShort = (date: Date) => {
     return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
@@ -180,6 +184,28 @@ export default function CreateParty1Screen() {
     }
   };
 
+  const handlePickCoverPhoto = async () => {
+    try {
+      const result = await ImagePicker.launchImageLibraryAsync({
+        mediaTypes: ImagePicker.MediaTypeOptions.Images,
+        allowsEditing: true,
+        aspect: [16, 9],
+        quality: 0.8,
+      });
+
+      if (!result.canceled && result.assets[0]) {
+        setCoverPhoto(result.assets[0].uri);
+      }
+    } catch (error) {
+      console.error('Error picking cover photo:', error);
+      Alert.alert('Error', 'Failed to select cover photo');
+    }
+  };
+
+  const handleRemoveCoverPhoto = () => {
+    setCoverPhoto(null);
+  };
+
   const handleEndDateChange = (event: any, selectedDate?: Date) => {
     setShowEndDatePicker(Platform.OS === 'ios');
     if (selectedDate) {
@@ -245,6 +271,18 @@ export default function CreateParty1Screen() {
         }
       }
 
+      // Upload cover photo if selected
+      let coverPhotoUrl = '';
+      if (coverPhoto) {
+        setUploadingCover(true);
+        try {
+          coverPhotoUrl = await uploadPartyCoverPhoto(partyId, coverPhoto);
+        } catch (uploadError) {
+          console.error('Error uploading cover photo:', uploadError);
+        }
+        setUploadingCover(false);
+      }
+
       const partyData = {
         partyId,
         partyName,
@@ -260,6 +298,7 @@ export default function CreateParty1Screen() {
         members: [user.id],
         memberDetails,
         pendingInvites,
+        ...(coverPhotoUrl && { coverPhoto: coverPhotoUrl }),
       };
 
       await addDoc(partiesRef, partyData);
@@ -352,6 +391,33 @@ export default function CreateParty1Screen() {
               </TouchableOpacity>
             ))}
           </View>
+        </View>
+
+        {/* Cover Photo Card */}
+        <View style={styles.card}>
+          <ThemedText style={styles.cardTitle}>Cover Photo</ThemedText>
+          <ThemedText style={styles.cardSubtitle}>Add a cover photo to make your leaderboard stand out</ThemedText>
+
+          {coverPhoto ? (
+            <View style={styles.coverPhotoPreviewContainer}>
+              <Image source={{ uri: coverPhoto }} style={styles.coverPhotoPreview} />
+              <View style={styles.coverPhotoActions}>
+                <TouchableOpacity style={styles.coverPhotoActionButton} onPress={handlePickCoverPhoto}>
+                  <IconSymbol size={16} name="arrow.triangle.2.circlepath" color="#fff" />
+                  <ThemedText style={styles.coverPhotoActionText}>Change</ThemedText>
+                </TouchableOpacity>
+                <TouchableOpacity style={[styles.coverPhotoActionButton, styles.coverPhotoRemoveButton]} onPress={handleRemoveCoverPhoto}>
+                  <IconSymbol size={16} name="xmark" color="#ff4444" />
+                  <ThemedText style={[styles.coverPhotoActionText, { color: '#ff4444' }]}>Remove</ThemedText>
+                </TouchableOpacity>
+              </View>
+            </View>
+          ) : (
+            <TouchableOpacity style={styles.coverPhotoPlaceholder} onPress={handlePickCoverPhoto}>
+              <IconSymbol size={32} name="photo.badge.plus" color="#666" />
+              <ThemedText style={styles.coverPhotoPlaceholderText}>Tap to add cover photo</ThemedText>
+            </TouchableOpacity>
+          )}
         </View>
 
         {/* Leaderboard Info Card */}
@@ -571,8 +637,19 @@ export default function CreateParty1Screen() {
         </View>
 
         {/* Create Button */}
-        <TouchableOpacity style={styles.createButton} onPress={handleCreateParty}>
-          <ThemedText style={styles.createButtonText}>Create Leaderboard</ThemedText>
+        <TouchableOpacity
+          style={[styles.createButton, uploadingCover && styles.createButtonDisabled]}
+          onPress={handleCreateParty}
+          disabled={uploadingCover}
+        >
+          {uploadingCover ? (
+            <View style={styles.createButtonLoading}>
+              <ActivityIndicator size="small" color="#fff" />
+              <ThemedText style={styles.createButtonText}>Uploading...</ThemedText>
+            </View>
+          ) : (
+            <ThemedText style={styles.createButtonText}>Create Leaderboard</ThemedText>
+          )}
         </TouchableOpacity>
 
         <View style={styles.bottomSpacer} />
@@ -626,9 +703,61 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: '600',
     color: '#888',
-    marginBottom: 10,
+    marginBottom: 4,
     textTransform: 'uppercase',
     letterSpacing: 0.5,
+  },
+  cardSubtitle: {
+    fontSize: 12,
+    color: '#555',
+    marginBottom: 12,
+  },
+  coverPhotoPreviewContainer: {
+    borderRadius: 10,
+    overflow: 'hidden',
+  },
+  coverPhotoPreview: {
+    width: '100%',
+    height: 140,
+    borderRadius: 10,
+  },
+  coverPhotoActions: {
+    flexDirection: 'row',
+    gap: 10,
+    marginTop: 10,
+  },
+  coverPhotoActionButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    paddingVertical: 8,
+    paddingHorizontal: 14,
+    backgroundColor: '#252525',
+    borderRadius: 8,
+  },
+  coverPhotoRemoveButton: {
+    backgroundColor: 'rgba(255, 68, 68, 0.1)',
+  },
+  coverPhotoActionText: {
+    fontSize: 13,
+    fontWeight: '500',
+    color: '#fff',
+  },
+  coverPhotoPlaceholder: {
+    width: '100%',
+    height: 120,
+    backgroundColor: '#252525',
+    borderRadius: 10,
+    borderWidth: 2,
+    borderColor: '#333',
+    borderStyle: 'dashed',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+  },
+  coverPhotoPlaceholderText: {
+    fontSize: 13,
+    color: '#666',
   },
   gameSelectionRow: {
     flexDirection: 'row',
@@ -880,6 +1009,14 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: '700',
     color: '#fff',
+  },
+  createButtonDisabled: {
+    opacity: 0.7,
+  },
+  createButtonLoading: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
   },
   bottomSpacer: {
     height: 40,

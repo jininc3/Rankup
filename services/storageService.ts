@@ -92,6 +92,34 @@ export async function deleteCoverPhoto(userId: string): Promise<void> {
 }
 
 /**
+ * Upload a party cover photo to Firebase Storage
+ * @param partyId - The party's ID
+ * @param uri - Local URI of the image
+ * @returns Download URL of the uploaded image
+ */
+export async function uploadPartyCoverPhoto(partyId: string, uri: string): Promise<string> {
+  try {
+    // Convert URI to blob
+    const response = await fetch(uri);
+    const blob = await response.blob();
+
+    // Create a reference to the storage location
+    const storageRef = ref(storage, `party-covers/${partyId}.jpg`);
+
+    // Upload the file
+    await uploadBytes(storageRef, blob);
+
+    // Get the download URL
+    const downloadURL = await getDownloadURL(storageRef);
+
+    return downloadURL;
+  } catch (error: any) {
+    console.error('Upload party cover photo error:', error);
+    throw new Error('Failed to upload party cover photo');
+  }
+}
+
+/**
  * Delete a post media file from Firebase Storage
  * @param mediaUrl - The full download URL of the media
  */

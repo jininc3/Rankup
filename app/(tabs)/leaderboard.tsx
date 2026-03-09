@@ -1,4 +1,5 @@
 import PartyCards from '@/app/components/partyCards';
+import LeaderboardCard from '@/app/components/leaderboardCard';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { IconSymbol } from '@/components/ui/icon-symbol';
@@ -6,8 +7,8 @@ import { db } from '@/config/firebase';
 import { useAuth } from '@/contexts/AuthContext';
 import { useRouter } from 'expo-router';
 import { collection, doc, getDoc, getDocs, limit, onSnapshot, query, where } from 'firebase/firestore';
-import { useEffect, useState } from 'react';
-import { ActivityIndicator, Image, ScrollView, StyleSheet, TouchableOpacity, View } from 'react-native';
+import { useEffect, useState, useRef } from 'react';
+import { ActivityIndicator, Dimensions, Image, ScrollView, StyleSheet, TouchableOpacity, View } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 
 // Game logo mapping
@@ -50,12 +51,33 @@ const getValorantRankValue = (currentRank: string, rr: number): number => {
   return tierValue * 1000 + divisionValue * 100 + rr;
 };
 
+const { width: SCREEN_WIDTH } = Dimensions.get('window');
+
 export default function LeaderboardScreen() {
   const router = useRouter();
   const { user } = useAuth();
   const [parties, setParties] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
-  const [selectedTab, setSelectedTab] = useState<'current' | 'completed'>('current');
+  const [selectedTab, setSelectedTab] = useState<'parties' | 'leaderboards'>('parties');
+  const pagerRef = useRef<ScrollView>(null);
+
+  // Handle tab press - scroll to page
+  const handleTabPress = (tab: 'parties' | 'leaderboards') => {
+    setSelectedTab(tab);
+    const pageIndex = tab === 'parties' ? 0 : 1;
+    pagerRef.current?.scrollTo({ x: pageIndex * SCREEN_WIDTH, animated: true });
+  };
+
+  // Handle swipe - update selected tab in real-time
+  const handlePageScroll = (event: any) => {
+    const offsetX = event.nativeEvent.contentOffset.x;
+    const progress = offsetX / SCREEN_WIDTH;
+    // Switch tab when past 50% of the way
+    const newTab = progress >= 0.5 ? 'leaderboards' : 'parties';
+    if (newTab !== selectedTab) {
+      setSelectedTab(newTab);
+    }
+  };
 
   // Fetch parties from Firestore
   useEffect(() => {
@@ -69,10 +91,11 @@ export default function LeaderboardScreen() {
     const partiesQuery = query(partiesRef, where('members', 'array-contains', user.id));
 
     const unsubscribe = onSnapshot(partiesQuery, (snapshot) => {
-      const fetchedParties = snapshot.docs.map((doc) => {
-        const data = doc.data();
+      const fetchedParties = snapshot.docs.map((docSnapshot) => {
+        const data = docSnapshot.data();
+        const docId = docSnapshot.id;
         return {
-          id: data.partyId,
+          id: data.partyId || docId, // Use document ID as fallback for key
           name: data.partyName,
           game: data.game,
           members: data.members?.length || 0,
@@ -83,7 +106,7 @@ export default function LeaderboardScreen() {
           players: [], // Will be populated with member details
           startDate: data.startDate,
           endDate: data.endDate,
-          partyId: data.partyId,
+          partyId: data.partyId || docId, // Use document ID as fallback
           type: data.type || 'leaderboard', // 'party' or 'leaderboard'
         };
       });
@@ -103,6 +126,12 @@ export default function LeaderboardScreen() {
       const updatedParties = await Promise.all(
         parties.map(async (party) => {
           try {
+            // Skip if partyId is undefined
+            if (!party.partyId) {
+              console.warn('Party missing partyId, skipping rank calculation');
+              return party;
+            }
+
             // Get party document to fetch memberDetails
             const partiesRef = collection(db, 'parties');
             const partyQuery = query(partiesRef, where('partyId', '==', party.partyId), limit(1));
@@ -216,10 +245,9 @@ export default function LeaderboardScreen() {
     return endDateObj < today;
   };
 
-  // Filter parties by tab
-  const currentParties = parties.filter(party => !isPartyCompleted(party.endDate));
-  const completedParties = parties.filter(party => isPartyCompleted(party.endDate));
-  const displayedParties = selectedTab === 'current' ? currentParties : completedParties;
+  // Filter parties by type
+  const partyTypeParties = parties.filter(party => party.type === 'party');
+  const leaderboardTypeParties = parties.filter(party => party.type === 'leaderboard' || !party.type);
 
   const getRankColor = (rank: number) => {
     if (rank === 1) return '#FFD700'; // Gold
@@ -265,6 +293,13 @@ export default function LeaderboardScreen() {
     <ThemedView style={styles.container}>
       <View style={styles.header}>
         <ThemedText style={styles.headerTitle}>Parties</ThemedText>
+        <TouchableOpacity
+          style={styles.createButton}
+          onPress={() => router.push('/partyPages/createPartyType')}
+          activeOpacity={0.7}
+        >
+          <IconSymbol size={20} name="plus" color="#fff" />
+        </TouchableOpacity>
       </View>
       {loading ? (
         <View style={styles.loadingContainer}>
@@ -272,85 +307,98 @@ export default function LeaderboardScreen() {
           <ThemedText style={styles.loadingText}>Loading parties...</ThemedText>
         </View>
       ) : (
-        <ScrollView style={styles.scrollView} showsVerticalScrollIndicator={false}>
-          {/* Tabs */}
+        <>
+          {/* Tabs - Fixed at top */}
           <View style={styles.tabsContainer}>
-            <View style={styles.tabsWrapper}>
-              <TouchableOpacity
-                style={[styles.tab, selectedTab === 'current' && styles.tabActive]}
-                onPress={() => setSelectedTab('current')}
-              >
-                <IconSymbol
-                  size={16}
-                  name="play.circle.fill"
-                  color={selectedTab === 'current' ? '#fff' : '#666'}
-                />
-                <ThemedText style={[styles.tabText, selectedTab === 'current' && styles.tabTextActive]}>
-                  Current
-                </ThemedText>
-                <View style={[styles.tabBadge, selectedTab === 'current' && styles.tabBadgeActive]}>
-                  <ThemedText style={[styles.tabBadgeText, selectedTab === 'current' && styles.tabBadgeTextActive]}>
-                    {currentParties.length}
-                  </ThemedText>
-                </View>
-              </TouchableOpacity>
-              <TouchableOpacity
-                style={[styles.tab, selectedTab === 'completed' && styles.tabActive]}
-                onPress={() => setSelectedTab('completed')}
-              >
-                <IconSymbol
-                  size={16}
-                  name="checkmark.circle.fill"
-                  color={selectedTab === 'completed' ? '#fff' : '#666'}
-                />
-                <ThemedText style={[styles.tabText, selectedTab === 'completed' && styles.tabTextActive]}>
-                  Completed
-                </ThemedText>
-                <View style={[styles.tabBadge, selectedTab === 'completed' && styles.tabBadgeActive]}>
-                  <ThemedText style={[styles.tabBadgeText, selectedTab === 'completed' && styles.tabBadgeTextActive]}>
-                    {completedParties.length}
-                  </ThemedText>
-                </View>
-              </TouchableOpacity>
-            </View>
+            <TouchableOpacity
+              style={styles.tab}
+              onPress={() => handleTabPress('parties')}
+              activeOpacity={0.7}
+            >
+              <ThemedText style={[styles.tabText, selectedTab === 'parties' && styles.tabTextActive]}>
+                PARTIES
+              </ThemedText>
+              <ThemedText style={[styles.tabCount, selectedTab === 'parties' && styles.tabCountActive]}>
+                {partyTypeParties.length}
+              </ThemedText>
+            </TouchableOpacity>
+            <View style={styles.tabDivider} />
+            <TouchableOpacity
+              style={styles.tab}
+              onPress={() => handleTabPress('leaderboards')}
+              activeOpacity={0.7}
+            >
+              <ThemedText style={[styles.tabText, selectedTab === 'leaderboards' && styles.tabTextActive]}>
+                LEADERBOARDS
+              </ThemedText>
+              <ThemedText style={[styles.tabCount, selectedTab === 'leaderboards' && styles.tabCountActive]}>
+                {leaderboardTypeParties.length}
+              </ThemedText>
+            </TouchableOpacity>
           </View>
 
-          {/* Parties List */}
-          <View style={styles.leaderboardsSection}>
-            {displayedParties.length > 0 ? (
-              displayedParties.map((leaderboard) => (
-                <PartyCards
-                  key={leaderboard.id}
-                  leaderboard={leaderboard}
-                  onPress={handleLeaderboardPress}
-                />
-              ))
-            ) : (
-              <View style={styles.emptyState}>
-                <ThemedText style={styles.emptyStateText}>
-                  {selectedTab === 'current' ? 'No current parties' : 'No completed parties'}
-                </ThemedText>
-                <ThemedText style={styles.emptyStateSubtext}>
-                  {selectedTab === 'current'
-                    ? 'Create a new party or join one with an invite code'
-                    : 'Completed parties will appear here after their end date'}
-                </ThemedText>
-              </View>
-            )}
-          </View>
+          {/* Swipeable Pages */}
+          <ScrollView
+            ref={pagerRef}
+            horizontal
+            pagingEnabled
+            showsHorizontalScrollIndicator={false}
+            onScroll={handlePageScroll}
+            scrollEventThrottle={16}
+            style={styles.pagerContainer}
+          >
+            {/* Parties Page */}
+            <ScrollView
+              style={[styles.pageContainer, { width: SCREEN_WIDTH }]}
+              showsVerticalScrollIndicator={false}
+              contentContainerStyle={styles.pageContent}
+            >
+              {partyTypeParties.length > 0 ? (
+                partyTypeParties.map((leaderboard) => (
+                  <PartyCards
+                    key={leaderboard.id}
+                    leaderboard={leaderboard}
+                    onPress={handleLeaderboardPress}
+                  />
+                ))
+              ) : (
+                <View style={styles.emptyState}>
+                  <ThemedText style={styles.emptyStateText}>No parties yet</ThemedText>
+                  <ThemedText style={styles.emptyStateSubtext}>
+                    Create a party to compete with friends
+                  </ThemedText>
+                </View>
+              )}
+              <View style={styles.bottomSpacer} />
+            </ScrollView>
 
-          <View style={styles.bottomSpacer} />
-        </ScrollView>
+            {/* Leaderboards Page */}
+            <ScrollView
+              style={[styles.pageContainer, { width: SCREEN_WIDTH }]}
+              showsVerticalScrollIndicator={false}
+              contentContainerStyle={styles.pageContent}
+            >
+              {leaderboardTypeParties.length > 0 ? (
+                leaderboardTypeParties.map((leaderboard) => (
+                  <LeaderboardCard
+                    key={leaderboard.id}
+                    leaderboard={leaderboard}
+                    onPress={handleLeaderboardPress}
+                  />
+                ))
+              ) : (
+                <View style={styles.emptyState}>
+                  <ThemedText style={styles.emptyStateText}>No leaderboards yet</ThemedText>
+                  <ThemedText style={styles.emptyStateSubtext}>
+                    Join a leaderboard to track your rank against others
+                  </ThemedText>
+                </View>
+              )}
+              <View style={styles.bottomSpacer} />
+            </ScrollView>
+          </ScrollView>
+        </>
       )}
-
-      {/* Floating Add Party Button */}
-      <TouchableOpacity
-        style={styles.fabButton}
-        onPress={() => router.push('/partyPages/createPartyType')}
-        activeOpacity={0.8}
-      >
-        <IconSymbol size={28} name="plus" color="#fff" />
-      </TouchableOpacity>
     </ThemedView>
   );
 }
@@ -376,8 +424,13 @@ const styles = StyleSheet.create({
     letterSpacing: 0.3,
     textTransform: 'uppercase',
   },
-  joinButton: {
-    padding: 4,
+  createButton: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: '#1a1a1a',
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   loadingContainer: {
     flex: 1,
@@ -389,73 +442,52 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: '#b9bbbe',
   },
-  headerActions: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 0,
-  },
-  headerIconButton: {
-    padding: 4,
-  },
-  scrollView: {
+  pagerContainer: {
     flex: 1,
+  },
+  pageContainer: {
+    flex: 1,
+  },
+  pageContent: {
+    paddingHorizontal: 20,
+    paddingTop: 16,
   },
   tabsContainer: {
-    paddingHorizontal: 16,
-    paddingTop: 12,
-    paddingBottom: 8,
-  },
-  tabsWrapper: {
-    flexDirection: 'row',
-    backgroundColor: '#1a1a1a',
-    borderRadius: 12,
-    padding: 4,
-    gap: 4,
-  },
-  tab: {
-    flex: 1,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    paddingVertical: 10,
-    paddingHorizontal: 12,
-    borderRadius: 10,
-    gap: 6,
+    paddingHorizontal: 20,
+    paddingTop: 8,
+    paddingBottom: 4,
+    gap: 16,
   },
-  tabActive: {
-    backgroundColor: '#c42743',
+  tab: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    paddingVertical: 6,
   },
   tabText: {
-    fontSize: 13,
-    fontWeight: '500',
-    color: '#666',
+    fontSize: 12,
+    fontWeight: '600',
+    color: '#555',
+    letterSpacing: 0.5,
   },
   tabTextActive: {
     color: '#fff',
-    fontWeight: '600',
   },
-  tabBadge: {
-    backgroundColor: '#252525',
-    paddingHorizontal: 6,
-    paddingVertical: 2,
-    borderRadius: 6,
-    minWidth: 20,
-    alignItems: 'center',
+  tabCount: {
+    fontSize: 12,
+    fontWeight: '500',
+    color: '#444',
   },
-  tabBadgeActive: {
-    backgroundColor: 'rgba(255, 255, 255, 0.2)',
+  tabCountActive: {
+    color: '#888',
   },
-  tabBadgeText: {
-    fontSize: 11,
-    fontWeight: '600',
-    color: '#666',
-  },
-  tabBadgeTextActive: {
-    color: '#fff',
-  },
-  leaderboardsSection: {
-    paddingHorizontal: 20,
-    paddingTop: 16,
+  tabDivider: {
+    width: 1,
+    height: 12,
+    backgroundColor: '#333',
   },
   emptyState: {
     paddingVertical: 40,
@@ -474,24 +506,5 @@ const styles = StyleSheet.create({
   },
   bottomSpacer: {
     height: 40,
-  },
-  fabButton: {
-    position: 'absolute',
-    bottom: 24,
-    right: 24,
-    width: 60,
-    height: 60,
-    borderRadius: 30,
-    backgroundColor: '#000',
-    alignItems: 'center',
-    justifyContent: 'center',
-    shadowColor: '#000',
-    shadowOffset: {
-      width: 0,
-      height: 4,
-    },
-    shadowOpacity: 0.3,
-    shadowRadius: 4.65,
-    elevation: 8,
   },
 });
