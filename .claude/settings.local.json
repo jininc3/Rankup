@@ -15,7 +15,8 @@
       "Bash(node -e:*)",
       "Bash(wc:*)",
       "Bash(firebase deploy:*)",
-      "Bash(git mv:*)"
+      "Bash(git mv:*)",
+      "Bash(eas build:*)"
     ],
     "deny": [],
     "ask": []
