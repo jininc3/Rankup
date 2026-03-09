@@ -10,20 +10,8 @@ const GAME_LOGOS: { [key: string]: any } = {
   'Apex Legends': require('@/assets/images/apex.png'),
 };
 
-// Game watermark logos (darker/larger versions for background)
-const GAME_WATERMARKS: { [key: string]: any } = {
-  'Valorant': require('@/assets/images/valorant-red.png'),
-  'League of Legends': require('@/assets/images/lol.png'),
-  'Apex Legends': require('@/assets/images/apex.png'),
-};
-
-// Subtle game-specific gradient colors (more muted/darker)
-const GAME_GRADIENTS: { [key: string]: [string, string, string] } = {
-  'Valorant': ['#2a1a1c', '#1f1214', '#151010'],
-  'League of Legends': ['#2a2418', '#1f1a12', '#15120d'],
-  'Apex Legends': ['#2a1818', '#1f1212', '#150e0e'],
-  'default': ['#252525', '#1c1c1c', '#141414'],
-};
+// Neutral gradient colors for all cards
+const CARD_GRADIENT: [string, string, string] = ['#1e1e1e', '#181818', '#121212'];
 
 // Game accent colors for progress bar and highlights
 const GAME_ACCENT_COLORS: { [key: string]: string } = {
@@ -108,28 +96,46 @@ export default function PartyCards({ leaderboard, onPress }: PartyCardsProps) {
     ? Math.min(100, (daysInfo.currentDay / daysInfo.totalDays) * 100)
     : 0;
 
-  const gradientColors = GAME_GRADIENTS[leaderboard.game] || GAME_GRADIENTS['default'];
   const accentColor = GAME_ACCENT_COLORS[leaderboard.game] || GAME_ACCENT_COLORS['default'];
-  const watermarkLogo = GAME_WATERMARKS[leaderboard.game];
   const gameLogo = GAME_LOGOS[leaderboard.game];
   const hasCoverPhoto = !!leaderboard.coverPhoto;
 
   const renderCardContent = () => (
     <>
-      {/* Background - Cover photo or watermark logo */}
-      {hasCoverPhoto ? (
-        <Image
-          source={{ uri: leaderboard.coverPhoto }}
-          style={styles.backgroundCover}
-          resizeMode="cover"
-        />
-      ) : watermarkLogo ? (
-        <Image
-          source={watermarkLogo}
-          style={styles.backgroundLogo}
-          resizeMode="contain"
-        />
-      ) : null}
+      {/* Background - Cover photo with fading edges */}
+      {hasCoverPhoto && (
+        <>
+          <Image
+            source={{ uri: leaderboard.coverPhoto }}
+            style={styles.backgroundCover}
+            resizeMode="cover"
+          />
+          {/* Top fade */}
+          <LinearGradient
+            colors={['rgba(18, 18, 18, 0.9)', 'transparent']}
+            style={styles.fadeTop}
+          />
+          {/* Bottom fade */}
+          <LinearGradient
+            colors={['transparent', 'rgba(18, 18, 18, 0.95)']}
+            style={styles.fadeBottom}
+          />
+          {/* Left fade */}
+          <LinearGradient
+            colors={['rgba(18, 18, 18, 0.8)', 'transparent']}
+            start={{ x: 0, y: 0 }}
+            end={{ x: 1, y: 0 }}
+            style={styles.fadeLeft}
+          />
+          {/* Right fade */}
+          <LinearGradient
+            colors={['transparent', 'rgba(18, 18, 18, 0.8)']}
+            start={{ x: 0, y: 0 }}
+            end={{ x: 1, y: 0 }}
+            style={styles.fadeRight}
+          />
+        </>
+      )}
 
       {/* Inside border */}
       <View style={styles.innerBorder} />
@@ -207,7 +213,7 @@ export default function PartyCards({ leaderboard, onPress }: PartyCardsProps) {
 
       <View style={styles.card}>
         <LinearGradient
-          colors={gradientColors}
+          colors={CARD_GRADIENT}
           start={{ x: 0, y: 0 }}
           end={{ x: 1, y: 1 }}
           style={styles.cardBackground}
@@ -274,7 +280,43 @@ const styles = StyleSheet.create({
     right: 0,
     bottom: 0,
     borderRadius: 17,
-    opacity: 0.04,
+    opacity: 0.5,
+  },
+  fadeTop: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    height: 50,
+    borderTopLeftRadius: 17,
+    borderTopRightRadius: 17,
+  },
+  fadeBottom: {
+    position: 'absolute',
+    bottom: 0,
+    left: 0,
+    right: 0,
+    height: 70,
+    borderBottomLeftRadius: 17,
+    borderBottomRightRadius: 17,
+  },
+  fadeLeft: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    bottom: 0,
+    width: 40,
+    borderTopLeftRadius: 17,
+    borderBottomLeftRadius: 17,
+  },
+  fadeRight: {
+    position: 'absolute',
+    top: 0,
+    right: 0,
+    bottom: 0,
+    width: 40,
+    borderTopRightRadius: 17,
+    borderBottomRightRadius: 17,
   },
   innerBorder: {
     position: 'absolute',
@@ -285,17 +327,6 @@ const styles = StyleSheet.create({
     borderRadius: 15,
     borderWidth: 1,
     borderColor: 'rgba(255,255,255,0.08)',
-  },
-  backgroundLogo: {
-    position: 'absolute',
-    width: 140,
-    height: 140,
-    top: '50%',
-    left: '50%',
-    marginTop: -70,
-    marginLeft: -70,
-    opacity: 0.04,
-    tintColor: '#fff',
   },
   cardContent: {
     flex: 1,

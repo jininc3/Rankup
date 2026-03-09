@@ -72,7 +72,7 @@ export default function PartyDetail() {
                 // Delete the party entirely
                 await deleteDoc(partyRef);
                 Alert.alert('Party Deleted', 'You were the last member. The party has been deleted.');
-                router.replace('/(tabs)/leaderboard');
+                router.replace('/(tabs)/parties');
                 return;
               }
 
@@ -104,7 +104,7 @@ export default function PartyDetail() {
                 Alert.alert('Success', 'You have left the party.');
               }
 
-              router.replace('/(tabs)/leaderboard');
+              router.replace('/(tabs)/parties');
             } catch (error) {
               console.error('Error leaving party:', error);
               Alert.alert('Error', 'Failed to leave party. Please try again.');
@@ -254,7 +254,7 @@ export default function PartyDetail() {
         <View style={styles.coverPhotoSection}>
           {/* Header Icons - Overlaid on cover */}
           <View style={styles.headerIconsRow}>
-            <TouchableOpacity style={styles.headerIconButton} onPress={() => router.replace('/(tabs)/leaderboard')}>
+            <TouchableOpacity style={styles.headerIconButton} onPress={() => router.replace('/(tabs)/parties')}>
               <IconSymbol size={20} name="chevron.left" color="#fff" />
             </TouchableOpacity>
             <TouchableOpacity style={styles.headerIconButton} onPress={handleLeaveParty}>

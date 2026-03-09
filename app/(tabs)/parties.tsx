@@ -8,7 +8,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { useRouter } from 'expo-router';
 import { collection, doc, getDoc, getDocs, limit, onSnapshot, query, where } from 'firebase/firestore';
 import { useEffect, useState, useRef } from 'react';
-import { ActivityIndicator, Dimensions, Image, ScrollView, StyleSheet, TouchableOpacity, View } from 'react-native';
+import { ActivityIndicator, Dimensions, Image, Modal, ScrollView, StyleSheet, TouchableOpacity, View } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 
 // Game logo mapping
@@ -59,6 +59,7 @@ export default function LeaderboardScreen() {
   const [parties, setParties] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [selectedTab, setSelectedTab] = useState<'parties' | 'leaderboards'>('parties');
+  const [showCreateModal, setShowCreateModal] = useState(false);
   const pagerRef = useRef<ScrollView>(null);
 
   // Handle tab press - scroll to page
@@ -108,6 +109,7 @@ export default function LeaderboardScreen() {
           endDate: data.endDate,
           partyId: data.partyId || docId, // Use document ID as fallback
           type: data.type || 'leaderboard', // 'party' or 'leaderboard'
+          coverPhoto: data.coverPhoto || null, // Cover photo URL
         };
       });
 
@@ -118,7 +120,7 @@ export default function LeaderboardScreen() {
     return () => unsubscribe();
   }, [user?.id]);
 
-  // Calculate user's rank in each party
+  // Calculate user's rank in each leaderboard (not for parties)
   useEffect(() => {
     if (!user?.id || parties.length === 0) return;
 
@@ -126,6 +128,11 @@ export default function LeaderboardScreen() {
       const updatedParties = await Promise.all(
         parties.map(async (party) => {
           try {
+            // Skip rank calculation for party-type (only calculate for leaderboards)
+            if (party.type === 'party') {
+              return party;
+            }
+
             // Skip if partyId is undefined
             if (!party.partyId) {
               console.warn('Party missing partyId, skipping rank calculation');
@@ -295,7 +302,7 @@ export default function LeaderboardScreen() {
         <ThemedText style={styles.headerTitle}>Parties</ThemedText>
         <TouchableOpacity
           style={styles.createButton}
-          onPress={() => router.push('/partyPages/createPartyType')}
+          onPress={() => setShowCreateModal(true)}
           activeOpacity={0.7}
         >
           <IconSymbol size={20} name="plus" color="#fff" />
@@ -399,6 +406,62 @@ export default function LeaderboardScreen() {
           </ScrollView>
         </>
       )}
+
+      {/* Create Modal */}
+      <Modal
+        visible={showCreateModal}
+        transparent
+        animationType="slide"
+        onRequestClose={() => setShowCreateModal(false)}
+      >
+        <TouchableOpacity
+          style={styles.modalOverlay}
+          activeOpacity={1}
+          onPress={() => setShowCreateModal(false)}
+        >
+          <View style={styles.modalContent}>
+            <View style={styles.modalHandle} />
+            <ThemedText style={styles.modalTitle}>Create</ThemedText>
+            <View style={styles.modalDivider} />
+
+            {/* Party Option */}
+            <TouchableOpacity
+              style={styles.modalOption}
+              onPress={() => {
+                setShowCreateModal(false);
+                router.push('/partyPages/createPartySimple');
+              }}
+              activeOpacity={0.7}
+            >
+              <View style={styles.modalOptionIcon}>
+                <IconSymbol size={22} name="person.2.fill" color="#fff" />
+              </View>
+              <View style={styles.modalOptionText}>
+                <ThemedText style={styles.modalOptionTitle}>Party</ThemedText>
+                <ThemedText style={styles.modalOptionSubtitle}>Casual group for playing together</ThemedText>
+              </View>
+            </TouchableOpacity>
+
+            {/* Leaderboard Option */}
+            <TouchableOpacity
+              style={styles.modalOption}
+              onPress={() => {
+                setShowCreateModal(false);
+                router.push('/partyPages/createLeaderboard');
+              }}
+              activeOpacity={0.7}
+            >
+              <View style={styles.modalOptionIcon}>
+                <IconSymbol size={22} name="trophy.fill" color="#fff" />
+              </View>
+              <View style={styles.modalOptionText}>
+                <ThemedText style={styles.modalOptionTitle}>Leaderboard</ThemedText>
+                <ThemedText style={styles.modalOptionSubtitle}>Compete with friends for rankings</ThemedText>
+              </View>
+            </TouchableOpacity>
+          </View>
+        </TouchableOpacity>
+      </Modal>
     </ThemedView>
   );
 }
@@ -506,5 +569,65 @@ const styles = StyleSheet.create({
   },
   bottomSpacer: {
     height: 40,
+  },
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.6)',
+    justifyContent: 'flex-end',
+  },
+  modalContent: {
+    backgroundColor: '#1a1a1a',
+    borderTopLeftRadius: 20,
+    borderTopRightRadius: 20,
+    paddingHorizontal: 20,
+    paddingBottom: 40,
+  },
+  modalHandle: {
+    width: 36,
+    height: 4,
+    backgroundColor: '#444',
+    borderRadius: 2,
+    alignSelf: 'center',
+    marginTop: 12,
+    marginBottom: 16,
+  },
+  modalTitle: {
+    fontSize: 18,
+    fontWeight: '600',
+    color: '#fff',
+    textAlign: 'center',
+    marginBottom: 12,
+  },
+  modalDivider: {
+    height: 1,
+    backgroundColor: '#333',
+    marginBottom: 16,
+  },
+  modalOption: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 14,
+    gap: 14,
+  },
+  modalOptionIcon: {
+    width: 44,
+    height: 44,
+    borderRadius: 12,
+    backgroundColor: '#2a2a2a',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  modalOptionText: {
+    flex: 1,
+  },
+  modalOptionTitle: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#fff',
+    marginBottom: 2,
+  },
+  modalOptionSubtitle: {
+    fontSize: 13,
+    color: '#888',
   },
 });

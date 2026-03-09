@@ -288,6 +288,7 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     alignItems: 'flex-start',
     minHeight: 32,
+    marginBottom: 8,
   },
   gameLogoContainer: {
     width: 32,

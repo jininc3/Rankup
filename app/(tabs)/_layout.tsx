@@ -53,9 +53,9 @@ export default function TabLayout() {
         }}
       />
       <Tabs.Screen
-        name="leaderboard"
+        name="parties"
         options={{
-          title: 'Leaderboard',
+          title: 'Parties',
           tabBarIcon: ({ color }) => (
             <Image
               source={require('@/assets/images/leaderboard.png')}
