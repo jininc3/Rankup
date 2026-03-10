@@ -30,7 +30,7 @@ export default function InAppNotification({ notification }: InAppNotificationPro
       }
     } else if (navigationData.type === 'party_invite' || navigationData.type === 'party_complete') {
       if (navigationData.partyId && navigationData.game) {
-        router.push(`/partyPages/leaderboardDetail?partyId=${navigationData.partyId}&game=${encodeURIComponent(navigationData.game)}`);
+        router.push(`/partyPages/leaderboardDetail?id=${navigationData.partyId}&game=${encodeURIComponent(navigationData.game)}`);
       }
     }
   };

@@ -6,7 +6,7 @@ import { IconSymbol } from '@/components/ui/icon-symbol';
 import { db } from '@/config/firebase';
 import { useAuth } from '@/contexts/AuthContext';
 import { useRouter } from 'expo-router';
-import { collection, doc, getDoc, getDocs, limit, onSnapshot, query, where } from 'firebase/firestore';
+import { collection, doc, getDoc, onSnapshot, query, where } from 'firebase/firestore';
 import { useEffect, useState, useRef } from 'react';
 import { ActivityIndicator, Dimensions, Image, Modal, ScrollView, StyleSheet, TouchableOpacity, View } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -96,7 +96,7 @@ export default function LeaderboardScreen() {
         const data = docSnapshot.data();
         const docId = docSnapshot.id;
         return {
-          id: data.partyId || docId, // Use document ID as fallback for key
+          id: docId,
           name: data.partyName,
           game: data.game,
           members: data.members?.length || 0,
@@ -107,7 +107,6 @@ export default function LeaderboardScreen() {
           players: [], // Will be populated with member details
           startDate: data.startDate,
           endDate: data.endDate,
-          partyId: data.partyId || docId, // Use document ID as fallback
           type: data.type || 'leaderboard', // 'party' or 'leaderboard'
           coverPhoto: data.coverPhoto || null, // Cover photo URL
         };
@@ -133,22 +132,21 @@ export default function LeaderboardScreen() {
               return party;
             }
 
-            // Skip if partyId is undefined
-            if (!party.partyId) {
-              console.warn('Party missing partyId, skipping rank calculation');
+            // Skip if id is undefined
+            if (!party.id) {
+              console.warn('Party missing id, skipping rank calculation');
               return party;
             }
 
-            // Get party document to fetch memberDetails
-            const partiesRef = collection(db, 'parties');
-            const partyQuery = query(partiesRef, where('partyId', '==', party.partyId), limit(1));
-            const partySnapshot = await getDocs(partyQuery);
+            // Get party document directly by ID
+            const partyDocRef = doc(db, 'parties', party.id);
+            const partySnapshot = await getDoc(partyDocRef);
 
-            if (partySnapshot.empty || !partySnapshot.docs[0].data().memberDetails) {
+            if (!partySnapshot.exists() || !partySnapshot.data().memberDetails) {
               return party;
             }
 
-            const partyData = partySnapshot.docs[0].data();
+            const partyData = partySnapshot.data();
             const memberDetails = partyData.memberDetails;
             const isLeague = party.game === 'League of Legends';
             const gameStatsPath = isLeague ? 'league' : 'valorant';
@@ -288,7 +286,7 @@ export default function LeaderboardScreen() {
           game: leaderboard.game,
           members: leaderboard.members.toString(),
           players: JSON.stringify(leaderboard.players),
-          partyId: leaderboard.partyId,
+          id: leaderboard.id,
           startDate: leaderboard.startDate,
           endDate: leaderboard.endDate,
         },

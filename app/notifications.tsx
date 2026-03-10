@@ -263,18 +263,17 @@ export default function NotificationsScreen() {
     if (!currentUser?.id || !notification.partyId) return;
 
     try {
-      // Find the party
-      const partiesRef = collection(db, 'parties');
-      const partyQuery = query(partiesRef, where('partyId', '==', notification.partyId), limit(1));
-      const partySnapshot = await getDocs(partyQuery);
+      // Get party document directly by ID
+      const partyRef = doc(db, 'parties', notification.partyId);
+      const partySnapshot = await getDoc(partyRef);
 
-      if (partySnapshot.empty) {
+      if (!partySnapshot.exists()) {
         console.error('Party not found');
         return;
       }
 
-      const partyDoc = partySnapshot.docs[0];
-      const partyData = partyDoc.data();
+      const partyDoc = partySnapshot;
+      const partyData = partySnapshot.data();
 
       // Get user data for member details
       const userDoc = await getDoc(doc(db, 'users', currentUser.id));
@@ -297,7 +296,7 @@ export default function NotificationsScreen() {
         invite.userId === currentUser.id ? { ...invite, status: 'accepted' } : invite
       );
 
-      await updateDoc(partyDoc.ref, {
+      await updateDoc(partyRef, {
         members: updatedMembers,
         memberDetails: updatedMemberDetails,
         pendingInvites: updatedPendingInvites,
@@ -313,7 +312,7 @@ export default function NotificationsScreen() {
         pathname: '/partyPages/leaderboardDetail',
         params: {
           name: notification.partyName,
-          partyId: notification.partyId,
+          id: notification.partyId,
           game: notification.game,
           members: updatedMembers.length.toString(),
           startDate: partyData.startDate || '',
@@ -332,21 +331,19 @@ export default function NotificationsScreen() {
     if (!currentUser?.id || !notification.partyId) return;
 
     try {
-      // Find the party
-      const partiesRef = collection(db, 'parties');
-      const partyQuery = query(partiesRef, where('partyId', '==', notification.partyId), limit(1));
-      const partySnapshot = await getDocs(partyQuery);
+      // Get party document directly by ID
+      const partyRef = doc(db, 'parties', notification.partyId);
+      const partySnapshot = await getDoc(partyRef);
 
-      if (!partySnapshot.empty) {
-        const partyDoc = partySnapshot.docs[0];
-        const partyData = partyDoc.data();
+      if (partySnapshot.exists()) {
+        const partyData = partySnapshot.data();
 
         // Update invite status to declined in pendingInvites
         const updatedPendingInvites = (partyData.pendingInvites || []).map((invite: any) =>
           invite.userId === currentUser.id ? { ...invite, status: 'declined' } : invite
         );
 
-        await updateDoc(partyDoc.ref, {
+        await updateDoc(partyRef, {
           pendingInvites: updatedPendingInvites,
         });
       }
@@ -379,7 +376,7 @@ export default function NotificationsScreen() {
       router.push({
         pathname: '/partyPages/leaderboardDetail',
         params: {
-          partyId: notification.partyId,
+          id: notification.partyId,
           name: notification.partyName || 'Party',
           game: notification.game || '',
         },

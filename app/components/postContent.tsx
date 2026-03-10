@@ -3,13 +3,14 @@ import { IconSymbol } from '@/components/ui/icon-symbol';
 import { VideoView, useVideoPlayer } from 'expo-video';
 import { Timestamp } from 'firebase/firestore';
 import { useEffect, useState, useRef } from 'react';
-import { Alert, Dimensions, FlatList, Image, StyleSheet, TouchableOpacity, View, PanResponder } from 'react-native';
+import { Alert, Animated, Dimensions, FlatList, Image, StyleSheet, TouchableOpacity, View, PanResponder } from 'react-native';
 import { getComments, CommentData } from '@/services/commentService';
 import { TaggedUser } from '@/app/components/tagUsersModal';
 import { calculateTierBorderColor } from '@/utils/tierBorderUtils';
 
 const { width: screenWidth } = Dimensions.get('window');
-const mediaWidth = screenWidth; // Full width, edge-to-edge
+const mediaHorizontalPadding = 8; // Small padding to show rounded corners
+const mediaWidth = screenWidth - (mediaHorizontalPadding * 2);
 
 // Game data
 const gameData: { [key: string]: { name: string; icon?: string; image?: any } } = {
@@ -228,7 +229,7 @@ const VideoPlayerComponent = ({
         allowsFullscreen={false}
         allowsPictureInPicture={false}
         nativeControls={false}
-        contentFit="contain"
+        contentFit="cover"
       />
 
       {/* Tap overlay for play/pause and double-tap to like */}
@@ -344,6 +345,39 @@ interface Post {
   valorantRank?: string;
 }
 
+// Like Burst Animation Component
+const LikeBurstAnimation = () => {
+  const scaleAnim = useRef(new Animated.Value(0)).current;
+  const opacityAnim = useRef(new Animated.Value(1)).current;
+
+  useEffect(() => {
+    Animated.parallel([
+      Animated.timing(scaleAnim, {
+        toValue: 1.5,
+        duration: 400,
+        useNativeDriver: true,
+      }),
+      Animated.timing(opacityAnim, {
+        toValue: 0,
+        duration: 400,
+        useNativeDriver: true,
+      }),
+    ]).start();
+  }, []);
+
+  return (
+    <Animated.View
+      style={{
+        position: 'absolute',
+        transform: [{ scale: scaleAnim }],
+        opacity: opacityAnim,
+      }}
+    >
+      <IconSymbol size={40} name="heart.fill" color="#ff3b30" />
+    </Animated.View>
+  );
+};
+
 interface PostContentProps {
   post: Post;
   userAvatar?: string;
@@ -392,6 +426,34 @@ export default function PostContent({
   );
   const mediaFlatListRef = useRef<FlatList>(null);
   const [recentComments, setRecentComments] = useState<CommentData[]>([]);
+
+  // Like button animation
+  const likeScale = useRef(new Animated.Value(1)).current;
+  const [showLikeAnimation, setShowLikeAnimation] = useState(false);
+
+  const handleLikePress = () => {
+    // Trigger scale animation on the button
+    Animated.sequence([
+      Animated.timing(likeScale, {
+        toValue: 1.3,
+        duration: 100,
+        useNativeDriver: true,
+      }),
+      Animated.timing(likeScale, {
+        toValue: 1,
+        duration: 100,
+        useNativeDriver: true,
+      }),
+    ]).start();
+
+    // Show heart burst animation when liking (not unliking)
+    if (!isLiked) {
+      setShowLikeAnimation(true);
+      setTimeout(() => setShowLikeAnimation(false), 600);
+    }
+
+    onLikeToggle(post);
+  };
 
   // Fetch recent comments for this post
   useEffect(() => {
@@ -572,16 +634,24 @@ export default function PostContent({
         <View style={styles.leftActions} pointerEvents="box-none">
           <TouchableOpacity
             style={styles.actionButton}
-            onPress={() => onLikeToggle(post)}
+            onPress={handleLikePress}
             disabled={isLiking}
             activeOpacity={0.6}
             hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
           >
-            <IconSymbol
-              size={26}
-              name={isLiked ? "heart.fill" : "heart"}
-              color={isLiked ? "#ff3b30" : "#fff"}
-            />
+            <Animated.View style={{ transform: [{ scale: likeScale }] }}>
+              <IconSymbol
+                size={26}
+                name={isLiked ? "heart.fill" : "heart"}
+                color={isLiked ? "#ff3b30" : "#fff"}
+              />
+            </Animated.View>
+            {/* Like burst animation */}
+            {showLikeAnimation && (
+              <View style={styles.likeBurstContainer}>
+                <LikeBurstAnimation />
+              </View>
+            )}
           </TouchableOpacity>
           <TouchableOpacity
             style={styles.actionButton}
@@ -767,10 +837,10 @@ const styles = StyleSheet.create({
   },
   mediaContainer: {
     width: mediaWidth,
-    marginHorizontal: 0,
+    marginHorizontal: mediaHorizontalPadding,
     backgroundColor: '#000',
     position: 'relative',
-    borderRadius: 2,
+    borderRadius: 12,
     overflow: 'hidden',
   },
   mediaItem: {
@@ -909,6 +979,15 @@ const styles = StyleSheet.create({
   },
   actionButton: {
     padding: 4,
+    position: 'relative',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  likeBurstContainer: {
+    position: 'absolute',
+    alignItems: 'center',
+    justifyContent: 'center',
+    pointerEvents: 'none',
   },
   shareButton: {
     marginLeft: 'auto',

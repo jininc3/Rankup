@@ -42,7 +42,6 @@ interface Leaderboard {
   userRank?: number | null;
   isJoined?: boolean;
   players?: any[];
-  partyId?: string;
   startDate?: any;
   endDate?: any;
   type?: 'party' | 'leaderboard';

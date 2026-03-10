@@ -6,7 +6,7 @@ import { ScrollView, StyleSheet, TouchableOpacity, View, Image, ActivityIndicato
 import { LinearGradient } from 'expo-linear-gradient';
 import { useState, useEffect } from 'react';
 import { db } from '@/config/firebase';
-import { collection, query, where, getDocs, doc, getDoc, limit, updateDoc, deleteDoc, onSnapshot } from 'firebase/firestore';
+import { doc, getDoc, updateDoc, deleteDoc, onSnapshot } from 'firebase/firestore';
 import * as Clipboard from 'expo-clipboard';
 import { useAuth } from '@/contexts/AuthContext';
 import AsyncStorage from '@react-native-async-storage/async-storage';
@@ -177,7 +177,7 @@ export default function LeaderboardDetail() {
   const params = useLocalSearchParams();
   const { user } = useAuth();
 
-  const partyIdParam = params.partyId as string;
+  const id = params.id as string;
   const game = params.game as string; // "Valorant" or "League of Legends"
   const isLeague = game === 'League of Legends';
 
@@ -291,26 +291,25 @@ export default function LeaderboardDetail() {
 
   // Fetch party data from Firestore
   const fetchPartyDataFromFirestore = async () => {
-    console.log(`${game} Detail - Fetching from Firestore for party:`, partyIdParam);
+    console.log(`${game} Detail - Fetching from Firestore for party:`, id);
 
-    if (!partyIdParam) {
-      console.log('No partyIdParam provided');
+    if (!id) {
+      console.log('No id provided');
       return null;
     }
 
     try {
-      // Query for party by partyId
-      const partiesRef = collection(db, 'parties');
-      const partyQuery = query(partiesRef, where('partyId', '==', partyIdParam), limit(1));
-      const partySnapshot = await getDocs(partyQuery);
+      // Get party document directly by ID
+      const partyRef = doc(db, 'parties', id);
+      const partySnapshot = await getDoc(partyRef);
 
-      if (partySnapshot.empty) {
-        console.log('Party not found for ID:', partyIdParam);
+      if (!partySnapshot.exists()) {
+        console.log('Party not found for ID:', id);
         return null;
       }
 
-      const partyDoc = partySnapshot.docs[0].data();
-      const partyDocumentId = partySnapshot.docs[0].id;
+      const partyDoc = partySnapshot.data();
+      const partyDocumentId = partySnapshot.id;
       console.log('Party found:', partyDoc.partyName);
 
       setPartyData(partyDoc);
@@ -393,7 +392,7 @@ export default function LeaderboardDetail() {
         players: fetchedPlayers,
         timestamp: Date.now(),
       };
-      await AsyncStorage.setItem(`party_${partyIdParam}`, JSON.stringify(cacheData));
+      await AsyncStorage.setItem(`party_${id}`, JSON.stringify(cacheData));
 
       return { partyDoc, players: fetchedPlayers };
     } catch (error) {
@@ -404,7 +403,7 @@ export default function LeaderboardDetail() {
 
   // Load party data (from cache or Firestore)
   const loadPartyData = async (forceRefresh = false) => {
-    if (!partyIdParam) {
+    if (!id) {
       setLoading(false);
       return;
     }
@@ -412,7 +411,7 @@ export default function LeaderboardDetail() {
     try {
       // Check cache first (unless force refresh)
       if (!forceRefresh) {
-        const cachedData = await AsyncStorage.getItem(`party_${partyIdParam}`);
+        const cachedData = await AsyncStorage.getItem(`party_${id}`);
         if (cachedData) {
           const { partyDoc, players: cachedPlayers, timestamp } = JSON.parse(cachedData);
           const age = Date.now() - timestamp;
@@ -443,7 +442,7 @@ export default function LeaderboardDetail() {
 
   // Set up real-time listener for party updates
   useEffect(() => {
-    if (!partyIdParam) {
+    if (!id) {
       setLoading(false);
       return;
     }
@@ -452,30 +451,8 @@ export default function LeaderboardDetail() {
 
     const setupRealtimeListener = async () => {
       try {
-        // Query for party by partyId field
-        const partiesRef = collection(db, 'parties');
-        const partyQuery = query(partiesRef, where('partyId', '==', partyIdParam), limit(1));
-        let partySnapshot = await getDocs(partyQuery);
-
-        let partyDocumentId: string;
-
-        if (partySnapshot.empty) {
-          // Fallback: try to get the document directly by ID
-          const directDocRef = doc(db, 'parties', partyIdParam);
-          const directDocSnap = await getDoc(directDocRef);
-
-          if (!directDocSnap.exists()) {
-            console.log('Party not found for ID:', partyIdParam);
-            setLoading(false);
-            return;
-          }
-
-          partyDocumentId = directDocSnap.id;
-        } else {
-          partyDocumentId = partySnapshot.docs[0].id;
-        }
-
-        const partyRef = doc(db, 'parties', partyDocumentId);
+        // Get party document directly by ID
+        const partyRef = doc(db, 'parties', id);
 
         // Set up real-time listener
         unsubscribe = onSnapshot(partyRef, async (docSnapshot) => {
@@ -489,7 +466,7 @@ export default function LeaderboardDetail() {
           console.log('Party data updated in real-time:', partyDoc.partyName);
 
           setPartyData(partyDoc);
-          setPartyDocId(partyDocumentId);
+          setPartyDocId(id);
           setInviteCode(partyDoc.inviteCode || '');
 
           // Check if memberDetails exists
@@ -584,7 +561,7 @@ export default function LeaderboardDetail() {
         unsubscribe();
       }
     };
-  }, [partyIdParam, game, isLeague, user?.id]);
+  }, [id, game, isLeague, user?.id]);
 
   // Handle pull-to-refresh
   const onRefresh = async () => {

@@ -110,7 +110,6 @@ export default function HomeScreen() {
   const [refreshing, setRefreshing] = useState(false);
   const [hasConsumedPreload, setHasConsumedPreload] = useState(false);
   const [showNewPost, setShowNewPost] = useState(false);
-  const [showGameDropdown, setShowGameDropdown] = useState(false);
 
   const currentPosts = activeTab === 'forYou' ? forYouPosts : followingPosts;
 
@@ -931,78 +930,38 @@ export default function HomeScreen() {
           />
         }
       >
-        {/* Game Filter Dropdown */}
+        {/* Game Filter Tabs */}
         <View style={styles.gameFilterContainer}>
-          <View style={styles.gameDropdownWrapper}>
+          <View style={styles.gameTabsContainer}>
             <TouchableOpacity
-              style={styles.gameDropdownButton}
-              onPress={() => setShowGameDropdown(!showGameDropdown)}
+              style={styles.gameFilterTab}
+              onPress={() => setSelectedGameFilter(null)}
               activeOpacity={0.7}
             >
-              <ThemedText style={styles.gameDropdownText}>
-                {selectedGameFilter === 'valorant' ? 'VALORANT' : selectedGameFilter === 'league' ? 'LEAGUE OF LEGENDS' : 'ALL GAMES'}
+              <ThemedText style={[styles.gameFilterTabText, selectedGameFilter === null && styles.gameFilterTabTextActive]}>
+                ALL
               </ThemedText>
-              <IconSymbol
-                size={14}
-                name={showGameDropdown ? "chevron.up" : "chevron.down"}
-                color="#888"
-              />
             </TouchableOpacity>
-
-            {/* Dropdown Menu */}
-            {showGameDropdown && (
-              <>
-                <TouchableOpacity
-                  style={styles.dropdownOverlay}
-                  activeOpacity={1}
-                  onPress={() => setShowGameDropdown(false)}
-                />
-                <View style={styles.gameDropdownMenu}>
-                  <TouchableOpacity
-                    style={[styles.gameDropdownOption, selectedGameFilter === null && styles.gameDropdownOptionActive]}
-                    onPress={() => {
-                      setSelectedGameFilter(null);
-                      setShowGameDropdown(false);
-                    }}
-                  >
-                    <ThemedText style={[styles.gameDropdownOptionText, selectedGameFilter === null && styles.gameDropdownOptionTextActive]}>
-                      All Games
-                    </ThemedText>
-                    {selectedGameFilter === null && (
-                      <IconSymbol size={14} name="checkmark" color="#fff" />
-                    )}
-                  </TouchableOpacity>
-                  <TouchableOpacity
-                    style={[styles.gameDropdownOption, selectedGameFilter === 'valorant' && styles.gameDropdownOptionActive]}
-                    onPress={() => {
-                      setSelectedGameFilter('valorant');
-                      setShowGameDropdown(false);
-                    }}
-                  >
-                    <ThemedText style={[styles.gameDropdownOptionText, selectedGameFilter === 'valorant' && styles.gameDropdownOptionTextActive]}>
-                      Valorant
-                    </ThemedText>
-                    {selectedGameFilter === 'valorant' && (
-                      <IconSymbol size={14} name="checkmark" color="#fff" />
-                    )}
-                  </TouchableOpacity>
-                  <TouchableOpacity
-                    style={[styles.gameDropdownOption, selectedGameFilter === 'league' && styles.gameDropdownOptionActive]}
-                    onPress={() => {
-                      setSelectedGameFilter('league');
-                      setShowGameDropdown(false);
-                    }}
-                  >
-                    <ThemedText style={[styles.gameDropdownOptionText, selectedGameFilter === 'league' && styles.gameDropdownOptionTextActive]}>
-                      League of Legends
-                    </ThemedText>
-                    {selectedGameFilter === 'league' && (
-                      <IconSymbol size={14} name="checkmark" color="#fff" />
-                    )}
-                  </TouchableOpacity>
-                </View>
-              </>
-            )}
+            <View style={styles.gameFilterTabDivider} />
+            <TouchableOpacity
+              style={styles.gameFilterTab}
+              onPress={() => setSelectedGameFilter('valorant')}
+              activeOpacity={0.7}
+            >
+              <ThemedText style={[styles.gameFilterTabText, selectedGameFilter === 'valorant' && styles.gameFilterTabTextActive]}>
+                VALORANT
+              </ThemedText>
+            </TouchableOpacity>
+            <View style={styles.gameFilterTabDivider} />
+            <TouchableOpacity
+              style={styles.gameFilterTab}
+              onPress={() => setSelectedGameFilter('league')}
+              activeOpacity={0.7}
+            >
+              <ThemedText style={[styles.gameFilterTabText, selectedGameFilter === 'league' && styles.gameFilterTabTextActive]}>
+                LEAGUE
+              </ThemedText>
+            </TouchableOpacity>
           </View>
         </View>
 
@@ -1182,71 +1141,34 @@ const styles = StyleSheet.create({
     gap: 8,
   },
   gameFilterContainer: {
-    paddingHorizontal: 16,
-    paddingTop: 4,
-    paddingBottom: 8,
+    paddingHorizontal: 20,
+    paddingTop: 8,
+    paddingBottom: 4,
     backgroundColor: '#0f0f0f',
   },
-  gameDropdownWrapper: {
-    position: 'relative',
-    alignSelf: 'flex-start',
-  },
-  gameDropdownButton: {
+  gameTabsContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 6,
+    gap: 16,
+  },
+  gameFilterTab: {
+    flexDirection: 'row',
+    alignItems: 'center',
     paddingVertical: 6,
   },
-  gameDropdownText: {
+  gameFilterTabText: {
     fontSize: 12,
     fontWeight: '600',
-    color: '#888',
+    color: '#555',
     letterSpacing: 0.5,
   },
-  dropdownOverlay: {
-    position: 'absolute',
-    top: -1000,
-    left: -1000,
-    right: -1000,
-    bottom: -1000,
-    zIndex: 999,
-  },
-  gameDropdownMenu: {
-    position: 'absolute',
-    top: '100%',
-    left: 0,
-    marginTop: 12,
-    backgroundColor: '#0f0f0f',
-    borderRadius: 8,
-    paddingVertical: 4,
-    minWidth: 180,
-    borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.1)',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 8 },
-    shadowOpacity: 0.4,
-    shadowRadius: 16,
-    elevation: 12,
-    zIndex: 1000,
-  },
-  gameDropdownOption: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingVertical: 14,
-    paddingHorizontal: 16,
-  },
-  gameDropdownOptionActive: {
-    backgroundColor: 'rgba(255, 255, 255, 0.05)',
-  },
-  gameDropdownOptionText: {
-    fontSize: 14,
-    fontWeight: '500',
-    color: '#666',
-  },
-  gameDropdownOptionTextActive: {
+  gameFilterTabTextActive: {
     color: '#fff',
-    fontWeight: '500',
+  },
+  gameFilterTabDivider: {
+    width: 1,
+    height: 12,
+    backgroundColor: '#333',
   },
   tab: {
     paddingVertical: 10,

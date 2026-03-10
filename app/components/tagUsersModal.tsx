@@ -188,22 +188,24 @@ export default function TagUsersModal({
             >
               {selectedUsers.map((user) => (
                 <View key={user.userId} style={styles.selectedChip}>
-                  <View style={styles.chipAvatar}>
-                    {user.avatar && user.avatar.startsWith('http') ? (
-                      <Image source={{ uri: user.avatar }} style={styles.chipAvatarImage} />
-                    ) : (
-                      <ThemedText style={styles.chipAvatarInitial}>
-                        {user.username[0].toUpperCase()}
-                      </ThemedText>
-                    )}
+                  <View style={styles.chipAvatarContainer}>
+                    <View style={styles.chipAvatar}>
+                      {user.avatar && user.avatar.startsWith('http') ? (
+                        <Image source={{ uri: user.avatar }} style={styles.chipAvatarImage} />
+                      ) : (
+                        <ThemedText style={styles.chipAvatarInitial}>
+                          {user.username[0].toUpperCase()}
+                        </ThemedText>
+                      )}
+                    </View>
+                    <TouchableOpacity
+                      onPress={() => handleSelectUser(user)}
+                      style={styles.chipRemoveButton}
+                    >
+                      <IconSymbol size={12} name="xmark" color="#999" />
+                    </TouchableOpacity>
                   </View>
-                  <ThemedText style={styles.chipUsername}>{user.username}</ThemedText>
-                  <TouchableOpacity
-                    onPress={() => handleSelectUser(user)}
-                    style={styles.chipRemoveButton}
-                  >
-                    <IconSymbol size={16} name="xmark" color="#b9bbbe" />
-                  </TouchableOpacity>
+                  <ThemedText style={styles.chipUsername} numberOfLines={1}>{user.username}</ThemedText>
                 </View>
               ))}
             </ScrollView>
@@ -336,19 +338,18 @@ const styles = StyleSheet.create({
     gap: 8,
   },
   selectedChip: {
-    flexDirection: 'row',
+    flexDirection: 'column',
     alignItems: 'center',
-    backgroundColor: '#36393e',
-    paddingLeft: 4,
-    paddingRight: 8,
-    paddingVertical: 4,
-    borderRadius: 20,
-    gap: 6,
+    gap: 4,
+    marginRight: 4,
+  },
+  chipAvatarContainer: {
+    position: 'relative',
   },
   chipAvatar: {
-    width: 24,
-    height: 24,
-    borderRadius: 12,
+    width: 52,
+    height: 52,
+    borderRadius: 26,
     backgroundColor: '#2c2f33',
     alignItems: 'center',
     justifyContent: 'center',
@@ -356,19 +357,30 @@ const styles = StyleSheet.create({
   chipAvatarImage: {
     width: '100%',
     height: '100%',
-    borderRadius: 12,
+    borderRadius: 26,
   },
   chipAvatarInitial: {
-    fontSize: 10,
+    fontSize: 18,
     fontWeight: '600',
+    color: '#888',
   },
   chipUsername: {
-    fontSize: 14,
+    fontSize: 11,
     fontWeight: '500',
-    color: '#fff',
+    color: '#888',
+    maxWidth: 60,
+    textAlign: 'center',
   },
   chipRemoveButton: {
-    padding: 2,
+    position: 'absolute',
+    top: -2,
+    right: -2,
+    width: 20,
+    height: 20,
+    borderRadius: 10,
+    backgroundColor: '#36393e',
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   resultsContainer: {
     flex: 1,
