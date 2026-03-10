@@ -228,7 +228,7 @@ export default function CommentModal({
         >
           {loading ? (
             <View style={styles.loadingContainer}>
-              <ActivityIndicator size="large" color="#fff" />
+              <ActivityIndicator size="large" color="#c42743" />
               <ThemedText style={styles.loadingText}>Loading comments...</ThemedText>
             </View>
           ) : comments.length > 0 ? (
@@ -266,7 +266,7 @@ export default function CommentModal({
             ))
           ) : (
             <View style={styles.emptyState}>
-              <IconSymbol size={64} name="bubble.left" color="#72767d" />
+              <IconSymbol size={64} name="bubble.left" color="#fff" />
               <ThemedText style={styles.emptyText}>No comments yet</ThemedText>
               <ThemedText style={styles.emptySubtext}>Be the first to comment!</ThemedText>
             </View>
@@ -302,9 +302,9 @@ export default function CommentModal({
             disabled={!commentText.trim() || submitting}
           >
             {submitting ? (
-              <ActivityIndicator size="small" color="#007AFF" />
+              <ActivityIndicator size="small" color="#c42743" />
             ) : (
-              <IconSymbol size={24} name="paperplane.fill" color={commentText.trim() ? "#007AFF" : "#72767d"} />
+              <IconSymbol size={24} name="paperplane.fill" color={commentText.trim() ? "#c42743" : "#888"} />
             )}
           </TouchableOpacity>
         </View>
@@ -319,9 +319,10 @@ const styles = StyleSheet.create({
   modalOverlay: {
     flex: 1,
     justifyContent: 'flex-end',
+    backgroundColor: 'rgba(15, 15, 15, 0.95)',
   },
   modalContent: {
-    backgroundColor: '#1e2124',
+    backgroundColor: '#0f0f0f',
     borderTopLeftRadius: 20,
     borderTopRightRadius: 20,
     height: '70%',
@@ -332,7 +333,7 @@ const styles = StyleSheet.create({
   dragHandle: {
     width: 36,
     height: 4,
-    backgroundColor: '#2c2f33',
+    backgroundColor: 'rgba(255, 255, 255, 0.3)',
     borderRadius: 2,
     alignSelf: 'center',
     marginTop: 12,
@@ -344,7 +345,7 @@ const styles = StyleSheet.create({
     paddingTop: 8,
     paddingBottom: 16,
     borderBottomWidth: 1,
-    borderBottomColor: '#2c2f33',
+    borderBottomColor: 'rgba(255, 255, 255, 0.1)',
   },
   closeButton: {
     padding: 4,
@@ -353,6 +354,7 @@ const styles = StyleSheet.create({
     fontSize: 18,
     fontWeight: '600',
     color: '#fff',
+    letterSpacing: 0.3,
   },
   headerSpacer: {
     width: 32,
@@ -371,29 +373,30 @@ const styles = StyleSheet.create({
   },
   loadingText: {
     fontSize: 14,
-    color: '#b9bbbe',
+    color: '#888',
   },
   commentItem: {
     flexDirection: 'row',
-    marginBottom: 12,
-    gap: 10,
+    marginBottom: 16,
+    gap: 12,
   },
   commentAvatar: {
-    width: 28,
-    height: 28,
-    borderRadius: 14,
-    backgroundColor: '#36393e',
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    backgroundColor: '#2c2f33',
     alignItems: 'center',
     justifyContent: 'center',
   },
   avatarImage: {
     width: '100%',
     height: '100%',
-    borderRadius: 14,
+    borderRadius: 16,
   },
   avatarInitial: {
-    fontSize: 13,
+    fontSize: 14,
     fontWeight: '600',
+    color: '#fff',
   },
   commentContent: {
     flex: 1,
@@ -410,25 +413,25 @@ const styles = StyleSheet.create({
     gap: 8,
   },
   commentUsername: {
-    fontSize: 12,
-    fontWeight: '600',
+    fontSize: 13,
+    fontWeight: '700',
     color: '#fff',
   },
   commentTime: {
-    fontSize: 10,
-    color: '#72767d',
+    fontSize: 11,
+    color: '#888',
   },
   commentText: {
-    fontSize: 12,
-    color: '#dcddde',
-    lineHeight: 18,
+    fontSize: 14,
+    color: '#fff',
+    lineHeight: 20,
   },
   deleteCommentButton: {
     padding: 4,
   },
   deleteCommentText: {
     fontSize: 13,
-    color: '#ef4444',
+    color: '#c42743',
     fontWeight: '500',
   },
   emptyState: {
@@ -439,12 +442,12 @@ const styles = StyleSheet.create({
   emptyText: {
     fontSize: 18,
     fontWeight: '600',
-    color: '#b9bbbe',
+    color: '#fff',
     marginTop: 16,
   },
   emptySubtext: {
     fontSize: 14,
-    color: '#72767d',
+    color: '#888',
     marginTop: 8,
   },
   inputContainer: {
@@ -454,15 +457,15 @@ const styles = StyleSheet.create({
     paddingTop: 12,
     paddingBottom: 40,
     borderTopWidth: 1,
-    borderTopColor: '#2c2f33',
-    backgroundColor: '#1e2124',
+    borderTopColor: 'rgba(255, 255, 255, 0.1)',
+    backgroundColor: '#0f0f0f',
     gap: 12,
   },
   inputAvatar: {
     width: 32,
     height: 32,
     borderRadius: 16,
-    backgroundColor: '#36393e',
+    backgroundColor: '#2c2f33',
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -474,17 +477,20 @@ const styles = StyleSheet.create({
   inputAvatarInitial: {
     fontSize: 14,
     fontWeight: '600',
+    color: '#fff',
   },
   input: {
     flex: 1,
     maxHeight: 100,
     minHeight: 36,
-    backgroundColor: '#36393e',
+    backgroundColor: '#2c2f33',
     borderRadius: 18,
     paddingHorizontal: 16,
     paddingVertical: 8,
     fontSize: 15,
     color: '#fff',
+    borderWidth: 1,
+    borderColor: '#424549',
   },
   sendButton: {
     padding: 6,

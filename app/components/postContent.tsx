@@ -9,7 +9,7 @@ import { TaggedUser } from '@/app/components/tagUsersModal';
 import { calculateTierBorderColor } from '@/utils/tierBorderUtils';
 
 const { width: screenWidth } = Dimensions.get('window');
-const mediaWidth = screenWidth - 32; // Account for horizontal margins
+const mediaWidth = screenWidth; // Full width, edge-to-edge
 
 // Game data
 const gameData: { [key: string]: { name: string; icon?: string; image?: any } } = {
@@ -767,10 +767,10 @@ const styles = StyleSheet.create({
   },
   mediaContainer: {
     width: mediaWidth,
-    marginHorizontal: 16,
+    marginHorizontal: 0,
     backgroundColor: '#000',
     position: 'relative',
-    borderRadius: 12,
+    borderRadius: 2,
     overflow: 'hidden',
   },
   mediaItem: {
