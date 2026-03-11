@@ -1,11 +1,11 @@
 import { ThemedText } from '@/components/themed-text';
 import { StyleSheet, View, Image, TouchableOpacity, Dimensions } from 'react-native';
-import { BlurView } from 'expo-blur';
+import { LinearGradient } from 'expo-linear-gradient';
 import { useState, useEffect } from 'react';
 
-const { width: screenWidth, height: screenHeight } = Dimensions.get('window');
+const { width: screenWidth } = Dimensions.get('window');
 const cardWidth = screenWidth - 32;
-const cardHeight = screenHeight * 0.26;
+const cardHeight = cardWidth * 0.55; // Credit card aspect ratio
 
 interface MutualFollower {
   odId?: string;
@@ -81,6 +81,12 @@ const GAME_LOGOS: { [key: string]: any } = {
   league: require('@/assets/images/lol-icon.png'),
 };
 
+// Game background images
+const GAME_BACKGROUNDS: { [key: string]: any } = {
+  valorant: require('@/assets/images/valorant-background.png'),
+  league: require('@/assets/images/lol-background.png'),
+};
+
 export default function CompactDuoCard({
   game,
   username = 'YourUsername',
@@ -134,11 +140,25 @@ export default function CompactDuoCard({
 
   const CardContent = (
     <View style={styles.card}>
-      <BlurView intensity={40} tint="dark" style={styles.blurBackground} />
+      {/* Background Image */}
+      <Image
+        source={GAME_BACKGROUNDS[game]}
+        style={styles.backgroundImage}
+        resizeMode="cover"
+        blurRadius={10}
+      />
+      {/* Angled Fade Overlay */}
+      <LinearGradient
+        colors={['rgb(18, 18, 22)', 'rgba(18, 18, 22, 0.9)', 'rgba(18, 18, 22, 0.5)', 'rgba(18, 18, 22, 0.3)']}
+        locations={[0, 0.3, 0.6, 1]}
+        start={{ x: 0, y: 1 }}
+        end={{ x: 1, y: 0 }}
+        style={styles.fadeOverlay}
+      />
 
       <View style={styles.cardContent}>
-        {/* Header Row */}
-        <View style={styles.headerRow}>
+        {/* Left Side: Avatar + User Info */}
+        <View style={styles.leftSection}>
           <View style={styles.avatarContainer}>
             {avatar && avatar.startsWith('http') ? (
               <Image
@@ -160,106 +180,101 @@ export default function CompactDuoCard({
             <ThemedText style={styles.username} numberOfLines={1}>
               {username}
             </ThemedText>
-            <View style={styles.subRow}>
-              <View style={styles.gameTag}>
-                <Image
-                  source={GAME_LOGOS[game]}
-                  style={styles.gameIcon}
-                  resizeMode="contain"
-                />
-                <ThemedText style={styles.gameText}>
-                  {game === 'valorant' ? 'VALORANT' : 'LEAGUE'}
+            <View style={styles.gameTag}>
+              <Image
+                source={GAME_LOGOS[game]}
+                style={styles.gameIcon}
+                resizeMode="contain"
+              />
+              <ThemedText style={styles.gameText}>
+                {game === 'valorant' ? 'VALORANT' : 'LEAGUE'}
+              </ThemedText>
+            </View>
+
+            {mutualFollowers.length > 0 && (
+              <View style={styles.mutualsContainer}>
+                <View style={styles.stackedAvatars}>
+                  {mutualFollowers.slice(0, 3).map((follower, index) => (
+                    <View
+                      key={follower.odId || index}
+                      style={[
+                        styles.stackedAvatarContainer,
+                        { zIndex: 5 - index, marginLeft: index === 0 ? 0 : -5 }
+                      ]}
+                    >
+                      {follower.photoUrl ? (
+                        <Image
+                          source={{ uri: follower.photoUrl }}
+                          style={styles.stackedAvatar}
+                          resizeMode="cover"
+                        />
+                      ) : (
+                        <View style={styles.stackedAvatarPlaceholder}>
+                          <ThemedText style={styles.stackedAvatarText}>
+                            {(follower.displayName || follower.username || '?').charAt(0).toUpperCase()}
+                          </ThemedText>
+                        </View>
+                      )}
+                    </View>
+                  ))}
+                </View>
+                <ThemedText style={styles.mutualsText}>
+                  {mutualFollowers.length} mutual{mutualFollowers.length !== 1 ? 's' : ''}
                 </ThemedText>
               </View>
+            )}
+          </View>
+        </View>
 
-              {mutualFollowers.length > 0 && (
-                <View style={styles.mutualsContainer}>
-                  <View style={styles.mutualsDot} />
-                  <View style={styles.stackedAvatars}>
-                    {mutualFollowers.slice(0, 3).map((follower, index) => (
-                      <View
-                        key={follower.odId || index}
-                        style={[
-                          styles.stackedAvatarContainer,
-                          { zIndex: 5 - index, marginLeft: index === 0 ? 0 : -6 }
-                        ]}
-                      >
-                        {follower.photoUrl ? (
-                          <Image
-                            source={{ uri: follower.photoUrl }}
-                            style={styles.stackedAvatar}
-                            resizeMode="cover"
-                          />
-                        ) : (
-                          <View style={styles.stackedAvatarPlaceholder}>
-                            <ThemedText style={styles.stackedAvatarText}>
-                              {(follower.displayName || follower.username || '?').charAt(0).toUpperCase()}
-                            </ThemedText>
-                          </View>
-                        )}
-                      </View>
-                    ))}
-                  </View>
-                  <ThemedText style={styles.mutualsText}>
-                    {mutualFollowers.length} mutual{mutualFollowers.length !== 1 ? 's' : ''}
-                  </ThemedText>
-                </View>
-              )}
+        {/* Right Side: Stats Vertical */}
+        <View style={styles.statsColumn}>
+          {/* Current Rank */}
+          <View style={styles.statItem}>
+            <Image
+              source={getRankIcon(currentRank)}
+              style={styles.rankIcon}
+              resizeMode="contain"
+            />
+            <View style={styles.statTextGroup}>
+              <ThemedText style={styles.rankText} numberOfLines={1}>{currentRank}</ThemedText>
+              <ThemedText style={styles.statLabel}>CURRENT</ThemedText>
             </View>
           </View>
 
+          <View style={styles.statDivider} />
+
+          {/* Peak Rank */}
+          <View style={styles.statItem}>
+            <Image
+              source={getRankIcon(peakRank)}
+              style={styles.rankIcon}
+              resizeMode="contain"
+            />
+            <View style={styles.statTextGroup}>
+              <ThemedText style={styles.rankText} numberOfLines={1}>{peakRank}</ThemedText>
+              <ThemedText style={styles.statLabel}>PEAK</ThemedText>
+            </View>
+          </View>
+
+          <View style={styles.statDivider} />
+
           {/* Main Role */}
-          <View style={styles.roleContainer}>
+          <View style={styles.statItem}>
             <Image
               source={getRoleIcon(mainRole)}
               style={styles.roleIcon}
               resizeMode="contain"
             />
-            <ThemedText style={styles.roleText}>{mainRole}</ThemedText>
+            <View style={styles.statTextGroup}>
+              <ThemedText style={styles.rankText} numberOfLines={1}>{mainRole}</ThemedText>
+              <ThemedText style={styles.statLabel}>ROLE</ThemedText>
+            </View>
           </View>
         </View>
 
-        {/* Stats Row */}
-        <View style={styles.statsRow}>
-          <View style={styles.statItem}>
-            <ThemedText style={styles.statLabel}>Current</ThemedText>
-            <View style={styles.statContent}>
-              <Image
-                source={getRankIcon(currentRank)}
-                style={styles.rankIcon}
-                resizeMode="contain"
-              />
-              <ThemedText style={styles.rankText} numberOfLines={1}>{currentRank}</ThemedText>
-            </View>
-          </View>
-
-          <View style={styles.statDivider} />
-
-          <View style={styles.statItem}>
-            <ThemedText style={styles.statLabel}>Peak</ThemedText>
-            <View style={styles.statContent}>
-              <Image
-                source={getRankIcon(peakRank)}
-                style={styles.rankIcon}
-                resizeMode="contain"
-              />
-              <ThemedText style={styles.rankText} numberOfLines={1}>{peakRank}</ThemedText>
-            </View>
-          </View>
-
-          <View style={styles.statDivider} />
-
-          <View style={styles.statItem}>
-            <ThemedText style={styles.statLabel}>LF Duo</ThemedText>
-            <View style={styles.statContent}>
-              <Image
-                source={getRoleIcon(preferredDuoRole === 'Any' ? mainRole : preferredDuoRole)}
-                style={styles.smallRoleIcon}
-                resizeMode="contain"
-              />
-              <ThemedText style={styles.rankText} numberOfLines={1}>{preferredDuoRole}</ThemedText>
-            </View>
-          </View>
+        {/* Bottom Left Label */}
+        <View style={styles.duoCardLabel}>
+          <ThemedText style={styles.duoCardLabelText}>DUO CARD</ThemedText>
         </View>
       </View>
     </View>
@@ -284,34 +299,40 @@ const styles = StyleSheet.create({
   card: {
     width: '100%',
     height: cardHeight,
-    borderRadius: 14,
+    borderRadius: 12,
     overflow: 'hidden',
     borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.06)',
-    backgroundColor: 'rgba(18, 18, 22, 0.9)',
+    borderColor: 'rgba(255, 255, 255, 0.08)',
+    backgroundColor: 'rgb(18, 18, 22)',
   },
-  blurBackground: {
+  backgroundImage: {
+    ...StyleSheet.absoluteFillObject,
+    width: '100%',
+    height: '100%',
+    opacity: 0.5,
+  },
+  fadeOverlay: {
     ...StyleSheet.absoluteFillObject,
   },
   cardContent: {
-    flex: 1,
-    paddingHorizontal: 16,
-    paddingVertical: 14,
-    justifyContent: 'space-between',
-  },
-  // Header Row
-  headerRow: {
+    ...StyleSheet.absoluteFillObject,
     flexDirection: 'row',
-    alignItems: 'center',
+    padding: 12,
+  },
+  // Left Section
+  leftSection: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'flex-start',
   },
   avatarContainer: {
-    width: 48,
-    height: 48,
-    borderRadius: 24,
+    width: 40,
+    height: 40,
+    borderRadius: 20,
     overflow: 'hidden',
-    marginRight: 12,
+    marginRight: 10,
     borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.1)',
+    borderColor: 'rgba(255, 255, 255, 0.12)',
   },
   avatar: {
     width: '100%',
@@ -321,42 +342,38 @@ const styles = StyleSheet.create({
     flex: 1,
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: 'rgba(255, 255, 255, 0.05)',
+    backgroundColor: 'rgba(255, 255, 255, 0.08)',
   },
   avatarInitial: {
-    fontSize: 18,
+    fontSize: 15,
     fontWeight: '600',
-    color: '#555',
+    color: '#666',
   },
   userInfo: {
     flex: 1,
-    marginRight: 12,
+    justifyContent: 'center',
   },
   username: {
-    fontSize: 16,
+    fontSize: 15,
     fontWeight: '600',
     color: '#fff',
-    marginBottom: 3,
-  },
-  subRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
+    marginBottom: 2,
   },
   gameTag: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 5,
+    gap: 4,
+    marginBottom: 6,
   },
   gameIcon: {
-    width: 12,
-    height: 12,
-    opacity: 0.6,
+    width: 11,
+    height: 11,
+    opacity: 0.7,
   },
   gameText: {
-    fontSize: 11,
+    fontSize: 10,
     fontWeight: '500',
-    color: '#666',
+    color: '#888',
     letterSpacing: 0.3,
   },
   // Mutuals
@@ -364,12 +381,6 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 6,
-  },
-  mutualsDot: {
-    width: 3,
-    height: 3,
-    borderRadius: 1.5,
-    backgroundColor: '#444',
   },
   stackedAvatars: {
     flexDirection: 'row',
@@ -380,7 +391,7 @@ const styles = StyleSheet.create({
     height: 18,
     borderRadius: 9,
     borderWidth: 1.5,
-    borderColor: 'rgba(18, 18, 22, 1)',
+    borderColor: 'rgb(18, 18, 22)',
     overflow: 'hidden',
   },
   stackedAvatar: {
@@ -395,71 +406,64 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   stackedAvatarText: {
-    fontSize: 8,
+    fontSize: 7,
     fontWeight: '600',
     color: '#666',
   },
   mutualsText: {
-    fontSize: 10,
+    fontSize: 9,
     fontWeight: '500',
-    color: '#555',
+    color: '#666',
   },
-  // Role (right side)
-  roleContainer: {
-    alignItems: 'center',
-    gap: 4,
-  },
-  roleIcon: {
-    width: 32,
-    height: 32,
-    opacity: 0.9,
-  },
-  roleText: {
-    fontSize: 10,
-    fontWeight: '500',
-    color: '#777',
-  },
-  // Stats Row
-  statsRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: 'rgba(255, 255, 255, 0.025)',
-    borderRadius: 10,
-    paddingVertical: 10,
-    paddingHorizontal: 6,
+  // Stats Column (Right Side)
+  statsColumn: {
+    justifyContent: 'space-between',
+    alignItems: 'flex-end',
+    paddingLeft: 12,
   },
   statItem: {
-    flex: 1,
-    alignItems: 'center',
-  },
-  statLabel: {
-    fontSize: 10,
-    fontWeight: '500',
-    color: '#555',
-    marginBottom: 6,
-  },
-  statContent: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 5,
+    gap: 8,
+  },
+  statTextGroup: {
+    alignItems: 'flex-end',
+  },
+  statLabel: {
+    fontSize: 8,
+    fontWeight: '600',
+    color: 'rgba(255, 255, 255, 0.45)',
+    letterSpacing: 0.3,
   },
   statDivider: {
-    width: 1,
-    height: 32,
-    backgroundColor: 'rgba(255, 255, 255, 0.05)',
+    width: 60,
+    height: 1,
+    backgroundColor: 'rgba(255, 255, 255, 0.08)',
+    alignSelf: 'flex-end',
   },
   rankIcon: {
-    width: 26,
-    height: 26,
+    width: 24,
+    height: 24,
   },
-  smallRoleIcon: {
-    width: 20,
-    height: 20,
+  roleIcon: {
+    width: 22,
+    height: 22,
   },
   rankText: {
-    fontSize: 11,
-    fontWeight: '500',
-    color: '#ccc',
-    maxWidth: 55,
+    fontSize: 12,
+    fontWeight: '600',
+    color: '#fff',
+  },
+  // Duo Card Label
+  duoCardLabel: {
+    position: 'absolute',
+    bottom: 12,
+    left: 12,
+  },
+  duoCardLabelText: {
+    fontSize: 9,
+    fontWeight: '600',
+    color: 'rgba(255, 255, 255, 0.35)',
+    letterSpacing: 1,
   },
 });

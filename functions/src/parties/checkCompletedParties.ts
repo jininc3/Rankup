@@ -159,6 +159,23 @@ async function notifyPartyCompletion(partyDocId: string, partyData: any) {
   // Winner is the first person in sorted list
   const winner = memberStats[0];
 
+  // Build rankings array to save to party document (for achievements)
+  const rankings = memberStats.map((member, index) => ({
+    userId: member.userId,
+    username: member.username,
+    rank: index + 1,
+    currentRank: member.currentRank,
+    lp: member.lp,
+    rr: member.rr,
+  }));
+
+  // Save rankings to party document
+  await db.collection('parties').doc(partyDocId).update({
+    rankings: rankings,
+  });
+
+  console.log(`Saved rankings for party ${partyId}`);
+
   // Create notifications for all members
   for (const member of memberStats) {
     const isWinner = member.userId === winner.userId;

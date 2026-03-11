@@ -736,6 +736,7 @@ export default function DuoFinderScreen() {
                     game={card.game}
                     username={card.username}
                     avatar={card.avatar}
+                    currentRank={card.currentRank}
                     peakRank={card.peakRank}
                     mainRole={card.mainRole}
                     preferredDuoRole={card.lookingFor || 'Any'}
@@ -794,6 +795,7 @@ export default function DuoFinderScreen() {
                       game="valorant"
                       username={valorantCard.username}
                       avatar={user?.avatar}
+                      currentRank={valorantCard.currentRank}
                       peakRank={valorantCard.peakRank}
                       mainRole={valorantCard.mainRole}
                       preferredDuoRole={valorantCard.lookingFor || 'Any'}
@@ -807,6 +809,7 @@ export default function DuoFinderScreen() {
                       game="league"
                       username={leagueCard.username}
                       avatar={user?.avatar}
+                      currentRank={leagueCard.currentRank}
                       peakRank={leagueCard.peakRank}
                       mainRole={leagueCard.mainRole}
                       preferredDuoRole={leagueCard.lookingFor || 'Any'}
@@ -908,9 +911,11 @@ const styles = StyleSheet.create({
     paddingHorizontal: 8,
   },
   headerTabBtnText: {
-    fontSize: 14,
+    fontSize: 12,
     fontWeight: '600',
     color: '#c42743',
+    letterSpacing: 0.5,
+    textTransform: 'uppercase',
   },
   // Game Filter Buttons
   gameFilterContainer: {

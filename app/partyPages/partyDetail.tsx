@@ -53,6 +53,8 @@ export default function PartyDetail() {
   const [invitedUsers, setInvitedUsers] = useState<Set<string>>(new Set());
   const [searchResults, setSearchResults] = useState<{ id: string; username: string; avatar: string }[]>([]);
   const [searchingUsers, setSearchingUsers] = useState(false);
+  const [showManageMembersModal, setShowManageMembersModal] = useState(false);
+  const [kickingMember, setKickingMember] = useState<string | null>(null);
 
   const isCreator = partyData?.createdBy === user?.id;
 
@@ -373,16 +375,17 @@ export default function PartyDetail() {
   };
 
   // Handle kicking a member
-  const handleKickMember = (member: Member) => {
+  const handleKickMember = (member: Member, fromModal: boolean = false) => {
     Alert.alert(
-      'Kick Member',
-      `Are you sure you want to kick ${member.username} from the party?`,
+      'Remove Member',
+      `Are you sure you want to remove ${member.username} from the party?`,
       [
         { text: 'Cancel', style: 'cancel' },
         {
-          text: 'Kick',
+          text: 'Remove',
           style: 'destructive',
           onPress: async () => {
+            if (fromModal) setKickingMember(member.userId);
             try {
               const partyRef = doc(db, 'parties', partyDocId);
               const updatedMembers = (partyData?.members || []).filter((id: string) => id !== member.userId);
@@ -396,7 +399,9 @@ export default function PartyDetail() {
               });
             } catch (error) {
               console.error('Error kicking member:', error);
-              Alert.alert('Error', 'Failed to kick member');
+              Alert.alert('Error', 'Failed to remove member');
+            } finally {
+              if (fromModal) setKickingMember(null);
             }
           },
         },
@@ -709,6 +714,25 @@ export default function PartyDetail() {
               </View>
               <IconSymbol size={16} name="chevron.right" color="#444" />
             </TouchableOpacity>
+
+            {members.filter(m => m.userId !== user?.id).length > 0 && (
+              <TouchableOpacity
+                style={styles.editModalOption}
+                onPress={() => {
+                  setShowEditModal(false);
+                  setShowManageMembersModal(true);
+                }}
+              >
+                <View style={[styles.editModalOptionIcon, { backgroundColor: 'rgba(255,100,100,0.1)' }]}>
+                  <IconSymbol size={18} name="person.badge.minus" color="#ff6b6b" />
+                </View>
+                <View style={styles.editModalOptionText}>
+                  <ThemedText style={styles.editModalOptionTitle}>Manage Members</ThemedText>
+                  <ThemedText style={styles.editModalOptionSubtitle}>Remove members from the party</ThemedText>
+                </View>
+                <IconSymbol size={16} name="chevron.right" color="#444" />
+              </TouchableOpacity>
+            )}
           </View>
         </TouchableOpacity>
       </Modal>
@@ -807,6 +831,76 @@ export default function PartyDetail() {
                     </TouchableOpacity>
                   </View>
                 ))
+              )}
+            </ScrollView>
+          </TouchableOpacity>
+        </TouchableOpacity>
+      </Modal>
+
+      {/* Manage Members Modal */}
+      <Modal
+        visible={showManageMembersModal}
+        transparent
+        animationType="slide"
+        onRequestClose={() => setShowManageMembersModal(false)}
+      >
+        <TouchableOpacity
+          style={styles.modalOverlay}
+          activeOpacity={1}
+          onPress={() => setShowManageMembersModal(false)}
+        >
+          <TouchableOpacity
+            activeOpacity={1}
+            onPress={(e) => e.stopPropagation()}
+            style={styles.manageMembersModalContent}
+          >
+            <View style={styles.inviteModalHandle} />
+
+            <View style={styles.inviteModalHeader}>
+              <ThemedText style={styles.inviteModalTitle}>Manage Members</ThemedText>
+              <TouchableOpacity onPress={() => setShowManageMembersModal(false)}>
+                <IconSymbol size={20} name="xmark" color="#888" />
+              </TouchableOpacity>
+            </View>
+
+            <ScrollView style={styles.manageMembersList} showsVerticalScrollIndicator={false}>
+              {members
+                .filter(member => member.userId !== user?.id)
+                .map((member) => (
+                  <View key={member.userId} style={styles.manageMemberItem}>
+                    <View style={styles.manageMemberAvatar}>
+                      {member.avatar && member.avatar.startsWith('http') ? (
+                        <Image source={{ uri: member.avatar }} style={styles.manageMemberAvatarImage} />
+                      ) : (
+                        <ThemedText style={styles.manageMemberAvatarText}>
+                          {member.username[0].toUpperCase()}
+                        </ThemedText>
+                      )}
+                    </View>
+                    <View style={styles.manageMemberInfo}>
+                      <ThemedText style={styles.manageMemberName}>{member.username}</ThemedText>
+                      <ThemedText style={styles.manageMemberJoined}>
+                        Joined {new Date(member.joinedAt).toLocaleDateString()}
+                      </ThemedText>
+                    </View>
+                    <TouchableOpacity
+                      style={styles.removeButton}
+                      onPress={() => handleKickMember(member, true)}
+                      disabled={kickingMember === member.userId}
+                    >
+                      {kickingMember === member.userId ? (
+                        <ActivityIndicator size="small" color="#ff6b6b" />
+                      ) : (
+                        <ThemedText style={styles.removeButtonText}>Remove</ThemedText>
+                      )}
+                    </TouchableOpacity>
+                  </View>
+                ))}
+
+              {members.filter(m => m.userId !== user?.id).length === 0 && (
+                <View style={styles.inviteEmptyContainer}>
+                  <ThemedText style={styles.inviteEmptyText}>No other members in this party</ThemedText>
+                </View>
               )}
             </ScrollView>
           </TouchableOpacity>
@@ -1279,5 +1373,68 @@ const styles = StyleSheet.create({
     fontSize: 13,
     fontWeight: '600',
     color: '#fff',
+  },
+  // Manage Members Modal
+  manageMembersModalContent: {
+    backgroundColor: '#1a1a1a',
+    borderTopLeftRadius: 20,
+    borderTopRightRadius: 20,
+    maxHeight: '50%',
+    paddingBottom: 40,
+  },
+  manageMembersList: {
+    paddingHorizontal: 20,
+  },
+  manageMemberItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 12,
+    borderBottomWidth: 1,
+    borderBottomColor: '#252525',
+    gap: 12,
+  },
+  manageMemberAvatar: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    backgroundColor: '#252525',
+    alignItems: 'center',
+    justifyContent: 'center',
+    overflow: 'hidden',
+  },
+  manageMemberAvatarImage: {
+    width: '100%',
+    height: '100%',
+  },
+  manageMemberAvatarText: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#666',
+  },
+  manageMemberInfo: {
+    flex: 1,
+  },
+  manageMemberName: {
+    fontSize: 15,
+    fontWeight: '600',
+    color: '#fff',
+    marginBottom: 2,
+  },
+  manageMemberJoined: {
+    fontSize: 12,
+    color: '#555',
+  },
+  removeButton: {
+    backgroundColor: 'rgba(255,100,100,0.1)',
+    paddingHorizontal: 14,
+    paddingVertical: 8,
+    borderRadius: 8,
+    minWidth: 80,
+    alignItems: 'center',
+  },
+  removeButtonText: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: '#ff6b6b',
   },
 });

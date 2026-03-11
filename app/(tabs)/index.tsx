@@ -11,7 +11,7 @@ import PostContent from '@/app/components/postContent';
 import NewPost from '@/app/components/newPost';
 import { collection, getDocs, orderBy, query, Timestamp, where, onSnapshot, limit, startAfter, QueryDocumentSnapshot, DocumentData } from 'firebase/firestore';
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { ActivityIndicator, Dimensions, Image, ScrollView, StyleSheet, TouchableOpacity, View, Alert, RefreshControl } from 'react-native';
+import { ActivityIndicator, Dimensions, Image, ScrollView, StyleSheet, TouchableOpacity, View, Alert, RefreshControl, Modal, Pressable } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useRouter } from 'expo-router';
 import { useFocusEffect } from '@react-navigation/native';
@@ -98,6 +98,7 @@ export default function HomeScreen() {
   const videoPlayers = useRef<{ [key: string]: any }>({});
   const scrollViewRef = useRef<ScrollView>(null);
   const [selectedGameFilter, setSelectedGameFilter] = useState<string | null>(null);
+  const [showFilterModal, setShowFilterModal] = useState(false);
   const [unreadNotificationCount, setUnreadNotificationCount] = useState(0);
   const [likedPosts, setLikedPosts] = useState<Set<string>>(new Set());
   const [likingInProgress, setLikingInProgress] = useState<Set<string>>(new Set());
@@ -930,40 +931,18 @@ export default function HomeScreen() {
           />
         }
       >
-        {/* Game Filter Tabs */}
-        <View style={styles.gameFilterContainer}>
-          <View style={styles.gameTabsContainer}>
-            <TouchableOpacity
-              style={styles.gameFilterTab}
-              onPress={() => setSelectedGameFilter(null)}
-              activeOpacity={0.7}
-            >
-              <ThemedText style={[styles.gameFilterTabText, selectedGameFilter === null && styles.gameFilterTabTextActive]}>
-                ALL
-              </ThemedText>
-            </TouchableOpacity>
-            <View style={styles.gameFilterTabDivider} />
-            <TouchableOpacity
-              style={styles.gameFilterTab}
-              onPress={() => setSelectedGameFilter('valorant')}
-              activeOpacity={0.7}
-            >
-              <ThemedText style={[styles.gameFilterTabText, selectedGameFilter === 'valorant' && styles.gameFilterTabTextActive]}>
-                VALORANT
-              </ThemedText>
-            </TouchableOpacity>
-            <View style={styles.gameFilterTabDivider} />
-            <TouchableOpacity
-              style={styles.gameFilterTab}
-              onPress={() => setSelectedGameFilter('league')}
-              activeOpacity={0.7}
-            >
-              <ThemedText style={[styles.gameFilterTabText, selectedGameFilter === 'league' && styles.gameFilterTabTextActive]}>
-                LEAGUE
-              </ThemedText>
-            </TouchableOpacity>
-          </View>
-        </View>
+        {/* Game Filter Button */}
+        <TouchableOpacity
+          style={styles.filterButton}
+          onPress={() => setShowFilterModal(true)}
+          activeOpacity={0.7}
+        >
+          <IconSymbol size={16} name="line.3.horizontal.decrease" color={selectedGameFilter ? '#fff' : '#555'} />
+          <ThemedText style={[styles.gameFilterTabText, selectedGameFilter && styles.gameFilterTabTextActive]}>
+            {selectedGameFilter === 'valorant' ? 'VALORANT' : selectedGameFilter === 'league' ? 'LEAGUE' : 'ALL GAMES'}
+          </ThemedText>
+          <IconSymbol size={12} name="chevron.down" color={selectedGameFilter ? '#fff' : '#555'} />
+        </TouchableOpacity>
 
         {loading ? (
           <View style={styles.loadingContainer}>
@@ -1078,6 +1057,72 @@ export default function HomeScreen() {
         }}
         onPostCreated={handlePostCreated}
       />
+
+      {/* Game Filter Bottom Sheet */}
+      <Modal
+        visible={showFilterModal}
+        transparent
+        animationType="slide"
+        onRequestClose={() => setShowFilterModal(false)}
+      >
+        <Pressable
+          style={styles.filterModalOverlay}
+          onPress={() => setShowFilterModal(false)}
+        >
+          <Pressable style={styles.filterModalContent} onPress={(e) => e.stopPropagation()}>
+            <View style={styles.filterModalHandle} />
+            <ThemedText style={styles.filterModalTitle}>FILTER BY GAME</ThemedText>
+
+            <TouchableOpacity
+              style={[styles.filterOption, selectedGameFilter === null && styles.filterOptionActive]}
+              onPress={() => {
+                setSelectedGameFilter(null);
+                setShowFilterModal(false);
+              }}
+              activeOpacity={0.7}
+            >
+              <View style={styles.filterOptionRadio}>
+                {selectedGameFilter === null && <View style={styles.filterOptionRadioInner} />}
+              </View>
+              <ThemedText style={[styles.filterOptionText, selectedGameFilter === null && styles.filterOptionTextActive]}>
+                ALL GAMES
+              </ThemedText>
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={[styles.filterOption, selectedGameFilter === 'valorant' && styles.filterOptionActive]}
+              onPress={() => {
+                setSelectedGameFilter('valorant');
+                setShowFilterModal(false);
+              }}
+              activeOpacity={0.7}
+            >
+              <View style={styles.filterOptionRadio}>
+                {selectedGameFilter === 'valorant' && <View style={styles.filterOptionRadioInner} />}
+              </View>
+              <ThemedText style={[styles.filterOptionText, selectedGameFilter === 'valorant' && styles.filterOptionTextActive]}>
+                VALORANT
+              </ThemedText>
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={[styles.filterOption, selectedGameFilter === 'league' && styles.filterOptionActive]}
+              onPress={() => {
+                setSelectedGameFilter('league');
+                setShowFilterModal(false);
+              }}
+              activeOpacity={0.7}
+            >
+              <View style={styles.filterOptionRadio}>
+                {selectedGameFilter === 'league' && <View style={styles.filterOptionRadioInner} />}
+              </View>
+              <ThemedText style={[styles.filterOptionText, selectedGameFilter === 'league' && styles.filterOptionTextActive]}>
+                LEAGUE
+              </ThemedText>
+            </TouchableOpacity>
+          </Pressable>
+        </Pressable>
+      </Modal>
     </ThemedView>
   );
 }
@@ -1140,21 +1185,14 @@ const styles = StyleSheet.create({
     paddingVertical: 16,
     gap: 8,
   },
-  gameFilterContainer: {
-    paddingHorizontal: 20,
-    paddingTop: 8,
-    paddingBottom: 4,
-    backgroundColor: '#0f0f0f',
-  },
-  gameTabsContainer: {
+  filterButton: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 16,
-  },
-  gameFilterTab: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    gap: 6,
     paddingVertical: 6,
+    marginHorizontal: 20,
+    marginTop: 10,
+    marginBottom: 6,
   },
   gameFilterTabText: {
     fontSize: 12,
@@ -1165,10 +1203,64 @@ const styles = StyleSheet.create({
   gameFilterTabTextActive: {
     color: '#fff',
   },
-  gameFilterTabDivider: {
-    width: 1,
-    height: 12,
-    backgroundColor: '#333',
+  filterModalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.6)',
+    justifyContent: 'flex-end',
+  },
+  filterModalContent: {
+    backgroundColor: '#1a1a1a',
+    borderTopLeftRadius: 20,
+    borderTopRightRadius: 20,
+    paddingHorizontal: 24,
+    paddingBottom: 40,
+    paddingTop: 12,
+  },
+  filterModalHandle: {
+    width: 40,
+    height: 4,
+    backgroundColor: '#444',
+    borderRadius: 2,
+    alignSelf: 'center',
+    marginBottom: 20,
+  },
+  filterModalTitle: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: '#555',
+    letterSpacing: 0.5,
+    marginBottom: 16,
+  },
+  filterOption: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 14,
+    gap: 12,
+  },
+  filterOptionActive: {},
+  filterOptionRadio: {
+    width: 20,
+    height: 20,
+    borderRadius: 10,
+    borderWidth: 2,
+    borderColor: '#555',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  filterOptionRadioInner: {
+    width: 10,
+    height: 10,
+    borderRadius: 5,
+    backgroundColor: '#fff',
+  },
+  filterOptionText: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: '#555',
+    letterSpacing: 0.5,
+  },
+  filterOptionTextActive: {
+    color: '#fff',
   },
   tab: {
     paddingVertical: 10,
