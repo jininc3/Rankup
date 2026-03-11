@@ -792,6 +792,32 @@ export default function ProfileScreen() {
     }
   };
 
+  const handleEditCaption = async (post: Post, newCaption: string) => {
+    try {
+      // Update in Firestore
+      await updateDoc(doc(db, 'posts', post.id), {
+        caption: newCaption,
+      });
+
+      // Update local state
+      setPosts(prevPosts =>
+        prevPosts.map(p =>
+          p.id === post.id ? { ...p, caption: newCaption } : p
+        )
+      );
+
+      // Also update the selected post in the modal if it's the same post
+      if (selectedPost?.id === post.id) {
+        setSelectedPost(prev =>
+          prev ? { ...prev, caption: newCaption } : null
+        );
+      }
+    } catch (error) {
+      console.error('Error updating caption:', error);
+      Alert.alert('Error', 'Failed to update caption');
+    }
+  };
+
 
   // Calculate tier border color based on current ranks
   const tierBorderColor = calculateTierBorderColor(
@@ -1365,6 +1391,7 @@ export default function ProfileScreen() {
         onNavigate={handleNavigatePost}
         onCommentAdded={handleCommentAdded}
         onDelete={handleDeletePost}
+        onEditCaption={handleEditCaption}
         enableVideoScrubber={false}
       />
 

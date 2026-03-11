@@ -40,6 +40,7 @@ interface PostViewerModalProps {
   onNavigate?: (index: number) => void;
   onCommentAdded?: () => void;
   onDelete?: (post: Post) => void;
+  onEditCaption?: (post: Post, newCaption: string) => void;
   enableVideoScrubber?: boolean;
 }
 
@@ -53,6 +54,7 @@ export default function PostViewerModal({
   onNavigate,
   onCommentAdded,
   onDelete,
+  onEditCaption,
   enableVideoScrubber = false
 }: PostViewerModalProps) {
   const router = useRouter();
@@ -379,6 +381,7 @@ export default function PostViewerModal({
         showRecentComments={true}
         enableVideoScrubber={enableVideoScrubber}
         onDelete={onDelete}
+        onEditCaption={onEditCaption}
       />
     );
   };

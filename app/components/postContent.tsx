@@ -3,7 +3,7 @@ import { IconSymbol } from '@/components/ui/icon-symbol';
 import { VideoView, useVideoPlayer } from 'expo-video';
 import { Timestamp } from 'firebase/firestore';
 import { useEffect, useState, useRef } from 'react';
-import { Alert, Animated, Dimensions, FlatList, Image, StyleSheet, TouchableOpacity, View, PanResponder } from 'react-native';
+import { Alert, Animated, Dimensions, FlatList, Image, StyleSheet, TouchableOpacity, View, PanResponder, TextInput } from 'react-native';
 import { getComments, CommentData } from '@/services/commentService';
 import { TaggedUser } from '@/app/components/tagUsersModal';
 import { calculateTierBorderColor } from '@/utils/tierBorderUtils';
@@ -396,6 +396,7 @@ interface PostContentProps {
   showRecentComments?: boolean;
   enableVideoScrubber?: boolean;
   onDelete?: (post: Post) => void;
+  onEditCaption?: (post: Post, newCaption: string) => void;
 }
 
 export default function PostContent({
@@ -415,7 +416,8 @@ export default function PostContent({
   onPlayerReady,
   showRecentComments = true,
   enableVideoScrubber = false,
-  onDelete
+  onDelete,
+  onEditCaption
 }: PostContentProps) {
   // Calculate tier border color
   const tierBorderColor = calculateTierBorderColor(post.leagueRank, post.valorantRank);
@@ -430,6 +432,10 @@ export default function PostContent({
   // Like button animation
   const likeScale = useRef(new Animated.Value(1)).current;
   const [showLikeAnimation, setShowLikeAnimation] = useState(false);
+
+  // Caption editing state
+  const [isEditingCaption, setIsEditingCaption] = useState(false);
+  const [editedCaption, setEditedCaption] = useState(post.caption || '');
 
   const handleLikePress = () => {
     // Trigger scale animation on the button
@@ -473,23 +479,51 @@ export default function PostContent({
 
   const hasMultipleMedia = post.mediaUrls && post.mediaUrls.length > 1;
 
+  // Caption edit handlers
+  const handleStartEditCaption = () => {
+    setEditedCaption(post.caption || '');
+    setIsEditingCaption(true);
+  };
+
+  const handleCancelEditCaption = () => {
+    setEditedCaption(post.caption || '');
+    setIsEditingCaption(false);
+  };
+
+  const handleSaveEditCaption = () => {
+    if (onEditCaption && editedCaption !== post.caption) {
+      onEditCaption(post, editedCaption);
+    }
+    setIsEditingCaption(false);
+  };
+
   // Handle post options menu
   const handlePostOptions = () => {
-    Alert.alert(
-      'Post Options',
-      '',
-      [
-        {
-          text: 'Delete Post',
-          style: 'destructive',
-          onPress: () => onDelete?.(post)
-        },
-        {
-          text: 'Cancel',
-          style: 'cancel'
-        }
-      ]
-    );
+    const options = [];
+
+    // Add Edit Caption option if callback is provided
+    if (onEditCaption) {
+      options.push({
+        text: 'Edit Caption',
+        onPress: handleStartEditCaption
+      });
+    }
+
+    // Add Delete option if callback is provided
+    if (onDelete) {
+      options.push({
+        text: 'Delete Post',
+        style: 'destructive' as const,
+        onPress: () => onDelete(post)
+      });
+    }
+
+    options.push({
+      text: 'Cancel',
+      style: 'cancel' as const
+    });
+
+    Alert.alert('Post Options', '', options);
   };
 
   return (
@@ -538,7 +572,7 @@ export default function PostContent({
         <View style={styles.headerRight}>
           <TouchableOpacity
             style={styles.menuButton}
-            onPress={post.userId === currentUserId && onDelete ? handlePostOptions : undefined}
+            onPress={post.userId === currentUserId && (onDelete || onEditCaption) ? handlePostOptions : undefined}
             activeOpacity={0.6}
             hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
           >
@@ -548,10 +582,40 @@ export default function PostContent({
       </View>
 
       {/* Caption */}
-      {post.caption && (
-        <View style={styles.captionContainer}>
-          <ThemedText style={styles.captionText}>{post.caption}</ThemedText>
+      {isEditingCaption ? (
+        <View style={styles.captionEditContainer}>
+          <TextInput
+            style={styles.captionEditInput}
+            value={editedCaption}
+            onChangeText={setEditedCaption}
+            multiline
+            autoFocus
+            placeholder="Write a caption..."
+            placeholderTextColor="#888"
+          />
+          <View style={styles.captionEditButtons}>
+            <TouchableOpacity
+              style={styles.captionEditButtonCancel}
+              onPress={handleCancelEditCaption}
+              activeOpacity={0.7}
+            >
+              <ThemedText style={styles.captionEditButtonCancelText}>Cancel</ThemedText>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={styles.captionEditButtonDone}
+              onPress={handleSaveEditCaption}
+              activeOpacity={0.7}
+            >
+              <ThemedText style={styles.captionEditButtonDoneText}>Done</ThemedText>
+            </TouchableOpacity>
+          </View>
         </View>
+      ) : (
+        post.caption && (
+          <View style={styles.captionContainer}>
+            <ThemedText style={styles.captionText}>{post.caption}</ThemedText>
+          </View>
+        )
       )}
 
       {/* Media Content */}
@@ -834,6 +898,50 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: '#fff',
     lineHeight: 20,
+  },
+  captionEditContainer: {
+    paddingHorizontal: 16,
+    paddingBottom: 12,
+  },
+  captionEditInput: {
+    fontSize: 14,
+    color: '#fff',
+    lineHeight: 20,
+    backgroundColor: '#1a1a1a',
+    borderRadius: 8,
+    padding: 12,
+    minHeight: 60,
+    textAlignVertical: 'top',
+    borderWidth: 1,
+    borderColor: '#333',
+  },
+  captionEditButtons: {
+    flexDirection: 'row',
+    justifyContent: 'flex-end',
+    marginTop: 8,
+    gap: 12,
+  },
+  captionEditButtonCancel: {
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    borderRadius: 6,
+    backgroundColor: '#333',
+  },
+  captionEditButtonCancelText: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#fff',
+  },
+  captionEditButtonDone: {
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    borderRadius: 6,
+    backgroundColor: '#c42743',
+  },
+  captionEditButtonDoneText: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#fff',
   },
   mediaContainer: {
     width: mediaWidth,
