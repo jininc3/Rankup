@@ -1,18 +1,18 @@
 import { ThemedText } from '@/components/themed-text';
 import { StyleSheet, View, Image, TouchableOpacity, Dimensions } from 'react-native';
-import { IconSymbol } from '@/components/ui/icon-symbol';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useState, useEffect } from 'react';
 
 const { width: screenWidth, height: screenHeight } = Dimensions.get('window');
-const cardWidth = screenWidth - 40; // Full width with padding
-const cardHeight = screenHeight * 0.65; // 65% of screen height
+const cardWidth = screenWidth - 40;
+const cardHeight = screenHeight * 0.32;
 
 interface CompactDuoCardProps {
   game: 'valorant' | 'league';
   username?: string;
   avatar?: string;
   peakRank?: string;
+  currentRank?: string;
   mainRole?: string;
   preferredDuoRole?: string;
   onPress?: () => void;
@@ -70,7 +70,7 @@ const VALORANT_ROLE_ICONS: { [key: string]: any } = {
 // Game logo mapping
 const GAME_LOGOS: { [key: string]: any } = {
   valorant: require('@/assets/images/valorant-red.png'),
-  league: require('@/assets/images/lol.png'),
+  league: require('@/assets/images/lol-icon.png'),
 };
 
 export default function CompactDuoCard({
@@ -78,6 +78,7 @@ export default function CompactDuoCard({
   username = 'YourUsername',
   avatar,
   peakRank = 'Unranked',
+  currentRank = 'Unranked',
   mainRole = 'Mid',
   preferredDuoRole = 'Any',
   onPress,
@@ -131,8 +132,33 @@ export default function CompactDuoCard({
         style={styles.cardBackground}
       />
 
-      {/* Game Badge */}
-      <View style={styles.gameBadge}>
+      {/* Header: Avatar + Username | Game Logo */}
+      <View style={styles.header}>
+        <View style={styles.userSection}>
+          {/* Square Profile Icon */}
+          <View style={styles.avatarFrame}>
+            {avatar && avatar.startsWith('http') ? (
+              <Image
+                source={{ uri: avatar }}
+                style={styles.avatar}
+                onLoad={() => setAvatarLoaded(true)}
+                onError={() => setAvatarLoaded(true)}
+              />
+            ) : (
+              <View style={styles.avatarPlaceholder}>
+                <ThemedText style={styles.avatarInitial}>
+                  {username[0]?.toUpperCase() || '?'}
+                </ThemedText>
+              </View>
+            )}
+          </View>
+          {/* Username */}
+          <ThemedText style={styles.username} numberOfLines={1}>
+            {username}
+          </ThemedText>
+        </View>
+
+        {/* Game Logo */}
         <Image
           source={GAME_LOGOS[game]}
           style={styles.gameLogo}
@@ -140,63 +166,46 @@ export default function CompactDuoCard({
         />
       </View>
 
-      {/* Avatar Section */}
-      <View style={styles.avatarContainer}>
-        <View style={styles.avatarFrame}>
-          {avatar && avatar.startsWith('http') ? (
+      {/* Stats - Vertical Layout */}
+      <View style={styles.statsContainer}>
+        {/* Peak Rank */}
+        <View style={styles.statRow}>
+          <ThemedText style={styles.statLabel}>Peak Rank</ThemedText>
+          <View style={styles.statValue}>
             <Image
-              source={{ uri: avatar }}
-              style={styles.avatar}
-              onLoad={() => setAvatarLoaded(true)}
-              onError={() => setAvatarLoaded(true)}
+              source={getRankIcon(peakRank)}
+              style={styles.rankIcon}
+              resizeMode="contain"
             />
-          ) : (
-            <View style={styles.avatarPlaceholder}>
-              <ThemedText style={styles.avatarInitial}>
-                {username[0]?.toUpperCase() || '?'}
-              </ThemedText>
-            </View>
-          )}
+            <ThemedText style={styles.rankText}>{peakRank}</ThemedText>
+          </View>
         </View>
-        {/* Online indicator */}
-        <View style={styles.onlineBadge}>
-          <View style={styles.onlineDot} />
+
+        {/* Current Rank */}
+        <View style={styles.statRow}>
+          <ThemedText style={styles.statLabel}>Current Rank</ThemedText>
+          <View style={styles.statValue}>
+            <Image
+              source={getRankIcon(currentRank)}
+              style={styles.rankIcon}
+              resizeMode="contain"
+            />
+            <ThemedText style={styles.rankText}>{currentRank}</ThemedText>
+          </View>
         </View>
-      </View>
 
-      {/* Username */}
-      <ThemedText style={styles.username} numberOfLines={1}>
-        {username}
-      </ThemedText>
-
-      {/* Rank Section */}
-      <View style={styles.rankSection}>
-        <Image
-          source={getRankIcon(peakRank)}
-          style={styles.rankIcon}
-          resizeMode="contain"
-        />
-        <ThemedText style={styles.rankText} numberOfLines={1}>
-          {peakRank}
-        </ThemedText>
-      </View>
-
-      {/* Role Info */}
-      <View style={styles.roleSection}>
-        <View style={styles.roleItem}>
-          <Image
-            source={getRoleIcon(mainRole)}
-            style={styles.roleIcon}
-            resizeMode="contain"
-          />
-          <ThemedText style={styles.roleText}>{mainRole}</ThemedText>
+        {/* Role/Position */}
+        <View style={styles.statRow}>
+          <ThemedText style={styles.statLabel}>Role</ThemedText>
+          <View style={styles.statValue}>
+            <Image
+              source={getRoleIcon(mainRole)}
+              style={styles.roleIcon}
+              resizeMode="contain"
+            />
+            <ThemedText style={styles.rankText}>{mainRole}</ThemedText>
+          </View>
         </View>
-      </View>
-
-      {/* Looking For */}
-      <View style={styles.lookingForSection}>
-        <ThemedText style={styles.lookingForLabel}>LF</ThemedText>
-        <ThemedText style={styles.lookingForValue}>{preferredDuoRole}</ThemedText>
       </View>
     </View>
   );
@@ -220,49 +229,34 @@ const styles = StyleSheet.create({
   card: {
     width: '100%',
     height: cardHeight,
-    borderRadius: 20,
+    borderRadius: 16,
     overflow: 'hidden',
     borderWidth: 1,
     borderColor: '#232528',
-    paddingVertical: 24,
-    paddingHorizontal: 20,
-    alignItems: 'center',
+    padding: 16,
     justifyContent: 'space-between',
   },
   cardBackground: {
     ...StyleSheet.absoluteFillObject,
   },
-  // Game Badge
-  gameBadge: {
-    position: 'absolute',
-    top: 16,
-    right: 16,
-    width: 36,
-    height: 36,
-    borderRadius: 18,
-    backgroundColor: '#0f1114',
+  // Header
+  header: {
+    flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'center',
-    borderWidth: 1,
-    borderColor: '#2a2d30',
+    justifyContent: 'space-between',
   },
-  gameLogo: {
-    width: 22,
-    height: 22,
-  },
-  // Avatar
-  avatarContainer: {
-    position: 'relative',
-    marginTop: 20,
+  userSection: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    flex: 1,
   },
   avatarFrame: {
-    width: 120,
-    height: 120,
-    borderRadius: 60,
+    width: 44,
+    height: 44,
+    borderRadius: 10,
     overflow: 'hidden',
     backgroundColor: '#1a1c1e',
-    borderWidth: 3,
-    borderColor: '#2a2d30',
   },
   avatar: {
     width: '100%',
@@ -275,100 +269,53 @@ const styles = StyleSheet.create({
     backgroundColor: '#151719',
   },
   avatarInitial: {
-    fontSize: 48,
+    fontSize: 18,
     fontWeight: '700',
     color: '#3a3d42',
   },
-  onlineBadge: {
-    position: 'absolute',
-    bottom: 4,
-    right: 4,
-    width: 24,
-    height: 24,
-    borderRadius: 12,
-    backgroundColor: '#131518',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  onlineDot: {
-    width: 14,
-    height: 14,
-    borderRadius: 7,
-    backgroundColor: '#3d7a4a',
-  },
-  // Username
   username: {
-    fontSize: 24,
+    fontSize: 17,
     fontWeight: '700',
     color: '#e5e5e5',
-    letterSpacing: -0.5,
-    textAlign: 'center',
-    maxWidth: '100%',
-    marginTop: 16,
+    letterSpacing: -0.3,
+    flex: 1,
   },
-  // Rank Section
-  rankSection: {
+  gameLogo: {
+    width: 26,
+    height: 26,
+    opacity: 0.7,
+  },
+  // Stats
+  statsContainer: {
+    gap: 10,
+  },
+  statRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+  statLabel: {
+    fontSize: 13,
+    fontWeight: '500',
+    color: '#555',
+  },
+  statValue: {
+    flexDirection: 'row',
     alignItems: 'center',
     gap: 8,
-    marginTop: 8,
   },
   rankIcon: {
-    width: 80,
-    height: 80,
-  },
-  rankText: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: '#9a9da2',
-    letterSpacing: -0.2,
-    textAlign: 'center',
-  },
-  // Role Section
-  roleSection: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 12,
-    marginTop: 16,
-  },
-  roleItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-    backgroundColor: '#1a1c1e',
-    paddingVertical: 10,
-    paddingHorizontal: 16,
-    borderRadius: 20,
-    borderWidth: 1,
-    borderColor: '#2a2d30',
+    width: 24,
+    height: 24,
   },
   roleIcon: {
-    width: 20,
-    height: 20,
+    width: 22,
+    height: 22,
     opacity: 0.9,
   },
-  roleText: {
-    fontSize: 14,
+  rankText: {
+    fontSize: 13,
     fontWeight: '600',
-    color: '#9a9da2',
-  },
-  // Looking For Section
-  lookingForSection: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-    marginTop: 12,
-    marginBottom: 8,
-  },
-  lookingForLabel: {
-    fontSize: 12,
-    fontWeight: '600',
-    color: '#4a4d52',
-    letterSpacing: 0.3,
-  },
-  lookingForValue: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: '#7a7d82',
+    color: '#fff',
   },
 });

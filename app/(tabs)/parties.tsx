@@ -200,9 +200,24 @@ export default function LeaderboardScreen() {
             // Find user's rank
             const userRank = memberStats.findIndex(m => m.userId === user.id) + 1;
 
+            // Get top 3 players with their profile photos for the stacked avatars
+            const topPlayers = await Promise.all(
+              memberStats.slice(0, 3).map(async (member) => {
+                const userDoc = await getDoc(doc(db, 'users', member.userId));
+                const userData = userDoc.data();
+                return {
+                  odId: member.userId,
+                  displayName: userData?.displayName || userData?.username || 'User',
+                  username: userData?.username || '',
+                  photoUrl: userData?.avatar || null,
+                };
+              })
+            );
+
             return {
               ...party,
               userRank: userRank > 0 ? userRank : null,
+              players: topPlayers,
             };
           } catch (error) {
             console.error(`Error calculating rank for party ${party.partyId}:`, error);
@@ -362,11 +377,12 @@ export default function LeaderboardScreen() {
               contentContainerStyle={styles.pageContent}
             >
               {partyTypeParties.length > 0 ? (
-                partyTypeParties.map((leaderboard) => (
+                partyTypeParties.map((leaderboard, index) => (
                   <PartyCards
                     key={leaderboard.id}
                     leaderboard={leaderboard}
                     onPress={handleLeaderboardPress}
+                    showDivider={index < partyTypeParties.length - 1}
                   />
                 ))
               ) : (
@@ -387,11 +403,12 @@ export default function LeaderboardScreen() {
               contentContainerStyle={styles.pageContent}
             >
               {leaderboardTypeParties.length > 0 ? (
-                leaderboardTypeParties.map((leaderboard) => (
+                leaderboardTypeParties.map((leaderboard, index) => (
                   <LeaderboardCard
                     key={leaderboard.id}
                     leaderboard={leaderboard}
                     onPress={handleLeaderboardPress}
+                    showDivider={index < leaderboardTypeParties.length - 1}
                   />
                 ))
               ) : (

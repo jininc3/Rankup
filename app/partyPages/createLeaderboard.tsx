@@ -12,6 +12,7 @@ import {
   Alert,
   ActivityIndicator,
   Image,
+  Dimensions,
   Platform
 } from 'react-native';
 import DateTimePicker from '@react-native-community/datetimepicker';
@@ -19,19 +20,21 @@ import * as Clipboard2 from 'expo-clipboard';
 import * as ImagePicker from 'expo-image-picker';
 import { useAuth } from '@/contexts/AuthContext';
 import { db } from '@/config/firebase';
-import { collection, query, where, getDocs, doc, getDoc, addDoc, serverTimestamp, limit } from 'firebase/firestore';
-import { uploadPartyCoverPhoto } from '@/services/storageService';
+import { collection, getDocs, doc, getDoc, addDoc, serverTimestamp, updateDoc } from 'firebase/firestore';
+import { uploadPartyIcon, uploadPartyCoverPhoto } from '@/services/storageService';
+
+const { width: screenWidth } = Dimensions.get('window');
 
 // Available games
 const AVAILABLE_GAMES = [
   {
     id: 'valorant',
     name: 'Valorant',
-    logo: require('@/assets/images/valorant.png'),
+    logo: require('@/assets/images/valorant-red.png'),
   },
   {
     id: 'league',
-    name: 'League of Legends',
+    name: 'League',
     logo: require('@/assets/images/lol-icon.png'),
   },
 ];
@@ -42,13 +45,11 @@ interface Follower {
   avatar: string;
 }
 
-export default function CreateParty1Screen() {
+export default function CreateLeaderboardScreen() {
   const router = useRouter();
   const { user } = useAuth();
 
   const scrollViewRef = useRef<ScrollView>(null);
-
-  const [selectedGame, setSelectedGame] = useState<typeof AVAILABLE_GAMES[0] | null>(null);
 
   const formatDate = (date: Date) => {
     const month = String(date.getMonth() + 1).padStart(2, '0');
@@ -66,20 +67,21 @@ export default function CreateParty1Screen() {
 
   const defaultDates = getDefaultDates();
 
-  const [partyName, setPartyName] = useState('');
-  const [partyId, setPartyId] = useState('');
+  const [selectedGame, setSelectedGame] = useState<typeof AVAILABLE_GAMES[0] | null>(null);
+  const [leaderboardName, setLeaderboardName] = useState('');
   const [inviteCode, setInviteCode] = useState('');
   const [selectedFollowers, setSelectedFollowers] = useState<string[]>([]);
   const [followers, setFollowers] = useState<Follower[]>([]);
   const [loadingFollowers, setLoadingFollowers] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
+  const [leaderboardIcon, setLeaderboardIcon] = useState<string | null>(null);
+  const [coverPhoto, setCoverPhoto] = useState<string | null>(null);
+  const [uploading, setUploading] = useState(false);
   const [startDate, setStartDate] = useState<Date>(defaultDates.start);
   const [endDate, setEndDate] = useState<Date>(defaultDates.end);
   const [showEndDatePicker, setShowEndDatePicker] = useState(false);
   const [challengeType, setChallengeType] = useState<'climbing' | 'rank'>('climbing');
   const [selectedDuration, setSelectedDuration] = useState<number>(30);
-  const [coverPhoto, setCoverPhoto] = useState<string | null>(null);
-  const [uploadingCover, setUploadingCover] = useState(false);
 
   const formatDateShort = (date: Date) => {
     return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
@@ -96,6 +98,16 @@ export default function CreateParty1Screen() {
   const handleCustomDuration = () => {
     setSelectedDuration(0);
     setShowEndDatePicker(!showEndDatePicker);
+  };
+
+  const handleEndDateChange = (event: any, selectedDate?: Date) => {
+    setShowEndDatePicker(Platform.OS === 'ios');
+    if (selectedDate) {
+      setEndDate(selectedDate);
+      const diffTime = selectedDate.getTime() - startDate.getTime();
+      const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+      setSelectedDuration(diffDays);
+    }
   };
 
   useEffect(() => {
@@ -155,11 +167,6 @@ export default function CreateParty1Screen() {
     fetchFollowers();
   }, [user?.id]);
 
-  const handlePartyIdChange = (text: string) => {
-    const uppercased = text.toUpperCase().replace(/[^A-Z]/g, '').slice(0, 5);
-    setPartyId(uppercased);
-  };
-
   const toggleFollower = (followerId: string) => {
     if (selectedFollowers.includes(followerId)) {
       setSelectedFollowers(selectedFollowers.filter(id => id !== followerId));
@@ -184,6 +191,24 @@ export default function CreateParty1Screen() {
     }
   };
 
+  const handlePickLeaderboardIcon = async () => {
+    try {
+      const result = await ImagePicker.launchImageLibraryAsync({
+        mediaTypes: ImagePicker.MediaTypeOptions.Images,
+        allowsEditing: true,
+        aspect: [1, 1],
+        quality: 0.8,
+      });
+
+      if (!result.canceled && result.assets[0]) {
+        setLeaderboardIcon(result.assets[0].uri);
+      }
+    } catch (error) {
+      console.error('Error picking leaderboard icon:', error);
+      Alert.alert('Error', 'Failed to select leaderboard icon');
+    }
+  };
+
   const handlePickCoverPhoto = async () => {
     try {
       const result = await ImagePicker.launchImageLibraryAsync({
@@ -202,48 +227,24 @@ export default function CreateParty1Screen() {
     }
   };
 
-  const handleRemoveCoverPhoto = () => {
-    setCoverPhoto(null);
-  };
-
-  const handleEndDateChange = (event: any, selectedDate?: Date) => {
-    setShowEndDatePicker(Platform.OS === 'ios');
-    if (selectedDate) {
-      setEndDate(selectedDate);
-      // Calculate days difference for custom selection
-      const diffTime = selectedDate.getTime() - startDate.getTime();
-      const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-      setSelectedDuration(diffDays);
-    }
-  };
-
-  const handleCreateParty = async () => {
+  const handleCreateLeaderboard = async () => {
     if (!selectedGame) {
       Alert.alert('Error', 'Please select a game');
       return;
     }
-    if (!partyName.trim()) {
-      Alert.alert('Error', 'Please enter a party name');
-      return;
-    }
-    if (!partyId.trim() || partyId.length < 5) {
-      Alert.alert('Error', 'Party ID must be 5 letters');
+    if (!leaderboardName.trim()) {
+      Alert.alert('Error', 'Please enter a leaderboard name');
       return;
     }
     if (!user?.id) {
-      Alert.alert('Error', 'You must be logged in to create a party');
+      Alert.alert('Error', 'You must be logged in to create a leaderboard');
       return;
     }
 
+    setUploading(true);
+
     try {
       const partiesRef = collection(db, 'parties');
-      const partyIdQuery = query(partiesRef, where('partyId', '==', partyId), limit(1));
-      const existingParties = await getDocs(partyIdQuery);
-
-      if (!existingParties.empty) {
-        Alert.alert('Error', 'Party ID already exists. Please choose a different ID.');
-        return;
-      }
 
       const userDoc = await getDoc(doc(db, 'users', user.id));
       const userData = userDoc.data();
@@ -271,21 +272,8 @@ export default function CreateParty1Screen() {
         }
       }
 
-      // Upload cover photo if selected
-      let coverPhotoUrl = '';
-      if (coverPhoto) {
-        setUploadingCover(true);
-        try {
-          coverPhotoUrl = await uploadPartyCoverPhoto(partyId, coverPhoto);
-        } catch (uploadError) {
-          console.error('Error uploading cover photo:', uploadError);
-        }
-        setUploadingCover(false);
-      }
-
-      const partyData = {
-        partyId,
-        partyName,
+      const leaderboardData = {
+        partyName: leaderboardName,
         game: selectedGame.name,
         gameId: selectedGame.id,
         type: 'leaderboard',
@@ -298,10 +286,34 @@ export default function CreateParty1Screen() {
         members: [user.id],
         memberDetails,
         pendingInvites,
-        ...(coverPhotoUrl && { coverPhoto: coverPhotoUrl }),
       };
 
-      await addDoc(partiesRef, partyData);
+      // Create the leaderboard first to get the document ID
+      const leaderboardDocRef = await addDoc(partiesRef, leaderboardData);
+      const generatedPartyId = leaderboardDocRef.id;
+
+      // Update with partyId field
+      await updateDoc(leaderboardDocRef, { partyId: generatedPartyId });
+
+      // Upload leaderboard icon if selected
+      if (leaderboardIcon) {
+        try {
+          const iconUrl = await uploadPartyIcon(generatedPartyId, leaderboardIcon);
+          await updateDoc(leaderboardDocRef, { partyIcon: iconUrl });
+        } catch (uploadError) {
+          console.error('Error uploading leaderboard icon:', uploadError);
+        }
+      }
+
+      // Upload cover photo if selected
+      if (coverPhoto) {
+        try {
+          const coverPhotoUrl = await uploadPartyCoverPhoto(generatedPartyId, coverPhoto);
+          await updateDoc(leaderboardDocRef, { coverPhoto: coverPhotoUrl });
+        } catch (uploadError) {
+          console.error('Error uploading cover photo:', uploadError);
+        }
+      }
 
       if (selectedFollowers.length > 0) {
         for (const invite of pendingInvites) {
@@ -312,8 +324,8 @@ export default function CreateParty1Screen() {
               fromUserId: user.id,
               fromUsername: userData?.username || 'Unknown',
               fromAvatar: userData?.avatar || '',
-              partyId,
-              partyName,
+              partyId: generatedPartyId,
+              partyName: leaderboardName,
               game: selectedGame.name,
               read: false,
               createdAt: serverTimestamp(),
@@ -324,6 +336,8 @@ export default function CreateParty1Screen() {
         }
       }
 
+      setUploading(false);
+
       Alert.alert(
         'Success',
         selectedFollowers.length > 0
@@ -332,11 +346,11 @@ export default function CreateParty1Screen() {
         [{
           text: 'OK',
           onPress: () => {
-            router.push({
+            router.replace({
               pathname: '/partyPages/leaderboardDetail',
               params: {
-                name: partyName,
-                partyId,
+                name: leaderboardName,
+                partyId: generatedPartyId,
                 game: selectedGame.name,
                 members: '1',
                 startDate: formatDate(startDate),
@@ -348,8 +362,9 @@ export default function CreateParty1Screen() {
         }]
       );
     } catch (error) {
-      console.error('Error creating party:', error);
-      Alert.alert('Error', 'Failed to create party. Please try again.');
+      console.error('Error creating leaderboard:', error);
+      setUploading(false);
+      Alert.alert('Error', 'Failed to create leaderboard. Please try again.');
     }
   };
 
@@ -370,287 +385,282 @@ export default function CreateParty1Screen() {
         showsVerticalScrollIndicator={false}
         keyboardShouldPersistTaps="handled"
       >
-        {/* Game Selection Card */}
-        <View style={styles.card}>
-          <ThemedText style={styles.cardTitle}>Select Game</ThemedText>
-          <View style={styles.gameSelectionRow}>
-            {AVAILABLE_GAMES.map((game) => (
-              <TouchableOpacity
-                key={game.id}
-                style={[
-                  styles.gameOption,
-                  selectedGame?.id === game.id && styles.gameOptionSelected
-                ]}
-                onPress={() => setSelectedGame(game)}
-              >
-                <Image source={game.logo} style={styles.gameOptionLogo} />
-                <ThemedText style={[
-                  styles.gameOptionName,
-                  selectedGame?.id === game.id && styles.gameOptionNameSelected
-                ]}>{game.name}</ThemedText>
-              </TouchableOpacity>
-            ))}
-          </View>
-        </View>
-
-        {/* Cover Photo Card */}
-        <View style={styles.card}>
-          <ThemedText style={styles.cardTitle}>Cover Photo</ThemedText>
-          <ThemedText style={styles.cardSubtitle}>Add a cover photo to make your leaderboard stand out</ThemedText>
-
+        {/* Cover Photo */}
+        <TouchableOpacity
+          style={styles.coverPhotoContainer}
+          onPress={handlePickCoverPhoto}
+          activeOpacity={0.8}
+        >
           {coverPhoto ? (
-            <View style={styles.coverPhotoPreviewContainer}>
-              <Image source={{ uri: coverPhoto }} style={styles.coverPhotoPreview} />
-              <View style={styles.coverPhotoActions}>
-                <TouchableOpacity style={styles.coverPhotoActionButton} onPress={handlePickCoverPhoto}>
-                  <IconSymbol size={16} name="arrow.triangle.2.circlepath" color="#fff" />
-                  <ThemedText style={styles.coverPhotoActionText}>Change</ThemedText>
-                </TouchableOpacity>
-                <TouchableOpacity style={[styles.coverPhotoActionButton, styles.coverPhotoRemoveButton]} onPress={handleRemoveCoverPhoto}>
-                  <IconSymbol size={16} name="xmark" color="#ff4444" />
-                  <ThemedText style={[styles.coverPhotoActionText, { color: '#ff4444' }]}>Remove</ThemedText>
-                </TouchableOpacity>
-              </View>
-            </View>
+            <Image source={{ uri: coverPhoto }} style={styles.coverPhoto} />
           ) : (
-            <TouchableOpacity style={styles.coverPhotoPlaceholder} onPress={handlePickCoverPhoto}>
-              <IconSymbol size={32} name="photo.badge.plus" color="#666" />
-              <ThemedText style={styles.coverPhotoPlaceholderText}>Tap to add cover photo</ThemedText>
-            </TouchableOpacity>
+            <View style={styles.coverPhotoPlaceholder}>
+              <IconSymbol size={24} name="photo" color="#555" />
+              <ThemedText style={styles.coverPhotoText}>Add Cover Photo</ThemedText>
+            </View>
           )}
+          {coverPhoto && (
+            <View style={styles.coverPhotoEditBadge}>
+              <IconSymbol size={14} name="pencil" color="#fff" />
+            </View>
+          )}
+        </TouchableOpacity>
+
+        {/* Leaderboard Icon - Overlapping cover */}
+        <View style={styles.iconSection}>
+          <TouchableOpacity style={styles.leaderboardIconContainer} onPress={handlePickLeaderboardIcon}>
+            {leaderboardIcon ? (
+              <Image source={{ uri: leaderboardIcon }} style={styles.leaderboardIcon} />
+            ) : (
+              <View style={styles.leaderboardIconPlaceholder}>
+                <IconSymbol size={28} name="camera.fill" color="#555" />
+              </View>
+            )}
+            <View style={styles.leaderboardIconEditBadge}>
+              <IconSymbol size={10} name="plus" color="#fff" />
+            </View>
+          </TouchableOpacity>
         </View>
 
-        {/* Leaderboard Info Card */}
-        <View style={styles.card}>
+        {/* Form Content */}
+        <View style={styles.formContent}>
+          {/* Leaderboard Name */}
           <View style={styles.inputGroup}>
             <ThemedText style={styles.label}>Leaderboard Name</ThemedText>
             <TextInput
               style={styles.input}
-              placeholder="Enter name"
-              placeholderTextColor="#555"
-              value={partyName}
-              onChangeText={setPartyName}
+              placeholder="Enter a name for your leaderboard"
+              placeholderTextColor="#444"
+              value={leaderboardName}
+              onChangeText={setLeaderboardName}
               maxLength={30}
             />
           </View>
 
-          <View style={styles.row}>
-            <View style={[styles.inputGroup, { flex: 1 }]}>
-              <ThemedText style={styles.label}>Party ID</ThemedText>
-              <View style={styles.idInputContainer}>
-                <TextInput
-                  style={styles.idInput}
-                  placeholder="ABCDE"
-                  placeholderTextColor="#666"
-                  value={partyId}
-                  onChangeText={handlePartyIdChange}
-                  maxLength={5}
-                  autoCapitalize="characters"
-                  textAlign="left"
-                />
-                <ThemedText style={styles.idCount}>{partyId.length}/5</ThemedText>
-              </View>
+          {/* Game Selection */}
+          <View style={styles.inputGroup}>
+            <ThemedText style={styles.label}>Game</ThemedText>
+            <View style={styles.gameSelectionRow}>
+              {AVAILABLE_GAMES.map((game) => (
+                <TouchableOpacity
+                  key={game.id}
+                  style={[
+                    styles.gameOption,
+                    selectedGame?.id === game.id && styles.gameOptionSelected
+                  ]}
+                  onPress={() => setSelectedGame(game)}
+                >
+                  <Image source={game.logo} style={styles.gameOptionLogo} />
+                  <ThemedText style={[
+                    styles.gameOptionName,
+                    selectedGame?.id === game.id && styles.gameOptionNameSelected
+                  ]}>{game.name}</ThemedText>
+                </TouchableOpacity>
+              ))}
             </View>
-            <View style={[styles.inputGroup, { flex: 1 }]}>
-              <ThemedText style={styles.label}>Invite Code</ThemedText>
-              <TouchableOpacity style={styles.codeButton} onPress={handleCopyInviteCode}>
-                <ThemedText style={styles.codeText}>{inviteCode}</ThemedText>
-                <IconSymbol size={14} name="doc.on.doc" color="#888" />
+          </View>
+
+          {/* Duration */}
+          <View style={styles.inputGroup}>
+            <ThemedText style={styles.label}>Duration</ThemedText>
+            <View style={styles.durationRow}>
+              <TouchableOpacity
+                style={[
+                  styles.durationButton,
+                  selectedDuration === 10 && styles.durationButtonActive
+                ]}
+                onPress={() => handleDurationSelect(10)}
+              >
+                <ThemedText style={[
+                  styles.durationButtonText,
+                  selectedDuration === 10 && styles.durationButtonTextActive
+                ]}>10 days</ThemedText>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={[
+                  styles.durationButton,
+                  selectedDuration === 30 && styles.durationButtonActive
+                ]}
+                onPress={() => handleDurationSelect(30)}
+              >
+                <ThemedText style={[
+                  styles.durationButtonText,
+                  selectedDuration === 30 && styles.durationButtonTextActive
+                ]}>30 days</ThemedText>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={[
+                  styles.durationButton,
+                  selectedDuration !== 10 && selectedDuration !== 30 && styles.durationButtonActive
+                ]}
+                onPress={handleCustomDuration}
+              >
+                <ThemedText style={[
+                  styles.durationButtonText,
+                  selectedDuration !== 10 && selectedDuration !== 30 && styles.durationButtonTextActive
+                ]}>Custom</ThemedText>
+              </TouchableOpacity>
+            </View>
+            <View style={styles.endDateRow}>
+              <ThemedText style={styles.endDateLabel}>Ends on</ThemedText>
+              <ThemedText style={styles.endDateValue}>{formatDateShort(endDate)}</ThemedText>
+            </View>
+            {showEndDatePicker && (
+              <DateTimePicker
+                value={endDate}
+                mode="date"
+                display={Platform.OS === 'ios' ? 'spinner' : 'default'}
+                onChange={handleEndDateChange}
+                minimumDate={startDate}
+                textColor="#fff"
+                themeVariant="dark"
+              />
+            )}
+          </View>
+
+          {/* Challenge Type */}
+          <View style={styles.inputGroup}>
+            <ThemedText style={styles.label}>Challenge Type</ThemedText>
+            <View style={styles.challengeRow}>
+              <TouchableOpacity
+                style={[
+                  styles.challengeButton,
+                  challengeType === 'climbing' && styles.challengeButtonActive
+                ]}
+                onPress={() => setChallengeType('climbing')}
+              >
+                <IconSymbol
+                  size={18}
+                  name="chart.line.uptrend.xyaxis"
+                  color={challengeType === 'climbing' ? '#fff' : '#666'}
+                />
+                <View style={styles.challengeInfo}>
+                  <ThemedText style={[
+                    styles.challengeTitle,
+                    challengeType === 'climbing' && styles.challengeTitleActive
+                  ]}>Climbing</ThemedText>
+                  <ThemedText style={[
+                    styles.challengeDesc,
+                    challengeType === 'climbing' && styles.challengeDescActive
+                  ]}>Most LP/RR gained</ThemedText>
+                </View>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                style={[
+                  styles.challengeButton,
+                  challengeType === 'rank' && styles.challengeButtonActive
+                ]}
+                onPress={() => setChallengeType('rank')}
+              >
+                <IconSymbol
+                  size={18}
+                  name="trophy.fill"
+                  color={challengeType === 'rank' ? '#fff' : '#666'}
+                />
+                <View style={styles.challengeInfo}>
+                  <ThemedText style={[
+                    styles.challengeTitle,
+                    challengeType === 'rank' && styles.challengeTitleActive
+                  ]}>Rank</ThemedText>
+                  <ThemedText style={[
+                    styles.challengeDesc,
+                    challengeType === 'rank' && styles.challengeDescActive
+                  ]}>Highest rank wins</ThemedText>
+                </View>
               </TouchableOpacity>
             </View>
           </View>
-        </View>
 
-        {/* Duration Card */}
-        <View style={styles.card}>
-          <ThemedText style={styles.cardTitle}>Duration</ThemedText>
-          <View style={styles.durationRow}>
-            <TouchableOpacity
-              style={[
-                styles.durationButton,
-                selectedDuration === 10 && styles.durationButtonActive
-              ]}
-              onPress={() => handleDurationSelect(10)}
-            >
-              <ThemedText style={[
-                styles.durationButtonText,
-                selectedDuration === 10 && styles.durationButtonTextActive
-              ]}>10 days</ThemedText>
-            </TouchableOpacity>
-            <TouchableOpacity
-              style={[
-                styles.durationButton,
-                selectedDuration === 30 && styles.durationButtonActive
-              ]}
-              onPress={() => handleDurationSelect(30)}
-            >
-              <ThemedText style={[
-                styles.durationButtonText,
-                selectedDuration === 30 && styles.durationButtonTextActive
-              ]}>30 days</ThemedText>
-            </TouchableOpacity>
-            <TouchableOpacity
-              style={[
-                styles.durationButton,
-                selectedDuration !== 10 && selectedDuration !== 30 && styles.durationButtonActive
-              ]}
-              onPress={handleCustomDuration}
-            >
-              <ThemedText style={[
-                styles.durationButtonText,
-                selectedDuration !== 10 && selectedDuration !== 30 && styles.durationButtonTextActive
-              ]}>Custom</ThemedText>
+          {/* Invite Code */}
+          <View style={styles.inputGroup}>
+            <ThemedText style={styles.label}>Invite Code</ThemedText>
+            <TouchableOpacity style={styles.codeButton} onPress={handleCopyInviteCode}>
+              <ThemedText style={styles.codeText}>{inviteCode}</ThemedText>
+              <IconSymbol size={16} name="doc.on.doc" color="#666" />
             </TouchableOpacity>
           </View>
-          <View style={styles.endDateRow}>
-            <ThemedText style={styles.endDateLabel}>Ends on</ThemedText>
-            <ThemedText style={styles.endDateValue}>{formatDateShort(endDate)}</ThemedText>
-          </View>
-          {showEndDatePicker && (
-            <DateTimePicker
-              value={endDate}
-              mode="date"
-              display={Platform.OS === 'ios' ? 'spinner' : 'default'}
-              onChange={handleEndDateChange}
-              minimumDate={startDate}
-              textColor="#fff"
-              themeVariant="dark"
-            />
-          )}
-        </View>
 
-        {/* Challenge Type Card */}
-        <View style={styles.card}>
-          <ThemedText style={styles.cardTitle}>Challenge Type</ThemedText>
-          <View style={styles.challengeRow}>
-            <TouchableOpacity
-              style={[
-                styles.challengeButton,
-                challengeType === 'climbing' && styles.challengeButtonActive
-              ]}
-              onPress={() => setChallengeType('climbing')}
-            >
-              <IconSymbol
-                size={18}
-                name="chart.line.uptrend.xyaxis"
-                color={challengeType === 'climbing' ? '#fff' : '#888'}
+          {/* Invite Members */}
+          <View style={styles.inputGroup}>
+            <View style={styles.labelRow}>
+              <ThemedText style={styles.label}>Invite Members</ThemedText>
+              {selectedFollowers.length > 0 && (
+                <View style={styles.selectedBadge}>
+                  <ThemedText style={styles.selectedBadgeText}>{selectedFollowers.length}</ThemedText>
+                </View>
+              )}
+            </View>
+
+            {!loadingFollowers && followers.length > 0 && (
+              <TextInput
+                style={styles.searchInput}
+                placeholder="Search followers..."
+                placeholderTextColor="#444"
+                value={searchQuery}
+                onChangeText={setSearchQuery}
               />
-              <View style={styles.challengeInfo}>
-                <ThemedText style={[
-                  styles.challengeTitle,
-                  challengeType === 'climbing' && styles.challengeTitleActive
-                ]}>Climbing</ThemedText>
-                <ThemedText style={[
-                  styles.challengeDesc,
-                  challengeType === 'climbing' && styles.challengeDescActive
-                ]}>Most LP/RR gained</ThemedText>
-              </View>
-            </TouchableOpacity>
+            )}
 
-            <TouchableOpacity
-              style={[
-                styles.challengeButton,
-                challengeType === 'rank' && styles.challengeButtonActive
-              ]}
-              onPress={() => setChallengeType('rank')}
-            >
-              <IconSymbol
-                size={18}
-                name="trophy.fill"
-                color={challengeType === 'rank' ? '#fff' : '#888'}
-              />
-              <View style={styles.challengeInfo}>
-                <ThemedText style={[
-                  styles.challengeTitle,
-                  challengeType === 'rank' && styles.challengeTitleActive
-                ]}>Rank</ThemedText>
-                <ThemedText style={[
-                  styles.challengeDesc,
-                  challengeType === 'rank' && styles.challengeDescActive
-                ]}>Highest rank wins</ThemedText>
+            {loadingFollowers ? (
+              <View style={styles.loadingContainer}>
+                <ActivityIndicator size="small" color="#c42743" />
               </View>
-            </TouchableOpacity>
-          </View>
-        </View>
-
-        {/* Invite Members Card */}
-        <View style={styles.card}>
-          <View style={styles.cardHeader}>
-            <ThemedText style={styles.cardTitle}>Invite Members</ThemedText>
-            {selectedFollowers.length > 0 && (
-              <View style={styles.selectedBadge}>
-                <ThemedText style={styles.selectedBadgeText}>{selectedFollowers.length}</ThemedText>
+            ) : followers.length === 0 ? (
+              <ThemedText style={styles.emptyText}>No followers to invite</ThemedText>
+            ) : filteredFollowers.length === 0 ? (
+              <ThemedText style={styles.emptyText}>No results</ThemedText>
+            ) : (
+              <View style={styles.followersList}>
+                {filteredFollowers.map((follower) => (
+                  <TouchableOpacity
+                    key={follower.id}
+                    style={[
+                      styles.followerItem,
+                      selectedFollowers.includes(follower.id) && styles.followerItemSelected
+                    ]}
+                    onPress={() => toggleFollower(follower.id)}
+                  >
+                    <View style={styles.followerAvatar}>
+                      {follower.avatar && follower.avatar.startsWith('http') ? (
+                        <Image source={{ uri: follower.avatar }} style={styles.followerAvatarImage} />
+                      ) : (
+                        <ThemedText style={styles.followerAvatarText}>
+                          {follower.username[0].toUpperCase()}
+                        </ThemedText>
+                      )}
+                    </View>
+                    <ThemedText style={styles.followerName}>{follower.username}</ThemedText>
+                    <View style={[
+                      styles.checkCircle,
+                      selectedFollowers.includes(follower.id) && styles.checkCircleSelected
+                    ]}>
+                      {selectedFollowers.includes(follower.id) && (
+                        <IconSymbol size={12} name="checkmark" color="#fff" />
+                      )}
+                    </View>
+                  </TouchableOpacity>
+                ))}
               </View>
             )}
           </View>
 
-          {!loadingFollowers && followers.length > 0 && (
-            <TextInput
-              style={styles.searchInput}
-              placeholder="Search followers..."
-              placeholderTextColor="#555"
-              value={searchQuery}
-              onChangeText={setSearchQuery}
-            />
-          )}
-
-          {loadingFollowers ? (
-            <View style={styles.loadingContainer}>
-              <ActivityIndicator size="small" color="#c42743" />
-            </View>
-          ) : followers.length === 0 ? (
-            <View style={styles.emptyContainer}>
-              <ThemedText style={styles.emptyText}>No followers to invite</ThemedText>
-            </View>
-          ) : filteredFollowers.length === 0 ? (
-            <View style={styles.emptyContainer}>
-              <ThemedText style={styles.emptyText}>No results</ThemedText>
-            </View>
-          ) : (
-            <View style={styles.followersList}>
-              {filteredFollowers.map((follower) => (
-                <TouchableOpacity
-                  key={follower.id}
-                  style={[
-                    styles.followerItem,
-                    selectedFollowers.includes(follower.id) && styles.followerItemSelected
-                  ]}
-                  onPress={() => toggleFollower(follower.id)}
-                >
-                  <View style={styles.followerAvatar}>
-                    {follower.avatar && follower.avatar.startsWith('http') ? (
-                      <Image source={{ uri: follower.avatar }} style={styles.followerAvatarImage} />
-                    ) : (
-                      <ThemedText style={styles.followerAvatarText}>
-                        {follower.username[0].toUpperCase()}
-                      </ThemedText>
-                    )}
-                  </View>
-                  <ThemedText style={styles.followerName}>{follower.username}</ThemedText>
-                  {selectedFollowers.includes(follower.id) && (
-                    <IconSymbol size={18} name="checkmark.circle.fill" color="#c42743" />
-                  )}
-                </TouchableOpacity>
-              ))}
-            </View>
-          )}
+          {/* Create Button */}
+          <TouchableOpacity
+            style={[styles.createButton, uploading && styles.createButtonDisabled]}
+            onPress={handleCreateLeaderboard}
+            disabled={uploading}
+          >
+            {uploading ? (
+              <View style={styles.createButtonLoading}>
+                <ActivityIndicator size="small" color="#fff" />
+                <ThemedText style={styles.createButtonText}>Creating...</ThemedText>
+              </View>
+            ) : (
+              <ThemedText style={styles.createButtonText}>Create Leaderboard</ThemedText>
+            )}
+          </TouchableOpacity>
         </View>
-
-        {/* Create Button */}
-        <TouchableOpacity
-          style={[styles.createButton, uploadingCover && styles.createButtonDisabled]}
-          onPress={handleCreateParty}
-          disabled={uploadingCover}
-        >
-          {uploadingCover ? (
-            <View style={styles.createButtonLoading}>
-              <ActivityIndicator size="small" color="#fff" />
-              <ThemedText style={styles.createButtonText}>Uploading...</ThemedText>
-            </View>
-          ) : (
-            <ThemedText style={styles.createButtonText}>Create Leaderboard</ThemedText>
-          )}
-        </TouchableOpacity>
 
         <View style={styles.bottomSpacer} />
       </ScrollView>
@@ -685,177 +695,149 @@ const styles = StyleSheet.create({
   },
   scrollView: {
     flex: 1,
-    paddingHorizontal: 16,
   },
-  card: {
+  // Cover Photo
+  coverPhotoContainer: {
+    width: screenWidth,
+    height: 140,
     backgroundColor: '#1a1a1a',
-    borderRadius: 14,
-    padding: 14,
-    marginBottom: 12,
+    position: 'relative',
   },
-  cardHeader: {
+  coverPhoto: {
+    width: '100%',
+    height: '100%',
+  },
+  coverPhotoPlaceholder: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+  },
+  coverPhotoText: {
+    fontSize: 13,
+    color: '#555',
+  },
+  coverPhotoEditBadge: {
+    position: 'absolute',
+    bottom: 10,
+    right: 10,
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    backgroundColor: 'rgba(0,0,0,0.6)',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  // Leaderboard Icon
+  iconSection: {
+    alignItems: 'center',
+    marginTop: -40,
+    marginBottom: 16,
+  },
+  leaderboardIconContainer: {
+    position: 'relative',
+  },
+  leaderboardIcon: {
+    width: 80,
+    height: 80,
+    borderRadius: 20,
+    borderWidth: 4,
+    borderColor: '#0f0f0f',
+  },
+  leaderboardIconPlaceholder: {
+    width: 80,
+    height: 80,
+    borderRadius: 20,
+    backgroundColor: '#1a1a1a',
+    borderWidth: 4,
+    borderColor: '#0f0f0f',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  leaderboardIconEditBadge: {
+    position: 'absolute',
+    bottom: -2,
+    right: -2,
+    width: 24,
+    height: 24,
+    borderRadius: 12,
+    backgroundColor: '#c42743',
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 2,
+    borderColor: '#0f0f0f',
+  },
+  // Form
+  formContent: {
+    paddingHorizontal: 20,
+  },
+  inputGroup: {
+    marginBottom: 24,
+  },
+  labelRow: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
     marginBottom: 10,
   },
-  cardTitle: {
-    fontSize: 14,
+  label: {
+    fontSize: 13,
     fontWeight: '600',
     color: '#888',
-    marginBottom: 4,
+    marginBottom: 10,
     textTransform: 'uppercase',
     letterSpacing: 0.5,
   },
-  cardSubtitle: {
-    fontSize: 12,
-    color: '#555',
-    marginBottom: 12,
-  },
-  coverPhotoPreviewContainer: {
-    borderRadius: 10,
-    overflow: 'hidden',
-  },
-  coverPhotoPreview: {
-    width: '100%',
-    height: 140,
-    borderRadius: 10,
-  },
-  coverPhotoActions: {
-    flexDirection: 'row',
-    gap: 10,
-    marginTop: 10,
-  },
-  coverPhotoActionButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-    paddingVertical: 8,
-    paddingHorizontal: 14,
-    backgroundColor: '#252525',
-    borderRadius: 8,
-  },
-  coverPhotoRemoveButton: {
-    backgroundColor: 'rgba(255, 68, 68, 0.1)',
-  },
-  coverPhotoActionText: {
-    fontSize: 13,
-    fontWeight: '500',
+  input: {
+    backgroundColor: '#1a1a1a',
+    borderRadius: 12,
+    padding: 14,
+    fontSize: 16,
     color: '#fff',
   },
-  coverPhotoPlaceholder: {
-    width: '100%',
-    height: 120,
-    backgroundColor: '#252525',
-    borderRadius: 10,
-    borderWidth: 2,
-    borderColor: '#333',
-    borderStyle: 'dashed',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 8,
-  },
-  coverPhotoPlaceholderText: {
-    fontSize: 13,
-    color: '#666',
-  },
+  // Game Selection
   gameSelectionRow: {
     flexDirection: 'row',
-    gap: 10,
+    gap: 12,
   },
   gameOption: {
     flex: 1,
-    backgroundColor: '#252525',
-    borderRadius: 10,
-    padding: 12,
+    flexDirection: 'row',
     alignItems: 'center',
+    gap: 10,
+    backgroundColor: '#1a1a1a',
+    borderRadius: 12,
+    padding: 14,
     borderWidth: 1.5,
     borderColor: 'transparent',
   },
   gameOptionSelected: {
-    backgroundColor: '#2a2020',
+    backgroundColor: '#1f1518',
     borderColor: '#c42743',
   },
   gameOptionLogo: {
-    width: 40,
-    height: 40,
-    marginBottom: 8,
+    width: 28,
+    height: 28,
   },
   gameOptionName: {
-    fontSize: 12,
+    fontSize: 13,
     fontWeight: '600',
-    color: '#888',
-    textAlign: 'center',
+    color: '#666',
   },
   gameOptionNameSelected: {
     color: '#fff',
   },
-  inputGroup: {
-    marginBottom: 12,
-  },
-  label: {
-    fontSize: 12,
-    fontWeight: '500',
-    color: '#666',
-    marginBottom: 6,
-  },
-  input: {
-    backgroundColor: '#252525',
-    borderRadius: 8,
-    padding: 12,
-    fontSize: 15,
-    color: '#fff',
-  },
-  row: {
-    flexDirection: 'row',
-    gap: 10,
-  },
-  idInputContainer: {
-    backgroundColor: '#252525',
-    borderRadius: 8,
-    padding: 12,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-  },
-  idInput: {
-    flex: 1,
-    fontSize: 15,
-    fontWeight: '600',
-    color: '#fff',
-    letterSpacing: 1,
-    padding: 0,
-    margin: 0,
-    minHeight: 20,
-  },
-  idCount: {
-    fontSize: 11,
-    color: '#555',
-  },
-  codeButton: {
-    backgroundColor: '#252525',
-    borderRadius: 8,
-    padding: 12,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-  },
-  codeText: {
-    fontSize: 15,
-    fontWeight: '600',
-    color: '#c42743',
-    letterSpacing: 2,
-  },
+  // Duration
   durationRow: {
     flexDirection: 'row',
-    gap: 8,
+    gap: 10,
     marginBottom: 12,
   },
   durationButton: {
     flex: 1,
-    backgroundColor: '#252525',
-    borderRadius: 8,
-    paddingVertical: 10,
+    backgroundColor: '#1a1a1a',
+    borderRadius: 10,
+    paddingVertical: 12,
     alignItems: 'center',
     borderWidth: 1.5,
     borderColor: 'transparent',
@@ -867,7 +849,7 @@ const styles = StyleSheet.create({
   durationButtonText: {
     fontSize: 13,
     fontWeight: '600',
-    color: '#888',
+    color: '#666',
   },
   durationButtonTextActive: {
     color: '#fff',
@@ -876,9 +858,9 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    backgroundColor: '#252525',
-    borderRadius: 8,
-    padding: 12,
+    backgroundColor: '#1a1a1a',
+    borderRadius: 10,
+    padding: 14,
   },
   endDateLabel: {
     fontSize: 13,
@@ -889,15 +871,16 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     color: '#fff',
   },
+  // Challenge Type
   challengeRow: {
     flexDirection: 'row',
     gap: 10,
   },
   challengeButton: {
     flex: 1,
-    backgroundColor: '#252525',
-    borderRadius: 10,
-    padding: 12,
+    backgroundColor: '#1a1a1a',
+    borderRadius: 12,
+    padding: 14,
     flexDirection: 'row',
     alignItems: 'center',
     gap: 10,
@@ -914,26 +897,42 @@ const styles = StyleSheet.create({
   challengeTitle: {
     fontSize: 14,
     fontWeight: '600',
-    color: '#fff',
+    color: '#888',
   },
   challengeTitleActive: {
     color: '#fff',
   },
   challengeDesc: {
     fontSize: 11,
-    color: '#666',
-    marginTop: 1,
+    color: '#555',
+    marginTop: 2,
   },
   challengeDescActive: {
     color: 'rgba(255,255,255,0.8)',
   },
+  // Invite Code
+  codeButton: {
+    backgroundColor: '#1a1a1a',
+    borderRadius: 12,
+    padding: 14,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+  codeText: {
+    fontSize: 18,
+    fontWeight: '700',
+    color: '#c42743',
+    letterSpacing: 3,
+  },
+  // Search
   searchInput: {
-    backgroundColor: '#252525',
-    borderRadius: 8,
-    padding: 10,
-    fontSize: 14,
+    backgroundColor: '#1a1a1a',
+    borderRadius: 12,
+    padding: 12,
+    fontSize: 15,
     color: '#fff',
-    marginBottom: 10,
+    marginBottom: 12,
   },
   selectedBadge: {
     backgroundColor: '#c42743',
@@ -950,35 +949,30 @@ const styles = StyleSheet.create({
     paddingVertical: 20,
     alignItems: 'center',
   },
-  emptyContainer: {
-    paddingVertical: 16,
-    alignItems: 'center',
-  },
   emptyText: {
-    fontSize: 13,
-    color: '#555',
+    fontSize: 14,
+    color: '#444',
   },
+  // Followers
   followersList: {
-    gap: 6,
+    gap: 8,
   },
   followerItem: {
     flexDirection: 'row',
     alignItems: 'center',
-    padding: 10,
-    backgroundColor: '#252525',
-    borderRadius: 8,
-    gap: 10,
+    padding: 12,
+    backgroundColor: '#1a1a1a',
+    borderRadius: 12,
+    gap: 12,
   },
   followerItemSelected: {
-    backgroundColor: '#2a2a2a',
-    borderWidth: 1,
-    borderColor: '#c42743',
+    backgroundColor: '#1f1518',
   },
   followerAvatar: {
-    width: 32,
-    height: 32,
-    borderRadius: 16,
-    backgroundColor: '#333',
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: '#252525',
     alignItems: 'center',
     justifyContent: 'center',
     overflow: 'hidden',
@@ -988,26 +982,42 @@ const styles = StyleSheet.create({
     height: '100%',
   },
   followerAvatarText: {
-    fontSize: 14,
+    fontSize: 16,
     fontWeight: '600',
-    color: '#888',
+    color: '#666',
   },
   followerName: {
     flex: 1,
-    fontSize: 14,
+    fontSize: 15,
     fontWeight: '500',
     color: '#fff',
   },
-  createButton: {
-    backgroundColor: '#c42743',
+  checkCircle: {
+    width: 24,
+    height: 24,
     borderRadius: 12,
+    borderWidth: 2,
+    borderColor: '#333',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  checkCircleSelected: {
+    backgroundColor: '#c42743',
+    borderColor: '#c42743',
+  },
+  // Create Button
+  createButton: {
+    backgroundColor: '#1a1a1a',
+    borderRadius: 14,
     padding: 16,
     alignItems: 'center',
-    marginTop: 4,
+    marginTop: 8,
+    borderWidth: 1,
+    borderColor: '#333',
   },
   createButtonText: {
     fontSize: 16,
-    fontWeight: '700',
+    fontWeight: '600',
     color: '#fff',
   },
   createButtonDisabled: {
