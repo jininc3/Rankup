@@ -14,7 +14,7 @@ const https = require('https');
 // ============================================
 // CONFIGURATION
 // ============================================
-const API_KEY = 'RGAPI-3bb3e903-cce1-4c68-9cc9-33a603feeb00'; // Replace with your Riot API key
+const API_KEY = 'RGAPI-ea77cbc8-4af4-497e-abb8-ecc732886483'; // Replace with your Riot API key
 const TEST_GAME_NAME = 'Kashmoula';
 const TEST_TAG_LINE = 'money';
 const REGION = 'euw1'; // EUW server

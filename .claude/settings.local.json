@@ -16,7 +16,10 @@
       "Bash(wc:*)",
       "Bash(firebase deploy:*)",
       "Bash(git mv:*)",
-      "Bash(eas build:*)"
+      "Bash(eas build:*)",
+      "Bash(npx expo install:*)",
+      "Bash(curl:*)",
+      "WebFetch(domain:www.riotgames.com)"
     ],
     "deny": [],
     "ask": []
