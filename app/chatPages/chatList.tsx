@@ -10,11 +10,14 @@ import {
   Image,
   ActivityIndicator,
   TextInput,
+  Modal,
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import { useAuth } from '@/contexts/AuthContext';
-import { subscribeToUserChats, Chat } from '@/services/chatService';
+import { subscribeToUserChats, Chat, createOrGetChat } from '@/services/chatService';
+import { getFollowing, FollowingData } from '@/services/followService';
 import { Timestamp } from 'firebase/firestore';
+import { LinearGradient } from 'expo-linear-gradient';
 
 export default function ChatListScreen() {
   const router = useRouter();
@@ -23,6 +26,14 @@ export default function ChatListScreen() {
   const [filteredChats, setFilteredChats] = useState<Chat[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
+
+  // New message modal state
+  const [showNewMessageModal, setShowNewMessageModal] = useState(false);
+  const [following, setFollowing] = useState<FollowingData[]>([]);
+  const [filteredFollowing, setFilteredFollowing] = useState<FollowingData[]>([]);
+  const [newMessageSearch, setNewMessageSearch] = useState('');
+  const [loadingFollowing, setLoadingFollowing] = useState(false);
+  const [creatingChat, setCreatingChat] = useState(false);
 
   // Subscribe to user's chats
   useEffect(() => {
@@ -51,6 +62,39 @@ export default function ChatListScreen() {
     }
   }, [searchQuery, chats]);
 
+  // Fetch following list when modal opens
+  useEffect(() => {
+    if (showNewMessageModal && currentUser?.id) {
+      fetchFollowing();
+    }
+  }, [showNewMessageModal, currentUser?.id]);
+
+  // Filter following based on search
+  useEffect(() => {
+    if (newMessageSearch.trim() === '') {
+      setFilteredFollowing(following);
+    } else {
+      const filtered = following.filter((user) =>
+        user.followingUsername.toLowerCase().includes(newMessageSearch.toLowerCase())
+      );
+      setFilteredFollowing(filtered);
+    }
+  }, [newMessageSearch, following]);
+
+  const fetchFollowing = async () => {
+    if (!currentUser?.id) return;
+    setLoadingFollowing(true);
+    try {
+      const followingList = await getFollowing(currentUser.id);
+      setFollowing(followingList);
+      setFilteredFollowing(followingList);
+    } catch (error) {
+      console.error('Error fetching following:', error);
+    } finally {
+      setLoadingFollowing(false);
+    }
+  };
+
   const getOtherUser = (chat: Chat) => {
     const otherUserId = chat.participants.find((id) => id !== currentUser?.id);
     return otherUserId ? chat.participantDetails[otherUserId] : null;
@@ -59,33 +103,19 @@ export default function ChatListScreen() {
   const formatTime = (timestamp: Timestamp): string => {
     const date = timestamp.toDate();
     const now = new Date();
-    const diffInHours = Math.floor((now.getTime() - date.getTime()) / (1000 * 60 * 60));
+    const diffInMs = now.getTime() - date.getTime();
+    const diffInMinutes = Math.floor(diffInMs / (1000 * 60));
+    const diffInHours = Math.floor(diffInMs / (1000 * 60 * 60));
+    const diffInDays = Math.floor(diffInMs / (1000 * 60 * 60 * 24));
 
-    if (diffInHours < 1) {
-      // Less than an hour - show minutes
-      const diffInMinutes = Math.floor((now.getTime() - date.getTime()) / (1000 * 60));
-      if (diffInMinutes < 1) return 'Just now';
-      return `${diffInMinutes}m`;
-    } else if (diffInHours < 24) {
-      // Today - show time
-      return date.toLocaleTimeString('en-US', {
-        hour: 'numeric',
-        minute: '2-digit',
-        hour12: true,
-      });
-    } else if (diffInHours < 48) {
-      // Yesterday
-      return 'Yesterday';
-    } else if (diffInHours < 168) {
-      // This week - show day
-      return date.toLocaleDateString('en-US', { weekday: 'short' });
-    } else {
-      // Older - show date
-      return date.toLocaleDateString('en-US', {
-        month: 'short',
-        day: 'numeric',
-      });
+    if (diffInMinutes < 1) return 'now';
+    if (diffInMinutes < 60) return `${diffInMinutes}m`;
+    if (diffInHours < 24) return `${diffInHours}h`;
+    if (diffInDays === 1) return 'Yesterday';
+    if (diffInDays < 7) {
+      return date.toLocaleDateString('en-US', { weekday: 'long' });
     }
+    return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
   };
 
   const handleChatPress = (chat: Chat) => {
@@ -105,6 +135,39 @@ export default function ChatListScreen() {
     });
   };
 
+  const handleSelectUser = async (user: FollowingData) => {
+    if (!currentUser?.id || creatingChat) return;
+
+    setCreatingChat(true);
+    try {
+      const chatId = await createOrGetChat(
+        currentUser.id,
+        currentUser.username || '',
+        currentUser.avatar,
+        user.followingId,
+        user.followingUsername,
+        user.followingAvatar
+      );
+
+      setShowNewMessageModal(false);
+      setNewMessageSearch('');
+
+      router.push({
+        pathname: '/chatPages/chatScreen',
+        params: {
+          chatId,
+          otherUserId: user.followingId,
+          otherUsername: user.followingUsername,
+          otherUserAvatar: user.followingAvatar || '',
+        },
+      });
+    } catch (error) {
+      console.error('Error creating chat:', error);
+    } finally {
+      setCreatingChat(false);
+    }
+  };
+
   const renderChat = ({ item }: { item: Chat }) => {
     const otherUser = getOtherUser(item);
     if (!otherUser) return null;
@@ -112,52 +175,106 @@ export default function ChatListScreen() {
     const unreadCount = currentUser?.id ? item.unreadCount[currentUser.id] || 0 : 0;
     const isUnread = unreadCount > 0;
 
+    // Format message preview
+    let messagePreview = '';
+    if (isUnread && unreadCount > 1) {
+      messagePreview = `${unreadCount}+ new messages`;
+    } else if (item.lastMessage) {
+      if (item.lastMessageSenderId === currentUser?.id) {
+        messagePreview = `You: ${item.lastMessage}`;
+      } else {
+        messagePreview = item.lastMessage;
+      }
+    } else {
+      messagePreview = 'Start a conversation';
+    }
+
     return (
       <TouchableOpacity
-        style={[styles.chatItem, isUnread && styles.unreadChatItem]}
+        style={styles.chatItem}
         onPress={() => handleChatPress(item)}
-        activeOpacity={0.7}
+        activeOpacity={0.6}
       >
-        <View style={styles.chatAvatar}>
-          {otherUser.avatar && otherUser.avatar.startsWith('http') ? (
-            <Image source={{ uri: otherUser.avatar }} style={styles.avatarImage} />
+        {/* Avatar with optional story ring */}
+        <View style={styles.avatarContainer}>
+          {isUnread ? (
+            <LinearGradient
+              colors={['#F58529', '#DD2A7B', '#8134AF', '#515BD4']}
+              start={{ x: 0, y: 0 }}
+              end={{ x: 1, y: 1 }}
+              style={styles.storyRing}
+            >
+              <View style={styles.avatarInner}>
+                {otherUser.avatar && otherUser.avatar.startsWith('http') ? (
+                  <Image source={{ uri: otherUser.avatar }} style={styles.avatarImage} />
+                ) : (
+                  <View style={styles.avatarPlaceholder}>
+                    <ThemedText style={styles.avatarInitial}>
+                      {otherUser.username?.[0]?.toUpperCase() || 'U'}
+                    </ThemedText>
+                  </View>
+                )}
+              </View>
+            </LinearGradient>
           ) : (
-            <ThemedText style={styles.avatarInitial}>
-              {otherUser.username?.[0]?.toUpperCase() || 'U'}
-            </ThemedText>
+            <View style={styles.avatarWrapper}>
+              {otherUser.avatar && otherUser.avatar.startsWith('http') ? (
+                <Image source={{ uri: otherUser.avatar }} style={styles.avatarImage} />
+              ) : (
+                <View style={styles.avatarPlaceholder}>
+                  <ThemedText style={styles.avatarInitial}>
+                    {otherUser.username?.[0]?.toUpperCase() || 'U'}
+                  </ThemedText>
+                </View>
+              )}
+            </View>
           )}
         </View>
 
+        {/* Chat Content */}
         <View style={styles.chatContent}>
-          <View style={styles.chatHeader}>
-            <ThemedText style={[styles.username, isUnread && styles.unreadText]}>
-              {otherUser.username}
-            </ThemedText>
-            <ThemedText style={styles.timestamp}>
-              {item.lastMessageTimestamp && formatTime(item.lastMessageTimestamp)}
-            </ThemedText>
-          </View>
-
-          <View style={styles.messageRow}>
-            <ThemedText
-              style={[styles.lastMessage, isUnread && styles.unreadText]}
-              numberOfLines={1}
-            >
-              {item.lastMessageSenderId === currentUser?.id && 'You: '}
-              {item.lastMessage || 'Start a conversation'}
-            </ThemedText>
-            {isUnread && (
-              <View style={styles.unreadBadge}>
-                <ThemedText style={styles.unreadBadgeText}>
-                  {unreadCount > 9 ? '9+' : unreadCount}
-                </ThemedText>
-              </View>
+          <ThemedText style={[styles.username, isUnread && styles.unreadUsername]}>
+            {otherUser.username}
+          </ThemedText>
+          <ThemedText style={[styles.messagePreview, isUnread && styles.unreadMessage]} numberOfLines={1}>
+            {messagePreview}
+            {item.lastMessageTimestamp && (
+              <ThemedText style={styles.timestamp}> · {formatTime(item.lastMessageTimestamp)}</ThemedText>
             )}
-          </View>
+          </ThemedText>
+        </View>
+
+        {/* Right side - unread dot */}
+        <View style={styles.rightSection}>
+          {isUnread && <View style={styles.unreadDot} />}
         </View>
       </TouchableOpacity>
     );
   };
+
+  const renderSuggestedUser = ({ item }: { item: FollowingData }) => (
+    <TouchableOpacity
+      style={styles.suggestedUserItem}
+      onPress={() => handleSelectUser(item)}
+      activeOpacity={0.6}
+      disabled={creatingChat}
+    >
+      <View style={styles.suggestedAvatarWrapper}>
+        {item.followingAvatar && item.followingAvatar.startsWith('http') ? (
+          <Image source={{ uri: item.followingAvatar }} style={styles.suggestedAvatar} />
+        ) : (
+          <View style={styles.suggestedAvatarPlaceholder}>
+            <ThemedText style={styles.suggestedAvatarInitial}>
+              {item.followingUsername?.[0]?.toUpperCase() || 'U'}
+            </ThemedText>
+          </View>
+        )}
+      </View>
+      <View style={styles.suggestedUserInfo}>
+        <ThemedText style={styles.suggestedUsername}>{item.followingUsername}</ThemedText>
+      </View>
+    </TouchableOpacity>
+  );
 
   return (
     <ThemedView style={styles.container}>
@@ -166,34 +283,35 @@ export default function ChatListScreen() {
         <TouchableOpacity style={styles.backButton} onPress={() => router.back()}>
           <IconSymbol size={24} name="chevron.left" color="#fff" />
         </TouchableOpacity>
-        <ThemedText style={styles.headerTitle}>{currentUser?.username || 'User'}</ThemedText>
-        <View style={styles.headerSpacer} />
+        <ThemedText style={styles.headerUsername}>{currentUser?.username || 'User'}</ThemedText>
+        <TouchableOpacity style={styles.composeButton} onPress={() => setShowNewMessageModal(true)}>
+          <IconSymbol size={24} name="square.and.pencil" color="#fff" />
+        </TouchableOpacity>
       </View>
 
       {/* Search Bar */}
       <View style={styles.searchContainer}>
         <View style={styles.searchBar}>
-          <IconSymbol size={18} name="magnifyingglass" color="#72767d" />
+          <IconSymbol size={16} name="magnifyingglass" color="#8e8e8e" />
           <TextInput
             style={styles.searchInput}
-            placeholder="Search messages..."
-            placeholderTextColor="#72767d"
+            placeholder="Search"
+            placeholderTextColor="#8e8e8e"
             value={searchQuery}
             onChangeText={setSearchQuery}
           />
-          {searchQuery.length > 0 && (
-            <TouchableOpacity onPress={() => setSearchQuery('')}>
-              <IconSymbol size={18} name="xmark.circle.fill" color="#72767d" />
-            </TouchableOpacity>
-          )}
         </View>
+      </View>
+
+      {/* Messages Header */}
+      <View style={styles.messagesHeader}>
+        <ThemedText style={styles.messagesTitle}>Messages</ThemedText>
       </View>
 
       {/* Chat List */}
       {loading ? (
         <View style={styles.loadingContainer}>
-          <ActivityIndicator size="large" color="#c42743" />
-          <ThemedText style={styles.loadingText}>Loading chats...</ThemedText>
+          <ActivityIndicator size="large" color="#fff" />
         </View>
       ) : chats.length > 0 ? (
         <FlatList
@@ -202,32 +320,94 @@ export default function ChatListScreen() {
           keyExtractor={(item) => item.id}
           showsVerticalScrollIndicator={false}
           contentContainerStyle={styles.chatList}
-          ListHeaderComponent={
-            <View style={styles.listHeader}>
-              <ThemedText style={styles.listHeaderText}>Messages</ThemedText>
-            </View>
-          }
           ListEmptyComponent={
             searchQuery.trim() !== '' ? (
               <View style={styles.emptySearchState}>
-                <IconSymbol size={48} name="magnifyingglass" color="#72767d" />
                 <ThemedText style={styles.emptySearchText}>No results found</ThemedText>
-                <ThemedText style={styles.emptySearchSubtext}>
-                  Try searching for a different username
-                </ThemedText>
               </View>
             ) : null
           }
         />
       ) : (
         <View style={styles.emptyState}>
-          <IconSymbol size={64} name="bubble.left.and.bubble.right" color="#72767d" />
-          <ThemedText style={styles.emptyText}>No messages yet</ThemedText>
+          <IconSymbol size={64} name="bubble.left.and.bubble.right" color="#363636" />
+          <ThemedText style={styles.emptyTitle}>No messages yet</ThemedText>
           <ThemedText style={styles.emptySubtext}>
-            Start a conversation by visiting a user's profile
+            Start a conversation by tapping the compose button
           </ThemedText>
         </View>
       )}
+
+      {/* New Message Modal */}
+      <Modal
+        visible={showNewMessageModal}
+        animationType="slide"
+        presentationStyle="pageSheet"
+        onRequestClose={() => setShowNewMessageModal(false)}
+      >
+        <View style={styles.modalContainer}>
+          {/* Modal Header */}
+          <View style={styles.modalHeader}>
+            <TouchableOpacity
+              style={styles.modalBackButton}
+              onPress={() => {
+                setShowNewMessageModal(false);
+                setNewMessageSearch('');
+              }}
+            >
+              <IconSymbol size={24} name="chevron.left" color="#fff" />
+            </TouchableOpacity>
+            <ThemedText style={styles.modalTitle}>New message</ThemedText>
+            <View style={styles.modalHeaderSpacer} />
+          </View>
+
+          {/* Search Bar */}
+          <View style={styles.modalSearchContainer}>
+            <ThemedText style={styles.toLabel}>To:</ThemedText>
+            <TextInput
+              style={styles.modalSearchInput}
+              placeholder="Search"
+              placeholderTextColor="#8e8e8e"
+              value={newMessageSearch}
+              onChangeText={setNewMessageSearch}
+              autoFocus
+            />
+          </View>
+
+          {/* Suggested Users */}
+          <View style={styles.suggestedSection}>
+            <ThemedText style={styles.suggestedTitle}>Suggested</ThemedText>
+          </View>
+
+          {loadingFollowing ? (
+            <View style={styles.modalLoadingContainer}>
+              <ActivityIndicator size="large" color="#fff" />
+            </View>
+          ) : filteredFollowing.length > 0 ? (
+            <FlatList
+              data={filteredFollowing}
+              renderItem={renderSuggestedUser}
+              keyExtractor={(item) => item.followingId}
+              showsVerticalScrollIndicator={false}
+              contentContainerStyle={styles.suggestedList}
+            />
+          ) : (
+            <View style={styles.noSuggestionsContainer}>
+              <ThemedText style={styles.noSuggestionsText}>
+                {newMessageSearch.trim() !== ''
+                  ? 'No users found'
+                  : "You're not following anyone yet"}
+              </ThemedText>
+            </View>
+          )}
+
+          {creatingChat && (
+            <View style={styles.creatingChatOverlay}>
+              <ActivityIndicator size="large" color="#fff" />
+            </View>
+          )}
+        </View>
+      </Modal>
     </ThemedView>
   );
 }
@@ -235,44 +415,54 @@ export default function ChatListScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#0f0f0f',
+    backgroundColor: '#000',
   },
   header: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    paddingHorizontal: 8,
+    paddingHorizontal: 16,
     paddingTop: 60,
     paddingBottom: 12,
-    backgroundColor: '#0f0f0f',
-    borderBottomWidth: 1,
-    borderBottomColor: '#2c2f33',
+    backgroundColor: '#000',
   },
   backButton: {
-    width: 44,
-    height: 44,
-    alignItems: 'center',
+    width: 40,
+    height: 40,
+    alignItems: 'flex-start',
     justifyContent: 'center',
   },
-  headerTitle: {
-    fontSize: 20,
+  headerUsername: {
+    fontSize: 22,
     fontWeight: '700',
     color: '#fff',
   },
-  headerSpacer: {
-    width: 44,
+  composeButton: {
+    width: 40,
+    height: 40,
+    alignItems: 'flex-end',
+    justifyContent: 'center',
+  },
+  messagesHeader: {
+    paddingHorizontal: 16,
+    paddingTop: 16,
+    paddingBottom: 12,
+  },
+  messagesTitle: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: '#fff',
+    letterSpacing: 0.5,
+    textTransform: 'uppercase',
   },
   searchContainer: {
-    paddingHorizontal: 20,
-    paddingVertical: 12,
-    backgroundColor: '#0f0f0f',
-    borderBottomWidth: 1,
-    borderBottomColor: '#2c2f33',
+    paddingHorizontal: 16,
+    paddingVertical: 8,
   },
   searchBar: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#2c2f33',
+    backgroundColor: '#363636',
     borderRadius: 10,
     paddingHorizontal: 12,
     paddingVertical: 10,
@@ -284,56 +474,59 @@ const styles = StyleSheet.create({
     color: '#fff',
     padding: 0,
   },
-  listHeader: {
-    paddingHorizontal: 20,
-    paddingTop: 8,
-    paddingBottom: 4,
-  },
-  listHeaderText: {
-    fontSize: 12,
-    fontWeight: '700',
-    color: '#72767d',
-    textTransform: 'uppercase',
-    letterSpacing: 0.5,
-  },
   loadingContainer: {
     flex: 1,
     alignItems: 'center',
     justifyContent: 'center',
-    gap: 12,
-  },
-  loadingText: {
-    fontSize: 16,
-    color: '#b9bbbe',
   },
   chatList: {
-    paddingBottom: 8,
+    paddingBottom: 20,
   },
   chatItem: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingHorizontal: 20,
-    paddingVertical: 14,
-    backgroundColor: '#0f0f0f',
-    borderBottomWidth: 1,
-    borderBottomColor: '#2c2f33',
+    paddingHorizontal: 16,
+    paddingVertical: 8,
   },
-  unreadChatItem: {
-    backgroundColor: '#36393e',
-  },
-  chatAvatar: {
-    width: 52,
-    height: 52,
-    borderRadius: 26,
-    backgroundColor: '#36393e',
-    alignItems: 'center',
-    justifyContent: 'center',
+  avatarContainer: {
     marginRight: 12,
   },
+  storyRing: {
+    width: 60,
+    height: 60,
+    borderRadius: 30,
+    padding: 3,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  avatarInner: {
+    width: 54,
+    height: 54,
+    borderRadius: 27,
+    backgroundColor: '#000',
+    padding: 2,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  avatarWrapper: {
+    width: 56,
+    height: 56,
+    borderRadius: 28,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
   avatarImage: {
-    width: '100%',
-    height: '100%',
-    borderRadius: 26,
+    width: 50,
+    height: 50,
+    borderRadius: 25,
+  },
+  avatarPlaceholder: {
+    width: 50,
+    height: 50,
+    borderRadius: 25,
+    backgroundColor: '#363636',
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   avatarInitial: {
     fontSize: 20,
@@ -342,59 +535,48 @@ const styles = StyleSheet.create({
   },
   chatContent: {
     flex: 1,
-  },
-  chatHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 4,
+    justifyContent: 'center',
   },
   username: {
-    fontSize: 16,
-    fontWeight: '500',
+    fontSize: 15,
+    fontWeight: '400',
     color: '#fff',
+    marginBottom: 2,
+  },
+  unreadUsername: {
+    fontWeight: '600',
+  },
+  messagePreview: {
+    fontSize: 14,
+    color: '#8e8e8e',
+  },
+  unreadMessage: {
+    color: '#fff',
+    fontWeight: '500',
   },
   timestamp: {
-    fontSize: 13,
-    color: '#72767d',
+    fontSize: 14,
+    color: '#8e8e8e',
+    fontWeight: '400',
   },
-  messageRow: {
+  rightSection: {
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'space-between',
+    paddingLeft: 12,
   },
-  lastMessage: {
-    fontSize: 14,
-    color: '#b9bbbe',
-    flex: 1,
-  },
-  unreadText: {
-    fontWeight: '600',
-    color: '#fff',
-  },
-  unreadBadge: {
-    backgroundColor: '#c42743',
-    borderRadius: 10,
-    minWidth: 20,
-    height: 20,
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingHorizontal: 6,
-    marginLeft: 8,
-  },
-  unreadBadgeText: {
-    fontSize: 12,
-    fontWeight: '600',
-    color: '#fff',
+  unreadDot: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+    backgroundColor: '#3897f0',
   },
   emptyState: {
     flex: 1,
     alignItems: 'center',
     justifyContent: 'center',
     paddingHorizontal: 40,
-    paddingTop: 100,
   },
-  emptyText: {
+  emptyTitle: {
     fontSize: 18,
     fontWeight: '600',
     color: '#fff',
@@ -403,26 +585,132 @@ const styles = StyleSheet.create({
   },
   emptySubtext: {
     fontSize: 14,
-    color: '#b9bbbe',
+    color: '#8e8e8e',
     textAlign: 'center',
     lineHeight: 20,
   },
   emptySearchState: {
     alignItems: 'center',
-    justifyContent: 'center',
-    paddingVertical: 60,
-    paddingHorizontal: 40,
+    paddingVertical: 40,
   },
   emptySearchText: {
+    fontSize: 14,
+    color: '#8e8e8e',
+  },
+  // Modal styles
+  modalContainer: {
+    flex: 1,
+    backgroundColor: '#000',
+  },
+  modalHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: 16,
+    paddingTop: 16,
+    paddingBottom: 16,
+    borderBottomWidth: 0.5,
+    borderBottomColor: '#363636',
+  },
+  modalBackButton: {
+    width: 40,
+    height: 40,
+    alignItems: 'flex-start',
+    justifyContent: 'center',
+  },
+  modalTitle: {
+    fontSize: 18,
+    fontWeight: '700',
+    color: '#fff',
+  },
+  modalHeaderSpacer: {
+    width: 40,
+  },
+  modalSearchContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    borderBottomWidth: 0.5,
+    borderBottomColor: '#363636',
+  },
+  toLabel: {
     fontSize: 16,
+    color: '#fff',
+    marginRight: 12,
+  },
+  modalSearchInput: {
+    flex: 1,
+    fontSize: 16,
+    color: '#fff',
+    padding: 0,
+  },
+  suggestedSection: {
+    paddingHorizontal: 16,
+    paddingTop: 20,
+    paddingBottom: 12,
+  },
+  suggestedTitle: {
+    fontSize: 16,
+    fontWeight: '700',
+    color: '#fff',
+  },
+  suggestedList: {
+    paddingBottom: 20,
+  },
+  suggestedUserItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+  },
+  suggestedAvatarWrapper: {
+    marginRight: 12,
+  },
+  suggestedAvatar: {
+    width: 50,
+    height: 50,
+    borderRadius: 25,
+  },
+  suggestedAvatarPlaceholder: {
+    width: 50,
+    height: 50,
+    borderRadius: 25,
+    backgroundColor: '#363636',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  suggestedAvatarInitial: {
+    fontSize: 20,
     fontWeight: '600',
     color: '#fff',
-    marginTop: 12,
   },
-  emptySearchSubtext: {
+  suggestedUserInfo: {
+    flex: 1,
+  },
+  suggestedUsername: {
+    fontSize: 15,
+    fontWeight: '500',
+    color: '#fff',
+  },
+  modalLoadingContainer: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  noSuggestionsContainer: {
+    flex: 1,
+    alignItems: 'center',
+    paddingTop: 40,
+  },
+  noSuggestionsText: {
     fontSize: 14,
-    color: '#b9bbbe',
-    textAlign: 'center',
-    marginTop: 4,
+    color: '#8e8e8e',
+  },
+  creatingChatOverlay: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    alignItems: 'center',
+    justifyContent: 'center',
   },
 });

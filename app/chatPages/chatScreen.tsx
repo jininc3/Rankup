@@ -285,7 +285,7 @@ export default function ChatScreen() {
       {/* Messages */}
       {loading ? (
         <View style={styles.loadingContainer}>
-          <ActivityIndicator size="large" color="#c42743" />
+          <ActivityIndicator size="large" color="#fff" />
         </View>
       ) : (
         <FlatList
@@ -306,14 +306,14 @@ export default function ChatScreen() {
           ListHeaderComponent={
             loadingMore ? (
               <View style={styles.loadingMoreContainer}>
-                <ActivityIndicator size="small" color="#c42743" />
+                <ActivityIndicator size="small" color="#fff" />
                 <ThemedText style={styles.loadingMoreText}>Loading older messages...</ThemedText>
               </View>
             ) : null
           }
           ListEmptyComponent={
             <View style={styles.emptyState}>
-              <IconSymbol size={64} name="bubble.left.and.bubble.right" color="#ccc" />
+              <IconSymbol size={64} name="bubble.left.and.bubble.right" color="#363636" />
               <ThemedText style={styles.emptyText}>No messages yet</ThemedText>
               <ThemedText style={styles.emptySubtext}>
                 Start the conversation with {otherUsername}
@@ -357,7 +357,7 @@ export default function ChatScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#0f0f0f',
+    backgroundColor: '#000',
   },
   header: {
     flexDirection: 'row',
@@ -366,9 +366,9 @@ const styles = StyleSheet.create({
     paddingHorizontal: 8,
     paddingTop: 60,
     paddingBottom: 12,
-    backgroundColor: '#0f0f0f',
-    borderBottomWidth: 1,
-    borderBottomColor: '#2c2f33',
+    backgroundColor: '#000',
+    borderBottomWidth: 0.5,
+    borderBottomColor: '#363636',
   },
   backButton: {
     width: 44,
@@ -386,7 +386,7 @@ const styles = StyleSheet.create({
     width: 36,
     height: 36,
     borderRadius: 18,
-    backgroundColor: '#36393e',
+    backgroundColor: '#363636',
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -423,7 +423,7 @@ const styles = StyleSheet.create({
   },
   timestamp: {
     fontSize: 11,
-    color: '#72767d',
+    color: '#8e8e8e',
     textAlign: 'center',
     marginBottom: 8,
   },
@@ -434,11 +434,11 @@ const styles = StyleSheet.create({
     borderRadius: 18,
   },
   currentUserBubble: {
-    backgroundColor: '#c42743',
+    backgroundColor: '#8B2942',
     alignSelf: 'flex-end',
   },
   otherUserBubble: {
-    backgroundColor: '#36393e',
+    backgroundColor: '#363636',
     alignSelf: 'flex-start',
   },
   messageText: {
@@ -455,7 +455,6 @@ const styles = StyleSheet.create({
     flex: 1,
     alignItems: 'center',
     justifyContent: 'center',
-    paddingTop: 100,
     paddingHorizontal: 40,
   },
   emptyText: {
@@ -467,7 +466,7 @@ const styles = StyleSheet.create({
   },
   emptySubtext: {
     fontSize: 14,
-    color: '#b9bbbe',
+    color: '#8e8e8e',
     textAlign: 'center',
     lineHeight: 20,
   },
@@ -477,14 +476,14 @@ const styles = StyleSheet.create({
     paddingHorizontal: 12,
     paddingTop: 8,
     paddingBottom: 30,
-    backgroundColor: '#0f0f0f',
-    borderTopWidth: 1,
-    borderTopColor: '#2c2f33',
+    backgroundColor: '#000',
+    borderTopWidth: 0.5,
+    borderTopColor: '#363636',
     gap: 8,
   },
   input: {
     flex: 1,
-    backgroundColor: '#36393e',
+    backgroundColor: '#363636',
     borderRadius: 20,
     paddingHorizontal: 16,
     paddingVertical: 10,
@@ -512,6 +511,6 @@ const styles = StyleSheet.create({
   },
   loadingMoreText: {
     fontSize: 13,
-    color: '#72767d',
+    color: '#8e8e8e',
   },
 });
