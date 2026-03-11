@@ -13,8 +13,9 @@ import { LinearGradient } from 'expo-linear-gradient';
 
 // Game logo mapping
 const GAME_LOGOS: { [key: string]: any } = {
-  'Valorant': require('@/assets/images/valorant.png'),
-  'League of Legends': require('@/assets/images/leagueoflegends.png'),
+  'Valorant': require('@/assets/images/valorant-red.png'),
+  'League of Legends': require('@/assets/images/lol-icon.png'),
+  'League': require('@/assets/images/lol-icon.png'),
   'Apex Legends': require('@/assets/images/apex.png'),
   'CS2': require('@/assets/images/valorant.png'), // placeholder
   'Overwatch 2': require('@/assets/images/valorant.png'), // placeholder
@@ -109,6 +110,8 @@ export default function LeaderboardScreen() {
           endDate: data.endDate,
           type: data.type || 'leaderboard', // 'party' or 'leaderboard'
           coverPhoto: data.coverPhoto || null, // Cover photo URL
+          partyIcon: data.partyIcon || null, // Party icon URL
+          partyId: data.partyId || docId, // Party ID for navigation
         };
       });
 

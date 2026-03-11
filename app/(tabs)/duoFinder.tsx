@@ -44,6 +44,20 @@ export default function DuoFinderScreen() {
     language: null,
   });
 
+  // Game filter state (both selected by default to show all)
+  const [selectedGames, setSelectedGames] = useState<{ valorant: boolean; league: boolean }>({
+    valorant: true,
+    league: true,
+  });
+
+  // Toggle game selection
+  const toggleGameFilter = (game: 'valorant' | 'league') => {
+    setSelectedGames(prev => ({
+      ...prev,
+      [game]: !prev[game],
+    }));
+  };
+
   // Count active filters
   const activeFilterCount = [
     filters.game,
@@ -363,10 +377,17 @@ export default function DuoFinderScreen() {
     try {
       const duoCardsRef = collection(db, 'duoCards');
 
-      // Determine which games to fetch based on filter
-      const gamesToFetch: ('valorant' | 'league')[] = filters.game
-        ? [filters.game]
-        : ['valorant', 'league'];
+      // Determine which games to fetch based on selected game buttons
+      const gamesToFetch: ('valorant' | 'league')[] = [];
+      if (selectedGames.valorant) gamesToFetch.push('valorant');
+      if (selectedGames.league) gamesToFetch.push('league');
+
+      // If no games selected, don't fetch any cards
+      if (gamesToFetch.length === 0) {
+        setDuoCards([]);
+        setLoadingDuoCards(false);
+        return;
+      }
 
       let allCards: DuoCardWithId[] = [];
 
@@ -440,10 +461,10 @@ export default function DuoFinderScreen() {
     }
   };
 
-  // Fetch duo cards on mount and when filters change
+  // Fetch duo cards on mount and when filters or selected games change
   useEffect(() => {
     fetchDuoCards();
-  }, [filters]);
+  }, [filters, selectedGames]);
 
   // Manual refresh for duo cards
   const handleRefreshDuoCards = () => {
@@ -592,21 +613,65 @@ export default function DuoFinderScreen() {
       >
         {activeTab === 'findDuo' ? (
           <View style={styles.findDuoContent}>
+            {/* Game Filter Buttons */}
+            <View style={styles.gameFilterContainer}>
+              <TouchableOpacity
+                style={[
+                  styles.gameFilterButton,
+                  selectedGames.league && styles.gameFilterButtonSelected,
+                ]}
+                onPress={() => toggleGameFilter('league')}
+                activeOpacity={0.7}
+              >
+                <Image
+                  source={require('@/assets/images/lol.png')}
+                  style={[
+                    styles.gameFilterLogo,
+                    !selectedGames.league && styles.gameFilterLogoInactive,
+                  ]}
+                  resizeMode="contain"
+                />
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={[
+                  styles.gameFilterButton,
+                  selectedGames.valorant && styles.gameFilterButtonSelected,
+                ]}
+                onPress={() => toggleGameFilter('valorant')}
+                activeOpacity={0.7}
+              >
+                <Image
+                  source={require('@/assets/images/valorant-red.png')}
+                  style={[
+                    styles.gameFilterLogo,
+                    !selectedGames.valorant && styles.gameFilterLogoInactive,
+                  ]}
+                  resizeMode="contain"
+                />
+              </TouchableOpacity>
+            </View>
+
             {/* Players Section Header */}
             <View style={styles.sectionHeader}>
               <View style={styles.sectionHeaderLeft}>
-                <IconSymbol size={18} name="person.2.fill" color="#fff" />
-                <ThemedText style={styles.sectionHeaderTitle}>Available Players</ThemedText>
+                <ThemedText style={styles.sectionHeaderTitle}>AVAILABLE PLAYERS</ThemedText>
+                <ThemedText style={styles.playerCount}>
+                  {duoCards.length}
+                </ThemedText>
               </View>
               <View style={styles.headerRightSection}>
                 <View style={styles.statusBadge}>
                   <View style={styles.statusDotOuter}>
                     <View style={styles.statusDot} />
                   </View>
-                  <ThemedText style={styles.statusText}>
-                    {duoCards.length} {duoCards.length === 1 ? 'Player' : 'Players'}
-                  </ThemedText>
                 </View>
+                <TouchableOpacity
+                  style={styles.filterButton}
+                  onPress={() => setShowFilterModal(true)}
+                  activeOpacity={0.7}
+                >
+                  <IconSymbol size={16} name="line.3.horizontal.decrease" color={activeFilterCount > 0 ? '#c42743' : '#888'} />
+                </TouchableOpacity>
                 <TouchableOpacity
                   style={styles.refreshButton}
                   onPress={handleRefreshDuoCards}
@@ -617,19 +682,6 @@ export default function DuoFinderScreen() {
                 </TouchableOpacity>
               </View>
             </View>
-
-            {/* Filter Bar */}
-            <TouchableOpacity
-              style={styles.filterBar}
-              onPress={() => setShowFilterModal(true)}
-              activeOpacity={0.7}
-            >
-              <IconSymbol size={14} name="line.3.horizontal.decrease" color="#888" />
-              <ThemedText style={styles.filterLabel}>
-                Filters{activeFilterCount > 0 ? ` (${activeFilterCount})` : ''}
-              </ThemedText>
-              <IconSymbol size={10} name="chevron.down" color="#666" />
-            </TouchableOpacity>
 
             {/* Content Area */}
             {loadingDuoCards || (duoCards.length > 0 && !showCards) ? (
@@ -732,19 +784,12 @@ export default function DuoFinderScreen() {
                 </TouchableOpacity>
               </View>
             ) : (
-              // Has cards - Show them vertically with compact cards
+              // Has cards - Show them in a row
               <View style={styles.compactCardsContainer}>
-                {/* Valorant Card */}
-                {valorantCard && (
-                  <View style={styles.compactCardSection}>
-                    <View style={styles.cardSectionHeader}>
-                      <Image
-                        source={require('@/assets/images/valorant-red.png')}
-                        style={styles.cardSectionIcon}
-                        resizeMode="contain"
-                      />
-                      <ThemedText style={styles.cardSectionTitle}>Valorant</ThemedText>
-                    </View>
+                <ThemedText style={styles.myCardsTitle}>MY DUO CARDS</ThemedText>
+                <View style={styles.myCardsRow}>
+                  {/* Valorant Card */}
+                  {valorantCard && (
                     <CompactDuoCard
                       game="valorant"
                       username={valorantCard.username}
@@ -754,20 +799,10 @@ export default function DuoFinderScreen() {
                       preferredDuoRole={valorantCard.lookingFor || 'Any'}
                       onPress={() => handleCardPress('valorant')}
                     />
-                  </View>
-                )}
+                  )}
 
-                {/* League Card */}
-                {leagueCard && (
-                  <View style={styles.compactCardSection}>
-                    <View style={styles.cardSectionHeader}>
-                      <Image
-                        source={require('@/assets/images/lol.png')}
-                        style={styles.cardSectionIcon}
-                        resizeMode="contain"
-                      />
-                      <ThemedText style={styles.cardSectionTitle}>League of Legends</ThemedText>
-                    </View>
+                  {/* League Card */}
+                  {leagueCard && (
                     <CompactDuoCard
                       game="league"
                       username={leagueCard.username}
@@ -777,8 +812,8 @@ export default function DuoFinderScreen() {
                       preferredDuoRole={leagueCard.lookingFor || 'Any'}
                       onPress={() => handleCardPress('league')}
                     />
-                  </View>
-                )}
+                  )}
+                </View>
 
                 {/* Add Another Card Button */}
                 {(valorantCard === null || leagueCard === null) && (
@@ -877,25 +912,61 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     color: '#c42743',
   },
-  // Section Headers - Profile style
+  // Game Filter Buttons
+  gameFilterContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'flex-start',
+    gap: 10,
+    paddingTop: 14,
+    paddingBottom: 4,
+    paddingHorizontal: 20,
+  },
+  gameFilterButton: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    backgroundColor: '#1a1a1a',
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 1.5,
+    borderColor: '#2a2a2a',
+  },
+  gameFilterButtonSelected: {
+    borderColor: '#444',
+    backgroundColor: '#252525',
+  },
+  gameFilterLogo: {
+    width: 24,
+    height: 24,
+  },
+  gameFilterLogoInactive: {
+    opacity: 0.35,
+  },
+  // Section Headers - Parties style
   sectionHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
     paddingHorizontal: 20,
-    paddingTop: 16,
+    paddingTop: 12,
     paddingBottom: 10,
   },
   sectionHeaderLeft: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 8,
+    gap: 6,
   },
   sectionHeaderTitle: {
-    fontSize: 18,
-    fontWeight: '700',
+    fontSize: 12,
+    fontWeight: '600',
     color: '#fff',
-    letterSpacing: -0.5,
+    letterSpacing: 0.5,
+  },
+  playerCount: {
+    fontSize: 12,
+    fontWeight: '500',
+    color: '#888',
   },
   scrollView: {
     flex: 1,
@@ -946,25 +1017,20 @@ const styles = StyleSheet.create({
     color: '#fff',
   },
   compactCardsContainer: {
-    gap: 20,
-  },
-  compactCardSection: {
     gap: 16,
-  },
-  cardSectionHeader: {
-    flexDirection: 'row',
     alignItems: 'center',
-    gap: 10,
   },
-  cardSectionIcon: {
-    width: 22,
-    height: 22,
-  },
-  cardSectionTitle: {
-    fontSize: 16,
-    fontWeight: '700',
+  myCardsTitle: {
+    fontSize: 12,
+    fontWeight: '600',
     color: '#fff',
-    letterSpacing: -0.3,
+    letterSpacing: 0.5,
+    marginBottom: 8,
+    alignSelf: 'flex-start',
+  },
+  myCardsRow: {
+    gap: 20,
+    alignItems: 'center',
   },
   addAnotherButtonCompact: {
     flexDirection: 'row',
@@ -995,22 +1061,13 @@ const styles = StyleSheet.create({
   findDuoContent: {
     flex: 1,
   },
-  filterBar: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    alignSelf: 'flex-start',
-    gap: 6,
-    marginLeft: 20,
-    marginBottom: 12,
-    paddingVertical: 6,
-    paddingHorizontal: 12,
+  filterButton: {
+    width: 28,
+    height: 28,
+    borderRadius: 14,
     backgroundColor: '#1a1a1a',
-    borderRadius: 8,
-  },
-  filterLabel: {
-    fontSize: 12,
-    fontWeight: '500',
-    color: '#888',
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   headerRightSection: {
     flexDirection: 'row',
@@ -1043,11 +1100,6 @@ const styles = StyleSheet.create({
     height: 6,
     borderRadius: 3,
     backgroundColor: '#4ade80',
-  },
-  statusText: {
-    fontSize: 12,
-    fontWeight: '500',
-    color: '#6b7280',
   },
   loadingContainer: {
     flex: 1,
@@ -1127,6 +1179,6 @@ const styles = StyleSheet.create({
   cardsList: {
     paddingHorizontal: 20,
     paddingBottom: 40,
-    gap: 12,
+    gap: 20,
   },
 });

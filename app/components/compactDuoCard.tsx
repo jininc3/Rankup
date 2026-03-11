@@ -4,7 +4,9 @@ import { IconSymbol } from '@/components/ui/icon-symbol';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useState, useEffect } from 'react';
 
-const { width: screenWidth } = Dimensions.get('window');
+const { width: screenWidth, height: screenHeight } = Dimensions.get('window');
+const cardWidth = screenWidth - 40; // Full width with padding
+const cardHeight = screenHeight * 0.65; // 65% of screen height
 
 interface CompactDuoCardProps {
   game: 'valorant' | 'league';
@@ -65,6 +67,12 @@ const VALORANT_ROLE_ICONS: { [key: string]: any } = {
   'Sentinel': require('@/assets/images/valorantroles/Sentinel.png'),
 };
 
+// Game logo mapping
+const GAME_LOGOS: { [key: string]: any } = {
+  valorant: require('@/assets/images/valorant-red.png'),
+  league: require('@/assets/images/lol.png'),
+};
+
 export default function CompactDuoCard({
   game,
   username = 'YourUsername',
@@ -114,404 +122,253 @@ export default function CompactDuoCard({
     }
   };
 
-  // Subtle muted colors
-  const gameAccentColor = game === 'valorant' ? '#8b3d47' : '#3d6a70';
-  const gameAccentLight = game === 'valorant' ? '#a85561' : '#4d8a92';
-
   const CardContent = (
-    <View style={styles.cardOuter}>
-      {/* 3D Shadow layers */}
-      <View style={styles.shadow3} />
-      <View style={styles.shadow2} />
-      <View style={styles.shadow1} />
+    <View style={styles.card}>
+      <LinearGradient
+        colors={['#1a1d21', '#131518']}
+        start={{ x: 0, y: 0 }}
+        end={{ x: 0, y: 1 }}
+        style={styles.cardBackground}
+      />
 
-      {/* Main Card */}
-      <View style={[styles.card, isEditMode && styles.cardEditMode]}>
-        {/* Background */}
-        <LinearGradient
-          colors={['#1a1d21', '#0f1114']}
-          start={{ x: 0, y: 0 }}
-          end={{ x: 0, y: 1 }}
-          style={styles.cardBackground}
+      {/* Game Badge */}
+      <View style={styles.gameBadge}>
+        <Image
+          source={GAME_LOGOS[game]}
+          style={styles.gameLogo}
+          resizeMode="contain"
         />
+      </View>
 
-        {/* Header Bar - More subtle */}
-        <View style={styles.headerBar}>
-          <ThemedText style={styles.headerTitle}>
-            {game === 'valorant' ? 'VALORANT' : 'LEAGUE'}
-          </ThemedText>
-          <ThemedText style={styles.headerSubtitle}>DUO CARD</ThemedText>
-          <View style={styles.headerAccent}>
-            <ThemedText style={[styles.headerAccentText, { color: gameAccentLight }]}>&gt;&gt;&gt;</ThemedText>
-          </View>
+      {/* Avatar Section */}
+      <View style={styles.avatarContainer}>
+        <View style={styles.avatarFrame}>
+          {avatar && avatar.startsWith('http') ? (
+            <Image
+              source={{ uri: avatar }}
+              style={styles.avatar}
+              onLoad={() => setAvatarLoaded(true)}
+              onError={() => setAvatarLoaded(true)}
+            />
+          ) : (
+            <View style={styles.avatarPlaceholder}>
+              <ThemedText style={styles.avatarInitial}>
+                {username[0]?.toUpperCase() || '?'}
+              </ThemedText>
+            </View>
+          )}
         </View>
-
-        {/* Edit mode indicator */}
-        {isEditMode && (
-          <View style={styles.editBadge}>
-            <IconSymbol size={12} name="pencil" color="#fff" />
-          </View>
-        )}
-
-        {/* Main Content Area */}
-        <View style={styles.mainContent}>
-          {/* Username - Top Row */}
-          <ThemedText style={styles.name} numberOfLines={1}>
-            {username}
-          </ThemedText>
-
-          {/* Content Row: Photo | Roles | Rank */}
-          <View style={styles.contentRow}>
-            {/* Left: Photo */}
-            <View style={styles.photoSection}>
-              <View style={styles.photoFrame}>
-                {avatar && avatar.startsWith('http') ? (
-                  <Image
-                    source={{ uri: avatar }}
-                    style={styles.photo}
-                    onLoad={() => setAvatarLoaded(true)}
-                    onError={() => setAvatarLoaded(true)}
-                  />
-                ) : (
-                  <View style={styles.photoPlaceholder}>
-                    <ThemedText style={styles.photoInitial}>
-                      {username[0]?.toUpperCase() || '?'}
-                    </ThemedText>
-                  </View>
-                )}
-              </View>
-              {/* Online indicator */}
-              <View style={styles.onlineBadge}>
-                <View style={styles.onlineDot} />
-              </View>
-            </View>
-
-            {/* Center: Role Info */}
-            <View style={styles.roleInfoContainer}>
-              <View style={styles.roleItem}>
-                <ThemedText style={styles.roleLabel}>MAIN</ThemedText>
-                <View style={styles.roleValueRow}>
-                  <Image
-                    source={getRoleIcon(mainRole)}
-                    style={styles.roleIcon}
-                    resizeMode="contain"
-                  />
-                  <ThemedText style={styles.roleValue}>{mainRole}</ThemedText>
-                </View>
-              </View>
-              <View style={styles.roleItem}>
-                <ThemedText style={styles.roleLabel}>LOOKING FOR</ThemedText>
-                <View style={styles.roleValueRow}>
-                  <Image
-                    source={getRoleIcon(preferredDuoRole)}
-                    style={styles.roleIcon}
-                    resizeMode="contain"
-                  />
-                  <ThemedText style={styles.roleValue}>{preferredDuoRole}</ThemedText>
-                </View>
-              </View>
-            </View>
-
-            {/* Right: Rank */}
-            <View style={styles.rankSection}>
-              <ThemedText style={styles.rankText}>{peakRank}</ThemedText>
-              <View style={styles.rankIconContainer}>
-                <View style={[styles.rankGlow, { backgroundColor: gameAccentColor }]} />
-                <View style={[styles.rankBadge, { borderColor: gameAccentColor }]}>
-                  <Image
-                    source={getRankIcon(peakRank)}
-                    style={styles.rankIconMain}
-                    resizeMode="contain"
-                  />
-                </View>
-              </View>
-            </View>
-          </View>
+        {/* Online indicator */}
+        <View style={styles.onlineBadge}>
+          <View style={styles.onlineDot} />
         </View>
+      </View>
 
-        {/* Footer Bar */}
-        <View style={styles.footerBar}>
-          <View style={[styles.footerAccent, { backgroundColor: gameAccentColor }]} />
-          <View style={styles.footerContent}>
-            <ThemedText style={styles.footerText}>RANKUP</ThemedText>
-            <View style={styles.arrowSection}>
-              <IconSymbol size={14} name="chevron.right" color="#444" />
-            </View>
-          </View>
+      {/* Username */}
+      <ThemedText style={styles.username} numberOfLines={1}>
+        {username}
+      </ThemedText>
+
+      {/* Rank Section */}
+      <View style={styles.rankSection}>
+        <Image
+          source={getRankIcon(peakRank)}
+          style={styles.rankIcon}
+          resizeMode="contain"
+        />
+        <ThemedText style={styles.rankText} numberOfLines={1}>
+          {peakRank}
+        </ThemedText>
+      </View>
+
+      {/* Role Info */}
+      <View style={styles.roleSection}>
+        <View style={styles.roleItem}>
+          <Image
+            source={getRoleIcon(mainRole)}
+            style={styles.roleIcon}
+            resizeMode="contain"
+          />
+          <ThemedText style={styles.roleText}>{mainRole}</ThemedText>
         </View>
+      </View>
+
+      {/* Looking For */}
+      <View style={styles.lookingForSection}>
+        <ThemedText style={styles.lookingForLabel}>LF</ThemedText>
+        <ThemedText style={styles.lookingForValue}>{preferredDuoRole}</ThemedText>
       </View>
     </View>
   );
 
   if (onPress) {
     return (
-      <TouchableOpacity activeOpacity={0.95} onPress={onPress}>
+      <TouchableOpacity activeOpacity={0.8} onPress={onPress} style={styles.cardWrapper}>
         {CardContent}
       </TouchableOpacity>
     );
   }
 
-  return CardContent;
+  return <View style={styles.cardWrapper}>{CardContent}</View>;
 }
 
 const styles = StyleSheet.create({
-  cardOuter: {
-    position: 'relative',
-    marginBottom: 8,
-    width: screenWidth - 40,
+  cardWrapper: {
+    width: cardWidth,
     alignSelf: 'center',
   },
-  // 3D Shadow layers - light from right side
-  shadow3: {
-    position: 'absolute',
-    top: 8,
-    left: -8,
-    right: 12,
-    bottom: -8,
-    backgroundColor: '#000',
-    borderRadius: 14,
-    opacity: 0.2,
-  },
-  shadow2: {
-    position: 'absolute',
-    top: 5,
-    left: -5,
-    right: 8,
-    bottom: -5,
-    backgroundColor: '#000',
-    borderRadius: 13,
-    opacity: 0.25,
-  },
-  shadow1: {
-    position: 'absolute',
-    top: 2,
-    left: -2,
-    right: 4,
-    bottom: -2,
-    backgroundColor: '#000',
-    borderRadius: 12,
-    opacity: 0.3,
-  },
   card: {
-    borderRadius: 12,
+    width: '100%',
+    height: cardHeight,
+    borderRadius: 20,
     overflow: 'hidden',
-    position: 'relative',
     borderWidth: 1,
     borderColor: '#232528',
-  },
-  cardEditMode: {
-    borderWidth: 2,
-    borderColor: '#6b4050',
+    paddingVertical: 24,
+    paddingHorizontal: 20,
+    alignItems: 'center',
+    justifyContent: 'space-between',
   },
   cardBackground: {
     ...StyleSheet.absoluteFillObject,
   },
-  // Header Bar - Subtle
-  headerBar: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: 14,
-    paddingVertical: 10,
-    borderBottomWidth: 1,
-    borderBottomColor: '#1e2023',
-    gap: 8,
-  },
-  headerTitle: {
-    fontSize: 12,
-    fontWeight: '700',
-    color: '#888',
-    letterSpacing: 1.5,
-  },
-  headerSubtitle: {
-    fontSize: 12,
-    fontWeight: '600',
-    color: '#555',
-    letterSpacing: 0.5,
-  },
-  headerAccent: {
-    marginLeft: 'auto',
-  },
-  headerAccentText: {
-    fontSize: 12,
-    fontWeight: '800',
-    letterSpacing: 1,
-  },
-  editBadge: {
+  // Game Badge
+  gameBadge: {
     position: 'absolute',
-    top: 44,
-    right: 12,
-    width: 24,
-    height: 24,
-    borderRadius: 12,
-    backgroundColor: '#6b4050',
+    top: 16,
+    right: 16,
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: '#0f1114',
     alignItems: 'center',
     justifyContent: 'center',
-    zIndex: 10,
-  },
-  // Main Content Area
-  mainContent: {
-    paddingHorizontal: 14,
-    paddingTop: 8,
-    paddingBottom: 10,
-    gap: 6,
-  },
-  // Username at top
-  name: {
-    fontSize: 16,
-    fontWeight: '700',
-    color: '#e5e5e5',
-    letterSpacing: -0.2,
-  },
-  // Content Row: Photo | Roles | Rank
-  contentRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 12,
-  },
-  // Photo Section
-  photoSection: {
-    position: 'relative',
-  },
-  photoFrame: {
-    width: 56,
-    height: 56,
-    borderRadius: 6,
-    overflow: 'hidden',
-    backgroundColor: '#1a1c1e',
     borderWidth: 1,
     borderColor: '#2a2d30',
   },
-  photo: {
+  gameLogo: {
+    width: 22,
+    height: 22,
+  },
+  // Avatar
+  avatarContainer: {
+    position: 'relative',
+    marginTop: 20,
+  },
+  avatarFrame: {
+    width: 120,
+    height: 120,
+    borderRadius: 60,
+    overflow: 'hidden',
+    backgroundColor: '#1a1c1e',
+    borderWidth: 3,
+    borderColor: '#2a2d30',
+  },
+  avatar: {
     width: '100%',
     height: '100%',
   },
-  photoPlaceholder: {
+  avatarPlaceholder: {
     flex: 1,
     alignItems: 'center',
     justifyContent: 'center',
     backgroundColor: '#151719',
   },
-  photoInitial: {
-    fontSize: 22,
+  avatarInitial: {
+    fontSize: 48,
     fontWeight: '700',
-    color: '#2a2d32',
+    color: '#3a3d42',
   },
   onlineBadge: {
     position: 'absolute',
-    bottom: -3,
-    right: -3,
-    width: 14,
-    height: 14,
-    borderRadius: 7,
-    backgroundColor: '#0f1114',
+    bottom: 4,
+    right: 4,
+    width: 24,
+    height: 24,
+    borderRadius: 12,
+    backgroundColor: '#131518',
     alignItems: 'center',
     justifyContent: 'center',
   },
   onlineDot: {
-    width: 8,
-    height: 8,
-    borderRadius: 4,
+    width: 14,
+    height: 14,
+    borderRadius: 7,
     backgroundColor: '#3d7a4a',
   },
-  // Role Info - Horizontal Row in Center
-  roleInfoContainer: {
-    flex: 1,
-    flexDirection: 'row',
-    alignItems: 'flex-start',
-    gap: 16,
+  // Username
+  username: {
+    fontSize: 24,
+    fontWeight: '700',
+    color: '#e5e5e5',
+    letterSpacing: -0.5,
+    textAlign: 'center',
+    maxWidth: '100%',
+    marginTop: 16,
   },
-  roleItem: {
-    gap: 1,
+  // Rank Section
+  rankSection: {
+    alignItems: 'center',
+    gap: 8,
+    marginTop: 8,
   },
-  roleLabel: {
-    fontSize: 8,
+  rankIcon: {
+    width: 80,
+    height: 80,
+  },
+  rankText: {
+    fontSize: 14,
     fontWeight: '600',
-    color: '#4a4d52',
-    letterSpacing: 0.5,
+    color: '#9a9da2',
+    letterSpacing: -0.2,
+    textAlign: 'center',
   },
-  roleValueRow: {
+  // Role Section
+  roleSection: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 4,
+    justifyContent: 'center',
+    gap: 12,
+    marginTop: 16,
   },
-  roleValue: {
-    fontSize: 11,
+  roleItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    backgroundColor: '#1a1c1e',
+    paddingVertical: 10,
+    paddingHorizontal: 16,
+    borderRadius: 20,
+    borderWidth: 1,
+    borderColor: '#2a2d30',
+  },
+  roleIcon: {
+    width: 20,
+    height: 20,
+    opacity: 0.9,
+  },
+  roleText: {
+    fontSize: 14,
     fontWeight: '600',
     color: '#9a9da2',
   },
-  roleIcon: {
-    width: 13,
-    height: 13,
-    opacity: 0.85,
-  },
-  // Rank Section - Right Side
-  rankSection: {
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginTop: -8,
-  },
-  rankIconContainer: {
-    position: 'relative',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  rankGlow: {
-    position: 'absolute',
-    width: 50,
-    height: 50,
-    borderRadius: 25,
-    opacity: 0.2,
-  },
-  rankBadge: {
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: '#13151a',
-    borderRadius: 8,
-    padding: 5,
-    borderWidth: 2,
-  },
-  rankIconMain: {
-    width: 42,
-    height: 42,
-  },
-  rankText: {
-    fontSize: 8,
-    fontWeight: '700',
-    color: '#7a7d82',
-    marginBottom: 3,
-    textAlign: 'center',
-    letterSpacing: 0.2,
-  },
-  // Footer Bar
-  footerBar: {
-    borderTopWidth: 1,
-    borderTopColor: '#1a1c1e',
-    backgroundColor: '#0c0d0f',
-  },
-  footerAccent: {
-    height: 2,
-    width: '100%',
-    opacity: 0.6,
-  },
-  footerContent: {
+  // Looking For Section
+  lookingForSection: {
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingHorizontal: 14,
-    paddingVertical: 8,
+    gap: 8,
+    marginTop: 12,
+    marginBottom: 8,
   },
-  footerText: {
-    fontSize: 9,
+  lookingForLabel: {
+    fontSize: 12,
     fontWeight: '600',
-    color: '#3a3d42',
-    letterSpacing: 2,
+    color: '#4a4d52',
+    letterSpacing: 0.3,
   },
-  arrowSection: {
-    width: 22,
-    height: 22,
-    borderRadius: 11,
-    backgroundColor: '#151719',
-    alignItems: 'center',
-    justifyContent: 'center',
+  lookingForValue: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#7a7d82',
   },
 });

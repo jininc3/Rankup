@@ -2,18 +2,23 @@ import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { IconSymbol } from '@/components/ui/icon-symbol';
 import { useLocalSearchParams, useRouter } from 'expo-router';
-import { ScrollView, StyleSheet, TouchableOpacity, View, Image, Alert, RefreshControl } from 'react-native';
+import { ScrollView, StyleSheet, TouchableOpacity, View, Image, Alert, RefreshControl, Dimensions, Modal, ActivityIndicator, TextInput } from 'react-native';
+import * as ImagePicker from 'expo-image-picker';
+import { uploadPartyIcon, uploadPartyCoverPhoto } from '@/services/storageService';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useState, useEffect } from 'react';
 import { db } from '@/config/firebase';
-import { collection, query, where, getDocs, doc, getDoc, limit, updateDoc, deleteDoc, onSnapshot } from 'firebase/firestore';
+import { collection, query, where, getDocs, doc, getDoc, limit, updateDoc, deleteDoc, onSnapshot, addDoc, serverTimestamp } from 'firebase/firestore';
 import * as Clipboard from 'expo-clipboard';
 import { useAuth } from '@/contexts/AuthContext';
 
+const { width: screenWidth } = Dimensions.get('window');
+
 // Game logo mapping
 const GAME_LOGOS: { [key: string]: any } = {
-  'Valorant': require('@/assets/images/valorant.png'),
+  'Valorant': require('@/assets/images/valorant-red.png'),
   'League of Legends': require('@/assets/images/lol-icon.png'),
+  'League': require('@/assets/images/lol-icon.png'),
   'Apex Legends': require('@/assets/images/apex.png'),
 };
 
@@ -38,11 +43,55 @@ export default function PartyDetail() {
   const [refreshing, setRefreshing] = useState(false);
   const [inviteCode, setInviteCode] = useState<string>('');
   const [partyDocId, setPartyDocId] = useState<string>('');
+  const [showEditModal, setShowEditModal] = useState(false);
+  const [uploading, setUploading] = useState(false);
+  const [showInviteModal, setShowInviteModal] = useState(false);
+  const [mutuals, setMutuals] = useState<{ id: string; username: string; avatar: string }[]>([]);
+  const [loadingMutuals, setLoadingMutuals] = useState(false);
+  const [inviteSearchQuery, setInviteSearchQuery] = useState('');
+  const [invitingUsers, setInvitingUsers] = useState<Set<string>>(new Set());
+  const [invitedUsers, setInvitedUsers] = useState<Set<string>>(new Set());
+  const [searchResults, setSearchResults] = useState<{ id: string; username: string; avatar: string }[]>([]);
+  const [searchingUsers, setSearchingUsers] = useState(false);
+
+  const isCreator = partyData?.createdBy === user?.id;
 
   // Leave party function
   const handleLeaveParty = async () => {
     if (!user?.id || !partyDocId) {
       Alert.alert('Error', 'Unable to leave party. Please try again.');
+      return;
+    }
+
+    // Check if user is the creator - show delete option
+    const isCreator = partyData?.createdBy === user.id;
+    const currentMembers = partyData?.members || [];
+    const hasNoMembers = !currentMembers.length || currentMembers.length === 0;
+
+    // If no members or user is creator of empty party, offer to delete
+    if (hasNoMembers || (isCreator && currentMembers.length <= 1)) {
+      Alert.alert(
+        'Delete Party',
+        'Do you want to delete this party?',
+        [
+          { text: 'Cancel', style: 'cancel' },
+          {
+            text: 'Delete',
+            style: 'destructive',
+            onPress: async () => {
+              try {
+                const partyRef = doc(db, 'parties', partyDocId);
+                await deleteDoc(partyRef);
+                Alert.alert('Party Deleted', 'The party has been deleted.');
+                router.replace('/(tabs)/parties');
+              } catch (error) {
+                console.error('Error deleting party:', error);
+                Alert.alert('Error', 'Failed to delete party. Please try again.');
+              }
+            },
+          },
+        ]
+      );
       return;
     }
 
@@ -62,8 +111,8 @@ export default function PartyDetail() {
               const partyRef = doc(db, 'parties', partyDocId);
 
               // Remove user from members and memberDetails arrays
-              const updatedMembers = partyData.members.filter((id: string) => id !== user.id);
-              const updatedMemberDetails = partyData.memberDetails.filter(
+              const updatedMembers = (partyData?.members || []).filter((id: string) => id !== user.id);
+              const updatedMemberDetails = (partyData?.memberDetails || []).filter(
                 (member: any) => member.userId !== user.id
               );
 
@@ -75,9 +124,6 @@ export default function PartyDetail() {
                 router.replace('/(tabs)/parties');
                 return;
               }
-
-              // Check if user is the party creator
-              const isCreator = partyData.createdBy === user.id;
 
               if (isCreator) {
                 // Transfer leadership to the next member
@@ -92,7 +138,7 @@ export default function PartyDetail() {
 
                 Alert.alert(
                   'Leadership Transferred',
-                  `You have left the party. Leadership has been transferred to ${newLeaderDetails.username}.`
+                  `You have left the party. Leadership has been transferred to ${newLeaderDetails?.username || 'another member'}.`
                 );
               } else {
                 // Regular member leaving
@@ -115,25 +161,245 @@ export default function PartyDetail() {
     );
   };
 
-  // Show invite code and copy to clipboard
-  const handleShowInviteCode = async () => {
-    if (!inviteCode) {
-      Alert.alert('No Invite Code', 'This party does not have an invite code.');
+  // Open invite modal and fetch mutuals
+  const handleOpenInviteModal = async () => {
+    setShowInviteModal(true);
+    setInviteSearchQuery('');
+    setLoadingMutuals(true);
+
+    try {
+      if (!user?.id) return;
+
+      // Get users the current user is following
+      const followingRef = collection(db, 'users', user.id, 'following');
+      const followingSnapshot = await getDocs(followingRef);
+      const followingIds = followingSnapshot.docs.map(doc => doc.data().followingId);
+
+      // Get users who are following the current user
+      const followersRef = collection(db, 'users', user.id, 'followers');
+      const followersSnapshot = await getDocs(followersRef);
+      const followerIds = followersSnapshot.docs.map(doc => doc.data().followerId);
+
+      // Find mutuals (intersection of following and followers)
+      const mutualIds = followingIds.filter(id => followerIds.includes(id));
+
+      // Fetch user details for mutuals
+      const mutualUsers: { id: string; username: string; avatar: string }[] = [];
+      for (const mutualId of mutualIds) {
+        // Skip if already a member or has pending invite
+        if (partyData?.members?.includes(mutualId)) continue;
+        if (partyData?.pendingInvites?.some((inv: any) => inv.userId === mutualId)) continue;
+
+        const userDoc = await getDoc(doc(db, 'users', mutualId));
+        if (userDoc.exists()) {
+          const userData = userDoc.data();
+          mutualUsers.push({
+            id: mutualId,
+            username: userData.username || 'Unknown',
+            avatar: userData.avatar || '',
+          });
+        }
+      }
+
+      setMutuals(mutualUsers);
+    } catch (error) {
+      console.error('Error fetching mutuals:', error);
+    } finally {
+      setLoadingMutuals(false);
+    }
+  };
+
+  // Copy invite code to clipboard
+  const handleCopyInviteCode = async () => {
+    if (inviteCode) {
+      await Clipboard.setStringAsync(inviteCode);
+      Alert.alert('Copied!', 'Invite code copied to clipboard');
+    }
+  };
+
+  // Invite a user to the party
+  const handleInviteUser = async (invitee: { id: string; username: string; avatar: string }) => {
+    if (!user?.id || !partyDocId) return;
+
+    setInvitingUsers(prev => new Set(prev).add(invitee.id));
+
+    try {
+      const partyRef = doc(db, 'parties', partyDocId);
+
+      // Add to pending invites
+      const newPendingInvite = {
+        userId: invitee.id,
+        username: invitee.username,
+        avatar: invitee.avatar,
+        invitedAt: new Date().toISOString(),
+        status: 'pending',
+      };
+
+      const currentPendingInvites = partyData?.pendingInvites || [];
+      await updateDoc(partyRef, {
+        pendingInvites: [...currentPendingInvites, newPendingInvite],
+      });
+
+      // Send notification to the invited user
+      const notificationRef = collection(db, 'users', invitee.id, 'notifications');
+      await addDoc(notificationRef, {
+        type: 'party_invite',
+        fromUserId: user.id,
+        fromUsername: user.username || user.email?.split('@')[0] || 'Unknown',
+        fromAvatar: user.avatar || '',
+        partyId: partyIdParam,
+        partyName: partyData?.partyName || partyName,
+        game: game,
+        read: false,
+        createdAt: serverTimestamp(),
+      });
+
+      setInvitedUsers(prev => new Set(prev).add(invitee.id));
+      // Remove from mutuals list
+      setMutuals(prev => prev.filter(m => m.id !== invitee.id));
+    } catch (error) {
+      console.error('Error inviting user:', error);
+      Alert.alert('Error', 'Failed to send invite');
+    } finally {
+      setInvitingUsers(prev => {
+        const newSet = new Set(prev);
+        newSet.delete(invitee.id);
+        return newSet;
+      });
+    }
+  };
+
+  // Search users when query changes
+  const handleInviteSearch = async (query: string) => {
+    setInviteSearchQuery(query);
+
+    if (query.trim().length < 2) {
+      setSearchResults([]);
       return;
     }
 
+    setSearchingUsers(true);
+    try {
+      const usersRef = collection(db, 'users');
+      const usersSnapshot = await getDocs(usersRef);
+
+      const results: { id: string; username: string; avatar: string }[] = [];
+      usersSnapshot.docs.forEach(userDoc => {
+        const userData = userDoc.data();
+        const username = userData.username || '';
+
+        // Skip current user, existing members, and pending invites
+        if (userDoc.id === user?.id) return;
+        if (partyData?.members?.includes(userDoc.id)) return;
+        if (partyData?.pendingInvites?.some((inv: any) => inv.userId === userDoc.id)) return;
+
+        // Check if username matches search query
+        if (username.toLowerCase().includes(query.toLowerCase())) {
+          results.push({
+            id: userDoc.id,
+            username: username,
+            avatar: userData.avatar || '',
+          });
+        }
+      });
+
+      setSearchResults(results.slice(0, 20)); // Limit to 20 results
+    } catch (error) {
+      console.error('Error searching users:', error);
+    } finally {
+      setSearchingUsers(false);
+    }
+  };
+
+  // Get display list - search results if searching, otherwise mutuals
+  const displayUsers = inviteSearchQuery.trim().length >= 2 ? searchResults : mutuals;
+
+  // Handle changing cover photo
+  const handleChangeCoverPhoto = async () => {
+    try {
+      const result = await ImagePicker.launchImageLibraryAsync({
+        mediaTypes: ImagePicker.MediaTypeOptions.Images,
+        allowsEditing: true,
+        aspect: [16, 9],
+        quality: 0.8,
+      });
+
+      if (!result.canceled && result.assets[0]) {
+        setShowEditModal(false);
+        setUploading(true);
+        try {
+          const coverPhotoUrl = await uploadPartyCoverPhoto(partyDocId, result.assets[0].uri);
+          const partyRef = doc(db, 'parties', partyDocId);
+          await updateDoc(partyRef, { coverPhoto: coverPhotoUrl });
+        } catch (error) {
+          console.error('Error uploading cover photo:', error);
+          Alert.alert('Error', 'Failed to update cover photo');
+        }
+        setUploading(false);
+      }
+    } catch (error) {
+      console.error('Error picking cover photo:', error);
+      Alert.alert('Error', 'Failed to select cover photo');
+    }
+  };
+
+  // Handle changing party icon
+  const handleChangePartyIcon = async () => {
+    try {
+      const result = await ImagePicker.launchImageLibraryAsync({
+        mediaTypes: ImagePicker.MediaTypeOptions.Images,
+        allowsEditing: true,
+        aspect: [1, 1],
+        quality: 0.8,
+      });
+
+      if (!result.canceled && result.assets[0]) {
+        setShowEditModal(false);
+        setUploading(true);
+        try {
+          const partyIconUrl = await uploadPartyIcon(partyDocId, result.assets[0].uri);
+          const partyRef = doc(db, 'parties', partyDocId);
+          await updateDoc(partyRef, { partyIcon: partyIconUrl });
+        } catch (error) {
+          console.error('Error uploading party icon:', error);
+          Alert.alert('Error', 'Failed to update party icon');
+        }
+        setUploading(false);
+      }
+    } catch (error) {
+      console.error('Error picking party icon:', error);
+      Alert.alert('Error', 'Failed to select party icon');
+    }
+  };
+
+  // Handle kicking a member
+  const handleKickMember = (member: Member) => {
     Alert.alert(
-      'Party Invite Code',
-      inviteCode,
+      'Kick Member',
+      `Are you sure you want to kick ${member.username} from the party?`,
       [
+        { text: 'Cancel', style: 'cancel' },
         {
-          text: 'Copy',
+          text: 'Kick',
+          style: 'destructive',
           onPress: async () => {
-            await Clipboard.setStringAsync(inviteCode);
-            Alert.alert('Copied!', 'Invite code copied to clipboard');
+            try {
+              const partyRef = doc(db, 'parties', partyDocId);
+              const updatedMembers = (partyData?.members || []).filter((id: string) => id !== member.userId);
+              const updatedMemberDetails = (partyData?.memberDetails || []).filter(
+                (m: any) => m.userId !== member.userId
+              );
+
+              await updateDoc(partyRef, {
+                members: updatedMembers,
+                memberDetails: updatedMemberDetails,
+              });
+            } catch (error) {
+              console.error('Error kicking member:', error);
+              Alert.alert('Error', 'Failed to kick member');
+            }
           },
         },
-        { text: 'Cancel', style: 'cancel' },
       ]
     );
   };
@@ -239,6 +505,7 @@ export default function PartyDetail() {
   };
 
   const coverPhoto = partyData?.coverPhoto;
+  const partyIcon = partyData?.partyIcon;
   const gameLogo = GAME_LOGOS[game];
 
   return (
@@ -254,12 +521,19 @@ export default function PartyDetail() {
         <View style={styles.coverPhotoSection}>
           {/* Header Icons - Overlaid on cover */}
           <View style={styles.headerIconsRow}>
-            <TouchableOpacity style={styles.headerIconButton} onPress={() => router.replace('/(tabs)/parties')}>
-              <IconSymbol size={20} name="chevron.left" color="#fff" />
+            <TouchableOpacity style={styles.backButton} onPress={() => router.back()}>
+              <IconSymbol size={18} name="chevron.left" color="#fff" />
             </TouchableOpacity>
-            <TouchableOpacity style={styles.headerIconButton} onPress={handleLeaveParty}>
-              <IconSymbol size={20} name="rectangle.portrait.and.arrow.right" color="#ef4444" />
-            </TouchableOpacity>
+            <View style={styles.headerRightButtons}>
+              {isCreator && (
+                <TouchableOpacity style={styles.editButton} onPress={() => setShowEditModal(true)}>
+                  <IconSymbol size={16} name="pencil" color="#fff" />
+                </TouchableOpacity>
+              )}
+              <TouchableOpacity style={styles.leaveButton} onPress={handleLeaveParty}>
+                <IconSymbol size={16} name="rectangle.portrait.and.arrow.right" color="#ff6b6b" />
+              </TouchableOpacity>
+            </View>
           </View>
 
           {/* Cover Photo Area */}
@@ -271,7 +545,7 @@ export default function PartyDetail() {
               />
             ) : (
               <LinearGradient
-                colors={['#2c2f33', '#1a1a1a']}
+                colors={['#252525', '#1a1a1a', '#0f0f0f']}
                 start={{ x: 0, y: 0 }}
                 end={{ x: 0, y: 1 }}
                 style={styles.coverPhotoGradient}
@@ -279,36 +553,64 @@ export default function PartyDetail() {
             )}
             {/* Top fade */}
             <LinearGradient
-              colors={['rgba(15, 15, 15, 0.7)', 'transparent']}
+              colors={['rgba(15, 15, 15, 0.6)', 'transparent']}
               start={{ x: 0, y: 0 }}
               end={{ x: 0, y: 1 }}
               style={styles.coverPhotoFadeTop}
             />
             {/* Bottom fade */}
             <LinearGradient
-              colors={['transparent', 'rgba(15, 15, 15, 0.95)']}
+              colors={['transparent', '#0f0f0f']}
               start={{ x: 0, y: 0 }}
               end={{ x: 0, y: 1 }}
               style={styles.coverPhotoFadeBottom}
             />
-
-            {/* Party Info Overlay */}
-            <View style={styles.partyInfoOverlay}>
-              {gameLogo && (
-                <Image source={gameLogo} style={styles.gameLogoSmall} resizeMode="contain" />
-              )}
-              <ThemedText style={styles.partyNameLarge}>{partyName}</ThemedText>
-              <ThemedText style={styles.partySubtitle}>{game} • {memberCount} Members</ThemedText>
-            </View>
           </View>
         </View>
 
-        {/* Invite Section */}
-        <View style={styles.inviteSection}>
-          <TouchableOpacity style={styles.inviteButton} onPress={handleShowInviteCode}>
-            <IconSymbol size={16} name="person.badge.plus" color="rgba(255, 255, 255, 0.6)" />
-            <ThemedText style={styles.inviteButtonText}>Invite Friends</ThemedText>
-          </TouchableOpacity>
+        {/* Party Info Section */}
+        <View style={styles.partyInfoSection}>
+          {/* Party Icon */}
+          <View style={styles.partyIconWrapper}>
+            {partyIcon ? (
+              <Image source={{ uri: partyIcon }} style={styles.partyIcon} />
+            ) : gameLogo ? (
+              <View style={styles.partyIconPlaceholder}>
+                <Image source={gameLogo} style={styles.partyIconGameLogo} resizeMode="contain" />
+              </View>
+            ) : (
+              <View style={styles.partyIconPlaceholder}>
+                <ThemedText style={styles.partyIconInitial}>{partyName?.[0]?.toUpperCase()}</ThemedText>
+              </View>
+            )}
+          </View>
+
+          {/* Party Name */}
+          <ThemedText style={styles.partyName}>{partyName}</ThemedText>
+
+          {/* Game & Members */}
+          <View style={styles.partyMeta}>
+            {gameLogo && (
+              <Image source={gameLogo} style={styles.gameLogoSmall} resizeMode="contain" />
+            )}
+            <ThemedText style={styles.partyMetaText}>{game}</ThemedText>
+            <View style={styles.metaDot} />
+            <ThemedText style={styles.partyMetaText}>{memberCount} {memberCount === 1 ? 'Member' : 'Members'}</ThemedText>
+          </View>
+
+          {/* Action Buttons */}
+          <View style={styles.actionButtons}>
+            <TouchableOpacity style={styles.inviteButton} onPress={handleOpenInviteModal}>
+              <IconSymbol size={14} name="person.badge.plus" color="#666" />
+              <ThemedText style={styles.inviteButtonText}>Invite</ThemedText>
+            </TouchableOpacity>
+            {inviteCode && (
+              <TouchableOpacity style={styles.codeButton} onPress={handleCopyInviteCode}>
+                <ThemedText style={styles.codeButtonText}>{inviteCode}</ThemedText>
+                <IconSymbol size={12} name="doc.on.doc" color="#444" />
+              </TouchableOpacity>
+            )}
+          </View>
         </View>
 
         {/* Members Section */}
@@ -316,14 +618,8 @@ export default function PartyDetail() {
           <ThemedText style={styles.sectionTitle}>MEMBERS</ThemedText>
 
           <View style={styles.membersList}>
-            {members.map((member, index) => (
-              <View
-                key={member.userId}
-                style={[
-                  styles.memberRow,
-                  member.isCurrentUser && styles.currentUserRow,
-                ]}
-              >
+            {members.map((member) => (
+              <View key={member.userId} style={styles.memberCard}>
                 {/* Member Avatar - Clickable */}
                 <TouchableOpacity
                   style={styles.memberAvatar}
@@ -342,14 +638,28 @@ export default function PartyDetail() {
                 {/* Member Info */}
                 <View style={styles.memberInfo}>
                   <TouchableOpacity onPress={() => handleMemberPress(member)} activeOpacity={0.7}>
-                    <ThemedText style={styles.memberName}>{member.username}</ThemedText>
+                    <ThemedText style={[styles.memberName, member.isCurrentUser && styles.memberNameYou]}>
+                      {member.username}
+                    </ThemedText>
                   </TouchableOpacity>
                   {partyData?.createdBy === member.userId && (
                     <View style={styles.leaderBadge}>
+                      <IconSymbol size={9} name="crown.fill" color="#555" />
                       <ThemedText style={styles.leaderBadgeText}>Leader</ThemedText>
                     </View>
                   )}
                 </View>
+
+                {/* Kick Button - Only visible to creator, not for themselves */}
+                {isCreator && member.userId !== user?.id && (
+                  <TouchableOpacity
+                    style={styles.kickButton}
+                    onPress={() => handleKickMember(member)}
+                    activeOpacity={0.7}
+                  >
+                    <IconSymbol size={14} name="xmark" color="#666" />
+                  </TouchableOpacity>
+                )}
               </View>
             ))}
           </View>
@@ -357,6 +667,161 @@ export default function PartyDetail() {
 
         <View style={styles.bottomSpacer} />
       </ScrollView>
+
+      {/* Edit Modal */}
+      <Modal
+        visible={showEditModal}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setShowEditModal(false)}
+      >
+        <TouchableOpacity
+          style={styles.modalOverlay}
+          activeOpacity={1}
+          onPress={() => setShowEditModal(false)}
+        >
+          <View style={styles.editModalContent}>
+            <View style={styles.editModalHeader}>
+              <ThemedText style={styles.editModalTitle}>Edit Party</ThemedText>
+              <TouchableOpacity onPress={() => setShowEditModal(false)}>
+                <IconSymbol size={20} name="xmark" color="#888" />
+              </TouchableOpacity>
+            </View>
+
+            <TouchableOpacity style={styles.editModalOption} onPress={handleChangeCoverPhoto}>
+              <View style={styles.editModalOptionIcon}>
+                <IconSymbol size={18} name="photo" color="#888" />
+              </View>
+              <View style={styles.editModalOptionText}>
+                <ThemedText style={styles.editModalOptionTitle}>Change Cover Photo</ThemedText>
+                <ThemedText style={styles.editModalOptionSubtitle}>Update the banner image</ThemedText>
+              </View>
+              <IconSymbol size={16} name="chevron.right" color="#444" />
+            </TouchableOpacity>
+
+            <TouchableOpacity style={styles.editModalOption} onPress={handleChangePartyIcon}>
+              <View style={styles.editModalOptionIcon}>
+                <IconSymbol size={18} name="square.and.pencil" color="#888" />
+              </View>
+              <View style={styles.editModalOptionText}>
+                <ThemedText style={styles.editModalOptionTitle}>Change Party Icon</ThemedText>
+                <ThemedText style={styles.editModalOptionSubtitle}>Update the party icon</ThemedText>
+              </View>
+              <IconSymbol size={16} name="chevron.right" color="#444" />
+            </TouchableOpacity>
+          </View>
+        </TouchableOpacity>
+      </Modal>
+
+      {/* Invite Modal */}
+      <Modal
+        visible={showInviteModal}
+        transparent
+        animationType="slide"
+        onRequestClose={() => setShowInviteModal(false)}
+      >
+        <TouchableOpacity
+          style={styles.modalOverlay}
+          activeOpacity={1}
+          onPress={() => setShowInviteModal(false)}
+        >
+          <TouchableOpacity
+            activeOpacity={1}
+            onPress={(e) => e.stopPropagation()}
+            style={styles.inviteModalContent}
+          >
+            <View style={styles.inviteModalHandle} />
+
+            <View style={styles.inviteModalHeader}>
+              <ThemedText style={styles.inviteModalTitle}>Invite to Party</ThemedText>
+              <TouchableOpacity onPress={() => setShowInviteModal(false)}>
+                <IconSymbol size={20} name="xmark" color="#888" />
+              </TouchableOpacity>
+            </View>
+
+            {/* Search Bar */}
+            <View style={styles.inviteSearchContainer}>
+              <IconSymbol size={16} name="magnifyingglass" color="#555" />
+              <TextInput
+                style={styles.inviteSearchInput}
+                placeholder="Search users..."
+                placeholderTextColor="#555"
+                value={inviteSearchQuery}
+                onChangeText={handleInviteSearch}
+              />
+              {inviteSearchQuery.length > 0 && (
+                <TouchableOpacity onPress={() => { setInviteSearchQuery(''); setSearchResults([]); }}>
+                  <IconSymbol size={16} name="xmark.circle.fill" color="#555" />
+                </TouchableOpacity>
+              )}
+            </View>
+
+            {/* Section Label */}
+            {inviteSearchQuery.trim().length < 2 && mutuals.length > 0 && (
+              <ThemedText style={styles.inviteSectionLabel}>Suggestions</ThemedText>
+            )}
+
+            {/* Users List */}
+            <ScrollView style={styles.inviteUsersList} showsVerticalScrollIndicator={false}>
+              {loadingMutuals || searchingUsers ? (
+                <View style={styles.inviteLoadingContainer}>
+                  <ActivityIndicator size="small" color="#c42743" />
+                </View>
+              ) : displayUsers.length === 0 ? (
+                <View style={styles.inviteEmptyContainer}>
+                  <ThemedText style={styles.inviteEmptyText}>
+                    {inviteSearchQuery.trim().length >= 2
+                      ? 'No users found'
+                      : 'No suggestions available'
+                    }
+                  </ThemedText>
+                </View>
+              ) : (
+                displayUsers.map((userItem) => (
+                  <View key={userItem.id} style={styles.inviteUserItem}>
+                    <View style={styles.inviteUserAvatar}>
+                      {userItem.avatar && userItem.avatar.startsWith('http') ? (
+                        <Image source={{ uri: userItem.avatar }} style={styles.inviteUserAvatarImage} />
+                      ) : (
+                        <ThemedText style={styles.inviteUserAvatarText}>
+                          {userItem.username[0].toUpperCase()}
+                        </ThemedText>
+                      )}
+                    </View>
+                    <ThemedText style={styles.inviteUserName}>{userItem.username}</ThemedText>
+                    <TouchableOpacity
+                      style={[
+                        styles.inviteSendButton,
+                        invitedUsers.has(userItem.id) && styles.inviteSendButtonSent
+                      ]}
+                      onPress={() => handleInviteUser(userItem)}
+                      disabled={invitingUsers.has(userItem.id) || invitedUsers.has(userItem.id)}
+                    >
+                      {invitingUsers.has(userItem.id) ? (
+                        <ActivityIndicator size="small" color="#fff" />
+                      ) : invitedUsers.has(userItem.id) ? (
+                        <IconSymbol size={14} name="checkmark" color="#fff" />
+                      ) : (
+                        <ThemedText style={styles.inviteSendButtonText}>Invite</ThemedText>
+                      )}
+                    </TouchableOpacity>
+                  </View>
+                ))
+              )}
+            </ScrollView>
+          </TouchableOpacity>
+        </TouchableOpacity>
+      </Modal>
+
+      {/* Uploading Overlay */}
+      {uploading && (
+        <View style={styles.uploadingOverlay}>
+          <View style={styles.uploadingContent}>
+            <ActivityIndicator size="large" color="#c42743" />
+            <ThemedText style={styles.uploadingText}>Uploading...</ThemedText>
+          </View>
+        </View>
+      )}
     </ThemedView>
   );
 }
@@ -384,17 +849,38 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     zIndex: 10,
   },
-  headerIconButton: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
+  backButton: {
+    width: 38,
+    height: 38,
+    borderRadius: 19,
+    backgroundColor: 'rgba(0,0,0,0.5)',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  headerRightButtons: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  editButton: {
+    width: 38,
+    height: 38,
+    borderRadius: 19,
+    backgroundColor: 'rgba(0,0,0,0.5)',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  leaveButton: {
+    width: 38,
+    height: 38,
+    borderRadius: 19,
+    backgroundColor: 'rgba(0,0,0,0.5)',
     alignItems: 'center',
     justifyContent: 'center',
   },
   coverPhotoWrapper: {
     width: '100%',
-    height: 220,
-    backgroundColor: '#1a1a1a',
+    height: 180,
   },
   coverPhotoImage: {
     position: 'absolute',
@@ -420,119 +906,378 @@ const styles = StyleSheet.create({
     bottom: 0,
     left: 0,
     right: 0,
-    height: 120,
+    height: 80,
     zIndex: 1,
   },
-  partyInfoOverlay: {
-    position: 'absolute',
-    bottom: 16,
-    left: 16,
-    right: 16,
+  // Party Info Section
+  partyInfoSection: {
+    alignItems: 'center',
+    marginTop: -44,
+    paddingHorizontal: 20,
     zIndex: 2,
   },
-  gameLogoSmall: {
-    width: 28,
-    height: 28,
-    marginBottom: 8,
-    opacity: 0.9,
+  partyIconWrapper: {
+    marginBottom: 14,
   },
-  partyNameLarge: {
-    fontSize: 26,
-    fontWeight: '800',
+  partyIcon: {
+    width: 88,
+    height: 88,
+    borderRadius: 22,
+    borderWidth: 4,
+    borderColor: '#0f0f0f',
+  },
+  partyIconPlaceholder: {
+    width: 88,
+    height: 88,
+    borderRadius: 22,
+    backgroundColor: '#1a1a1a',
+    borderWidth: 4,
+    borderColor: '#0f0f0f',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  partyIconGameLogo: {
+    width: 40,
+    height: 40,
+    opacity: 0.8,
+  },
+  partyIconInitial: {
+    fontSize: 36,
+    fontWeight: '700',
+    color: '#333',
+  },
+  partyName: {
+    fontSize: 24,
+    fontWeight: '700',
     color: '#fff',
     letterSpacing: -0.5,
-    marginBottom: 4,
+    textAlign: 'center',
+    marginBottom: 6,
   },
-  partySubtitle: {
-    fontSize: 14,
+  partyMeta: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    marginBottom: 18,
+  },
+  gameLogoSmall: {
+    width: 16,
+    height: 16,
+    opacity: 0.6,
+  },
+  partyMetaText: {
+    fontSize: 13,
+    color: '#555',
     fontWeight: '500',
-    color: 'rgba(255, 255, 255, 0.7)',
   },
-  inviteSection: {
-    paddingHorizontal: 16,
-    paddingVertical: 12,
+  metaDot: {
+    width: 3,
+    height: 3,
+    borderRadius: 1.5,
+    backgroundColor: '#333',
+  },
+  // Action Buttons
+  actionButtons: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    marginBottom: 8,
   },
   inviteButton: {
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'center',
     gap: 6,
+    backgroundColor: '#1a1a1a',
     paddingVertical: 10,
     paddingHorizontal: 16,
-    alignSelf: 'flex-start',
+    borderRadius: 10,
   },
   inviteButtonText: {
-    fontSize: 14,
-    fontWeight: '500',
-    color: 'rgba(255, 255, 255, 0.6)',
+    fontSize: 13,
+    fontWeight: '600',
+    color: '#888',
   },
+  codeButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    backgroundColor: '#1a1a1a',
+    paddingVertical: 10,
+    paddingHorizontal: 14,
+    borderRadius: 10,
+  },
+  codeButtonText: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: '#555',
+    letterSpacing: 1.5,
+  },
+  // Members Section
   membersSection: {
-    paddingHorizontal: 16,
+    paddingHorizontal: 20,
+    paddingTop: 20,
   },
   sectionTitle: {
-    fontSize: 12,
+    fontSize: 11,
     fontWeight: '600',
-    color: '#666',
+    color: '#444',
     letterSpacing: 0.5,
     marginBottom: 12,
   },
   membersList: {
     gap: 6,
   },
-  memberRow: {
+  memberCard: {
     flexDirection: 'row',
     alignItems: 'center',
     paddingVertical: 8,
     paddingHorizontal: 10,
-    backgroundColor: '#1a1a1a',
-    borderRadius: 10,
-  },
-  currentUserRow: {
-    backgroundColor: '#1f1f1f',
+    backgroundColor: '#151515',
+    borderRadius: 8,
+    gap: 10,
   },
   memberAvatar: {
-    width: 28,
-    height: 28,
-    backgroundColor: '#252525',
-    borderRadius: 14,
+    width: 30,
+    height: 30,
+    backgroundColor: '#1f1f1f',
+    borderRadius: 15,
     alignItems: 'center',
     justifyContent: 'center',
     overflow: 'hidden',
-    marginRight: 10,
   },
   memberAvatarImage: {
     width: '100%',
     height: '100%',
   },
   avatarText: {
-    fontSize: 11,
+    fontSize: 12,
     fontWeight: '600',
-    color: '#888',
+    color: '#444',
   },
   memberInfo: {
     flex: 1,
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 6,
+    gap: 8,
   },
   memberName: {
     fontSize: 13,
     fontWeight: '600',
-    color: '#fff',
+    color: '#ccc',
+  },
+  memberNameYou: {
+    color: '#b8a566',
   },
   leaderBadge: {
-    backgroundColor: '#c42743',
-    paddingHorizontal: 6,
-    paddingVertical: 2,
-    borderRadius: 4,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    alignSelf: 'flex-start',
   },
   leaderBadgeText: {
-    fontSize: 9,
+    fontSize: 10,
     fontWeight: '600',
-    color: '#fff',
-    textTransform: 'uppercase',
+    color: '#666',
+  },
+  kickButton: {
+    width: 28,
+    height: 28,
+    borderRadius: 14,
+    backgroundColor: 'rgba(255,100,100,0.1)',
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   bottomSpacer: {
     height: 40,
+  },
+  // Edit Modal
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.7)',
+    justifyContent: 'flex-end',
+  },
+  editModalContent: {
+    backgroundColor: '#1a1a1a',
+    borderTopLeftRadius: 20,
+    borderTopRightRadius: 20,
+    paddingBottom: 40,
+  },
+  editModalHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    padding: 20,
+    borderBottomWidth: 1,
+    borderBottomColor: '#252525',
+  },
+  editModalTitle: {
+    fontSize: 18,
+    fontWeight: '700',
+    color: '#fff',
+  },
+  editModalOption: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: 16,
+    paddingHorizontal: 20,
+    gap: 14,
+  },
+  editModalOptionIcon: {
+    width: 40,
+    height: 40,
+    borderRadius: 10,
+    backgroundColor: '#252525',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  editModalOptionText: {
+    flex: 1,
+  },
+  editModalOptionTitle: {
+    fontSize: 15,
+    fontWeight: '600',
+    color: '#fff',
+    marginBottom: 2,
+  },
+  editModalOptionSubtitle: {
+    fontSize: 12,
+    color: '#666',
+  },
+  // Uploading Overlay
+  uploadingOverlay: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    backgroundColor: 'rgba(0,0,0,0.8)',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  uploadingContent: {
+    alignItems: 'center',
+    gap: 16,
+  },
+  uploadingText: {
+    fontSize: 15,
+    fontWeight: '500',
+    color: '#fff',
+  },
+  // Invite Modal
+  inviteModalContent: {
+    backgroundColor: '#1a1a1a',
+    borderTopLeftRadius: 20,
+    borderTopRightRadius: 20,
+    height: '60%',
+    paddingBottom: 20,
+  },
+  inviteModalHandle: {
+    width: 36,
+    height: 4,
+    backgroundColor: '#444',
+    borderRadius: 2,
+    alignSelf: 'center',
+    marginTop: 10,
+    marginBottom: 6,
+  },
+  inviteModalHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingHorizontal: 20,
+    paddingVertical: 14,
+  },
+  inviteModalTitle: {
+    fontSize: 18,
+    fontWeight: '700',
+    color: '#fff',
+  },
+  inviteSearchContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#252525',
+    marginHorizontal: 20,
+    paddingHorizontal: 14,
+    borderRadius: 12,
+    gap: 10,
+  },
+  inviteSearchInput: {
+    flex: 1,
+    paddingVertical: 14,
+    fontSize: 15,
+    color: '#fff',
+  },
+  inviteSectionLabel: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: '#666',
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
+    marginHorizontal: 20,
+    marginTop: 16,
+    marginBottom: 8,
+  },
+  inviteUsersList: {
+    flex: 1,
+    paddingHorizontal: 20,
+    marginTop: 8,
+  },
+  inviteLoadingContainer: {
+    paddingVertical: 40,
+    alignItems: 'center',
+  },
+  inviteEmptyContainer: {
+    paddingVertical: 40,
+    alignItems: 'center',
+  },
+  inviteEmptyText: {
+    fontSize: 14,
+    color: '#555',
+  },
+  inviteUserItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 10,
+    gap: 12,
+  },
+  inviteUserAvatar: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    backgroundColor: '#252525',
+    alignItems: 'center',
+    justifyContent: 'center',
+    overflow: 'hidden',
+  },
+  inviteUserAvatarImage: {
+    width: '100%',
+    height: '100%',
+  },
+  inviteUserAvatarText: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#666',
+  },
+  inviteUserName: {
+    flex: 1,
+    fontSize: 15,
+    fontWeight: '500',
+    color: '#fff',
+  },
+  inviteSendButton: {
+    backgroundColor: '#c42743',
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    borderRadius: 8,
+    minWidth: 70,
+    alignItems: 'center',
+  },
+  inviteSendButtonSent: {
+    backgroundColor: '#333',
+  },
+  inviteSendButtonText: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: '#fff',
   },
 });

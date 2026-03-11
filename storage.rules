@@ -79,6 +79,19 @@ service firebase.storage {
       allow delete: if request.auth != null;
     }
 
+    // Party icons: authenticated users can upload party icons
+    match /party-icons/{fileName} {
+      allow read: if true;
+
+      // Limit party icons to 5MB and only images
+      allow create, update: if request.auth != null
+                            && request.resource.size < 5 * 1024 * 1024
+                            && request.resource.contentType.matches('image/.*');
+
+      // Allow authenticated users to delete party icons
+      allow delete: if request.auth != null;
+    }
+
     // Default: deny all other access
     match /{allPaths=**} {
       allow read, write: if false;

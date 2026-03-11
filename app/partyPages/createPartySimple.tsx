@@ -12,24 +12,27 @@ import {
   Alert,
   ActivityIndicator,
   Image,
+  Dimensions,
 } from 'react-native';
 import * as Clipboard2 from 'expo-clipboard';
 import * as ImagePicker from 'expo-image-picker';
 import { useAuth } from '@/contexts/AuthContext';
 import { db } from '@/config/firebase';
 import { collection, getDocs, doc, getDoc, addDoc, serverTimestamp } from 'firebase/firestore';
-import { uploadPartyCoverPhoto } from '@/services/storageService';
+import { uploadPartyIcon, uploadPartyCoverPhoto } from '@/services/storageService';
+
+const { width: screenWidth } = Dimensions.get('window');
 
 // Available games
 const AVAILABLE_GAMES = [
   {
     id: 'valorant',
     name: 'Valorant',
-    logo: require('@/assets/images/valorant.png'),
+    logo: require('@/assets/images/valorant-red.png'),
   },
   {
     id: 'league',
-    name: 'League of Legends',
+    name: 'League',
     logo: require('@/assets/images/lol-icon.png'),
   },
 ];
@@ -53,8 +56,9 @@ export default function CreatePartySimpleScreen() {
   const [followers, setFollowers] = useState<Follower[]>([]);
   const [loadingFollowers, setLoadingFollowers] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
+  const [partyIcon, setPartyIcon] = useState<string | null>(null);
   const [coverPhoto, setCoverPhoto] = useState<string | null>(null);
-  const [uploadingCover, setUploadingCover] = useState(false);
+  const [uploading, setUploading] = useState(false);
 
   useEffect(() => {
     const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
@@ -137,6 +141,24 @@ export default function CreatePartySimpleScreen() {
     }
   };
 
+  const handlePickPartyIcon = async () => {
+    try {
+      const result = await ImagePicker.launchImageLibraryAsync({
+        mediaTypes: ImagePicker.MediaTypeOptions.Images,
+        allowsEditing: true,
+        aspect: [1, 1],
+        quality: 0.8,
+      });
+
+      if (!result.canceled && result.assets[0]) {
+        setPartyIcon(result.assets[0].uri);
+      }
+    } catch (error) {
+      console.error('Error picking party icon:', error);
+      Alert.alert('Error', 'Failed to select party icon');
+    }
+  };
+
   const handlePickCoverPhoto = async () => {
     try {
       const result = await ImagePicker.launchImageLibraryAsync({
@@ -155,10 +177,6 @@ export default function CreatePartySimpleScreen() {
     }
   };
 
-  const handleRemoveCoverPhoto = () => {
-    setCoverPhoto(null);
-  };
-
   const handleCreateParty = async () => {
     if (!selectedGame) {
       Alert.alert('Error', 'Please select a game');
@@ -172,6 +190,8 @@ export default function CreatePartySimpleScreen() {
       Alert.alert('Error', 'You must be logged in to create a party');
       return;
     }
+
+    setUploading(true);
 
     try {
       const partiesRef = collection(db, 'parties');
@@ -223,18 +243,24 @@ export default function CreatePartySimpleScreen() {
       const { updateDoc } = await import('firebase/firestore');
       await updateDoc(partyDocRef, { partyId: generatedPartyId });
 
-      // Upload cover photo if selected (using the generated party ID)
+      // Upload party icon if selected
+      if (partyIcon) {
+        try {
+          const partyIconUrl = await uploadPartyIcon(generatedPartyId, partyIcon);
+          await updateDoc(partyDocRef, { partyIcon: partyIconUrl });
+        } catch (uploadError) {
+          console.error('Error uploading party icon:', uploadError);
+        }
+      }
+
+      // Upload cover photo if selected
       if (coverPhoto) {
-        setUploadingCover(true);
         try {
           const coverPhotoUrl = await uploadPartyCoverPhoto(generatedPartyId, coverPhoto);
-          // Update the party with the cover photo URL
           await updateDoc(partyDocRef, { coverPhoto: coverPhotoUrl });
         } catch (uploadError) {
           console.error('Error uploading cover photo:', uploadError);
-          // Continue without cover photo if upload fails
         }
-        setUploadingCover(false);
       }
 
       if (selectedFollowers.length > 0) {
@@ -258,6 +284,8 @@ export default function CreatePartySimpleScreen() {
         }
       }
 
+      setUploading(false);
+
       Alert.alert(
         'Success',
         selectedFollowers.length > 0
@@ -266,7 +294,7 @@ export default function CreatePartySimpleScreen() {
         [{
           text: 'OK',
           onPress: () => {
-            router.push({
+            router.replace({
               pathname: '/partyPages/partyDetail',
               params: {
                 name: partyName,
@@ -279,6 +307,7 @@ export default function CreatePartySimpleScreen() {
       );
     } catch (error) {
       console.error('Error creating party:', error);
+      setUploading(false);
       Alert.alert('Error', 'Failed to create party. Please try again.');
     }
   };
@@ -300,157 +329,170 @@ export default function CreatePartySimpleScreen() {
         showsVerticalScrollIndicator={false}
         keyboardShouldPersistTaps="handled"
       >
-        {/* Game Selection Card */}
-        <View style={styles.card}>
-          <ThemedText style={styles.cardTitle}>Select Game</ThemedText>
-          <View style={styles.gameSelectionRow}>
-            {AVAILABLE_GAMES.map((game) => (
-              <TouchableOpacity
-                key={game.id}
-                style={[
-                  styles.gameOption,
-                  selectedGame?.id === game.id && styles.gameOptionSelected
-                ]}
-                onPress={() => setSelectedGame(game)}
-              >
-                <Image source={game.logo} style={styles.gameOptionLogo} />
-                <ThemedText style={[
-                  styles.gameOptionName,
-                  selectedGame?.id === game.id && styles.gameOptionNameSelected
-                ]}>{game.name}</ThemedText>
-              </TouchableOpacity>
-            ))}
-          </View>
-        </View>
-
-        {/* Cover Photo Card */}
-        <View style={styles.card}>
-          <ThemedText style={styles.cardTitle}>Cover Photo</ThemedText>
-          <ThemedText style={styles.cardSubtitle}>Add a cover photo to make your party stand out</ThemedText>
-
+        {/* Cover Photo */}
+        <TouchableOpacity
+          style={styles.coverPhotoContainer}
+          onPress={handlePickCoverPhoto}
+          activeOpacity={0.8}
+        >
           {coverPhoto ? (
-            <View style={styles.coverPhotoPreviewContainer}>
-              <Image source={{ uri: coverPhoto }} style={styles.coverPhotoPreview} />
-              <View style={styles.coverPhotoActions}>
-                <TouchableOpacity style={styles.coverPhotoActionButton} onPress={handlePickCoverPhoto}>
-                  <IconSymbol size={16} name="arrow.triangle.2.circlepath" color="#fff" />
-                  <ThemedText style={styles.coverPhotoActionText}>Change</ThemedText>
-                </TouchableOpacity>
-                <TouchableOpacity style={[styles.coverPhotoActionButton, styles.coverPhotoRemoveButton]} onPress={handleRemoveCoverPhoto}>
-                  <IconSymbol size={16} name="xmark" color="#ff4444" />
-                  <ThemedText style={[styles.coverPhotoActionText, { color: '#ff4444' }]}>Remove</ThemedText>
-                </TouchableOpacity>
-              </View>
-            </View>
+            <Image source={{ uri: coverPhoto }} style={styles.coverPhoto} />
           ) : (
-            <TouchableOpacity style={styles.coverPhotoPlaceholder} onPress={handlePickCoverPhoto}>
-              <IconSymbol size={32} name="photo.badge.plus" color="#666" />
-              <ThemedText style={styles.coverPhotoPlaceholderText}>Tap to add cover photo</ThemedText>
-            </TouchableOpacity>
+            <View style={styles.coverPhotoPlaceholder}>
+              <IconSymbol size={24} name="photo" color="#555" />
+              <ThemedText style={styles.coverPhotoText}>Add Cover Photo</ThemedText>
+            </View>
           )}
+          {coverPhoto && (
+            <View style={styles.coverPhotoEditBadge}>
+              <IconSymbol size={14} name="pencil" color="#fff" />
+            </View>
+          )}
+        </TouchableOpacity>
+
+        {/* Party Icon - Overlapping cover */}
+        <View style={styles.iconSection}>
+          <TouchableOpacity style={styles.partyIconContainer} onPress={handlePickPartyIcon}>
+            {partyIcon ? (
+              <Image source={{ uri: partyIcon }} style={styles.partyIcon} />
+            ) : (
+              <View style={styles.partyIconPlaceholder}>
+                <IconSymbol size={28} name="camera.fill" color="#555" />
+              </View>
+            )}
+            <View style={styles.partyIconEditBadge}>
+              <IconSymbol size={10} name="plus" color="#fff" />
+            </View>
+          </TouchableOpacity>
         </View>
 
-        {/* Party Info Card */}
-        <View style={styles.card}>
+        {/* Form Content */}
+        <View style={styles.formContent}>
+          {/* Party Name */}
           <View style={styles.inputGroup}>
             <ThemedText style={styles.label}>Party Name</ThemedText>
             <TextInput
               style={styles.input}
-              placeholder="Enter name"
-              placeholderTextColor="#555"
+              placeholder="Enter a name for your party"
+              placeholderTextColor="#444"
               value={partyName}
               onChangeText={setPartyName}
               maxLength={30}
             />
           </View>
 
+          {/* Game Selection */}
+          <View style={styles.inputGroup}>
+            <ThemedText style={styles.label}>Game</ThemedText>
+            <View style={styles.gameSelectionRow}>
+              {AVAILABLE_GAMES.map((game) => (
+                <TouchableOpacity
+                  key={game.id}
+                  style={[
+                    styles.gameOption,
+                    selectedGame?.id === game.id && styles.gameOptionSelected
+                  ]}
+                  onPress={() => setSelectedGame(game)}
+                >
+                  <Image source={game.logo} style={styles.gameOptionLogo} />
+                  <ThemedText style={[
+                    styles.gameOptionName,
+                    selectedGame?.id === game.id && styles.gameOptionNameSelected
+                  ]}>{game.name}</ThemedText>
+                </TouchableOpacity>
+              ))}
+            </View>
+          </View>
+
+          {/* Invite Code */}
           <View style={styles.inputGroup}>
             <ThemedText style={styles.label}>Invite Code</ThemedText>
             <TouchableOpacity style={styles.codeButton} onPress={handleCopyInviteCode}>
               <ThemedText style={styles.codeText}>{inviteCode}</ThemedText>
-              <IconSymbol size={14} name="doc.on.doc" color="#888" />
+              <IconSymbol size={16} name="doc.on.doc" color="#666" />
             </TouchableOpacity>
           </View>
-        </View>
 
-        {/* Invite Members Card */}
-        <View style={styles.card}>
-          <View style={styles.cardHeader}>
-            <ThemedText style={styles.cardTitle}>Invite Members</ThemedText>
-            {selectedFollowers.length > 0 && (
-              <View style={styles.selectedBadge}>
-                <ThemedText style={styles.selectedBadgeText}>{selectedFollowers.length}</ThemedText>
+          {/* Invite Members */}
+          <View style={styles.inputGroup}>
+            <View style={styles.labelRow}>
+              <ThemedText style={styles.label}>Invite Members</ThemedText>
+              {selectedFollowers.length > 0 && (
+                <View style={styles.selectedBadge}>
+                  <ThemedText style={styles.selectedBadgeText}>{selectedFollowers.length}</ThemedText>
+                </View>
+              )}
+            </View>
+
+            {!loadingFollowers && followers.length > 0 && (
+              <TextInput
+                style={styles.searchInput}
+                placeholder="Search followers..."
+                placeholderTextColor="#444"
+                value={searchQuery}
+                onChangeText={setSearchQuery}
+              />
+            )}
+
+            {loadingFollowers ? (
+              <View style={styles.loadingContainer}>
+                <ActivityIndicator size="small" color="#c42743" />
+              </View>
+            ) : followers.length === 0 ? (
+              <ThemedText style={styles.emptyText}>No followers to invite</ThemedText>
+            ) : filteredFollowers.length === 0 ? (
+              <ThemedText style={styles.emptyText}>No results</ThemedText>
+            ) : (
+              <View style={styles.followersList}>
+                {filteredFollowers.map((follower) => (
+                  <TouchableOpacity
+                    key={follower.id}
+                    style={[
+                      styles.followerItem,
+                      selectedFollowers.includes(follower.id) && styles.followerItemSelected
+                    ]}
+                    onPress={() => toggleFollower(follower.id)}
+                  >
+                    <View style={styles.followerAvatar}>
+                      {follower.avatar && follower.avatar.startsWith('http') ? (
+                        <Image source={{ uri: follower.avatar }} style={styles.followerAvatarImage} />
+                      ) : (
+                        <ThemedText style={styles.followerAvatarText}>
+                          {follower.username[0].toUpperCase()}
+                        </ThemedText>
+                      )}
+                    </View>
+                    <ThemedText style={styles.followerName}>{follower.username}</ThemedText>
+                    <View style={[
+                      styles.checkCircle,
+                      selectedFollowers.includes(follower.id) && styles.checkCircleSelected
+                    ]}>
+                      {selectedFollowers.includes(follower.id) && (
+                        <IconSymbol size={12} name="checkmark" color="#fff" />
+                      )}
+                    </View>
+                  </TouchableOpacity>
+                ))}
               </View>
             )}
           </View>
 
-          {!loadingFollowers && followers.length > 0 && (
-            <TextInput
-              style={styles.searchInput}
-              placeholder="Search followers..."
-              placeholderTextColor="#555"
-              value={searchQuery}
-              onChangeText={setSearchQuery}
-            />
-          )}
-
-          {loadingFollowers ? (
-            <View style={styles.loadingContainer}>
-              <ActivityIndicator size="small" color="#c42743" />
-            </View>
-          ) : followers.length === 0 ? (
-            <View style={styles.emptyContainer}>
-              <ThemedText style={styles.emptyText}>No followers to invite</ThemedText>
-            </View>
-          ) : filteredFollowers.length === 0 ? (
-            <View style={styles.emptyContainer}>
-              <ThemedText style={styles.emptyText}>No results</ThemedText>
-            </View>
-          ) : (
-            <View style={styles.followersList}>
-              {filteredFollowers.map((follower) => (
-                <TouchableOpacity
-                  key={follower.id}
-                  style={[
-                    styles.followerItem,
-                    selectedFollowers.includes(follower.id) && styles.followerItemSelected
-                  ]}
-                  onPress={() => toggleFollower(follower.id)}
-                >
-                  <View style={styles.followerAvatar}>
-                    {follower.avatar && follower.avatar.startsWith('http') ? (
-                      <Image source={{ uri: follower.avatar }} style={styles.followerAvatarImage} />
-                    ) : (
-                      <ThemedText style={styles.followerAvatarText}>
-                        {follower.username[0].toUpperCase()}
-                      </ThemedText>
-                    )}
-                  </View>
-                  <ThemedText style={styles.followerName}>{follower.username}</ThemedText>
-                  {selectedFollowers.includes(follower.id) && (
-                    <IconSymbol size={18} name="checkmark.circle.fill" color="#c42743" />
-                  )}
-                </TouchableOpacity>
-              ))}
-            </View>
-          )}
+          {/* Create Button */}
+          <TouchableOpacity
+            style={[styles.createButton, uploading && styles.createButtonDisabled]}
+            onPress={handleCreateParty}
+            disabled={uploading}
+          >
+            {uploading ? (
+              <View style={styles.createButtonLoading}>
+                <ActivityIndicator size="small" color="#fff" />
+                <ThemedText style={styles.createButtonText}>Creating...</ThemedText>
+              </View>
+            ) : (
+              <ThemedText style={styles.createButtonText}>Create Party</ThemedText>
+            )}
+          </TouchableOpacity>
         </View>
-
-        {/* Create Button */}
-        <TouchableOpacity
-          style={[styles.createButton, uploadingCover && styles.createButtonDisabled]}
-          onPress={handleCreateParty}
-          disabled={uploadingCover}
-        >
-          {uploadingCover ? (
-            <View style={styles.createButtonLoading}>
-              <ActivityIndicator size="small" color="#fff" />
-              <ThemedText style={styles.createButtonText}>Uploading...</ThemedText>
-            </View>
-          ) : (
-            <ThemedText style={styles.createButtonText}>Create Party</ThemedText>
-          )}
-        </TouchableOpacity>
 
         <View style={styles.bottomSpacer} />
       </ScrollView>
@@ -485,148 +527,161 @@ const styles = StyleSheet.create({
   },
   scrollView: {
     flex: 1,
-    paddingHorizontal: 16,
   },
-  card: {
+  // Cover Photo
+  coverPhotoContainer: {
+    width: screenWidth,
+    height: 140,
     backgroundColor: '#1a1a1a',
-    borderRadius: 14,
-    padding: 14,
-    marginBottom: 12,
+    position: 'relative',
   },
-  cardHeader: {
+  coverPhoto: {
+    width: '100%',
+    height: '100%',
+  },
+  coverPhotoPlaceholder: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+  },
+  coverPhotoText: {
+    fontSize: 13,
+    color: '#555',
+  },
+  coverPhotoEditBadge: {
+    position: 'absolute',
+    bottom: 10,
+    right: 10,
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    backgroundColor: 'rgba(0,0,0,0.6)',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  // Party Icon
+  iconSection: {
+    alignItems: 'center',
+    marginTop: -40,
+    marginBottom: 16,
+  },
+  partyIconContainer: {
+    position: 'relative',
+  },
+  partyIcon: {
+    width: 80,
+    height: 80,
+    borderRadius: 20,
+    borderWidth: 4,
+    borderColor: '#0f0f0f',
+  },
+  partyIconPlaceholder: {
+    width: 80,
+    height: 80,
+    borderRadius: 20,
+    backgroundColor: '#1a1a1a',
+    borderWidth: 4,
+    borderColor: '#0f0f0f',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  partyIconEditBadge: {
+    position: 'absolute',
+    bottom: -2,
+    right: -2,
+    width: 24,
+    height: 24,
+    borderRadius: 12,
+    backgroundColor: '#c42743',
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 2,
+    borderColor: '#0f0f0f',
+  },
+  // Form
+  formContent: {
+    paddingHorizontal: 20,
+  },
+  inputGroup: {
+    marginBottom: 24,
+  },
+  labelRow: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
     marginBottom: 10,
   },
-  cardTitle: {
-    fontSize: 14,
+  label: {
+    fontSize: 13,
     fontWeight: '600',
     color: '#888',
-    marginBottom: 4,
+    marginBottom: 10,
     textTransform: 'uppercase',
     letterSpacing: 0.5,
   },
-  cardSubtitle: {
-    fontSize: 12,
-    color: '#555',
-    marginBottom: 12,
-  },
-  coverPhotoPreviewContainer: {
-    borderRadius: 10,
-    overflow: 'hidden',
-  },
-  coverPhotoPreview: {
-    width: '100%',
-    height: 140,
-    borderRadius: 10,
-  },
-  coverPhotoActions: {
-    flexDirection: 'row',
-    gap: 10,
-    marginTop: 10,
-  },
-  coverPhotoActionButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-    paddingVertical: 8,
-    paddingHorizontal: 14,
-    backgroundColor: '#252525',
-    borderRadius: 8,
-  },
-  coverPhotoRemoveButton: {
-    backgroundColor: 'rgba(255, 68, 68, 0.1)',
-  },
-  coverPhotoActionText: {
-    fontSize: 13,
-    fontWeight: '500',
+  input: {
+    backgroundColor: '#1a1a1a',
+    borderRadius: 12,
+    padding: 14,
+    fontSize: 16,
     color: '#fff',
   },
-  coverPhotoPlaceholder: {
-    width: '100%',
-    height: 120,
-    backgroundColor: '#252525',
-    borderRadius: 10,
-    borderWidth: 2,
-    borderColor: '#333',
-    borderStyle: 'dashed',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 8,
-  },
-  coverPhotoPlaceholderText: {
-    fontSize: 13,
-    color: '#666',
-  },
+  // Game Selection
   gameSelectionRow: {
     flexDirection: 'row',
-    gap: 10,
+    gap: 12,
   },
   gameOption: {
     flex: 1,
-    backgroundColor: '#252525',
-    borderRadius: 10,
-    padding: 12,
+    flexDirection: 'row',
     alignItems: 'center',
+    gap: 10,
+    backgroundColor: '#1a1a1a',
+    borderRadius: 12,
+    padding: 14,
     borderWidth: 1.5,
     borderColor: 'transparent',
   },
   gameOptionSelected: {
-    backgroundColor: '#2a2020',
+    backgroundColor: '#1f1518',
     borderColor: '#c42743',
   },
   gameOptionLogo: {
-    width: 40,
-    height: 40,
-    marginBottom: 8,
+    width: 28,
+    height: 28,
   },
   gameOptionName: {
-    fontSize: 12,
+    fontSize: 13,
     fontWeight: '600',
-    color: '#888',
-    textAlign: 'center',
+    color: '#666',
   },
   gameOptionNameSelected: {
     color: '#fff',
   },
-  inputGroup: {
-    marginBottom: 12,
-  },
-  label: {
-    fontSize: 12,
-    fontWeight: '500',
-    color: '#666',
-    marginBottom: 6,
-  },
-  input: {
-    backgroundColor: '#252525',
-    borderRadius: 8,
-    padding: 12,
-    fontSize: 15,
-    color: '#fff',
-  },
+  // Invite Code
   codeButton: {
-    backgroundColor: '#252525',
-    borderRadius: 8,
-    padding: 12,
+    backgroundColor: '#1a1a1a',
+    borderRadius: 12,
+    padding: 14,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
   },
   codeText: {
-    fontSize: 15,
-    fontWeight: '600',
+    fontSize: 18,
+    fontWeight: '700',
     color: '#c42743',
-    letterSpacing: 2,
+    letterSpacing: 3,
   },
+  // Search
   searchInput: {
-    backgroundColor: '#252525',
-    borderRadius: 8,
-    padding: 10,
-    fontSize: 14,
+    backgroundColor: '#1a1a1a',
+    borderRadius: 12,
+    padding: 12,
+    fontSize: 15,
     color: '#fff',
-    marginBottom: 10,
+    marginBottom: 12,
   },
   selectedBadge: {
     backgroundColor: '#c42743',
@@ -643,35 +698,30 @@ const styles = StyleSheet.create({
     paddingVertical: 20,
     alignItems: 'center',
   },
-  emptyContainer: {
-    paddingVertical: 16,
-    alignItems: 'center',
-  },
   emptyText: {
-    fontSize: 13,
-    color: '#555',
+    fontSize: 14,
+    color: '#444',
   },
+  // Followers
   followersList: {
-    gap: 6,
+    gap: 8,
   },
   followerItem: {
     flexDirection: 'row',
     alignItems: 'center',
-    padding: 10,
-    backgroundColor: '#252525',
-    borderRadius: 8,
-    gap: 10,
+    padding: 12,
+    backgroundColor: '#1a1a1a',
+    borderRadius: 12,
+    gap: 12,
   },
   followerItemSelected: {
-    backgroundColor: '#2a2a2a',
-    borderWidth: 1,
-    borderColor: '#c42743',
+    backgroundColor: '#1f1518',
   },
   followerAvatar: {
-    width: 32,
-    height: 32,
-    borderRadius: 16,
-    backgroundColor: '#333',
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: '#252525',
     alignItems: 'center',
     justifyContent: 'center',
     overflow: 'hidden',
@@ -681,26 +731,42 @@ const styles = StyleSheet.create({
     height: '100%',
   },
   followerAvatarText: {
-    fontSize: 14,
+    fontSize: 16,
     fontWeight: '600',
-    color: '#888',
+    color: '#666',
   },
   followerName: {
     flex: 1,
-    fontSize: 14,
+    fontSize: 15,
     fontWeight: '500',
     color: '#fff',
   },
-  createButton: {
-    backgroundColor: '#c42743',
+  checkCircle: {
+    width: 24,
+    height: 24,
     borderRadius: 12,
+    borderWidth: 2,
+    borderColor: '#333',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  checkCircleSelected: {
+    backgroundColor: '#c42743',
+    borderColor: '#c42743',
+  },
+  // Create Button
+  createButton: {
+    backgroundColor: '#1a1a1a',
+    borderRadius: 14,
     padding: 16,
     alignItems: 'center',
-    marginTop: 4,
+    marginTop: 8,
+    borderWidth: 1,
+    borderColor: '#333',
   },
   createButtonText: {
     fontSize: 16,
-    fontWeight: '700',
+    fontWeight: '600',
     color: '#fff',
   },
   createButtonDisabled: {

@@ -5,8 +5,9 @@ import { IconSymbol } from '@/components/ui/icon-symbol';
 
 // Game logo mapping
 const GAME_LOGOS: { [key: string]: any } = {
-  'Valorant': require('@/assets/images/valorant.png'),
+  'Valorant': require('@/assets/images/valorant-red.png'),
   'League of Legends': require('@/assets/images/lol-icon.png'),
+  'League': require('@/assets/images/lol-icon.png'),
   'Apex Legends': require('@/assets/images/apex.png'),
 };
 
@@ -34,7 +35,7 @@ interface Leaderboard {
   startDate?: any;
   endDate?: any;
   type?: 'party' | 'leaderboard';
-  coverPhoto?: string; // URL for custom cover photo
+  partyIcon?: string;
 }
 
 interface PartyCardsProps {
@@ -98,52 +99,35 @@ export default function PartyCards({ leaderboard, onPress }: PartyCardsProps) {
 
   const accentColor = GAME_ACCENT_COLORS[leaderboard.game] || GAME_ACCENT_COLORS['default'];
   const gameLogo = GAME_LOGOS[leaderboard.game];
-  const hasCoverPhoto = !!leaderboard.coverPhoto;
 
   const renderCardContent = () => (
     <>
-      {/* Background - Cover photo with fading edges */}
-      {hasCoverPhoto && (
-        <>
-          <Image
-            source={{ uri: leaderboard.coverPhoto }}
-            style={styles.backgroundCover}
-            resizeMode="cover"
-          />
-          {/* Top fade */}
-          <LinearGradient
-            colors={['rgba(18, 18, 18, 0.9)', 'transparent']}
-            style={styles.fadeTop}
-          />
-          {/* Bottom fade */}
-          <LinearGradient
-            colors={['transparent', 'rgba(18, 18, 18, 0.95)']}
-            style={styles.fadeBottom}
-          />
-          {/* Left fade */}
-          <LinearGradient
-            colors={['rgba(18, 18, 18, 0.8)', 'transparent']}
-            start={{ x: 0, y: 0 }}
-            end={{ x: 1, y: 0 }}
-            style={styles.fadeLeft}
-          />
-          {/* Right fade */}
-          <LinearGradient
-            colors={['transparent', 'rgba(18, 18, 18, 0.8)']}
-            start={{ x: 0, y: 0 }}
-            end={{ x: 1, y: 0 }}
-            style={styles.fadeRight}
-          />
-        </>
-      )}
-
       {/* Inside border */}
       <View style={styles.innerBorder} />
 
       {/* Card Content */}
       <View style={styles.cardContent}>
-        {/* Header Row - Game Logo only */}
+        {/* Header Row - Party Icon and Game Logo */}
         <View style={styles.cardHeader}>
+          <View style={styles.headerLeft}>
+            {/* Party Icon */}
+            {leaderboard.partyIcon ? (
+              <View style={styles.partyIconContainer}>
+                <Image
+                  source={{ uri: leaderboard.partyIcon }}
+                  style={styles.partyIcon}
+                  resizeMode="cover"
+                />
+              </View>
+            ) : (
+              <View style={styles.partyIconPlaceholder}>
+                <ThemedText style={styles.partyIconPlaceholderText}>
+                  {leaderboard.name.charAt(0).toUpperCase()}
+                </ThemedText>
+              </View>
+            )}
+          </View>
+          {/* Game Logo */}
           <View style={styles.gameLogoContainer}>
             {gameLogo ? (
               <Image
@@ -152,7 +136,7 @@ export default function PartyCards({ leaderboard, onPress }: PartyCardsProps) {
                 resizeMode="contain"
               />
             ) : (
-              <IconSymbol size={24} name="gamecontroller.fill" color="#fff" />
+              <IconSymbol size={20} name="gamecontroller.fill" color="#fff" />
             )}
           </View>
         </View>
@@ -273,51 +257,6 @@ const styles = StyleSheet.create({
     flex: 1,
     borderRadius: 18,
   },
-  backgroundCover: {
-    position: 'absolute',
-    top: 0,
-    left: 0,
-    right: 0,
-    bottom: 0,
-    borderRadius: 17,
-    opacity: 0.5,
-  },
-  fadeTop: {
-    position: 'absolute',
-    top: 0,
-    left: 0,
-    right: 0,
-    height: 50,
-    borderTopLeftRadius: 17,
-    borderTopRightRadius: 17,
-  },
-  fadeBottom: {
-    position: 'absolute',
-    bottom: 0,
-    left: 0,
-    right: 0,
-    height: 70,
-    borderBottomLeftRadius: 17,
-    borderBottomRightRadius: 17,
-  },
-  fadeLeft: {
-    position: 'absolute',
-    top: 0,
-    left: 0,
-    bottom: 0,
-    width: 40,
-    borderTopLeftRadius: 17,
-    borderBottomLeftRadius: 17,
-  },
-  fadeRight: {
-    position: 'absolute',
-    top: 0,
-    right: 0,
-    bottom: 0,
-    width: 40,
-    borderTopRightRadius: 17,
-    borderBottomRightRadius: 17,
-  },
   innerBorder: {
     position: 'absolute',
     top: 3,
@@ -336,19 +275,47 @@ const styles = StyleSheet.create({
   },
   cardHeader: {
     flexDirection: 'row',
-    justifyContent: 'flex-start',
+    justifyContent: 'space-between',
     alignItems: 'center',
   },
+  headerLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  partyIconContainer: {
+    width: 40,
+    height: 40,
+    borderRadius: 10,
+    overflow: 'hidden',
+    backgroundColor: '#252525',
+  },
+  partyIcon: {
+    width: '100%',
+    height: '100%',
+  },
+  partyIconPlaceholder: {
+    width: 40,
+    height: 40,
+    borderRadius: 10,
+    backgroundColor: '#333',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  partyIconPlaceholderText: {
+    fontSize: 18,
+    fontWeight: '700',
+    color: '#666',
+  },
   gameLogoContainer: {
-    width: 32,
-    height: 32,
+    width: 28,
+    height: 28,
     alignItems: 'center',
     justifyContent: 'center',
   },
   gameLogo: {
-    width: 28,
-    height: 28,
-    opacity: 0.9,
+    width: 24,
+    height: 24,
+    opacity: 0.7,
   },
   cardBody: {
     flex: 1,
