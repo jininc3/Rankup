@@ -806,91 +806,93 @@ export default function DuoFinderScreen() {
           }
         >
           <View style={styles.myCardContent}>
-            {!hasCards ? (
-              // No cards - Show add button
-              <View style={styles.emptyCardState}>
-                <View style={styles.emptyIconsRow}>
-                  <View style={styles.emptyIconCircle}>
-                    <Image
-                      source={require('@/assets/images/valorant-logo.png')}
-                      style={styles.emptyGameLogo}
-                      resizeMode="contain"
-                    />
+            <View style={styles.myCardsContainer}>
+              {!hasCards ? (
+                // No cards - Show add button
+                <View style={styles.emptyCardState}>
+                  <View style={styles.emptyIconsRow}>
+                    <View style={styles.emptyIconCircle}>
+                      <Image
+                        source={require('@/assets/images/valorant-logo.png')}
+                        style={styles.emptyGameLogo}
+                        resizeMode="contain"
+                      />
+                    </View>
+                    <View style={[styles.emptyIconCircle, styles.emptyIconCircleCenter]}>
+                      <IconSymbol size={36} name="person.crop.rectangle.stack.fill" color="#fff" />
+                    </View>
+                    <View style={styles.emptyIconCircle}>
+                      <Image
+                        source={require('@/assets/images/leagueoflegends.png')}
+                        style={styles.emptyGameLogo}
+                        resizeMode="contain"
+                      />
+                    </View>
                   </View>
-                  <View style={[styles.emptyIconCircle, styles.emptyIconCircleCenter]}>
-                    <IconSymbol size={36} name="person.crop.rectangle.stack.fill" color="#fff" />
-                  </View>
-                  <View style={styles.emptyIconCircle}>
-                    <Image
-                      source={require('@/assets/images/leagueoflegends.png')}
-                      style={styles.emptyGameLogo}
-                      resizeMode="contain"
-                    />
-                  </View>
-                </View>
-                <ThemedText style={styles.emptyCardTitle}>Create Your Duo Card</ThemedText>
-                <ThemedText style={styles.emptyCardText}>
-                  Share your rank and find teammates who match your skill level
-                </ThemedText>
-                <TouchableOpacity
-                  style={styles.addCardButton}
-                  onPress={() => setShowAddCard(true)}
-                >
-                  <IconSymbol size={20} name="plus" color="#fff" />
-                  <ThemedText style={styles.addCardButtonText}>Create Duo Card</ThemedText>
-                </TouchableOpacity>
-              </View>
-            ) : (
-              // Has cards - Show them in a row
-              <View style={styles.compactCardsContainer}>
-                <ThemedText style={styles.myCardsTitle}>MY DUO CARDS</ThemedText>
-                <View style={styles.myCardsRow}>
-                  {/* Valorant Card */}
-                  {valorantCard && (
-                    <CompactDuoCard
-                      game="valorant"
-                      username={valorantCard.username}
-                      avatar={user?.avatar}
-                      currentRank={valorantCard.currentRank}
-                      peakRank={valorantCard.peakRank}
-                      mainRole={valorantCard.mainRole}
-                      preferredDuoRole={valorantCard.lookingFor || 'Any'}
-                      onPress={() => handleCardPress('valorant')}
-                    />
-                  )}
-
-                  {/* League Card */}
-                  {leagueCard && (
-                    <CompactDuoCard
-                      game="league"
-                      username={leagueCard.username}
-                      avatar={user?.avatar}
-                      currentRank={leagueCard.currentRank}
-                      peakRank={leagueCard.peakRank}
-                      mainRole={leagueCard.mainRole}
-                      preferredDuoRole={leagueCard.lookingFor || 'Any'}
-                      onPress={() => handleCardPress('league')}
-                    />
-                  )}
-                </View>
-
-                {/* Add Another Card Button */}
-                {(valorantCard === null || leagueCard === null) && (
+                  <ThemedText style={styles.emptyCardTitle}>Create Your Duo Card</ThemedText>
+                  <ThemedText style={styles.emptyCardText}>
+                    Share your rank and find teammates who match your skill level
+                  </ThemedText>
                   <TouchableOpacity
-                    style={styles.addAnotherButtonCompact}
+                    style={styles.addCardButton}
                     onPress={() => setShowAddCard(true)}
                   >
-                    <IconSymbol size={24} name="plus.circle.fill" color="#c42743" />
-                    <View style={styles.addAnotherContent}>
-                      <ThemedText style={styles.addAnotherButtonText}>
-                        {valorantCard ? 'Add League Card' : 'Add Valorant Card'}
-                      </ThemedText>
-                      <ThemedText style={styles.addAnotherSubtext}>Connect another game</ThemedText>
-                    </View>
+                    <IconSymbol size={20} name="plus" color="#fff" />
+                    <ThemedText style={styles.addCardButtonText}>Create Duo Card</ThemedText>
                   </TouchableOpacity>
-                )}
-              </View>
-            )}
+                </View>
+              ) : (
+                // Has cards - Show them in a row
+                <View style={styles.compactCardsContainer}>
+                  <ThemedText style={styles.myCardsTitle}>MY DUO CARDS</ThemedText>
+                  <View style={styles.myCardsRow}>
+                    {/* Valorant Card */}
+                    {valorantCard && (
+                      <CompactDuoCard
+                        game="valorant"
+                        username={valorantCard.username}
+                        avatar={user?.avatar}
+                        currentRank={valorantCard.currentRank}
+                        peakRank={valorantCard.peakRank}
+                        mainRole={valorantCard.mainRole}
+                        preferredDuoRole={valorantCard.lookingFor || 'Any'}
+                        onPress={() => handleCardPress('valorant')}
+                      />
+                    )}
+
+                    {/* League Card */}
+                    {leagueCard && (
+                      <CompactDuoCard
+                        game="league"
+                        username={leagueCard.username}
+                        avatar={user?.avatar}
+                        currentRank={leagueCard.currentRank}
+                        peakRank={leagueCard.peakRank}
+                        mainRole={leagueCard.mainRole}
+                        preferredDuoRole={leagueCard.lookingFor || 'Any'}
+                        onPress={() => handleCardPress('league')}
+                      />
+                    )}
+                  </View>
+
+                  {/* Add Another Card Button */}
+                  {(valorantCard === null || leagueCard === null) && (
+                    <TouchableOpacity
+                      style={styles.addAnotherButtonCompact}
+                      onPress={() => setShowAddCard(true)}
+                    >
+                      <IconSymbol size={24} name="plus.circle.fill" color="#c42743" />
+                      <View style={styles.addAnotherContent}>
+                        <ThemedText style={styles.addAnotherButtonText}>
+                          {valorantCard ? 'Add League Card' : 'Add Valorant Card'}
+                        </ThemedText>
+                        <ThemedText style={styles.addAnotherSubtext}>Connect another game</ThemedText>
+                      </View>
+                    </TouchableOpacity>
+                  )}
+                </View>
+              )}
+            </View>
           </View>
           <View style={styles.bottomSpacer} />
         </ScrollView>
@@ -1079,7 +1081,16 @@ const styles = StyleSheet.create({
   // My Card Content
   myCardContent: {
     flex: 1,
-    padding: 20,
+    paddingHorizontal: 8,
+    paddingTop: 16,
+  },
+  myCardsContainer: {
+    flex: 1,
+    backgroundColor: '#1a1a1a',
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: '#2a2a2a',
+    overflow: 'hidden',
   },
   emptyCardState: {
     flex: 1,
@@ -1119,6 +1130,7 @@ const styles = StyleSheet.create({
   compactCardsContainer: {
     gap: 16,
     alignItems: 'center',
+    padding: 16,
   },
   myCardsTitle: {
     fontSize: 12,
