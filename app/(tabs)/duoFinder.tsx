@@ -6,7 +6,7 @@ import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { IconSymbol } from '@/components/ui/icon-symbol';
 import { useAuth } from '@/contexts/AuthContext';
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { Alert, ScrollView, StyleSheet, TouchableOpacity, View, RefreshControl, Dimensions, ActivityIndicator, Image } from 'react-native';
 import { doc, getDoc, setDoc, deleteDoc, serverTimestamp, collection, query, where, getDocs, orderBy, limit } from 'firebase/firestore';
 import { db } from '@/config/firebase';
@@ -19,10 +19,13 @@ interface DuoCardWithId extends DuoCardData {
   avatar?: string;
 }
 
+const { width: SCREEN_WIDTH } = Dimensions.get('window');
+
 export default function DuoFinderScreen() {
   const { user } = useAuth();
   const router = useRouter();
-  const [activeTab, setActiveTab] = useState<'findDuo' | 'myCard'>('findDuo');
+  const pagerRef = useRef<ScrollView>(null);
+  const [selectedTab, setSelectedTab] = useState<'findDuo' | 'myCards'>('findDuo');
   const [showAddCard, setShowAddCard] = useState(false);
   const [valorantCard, setValorantCard] = useState<DuoCardData | null>(null);
   const [leagueCard, setLeagueCard] = useState<DuoCardData | null>(null);
@@ -56,6 +59,23 @@ export default function DuoFinderScreen() {
       ...prev,
       [game]: !prev[game],
     }));
+  };
+
+  // Handle tab press - scroll to page
+  const handleTabPress = (tab: 'findDuo' | 'myCards') => {
+    setSelectedTab(tab);
+    const pageIndex = tab === 'findDuo' ? 0 : 1;
+    pagerRef.current?.scrollTo({ x: pageIndex * SCREEN_WIDTH, animated: true });
+  };
+
+  // Handle swipe - update selected tab in real-time
+  const handlePageScroll = (event: any) => {
+    const offsetX = event.nativeEvent.contentOffset.x;
+    const progress = offsetX / SCREEN_WIDTH;
+    const newTab = progress >= 0.5 ? 'myCards' : 'findDuo';
+    if (newTab !== selectedTab) {
+      setSelectedTab(newTab);
+    }
   };
 
   // Count active filters
@@ -579,39 +599,54 @@ export default function DuoFinderScreen() {
     <ThemedView style={styles.container}>
       {/* Header */}
       <View style={styles.header}>
-        <ThemedText style={styles.headerTitle}>
-          {activeTab === 'myCard' ? 'My Duo Cards' : 'Duo Finder'}
-        </ThemedText>
-        <View style={styles.headerRight}>
-          <TouchableOpacity
-            style={styles.headerTabBtn}
-            onPress={() => setActiveTab(activeTab === 'myCard' ? 'findDuo' : 'myCard')}
-            activeOpacity={0.7}
-          >
-            <ThemedText style={styles.headerTabBtnText}>
-              {activeTab === 'myCard' ? 'Find Duo' : 'My Cards'}
-            </ThemedText>
-          </TouchableOpacity>
-        </View>
+        <ThemedText style={styles.headerTitle}>DUO FINDER</ThemedText>
       </View>
 
-      {/* Content */}
+      {/* Tabs - Fixed at top */}
+      <View style={styles.tabsContainer}>
+        <TouchableOpacity
+          style={styles.tab}
+          onPress={() => handleTabPress('findDuo')}
+          activeOpacity={0.7}
+        >
+          <ThemedText style={[styles.tabText, selectedTab === 'findDuo' && styles.tabTextActive]}>
+            FIND DUO
+          </ThemedText>
+          <ThemedText style={[styles.tabCount, selectedTab === 'findDuo' && styles.tabCountActive]}>
+            {duoCards.length}
+          </ThemedText>
+        </TouchableOpacity>
+        <View style={styles.tabDivider} />
+        <TouchableOpacity
+          style={styles.tab}
+          onPress={() => handleTabPress('myCards')}
+          activeOpacity={0.7}
+        >
+          <ThemedText style={[styles.tabText, selectedTab === 'myCards' && styles.tabTextActive]}>
+            MY CARDS
+          </ThemedText>
+          <ThemedText style={[styles.tabCount, selectedTab === 'myCards' && styles.tabCountActive]}>
+            {(valorantCard ? 1 : 0) + (leagueCard ? 1 : 0)}
+          </ThemedText>
+        </TouchableOpacity>
+      </View>
+
+      {/* Swipeable Pages */}
       <ScrollView
-        style={styles.scrollView}
-        contentContainerStyle={styles.scrollContent}
-        showsVerticalScrollIndicator={false}
-        refreshControl={
-          activeTab === 'myCard' ? (
-            <RefreshControl
-              refreshing={refreshing}
-              onRefresh={onRefresh}
-              tintColor="#c42743"
-              colors={['#c42743']}
-            />
-          ) : undefined
-        }
+        ref={pagerRef}
+        horizontal
+        pagingEnabled
+        showsHorizontalScrollIndicator={false}
+        onScroll={handlePageScroll}
+        scrollEventThrottle={16}
+        style={styles.pagerContainer}
       >
-        {activeTab === 'findDuo' ? (
+        {/* Find Duo Page */}
+        <ScrollView
+          style={[styles.pageContainer, { width: SCREEN_WIDTH }]}
+          showsVerticalScrollIndicator={false}
+          contentContainerStyle={styles.pageContent}
+        >
           <View style={styles.findDuoContent}>
             {/* Game Filter Buttons */}
             <View style={styles.gameFilterContainer}>
@@ -717,7 +752,7 @@ export default function DuoFinderScreen() {
                 <TouchableOpacity
                   style={styles.emptyButton}
                   onPress={() => {
-                    setActiveTab('myCard');
+                    handleTabPress('myCards');
                     if (!hasCards) {
                       setShowAddCard(true);
                     }
@@ -748,7 +783,23 @@ export default function DuoFinderScreen() {
               </View>
             )}
           </View>
-        ) : (
+          <View style={styles.bottomSpacer} />
+        </ScrollView>
+
+        {/* My Cards Page */}
+        <ScrollView
+          style={[styles.pageContainer, { width: SCREEN_WIDTH }]}
+          showsVerticalScrollIndicator={false}
+          contentContainerStyle={styles.pageContent}
+          refreshControl={
+            <RefreshControl
+              refreshing={refreshing}
+              onRefresh={onRefresh}
+              tintColor="#c42743"
+              colors={['#c42743']}
+            />
+          }
+        >
           <View style={styles.myCardContent}>
             {!hasCards ? (
               // No cards - Show add button
@@ -836,7 +887,8 @@ export default function DuoFinderScreen() {
               </View>
             )}
           </View>
-        )}
+          <View style={styles.bottomSpacer} />
+        </ScrollView>
       </ScrollView>
 
       {/* Add Duo Card Modal */}
@@ -901,21 +953,58 @@ const styles = StyleSheet.create({
     letterSpacing: 0.3,
     textTransform: 'uppercase',
   },
-  headerRight: {
+  // Tabs
+  tabsContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 12,
+    justifyContent: 'center',
+    paddingHorizontal: 20,
+    paddingTop: 8,
+    paddingBottom: 4,
+    gap: 16,
   },
-  headerTabBtn: {
-    paddingVertical: 4,
-    paddingHorizontal: 8,
+  tab: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    paddingVertical: 6,
   },
-  headerTabBtnText: {
+  tabText: {
     fontSize: 12,
     fontWeight: '600',
-    color: '#c42743',
+    color: '#555',
     letterSpacing: 0.5,
-    textTransform: 'uppercase',
+  },
+  tabTextActive: {
+    color: '#fff',
+  },
+  tabCount: {
+    fontSize: 12,
+    fontWeight: '500',
+    color: '#444',
+  },
+  tabCountActive: {
+    color: '#888',
+  },
+  tabDivider: {
+    width: 1,
+    height: 12,
+    backgroundColor: '#333',
+  },
+  // Pager
+  pagerContainer: {
+    flex: 1,
+  },
+  pageContainer: {
+    flex: 1,
+  },
+  pageContent: {
+    paddingHorizontal: 0,
+    paddingTop: 0,
+    flexGrow: 1,
+  },
+  bottomSpacer: {
+    height: 40,
   },
   // Game Filter Buttons
   gameFilterContainer: {
@@ -936,6 +1025,15 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     borderWidth: 1.5,
     borderColor: '#2a2a2a',
+    // 3D Shadow effect
+    shadowColor: '#000',
+    shadowOffset: {
+      width: -3,
+      height: 4,
+    },
+    shadowOpacity: 0.5,
+    shadowRadius: 5,
+    elevation: 8,
   },
   gameFilterButtonSelected: {
     borderColor: '#444',
@@ -972,14 +1070,6 @@ const styles = StyleSheet.create({
     fontSize: 12,
     fontWeight: '500',
     color: '#888',
-  },
-  scrollView: {
-    flex: 1,
-  },
-  scrollContent: {
-    paddingHorizontal: 0,
-    paddingVertical: 0,
-    flexGrow: 1,
   },
   // My Card Content
   myCardContent: {

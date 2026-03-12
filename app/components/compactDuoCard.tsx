@@ -266,8 +266,8 @@ export default function CompactDuoCard({
               resizeMode="contain"
             />
             <View style={styles.statTextGroup}>
-              <ThemedText style={styles.rankText} numberOfLines={1}>{mainRole}</ThemedText>
-              <ThemedText style={styles.statLabel}>ROLE</ThemedText>
+              <ThemedText style={styles.roleText} numberOfLines={1}>{mainRole}</ThemedText>
+              <ThemedText style={styles.statLabelSmall}>ROLE</ThemedText>
             </View>
           </View>
         </View>
@@ -295,6 +295,15 @@ const styles = StyleSheet.create({
   cardWrapper: {
     width: cardWidth,
     alignSelf: 'center',
+    // 3D Shadow effect
+    shadowColor: '#000',
+    shadowOffset: {
+      width: -4,
+      height: 6,
+    },
+    shadowOpacity: 0.5,
+    shadowRadius: 8,
+    elevation: 10,
   },
   card: {
     width: '100%',
@@ -309,7 +318,7 @@ const styles = StyleSheet.create({
     ...StyleSheet.absoluteFillObject,
     width: '100%',
     height: '100%',
-    opacity: 0.5,
+    opacity: 0.95,
   },
   fadeOverlay: {
     ...StyleSheet.absoluteFillObject,
@@ -442,17 +451,30 @@ const styles = StyleSheet.create({
     alignSelf: 'flex-end',
   },
   rankIcon: {
-    width: 24,
-    height: 24,
+    width: 28,
+    height: 28,
+    marginTop: 4,
   },
   roleIcon: {
-    width: 22,
-    height: 22,
+    width: 20,
+    height: 20,
+    marginTop: 3,
   },
   rankText: {
-    fontSize: 12,
+    fontSize: 13,
     fontWeight: '600',
     color: '#fff',
+  },
+  roleText: {
+    fontSize: 11,
+    fontWeight: '600',
+    color: '#fff',
+  },
+  statLabelSmall: {
+    fontSize: 7,
+    fontWeight: '600',
+    color: 'rgba(255, 255, 255, 0.4)',
+    letterSpacing: 0.3,
   },
   // Duo Card Label
   duoCardLabel: {

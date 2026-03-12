@@ -159,22 +159,26 @@ async function notifyPartyCompletion(partyDocId: string, partyData: any) {
   // Winner is the first person in sorted list
   const winner = memberStats[0];
 
-  // Build rankings array to save to party document (for achievements)
-  const rankings = memberStats.map((member, index) => ({
-    userId: member.userId,
-    username: member.username,
-    rank: index + 1,
-    currentRank: member.currentRank,
-    lp: member.lp,
-    rr: member.rr,
-  }));
+  // Only save rankings for achievements if there are at least 2 members
+  // (solo leaderboards don't count as achievements)
+  if (memberStats.length >= 2) {
+    const rankings = memberStats.map((member, index) => ({
+      userId: member.userId,
+      username: member.username,
+      rank: index + 1,
+      currentRank: member.currentRank,
+      lp: member.lp,
+      rr: member.rr,
+    }));
 
-  // Save rankings to party document
-  await db.collection('parties').doc(partyDocId).update({
-    rankings: rankings,
-  });
+    await db.collection('parties').doc(partyDocId).update({
+      rankings: rankings,
+    });
 
-  console.log(`Saved rankings for party ${partyId}`);
+    console.log(`Saved rankings for party ${partyId}`);
+  } else {
+    console.log(`Skipping rankings for party ${partyId} - only ${memberStats.length} member(s)`);
+  }
 
   // Create notifications for all members
   for (const member of memberStats) {
