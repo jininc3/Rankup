@@ -686,102 +686,107 @@ export default function DuoFinderScreen() {
               </TouchableOpacity>
             </View>
 
-            {/* Players Section Header */}
-            <View style={styles.sectionHeader}>
-              <View style={styles.sectionHeaderLeft}>
-                <ThemedText style={styles.sectionHeaderTitle}>AVAILABLE PLAYERS</ThemedText>
-                <ThemedText style={styles.playerCount}>
-                  {duoCards.length}
-                </ThemedText>
-              </View>
-              <View style={styles.headerRightSection}>
-                <View style={styles.statusBadge}>
-                  <View style={styles.statusDotOuter}>
-                    <View style={styles.statusDot} />
-                  </View>
+            {/* Find Duo Cards Container */}
+            <View style={styles.findDuoContainer}>
+              {/* Players Section Header */}
+              <View style={styles.sectionHeader}>
+                <View style={styles.sectionHeaderLeft}>
+                  <ThemedText style={styles.sectionHeaderTitle}>AVAILABLE PLAYERS</ThemedText>
+                  <ThemedText style={styles.playerCount}>
+                    {duoCards.length}
+                  </ThemedText>
                 </View>
-                <TouchableOpacity
-                  style={styles.filterButton}
-                  onPress={() => setShowFilterModal(true)}
-                  activeOpacity={0.7}
-                >
-                  <IconSymbol size={16} name="line.3.horizontal.decrease" color={activeFilterCount > 0 ? '#c42743' : '#888'} />
-                </TouchableOpacity>
-                <TouchableOpacity
-                  style={styles.refreshButton}
-                  onPress={handleRefreshDuoCards}
-                  activeOpacity={0.7}
-                  disabled={loadingDuoCards}
-                >
-                  <IconSymbol size={14} name="arrow.clockwise" color={loadingDuoCards ? '#444' : '#888'} />
-                </TouchableOpacity>
+                <View style={styles.headerRightSection}>
+                  <View style={styles.statusBadge}>
+                    <View style={styles.statusDotOuter}>
+                      <View style={styles.statusDot} />
+                    </View>
+                  </View>
+                  <TouchableOpacity
+                    style={styles.filterButton}
+                    onPress={() => setShowFilterModal(true)}
+                    activeOpacity={0.7}
+                  >
+                    <IconSymbol size={16} name="line.3.horizontal.decrease" color={activeFilterCount > 0 ? '#c42743' : '#888'} />
+                  </TouchableOpacity>
+                  <TouchableOpacity
+                    style={styles.refreshButton}
+                    onPress={handleRefreshDuoCards}
+                    activeOpacity={0.7}
+                    disabled={loadingDuoCards}
+                  >
+                    <IconSymbol size={14} name="arrow.clockwise" color={loadingDuoCards ? '#444' : '#888'} />
+                  </TouchableOpacity>
+                </View>
               </View>
-            </View>
 
-            {/* Content Area */}
-            {loadingDuoCards || (duoCards.length > 0 && !showCards) ? (
-              <View style={styles.loadingContainer}>
-                <ActivityIndicator size="large" color="#c42743" />
-                <ThemedText style={styles.loadingText}>Finding players...</ThemedText>
-              </View>
-            ) : duoCards.length === 0 ? (
-              <View style={styles.emptyState}>
-                <View style={styles.emptyIconsRow}>
-                  <View style={styles.emptyIconCircle}>
-                    <Image
-                      source={require('@/assets/images/valorant-logo.png')}
-                      style={styles.emptyGameLogo}
-                      resizeMode="contain"
-                    />
-                  </View>
-                  <View style={[styles.emptyIconCircle, styles.emptyIconCircleCenter]}>
-                    <IconSymbol size={32} name="person.2.fill" color="#fff" />
-                  </View>
-                  <View style={styles.emptyIconCircle}>
-                    <Image
-                      source={require('@/assets/images/leagueoflegends.png')}
-                      style={styles.emptyGameLogo}
-                      resizeMode="contain"
-                    />
-                  </View>
+              {/* Content Area */}
+              {loadingDuoCards || (duoCards.length > 0 && !showCards) ? (
+                <View style={styles.loadingContainer}>
+                  <ActivityIndicator size="large" color="#c42743" />
+                  <ThemedText style={styles.loadingText}>Finding players...</ThemedText>
                 </View>
-                <ThemedText style={styles.emptyTitle}>No players found</ThemedText>
-                <ThemedText style={styles.emptySubtitle}>
-                  Create your duo card to start matching with other players
-                </ThemedText>
-                <TouchableOpacity
-                  style={styles.emptyButton}
-                  onPress={() => {
-                    handleTabPress('myCards');
-                    if (!hasCards) {
-                      setShowAddCard(true);
-                    }
-                  }}
-                  activeOpacity={0.8}
-                >
-                  <IconSymbol size={18} name="plus" color="#fff" />
-                  <ThemedText style={styles.emptyButtonText}>Create Duo Card</ThemedText>
-                </TouchableOpacity>
-              </View>
-            ) : (
-              <View style={styles.cardsList}>
-                {duoCards.map((card) => (
-                  <CompactDuoCard
-                    key={card.id}
-                    game={card.game}
-                    username={card.username}
-                    avatar={card.avatar}
-                    currentRank={card.currentRank}
-                    peakRank={card.peakRank}
-                    mainRole={card.mainRole}
-                    preferredDuoRole={card.lookingFor || 'Any'}
-                    onPress={() => handleFindDuoCardPress(card)}
-                    onAvatarLoad={() => setAvatarsLoadedCount(prev => prev + 1)}
-                    showContent={true}
-                  />
-                ))}
-              </View>
-            )}
+              ) : duoCards.length === 0 ? (
+                <View style={styles.emptyState}>
+                  <View style={styles.emptyIconsRow}>
+                    <View style={styles.emptyIconCircle}>
+                      <Image
+                        source={require('@/assets/images/valorant-logo.png')}
+                        style={styles.emptyGameLogo}
+                        resizeMode="contain"
+                      />
+                    </View>
+                    <View style={[styles.emptyIconCircle, styles.emptyIconCircleCenter]}>
+                      <IconSymbol size={32} name="person.2.fill" color="#fff" />
+                    </View>
+                    <View style={styles.emptyIconCircle}>
+                      <Image
+                        source={require('@/assets/images/leagueoflegends.png')}
+                        style={styles.emptyGameLogo}
+                        resizeMode="contain"
+                      />
+                    </View>
+                  </View>
+                  <ThemedText style={styles.emptyTitle}>No players found</ThemedText>
+                  <ThemedText style={styles.emptySubtitle}>
+                    {hasCards
+                      ? 'No other players are looking for a duo right now. Check back later!'
+                      : 'Create your duo card to start matching with other players'}
+                  </ThemedText>
+                  {!hasCards && (
+                    <TouchableOpacity
+                      style={styles.emptyButton}
+                      onPress={() => {
+                        handleTabPress('myCards');
+                        setShowAddCard(true);
+                      }}
+                      activeOpacity={0.8}
+                    >
+                      <IconSymbol size={18} name="plus" color="#fff" />
+                      <ThemedText style={styles.emptyButtonText}>Create Duo Card</ThemedText>
+                    </TouchableOpacity>
+                  )}
+                </View>
+              ) : (
+                <View style={styles.cardsList}>
+                  {duoCards.map((card) => (
+                    <CompactDuoCard
+                      key={card.id}
+                      game={card.game}
+                      username={card.username}
+                      avatar={card.avatar}
+                      currentRank={card.currentRank}
+                      peakRank={card.peakRank}
+                      mainRole={card.mainRole}
+                      preferredDuoRole={card.lookingFor || 'Any'}
+                      onPress={() => handleFindDuoCardPress(card)}
+                      onAvatarLoad={() => setAvatarsLoadedCount(prev => prev + 1)}
+                      showContent={true}
+                    />
+                  ))}
+                </View>
+              )}
+            </View>
           </View>
           <View style={styles.bottomSpacer} />
         </ScrollView>
@@ -970,7 +975,7 @@ const styles = StyleSheet.create({
     paddingVertical: 6,
   },
   tabText: {
-    fontSize: 12,
+    fontSize: 16,
     fontWeight: '600',
     color: '#555',
     letterSpacing: 0.5,
@@ -979,7 +984,7 @@ const styles = StyleSheet.create({
     color: '#fff',
   },
   tabCount: {
-    fontSize: 12,
+    fontSize: 16,
     fontWeight: '500',
     color: '#444',
   },
@@ -1051,9 +1056,9 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    paddingHorizontal: 20,
-    paddingTop: 12,
-    paddingBottom: 10,
+    paddingHorizontal: 16,
+    paddingTop: 14,
+    paddingBottom: 12,
   },
   sectionHeaderLeft: {
     flexDirection: 'row',
@@ -1156,6 +1161,16 @@ const styles = StyleSheet.create({
   findDuoContent: {
     flex: 1,
   },
+  findDuoContainer: {
+    flex: 1,
+    marginHorizontal: 8,
+    marginTop: 8,
+    backgroundColor: '#1a1a1a',
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: '#2a2a2a',
+    overflow: 'hidden',
+  },
   filterButton: {
     width: 28,
     height: 28,
@@ -1200,7 +1215,7 @@ const styles = StyleSheet.create({
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    paddingVertical: 80,
+    paddingVertical: 60,
     gap: 16,
   },
   loadingText: {
@@ -1211,8 +1226,8 @@ const styles = StyleSheet.create({
   emptyState: {
     alignItems: 'center',
     justifyContent: 'center',
-    paddingVertical: 60,
-    paddingHorizontal: 32,
+    paddingVertical: 40,
+    paddingHorizontal: 24,
   },
   emptyIconsRow: {
     flexDirection: 'row',
@@ -1272,8 +1287,8 @@ const styles = StyleSheet.create({
     color: '#fff',
   },
   cardsList: {
-    paddingHorizontal: 20,
-    paddingBottom: 40,
-    gap: 20,
+    paddingHorizontal: 12,
+    paddingBottom: 16,
+    gap: 16,
   },
 });

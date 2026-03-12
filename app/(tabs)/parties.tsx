@@ -6,7 +6,7 @@ import { IconSymbol } from '@/components/ui/icon-symbol';
 import { db } from '@/config/firebase';
 import { useAuth } from '@/contexts/AuthContext';
 import { useRouter } from 'expo-router';
-import { collection, doc, getDoc, onSnapshot, query, where } from 'firebase/firestore';
+import { collection, doc, getDoc, getDocs, onSnapshot, query, where } from 'firebase/firestore';
 import { useEffect, useState, useRef } from 'react';
 import { ActivityIndicator, Dimensions, Image, Modal, ScrollView, StyleSheet, TouchableOpacity, View } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -62,6 +62,7 @@ export default function LeaderboardScreen() {
   const [selectedTab, setSelectedTab] = useState<'parties' | 'leaderboards'>('parties');
   const [showCreateModal, setShowCreateModal] = useState(false);
   const pagerRef = useRef<ScrollView>(null);
+  const [mutualIds, setMutualIds] = useState<Set<string>>(new Set());
 
   // Handle tab press - scroll to page
   const handleTabPress = (tab: 'parties' | 'leaderboards') => {
@@ -93,29 +94,38 @@ export default function LeaderboardScreen() {
     const partiesQuery = query(partiesRef, where('members', 'array-contains', user.id));
 
     const unsubscribe = onSnapshot(partiesQuery, (snapshot) => {
-      const fetchedParties = snapshot.docs.map((docSnapshot) => {
-        const data = docSnapshot.data();
-        const docId = docSnapshot.id;
-        return {
-          id: docId,
-          name: data.partyName,
-          game: data.game,
-          members: data.members?.length || 0,
-          description: `Created on ${data.startDate}`,
-          icon: data.game === 'Valorant' ? '🎯' : data.game === 'League of Legends' ? '💎' : '🎮',
-          userRank: null, // Will be calculated based on game stats
-          isJoined: true,
-          players: [], // Will be populated with member details
-          startDate: data.startDate,
-          endDate: data.endDate,
-          type: data.type || 'leaderboard', // 'party' or 'leaderboard'
-          coverPhoto: data.coverPhoto || null, // Cover photo URL
-          partyIcon: data.partyIcon || null, // Party icon URL
-          partyId: data.partyId || docId, // Party ID for navigation
-        };
-      });
+      setParties((prevParties) => {
+        const fetchedParties = snapshot.docs.map((docSnapshot) => {
+          const data = docSnapshot.data();
+          const docId = docSnapshot.id;
 
-      setParties(fetchedParties);
+          // Check if we already have this party with player data
+          const existingParty = prevParties.find(p => p.id === docId);
+
+          return {
+            id: docId,
+            name: data.partyName,
+            game: data.game,
+            members: data.members?.length || 0,
+            memberIds: data.members || [],
+            memberDetails: data.memberDetails || [],
+            description: `Created on ${data.startDate}`,
+            icon: data.game === 'Valorant' ? '🎯' : data.game === 'League of Legends' ? '💎' : '🎮',
+            userRank: existingParty?.userRank ?? null,
+            isJoined: true,
+            players: existingParty?.players || [],
+            startDate: data.startDate,
+            endDate: data.endDate,
+            type: data.type || 'leaderboard',
+            coverPhoto: data.coverPhoto || null,
+            partyIcon: data.partyIcon || null,
+            partyId: data.partyId || docId,
+            mutualFollowers: existingParty?.mutualFollowers || [],
+          };
+        });
+
+        return fetchedParties;
+      });
       setLoading(false);
     });
 
@@ -242,6 +252,34 @@ export default function LeaderboardScreen() {
     calculateRanks();
   }, [parties.length, user?.id]);
 
+  // Fetch mutual follower IDs once
+  useEffect(() => {
+    if (!user?.id) return;
+
+    const fetchMutualIds = async () => {
+      try {
+        const followersRef = collection(db, 'users', user.id, 'followers');
+        const followingRef = collection(db, 'users', user.id, 'following');
+
+        const [followersSnapshot, followingSnapshot] = await Promise.all([
+          getDocs(followersRef),
+          getDocs(followingRef),
+        ]);
+
+        const followerIds = new Set(followersSnapshot.docs.map(doc => doc.data().followerId));
+        const followingIds = new Set(followingSnapshot.docs.map(doc => doc.data().followingId));
+
+        // Find mutual followers (intersection)
+        const mutuals = new Set([...followerIds].filter(id => followingIds.has(id)));
+        setMutualIds(mutuals);
+      } catch (error) {
+        console.error('Error fetching mutual IDs:', error);
+      }
+    };
+
+    fetchMutualIds();
+  }, [user?.id]);
+
   // Helper function to check if a party is completed
   const isPartyCompleted = (endDate: any): boolean => {
     if (!endDate) return false;
@@ -278,8 +316,25 @@ export default function LeaderboardScreen() {
     return endDateObj < today;
   };
 
-  // Filter parties by type
-  const partyTypeParties = parties.filter(party => party.type === 'party');
+  // Filter parties by type and add mutual followers for party-type
+  const partyTypeParties = parties
+    .filter(party => party.type === 'party')
+    .map(party => {
+      const memberDetails = party.memberDetails || [];
+      const mutualFollowersInParty = memberDetails
+        .filter((member: any) => member.userId !== user?.id && mutualIds.has(member.userId))
+        .slice(0, 3)
+        .map((member: any) => ({
+          odId: member.userId,
+          displayName: member.username || 'User',
+          username: member.username || '',
+          photoUrl: member.avatar || null,
+        }));
+      return {
+        ...party,
+        mutualFollowers: mutualFollowersInParty,
+      };
+    });
   const leaderboardTypeParties = parties.filter(party => party.type === 'leaderboard' || !party.type);
 
   const getRankColor = (rank: number) => {
@@ -387,14 +442,16 @@ export default function LeaderboardScreen() {
               contentContainerStyle={styles.pageContent}
             >
               {partyTypeParties.length > 0 ? (
-                partyTypeParties.map((leaderboard, index) => (
-                  <PartyCards
-                    key={leaderboard.id}
-                    leaderboard={leaderboard}
-                    onPress={handleLeaderboardPress}
-                    showDivider={index < partyTypeParties.length - 1}
-                  />
-                ))
+                <View style={styles.cardsContainer}>
+                  {partyTypeParties.map((leaderboard, index) => (
+                    <PartyCards
+                      key={leaderboard.id}
+                      leaderboard={leaderboard}
+                      onPress={handleLeaderboardPress}
+                      showDivider={index < partyTypeParties.length - 1}
+                    />
+                  ))}
+                </View>
               ) : (
                 <View style={styles.emptyState}>
                   <ThemedText style={styles.emptyStateText}>No parties yet</ThemedText>
@@ -413,14 +470,16 @@ export default function LeaderboardScreen() {
               contentContainerStyle={styles.pageContent}
             >
               {leaderboardTypeParties.length > 0 ? (
-                leaderboardTypeParties.map((leaderboard, index) => (
-                  <LeaderboardCard
-                    key={leaderboard.id}
-                    leaderboard={leaderboard}
-                    onPress={handleLeaderboardPress}
-                    showDivider={index < leaderboardTypeParties.length - 1}
-                  />
-                ))
+                <View style={styles.cardsContainer}>
+                  {leaderboardTypeParties.map((leaderboard, index) => (
+                    <LeaderboardCard
+                      key={leaderboard.id}
+                      leaderboard={leaderboard}
+                      onPress={handleLeaderboardPress}
+                      showDivider={index < leaderboardTypeParties.length - 1}
+                    />
+                  ))}
+                </View>
               ) : (
                 <View style={styles.emptyState}>
                   <ThemedText style={styles.emptyStateText}>No leaderboards yet</ThemedText>
@@ -540,8 +599,15 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   pageContent: {
-    paddingHorizontal: 20,
+    paddingHorizontal: 16,
     paddingTop: 16,
+  },
+  cardsContainer: {
+    backgroundColor: '#1a1a1a',
+    borderRadius: 16,
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    minHeight: '95%',
   },
   tabsContainer: {
     flexDirection: 'row',
@@ -559,7 +625,7 @@ const styles = StyleSheet.create({
     paddingVertical: 6,
   },
   tabText: {
-    fontSize: 12,
+    fontSize: 16,
     fontWeight: '600',
     color: '#555',
     letterSpacing: 0.5,
@@ -568,7 +634,7 @@ const styles = StyleSheet.create({
     color: '#fff',
   },
   tabCount: {
-    fontSize: 12,
+    fontSize: 16,
     fontWeight: '500',
     color: '#444',
   },

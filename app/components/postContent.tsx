@@ -259,20 +259,22 @@ const VideoPlayerComponent = ({
         )}
       </TouchableOpacity>
 
-      {/* Mute button */}
-      <TouchableOpacity
-        style={styles.muteButton}
-        onPress={toggleMute}
-        activeOpacity={0.7}
-      >
-        <View style={styles.muteButtonBackground}>
-          <IconSymbol
-            size={20}
-            name={isMuted ? "speaker.slash.fill" : "speaker.wave.2.fill"}
-            color="#fff"
-          />
-        </View>
-      </TouchableOpacity>
+      {/* Mute button - only show when video is paused */}
+      {isLocallyPaused && (
+        <TouchableOpacity
+          style={styles.muteButton}
+          onPress={toggleMute}
+          activeOpacity={0.7}
+        >
+          <View style={styles.muteButtonBackground}>
+            <IconSymbol
+              size={20}
+              name={isMuted ? "speaker.slash.fill" : "speaker.wave.2.fill"}
+              color="#fff"
+            />
+          </View>
+        </TouchableOpacity>
+      )}
 
       {/* Scrubber/Progress Bar */}
       {enableScrubber && duration > 0 && (

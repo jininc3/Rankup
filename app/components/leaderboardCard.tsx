@@ -1,6 +1,7 @@
 import { ThemedText } from '@/components/themed-text';
 import { Image, StyleSheet, TouchableOpacity, View } from 'react-native';
 import { IconSymbol } from '@/components/ui/icon-symbol';
+import { LinearGradient } from 'expo-linear-gradient';
 
 // Game logo mapping
 const GAME_LOGOS: { [key: string]: any } = {
@@ -80,17 +81,17 @@ export default function LeaderboardCard({ leaderboard, onPress, showDivider = tr
   const daysInfo = calculateDaysInfo(leaderboard.startDate, leaderboard.endDate);
   const gameLogo = GAME_LOGOS[leaderboard.game];
 
-  // Get top 3 players for stacked avatars
-  const topPlayers = (leaderboard.players || []).slice(0, 3);
+  // Get gradient colors based on game
+  const getGradientColors = (): [string, string, string] => {
+    if (leaderboard.game === 'Valorant') return ['#c42743', '#ff6b6b', '#c42743'];
+    if (leaderboard.game === 'League of Legends' || leaderboard.game === 'League') return ['#0a84ff', '#00d4ff', '#0a84ff'];
+    return ['#333', '#555', '#333'];
+  };
 
-  // If no players data yet, create placeholders based on member count
-  const displayPlayers = topPlayers.length > 0
-    ? topPlayers
-    : Array.from({ length: Math.min(leaderboard.members || 0, 3) }, (_, i) => ({
-        odId: `placeholder-${i}`,
-        displayName: '',
-        photoUrl: null,
-      }));
+  // Get top 3 players for stacked avatars (only show if we have real player data)
+  const topPlayers = (leaderboard.players || []).filter(
+    (player: any) => player && (player.photoUrl || player.displayName || player.username)
+  ).slice(0, 3);
 
   return (
     <>
@@ -99,6 +100,13 @@ export default function LeaderboardCard({ leaderboard, onPress, showDivider = tr
         onPress={() => onPress(leaderboard)}
         style={styles.container}
       >
+        <LinearGradient
+          colors={getGradientColors()}
+          start={{ x: 0, y: 0 }}
+          end={{ x: 1, y: 1 }}
+          style={styles.gradientBorder}
+        >
+          <View style={styles.innerContent}>
         <View style={styles.content}>
           {/* Leaderboard Icon */}
           {leaderboard.partyIcon ? (
@@ -131,12 +139,12 @@ export default function LeaderboardCard({ leaderboard, onPress, showDivider = tr
               </ThemedText>
               <View style={styles.statsRow}>
                 <View style={styles.statItem}>
-                  <IconSymbol size={12} name="person.2.fill" color="#666" />
+                  <IconSymbol size={14} name="person.2.fill" color="#fff" />
                   <ThemedText style={styles.statText}>{leaderboard.members}</ThemedText>
                 </View>
                 {daysInfo && (
                   <View style={styles.statItem}>
-                    <IconSymbol size={12} name="hourglass" color="#666" />
+                    <IconSymbol size={14} name="hourglass" color="#fff" />
                     <ThemedText style={styles.statText}>{daysInfo.daysLeft}d</ThemedText>
                   </View>
                 )}
@@ -145,8 +153,9 @@ export default function LeaderboardCard({ leaderboard, onPress, showDivider = tr
           </View>
 
           {/* Right Side - Stacked Profile Avatars */}
+          {topPlayers.length > 0 && (
           <View style={styles.stackedAvatars}>
-            {displayPlayers.map((player, index) => (
+            {topPlayers.map((player, index) => (
               <View
                 key={player.odId || index}
                 style={[
@@ -170,7 +179,10 @@ export default function LeaderboardCard({ leaderboard, onPress, showDivider = tr
               </View>
             ))}
           </View>
+          )}
         </View>
+          </View>
+        </LinearGradient>
       </TouchableOpacity>
       {showDivider && <View style={styles.divider} />}
     </>
@@ -179,19 +191,36 @@ export default function LeaderboardCard({ leaderboard, onPress, showDivider = tr
 
 const styles = StyleSheet.create({
   container: {
-    backgroundColor: 'transparent',
+    borderRadius: 12,
+    shadowColor: '#000',
+    shadowOffset: {
+      width: -3,
+      height: 4,
+    },
+    shadowOpacity: 0.5,
+    shadowRadius: 6,
+    elevation: 8,
+  },
+  gradientBorder: {
+    borderRadius: 12,
+    padding: 1.5,
+  },
+  innerContent: {
+    backgroundColor: '#252525',
+    borderRadius: 10,
+    overflow: 'hidden',
   },
   content: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingVertical: 18,
-    paddingHorizontal: 4,
-    gap: 16,
+    paddingVertical: 24,
+    paddingHorizontal: 12,
+    gap: 14,
   },
   iconContainer: {
-    width: 56,
-    height: 56,
-    borderRadius: 8,
+    width: 52,
+    height: 52,
+    borderRadius: 10,
     overflow: 'hidden',
     backgroundColor: '#1a1a1a',
   },
@@ -200,21 +229,21 @@ const styles = StyleSheet.create({
     height: '100%',
   },
   iconPlaceholder: {
-    width: 56,
-    height: 56,
-    borderRadius: 8,
+    width: 52,
+    height: 52,
+    borderRadius: 10,
     backgroundColor: '#1a1a1a',
     alignItems: 'center',
     justifyContent: 'center',
   },
   iconPlaceholderText: {
-    fontSize: 22,
+    fontSize: 20,
     fontWeight: '700',
     color: '#444',
   },
   info: {
     flex: 1,
-    gap: 4,
+    gap: 6,
   },
   name: {
     fontSize: 16,
@@ -227,13 +256,13 @@ const styles = StyleSheet.create({
     gap: 6,
   },
   gameLogo: {
-    width: 14,
-    height: 14,
-    opacity: 0.6,
+    width: 16,
+    height: 16,
+    opacity: 0.8,
   },
   meta: {
-    fontSize: 13,
-    color: '#666',
+    fontSize: 14,
+    color: '#fff',
   },
   statsRow: {
     flexDirection: 'row',
@@ -244,23 +273,24 @@ const styles = StyleSheet.create({
   statItem: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 3,
+    gap: 4,
   },
   statText: {
-    fontSize: 12,
-    color: '#666',
+    fontSize: 13,
+    color: '#fff',
     fontWeight: '500',
   },
   stackedAvatars: {
     flexDirection: 'row',
     alignItems: 'center',
+    marginBottom: 16,
   },
   stackedAvatarContainer: {
-    width: 28,
-    height: 28,
-    borderRadius: 14,
+    width: 32,
+    height: 32,
+    borderRadius: 16,
     borderWidth: 2,
-    borderColor: '#000',
+    borderColor: '#252525',
     overflow: 'hidden',
   },
   stackedAvatar: {
@@ -281,7 +311,9 @@ const styles = StyleSheet.create({
   },
   divider: {
     height: 1,
-    backgroundColor: '#1a1a1a',
-    marginVertical: 20,
+    backgroundColor: '#333',
+    marginVertical: 10,
+    width: '30%',
+    alignSelf: 'center',
   },
 });

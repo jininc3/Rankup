@@ -26,5 +26,8 @@
         "appleTeamId": "NWHNZB97WK"
       }
     }
+  },
+  "cli": {
+    "appVersionSource": "remote"
   }
 }

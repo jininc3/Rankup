@@ -655,16 +655,6 @@ export default function PartyDetail() {
                   )}
                 </View>
 
-                {/* Kick Button - Only visible to creator, not for themselves */}
-                {isCreator && member.userId !== user?.id && (
-                  <TouchableOpacity
-                    style={styles.kickButton}
-                    onPress={() => handleKickMember(member)}
-                    activeOpacity={0.7}
-                  >
-                    <IconSymbol size={14} name="xmark" color="#666" />
-                  </TouchableOpacity>
-                )}
               </View>
             ))}
           </View>
@@ -1172,14 +1162,6 @@ const styles = StyleSheet.create({
     fontSize: 10,
     fontWeight: '600',
     color: '#666',
-  },
-  kickButton: {
-    width: 28,
-    height: 28,
-    borderRadius: 14,
-    backgroundColor: 'rgba(255,100,100,0.1)',
-    alignItems: 'center',
-    justifyContent: 'center',
   },
   bottomSpacer: {
     height: 40,

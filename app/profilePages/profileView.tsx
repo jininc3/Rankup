@@ -610,14 +610,14 @@ export default function ProfileViewScreen() {
             )}
             {/* Top fade */}
             <LinearGradient
-              colors={['rgba(15, 15, 15, 0.6)', 'transparent']}
+              colors={['rgba(15, 15, 15, 0.95)', 'transparent']}
               start={{ x: 0, y: 0 }}
               end={{ x: 0, y: 1 }}
               style={styles.coverPhotoFadeTop}
             />
             {/* Bottom fade */}
             <LinearGradient
-              colors={['transparent', 'rgba(15, 15, 15, 0.4)']}
+              colors={['transparent', '#0f0f0f']}
               start={{ x: 0, y: 0 }}
               end={{ x: 0, y: 1 }}
               style={styles.coverPhotoFadeBottom}
@@ -1214,7 +1214,7 @@ const styles = StyleSheet.create({
     top: 0,
     left: 0,
     right: 0,
-    height: 60,
+    height: 80,
     zIndex: 1,
   },
   coverPhotoFadeBottom: {
@@ -1222,7 +1222,7 @@ const styles = StyleSheet.create({
     bottom: 0,
     left: 0,
     right: 0,
-    height: 80,
+    height: 100,
     zIndex: 1,
   },
   // Username row with avatar
