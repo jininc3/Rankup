@@ -2,7 +2,7 @@ import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { IconSymbol } from '@/components/ui/icon-symbol';
 import { useState, useEffect, useCallback, useRef } from 'react';
-import { FlatList, StyleSheet, TouchableOpacity, View, Image, ActivityIndicator, Animated, PanResponder } from 'react-native';
+import { FlatList, StyleSheet, TouchableOpacity, View, Image, ActivityIndicator, Animated, PanResponder, Alert } from 'react-native';
 import { useRouter } from 'expo-router';
 import { collection, query, orderBy, limit, onSnapshot, doc, updateDoc, deleteDoc, where, Timestamp, getDocs, writeBatch, getDoc, startAfter, QueryDocumentSnapshot, DocumentData } from 'firebase/firestore';
 import { db } from '@/config/firebase';
@@ -258,26 +258,39 @@ export default function NotificationsScreen() {
   };
 
   // Accept party invitation
+  const [acceptingInvite, setAcceptingInvite] = useState<string | null>(null);
+
   const handleAcceptInvite = async (notification: Notification, event: any) => {
     event.stopPropagation();
     if (!currentUser?.id || !notification.partyId) return;
 
+    setAcceptingInvite(notification.id);
+
     try {
+      // Get user data for member details first (this should always succeed for own user)
+      const userDoc = await getDoc(doc(db, 'users', currentUser.id));
+      const userData = userDoc.data();
+
       // Get party document directly by ID
       const partyRef = doc(db, 'parties', notification.partyId);
       const partySnapshot = await getDoc(partyRef);
 
       if (!partySnapshot.exists()) {
-        console.error('Party not found');
+        Alert.alert('Error', 'This leaderboard no longer exists.');
+        await deleteNotification(notification.id);
+        setAcceptingInvite(null);
         return;
       }
 
-      const partyDoc = partySnapshot;
       const partyData = partySnapshot.data();
 
-      // Get user data for member details
-      const userDoc = await getDoc(doc(db, 'users', currentUser.id));
-      const userData = userDoc.data();
+      // Check if already a member
+      if (partyData.members?.includes(currentUser.id)) {
+        Alert.alert('Already Joined', 'You are already a member of this leaderboard.');
+        await deleteNotification(notification.id);
+        setAcceptingInvite(null);
+        return;
+      }
 
       // Update party: add user to members and memberDetails, update pendingInvites
       const updatedMembers = [...(partyData.members || []), currentUser.id];
@@ -286,14 +299,14 @@ export default function NotificationsScreen() {
         {
           userId: currentUser.id,
           username: userData?.username || 'Unknown',
-          avatar: userData?.avatar || '👤',
+          avatar: userData?.avatar || '',
           joinedAt: new Date().toISOString(),
         },
       ];
 
-      // Update invite status in pendingInvites
-      const updatedPendingInvites = (partyData.pendingInvites || []).map((invite: any) =>
-        invite.userId === currentUser.id ? { ...invite, status: 'accepted' } : invite
+      // Remove user from pendingInvites instead of updating status
+      const updatedPendingInvites = (partyData.pendingInvites || []).filter(
+        (invite: any) => invite.userId !== currentUser.id
       );
 
       await updateDoc(partyRef, {
@@ -307,21 +320,41 @@ export default function NotificationsScreen() {
 
       console.log('Successfully joined party:', notification.partyName);
 
-      // Navigate to the leaderboard detail page
-      router.push({
-        pathname: '/partyPages/leaderboardDetail',
-        params: {
-          name: notification.partyName,
-          id: notification.partyId,
-          game: notification.game,
-          members: updatedMembers.length.toString(),
-          startDate: partyData.startDate || '',
-          endDate: partyData.endDate || '',
-          players: JSON.stringify([]),
-        },
-      });
-    } catch (error) {
+      // Navigate to the appropriate detail page based on party type
+      if (partyData.type === 'leaderboard') {
+        router.push({
+          pathname: '/partyPages/leaderboardDetail',
+          params: {
+            name: notification.partyName,
+            id: notification.partyId,
+            game: notification.game,
+            members: updatedMembers.length.toString(),
+            startDate: partyData.startDate || '',
+            endDate: partyData.endDate || '',
+          },
+        });
+      } else {
+        // Default to party detail for 'party' type or unspecified
+        router.push({
+          pathname: '/partyPages/partyDetail',
+          params: {
+            partyId: notification.partyId,
+            game: notification.game,
+          },
+        });
+      }
+    } catch (error: any) {
       console.error('Error accepting invitation:', error);
+      if (error?.code === 'permission-denied' || error?.message?.includes('permission')) {
+        Alert.alert(
+          'Unable to Join',
+          'There was a permissions issue joining this leaderboard. The invite may have expired or been revoked.'
+        );
+      } else {
+        Alert.alert('Error', 'Failed to accept invitation. Please try again.');
+      }
+    } finally {
+      setAcceptingInvite(null);
     }
   };
 
@@ -364,7 +397,7 @@ export default function NotificationsScreen() {
   };
 
   // Navigate to appropriate page based on notification type
-  const handleNotificationPress = (notification: Notification) => {
+  const handleNotificationPress = async (notification: Notification) => {
     if (notification.type === 'follow' && notification.fromUserId) {
       // Navigate to user profile for follow notifications
       router.push(`/profilePages/profileView?userId=${notification.fromUserId}`);
@@ -372,15 +405,45 @@ export default function NotificationsScreen() {
       // Show post viewer for like/comment/tag notifications
       fetchAndShowPost(notification.postId);
     } else if ((notification.type === 'party_invite' || notification.type === 'party_complete' || notification.type === 'party_ranking_change') && notification.partyId) {
-      // Navigate to party detail page
-      router.push({
-        pathname: '/partyPages/leaderboardDetail',
-        params: {
-          id: notification.partyId,
-          name: notification.partyName || 'Party',
-          game: notification.game || '',
-        },
-      });
+      // Fetch party to determine type, then navigate to appropriate page
+      try {
+        const partyRef = doc(db, 'parties', notification.partyId);
+        const partySnapshot = await getDoc(partyRef);
+
+        if (partySnapshot.exists()) {
+          const partyData = partySnapshot.data();
+
+          if (partyData.type === 'leaderboard') {
+            router.push({
+              pathname: '/partyPages/leaderboardDetail',
+              params: {
+                id: notification.partyId,
+                name: notification.partyName || 'Party',
+                game: notification.game || '',
+              },
+            });
+          } else {
+            router.push({
+              pathname: '/partyPages/partyDetail',
+              params: {
+                partyId: notification.partyId,
+                game: notification.game || '',
+              },
+            });
+          }
+        }
+      } catch (error) {
+        console.error('Error fetching party for navigation:', error);
+        // Fallback to leaderboard detail
+        router.push({
+          pathname: '/partyPages/leaderboardDetail',
+          params: {
+            id: notification.partyId,
+            name: notification.partyName || 'Party',
+            game: notification.game || '',
+          },
+        });
+      }
     }
   };
 
@@ -697,16 +760,22 @@ export default function NotificationsScreen() {
                           {notification.type === 'party_invite' && (
                             <View style={styles.inviteActions}>
                               <TouchableOpacity
-                                style={styles.acceptButton}
+                                style={[styles.acceptButton, acceptingInvite === notification.id && styles.acceptButtonLoading]}
                                 onPress={(e) => handleAcceptInvite(notification, e)}
                                 activeOpacity={0.7}
+                                disabled={acceptingInvite === notification.id}
                               >
-                                <ThemedText style={styles.acceptButtonText}>Accept</ThemedText>
+                                {acceptingInvite === notification.id ? (
+                                  <ActivityIndicator size="small" color="#fff" />
+                                ) : (
+                                  <ThemedText style={styles.acceptButtonText}>Accept</ThemedText>
+                                )}
                               </TouchableOpacity>
                               <TouchableOpacity
                                 style={styles.declineButton}
                                 onPress={(e) => handleDeclineInvite(notification, e)}
                                 activeOpacity={0.7}
+                                disabled={acceptingInvite === notification.id}
                               >
                                 <IconSymbol size={20} name="xmark" color="#999" />
                               </TouchableOpacity>
@@ -953,6 +1022,12 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     paddingVertical: 6,
     borderRadius: 6,
+    minWidth: 65,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  acceptButtonLoading: {
+    opacity: 0.7,
   },
   acceptButtonText: {
     color: '#fff',

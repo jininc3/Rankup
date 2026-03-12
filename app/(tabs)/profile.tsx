@@ -280,23 +280,7 @@ export default function ProfileScreen() {
       .filter((game): game is NonNullable<typeof game> => game !== null)
     : [];
 
-  // TODO: Remove this dummy card - for testing 3 card interaction only
-  const userGames = userGamesBase.length > 0 ? [
-    ...userGamesBase,
-    {
-      id: 99,
-      name: 'TFT',
-      rank: 'Master',
-      trophies: 150,
-      icon: '♟️',
-      image: require('@/assets/images/tft.png'),
-      wins: 85,
-      losses: 45,
-      winRate: 65.4,
-      recentMatches: ['+20', '+15', '-10', '+25', '+18'],
-      profileIconId: riotStats?.profileIconId,
-    }
-  ] : [];
+  const userGames = userGamesBase;
 
   // Initialize card animations when userGames changes
   useEffect(() => {

@@ -92,6 +92,7 @@ export default function ProfileViewScreen() {
   const cardAnimations = useRef<Animated.Value[]>([]).current;
   const [achievements, setAchievements] = useState<{ partyName: string; game: string; placement: number; endDate: string }[]>([]);
   const [loadingAchievements, setLoadingAchievements] = useState(false);
+  const [achievementsError, setAchievementsError] = useState(false);
 
   // Dynamic games array based on Riot data and enabled rank cards
   // Cards are ordered according to the enabledRankCards array
@@ -409,6 +410,7 @@ export default function ProfileViewScreen() {
 
     const fetchAchievements = async () => {
       setLoadingAchievements(true);
+      setAchievementsError(false);
       try {
         const partiesRef = collection(db, 'parties');
         const partiesQuery = query(partiesRef, where('members', 'array-contains', userId));
@@ -443,8 +445,13 @@ export default function ProfileViewScreen() {
         // Sort by placement (1st first), then by endDate (most recent first)
         results.sort((a, b) => a.placement - b.placement || b.endDate.localeCompare(a.endDate));
         setAchievements(results);
-      } catch (error) {
-        console.error('Error fetching achievements:', error);
+      } catch (error: any) {
+        // Handle permission errors gracefully - this happens when viewing other users' profiles
+        if (error?.code === 'permission-denied' || error?.message?.includes('permission')) {
+          setAchievementsError(true);
+        } else {
+          console.error('Error fetching achievements:', error);
+        }
       } finally {
         setLoadingAchievements(false);
       }
@@ -976,54 +983,59 @@ export default function ProfileViewScreen() {
           )}
         </View>
 
-        {/* Achievements Section Header */}
-        <View style={styles.sectionHeader}>
-          <View style={styles.sectionHeaderLeft}>
-            <IconSymbol size={18} name="trophy.fill" color="#fff" />
-            <ThemedText style={styles.sectionHeaderTitle}>Achievements</ThemedText>
-          </View>
-        </View>
-
-        {/* Achievements Content */}
-        <View style={styles.achievementsSection}>
-          {loadingAchievements ? (
-            <View style={styles.emptyState}>
-              <ActivityIndicator size="large" color="#c42743" />
-              <ThemedText style={styles.emptyStateText}>Loading achievements...</ThemedText>
+        {/* Achievements Section - Hide if permissions error */}
+        {!achievementsError && (
+          <>
+            {/* Achievements Section Header */}
+            <View style={styles.sectionHeader}>
+              <View style={styles.sectionHeaderLeft}>
+                <IconSymbol size={18} name="trophy.fill" color="#fff" />
+                <ThemedText style={styles.sectionHeaderTitle}>Achievements</ThemedText>
+              </View>
             </View>
-          ) : achievements.length > 0 ? (
-            <ScrollView
-              horizontal
-              showsHorizontalScrollIndicator={false}
-              contentContainerStyle={styles.horizontalAchievementsContainer}
-            >
-              {achievements.map((achievement, index) => (
-                <View key={index} style={styles.achievementCard}>
-                  <ThemedText style={styles.achievementMedal}>
-                    {achievement.placement === 1 ? '\u{1F947}' : achievement.placement === 2 ? '\u{1F948}' : '\u{1F949}'}
-                  </ThemedText>
-                  <ThemedText style={styles.achievementPlacement}>
-                    {achievement.placement === 1 ? '1st Place' : achievement.placement === 2 ? '2nd Place' : '3rd Place'}
-                  </ThemedText>
-                  <ThemedText style={styles.achievementPartyName} numberOfLines={2}>
-                    {achievement.partyName}
-                  </ThemedText>
-                  <ThemedText style={styles.achievementGame}>
-                    {achievement.game}
+
+            {/* Achievements Content */}
+            <View style={styles.achievementsSection}>
+              {loadingAchievements ? (
+                <View style={styles.emptyState}>
+                  <ActivityIndicator size="large" color="#c42743" />
+                  <ThemedText style={styles.emptyStateText}>Loading achievements...</ThemedText>
+                </View>
+              ) : achievements.length > 0 ? (
+                <ScrollView
+                  horizontal
+                  showsHorizontalScrollIndicator={false}
+                  contentContainerStyle={styles.horizontalAchievementsContainer}
+                >
+                  {achievements.map((achievement, index) => (
+                    <View key={index} style={styles.achievementCard}>
+                      <ThemedText style={styles.achievementMedal}>
+                        {achievement.placement === 1 ? '\u{1F947}' : achievement.placement === 2 ? '\u{1F948}' : '\u{1F949}'}
+                      </ThemedText>
+                      <ThemedText style={styles.achievementPlacement}>
+                        {achievement.placement === 1 ? '1st Place' : achievement.placement === 2 ? '2nd Place' : '3rd Place'}
+                      </ThemedText>
+                      <ThemedText style={styles.achievementPartyName} numberOfLines={2}>
+                        {achievement.partyName}
+                      </ThemedText>
+                      <ThemedText style={styles.achievementGame}>
+                        {achievement.game}
+                      </ThemedText>
+                    </View>
+                  ))}
+                </ScrollView>
+              ) : (
+                <View style={styles.emptyState}>
+                  <IconSymbol size={36} name="trophy" color="#72767d" />
+                  <ThemedText style={styles.emptyStateTitle}>No achievements yet</ThemedText>
+                  <ThemedText style={styles.emptyStateSubtext}>
+                    Place top 3 in a party to earn achievements
                   </ThemedText>
                 </View>
-              ))}
-            </ScrollView>
-          ) : (
-            <View style={styles.emptyState}>
-              <IconSymbol size={36} name="trophy" color="#72767d" />
-              <ThemedText style={styles.emptyStateTitle}>No achievements yet</ThemedText>
-              <ThemedText style={styles.emptyStateSubtext}>
-                Place top 3 in a party to earn achievements
-              </ThemedText>
+              )}
             </View>
-          )}
-        </View>
+          </>
+        )}
       </ScrollView>
 
       {/* Post Viewer Modal */}

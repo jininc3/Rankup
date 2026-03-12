@@ -349,13 +349,12 @@ export default function CreateLeaderboardScreen() {
             router.replace({
               pathname: '/partyPages/leaderboardDetail',
               params: {
+                id: generatedPartyId,
                 name: leaderboardName,
-                partyId: generatedPartyId,
                 game: selectedGame.name,
                 members: '1',
                 startDate: formatDate(startDate),
                 endDate: formatDate(endDate),
-                players: JSON.stringify([]),
               },
             });
           },

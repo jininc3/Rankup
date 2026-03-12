@@ -41,7 +41,7 @@ const defaultAvatarAssets = [
   require('@/assets/images/avatar5.png'),
 ];
 
-export default function GoogleSignUpStep5() {
+export default function OnboardingSignUp4() {
   const router = useRouter();
   const params = useLocalSearchParams();
   const { user, refreshUser } = useAuth();
@@ -166,14 +166,23 @@ export default function GoogleSignUpStep5() {
       }
     }
 
-    // Update user profile
+    // Update user profile - only set fields that have values
+    // (email signup already saves username, dateOfBirth, avatar before verification)
     const updateData: any = {
-      username: username?.toLowerCase(),
-      dateOfBirth: dateOfBirth,
-      avatar: avatarUrl,
       needsUsernameSetup: false,
       updatedAt: new Date(),
     };
+
+    // Only set these if they have values (avoids overwriting already-saved data from email signup)
+    if (username) {
+      updateData.username = username.toLowerCase();
+    }
+    if (dateOfBirth) {
+      updateData.dateOfBirth = dateOfBirth;
+    }
+    if (avatarUrl) {
+      updateData.avatar = avatarUrl;
+    }
 
     if (coverPhotoUrl) {
       updateData.coverPhoto = coverPhotoUrl;

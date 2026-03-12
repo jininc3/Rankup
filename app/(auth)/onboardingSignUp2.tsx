@@ -23,7 +23,7 @@ import { formatRank } from '@/services/riotService';
 const { width: screenWidth } = Dimensions.get('window');
 const CARD_WIDTH = screenWidth - 48;
 
-export default function GoogleSignUpStep3() {
+export default function OnboardingSignUp2() {
   const router = useRouter();
   const params = useLocalSearchParams();
   const { user } = useAuth();
@@ -79,7 +79,7 @@ export default function GoogleSignUpStep3() {
     }
 
     router.push({
-      pathname: '/(auth)/googleSignUpStep4',
+      pathname: '/(auth)/onboardingSignUp3',
       params: {
         ...params,
         linkedRiot: riotAccount ? 'true' : 'false',
@@ -91,7 +91,7 @@ export default function GoogleSignUpStep3() {
 
   const handleSkip = () => {
     router.push({
-      pathname: '/(auth)/googleSignUpStep4',
+      pathname: '/(auth)/onboardingSignUp3',
       params: {
         ...params,
       },

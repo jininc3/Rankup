@@ -198,6 +198,7 @@ export default function LeaderboardDetail() {
   const [searchingUsers, setSearchingUsers] = useState(false);
   const [showManageMembersModal, setShowManageMembersModal] = useState(false);
   const [kickingMember, setKickingMember] = useState<string | null>(null);
+  const [pendingInvites, setPendingInvites] = useState<{ id: string; username: string; avatar: string }[]>([]);
 
   const isCreator = partyData?.createdBy === user?.id;
 
@@ -311,6 +312,14 @@ export default function LeaderboardDetail() {
 
     try {
       if (!user?.id) return;
+
+      // Set pending invites from party data
+      const currentPendingInvites = partyData?.pendingInvites || [];
+      setPendingInvites(currentPendingInvites.map((inv: any) => ({
+        id: inv.userId,
+        username: inv.username,
+        avatar: inv.avatar || '',
+      })));
 
       const followingRef = collection(db, 'users', user.id, 'following');
       const followingSnapshot = await getDocs(followingRef);
@@ -560,26 +569,33 @@ export default function LeaderboardDetail() {
           const gameStatsPath = isLeague ? 'league' : 'valorant';
 
           const memberPromises = partyDoc.memberDetails.map(async (member: any, index: number) => {
-            const userStatsDoc = await getDoc(doc(db, 'users', member.userId, 'gameStats', gameStatsPath));
-            let stats = userStatsDoc.data();
+            let stats: any = null;
 
-            if (!stats || !stats.currentRank) {
-              const userDoc = await getDoc(doc(db, 'users', member.userId));
-              const userData = userDoc.data();
+            try {
+              const userStatsDoc = await getDoc(doc(db, 'users', member.userId, 'gameStats', gameStatsPath));
+              stats = userStatsDoc.data();
 
-              if (isLeague && userData?.riotStats?.rankedSolo) {
-                stats = {
-                  currentRank: `${userData.riotStats.rankedSolo.tier} ${userData.riotStats.rankedSolo.rank}`,
-                  lp: userData.riotStats.rankedSolo.leaguePoints || 0,
-                  dailyGain: 0,
-                };
-              } else if (!isLeague && userData?.valorantStats) {
-                stats = {
-                  currentRank: userData.valorantStats.currentRank || 'Unranked',
-                  rr: userData.valorantStats.rankRating || 0,
-                  dailyGain: 0,
-                };
+              if (!stats || !stats.currentRank) {
+                const userDoc = await getDoc(doc(db, 'users', member.userId));
+                const userData = userDoc.data();
+
+                if (isLeague && userData?.riotStats?.rankedSolo) {
+                  stats = {
+                    currentRank: `${userData.riotStats.rankedSolo.tier} ${userData.riotStats.rankedSolo.rank}`,
+                    lp: userData.riotStats.rankedSolo.leaguePoints || 0,
+                    dailyGain: 0,
+                  };
+                } else if (!isLeague && userData?.valorantStats) {
+                  stats = {
+                    currentRank: userData.valorantStats.currentRank || 'Unranked',
+                    rr: userData.valorantStats.rankRating || 0,
+                    dailyGain: 0,
+                  };
+                }
               }
+            } catch (error) {
+              // Handle permission errors gracefully - use default values
+              console.log(`Could not fetch stats for member ${member.userId}:`, error);
             }
 
             return {
@@ -1004,55 +1020,85 @@ export default function LeaderboardDetail() {
               )}
             </View>
 
-            {inviteSearchQuery.trim().length < 2 && mutuals.length > 0 && (
-              <ThemedText style={styles.inviteSectionLabel}>Suggestions</ThemedText>
-            )}
-
             <ScrollView style={styles.inviteUsersList} showsVerticalScrollIndicator={false}>
               {loadingMutuals || searchingUsers ? (
                 <View style={styles.inviteLoadingContainer}>
                   <ActivityIndicator size="small" color="#c42743" />
                 </View>
-              ) : displayUsers.length === 0 ? (
-                <View style={styles.inviteEmptyContainer}>
-                  <ThemedText style={styles.inviteEmptyText}>
-                    {inviteSearchQuery.trim().length >= 2
-                      ? 'No users found'
-                      : 'No suggestions available'
-                    }
-                  </ThemedText>
-                </View>
               ) : (
-                displayUsers.map((userItem) => (
-                  <View key={userItem.id} style={styles.inviteUserItem}>
-                    <View style={styles.inviteUserAvatar}>
-                      {userItem.avatar && userItem.avatar.startsWith('http') ? (
-                        <Image source={{ uri: userItem.avatar }} style={styles.inviteUserAvatarImage} />
-                      ) : (
-                        <ThemedText style={styles.inviteUserAvatarText}>
-                          {userItem.username[0].toUpperCase()}
-                        </ThemedText>
-                      )}
+                <>
+                  {/* Pending Invites Section */}
+                  {inviteSearchQuery.trim().length < 2 && pendingInvites.length > 0 && (
+                    <>
+                      <ThemedText style={styles.inviteSectionLabel}>Pending Invites</ThemedText>
+                      {pendingInvites.map((userItem) => (
+                        <View key={userItem.id} style={styles.inviteUserItem}>
+                          <View style={styles.inviteUserAvatar}>
+                            {userItem.avatar && userItem.avatar.startsWith('http') ? (
+                              <Image source={{ uri: userItem.avatar }} style={styles.inviteUserAvatarImage} />
+                            ) : (
+                              <ThemedText style={styles.inviteUserAvatarText}>
+                                {userItem.username[0].toUpperCase()}
+                              </ThemedText>
+                            )}
+                          </View>
+                          <ThemedText style={styles.inviteUserName}>{userItem.username}</ThemedText>
+                          <View style={styles.pendingBadge}>
+                            <IconSymbol size={12} name="clock" color="#888" />
+                            <ThemedText style={styles.pendingBadgeText}>Pending</ThemedText>
+                          </View>
+                        </View>
+                      ))}
+                    </>
+                  )}
+
+                  {/* Suggestions Section */}
+                  {inviteSearchQuery.trim().length < 2 && mutuals.length > 0 && (
+                    <ThemedText style={[styles.inviteSectionLabel, pendingInvites.length > 0 && { marginTop: 16 }]}>Suggestions</ThemedText>
+                  )}
+
+                  {displayUsers.length === 0 && pendingInvites.length === 0 ? (
+                    <View style={styles.inviteEmptyContainer}>
+                      <ThemedText style={styles.inviteEmptyText}>
+                        {inviteSearchQuery.trim().length >= 2
+                          ? 'No users found'
+                          : 'No suggestions available'
+                        }
+                      </ThemedText>
                     </View>
-                    <ThemedText style={styles.inviteUserName}>{userItem.username}</ThemedText>
-                    <TouchableOpacity
-                      style={[
-                        styles.inviteSendButton,
-                        invitedUsers.has(userItem.id) && styles.inviteSendButtonSent
-                      ]}
-                      onPress={() => handleInviteUser(userItem)}
-                      disabled={invitingUsers.has(userItem.id) || invitedUsers.has(userItem.id)}
-                    >
-                      {invitingUsers.has(userItem.id) ? (
-                        <ActivityIndicator size="small" color="#fff" />
-                      ) : invitedUsers.has(userItem.id) ? (
-                        <IconSymbol size={14} name="checkmark" color="#fff" />
-                      ) : (
-                        <ThemedText style={styles.inviteSendButtonText}>Invite</ThemedText>
-                      )}
-                    </TouchableOpacity>
-                  </View>
-                ))
+                  ) : (
+                    displayUsers.map((userItem) => (
+                      <View key={userItem.id} style={styles.inviteUserItem}>
+                        <View style={styles.inviteUserAvatar}>
+                          {userItem.avatar && userItem.avatar.startsWith('http') ? (
+                            <Image source={{ uri: userItem.avatar }} style={styles.inviteUserAvatarImage} />
+                          ) : (
+                            <ThemedText style={styles.inviteUserAvatarText}>
+                              {userItem.username[0].toUpperCase()}
+                            </ThemedText>
+                          )}
+                        </View>
+                        <ThemedText style={styles.inviteUserName}>{userItem.username}</ThemedText>
+                        <TouchableOpacity
+                          style={[
+                            styles.inviteSendButton,
+                            invitedUsers.has(userItem.id) && styles.inviteSendButtonSent
+                          ]}
+                          onPress={() => handleInviteUser(userItem)}
+                          disabled={invitingUsers.has(userItem.id) || invitedUsers.has(userItem.id)}
+                        >
+                          {invitingUsers.has(userItem.id) ? (
+                            <ActivityIndicator size="small" color="#fff" />
+                          ) : invitedUsers.has(userItem.id) ? (
+                            <IconSymbol size={14} name="checkmark" color="#fff" />
+                          ) : (
+                            <ThemedText style={styles.inviteSendButtonText}>Invite</ThemedText>
+                          )}
+                        </TouchableOpacity>
+                      </View>
+                    ))
+                  )}
+                </>
               )}
             </ScrollView>
           </TouchableOpacity>
@@ -1652,6 +1698,20 @@ const styles = StyleSheet.create({
     fontSize: 13,
     fontWeight: '600',
     color: '#fff',
+  },
+  pendingBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    backgroundColor: '#252525',
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: 8,
+  },
+  pendingBadgeText: {
+    fontSize: 12,
+    fontWeight: '500',
+    color: '#888',
   },
   // Uploading Overlay
   uploadingOverlay: {

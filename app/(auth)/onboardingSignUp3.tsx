@@ -12,7 +12,7 @@ import {
 } from 'react-native';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 
-export default function GoogleSignUpStep4() {
+export default function OnboardingSignUp3() {
   const router = useRouter();
   const params = useLocalSearchParams();
 
@@ -22,7 +22,7 @@ export default function GoogleSignUpStep4() {
 
   const handleContinue = () => {
     router.push({
-      pathname: '/(auth)/googleSignUpStep5',
+      pathname: '/(auth)/onboardingSignUp4',
       params: {
         ...params,
         followedUsers: JSON.stringify(followedUsers),
@@ -32,7 +32,7 @@ export default function GoogleSignUpStep4() {
 
   const handleSkip = () => {
     router.push({
-      pathname: '/(auth)/googleSignUpStep5',
+      pathname: '/(auth)/onboardingSignUp4',
       params: {
         ...params,
       },

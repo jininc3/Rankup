@@ -30,7 +30,7 @@ const defaultAvatars = [
   require('@/assets/images/avatar5.png'),
 ];
 
-export default function GoogleSignUpStep2() {
+export default function OnboardingSignUp1() {
   const router = useRouter();
   const params = useLocalSearchParams();
 
@@ -60,7 +60,7 @@ export default function GoogleSignUpStep2() {
 
   const handleContinue = () => {
     router.push({
-      pathname: '/(auth)/googleSignUpStep3',
+      pathname: '/(auth)/onboardingSignUp2',
       params: {
         ...params,
         bio: bio.trim(),
@@ -73,7 +73,7 @@ export default function GoogleSignUpStep2() {
 
   const handleSkip = () => {
     router.push({
-      pathname: '/(auth)/googleSignUpStep3',
+      pathname: '/(auth)/onboardingSignUp2',
       params: {
         ...params,
       },

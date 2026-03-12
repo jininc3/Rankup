@@ -203,14 +203,24 @@ export default function LeaderboardScreen() {
             // Get top 3 players with their profile photos for the stacked avatars
             const topPlayers = await Promise.all(
               memberStats.slice(0, 3).map(async (member) => {
-                const userDoc = await getDoc(doc(db, 'users', member.userId));
-                const userData = userDoc.data();
-                return {
-                  odId: member.userId,
-                  displayName: userData?.displayName || userData?.username || 'User',
-                  username: userData?.username || '',
-                  photoUrl: userData?.avatar || null,
-                };
+                try {
+                  const userDoc = await getDoc(doc(db, 'users', member.userId));
+                  const userData = userDoc.data();
+                  return {
+                    odId: member.userId,
+                    displayName: userData?.displayName || userData?.username || 'User',
+                    username: userData?.username || '',
+                    photoUrl: userData?.avatar || null,
+                  };
+                } catch (error) {
+                  // Handle permission errors gracefully - return placeholder data
+                  return {
+                    odId: member.userId,
+                    displayName: 'User',
+                    username: '',
+                    photoUrl: null,
+                  };
+                }
               })
             );
 

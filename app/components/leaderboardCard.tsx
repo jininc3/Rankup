@@ -66,7 +66,7 @@ const calculateDaysInfo = (startDate: any, endDate: any): { currentDay: number; 
   startDateObj.setHours(0, 0, 0, 0);
   endDateObj.setHours(0, 0, 0, 0);
 
-  const totalDays = Math.ceil((endDateObj.getTime() - startDateObj.getTime()) / (1000 * 60 * 60 * 24)) + 1;
+  const totalDays = Math.ceil((endDateObj.getTime() - startDateObj.getTime()) / (1000 * 60 * 60 * 24));
   const currentDay = Math.min(
     Math.ceil((today.getTime() - startDateObj.getTime()) / (1000 * 60 * 60 * 24)) + 1,
     totalDays

@@ -201,9 +201,9 @@ export default function GoogleSignUpScreen() {
         }
       }
 
-      // Navigate to step 2 with params
+      // Navigate to onboarding with params
       router.push({
-        pathname: '/(auth)/googleSignUpStep2',
+        pathname: '/(auth)/onboardingSignUp1',
         params: {
           username: username.trim(),
           dateOfBirth: dateOfBirth.toISOString(),

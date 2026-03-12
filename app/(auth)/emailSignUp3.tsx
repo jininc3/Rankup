@@ -109,8 +109,16 @@ export default function EmailSignUpStep3() {
         await sendEmailVerification(auth.currentUser);
       }
 
-      // Navigate to email verification page
-      router.replace('/(auth)/verifyEmailSignUp');
+      // Navigate to email verification page with params for onboarding
+      router.replace({
+        pathname: '/(auth)/verifyEmailSignUp',
+        params: {
+          username: username as string,
+          dateOfBirth: dateOfBirth as string,
+          avatarType: avatarType as string,
+          avatarValue: avatarValue as string,
+        },
+      });
     } catch (error: any) {
       Alert.alert('Sign Up Failed', error.message);
       console.error(error);

@@ -23,14 +23,17 @@ function RootLayoutNav() {
     if (isLoading) return;
 
     const inAuthGroup = segments[0] === '(auth)';
-    const onUsernameSetup = segments[1]?.startsWith('googleSignUp');
+    const onSignupFlow = segments[1]?.startsWith('googleSignUp') ||
+                         segments[1]?.startsWith('onboardingSignUp') ||
+                         segments[1]?.startsWith('emailSignUp') ||
+                         segments[1] === 'verifyEmailSignUp';
     const inProfilePages = segments[0] === 'profilePages';
 
     console.log('Routing check:', {
       isAuthenticated,
       needsUsernameSetup,
       inAuthGroup,
-      onUsernameSetup,
+      onSignupFlow,
       inProfilePages,
       segments
     });
@@ -39,7 +42,7 @@ function RootLayoutNav() {
       // Not authenticated, redirect to login
       console.log('Redirecting to login');
       router.replace('/(auth)/login');
-    } else if (isAuthenticated && needsUsernameSetup && !onUsernameSetup && !inProfilePages) {
+    } else if (isAuthenticated && needsUsernameSetup && !onSignupFlow && !inProfilePages) {
       // Authenticated but needs username setup (allow profilePages for linking accounts during signup)
       console.log('Redirecting to googleSignUp');
       router.replace('/(auth)/googleSignUp');

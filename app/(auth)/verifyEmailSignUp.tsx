@@ -12,12 +12,13 @@ import { IconSymbol } from '@/components/ui/icon-symbol';
 import { useAuth } from '@/contexts/AuthContext';
 import { auth } from '@/config/firebase';
 import { sendEmailVerification } from 'firebase/auth';
-import { useRouter } from 'expo-router';
+import { useRouter, useLocalSearchParams } from 'expo-router';
 import { deleteIncompleteAccount } from '@/services/authService';
 
 export default function VerifyEmailSignUp() {
   const { user, refreshUser } = useAuth();
   const router = useRouter();
+  const params = useLocalSearchParams();
   const [isChecking, setIsChecking] = useState(false);
   const [isResending, setIsResending] = useState(false);
 
@@ -39,8 +40,13 @@ export default function VerifyEmailSignUp() {
               {
                 text: 'OK',
                 onPress: () => {
-                  // Navigate to app after user dismisses alert
-                  router.replace('/(tabs)');
+                  // Navigate to onboarding with params after user dismisses alert
+                  router.replace({
+                    pathname: '/(auth)/onboardingSignUp1',
+                    params: {
+                      ...params,
+                    },
+                  });
                 }
               }
             ]
