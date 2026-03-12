@@ -177,32 +177,27 @@ export async function signOut(): Promise<void> {
  * Deletes both Firebase Auth account and Firestore document
  */
 export async function deleteIncompleteAccount(): Promise<void> {
-  try {
-    const user = auth.currentUser;
+  const user = auth.currentUser;
 
-    if (!user) {
-      console.log('No user to delete');
-      return;
-    }
-
-    const userId = user.uid;
-
-    // Delete Firestore document first
-    try {
-      await deleteDoc(doc(db, 'users', userId));
-      console.log('Deleted Firestore document for user:', userId);
-    } catch (firestoreError) {
-      console.error('Error deleting Firestore document:', firestoreError);
-      // Continue even if Firestore deletion fails
-    }
-
-    // Delete Firebase Auth account
-    await deleteUser(user);
-    console.log('Deleted Firebase Auth account for user:', userId);
-  } catch (error) {
-    console.error('Delete incomplete account error:', error);
-    throw new Error('Failed to delete account');
+  if (!user) {
+    console.log('No user to delete');
+    return;
   }
+
+  const userId = user.uid;
+
+  // Delete Firestore document first
+  try {
+    await deleteDoc(doc(db, 'users', userId));
+    console.log('Deleted Firestore document for user:', userId);
+  } catch (firestoreError) {
+    console.error('Error deleting Firestore document:', firestoreError);
+    // Continue even if Firestore deletion fails
+  }
+
+  // Delete Firebase Auth account - let errors propagate with their codes
+  await deleteUser(user);
+  console.log('Deleted Firebase Auth account for user:', userId);
 }
 
 /**

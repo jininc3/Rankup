@@ -1124,19 +1124,27 @@ export default function ProfileScreen() {
             <View style={styles.emptyState}>
               <View style={styles.emptyClipsIcons}>
                 <View style={styles.emptyClipsIconCircle}>
-                  <IconSymbol size={28} name="photo.fill" color="#72767d" />
+                  <IconSymbol size={18} name="photo.fill" color="#72767d" />
                 </View>
                 <View style={[styles.emptyClipsIconCircle, styles.emptyClipsIconCircleCenter]}>
-                  <IconSymbol size={36} name="video.fill" color="#fff" />
+                  <IconSymbol size={22} name="video.fill" color="#fff" />
                 </View>
                 <View style={styles.emptyClipsIconCircle}>
-                  <IconSymbol size={28} name="sparkles" color="#72767d" />
+                  <IconSymbol size={18} name="sparkles" color="#72767d" />
                 </View>
               </View>
               <ThemedText style={styles.emptyStateTitle}>Share your clips</ThemedText>
               <ThemedText style={styles.emptyStateSubtext}>
-                Post your best gaming moments, highlights, and achievements
+                Post your best gaming moments
               </ThemedText>
+              <TouchableOpacity
+                style={styles.addClipButton}
+                onPress={() => setShowNewPost(true)}
+                activeOpacity={0.7}
+              >
+                <IconSymbol size={10} name="plus" color="#666" />
+                <ThemedText style={styles.addClipButtonText}>Add Clip</ThemedText>
+              </TouchableOpacity>
             </View>
           )}
           </View>
@@ -1190,7 +1198,7 @@ export default function ProfileScreen() {
                 onPress={() => router.push('/profilePages/newRankCard')}
                 activeOpacity={0.8}
               >
-                <IconSymbol size={20} name="link" color="#fff" />
+                <IconSymbol size={10} name="link" color="#666" />
                 <ThemedText style={styles.addRankCardEmptyText}>Link Account</ThemedText>
               </TouchableOpacity>
             </View>
@@ -1825,63 +1833,63 @@ const styles = StyleSheet.create({
   emptyState: {
     alignItems: 'center',
     justifyContent: 'center',
-    paddingVertical: 60,
-    paddingHorizontal: 32,
+    paddingVertical: 20,
+    paddingHorizontal: 24,
   },
   emptyGameLogos: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    marginBottom: 24,
-    gap: -12,
+    marginBottom: 10,
+    gap: -8,
   },
   emptyGameLogoCircle: {
-    width: 56,
-    height: 56,
-    borderRadius: 28,
+    width: 36,
+    height: 36,
+    borderRadius: 18,
     backgroundColor: '#2c2f33',
     alignItems: 'center',
     justifyContent: 'center',
-    borderWidth: 3,
+    borderWidth: 2,
     borderColor: '#0f0f0f',
   },
   emptyGameLogoCircleCenter: {
-    width: 72,
-    height: 72,
-    borderRadius: 36,
+    width: 46,
+    height: 46,
+    borderRadius: 23,
     backgroundColor: '#c42743',
     zIndex: 1,
   },
   emptyGameLogo: {
-    width: 32,
-    height: 32,
+    width: 20,
+    height: 20,
     tintColor: '#72767d',
   },
   emptyGameLogoLarge: {
-    width: 40,
-    height: 40,
+    width: 26,
+    height: 26,
   },
   emptyClipsIcons: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    marginBottom: 24,
-    gap: -12,
+    marginBottom: 10,
+    gap: -8,
   },
   emptyClipsIconCircle: {
-    width: 56,
-    height: 56,
-    borderRadius: 28,
+    width: 36,
+    height: 36,
+    borderRadius: 18,
     backgroundColor: '#2c2f33',
     alignItems: 'center',
     justifyContent: 'center',
-    borderWidth: 3,
+    borderWidth: 2,
     borderColor: '#0f0f0f',
   },
   emptyClipsIconCircleCenter: {
-    width: 72,
-    height: 72,
-    borderRadius: 36,
+    width: 46,
+    height: 46,
+    borderRadius: 23,
     backgroundColor: '#c42743',
     zIndex: 1,
   },
@@ -1901,19 +1909,19 @@ const styles = StyleSheet.create({
     color: '#000',
   },
   emptyIconCircle: {
-    width: 96,
-    height: 96,
-    borderRadius: 48,
+    width: 56,
+    height: 56,
+    borderRadius: 28,
     backgroundColor: '#2c2f33',
     alignItems: 'center',
     justifyContent: 'center',
-    marginBottom: 20,
+    marginBottom: 12,
   },
   emptyStateTitle: {
-    fontSize: 22,
-    fontWeight: '700',
-    color: '#fff',
-    marginBottom: 10,
+    fontSize: 15,
+    fontWeight: '600',
+    color: '#72767d',
+    marginBottom: 6,
   },
   emptyStateText: {
     fontSize: 16,
@@ -1921,26 +1929,45 @@ const styles = StyleSheet.create({
     marginTop: 12,
   },
   emptyStateSubtext: {
-    fontSize: 14,
-    color: '#999',
+    fontSize: 12,
+    color: '#555',
     textAlign: 'center',
-    lineHeight: 21,
-    maxWidth: 280,
+    lineHeight: 17,
+    maxWidth: 240,
+  },
+  addClipButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 3,
+    marginTop: 10,
+    paddingVertical: 6,
+    paddingHorizontal: 12,
+    backgroundColor: 'transparent',
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: '#333',
+  },
+  addClipButtonText: {
+    fontSize: 11,
+    fontWeight: '500',
+    color: '#666',
   },
   addRankCardEmptyButton: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 8,
-    marginTop: 28,
-    paddingVertical: 14,
-    paddingHorizontal: 28,
-    backgroundColor: '#c42743',
+    gap: 3,
+    marginTop: 10,
+    paddingVertical: 6,
+    paddingHorizontal: 12,
+    backgroundColor: 'transparent',
     borderRadius: 12,
+    borderWidth: 1,
+    borderColor: '#333',
   },
   addRankCardEmptyText: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: '#fff',
+    fontSize: 11,
+    fontWeight: '500',
+    color: '#666',
   },
   verticalRankCardsContainer: {
     paddingHorizontal: 12,

@@ -23,7 +23,7 @@ function RootLayoutNav() {
     if (isLoading) return;
 
     const inAuthGroup = segments[0] === '(auth)';
-    const onUsernameSetup = segments[1] === 'googleSignUp';
+    const onUsernameSetup = segments[1]?.startsWith('googleSignUp');
 
     console.log('Routing check:', {
       isAuthenticated,

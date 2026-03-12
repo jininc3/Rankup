@@ -12,14 +12,14 @@ import {
   Image,
 } from 'react-native';
 import { useState } from 'react';
-import { useRouter } from 'expo-router';
+import { useRouter, useLocalSearchParams, Stack } from 'expo-router';
 import { linkValorantAccount } from '@/services/valorantService';
 import { db, auth } from '@/config/firebase';
 import { doc, updateDoc, arrayUnion } from 'firebase/firestore';
-import { Stack } from 'expo-router';
 
 export default function LinkValorantAccountScreen() {
   const router = useRouter();
+  const { fromSignup } = useLocalSearchParams<{ fromSignup?: string }>();
   const [gameName, setGameName] = useState('');
   const [tagLine, setTagLine] = useState('');
   const [region, setRegion] = useState('na');
@@ -57,8 +57,13 @@ export default function LinkValorantAccountScreen() {
             {
               text: 'OK',
               onPress: () => {
-                // Navigate directly to profile tab with refresh flag
-                router.replace('/(tabs)/profile?refresh=true');
+                if (fromSignup === 'true') {
+                  // Go back to signup step 3
+                  router.back();
+                } else {
+                  // Navigate directly to profile tab with refresh flag
+                  router.replace('/(tabs)/profile?refresh=true');
+                }
               },
             },
           ]

@@ -19,6 +19,9 @@ export default function AuthLayout() {
       <Stack.Screen name="emailSignUp3" />
       <Stack.Screen name="verifyEmailSignUp" />
       <Stack.Screen name="googleSignUp" />
+      <Stack.Screen name="googleSignUpStep2" />
+      <Stack.Screen name="googleSignUpStep3" />
+      <Stack.Screen name="googleSignUpStep4" />
     </Stack>
   );
 }

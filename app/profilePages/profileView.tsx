@@ -813,9 +813,8 @@ export default function ProfileViewScreen() {
               ))}
             </ScrollView>
           ) : (
-            <View style={styles.postsContainer}>
-              <IconSymbol size={48} name="square.stack.3d.up" color="#ccc" />
-              <ThemedText style={styles.emptyStateText}>No posts yet</ThemedText>
+            <View style={styles.emptyStateSimple}>
+              <ThemedText style={styles.emptyStateSimpleText}>No clips yet</ThemedText>
             </View>
           )}
         </View>
@@ -836,17 +835,13 @@ export default function ProfileViewScreen() {
         }]}>
           {!riotAccount && !valorantAccount ? (
             // Empty state when user has no gaming accounts linked
-            <View style={styles.emptyRankCardsContainer}>
-              <IconSymbol size={48} name="gamecontroller" color="#ccc" />
-              <ThemedText style={styles.emptyStateText}>No RankCards</ThemedText>
-              <ThemedText style={styles.emptyStateSubtext}>This user hasn't linked any gaming accounts yet</ThemedText>
+            <View style={styles.emptyStateSimple}>
+              <ThemedText style={styles.emptyStateSimpleText}>No rank cards yet</ThemedText>
             </View>
           ) : userGames.length === 0 ? (
             // User has accounts but no enabled rank cards
-            <View style={styles.emptyRankCardsContainer}>
-              <IconSymbol size={48} name="gamecontroller" color="#ccc" />
-              <ThemedText style={styles.emptyStateText}>No RankCards</ThemedText>
-              <ThemedText style={styles.emptyStateSubtext}>This user hasn't added any rank cards yet</ThemedText>
+            <View style={styles.emptyStateSimple}>
+              <ThemedText style={styles.emptyStateSimpleText}>No rank cards yet</ThemedText>
             </View>
           ) : userGames.length === 1 ? (
             // Single Card View - clickable to open game stats
@@ -1581,6 +1576,16 @@ const styles = StyleSheet.create({
     paddingVertical: 80,
     paddingHorizontal: 20,
     gap: 12,
+  },
+  emptyStateSimple: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 32,
+    paddingHorizontal: 20,
+  },
+  emptyStateSimpleText: {
+    fontSize: 14,
+    color: '#72767d',
   },
   loadingText: {
     fontSize: 14,

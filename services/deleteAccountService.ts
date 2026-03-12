@@ -347,18 +347,24 @@ async function deleteLinkedAccounts(userId: string): Promise<void> {
     );
     const linkedAccountsSnapshot = await getDocs(linkedAccountsQuery);
 
-    console.log(`Found ${linkedAccountsSnapshot.size} linked accounts to delete`);
+    // Only proceed if there are accounts to delete
+    if (linkedAccountsSnapshot.size > 0) {
+      console.log(`Found ${linkedAccountsSnapshot.size} linked accounts to delete`);
 
-    // Delete all linked accounts
-    const batch = writeBatch(db);
-    linkedAccountsSnapshot.docs.forEach((accountDoc) => {
-      batch.delete(accountDoc.ref);
-    });
-    await batch.commit();
+      // Delete all linked accounts
+      const batch = writeBatch(db);
+      linkedAccountsSnapshot.docs.forEach((accountDoc) => {
+        batch.delete(accountDoc.ref);
+      });
+      await batch.commit();
 
-    console.log('Linked accounts deleted');
-  } catch (error) {
-    console.error('Error deleting linked accounts:', error);
+      console.log('Linked accounts deleted');
+    }
+  } catch (error: any) {
+    // Silently ignore permission errors (likely means no linked accounts collection access)
+    if (error?.code !== 'permission-denied') {
+      console.error('Error deleting linked accounts:', error);
+    }
     // Don't throw - continue with deletion
   }
 }
@@ -425,8 +431,11 @@ async function deleteUserFromParties(userId: string): Promise<void> {
     }
 
     console.log('User removed from all parties and created parties deleted');
-  } catch (error) {
-    console.error('Error removing user from parties:', error);
+  } catch (error: any) {
+    // Silently ignore permission errors (likely means no parties to process)
+    if (error?.code !== 'permission-denied') {
+      console.error('Error removing user from parties:', error);
+    }
     // Don't throw - continue with deletion
   }
 }

@@ -1,6 +1,6 @@
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
-import { IconSymbol } from '@/components/ui/icon-symbol';
+import MaterialIcons from '@expo/vector-icons/MaterialIcons';
 import { db } from '@/config/firebase';
 import { useGoogleAuth } from '@/hooks/useGoogleAuth';
 import { signInWithEmail, signInWithGoogleCredential } from '@/services/authService';
@@ -9,6 +9,7 @@ import { collection, getDocs, query, where } from 'firebase/firestore';
 import React, { useEffect, useState, useRef } from 'react';
 import {
   Alert,
+  Image,
   KeyboardAvoidingView,
   Platform,
   ScrollView,
@@ -145,6 +146,7 @@ export default function LoginScreen() {
         >
           <View style={styles.content}>
             <View style={styles.header}>
+              <Image source={require('@/assets/images/rankup-white.png')} style={styles.logo} />
               <ThemedText style={styles.title}>Welcome Back</ThemedText>
               <ThemedText style={styles.subtitle}>
                 Sign in to continue to RankUp
@@ -154,34 +156,40 @@ export default function LoginScreen() {
             <View style={styles.form}>
               <View style={styles.inputContainer}>
                 <ThemedText style={styles.label}>Email or Username</ThemedText>
-                <TextInput
-                  style={styles.input}
-                  placeholder="Enter your email or username"
-                  placeholderTextColor="#999"
-                  value={emailOrUsername}
-                  onChangeText={setEmailOrUsername}
-                  autoCapitalize="none"
-                  editable={!isLoading}
-                  returnKeyType="next"
-                  onSubmitEditing={() => passwordRef.current?.focus()}
-                  blurOnSubmit={false}
-                />
+                <View style={styles.inputWrapper}>
+                  <MaterialIcons name="person" size={20} color="#999" style={styles.inputIcon} />
+                  <TextInput
+                    style={styles.inputWithIcon}
+                    placeholder="Enter your email or username"
+                    placeholderTextColor="#999"
+                    value={emailOrUsername}
+                    onChangeText={setEmailOrUsername}
+                    autoCapitalize="none"
+                    editable={!isLoading}
+                    returnKeyType="next"
+                    onSubmitEditing={() => passwordRef.current?.focus()}
+                    blurOnSubmit={false}
+                  />
+                </View>
               </View>
 
               <View style={styles.inputContainer}>
                 <ThemedText style={styles.label}>Password</ThemedText>
-                <TextInput
-                  ref={passwordRef}
-                  style={styles.input}
-                  placeholder="Enter your password"
-                  placeholderTextColor="#999"
-                  value={password}
-                  onChangeText={setPassword}
-                  secureTextEntry
-                  editable={!isLoading}
-                  returnKeyType="done"
-                  onSubmitEditing={handleEmailLogin}
-                />
+                <View style={styles.inputWrapper}>
+                  <MaterialIcons name="vpn-key" size={20} color="#999" style={styles.inputIcon} />
+                  <TextInput
+                    ref={passwordRef}
+                    style={styles.inputWithIcon}
+                    placeholder="Enter your password"
+                    placeholderTextColor="#999"
+                    value={password}
+                    onChangeText={setPassword}
+                    secureTextEntry
+                    editable={!isLoading}
+                    returnKeyType="done"
+                    onSubmitEditing={handleEmailLogin}
+                  />
+                </View>
                 <TouchableOpacity
                   style={styles.forgotPasswordButton}
                   onPress={handleForgotPassword}
@@ -214,7 +222,7 @@ export default function LoginScreen() {
                 onPress={handleGoogleLogin}
                 disabled={!googleAuth.request || isLoading}
               >
-                <IconSymbol name="globe" size={20} color="#fff" />
+                <Image source={require('@/assets/images/google.png')} style={styles.googleIcon} />
                 <ThemedText style={styles.socialButtonText}>
                   Continue with Google
                 </ThemedText>
@@ -250,58 +258,77 @@ const styles = StyleSheet.create({
   content: {
     flex: 1,
     padding: 24,
-    paddingTop: 80,
-    justifyContent: 'center',
+    paddingTop: 60,
+    justifyContent: 'flex-start',
   },
   header: {
-    marginBottom: 24,
-    marginTop: 20,
+    marginBottom: 20,
     alignItems: 'center',
-    paddingTop: 20,
-    paddingBottom: 16,
-    overflow: 'visible',
+    paddingTop: 8,
+    paddingBottom: 8,
+  },
+  logo: {
+    width: 200,
+    height: 60,
+    resizeMode: 'contain',
+    marginBottom: 16,
   },
   title: {
-    fontSize: 32,
+    fontSize: 24,
     fontWeight: 'bold',
-    marginBottom: 8,
-    lineHeight: 40,
-    overflow: 'visible',
+    marginBottom: 6,
     color: '#fff',
   },
   subtitle: {
-    fontSize: 16,
-    color: '#ccc',
+    fontSize: 14,
+    color: '#999',
   },
   form: {
     width: '100%',
   },
   inputContainer: {
-    marginBottom: 16,
+    marginBottom: 12,
   },
   label: {
-    fontSize: 15,
+    fontSize: 13,
     fontWeight: '600',
     color: '#fff',
-    marginBottom: 8,
+    marginBottom: 4,
   },
   input: {
     backgroundColor: '#2c2f33',
-    borderRadius: 12,
-    padding: 16,
-    fontSize: 16,
+    borderRadius: 24,
+    paddingHorizontal: 16,
+    paddingVertical: 14,
+    fontSize: 15,
+    color: '#fff',
+  },
+  inputWrapper: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#2c2f33',
+    borderRadius: 24,
+    paddingHorizontal: 16,
+  },
+  inputIcon: {
+    marginRight: 10,
+  },
+  inputWithIcon: {
+    flex: 1,
+    paddingVertical: 14,
+    fontSize: 15,
     color: '#fff',
   },
   loginButton: {
     backgroundColor: '#c42743',
-    borderRadius: 12,
-    padding: 16,
+    borderRadius: 24,
+    paddingVertical: 16,
     alignItems: 'center',
     marginTop: 8,
   },
   loginButtonText: {
     color: '#fff',
-    fontSize: 16,
+    fontSize: 15,
     fontWeight: '600',
   },
   buttonDisabled: {
@@ -310,7 +337,7 @@ const styles = StyleSheet.create({
   divider: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginVertical: 24,
+    marginVertical: 16,
   },
   dividerLine: {
     flex: 1,
@@ -318,48 +345,52 @@ const styles = StyleSheet.create({
     backgroundColor: '#2c2f33',
   },
   dividerText: {
-    marginHorizontal: 16,
+    marginHorizontal: 12,
     color: '#999',
-    fontSize: 14,
+    fontSize: 13,
   },
   socialButton: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    borderRadius: 12,
-    padding: 16,
-    marginBottom: 12,
+    borderRadius: 24,
+    paddingVertical: 16,
+    marginBottom: 8,
     gap: 8,
   },
   googleButton: {
-    backgroundColor: '#4285F4',
+    backgroundColor: '#c42743',
+  },
+  googleIcon: {
+    width: 20,
+    height: 20,
   },
   socialButtonText: {
     color: '#fff',
-    fontSize: 16,
+    fontSize: 15,
     fontWeight: '600',
   },
   footer: {
     flexDirection: 'row',
     justifyContent: 'center',
-    marginTop: 8,
+    marginTop: 12,
   },
   footerText: {
     color: '#ccc',
-    fontSize: 14,
+    fontSize: 13,
   },
   footerLink: {
     color: '#c42743',
-    fontSize: 14,
+    fontSize: 13,
     fontWeight: '600',
   },
   forgotPasswordButton: {
     alignSelf: 'flex-end',
-    marginTop: 8,
+    marginTop: 6,
   },
   forgotPasswordText: {
-    color: '#ccc',
-    fontSize: 14,
+    color: '#999',
+    fontSize: 13,
     fontWeight: '500',
   },
 });

@@ -38,9 +38,9 @@ export async function deleteProfilePicture(userId: string): Promise<void> {
     const storageRef = ref(storage, `profile-pictures/${userId}/avatar.jpg`);
     await deleteObject(storageRef);
   } catch (error: any) {
-    console.error('Delete profile picture error:', error);
-    // Don't throw error if file doesn't exist
+    // Silently ignore if file doesn't exist
     if (error.code !== 'storage/object-not-found') {
+      console.error('Delete profile picture error:', error);
       throw new Error('Failed to delete profile picture');
     }
   }
@@ -83,9 +83,9 @@ export async function deleteCoverPhoto(userId: string): Promise<void> {
     const storageRef = ref(storage, `cover-photos/${userId}/cover.jpg`);
     await deleteObject(storageRef);
   } catch (error: any) {
-    console.error('Delete cover photo error:', error);
-    // Don't throw error if file doesn't exist
+    // Silently ignore if file doesn't exist
     if (error.code !== 'storage/object-not-found') {
+      console.error('Delete cover photo error:', error);
       throw new Error('Failed to delete cover photo');
     }
   }

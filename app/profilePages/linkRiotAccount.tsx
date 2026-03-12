@@ -19,7 +19,7 @@ import { doc, updateDoc, arrayUnion } from 'firebase/firestore';
 
 export default function LinkRiotAccountScreen() {
   const router = useRouter();
-  const { selectedGame } = useLocalSearchParams<{ selectedGame?: string }>();
+  const { selectedGame, fromSignup } = useLocalSearchParams<{ selectedGame?: string; fromSignup?: string }>();
   const [gameName, setGameName] = useState('');
   const [tagLine, setTagLine] = useState('');
   const [region, setRegion] = useState('na1');
@@ -62,8 +62,13 @@ export default function LinkRiotAccountScreen() {
             {
               text: 'OK',
               onPress: () => {
-                // Navigate directly to profile tab with refresh flag
-                router.replace('/(tabs)/profile?refresh=true');
+                if (fromSignup === 'true') {
+                  // Go back to signup step 3
+                  router.back();
+                } else {
+                  // Navigate directly to profile tab with refresh flag
+                  router.replace('/(tabs)/profile?refresh=true');
+                }
               },
             },
           ]
