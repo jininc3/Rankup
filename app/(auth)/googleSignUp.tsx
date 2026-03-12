@@ -334,7 +334,7 @@ export default function GoogleSignUpScreen() {
 
           {/* Progress Indicator */}
           <View style={styles.progressContainer}>
-            <StepProgressIndicator currentStep={1} totalSteps={4} />
+            <StepProgressIndicator currentStep={1} totalSteps={5} />
           </View>
 
           <View style={styles.content}>

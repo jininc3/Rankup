@@ -11,6 +11,7 @@ import {
   Image,
   ActivityIndicator,
   Dimensions,
+  Switch,
 } from 'react-native';
 import { useRouter, useLocalSearchParams, useFocusEffect } from 'expo-router';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -32,6 +33,10 @@ export default function GoogleSignUpStep3() {
   const [riotStats, setRiotStats] = useState<any>(null);
   const [valorantStats, setValorantStats] = useState<any>(null);
   const [loading, setLoading] = useState(true);
+
+  // Toggle states for adding rank cards to profile
+  const [leagueEnabled, setLeagueEnabled] = useState(true);
+  const [valorantEnabled, setValorantEnabled] = useState(true);
 
   // Fetch linked accounts when screen gains focus
   useFocusEffect(
@@ -64,12 +69,22 @@ export default function GoogleSignUpStep3() {
   );
 
   const handleContinue = () => {
+    // Build enabledRankCards array based on toggles
+    const enabledRankCards: string[] = [];
+    if (riotAccount && leagueEnabled) {
+      enabledRankCards.push('league');
+    }
+    if (valorantAccount && valorantEnabled) {
+      enabledRankCards.push('valorant');
+    }
+
     router.push({
       pathname: '/(auth)/googleSignUpStep4',
       params: {
         ...params,
         linkedRiot: riotAccount ? 'true' : 'false',
         linkedValorant: valorantAccount ? 'true' : 'false',
+        enabledRankCards: JSON.stringify(enabledRankCards),
       },
     });
   };
@@ -131,7 +146,7 @@ export default function GoogleSignUpStep3() {
 
         {/* Progress Indicator */}
         <View style={styles.progressContainer}>
-          <StepProgressIndicator currentStep={3} totalSteps={4} />
+          <StepProgressIndicator currentStep={3} totalSteps={5} />
         </View>
 
         <View style={styles.content}>
@@ -146,138 +161,194 @@ export default function GoogleSignUpStep3() {
           ) : (
             <>
               {/* League of Legends Card */}
-              <TouchableOpacity
-                style={styles.gameCardWrapper}
-                onPress={!riotAccount ? handleLinkLeague : undefined}
-                activeOpacity={riotAccount ? 1 : 0.8}
-              >
-                <LinearGradient
-                  colors={riotAccount ? ['#1a3a5c', '#0f1f3d', '#091428'] : ['#1a1a1a', '#141414', '#0f0f0f']}
-                  start={{ x: 0, y: 0 }}
-                  end={{ x: 1, y: 1 }}
-                  style={styles.gameCard}
-                >
-                  {/* Game Logo */}
-                  <View style={styles.logoContainer}>
-                    <Image
-                      source={require('@/assets/images/lol-icon.png')}
-                      style={styles.gameLogo}
-                      resizeMode="contain"
+              {riotAccount ? (
+                <View style={styles.linkedCardContainer}>
+                  <LinearGradient
+                    colors={['#1a3a5c', '#0f1f3d', '#091428']}
+                    start={{ x: 0, y: 0 }}
+                    end={{ x: 1, y: 1 }}
+                    style={styles.gameCard}
+                  >
+                    {/* Game Logo */}
+                    <View style={styles.logoContainer}>
+                      <Image
+                        source={require('@/assets/images/lol-icon.png')}
+                        style={styles.gameLogo}
+                        resizeMode="contain"
+                      />
+                    </View>
+
+                    {/* Game Info */}
+                    <View style={styles.gameInfo}>
+                      <ThemedText style={styles.gameName}>League of Legends</ThemedText>
+                      <View style={styles.accountRow}>
+                        <IconSymbol size={14} name="person.fill" color="rgba(255, 255, 255, 0.7)" />
+                        <ThemedText style={styles.accountName}>
+                          {riotAccount.gameName}#{riotAccount.tagLine}
+                        </ThemedText>
+                      </View>
+                      <View style={styles.rankRow}>
+                        <ThemedText style={styles.rankLabel}>Rank:</ThemedText>
+                        <ThemedText style={styles.rankValue}>{getLeagueRank()}</ThemedText>
+                      </View>
+                    </View>
+
+                    {/* Linked Badge */}
+                    <View style={styles.linkedBadge}>
+                      <IconSymbol size={14} name="checkmark" color="#4ade80" />
+                    </View>
+
+                    {/* Decorative elements */}
+                    <View style={[styles.glowOrb, styles.glowOrbTopRight, styles.glowOrbActive]} />
+                    <View style={[styles.glowOrb, styles.glowOrbBottomLeft, styles.glowOrbActive]} />
+                  </LinearGradient>
+
+                  {/* Toggle Row */}
+                  <View style={styles.toggleRow}>
+                    <ThemedText style={styles.toggleLabel}>Show on profile</ThemedText>
+                    <Switch
+                      value={leagueEnabled}
+                      onValueChange={setLeagueEnabled}
+                      trackColor={{ false: '#3e3e3e', true: '#c42743' }}
+                      thumbColor="#fff"
                     />
                   </View>
+                </View>
+              ) : (
+                <TouchableOpacity
+                  style={styles.gameCardWrapper}
+                  onPress={handleLinkLeague}
+                  activeOpacity={0.8}
+                >
+                  <LinearGradient
+                    colors={['#1a1a1a', '#141414', '#0f0f0f']}
+                    start={{ x: 0, y: 0 }}
+                    end={{ x: 1, y: 1 }}
+                    style={styles.gameCard}
+                  >
+                    <View style={styles.logoContainer}>
+                      <Image
+                        source={require('@/assets/images/lol-icon.png')}
+                        style={styles.gameLogo}
+                        resizeMode="contain"
+                      />
+                    </View>
 
-                  {/* Game Info */}
-                  <View style={styles.gameInfo}>
-                    <ThemedText style={styles.gameName}>League of Legends</ThemedText>
-
-                    {riotAccount ? (
-                      <>
-                        <View style={styles.accountRow}>
-                          <IconSymbol size={14} name="person.fill" color="rgba(255, 255, 255, 0.7)" />
-                          <ThemedText style={styles.accountName}>
-                            {riotAccount.gameName}#{riotAccount.tagLine}
-                          </ThemedText>
-                        </View>
-                        <View style={styles.rankRow}>
-                          <ThemedText style={styles.rankLabel}>Rank:</ThemedText>
-                          <ThemedText style={styles.rankValue}>{getLeagueRank()}</ThemedText>
-                        </View>
-                      </>
-                    ) : (
+                    <View style={styles.gameInfo}>
+                      <ThemedText style={styles.gameName}>League of Legends</ThemedText>
                       <View style={styles.notLinkedRow}>
                         <IconSymbol size={14} name="link" color="#666" />
                         <ThemedText style={styles.notLinkedText}>Not linked</ThemedText>
                       </View>
-                    )}
-                  </View>
+                    </View>
 
-                  {/* Status/Action */}
-                  <View style={styles.cardAction}>
-                    {riotAccount ? (
-                      <View style={styles.linkedBadge}>
-                        <IconSymbol size={14} name="checkmark" color="#4ade80" />
-                        <ThemedText style={styles.linkedBadgeText}>Linked</ThemedText>
-                      </View>
-                    ) : (
+                    <View style={styles.cardAction}>
                       <View style={styles.linkButton}>
                         <IconSymbol size={16} name="link" color="#fff" />
                         <ThemedText style={styles.linkButtonText}>Link</ThemedText>
                       </View>
-                    )}
-                  </View>
+                    </View>
 
-                  {/* Decorative elements */}
-                  <View style={[styles.glowOrb, styles.glowOrbTopRight, riotAccount && styles.glowOrbActive]} />
-                  <View style={[styles.glowOrb, styles.glowOrbBottomLeft, riotAccount && styles.glowOrbActive]} />
-                </LinearGradient>
-              </TouchableOpacity>
+                    <View style={[styles.glowOrb, styles.glowOrbTopRight]} />
+                    <View style={[styles.glowOrb, styles.glowOrbBottomLeft]} />
+                  </LinearGradient>
+                </TouchableOpacity>
+              )}
 
               {/* Valorant Card */}
-              <TouchableOpacity
-                style={styles.gameCardWrapper}
-                onPress={!valorantAccount ? handleLinkValorant : undefined}
-                activeOpacity={valorantAccount ? 1 : 0.8}
-              >
-                <LinearGradient
-                  colors={valorantAccount ? ['#DC3D4B', '#8B1E2B', '#5C141D'] : ['#1a1a1a', '#141414', '#0f0f0f']}
-                  start={{ x: 0, y: 0 }}
-                  end={{ x: 1, y: 1 }}
-                  style={styles.gameCard}
-                >
-                  {/* Game Logo */}
-                  <View style={styles.logoContainer}>
-                    <Image
-                      source={require('@/assets/images/valorant.png')}
-                      style={styles.gameLogo}
-                      resizeMode="contain"
+              {valorantAccount ? (
+                <View style={styles.linkedCardContainer}>
+                  <LinearGradient
+                    colors={['#DC3D4B', '#8B1E2B', '#5C141D']}
+                    start={{ x: 0, y: 0 }}
+                    end={{ x: 1, y: 1 }}
+                    style={styles.gameCard}
+                  >
+                    {/* Game Logo */}
+                    <View style={styles.logoContainer}>
+                      <Image
+                        source={require('@/assets/images/valorant.png')}
+                        style={styles.gameLogo}
+                        resizeMode="contain"
+                      />
+                    </View>
+
+                    {/* Game Info */}
+                    <View style={styles.gameInfo}>
+                      <ThemedText style={styles.gameName}>Valorant</ThemedText>
+                      <View style={styles.accountRow}>
+                        <IconSymbol size={14} name="person.fill" color="rgba(255, 255, 255, 0.7)" />
+                        <ThemedText style={styles.accountName}>
+                          {valorantAccount.gameName}#{valorantAccount.tagLine}
+                        </ThemedText>
+                      </View>
+                      <View style={styles.rankRow}>
+                        <ThemedText style={styles.rankLabel}>Rank:</ThemedText>
+                        <ThemedText style={styles.rankValue}>{getValorantRank()}</ThemedText>
+                      </View>
+                    </View>
+
+                    {/* Linked Badge */}
+                    <View style={styles.linkedBadge}>
+                      <IconSymbol size={14} name="checkmark" color="#4ade80" />
+                    </View>
+
+                    {/* Decorative elements */}
+                    <View style={[styles.glowOrb, styles.glowOrbTopRight, styles.glowOrbActiveRed]} />
+                    <View style={[styles.glowOrb, styles.glowOrbBottomLeft, styles.glowOrbActiveRed]} />
+                  </LinearGradient>
+
+                  {/* Toggle Row */}
+                  <View style={styles.toggleRow}>
+                    <ThemedText style={styles.toggleLabel}>Show on profile</ThemedText>
+                    <Switch
+                      value={valorantEnabled}
+                      onValueChange={setValorantEnabled}
+                      trackColor={{ false: '#3e3e3e', true: '#c42743' }}
+                      thumbColor="#fff"
                     />
                   </View>
+                </View>
+              ) : (
+                <TouchableOpacity
+                  style={styles.gameCardWrapper}
+                  onPress={handleLinkValorant}
+                  activeOpacity={0.8}
+                >
+                  <LinearGradient
+                    colors={['#1a1a1a', '#141414', '#0f0f0f']}
+                    start={{ x: 0, y: 0 }}
+                    end={{ x: 1, y: 1 }}
+                    style={styles.gameCard}
+                  >
+                    <View style={styles.logoContainer}>
+                      <Image
+                        source={require('@/assets/images/valorant.png')}
+                        style={styles.gameLogo}
+                        resizeMode="contain"
+                      />
+                    </View>
 
-                  {/* Game Info */}
-                  <View style={styles.gameInfo}>
-                    <ThemedText style={styles.gameName}>Valorant</ThemedText>
-
-                    {valorantAccount ? (
-                      <>
-                        <View style={styles.accountRow}>
-                          <IconSymbol size={14} name="person.fill" color="rgba(255, 255, 255, 0.7)" />
-                          <ThemedText style={styles.accountName}>
-                            {valorantAccount.gameName}#{valorantAccount.tagLine}
-                          </ThemedText>
-                        </View>
-                        <View style={styles.rankRow}>
-                          <ThemedText style={styles.rankLabel}>Rank:</ThemedText>
-                          <ThemedText style={styles.rankValue}>{getValorantRank()}</ThemedText>
-                        </View>
-                      </>
-                    ) : (
+                    <View style={styles.gameInfo}>
+                      <ThemedText style={styles.gameName}>Valorant</ThemedText>
                       <View style={styles.notLinkedRow}>
                         <IconSymbol size={14} name="link" color="#666" />
                         <ThemedText style={styles.notLinkedText}>Not linked</ThemedText>
                       </View>
-                    )}
-                  </View>
+                    </View>
 
-                  {/* Status/Action */}
-                  <View style={styles.cardAction}>
-                    {valorantAccount ? (
-                      <View style={styles.linkedBadge}>
-                        <IconSymbol size={14} name="checkmark" color="#4ade80" />
-                        <ThemedText style={styles.linkedBadgeText}>Linked</ThemedText>
-                      </View>
-                    ) : (
+                    <View style={styles.cardAction}>
                       <View style={styles.linkButton}>
                         <IconSymbol size={16} name="link" color="#fff" />
                         <ThemedText style={styles.linkButtonText}>Link</ThemedText>
                       </View>
-                    )}
-                  </View>
+                    </View>
 
-                  {/* Decorative elements */}
-                  <View style={[styles.glowOrb, styles.glowOrbTopRight, valorantAccount && styles.glowOrbActiveRed]} />
-                  <View style={[styles.glowOrb, styles.glowOrbBottomLeft, valorantAccount && styles.glowOrbActiveRed]} />
-                </LinearGradient>
-              </TouchableOpacity>
+                    <View style={[styles.glowOrb, styles.glowOrbTopRight]} />
+                    <View style={[styles.glowOrb, styles.glowOrbBottomLeft]} />
+                  </LinearGradient>
+                </TouchableOpacity>
+              )}
 
               {/* Info text */}
               <View style={styles.infoContainer}>
@@ -351,6 +422,9 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   gameCardWrapper: {
+    marginBottom: 16,
+  },
+  linkedCardContainer: {
     marginBottom: 16,
   },
   gameCard: {
@@ -427,20 +501,17 @@ const styles = StyleSheet.create({
     marginLeft: 'auto',
   },
   linkedBadge: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 4,
+    position: 'absolute',
+    top: 12,
+    right: 12,
+    width: 28,
+    height: 28,
+    borderRadius: 14,
     backgroundColor: 'rgba(74, 222, 128, 0.15)',
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 20,
+    alignItems: 'center',
+    justifyContent: 'center',
     borderWidth: 1,
     borderColor: 'rgba(74, 222, 128, 0.3)',
-  },
-  linkedBadgeText: {
-    fontSize: 12,
-    fontWeight: '600',
-    color: '#4ade80',
   },
   linkButton: {
     flexDirection: 'row',
@@ -455,6 +526,18 @@ const styles = StyleSheet.create({
     fontSize: 13,
     fontWeight: '600',
     color: '#fff',
+  },
+  toggleRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: 8,
+    paddingTop: 12,
+  },
+  toggleLabel: {
+    fontSize: 14,
+    fontWeight: '500',
+    color: '#b9bbbe',
   },
   glowOrb: {
     position: 'absolute',
@@ -482,7 +565,7 @@ const styles = StyleSheet.create({
     alignItems: 'flex-start',
     gap: 10,
     marginTop: 8,
-    marginBottom: 24,
+    marginBottom: 16,
     paddingHorizontal: 4,
   },
   infoText: {

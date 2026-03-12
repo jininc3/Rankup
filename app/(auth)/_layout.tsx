@@ -22,6 +22,7 @@ export default function AuthLayout() {
       <Stack.Screen name="googleSignUpStep2" />
       <Stack.Screen name="googleSignUpStep3" />
       <Stack.Screen name="googleSignUpStep4" />
+      <Stack.Screen name="googleSignUpStep5" />
     </Stack>
   );
 }

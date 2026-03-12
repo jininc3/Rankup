@@ -5,408 +5,182 @@ import StepProgressIndicator from '@/components/ui/StepProgressIndicator';
 import { useState } from 'react';
 import {
   StyleSheet,
-  TextInput,
   TouchableOpacity,
   View,
   ScrollView,
   Image,
-  Alert,
-  ActivityIndicator,
-  Dimensions,
 } from 'react-native';
 import { useRouter, useLocalSearchParams } from 'expo-router';
-import { useAuth } from '@/contexts/AuthContext';
-import { db, storage } from '@/config/firebase';
-import { doc, updateDoc, addDoc, collection, Timestamp, increment } from 'firebase/firestore';
-import { ref, uploadBytesResumable, getDownloadURL } from 'firebase/storage';
-import * as ImagePicker from 'expo-image-picker';
-import * as VideoThumbnails from 'expo-video-thumbnails';
-import { Video, ResizeMode } from 'expo-av';
-import { uploadProfilePicture } from '@/services/storageService';
-
-const { width: screenWidth } = Dimensions.get('window');
-
-const availableGames = [
-  { id: 'valorant', name: 'Valorant' },
-  { id: 'league', name: 'League of Legends' },
-];
-
-// Default avatar URLs
-const defaultAvatarUrls = [
-  'https://firebasestorage.googleapis.com/v0/b/rankup-a2a8a.firebasestorage.app/o/default-avatars%2Favatar1.png?alt=media',
-  'https://firebasestorage.googleapis.com/v0/b/rankup-a2a8a.firebasestorage.app/o/default-avatars%2Favatar2.png?alt=media',
-  'https://firebasestorage.googleapis.com/v0/b/rankup-a2a8a.firebasestorage.app/o/default-avatars%2Favatar3.png?alt=media',
-  'https://firebasestorage.googleapis.com/v0/b/rankup-a2a8a.firebasestorage.app/o/default-avatars%2Favatar4.png?alt=media',
-  'https://firebasestorage.googleapis.com/v0/b/rankup-a2a8a.firebasestorage.app/o/default-avatars%2Favatar5.png?alt=media',
-];
 
 export default function GoogleSignUpStep4() {
   const router = useRouter();
   const params = useLocalSearchParams();
-  const { user, refreshUser } = useAuth();
 
-  const [selectedVideo, setSelectedVideo] = useState<ImagePicker.ImagePickerAsset | null>(null);
-  const [caption, setCaption] = useState('');
-  const [selectedGame, setSelectedGame] = useState<string | null>(null);
-  const [loading, setLoading] = useState(false);
+  // Placeholder for contacts with RankUp accounts
+  const [suggestedUsers, setSuggestedUsers] = useState<any[]>([]);
+  const [followedUsers, setFollowedUsers] = useState<string[]>([]);
 
-  const handleSelectVideo = async () => {
-    const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
-
-    if (status !== 'granted') {
-      Alert.alert(
-        'Permission Required',
-        'Please allow access to your photo library to upload videos.'
-      );
-      return;
-    }
-
-    const result = await ImagePicker.launchImageLibraryAsync({
-      mediaTypes: ['videos'],
-      allowsEditing: true,
-      aspect: [4, 3],
-      quality: 1,
-      videoMaxDuration: 60,
-    });
-
-    if (!result.canceled && result.assets && result.assets.length > 0) {
-      const asset = result.assets[0];
-      const MAX_VIDEO_SIZE_MB = 20;
-      const MAX_VIDEO_SIZE_BYTES = MAX_VIDEO_SIZE_MB * 1024 * 1024;
-
-      const response = await fetch(asset.uri);
-      const blob = await response.blob();
-      const fileSizeInMB = (blob.size / (1024 * 1024)).toFixed(2);
-
-      if (blob.size > MAX_VIDEO_SIZE_BYTES) {
-        Alert.alert(
-          'Video Too Large',
-          `The selected video is ${fileSizeInMB} MB. Please select a video under ${MAX_VIDEO_SIZE_MB} MB.`
-        );
-        return;
-      }
-
-      setSelectedVideo(asset);
-    }
-  };
-
-  const handleRemoveVideo = () => {
-    setSelectedVideo(null);
-  };
-
-  const saveProfileData = async () => {
-    if (!user?.id) return;
-
-    // Get params
-    const username = params.username as string;
-    const dateOfBirth = params.dateOfBirth as string;
-    const avatarType = params.avatarType as string;
-    const avatarValue = params.avatarValue as string;
-    const bio = params.bio as string;
-    const discordLink = params.discordLink as string;
-    const instagramLink = params.instagramLink as string;
-
-    console.log('Saving profile with params:', { avatarType, avatarValue, username });
-
-    // Prepare avatar URL
-    let avatarUrl: string | undefined;
-    if (avatarType === 'custom' && avatarValue) {
-      avatarUrl = await uploadProfilePicture(user.id, avatarValue);
-    } else if (avatarType === 'default') {
-      const index = parseInt(avatarValue, 10);
-      if (!isNaN(index) && index >= 0 && index < defaultAvatarUrls.length) {
-        avatarUrl = defaultAvatarUrls[index];
-        console.log('Using default avatar:', index, avatarUrl);
-      }
-    }
-
-    // Fallback: if no avatar was set, use a random default
-    if (!avatarUrl) {
-      const randomIndex = Math.floor(Math.random() * defaultAvatarUrls.length);
-      avatarUrl = defaultAvatarUrls[randomIndex];
-      console.log('Using fallback random avatar:', randomIndex);
-    }
-
-    // Update user profile
-    const updateData: any = {
-      username: username?.toLowerCase(),
-      dateOfBirth: dateOfBirth,
-      avatar: avatarUrl,
-      needsUsernameSetup: false,
-      updatedAt: new Date(),
-    };
-
-    if (bio) {
-      updateData.bio = bio;
-    }
-    if (discordLink) {
-      updateData.discordLink = discordLink;
-    }
-    if (instagramLink) {
-      updateData.instagramLink = instagramLink;
-    }
-
-    await updateDoc(doc(db, 'users', user.id), updateData);
-  };
-
-  const uploadClip = async () => {
-    if (!user?.id || !selectedVideo || !selectedGame) return;
-
-    const timestamp = Date.now();
-    const fileExtension = selectedVideo.uri.split('.').pop() || 'mp4';
-    const fileName = `posts/${user.id}/${timestamp}.${fileExtension}`;
-    const storageRef = ref(storage, fileName);
-
-    // Upload video
-    const response = await fetch(selectedVideo.uri);
-    const blob = await response.blob();
-    const uploadTask = await uploadBytesResumable(storageRef, blob);
-    const downloadURL = await getDownloadURL(uploadTask.ref);
-
-    // Generate thumbnail
-    let thumbnailUrl: string | undefined;
-    try {
-      const { uri: thumbnailUri } = await VideoThumbnails.getThumbnailAsync(selectedVideo.uri, {
-        time: 1000,
-      });
-      const thumbnailFileName = `posts/${user.id}/${timestamp}_thumb.jpg`;
-      const thumbnailRef = ref(storage, thumbnailFileName);
-      const thumbnailResponse = await fetch(thumbnailUri);
-      const thumbnailBlob = await thumbnailResponse.blob();
-      const thumbnailUploadTask = await uploadBytesResumable(thumbnailRef, thumbnailBlob);
-      thumbnailUrl = await getDownloadURL(thumbnailUploadTask.ref);
-    } catch (error) {
-      console.error('Error uploading thumbnail:', error);
-    }
-
-    // Get username from params
-    const username = params.username as string;
-
-    // Create post
-    const postData: any = {
-      userId: user.id,
-      username: username?.toLowerCase() || user.email?.split('@')[0] || 'User',
-      mediaUrl: downloadURL,
-      mediaUrls: [downloadURL],
-      mediaType: 'video',
-      mediaTypes: ['video'],
-      taggedGame: selectedGame,
-      createdAt: Timestamp.now(),
-      likes: 0,
-    };
-
-    if (thumbnailUrl) {
-      postData.thumbnailUrl = thumbnailUrl;
-    }
-    if (caption.trim()) {
-      postData.caption = caption.trim();
-    }
-    if (selectedVideo.duration) {
-      postData.duration = Math.round(selectedVideo.duration / 1000);
-    }
-
-    await addDoc(collection(db, 'posts'), postData);
-
-    // Increment posts count
-    await updateDoc(doc(db, 'users', user.id), {
-      postsCount: increment(1),
+  const handleContinue = () => {
+    router.push({
+      pathname: '/(auth)/googleSignUpStep5',
+      params: {
+        ...params,
+        followedUsers: JSON.stringify(followedUsers),
+      },
     });
   };
 
-  const handleFinish = async () => {
-    setLoading(true);
-
-    try {
-      // Save profile data
-      await saveProfileData();
-
-      // Upload clip if selected
-      if (selectedVideo && selectedGame) {
-        await uploadClip();
-      }
-
-      // Refresh user and navigate
-      await refreshUser();
-      router.replace('/(tabs)');
-    } catch (error) {
-      console.error('Error finishing setup:', error);
-      Alert.alert('Error', 'Failed to complete setup. Please try again.');
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const handleSkip = async () => {
-    setLoading(true);
-
-    try {
-      // Save profile data without clip
-      await saveProfileData();
-      await refreshUser();
-      router.replace('/(tabs)');
-    } catch (error) {
-      console.error('Error finishing setup:', error);
-      Alert.alert('Error', 'Failed to complete setup. Please try again.');
-    } finally {
-      setLoading(false);
-    }
+  const handleSkip = () => {
+    router.push({
+      pathname: '/(auth)/googleSignUpStep5',
+      params: {
+        ...params,
+      },
+    });
   };
 
   const handleBack = () => {
     router.back();
   };
 
-  const canFinish = selectedVideo && selectedGame;
+  const toggleFollow = (userId: string) => {
+    setFollowedUsers((prev) =>
+      prev.includes(userId)
+        ? prev.filter((id) => id !== userId)
+        : [...prev, userId]
+    );
+  };
 
   return (
     <ThemedView style={styles.container}>
       <ScrollView
         contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}
-        keyboardShouldPersistTaps="handled"
       >
         {/* Header Row */}
         <View style={styles.headerRow}>
-          <TouchableOpacity style={styles.backButton} onPress={handleBack} disabled={loading}>
+          <TouchableOpacity style={styles.backButton} onPress={handleBack}>
             <IconSymbol size={20} name="chevron.left" color="#fff" />
           </TouchableOpacity>
-          <ThemedText style={styles.title}>First Clip</ThemedText>
-          <TouchableOpacity style={styles.skipButton} onPress={handleSkip} disabled={loading}>
+          <ThemedText style={styles.title}>Find Friends</ThemedText>
+          <TouchableOpacity style={styles.skipButton} onPress={handleSkip}>
             <ThemedText style={styles.skipText}>Skip</ThemedText>
           </TouchableOpacity>
         </View>
 
         {/* Progress Indicator */}
         <View style={styles.progressContainer}>
-          <StepProgressIndicator currentStep={4} totalSteps={4} />
+          <StepProgressIndicator currentStep={4} totalSteps={5} />
         </View>
 
         <View style={styles.content}>
           <ThemedText style={styles.subtitle}>
-            Share your first gaming clip (optional)
+            Follow friends who are already on RankUp (optional)
           </ThemedText>
 
-          {/* Video Selection Card */}
-          <View style={styles.card}>
-            <View style={styles.cardHeader}>
-              <IconSymbol size={18} name="video.fill" color="#72767d" />
-              <ThemedText style={styles.cardHeaderTitle}>Video</ThemedText>
-            </View>
-
-            {!selectedVideo ? (
-              <TouchableOpacity style={styles.addMediaButton} onPress={handleSelectVideo} activeOpacity={0.6}>
-                <View style={styles.addMediaContent}>
-                  <View style={styles.addMediaIconWrapper}>
-                    <IconSymbol size={24} name="plus" color="#666" />
-                  </View>
-                  <ThemedText style={styles.addMediaTitle}>Add Video</ThemedText>
-                  <ThemedText style={styles.addMediaSubtext}>Tap to select - Max 20 MB</ThemedText>
-                </View>
-              </TouchableOpacity>
-            ) : (
-              <View style={styles.mediaPreviewContainer}>
-                <Video
-                  source={{ uri: selectedVideo.uri }}
-                  style={styles.mediaPreview}
-                  useNativeControls
-                  resizeMode={ResizeMode.COVER}
-                  shouldPlay={false}
-                />
-                <TouchableOpacity style={styles.removeMediaButton} onPress={handleRemoveVideo}>
-                  <IconSymbol size={20} name="xmark" color="#fff" />
-                </TouchableOpacity>
+          {/* Placeholder State */}
+          {suggestedUsers.length === 0 ? (
+            <View style={styles.emptyStateContainer}>
+              <View style={styles.emptyIconContainer}>
+                <IconSymbol size={48} name="person.2.fill" color="#444" />
               </View>
-            )}
-          </View>
+              <ThemedText style={styles.emptyTitle}>
+                Find Your Friends
+              </ThemedText>
+              <ThemedText style={styles.emptySubtitle}>
+                Connect your contacts to see who's already on RankUp
+              </ThemedText>
 
-          {/* Caption Card */}
-          <View style={styles.card}>
-            <View style={styles.cardHeader}>
-              <IconSymbol size={18} name="text.alignleft" color="#72767d" />
-              <ThemedText style={styles.cardHeaderTitle}>Caption</ThemedText>
-            </View>
-            <View style={styles.captionContainer}>
-              <TextInput
-                style={styles.captionInput}
-                placeholder="Write a caption..."
-                placeholderTextColor="#4a4d52"
-                multiline
-                value={caption}
-                onChangeText={setCaption}
-                maxLength={500}
-              />
-            </View>
-          </View>
+              {/* Coming Soon Badge */}
+              <View style={styles.comingSoonBadge}>
+                <IconSymbol size={14} name="clock.fill" color="#c42743" />
+                <ThemedText style={styles.comingSoonText}>Coming Soon</ThemedText>
+              </View>
 
-          {/* Game Tag Card */}
-          <View style={styles.card}>
-            <View style={styles.cardHeader}>
-              <IconSymbol size={18} name="gamecontroller.fill" color="#72767d" />
-              <ThemedText style={styles.cardHeaderTitle}>Game Tag</ThemedText>
-              {selectedVideo && !selectedGame && (
-                <View style={styles.requiredBadge}>
-                  <ThemedText style={styles.requiredText}>Required</ThemedText>
+              {/* Feature Preview Cards */}
+              <View style={styles.featurePreviewContainer}>
+                <View style={styles.featureCard}>
+                  <View style={styles.featureIconWrapper}>
+                    <IconSymbol size={20} name="person.crop.circle.badge.checkmark" color="#4ade80" />
+                  </View>
+                  <View style={styles.featureTextContainer}>
+                    <ThemedText style={styles.featureTitle}>Sync Contacts</ThemedText>
+                    <ThemedText style={styles.featureDescription}>
+                      Find friends from your phone contacts
+                    </ThemedText>
+                  </View>
                 </View>
-              )}
+
+                <View style={styles.featureCard}>
+                  <View style={styles.featureIconWrapper}>
+                    <IconSymbol size={20} name="gamecontroller.fill" color="#60a5fa" />
+                  </View>
+                  <View style={styles.featureTextContainer}>
+                    <ThemedText style={styles.featureTitle}>Gaming Friends</ThemedText>
+                    <ThemedText style={styles.featureDescription}>
+                      Discover players with similar ranks
+                    </ThemedText>
+                  </View>
+                </View>
+
+                <View style={styles.featureCard}>
+                  <View style={styles.featureIconWrapper}>
+                    <IconSymbol size={20} name="star.fill" color="#fbbf24" />
+                  </View>
+                  <View style={styles.featureTextContainer}>
+                    <ThemedText style={styles.featureTitle}>Suggested Users</ThemedText>
+                    <ThemedText style={styles.featureDescription}>
+                      Follow top players and content creators
+                    </ThemedText>
+                  </View>
+                </View>
+              </View>
             </View>
-            <View style={styles.gameOptionsContainer}>
-              {availableGames.map((game) => (
+          ) : (
+            // User list will go here when contacts sync is implemented
+            <View style={styles.userListContainer}>
+              {suggestedUsers.map((user) => (
                 <TouchableOpacity
-                  key={game.id}
-                  style={[
-                    styles.gameOption,
-                    selectedGame === game.id && styles.gameOptionSelected,
-                  ]}
-                  onPress={() => setSelectedGame(selectedGame === game.id ? null : game.id)}
+                  key={user.id}
+                  style={styles.userCard}
+                  onPress={() => toggleFollow(user.id)}
                   activeOpacity={0.7}
                 >
-                  <ThemedText
+                  <Image source={{ uri: user.avatar }} style={styles.userAvatar} />
+                  <View style={styles.userInfo}>
+                    <ThemedText style={styles.userName}>{user.username}</ThemedText>
+                    {user.mutualFriends > 0 && (
+                      <ThemedText style={styles.mutualFriends}>
+                        {user.mutualFriends} mutual friends
+                      </ThemedText>
+                    )}
+                  </View>
+                  <View
                     style={[
-                      styles.gameOptionText,
-                      selectedGame === game.id && styles.gameOptionTextSelected,
+                      styles.followButton,
+                      followedUsers.includes(user.id) && styles.followButtonActive,
                     ]}
                   >
-                    {game.name}
-                  </ThemedText>
-                  {selectedGame === game.id && (
-                    <IconSymbol size={16} name="checkmark" color="#fff" />
-                  )}
+                    <ThemedText
+                      style={[
+                        styles.followButtonText,
+                        followedUsers.includes(user.id) && styles.followButtonTextActive,
+                      ]}
+                    >
+                      {followedUsers.includes(user.id) ? 'Following' : 'Follow'}
+                    </ThemedText>
+                  </View>
                 </TouchableOpacity>
               ))}
             </View>
-          </View>
+          )}
 
-          {/* Finish Button */}
-          <TouchableOpacity
-            style={[
-              styles.finishButton,
-              (loading || (selectedVideo && !selectedGame)) && styles.finishButtonDisabled,
-            ]}
-            onPress={handleFinish}
-            disabled={loading || (selectedVideo && !selectedGame) as boolean}
-          >
-            {loading ? (
-              <ActivityIndicator color="#fff" />
-            ) : (
-              <ThemedText style={styles.finishButtonText}>
-                {selectedVideo ? 'Share & Finish' : 'Finish Setup'}
-              </ThemedText>
-            )}
+          {/* Continue Button */}
+          <TouchableOpacity style={styles.continueButton} onPress={handleContinue}>
+            <ThemedText style={styles.continueButtonText}>Continue</ThemedText>
           </TouchableOpacity>
         </View>
       </ScrollView>
-
-      {/* Loading Overlay */}
-      {loading && (
-        <View style={styles.loadingOverlay}>
-          <View style={styles.loadingContainer}>
-            <ActivityIndicator size="small" color="#666" />
-            <ThemedText style={styles.loadingText}>
-              {selectedVideo ? 'Uploading clip...' : 'Setting up profile...'}
-            </ThemedText>
-          </View>
-        </View>
-      )}
     </ThemedView>
   );
 }
@@ -457,168 +231,146 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     marginBottom: 24,
   },
-  card: {
-    backgroundColor: '#151515',
-    borderRadius: 12,
-    overflow: 'hidden',
-    marginBottom: 12,
-  },
-  cardHeader: {
-    flexDirection: 'row',
+  // Empty State
+  emptyStateContainer: {
+    flex: 1,
     alignItems: 'center',
-    gap: 8,
-    paddingHorizontal: 14,
-    paddingVertical: 12,
+    paddingTop: 20,
   },
-  cardHeaderTitle: {
-    fontSize: 13,
-    fontWeight: '500',
-    color: '#666',
-  },
-  addMediaButton: {
-    margin: 12,
-    marginTop: 0,
-    borderRadius: 10,
-    borderWidth: 1,
-    borderColor: '#333',
-    borderStyle: 'dashed',
+  emptyIconContainer: {
+    width: 100,
+    height: 100,
+    borderRadius: 50,
     backgroundColor: '#1a1a1a',
-  },
-  addMediaContent: {
-    paddingVertical: 28,
     alignItems: 'center',
     justifyContent: 'center',
-    gap: 8,
+    marginBottom: 20,
   },
-  addMediaIconWrapper: {
+  emptyTitle: {
+    fontSize: 20,
+    fontWeight: '700',
+    color: '#fff',
+    marginBottom: 8,
+  },
+  emptySubtitle: {
+    fontSize: 14,
+    color: '#666',
+    textAlign: 'center',
+    paddingHorizontal: 20,
+    marginBottom: 16,
+  },
+  comingSoonBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    backgroundColor: 'rgba(196, 39, 67, 0.15)',
+    paddingHorizontal: 14,
+    paddingVertical: 8,
+    borderRadius: 20,
+    borderWidth: 1,
+    borderColor: 'rgba(196, 39, 67, 0.3)',
+    marginBottom: 32,
+  },
+  comingSoonText: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: '#c42743',
+  },
+  // Feature Preview Cards
+  featurePreviewContainer: {
+    width: '100%',
+    gap: 12,
+  },
+  featureCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#151515',
+    borderRadius: 16,
+    padding: 16,
+    gap: 14,
+  },
+  featureIconWrapper: {
     width: 44,
     height: 44,
-    borderRadius: 22,
-    backgroundColor: '#252525',
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginBottom: 4,
-  },
-  addMediaTitle: {
-    fontSize: 14,
-    fontWeight: '500',
-    color: '#888',
-  },
-  addMediaSubtext: {
-    fontSize: 11,
-    color: '#555',
-  },
-  mediaPreviewContainer: {
-    position: 'relative',
-    height: (screenWidth - 48) * 0.5625,
-  },
-  mediaPreview: {
-    width: '100%',
-    height: '100%',
-  },
-  removeMediaButton: {
-    position: 'absolute',
-    top: 12,
-    right: 12,
-    width: 32,
-    height: 32,
-    borderRadius: 16,
-    backgroundColor: 'rgba(0, 0, 0, 0.7)',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  captionContainer: {
-    padding: 14,
-    paddingTop: 0,
-  },
-  captionInput: {
-    fontSize: 14,
-    color: '#999',
-    minHeight: 60,
-    textAlignVertical: 'top',
-    padding: 10,
-    backgroundColor: 'transparent',
-    borderRadius: 0,
-  },
-  requiredBadge: {
-    backgroundColor: 'transparent',
-    borderWidth: 1,
-    borderColor: '#444',
-    paddingHorizontal: 6,
-    paddingVertical: 1,
-    borderRadius: 4,
-    marginLeft: 4,
-  },
-  requiredText: {
-    fontSize: 9,
-    fontWeight: '500',
-    color: '#555',
-  },
-  gameOptionsContainer: {
-    flexDirection: 'row',
-    gap: 8,
-    padding: 14,
-    paddingTop: 0,
-  },
-  gameOption: {
-    flex: 1,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 6,
-    paddingVertical: 8,
-    borderRadius: 8,
+    borderRadius: 12,
     backgroundColor: '#1a1a1a',
+    alignItems: 'center',
+    justifyContent: 'center',
   },
-  gameOptionSelected: {
-    backgroundColor: '#252525',
+  featureTextContainer: {
+    flex: 1,
+  },
+  featureTitle: {
+    fontSize: 15,
+    fontWeight: '600',
+    color: '#fff',
+    marginBottom: 2,
+  },
+  featureDescription: {
+    fontSize: 13,
+    color: '#666',
+  },
+  // User List
+  userListContainer: {
+    gap: 12,
+  },
+  userCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#151515',
+    borderRadius: 16,
+    padding: 14,
+    gap: 12,
+  },
+  userAvatar: {
+    width: 50,
+    height: 50,
+    borderRadius: 25,
+    backgroundColor: '#2c2f33',
+  },
+  userInfo: {
+    flex: 1,
+  },
+  userName: {
+    fontSize: 15,
+    fontWeight: '600',
+    color: '#fff',
+  },
+  mutualFriends: {
+    fontSize: 13,
+    color: '#666',
+    marginTop: 2,
+  },
+  followButton: {
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    borderRadius: 20,
+    backgroundColor: '#c42743',
+  },
+  followButtonActive: {
+    backgroundColor: '#2c2f33',
     borderWidth: 1,
     borderColor: '#444',
   },
-  gameOptionText: {
-    fontSize: 12,
-    fontWeight: '500',
-    color: '#555',
+  followButtonText: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: '#fff',
   },
-  gameOptionTextSelected: {
+  followButtonTextActive: {
     color: '#999',
   },
-  finishButton: {
+  // Continue Button
+  continueButton: {
     backgroundColor: '#c42743',
     paddingVertical: 16,
     borderRadius: 24,
     alignItems: 'center',
     marginTop: 'auto',
   },
-  finishButtonDisabled: {
-    backgroundColor: '#3a3f44',
-  },
-  finishButtonText: {
+  continueButtonText: {
     fontSize: 15,
     fontWeight: '600',
     color: '#fff',
-  },
-  loadingOverlay: {
-    position: 'absolute',
-    top: 0,
-    left: 0,
-    right: 0,
-    bottom: 0,
-    backgroundColor: 'rgba(0, 0, 0, 0.9)',
-    alignItems: 'center',
-    justifyContent: 'center',
-    zIndex: 1000,
-  },
-  loadingContainer: {
-    backgroundColor: '#151515',
-    borderRadius: 16,
-    padding: 28,
-    alignItems: 'center',
-    gap: 10,
-  },
-  loadingText: {
-    fontSize: 14,
-    fontWeight: '500',
-    color: '#888',
   },
 });

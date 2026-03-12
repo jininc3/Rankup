@@ -3,7 +3,7 @@ import { ThemedView } from '@/components/themed-view';
 import { IconSymbol } from '@/components/ui/icon-symbol';
 import { useRouter, useNavigation } from 'expo-router';
 import { useState, useEffect, useCallback } from 'react';
-import { ScrollView, StyleSheet, TextInput, TouchableOpacity, View, Alert, ActivityIndicator, Image, Dimensions, Switch } from 'react-native';
+import { ScrollView, StyleSheet, TextInput, TouchableOpacity, View, Alert, ActivityIndicator, Image, Dimensions, Switch, Modal } from 'react-native';
 import { useAuth } from '@/contexts/AuthContext';
 import { updateUserProfile } from '@/services/authService';
 import { uploadProfilePicture, uploadCoverPhoto } from '@/services/storageService';
@@ -15,6 +15,16 @@ import { getValorantStats } from '@/services/valorantService';
 import { LinearGradient } from 'expo-linear-gradient';
 import DraggableFlatList, { ScaleDecorator, RenderItemParams } from 'react-native-draggable-flatlist';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
+import { Asset } from 'expo-asset';
+
+// Default avatar images (local)
+const defaultAvatars = [
+  require('@/assets/images/avatar1.png'),
+  require('@/assets/images/avatar2.png'),
+  require('@/assets/images/avatar3.png'),
+  require('@/assets/images/avatar4.png'),
+  require('@/assets/images/avatar5.png'),
+];
 
 interface RankCardData {
   type: string;
@@ -43,6 +53,10 @@ export default function EditProfileScreen() {
   const [pendingRemoveProfileImage, setPendingRemoveProfileImage] = useState(false);
   const [pendingRemoveCoverPhoto, setPendingRemoveCoverPhoto] = useState(false);
   const [postsCount, setPostsCount] = useState(0);
+
+  // Default avatar modal
+  const [showAvatarModal, setShowAvatarModal] = useState(false);
+  const [pendingDefaultAvatarIndex, setPendingDefaultAvatarIndex] = useState<number | null>(null);
 
   // Rank cards state
   const [riotAccount, setRiotAccount] = useState<any>(null);
@@ -132,6 +146,7 @@ export default function EditProfileScreen() {
         pendingCoverPhotoUri !== null ||
         pendingRemoveProfileImage ||
         pendingRemoveCoverPhoto ||
+        pendingDefaultAvatarIndex !== null ||
         rankCardsChangedCheck;
 
       if (!changesExist) {
@@ -170,10 +185,14 @@ export default function EditProfileScreen() {
     return () => {
       navigation.removeListener('beforeRemove', beforeRemoveListener);
     };
-  }, [navigation, username, bio, discord, instagram, pendingProfileImageUri, pendingCoverPhotoUri, pendingRemoveProfileImage, pendingRemoveCoverPhoto, user, changesSaved, enabledRankCards, originalEnabledRankCards]);
+  }, [navigation, username, bio, discord, instagram, pendingProfileImageUri, pendingCoverPhotoUri, pendingRemoveProfileImage, pendingRemoveCoverPhoto, pendingDefaultAvatarIndex, user, changesSaved, enabledRankCards, originalEnabledRankCards]);
 
   const showImageOptions = () => {
     const options: any[] = [
+      {
+        text: 'Choose Default Avatar',
+        onPress: () => setShowAvatarModal(true),
+      },
       {
         text: 'Take Photo',
         onPress: () => takePhoto(),
@@ -185,7 +204,7 @@ export default function EditProfileScreen() {
     ];
 
     // Add remove option if user has a profile picture
-    if (profileImage) {
+    if (profileImage || pendingProfileImageUri || pendingDefaultAvatarIndex !== null) {
       options.push({
         text: 'Remove Photo',
         style: 'destructive',
@@ -204,6 +223,13 @@ export default function EditProfileScreen() {
       options,
       { cancelable: true }
     );
+  };
+
+  const selectDefaultAvatar = (index: number) => {
+    setPendingDefaultAvatarIndex(index);
+    setPendingProfileImageUri(null);
+    setPendingRemoveProfileImage(false);
+    setShowAvatarModal(false);
   };
 
   const takePhoto = async () => {
@@ -366,6 +392,7 @@ export default function EditProfileScreen() {
             // Mark for removal - don't actually remove until save
             setPendingRemoveProfileImage(true);
             setPendingProfileImageUri(null);
+            setPendingDefaultAvatarIndex(null);
           },
         },
       ]
@@ -538,6 +565,7 @@ export default function EditProfileScreen() {
     if (pendingCoverPhotoUri !== null) return true;
     if (pendingRemoveProfileImage) return true;
     if (pendingRemoveCoverPhoto) return true;
+    if (pendingDefaultAvatarIndex !== null) return true;
     if (rankCardsChanged()) return true;
     return false;
   };
@@ -608,6 +636,18 @@ export default function EditProfileScreen() {
               if (pendingRemoveProfileImage) {
                 // User wants to remove profile picture
                 updateData.avatar = '';
+              } else if (pendingDefaultAvatarIndex !== null) {
+                // User selected a default avatar - upload from local assets
+                try {
+                  const asset = Asset.fromModule(defaultAvatars[pendingDefaultAvatarIndex]);
+                  await asset.downloadAsync();
+                  if (asset.localUri) {
+                    const avatarUrl = await uploadProfilePicture(user.id, asset.localUri);
+                    updateData.avatar = avatarUrl;
+                  }
+                } catch (error) {
+                  console.error('Error uploading default avatar:', error);
+                }
               } else if (pendingProfileImageUri) {
                 // User selected a new profile picture - upload it
                 const avatarUrl = await uploadProfilePicture(user.id, pendingProfileImageUri);
@@ -704,6 +744,8 @@ export default function EditProfileScreen() {
               <View style={styles.profileAvatarCircle}>
                 {pendingRemoveProfileImage ? (
                   <ThemedText style={styles.profileAvatarInitial}>{user?.username?.[0]?.toUpperCase() || 'U'}</ThemedText>
+                ) : pendingDefaultAvatarIndex !== null ? (
+                  <Image source={defaultAvatars[pendingDefaultAvatarIndex]} style={styles.profileAvatarImage} />
                 ) : pendingProfileImageUri ? (
                   <Image source={{ uri: pendingProfileImageUri }} style={styles.profileAvatarImage} />
                 ) : profileImage ? (
@@ -889,6 +931,49 @@ export default function EditProfileScreen() {
           )}
         </TouchableOpacity>
       </View>
+
+      {/* Default Avatar Selection Modal */}
+      <Modal
+        visible={showAvatarModal}
+        transparent={true}
+        animationType="slide"
+        onRequestClose={() => setShowAvatarModal(false)}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalContent}>
+            <View style={styles.modalHeader}>
+              <ThemedText style={styles.modalTitle}>Choose Avatar</ThemedText>
+              <TouchableOpacity
+                style={styles.modalCloseButton}
+                onPress={() => setShowAvatarModal(false)}
+              >
+                <IconSymbol size={24} name="xmark" color="#fff" />
+              </TouchableOpacity>
+            </View>
+
+            <View style={styles.avatarGrid}>
+              {defaultAvatars.map((avatar, index) => (
+                <TouchableOpacity
+                  key={index}
+                  style={[
+                    styles.avatarOption,
+                    pendingDefaultAvatarIndex === index && styles.avatarOptionSelected,
+                  ]}
+                  onPress={() => selectDefaultAvatar(index)}
+                  activeOpacity={0.7}
+                >
+                  <Image source={avatar} style={styles.avatarOptionImage} />
+                  {pendingDefaultAvatarIndex === index && (
+                    <View style={styles.avatarCheckmark}>
+                      <IconSymbol size={16} name="checkmark" color="#fff" />
+                    </View>
+                  )}
+                </TouchableOpacity>
+              ))}
+            </View>
+          </View>
+        </View>
+      </Modal>
     </ThemedView>
   );
 }
@@ -1290,5 +1375,65 @@ const styles = StyleSheet.create({
     fontSize: 11,
     fontWeight: '500',
     color: '#666',
+  },
+  // Modal styles
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.8)',
+    justifyContent: 'flex-end',
+  },
+  modalContent: {
+    backgroundColor: '#1a1a1a',
+    borderTopLeftRadius: 24,
+    borderTopRightRadius: 24,
+    paddingTop: 20,
+    paddingBottom: 40,
+    paddingHorizontal: 24,
+  },
+  modalHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 24,
+  },
+  modalTitle: {
+    fontSize: 20,
+    fontWeight: '700',
+    color: '#fff',
+  },
+  modalCloseButton: {
+    padding: 4,
+  },
+  avatarGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    justifyContent: 'center',
+    gap: 16,
+  },
+  avatarOption: {
+    width: 72,
+    height: 72,
+    borderRadius: 36,
+    overflow: 'hidden',
+    borderWidth: 3,
+    borderColor: 'transparent',
+  },
+  avatarOptionSelected: {
+    borderColor: '#c42743',
+  },
+  avatarOptionImage: {
+    width: '100%',
+    height: '100%',
+  },
+  avatarCheckmark: {
+    position: 'absolute',
+    bottom: 0,
+    right: 0,
+    width: 24,
+    height: 24,
+    borderRadius: 12,
+    backgroundColor: '#c42743',
+    alignItems: 'center',
+    justifyContent: 'center',
   },
 });

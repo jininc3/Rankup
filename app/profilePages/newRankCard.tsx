@@ -10,9 +10,9 @@ import {
   Alert,
   Dimensions,
 } from 'react-native';
-import { useRouter } from 'expo-router';
+import { useRouter, useFocusEffect } from 'expo-router';
 import { useAuth } from '@/contexts/AuthContext';
-import { useState, useEffect } from 'react';
+import { useState, useCallback } from 'react';
 import { db } from '@/config/firebase';
 import { doc, getDoc, updateDoc, arrayUnion } from 'firebase/firestore';
 import { getValorantStats } from '@/services/valorantService';
@@ -35,30 +35,36 @@ export default function NewRankCardScreen() {
   const [enabledRankCards, setEnabledRankCards] = useState<string[]>([]);
   const [loading, setLoading] = useState(true);
 
-  // Fetch Riot account status and enabled rank cards
-  useEffect(() => {
-    const fetchData = async () => {
-      if (!user?.id) return;
-
-      try {
-        const userDoc = await getDoc(doc(db, 'users', user.id));
-        if (userDoc.exists()) {
-          const data = userDoc.data();
-          setRiotAccount(data.riotAccount || null);
-          setValorantAccount(data.valorantAccount || null);
-          setRiotStats(data.riotStats || null);
-          setValorantStats(data.valorantStats || null);
-          setEnabledRankCards(data.enabledRankCards || []);
+  // Fetch Riot account status and enabled rank cards when screen gains focus
+  useFocusEffect(
+    useCallback(() => {
+      const fetchData = async () => {
+        if (!user?.id) {
+          setLoading(false);
+          return;
         }
-      } catch (error) {
-        console.error('Error fetching data:', error);
-      } finally {
-        setLoading(false);
-      }
-    };
 
-    fetchData();
-  }, [user?.id]);
+        setLoading(true);
+        try {
+          const userDoc = await getDoc(doc(db, 'users', user.id));
+          if (userDoc.exists()) {
+            const data = userDoc.data();
+            setRiotAccount(data.riotAccount || null);
+            setValorantAccount(data.valorantAccount || null);
+            setRiotStats(data.riotStats || null);
+            setValorantStats(data.valorantStats || null);
+            setEnabledRankCards(data.enabledRankCards || []);
+          }
+        } catch (error) {
+          console.error('Error fetching data:', error);
+        } finally {
+          setLoading(false);
+        }
+      };
+
+      fetchData();
+    }, [user?.id])
+  );
 
   const handleGameSelect = async (game: GameType) => {
     if (!user?.id) return;

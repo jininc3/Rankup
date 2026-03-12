@@ -87,9 +87,12 @@ export default function ProfileScreen() {
 
   // Avatar loading state
   const [avatarLoaded, setAvatarLoaded] = useState(false);
+  const [avatarError, setAvatarError] = useState(false);
+  const [avatarKey, setAvatarKey] = useState(0); // Key to force image reload
 
   // Cover photo loading state
   const [coverPhotoLoaded, setCoverPhotoLoaded] = useState(false);
+  const [coverPhotoKey, setCoverPhotoKey] = useState(0); // Key to force image reload
 
   // Combined loading state - avatar, cover photo, and posts all loaded
   const [allContentLoaded, setAllContentLoaded] = useState(false);
@@ -153,20 +156,25 @@ export default function ProfileScreen() {
   }, [posts]);
 
   // Set avatar as loaded if it's not an image (emoji or letter)
+  // Also increment avatarKey to force image reload when avatar changes
   useEffect(() => {
     if (!user?.avatar || !user.avatar.startsWith('http')) {
       setAvatarLoaded(true);
     } else {
       setAvatarLoaded(false);
+      setAvatarError(false);
+      setAvatarKey(prev => prev + 1); // Force image component to remount
     }
   }, [user?.avatar]);
 
   // Set cover photo as loaded if there's no cover photo (gradient)
+  // Also increment coverPhotoKey to force image reload when cover photo changes
   useEffect(() => {
     if (!user?.coverPhoto) {
       setCoverPhotoLoaded(true);
     } else {
       setCoverPhotoLoaded(false);
+      setCoverPhotoKey(prev => prev + 1); // Force image component to remount
     }
   }, [user?.coverPhoto]);
 
@@ -676,6 +684,7 @@ export default function ProfileScreen() {
     setPostImagesLoadedCount(0);
     setAllPostImagesLoaded(false);
     setAvatarLoaded(false);
+    setAvatarError(false);
     setCoverPhotoLoaded(false);
     setAllContentLoaded(false);
     // Treat pull-to-refresh like a first load (wait for images)
@@ -882,7 +891,8 @@ export default function ProfileScreen() {
           <View style={styles.coverPhotoWrapper}>
             {user?.coverPhoto ? (
               <Image
-                source={{ uri: user.coverPhoto }}
+                key={`cover-${coverPhotoKey}`}
+                source={{ uri: `${user.coverPhoto}&t=${coverPhotoKey}` }}
                 style={[styles.coverPhotoImage, { opacity: allContentLoaded ? 1 : 0 }]}
                 onLoad={() => setCoverPhotoLoaded(true)}
                 onError={() => setCoverPhotoLoaded(true)}
@@ -928,32 +938,40 @@ export default function ProfileScreen() {
                   borderRadius={28}
                 >
                   <View style={styles.profileAvatarCircleWithGradient}>
-                    {user?.avatar && user.avatar.startsWith('http') ? (
+                    {user?.avatar && user.avatar.startsWith('http') && !avatarError ? (
                       <Image
-                        source={{ uri: user.avatar }}
+                        key={`avatar-${avatarKey}`}
+                        source={{ uri: `${user.avatar}&t=${avatarKey}` }}
                         style={[styles.profileAvatarImage, { opacity: allContentLoaded ? 1 : 0 }]}
                         onLoad={() => setAvatarLoaded(true)}
-                        onError={() => setAvatarLoaded(true)}
+                        onError={() => {
+                          setAvatarLoaded(true);
+                          setAvatarError(true);
+                        }}
                       />
                     ) : (
                       <ThemedText style={styles.profileAvatarInitial}>
-                        {user?.avatar || user?.username?.[0]?.toUpperCase() || 'U'}
+                        {user?.username?.[0]?.toUpperCase() || 'U'}
                       </ThemedText>
                     )}
                   </View>
                 </GradientBorder>
               ) : (
                 <View style={styles.profileAvatarCircle}>
-                  {user?.avatar && user.avatar.startsWith('http') ? (
+                  {user?.avatar && user.avatar.startsWith('http') && !avatarError ? (
                     <Image
-                      source={{ uri: user.avatar }}
+                      key={`avatar-${avatarKey}`}
+                      source={{ uri: `${user.avatar}&t=${avatarKey}` }}
                       style={[styles.profileAvatarImage, { opacity: allContentLoaded ? 1 : 0 }]}
                       onLoad={() => setAvatarLoaded(true)}
-                      onError={() => setAvatarLoaded(true)}
+                      onError={() => {
+                        setAvatarLoaded(true);
+                        setAvatarError(true);
+                      }}
                     />
                   ) : (
                     <ThemedText style={styles.profileAvatarInitial}>
-                      {user?.avatar || user?.username?.[0]?.toUpperCase() || 'U'}
+                      {user?.username?.[0]?.toUpperCase() || 'U'}
                     </ThemedText>
                   )}
                 </View>
