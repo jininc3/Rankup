@@ -14,7 +14,8 @@
     },
     "production": {
       "distribution": "store",
-      "node": "22.14.0"
+      "node": "22.14.0",
+      "autoIncrement": true
     }
   },
   "submit": {
