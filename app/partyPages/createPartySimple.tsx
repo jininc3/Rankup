@@ -13,9 +13,11 @@ import {
   ActivityIndicator,
   Image,
   Dimensions,
+  Modal,
 } from 'react-native';
 import * as Clipboard2 from 'expo-clipboard';
 import * as ImagePicker from 'expo-image-picker';
+import { LinearGradient } from 'expo-linear-gradient';
 import { useAuth } from '@/contexts/AuthContext';
 import { db } from '@/config/firebase';
 import { collection, getDocs, doc, getDoc, addDoc, serverTimestamp } from 'firebase/firestore';
@@ -59,6 +61,8 @@ export default function CreatePartySimpleScreen() {
   const [partyIcon, setPartyIcon] = useState<string | null>(null);
   const [coverPhoto, setCoverPhoto] = useState<string | null>(null);
   const [uploading, setUploading] = useState(false);
+  const [inviteModalVisible, setInviteModalVisible] = useState(false);
+  const [invitePermission, setInvitePermission] = useState<'leader_only' | 'anyone'>('leader_only');
 
   useEffect(() => {
     const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
@@ -126,10 +130,9 @@ export default function CreatePartySimpleScreen() {
   };
 
   const getFilteredFollowers = () => {
-    const filtered = followers.filter(follower =>
+    return followers.filter(follower =>
       follower.username.toLowerCase().includes(searchQuery.toLowerCase())
     );
-    return filtered.slice(0, 5);
   };
 
   const filteredFollowers = getFilteredFollowers();
@@ -228,6 +231,7 @@ export default function CreatePartySimpleScreen() {
         gameId: selectedGame.id,
         type: 'party',
         inviteCode: inviteCode || '',
+        invitePermission,
         createdBy: user.id,
         createdAt: serverTimestamp(),
         members: [user.id],
@@ -343,6 +347,20 @@ export default function CreatePartySimpleScreen() {
               <ThemedText style={styles.coverPhotoText}>Add Cover Photo</ThemedText>
             </View>
           )}
+          {/* Top fade */}
+          <LinearGradient
+            colors={['rgba(15, 15, 15, 0.25)', 'transparent']}
+            start={{ x: 0, y: 0 }}
+            end={{ x: 0, y: 1 }}
+            style={styles.coverPhotoFadeTop}
+          />
+          {/* Bottom fade */}
+          <LinearGradient
+            colors={['transparent', '#0f0f0f']}
+            start={{ x: 0, y: 0 }}
+            end={{ x: 0, y: 1 }}
+            style={styles.coverPhotoFadeBottom}
+          />
           {coverPhoto && (
             <View style={styles.coverPhotoEditBadge}>
               <IconSymbol size={14} name="pencil" color="#fff" />
@@ -413,6 +431,47 @@ export default function CreatePartySimpleScreen() {
             </TouchableOpacity>
           </View>
 
+          {/* Invite Permission */}
+          <View style={styles.inputGroup}>
+            <ThemedText style={styles.label}>Who Can Invite</ThemedText>
+            <View style={styles.permissionRow}>
+              <TouchableOpacity
+                style={[
+                  styles.permissionButton,
+                  invitePermission === 'leader_only' && styles.permissionButtonActive
+                ]}
+                onPress={() => setInvitePermission('leader_only')}
+              >
+                <IconSymbol
+                  size={16}
+                  name="crown.fill"
+                  color={invitePermission === 'leader_only' ? '#fff' : '#666'}
+                />
+                <ThemedText style={[
+                  styles.permissionButtonText,
+                  invitePermission === 'leader_only' && styles.permissionButtonTextActive
+                ]}>Leader Only</ThemedText>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={[
+                  styles.permissionButton,
+                  invitePermission === 'anyone' && styles.permissionButtonActive
+                ]}
+                onPress={() => setInvitePermission('anyone')}
+              >
+                <IconSymbol
+                  size={16}
+                  name="person.2.fill"
+                  color={invitePermission === 'anyone' ? '#fff' : '#666'}
+                />
+                <ThemedText style={[
+                  styles.permissionButtonText,
+                  invitePermission === 'anyone' && styles.permissionButtonTextActive
+                ]}>Anyone</ThemedText>
+              </TouchableOpacity>
+            </View>
+          </View>
+
           {/* Invite Members */}
           <View style={styles.inputGroup}>
             <View style={styles.labelRow}>
@@ -424,58 +483,112 @@ export default function CreatePartySimpleScreen() {
               )}
             </View>
 
-            {!loadingFollowers && followers.length > 0 && (
-              <TextInput
-                style={styles.searchInput}
-                placeholder="Search followers..."
-                placeholderTextColor="#444"
-                value={searchQuery}
-                onChangeText={setSearchQuery}
-              />
+            {/* Selected followers chips */}
+            {selectedFollowers.length > 0 && (
+              <View style={styles.selectedChipsContainer}>
+                {followers
+                  .filter(f => selectedFollowers.includes(f.id))
+                  .map((follower) => (
+                    <View key={follower.id} style={styles.selectedChip}>
+                      <ThemedText style={styles.selectedChipText}>{follower.username}</ThemedText>
+                      <TouchableOpacity onPress={() => toggleFollower(follower.id)}>
+                        <IconSymbol size={14} name="xmark" color="#888" />
+                      </TouchableOpacity>
+                    </View>
+                  ))}
+              </View>
             )}
 
-            {loadingFollowers ? (
-              <View style={styles.loadingContainer}>
-                <ActivityIndicator size="small" color="#c42743" />
-              </View>
-            ) : followers.length === 0 ? (
-              <ThemedText style={styles.emptyText}>No followers to invite</ThemedText>
-            ) : filteredFollowers.length === 0 ? (
-              <ThemedText style={styles.emptyText}>No results</ThemedText>
-            ) : (
-              <View style={styles.followersList}>
-                {filteredFollowers.map((follower) => (
-                  <TouchableOpacity
-                    key={follower.id}
-                    style={[
-                      styles.followerItem,
-                      selectedFollowers.includes(follower.id) && styles.followerItemSelected
-                    ]}
-                    onPress={() => toggleFollower(follower.id)}
-                  >
-                    <View style={styles.followerAvatar}>
-                      {follower.avatar && follower.avatar.startsWith('http') ? (
-                        <Image source={{ uri: follower.avatar }} style={styles.followerAvatarImage} />
-                      ) : (
-                        <ThemedText style={styles.followerAvatarText}>
-                          {follower.username[0].toUpperCase()}
-                        </ThemedText>
-                      )}
-                    </View>
-                    <ThemedText style={styles.followerName}>{follower.username}</ThemedText>
-                    <View style={[
-                      styles.checkCircle,
-                      selectedFollowers.includes(follower.id) && styles.checkCircleSelected
-                    ]}>
-                      {selectedFollowers.includes(follower.id) && (
-                        <IconSymbol size={12} name="checkmark" color="#fff" />
-                      )}
-                    </View>
-                  </TouchableOpacity>
-                ))}
-              </View>
-            )}
+            {/* Touchable to open modal */}
+            <TouchableOpacity
+              style={styles.inviteSearchButton}
+              onPress={() => setInviteModalVisible(true)}
+            >
+              <IconSymbol size={16} name="magnifyingglass" color="#444" />
+              <ThemedText style={styles.inviteSearchPlaceholder}>
+                {loadingFollowers ? 'Loading...' : followers.length === 0 ? 'No followers to invite' : 'Search followers...'}
+              </ThemedText>
+            </TouchableOpacity>
           </View>
+
+          {/* Invite Members Modal */}
+          <Modal
+            visible={inviteModalVisible}
+            animationType="slide"
+            transparent={true}
+            onRequestClose={() => setInviteModalVisible(false)}
+          >
+            <View style={styles.modalOverlay}>
+              <View style={styles.modalContainer}>
+                <View style={styles.modalHeader}>
+                  <ThemedText style={styles.modalTitle}>Invite Members</ThemedText>
+                  <TouchableOpacity onPress={() => setInviteModalVisible(false)}>
+                    <IconSymbol size={24} name="xmark" color="#fff" />
+                  </TouchableOpacity>
+                </View>
+
+                <TextInput
+                  style={styles.modalSearchInput}
+                  placeholder="Search followers..."
+                  placeholderTextColor="#666"
+                  value={searchQuery}
+                  onChangeText={setSearchQuery}
+                  autoFocus
+                />
+
+                <ScrollView style={styles.modalFollowersList} showsVerticalScrollIndicator={false}>
+                  {loadingFollowers ? (
+                    <View style={styles.loadingContainer}>
+                      <ActivityIndicator size="small" color="#c42743" />
+                    </View>
+                  ) : followers.length === 0 ? (
+                    <ThemedText style={styles.emptyText}>No followers to invite</ThemedText>
+                  ) : filteredFollowers.length === 0 ? (
+                    <ThemedText style={styles.emptyText}>No results</ThemedText>
+                  ) : (
+                    <View style={styles.followersList}>
+                      {filteredFollowers.map((follower) => (
+                        <TouchableOpacity
+                          key={follower.id}
+                          style={[
+                            styles.followerItem,
+                            selectedFollowers.includes(follower.id) && styles.followerItemSelected
+                          ]}
+                          onPress={() => toggleFollower(follower.id)}
+                        >
+                          <View style={styles.followerAvatar}>
+                            {follower.avatar && follower.avatar.startsWith('http') ? (
+                              <Image source={{ uri: follower.avatar }} style={styles.followerAvatarImage} />
+                            ) : (
+                              <ThemedText style={styles.followerAvatarText}>
+                                {follower.username[0].toUpperCase()}
+                              </ThemedText>
+                            )}
+                          </View>
+                          <ThemedText style={styles.followerName}>{follower.username}</ThemedText>
+                          <View style={[
+                            styles.checkCircle,
+                            selectedFollowers.includes(follower.id) && styles.checkCircleSelected
+                          ]}>
+                            {selectedFollowers.includes(follower.id) && (
+                              <IconSymbol size={12} name="checkmark" color="#fff" />
+                            )}
+                          </View>
+                        </TouchableOpacity>
+                      ))}
+                    </View>
+                  )}
+                </ScrollView>
+
+                <TouchableOpacity
+                  style={styles.modalDoneButton}
+                  onPress={() => setInviteModalVisible(false)}
+                >
+                  <ThemedText style={styles.modalDoneButtonText}>Done</ThemedText>
+                </TouchableOpacity>
+              </View>
+            </View>
+          </Modal>
 
           {/* Create Button */}
           <TouchableOpacity
@@ -559,6 +672,23 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(0,0,0,0.6)',
     alignItems: 'center',
     justifyContent: 'center',
+    zIndex: 2,
+  },
+  coverPhotoFadeTop: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    height: 50,
+    zIndex: 1,
+  },
+  coverPhotoFadeBottom: {
+    position: 'absolute',
+    bottom: 0,
+    left: 0,
+    right: 0,
+    height: 60,
+    zIndex: 1,
   },
   // Party Icon
   iconSection: {
@@ -674,6 +804,35 @@ const styles = StyleSheet.create({
     color: '#c42743',
     letterSpacing: 3,
   },
+  // Permission
+  permissionRow: {
+    flexDirection: 'row',
+    gap: 10,
+  },
+  permissionButton: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    backgroundColor: '#1a1a1a',
+    borderRadius: 12,
+    paddingVertical: 14,
+    borderWidth: 1.5,
+    borderColor: 'transparent',
+  },
+  permissionButtonActive: {
+    backgroundColor: '#c42743',
+    borderColor: '#c42743',
+  },
+  permissionButtonText: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: '#666',
+  },
+  permissionButtonTextActive: {
+    color: '#fff',
+  },
   // Search
   searchInput: {
     backgroundColor: '#1a1a1a',
@@ -682,6 +841,88 @@ const styles = StyleSheet.create({
     fontSize: 15,
     color: '#fff',
     marginBottom: 12,
+  },
+  inviteSearchButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#1a1a1a',
+    borderRadius: 12,
+    padding: 14,
+    gap: 10,
+  },
+  inviteSearchPlaceholder: {
+    fontSize: 15,
+    color: '#444',
+  },
+  selectedChipsContainer: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8,
+    marginBottom: 12,
+  },
+  selectedChip: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#252525',
+    borderRadius: 16,
+    paddingVertical: 6,
+    paddingLeft: 12,
+    paddingRight: 8,
+    gap: 6,
+  },
+  selectedChipText: {
+    fontSize: 13,
+    color: '#fff',
+    fontWeight: '500',
+  },
+  // Modal
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.7)',
+    justifyContent: 'flex-end',
+  },
+  modalContainer: {
+    backgroundColor: '#1a1a1a',
+    borderTopLeftRadius: 20,
+    borderTopRightRadius: 20,
+    paddingTop: 12,
+    paddingHorizontal: 16,
+    paddingBottom: 30,
+    height: '80%',
+  },
+  modalHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 10,
+  },
+  modalTitle: {
+    fontSize: 17,
+    fontWeight: '700',
+    color: '#fff',
+  },
+  modalSearchInput: {
+    backgroundColor: '#252525',
+    borderRadius: 10,
+    padding: 10,
+    fontSize: 14,
+    color: '#fff',
+    marginBottom: 10,
+  },
+  modalFollowersList: {
+    flex: 1,
+  },
+  modalDoneButton: {
+    backgroundColor: '#c42743',
+    borderRadius: 10,
+    padding: 12,
+    alignItems: 'center',
+    marginTop: 10,
+  },
+  modalDoneButtonText: {
+    fontSize: 15,
+    fontWeight: '600',
+    color: '#fff',
   },
   selectedBadge: {
     backgroundColor: '#c42743',
@@ -704,23 +945,24 @@ const styles = StyleSheet.create({
   },
   // Followers
   followersList: {
-    gap: 8,
+    gap: 2,
   },
   followerItem: {
     flexDirection: 'row',
     alignItems: 'center',
-    padding: 12,
+    paddingVertical: 6,
+    paddingHorizontal: 10,
     backgroundColor: '#1a1a1a',
-    borderRadius: 12,
-    gap: 12,
+    borderRadius: 8,
+    gap: 10,
   },
   followerItemSelected: {
     backgroundColor: '#1f1518',
   },
   followerAvatar: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
+    width: 32,
+    height: 32,
+    borderRadius: 16,
     backgroundColor: '#252525',
     alignItems: 'center',
     justifyContent: 'center',
@@ -731,20 +973,20 @@ const styles = StyleSheet.create({
     height: '100%',
   },
   followerAvatarText: {
-    fontSize: 16,
+    fontSize: 13,
     fontWeight: '600',
     color: '#666',
   },
   followerName: {
     flex: 1,
-    fontSize: 15,
+    fontSize: 14,
     fontWeight: '500',
     color: '#fff',
   },
   checkCircle: {
-    width: 24,
-    height: 24,
-    borderRadius: 12,
+    width: 20,
+    height: 20,
+    borderRadius: 10,
     borderWidth: 2,
     borderColor: '#333',
     alignItems: 'center',

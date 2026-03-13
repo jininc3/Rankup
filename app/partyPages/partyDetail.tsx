@@ -55,8 +55,13 @@ export default function PartyDetail() {
   const [searchingUsers, setSearchingUsers] = useState(false);
   const [showManageMembersModal, setShowManageMembersModal] = useState(false);
   const [kickingMember, setKickingMember] = useState<string | null>(null);
+  const [showInvitePermissionModal, setShowInvitePermissionModal] = useState(false);
+  const [updatingPermission, setUpdatingPermission] = useState(false);
 
   const isCreator = partyData?.createdBy === user?.id;
+  const isMember = partyData?.members?.includes(user?.id);
+  const invitePermission = partyData?.invitePermission || 'leader_only';
+  const canInvite = isCreator || invitePermission === 'anyone';
 
   // Leave party function
   const handleLeaveParty = async () => {
@@ -374,6 +379,23 @@ export default function PartyDetail() {
     }
   };
 
+  // Handle updating invite permission
+  const handleUpdateInvitePermission = async (newPermission: 'leader_only' | 'anyone') => {
+    if (!partyDocId) return;
+
+    setUpdatingPermission(true);
+    try {
+      const partyRef = doc(db, 'parties', partyDocId);
+      await updateDoc(partyRef, { invitePermission: newPermission });
+      setShowInvitePermissionModal(false);
+    } catch (error) {
+      console.error('Error updating invite permission:', error);
+      Alert.alert('Error', 'Failed to update invite permission');
+    } finally {
+      setUpdatingPermission(false);
+    }
+  };
+
   // Handle kicking a member
   const handleKickMember = (member: Member, fromModal: boolean = false) => {
     Alert.alert(
@@ -558,7 +580,7 @@ export default function PartyDetail() {
             )}
             {/* Top fade */}
             <LinearGradient
-              colors={['rgba(15, 15, 15, 0.6)', 'transparent']}
+              colors={['rgba(15, 15, 15, 0.25)', 'transparent']}
               start={{ x: 0, y: 0 }}
               end={{ x: 0, y: 1 }}
               style={styles.coverPhotoFadeTop}
@@ -605,10 +627,12 @@ export default function PartyDetail() {
 
           {/* Action Buttons */}
           <View style={styles.actionButtons}>
-            <TouchableOpacity style={styles.inviteButton} onPress={handleOpenInviteModal}>
-              <IconSymbol size={14} name="person.badge.plus" color="#666" />
-              <ThemedText style={styles.inviteButtonText}>Invite</ThemedText>
-            </TouchableOpacity>
+            {canInvite && (
+              <TouchableOpacity style={styles.inviteButton} onPress={handleOpenInviteModal}>
+                <IconSymbol size={14} name="person.badge.plus" color="#666" />
+                <ThemedText style={styles.inviteButtonText}>Invite</ThemedText>
+              </TouchableOpacity>
+            )}
             {inviteCode && (
               <TouchableOpacity style={styles.codeButton} onPress={handleCopyInviteCode}>
                 <ThemedText style={styles.codeButtonText}>{inviteCode}</ThemedText>
@@ -701,6 +725,25 @@ export default function PartyDetail() {
               <View style={styles.editModalOptionText}>
                 <ThemedText style={styles.editModalOptionTitle}>Change Party Icon</ThemedText>
                 <ThemedText style={styles.editModalOptionSubtitle}>Update the party icon</ThemedText>
+              </View>
+              <IconSymbol size={16} name="chevron.right" color="#444" />
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={styles.editModalOption}
+              onPress={() => {
+                setShowEditModal(false);
+                setShowInvitePermissionModal(true);
+              }}
+            >
+              <View style={styles.editModalOptionIcon}>
+                <IconSymbol size={18} name="person.badge.plus" color="#888" />
+              </View>
+              <View style={styles.editModalOptionText}>
+                <ThemedText style={styles.editModalOptionTitle}>Invite Permissions</ThemedText>
+                <ThemedText style={styles.editModalOptionSubtitle}>
+                  {invitePermission === 'anyone' ? 'Anyone can invite' : 'Only leader can invite'}
+                </ThemedText>
               </View>
               <IconSymbol size={16} name="chevron.right" color="#444" />
             </TouchableOpacity>
@@ -897,6 +940,89 @@ export default function PartyDetail() {
         </TouchableOpacity>
       </Modal>
 
+      {/* Invite Permission Modal */}
+      <Modal
+        visible={showInvitePermissionModal}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setShowInvitePermissionModal(false)}
+      >
+        <TouchableOpacity
+          style={styles.modalOverlay}
+          activeOpacity={1}
+          onPress={() => setShowInvitePermissionModal(false)}
+        >
+          <View style={styles.permissionModalContent}>
+            <View style={styles.editModalHeader}>
+              <ThemedText style={styles.editModalTitle}>Invite Permissions</ThemedText>
+              <TouchableOpacity onPress={() => setShowInvitePermissionModal(false)}>
+                <IconSymbol size={20} name="xmark" color="#888" />
+              </TouchableOpacity>
+            </View>
+
+            <ThemedText style={styles.permissionDescription}>
+              Choose who can invite new members to this party
+            </ThemedText>
+
+            <TouchableOpacity
+              style={[
+                styles.permissionOption,
+                invitePermission === 'leader_only' && styles.permissionOptionActive
+              ]}
+              onPress={() => handleUpdateInvitePermission('leader_only')}
+              disabled={updatingPermission}
+            >
+              <View style={styles.permissionOptionLeft}>
+                <View style={[
+                  styles.permissionOptionIcon,
+                  invitePermission === 'leader_only' && styles.permissionOptionIconActive
+                ]}>
+                  <IconSymbol size={12} name="crown.fill" color={invitePermission === 'leader_only' ? '#fff' : '#666'} />
+                </View>
+                <ThemedText style={[
+                  styles.permissionOptionTitle,
+                  invitePermission === 'leader_only' && styles.permissionOptionTitleActive
+                ]}>Leader Only</ThemedText>
+              </View>
+              {invitePermission === 'leader_only' && (
+                <IconSymbol size={14} name="checkmark.circle.fill" color="#c42743" />
+              )}
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={[
+                styles.permissionOption,
+                invitePermission === 'anyone' && styles.permissionOptionActive
+              ]}
+              onPress={() => handleUpdateInvitePermission('anyone')}
+              disabled={updatingPermission}
+            >
+              <View style={styles.permissionOptionLeft}>
+                <View style={[
+                  styles.permissionOptionIcon,
+                  invitePermission === 'anyone' && styles.permissionOptionIconActive
+                ]}>
+                  <IconSymbol size={12} name="person.2.fill" color={invitePermission === 'anyone' ? '#fff' : '#666'} />
+                </View>
+                <ThemedText style={[
+                  styles.permissionOptionTitle,
+                  invitePermission === 'anyone' && styles.permissionOptionTitleActive
+                ]}>Anyone</ThemedText>
+              </View>
+              {invitePermission === 'anyone' && (
+                <IconSymbol size={14} name="checkmark.circle.fill" color="#c42743" />
+              )}
+            </TouchableOpacity>
+
+            {updatingPermission && (
+              <View style={styles.permissionUpdating}>
+                <ActivityIndicator size="small" color="#c42743" />
+              </View>
+            )}
+          </View>
+        </TouchableOpacity>
+      </Modal>
+
       {/* Uploading Overlay */}
       {uploading && (
         <View style={styles.uploadingOverlay}>
@@ -982,7 +1108,7 @@ const styles = StyleSheet.create({
     top: 0,
     left: 0,
     right: 0,
-    height: 100,
+    height: 50,
     zIndex: 1,
   },
   coverPhotoFadeBottom: {
@@ -1418,5 +1544,68 @@ const styles = StyleSheet.create({
     fontSize: 13,
     fontWeight: '600',
     color: '#ff6b6b',
+  },
+  // Permission Modal
+  permissionModalContent: {
+    backgroundColor: '#1a1a1a',
+    borderTopLeftRadius: 20,
+    borderTopRightRadius: 20,
+    paddingBottom: 40,
+    height: '60%',
+  },
+  permissionDescription: {
+    fontSize: 12,
+    color: '#666',
+    paddingHorizontal: 20,
+    marginBottom: 10,
+  },
+  permissionOption: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingVertical: 8,
+    paddingHorizontal: 12,
+    marginHorizontal: 16,
+    marginVertical: 2,
+    backgroundColor: '#252525',
+    borderRadius: 8,
+    borderWidth: 1.5,
+    borderColor: 'transparent',
+  },
+  permissionOptionActive: {
+    backgroundColor: '#1f1518',
+    borderColor: '#c42743',
+  },
+  permissionOptionLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  permissionOptionIcon: {
+    width: 26,
+    height: 26,
+    borderRadius: 6,
+    backgroundColor: '#333',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  permissionOptionIconActive: {
+    backgroundColor: '#c42743',
+  },
+  permissionOptionTitle: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: '#888',
+  },
+  permissionOptionTitleActive: {
+    color: '#fff',
+  },
+  permissionOptionSubtitle: {
+    fontSize: 10,
+    color: '#555',
+  },
+  permissionUpdating: {
+    paddingVertical: 10,
+    alignItems: 'center',
   },
 });

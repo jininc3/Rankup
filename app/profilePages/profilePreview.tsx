@@ -404,7 +404,7 @@ export default function ProfilePreviewScreen() {
             )}
             {/* Top fade */}
             <LinearGradient
-              colors={['rgba(15, 15, 15, 0.6)', 'transparent']}
+              colors={['rgba(15, 15, 15, 0.25)', 'transparent']}
               start={{ x: 0, y: 0 }}
               end={{ x: 0, y: 1 }}
               style={styles.coverPhotoFadeTop}
@@ -814,7 +814,7 @@ const styles = StyleSheet.create({
     top: 0,
     left: 0,
     right: 0,
-    height: 60,
+    height: 50,
     zIndex: 1,
   },
   coverPhotoFadeBottom: {

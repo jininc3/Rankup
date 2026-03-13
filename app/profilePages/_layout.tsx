@@ -111,6 +111,12 @@ export default function ProfilePagesLayout() {
           headerShown: false,
         }}
       />
+      <Stack.Screen
+        name="archivedPosts"
+        options={{
+          headerShown: false,
+        }}
+      />
     </Stack>
   );
 }

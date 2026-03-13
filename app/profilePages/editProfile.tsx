@@ -3,7 +3,7 @@ import { ThemedView } from '@/components/themed-view';
 import { IconSymbol } from '@/components/ui/icon-symbol';
 import { useRouter, useNavigation } from 'expo-router';
 import { useState, useEffect, useCallback } from 'react';
-import { ScrollView, StyleSheet, TextInput, TouchableOpacity, View, Alert, ActivityIndicator, Image, Dimensions, Switch, Modal } from 'react-native';
+import { ScrollView, StyleSheet, TextInput, TouchableOpacity, View, Alert, ActivityIndicator, Image, Dimensions, Switch, Modal, KeyboardAvoidingView, Platform } from 'react-native';
 import { useAuth } from '@/contexts/AuthContext';
 import { updateUserProfile } from '@/services/authService';
 import { uploadProfilePicture, uploadCoverPhoto } from '@/services/storageService';
@@ -57,6 +57,11 @@ export default function EditProfileScreen() {
   // Default avatar modal
   const [showAvatarModal, setShowAvatarModal] = useState(false);
   const [pendingDefaultAvatarIndex, setPendingDefaultAvatarIndex] = useState<number | null>(null);
+
+  // Social edit modal
+  const [showSocialModal, setShowSocialModal] = useState(false);
+  const [editingSocial, setEditingSocial] = useState<'instagram' | 'discord' | null>(null);
+  const [socialInputValue, setSocialInputValue] = useState('');
 
   // Rank cards state
   const [riotAccount, setRiotAccount] = useState<any>(null);
@@ -706,14 +711,28 @@ export default function EditProfileScreen() {
           {/* Cover Photo Area */}
           <View style={styles.coverPhotoWrapper}>
             {pendingRemoveCoverPhoto ? (
-              <View style={styles.coverPhotoGradient} />
+              <View style={styles.coverPhotoGradientPlaceholder} />
             ) : pendingCoverPhotoUri ? (
               <Image source={{ uri: pendingCoverPhotoUri }} style={styles.coverPhotoImage} />
             ) : coverPhoto ? (
               <Image source={{ uri: coverPhoto }} style={styles.coverPhotoImage} />
             ) : (
-              <View style={styles.coverPhotoGradient} />
+              <View style={styles.coverPhotoGradientPlaceholder} />
             )}
+            {/* Top fade */}
+            <LinearGradient
+              colors={['rgba(15, 15, 15, 0.25)', 'transparent']}
+              start={{ x: 0, y: 0 }}
+              end={{ x: 0, y: 1 }}
+              style={styles.coverPhotoFadeTop}
+            />
+            {/* Bottom fade */}
+            <LinearGradient
+              colors={['transparent', '#0f0f0f']}
+              start={{ x: 0, y: 0 }}
+              end={{ x: 0, y: 1 }}
+              style={styles.coverPhotoFadeBottom}
+            />
             <TouchableOpacity
               style={styles.editCoverButton}
               onPress={showCoverPhotoOptions}
@@ -775,23 +794,36 @@ export default function EditProfileScreen() {
 
           {/* Social Icons Row */}
           <View style={styles.socialIconsRow}>
-            <View style={[styles.socialIconButton, !instagram && styles.socialIconInactive]}>
+            <TouchableOpacity
+              style={[styles.socialIconButton, !instagram && styles.socialIconInactive]}
+              onPress={() => {
+                setEditingSocial('instagram');
+                setSocialInputValue(instagram);
+                setShowSocialModal(true);
+              }}
+              activeOpacity={0.7}
+            >
               <Image
                 source={require('@/assets/images/instagram.png')}
                 style={styles.socialIconImage}
                 resizeMode="contain"
               />
-            </View>
-            <View style={[styles.socialIconButton, !discord && styles.socialIconInactive]}>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={[styles.socialIconButton, !discord && styles.socialIconInactive]}
+              onPress={() => {
+                setEditingSocial('discord');
+                setSocialInputValue(discord);
+                setShowSocialModal(true);
+              }}
+              activeOpacity={0.7}
+            >
               <Image
                 source={require('@/assets/images/discord.png')}
                 style={styles.socialIconImage}
                 resizeMode="contain"
               />
-            </View>
-            <View style={styles.socialIconButton}>
-              <IconSymbol size={20} name="envelope.fill" color="#fff" />
-            </View>
+            </TouchableOpacity>
           </View>
 
           {/* Bio Section */}
@@ -807,51 +839,6 @@ export default function EditProfileScreen() {
               maxLength={150}
             />
             <ThemedText style={styles.characterCount}>{bio.length}/150</ThemedText>
-          </View>
-
-          {/* Socials Input Section */}
-          <View style={styles.sectionContainer}>
-            <ThemedText style={styles.sectionTitle}>Social Links</ThemedText>
-
-            {/* Instagram */}
-            <View style={styles.socialInputContainer}>
-              <View style={styles.socialIconInputWrapper}>
-                <Image
-                  source={require('@/assets/images/instagram.png')}
-                  style={styles.socialInputIcon}
-                  resizeMode="contain"
-                />
-                <TextInput
-                  style={styles.socialInput}
-                  value={instagram}
-                  onChangeText={setInstagram}
-                  placeholder="Instagram username"
-                  placeholderTextColor="#72767d"
-                  autoCapitalize="none"
-                  autoCorrect={false}
-                />
-              </View>
-            </View>
-
-            {/* Discord */}
-            <View style={styles.socialInputContainer}>
-              <View style={styles.socialIconInputWrapper}>
-                <Image
-                  source={require('@/assets/images/discord.png')}
-                  style={styles.socialInputIcon}
-                  resizeMode="contain"
-                />
-                <TextInput
-                  style={styles.socialInput}
-                  value={discord}
-                  onChangeText={setDiscord}
-                  placeholder="Discord username"
-                  placeholderTextColor="#72767d"
-                  autoCapitalize="none"
-                  autoCorrect={false}
-                />
-              </View>
-            </View>
           </View>
 
           {/* Rank Cards Section */}
@@ -974,6 +961,74 @@ export default function EditProfileScreen() {
           </View>
         </View>
       </Modal>
+
+      {/* Social Edit Modal */}
+      <Modal
+        visible={showSocialModal}
+        transparent={true}
+        animationType="fade"
+        onRequestClose={() => setShowSocialModal(false)}
+      >
+        <KeyboardAvoidingView
+          behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+          style={styles.socialModalOverlay}
+          keyboardVerticalOffset={Platform.OS === 'ios' ? 60 : 0}
+        >
+          <TouchableOpacity
+            style={styles.socialModalDismiss}
+            activeOpacity={1}
+            onPress={() => setShowSocialModal(false)}
+          />
+          <View style={styles.socialModalContent}>
+            <View style={styles.modalHeader}>
+              <ThemedText style={styles.modalTitle}>
+                {editingSocial === 'instagram' ? 'Instagram Username' : 'Discord Username'}
+              </ThemedText>
+              <TouchableOpacity
+                style={styles.modalCloseButton}
+                onPress={() => setShowSocialModal(false)}
+              >
+                <IconSymbol size={24} name="xmark" color="#fff" />
+              </TouchableOpacity>
+            </View>
+
+            <View style={styles.socialModalInputContainer}>
+              <Image
+                source={editingSocial === 'instagram'
+                  ? require('@/assets/images/instagram.png')
+                  : require('@/assets/images/discord.png')
+                }
+                style={styles.socialModalIcon}
+                resizeMode="contain"
+              />
+              <TextInput
+                style={styles.socialModalInput}
+                value={socialInputValue}
+                onChangeText={setSocialInputValue}
+                placeholder={editingSocial === 'instagram' ? 'Enter username' : 'Enter username'}
+                placeholderTextColor="#666"
+                autoCapitalize="none"
+                autoCorrect={false}
+                autoFocus
+              />
+            </View>
+
+            <TouchableOpacity
+              style={styles.socialModalSaveButton}
+              onPress={() => {
+                if (editingSocial === 'instagram') {
+                  setInstagram(socialInputValue);
+                } else if (editingSocial === 'discord') {
+                  setDiscord(socialInputValue);
+                }
+                setShowSocialModal(false);
+              }}
+            >
+              <ThemedText style={styles.socialModalSaveText}>Save</ThemedText>
+            </TouchableOpacity>
+          </View>
+        </KeyboardAvoidingView>
+      </Modal>
     </ThemedView>
   );
 }
@@ -1014,10 +1069,26 @@ const styles = StyleSheet.create({
     width: '100%',
     height: '100%',
   },
-  coverPhotoGradient: {
+  coverPhotoGradientPlaceholder: {
     width: '100%',
     height: '100%',
     backgroundColor: '#2c2f33',
+  },
+  coverPhotoFadeTop: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    height: 50,
+    zIndex: 1,
+  },
+  coverPhotoFadeBottom: {
+    position: 'absolute',
+    bottom: 0,
+    left: 0,
+    right: 0,
+    height: 100,
+    zIndex: 1,
   },
   editCoverButton: {
     position: 'absolute',
@@ -1029,6 +1100,7 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(0, 0, 0, 0.6)',
     alignItems: 'center',
     justifyContent: 'center',
+    zIndex: 2,
   },
   // Username row with avatar
   usernameRow: {
@@ -1166,29 +1238,6 @@ const styles = StyleSheet.create({
     color: '#fff',
     marginBottom: 12,
     letterSpacing: -0.2,
-  },
-  // Social input
-  socialInputContainer: {
-    marginBottom: 12,
-  },
-  socialIconInputWrapper: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: '#2c2f33',
-    borderRadius: 12,
-    paddingHorizontal: 14,
-    paddingVertical: 12,
-    gap: 12,
-  },
-  socialInputIcon: {
-    width: 24,
-    height: 24,
-  },
-  socialInput: {
-    flex: 1,
-    fontSize: 14,
-    color: '#fff',
-    padding: 0,
   },
   // Save button
   saveButtonContainer: {
@@ -1435,5 +1484,53 @@ const styles = StyleSheet.create({
     backgroundColor: '#c42743',
     alignItems: 'center',
     justifyContent: 'center',
+  },
+  // Social Modal styles
+  socialModalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.8)',
+    justifyContent: 'flex-end',
+  },
+  socialModalDismiss: {
+    flex: 1,
+  },
+  socialModalContent: {
+    backgroundColor: '#1a1a1a',
+    borderTopLeftRadius: 24,
+    borderTopRightRadius: 24,
+    paddingTop: 20,
+    paddingBottom: 40,
+    paddingHorizontal: 24,
+  },
+  socialModalInputContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#2c2f33',
+    borderRadius: 12,
+    paddingHorizontal: 16,
+    paddingVertical: 14,
+    gap: 12,
+    marginBottom: 20,
+  },
+  socialModalIcon: {
+    width: 24,
+    height: 24,
+  },
+  socialModalInput: {
+    flex: 1,
+    fontSize: 16,
+    color: '#fff',
+    padding: 0,
+  },
+  socialModalSaveButton: {
+    backgroundColor: '#c42743',
+    paddingVertical: 14,
+    borderRadius: 12,
+    alignItems: 'center',
+  },
+  socialModalSaveText: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#fff',
   },
 });

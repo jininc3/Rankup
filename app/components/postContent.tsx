@@ -399,6 +399,7 @@ interface PostContentProps {
   enableVideoScrubber?: boolean;
   onDelete?: (post: Post) => void;
   onEditCaption?: (post: Post, newCaption: string) => void;
+  onArchive?: (post: Post) => void;
 }
 
 export default function PostContent({
@@ -419,7 +420,8 @@ export default function PostContent({
   showRecentComments = true,
   enableVideoScrubber = false,
   onDelete,
-  onEditCaption
+  onEditCaption,
+  onArchive
 }: PostContentProps) {
   // Calculate tier border color
   const tierBorderColor = calculateTierBorderColor(post.leagueRank, post.valorantRank);
@@ -511,6 +513,14 @@ export default function PostContent({
       });
     }
 
+    // Add Archive option if callback is provided
+    if (onArchive) {
+      options.push({
+        text: 'Archive',
+        onPress: () => onArchive(post)
+      });
+    }
+
     // Add Delete option if callback is provided
     if (onDelete) {
       options.push({
@@ -574,7 +584,7 @@ export default function PostContent({
         <View style={styles.headerRight}>
           <TouchableOpacity
             style={styles.menuButton}
-            onPress={post.userId === currentUserId && (onDelete || onEditCaption) ? handlePostOptions : undefined}
+            onPress={post.userId === currentUserId && (onDelete || onEditCaption || onArchive) ? handlePostOptions : undefined}
             activeOpacity={0.6}
             hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
           >

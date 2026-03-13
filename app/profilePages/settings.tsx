@@ -28,6 +28,13 @@ const settingsData = [
         hasChevron: true,
         route: '/profilePages/privacySafety',
       },
+      {
+        id: 6,
+        icon: 'archivebox',
+        title: 'Archived Posts',
+        hasChevron: true,
+        route: '/profilePages/archivedPosts',
+      },
     ],
   },
   {

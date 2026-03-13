@@ -199,8 +199,17 @@ export default function LeaderboardDetail() {
   const [showManageMembersModal, setShowManageMembersModal] = useState(false);
   const [kickingMember, setKickingMember] = useState<string | null>(null);
   const [pendingInvites, setPendingInvites] = useState<{ id: string; username: string; avatar: string }[]>([]);
+  const [showInvitePermissionModal, setShowInvitePermissionModal] = useState(false);
+  const [updatingPermission, setUpdatingPermission] = useState(false);
+  const [startingChallenge, setStartingChallenge] = useState(false);
 
   const isCreator = partyData?.createdBy === user?.id;
+  const isMember = partyData?.members?.includes(user?.id);
+  const invitePermission = partyData?.invitePermission || 'leader_only';
+  const challengeStatus = partyData?.challengeStatus || 'active';
+  const isPending = challengeStatus === 'pending';
+  const isActive = challengeStatus === 'active';
+  const canInvite = (isCreator || invitePermission === 'anyone') && isPending;
 
   // Leave party function
   const handleLeaveParty = async () => {
@@ -504,6 +513,88 @@ export default function LeaderboardDetail() {
     }
   };
 
+  // Handle starting the challenge
+  const handleStartChallenge = async () => {
+    if (!partyDocId || !isCreator) return;
+
+    const startChallenge = async () => {
+      setStartingChallenge(true);
+      try {
+        const partyRef = doc(db, 'parties', partyDocId);
+        const duration = partyData?.duration || 30;
+
+        const now = new Date();
+        const end = new Date(now);
+        end.setDate(end.getDate() + duration);
+
+        const formatDateStr = (date: Date) => {
+          const month = String(date.getMonth() + 1).padStart(2, '0');
+          const day = String(date.getDate()).padStart(2, '0');
+          const year = date.getFullYear();
+          return `${month}/${day}/${year}`;
+        };
+
+        await updateDoc(partyRef, {
+          challengeStatus: 'active',
+          startDate: formatDateStr(now),
+          endDate: formatDateStr(end),
+          pendingInvites: [],
+        });
+      } catch (error) {
+        console.error('Error starting challenge:', error);
+        Alert.alert('Error', 'Failed to start challenge');
+      } finally {
+        setStartingChallenge(false);
+      }
+    };
+
+    const pendingCount = partyData?.pendingInvites?.length || 0;
+
+    if (pendingCount > 0) {
+      Alert.alert(
+        'Pending Invites',
+        `You have ${pendingCount} pending invite${pendingCount > 1 ? 's' : ''}. Starting the challenge will cancel all pending invites and no new members can join. Are you sure you want to start?`,
+        [
+          { text: 'Cancel', style: 'cancel' },
+          {
+            text: 'Start Anyway',
+            style: 'destructive',
+            onPress: startChallenge,
+          },
+        ]
+      );
+    } else {
+      Alert.alert(
+        'Start Challenge',
+        'Are you sure you want to start the challenge? The timer will begin and no new members can join.',
+        [
+          { text: 'Cancel', style: 'cancel' },
+          {
+            text: 'Start',
+            onPress: startChallenge,
+          },
+        ]
+      );
+    }
+  };
+
+  // Handle updating invite permission
+  const handleUpdateInvitePermission = async (newPermission: 'leader_only' | 'anyone') => {
+    if (!partyDocId) return;
+
+    setUpdatingPermission(true);
+    try {
+      const partyRef = doc(db, 'parties', partyDocId);
+      await updateDoc(partyRef, { invitePermission: newPermission });
+      setShowInvitePermissionModal(false);
+    } catch (error) {
+      console.error('Error updating invite permission:', error);
+      Alert.alert('Error', 'Failed to update invite permission');
+    } finally {
+      setUpdatingPermission(false);
+    }
+  };
+
   // Handle kicking a member
   const handleKickMember = (player: Player) => {
     Alert.alert(
@@ -764,7 +855,7 @@ export default function LeaderboardDetail() {
               />
             )}
             <LinearGradient
-              colors={['rgba(15, 15, 15, 0.6)', 'transparent']}
+              colors={['rgba(15, 15, 15, 0.25)', 'transparent']}
               start={{ x: 0, y: 0 }}
               end={{ x: 0, y: 1 }}
               style={styles.coverPhotoFadeTop}
@@ -808,8 +899,35 @@ export default function LeaderboardDetail() {
             <ThemedText style={styles.leaderboardMetaText}>{memberCount} {memberCount === 1 ? 'Player' : 'Players'}</ThemedText>
           </View>
 
-          {/* Duration Progress */}
-          {daysInfo && (
+          {/* Challenge Status */}
+          {isPending ? (
+            <View style={styles.pendingSection}>
+              {isCreator ? (
+                <TouchableOpacity
+                  style={styles.startChallengeButton}
+                  onPress={handleStartChallenge}
+                  disabled={startingChallenge}
+                >
+                  {startingChallenge ? (
+                    <ActivityIndicator size="small" color="#fff" />
+                  ) : (
+                    <>
+                      <IconSymbol size={16} name="play.fill" color="#fff" />
+                      <ThemedText style={styles.startChallengeButtonText}>Start Challenge</ThemedText>
+                    </>
+                  )}
+                </TouchableOpacity>
+              ) : (
+                <View style={styles.waitingBadge}>
+                  <IconSymbol size={14} name="clock" color="#888" />
+                  <ThemedText style={styles.waitingText}>Waiting for leader to start</ThemedText>
+                </View>
+              )}
+              <ThemedText style={styles.durationPreview}>
+                {partyData?.duration || 30} day challenge
+              </ThemedText>
+            </View>
+          ) : daysInfo && (
             <View style={styles.durationSection}>
               <View style={styles.durationHeader}>
                 <ThemedText style={styles.durationLabel}>
@@ -824,11 +942,13 @@ export default function LeaderboardDetail() {
 
           {/* Action Buttons */}
           <View style={styles.actionButtons}>
-            <TouchableOpacity style={styles.inviteButton} onPress={handleOpenInviteModal}>
-              <IconSymbol size={14} name="person.badge.plus" color="#666" />
-              <ThemedText style={styles.inviteButtonText}>Invite</ThemedText>
-            </TouchableOpacity>
-            {inviteCode && (
+            {canInvite && (
+              <TouchableOpacity style={styles.inviteButton} onPress={handleOpenInviteModal}>
+                <IconSymbol size={14} name="person.badge.plus" color="#666" />
+                <ThemedText style={styles.inviteButtonText}>Invite</ThemedText>
+              </TouchableOpacity>
+            )}
+            {inviteCode && isPending && (
               <TouchableOpacity style={styles.codeButton} onPress={handleCopyInviteCode}>
                 <ThemedText style={styles.codeButtonText}>{inviteCode}</ThemedText>
                 <IconSymbol size={12} name="doc.on.doc" color="#444" />
@@ -952,6 +1072,25 @@ export default function LeaderboardDetail() {
               <View style={styles.editModalOptionText}>
                 <ThemedText style={styles.editModalOptionTitle}>Change Leaderboard Icon</ThemedText>
                 <ThemedText style={styles.editModalOptionSubtitle}>Update the leaderboard icon</ThemedText>
+              </View>
+              <IconSymbol size={16} name="chevron.right" color="#444" />
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={styles.editModalOption}
+              onPress={() => {
+                setShowEditModal(false);
+                setShowInvitePermissionModal(true);
+              }}
+            >
+              <View style={styles.editModalOptionIcon}>
+                <IconSymbol size={18} name="person.badge.plus" color="#888" />
+              </View>
+              <View style={styles.editModalOptionText}>
+                <ThemedText style={styles.editModalOptionTitle}>Invite Permissions</ThemedText>
+                <ThemedText style={styles.editModalOptionSubtitle}>
+                  {invitePermission === 'anyone' ? 'Anyone can invite' : 'Only leader can invite'}
+                </ThemedText>
               </View>
               <IconSymbol size={16} name="chevron.right" color="#444" />
             </TouchableOpacity>
@@ -1175,6 +1314,89 @@ export default function LeaderboardDetail() {
         </TouchableOpacity>
       </Modal>
 
+      {/* Invite Permission Modal */}
+      <Modal
+        visible={showInvitePermissionModal}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setShowInvitePermissionModal(false)}
+      >
+        <TouchableOpacity
+          style={styles.modalOverlay}
+          activeOpacity={1}
+          onPress={() => setShowInvitePermissionModal(false)}
+        >
+          <View style={styles.permissionModalContent}>
+            <View style={styles.editModalHeader}>
+              <ThemedText style={styles.editModalTitle}>Invite Permissions</ThemedText>
+              <TouchableOpacity onPress={() => setShowInvitePermissionModal(false)}>
+                <IconSymbol size={20} name="xmark" color="#888" />
+              </TouchableOpacity>
+            </View>
+
+            <ThemedText style={styles.permissionDescription}>
+              Choose who can invite new members to this leaderboard
+            </ThemedText>
+
+            <TouchableOpacity
+              style={[
+                styles.permissionOption,
+                invitePermission === 'leader_only' && styles.permissionOptionActive
+              ]}
+              onPress={() => handleUpdateInvitePermission('leader_only')}
+              disabled={updatingPermission}
+            >
+              <View style={styles.permissionOptionLeft}>
+                <View style={[
+                  styles.permissionOptionIcon,
+                  invitePermission === 'leader_only' && styles.permissionOptionIconActive
+                ]}>
+                  <IconSymbol size={12} name="crown.fill" color={invitePermission === 'leader_only' ? '#fff' : '#666'} />
+                </View>
+                <ThemedText style={[
+                  styles.permissionOptionTitle,
+                  invitePermission === 'leader_only' && styles.permissionOptionTitleActive
+                ]}>Leader Only</ThemedText>
+              </View>
+              {invitePermission === 'leader_only' && (
+                <IconSymbol size={14} name="checkmark.circle.fill" color="#c42743" />
+              )}
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={[
+                styles.permissionOption,
+                invitePermission === 'anyone' && styles.permissionOptionActive
+              ]}
+              onPress={() => handleUpdateInvitePermission('anyone')}
+              disabled={updatingPermission}
+            >
+              <View style={styles.permissionOptionLeft}>
+                <View style={[
+                  styles.permissionOptionIcon,
+                  invitePermission === 'anyone' && styles.permissionOptionIconActive
+                ]}>
+                  <IconSymbol size={12} name="person.2.fill" color={invitePermission === 'anyone' ? '#fff' : '#666'} />
+                </View>
+                <ThemedText style={[
+                  styles.permissionOptionTitle,
+                  invitePermission === 'anyone' && styles.permissionOptionTitleActive
+                ]}>Anyone</ThemedText>
+              </View>
+              {invitePermission === 'anyone' && (
+                <IconSymbol size={14} name="checkmark.circle.fill" color="#c42743" />
+              )}
+            </TouchableOpacity>
+
+            {updatingPermission && (
+              <View style={styles.permissionUpdating}>
+                <ActivityIndicator size="small" color="#c42743" />
+              </View>
+            )}
+          </View>
+        </TouchableOpacity>
+      </Modal>
+
       {/* Uploading Overlay */}
       {uploading && (
         <View style={styles.uploadingOverlay}>
@@ -1260,7 +1482,7 @@ const styles = StyleSheet.create({
     top: 0,
     left: 0,
     right: 0,
-    height: 100,
+    height: 50,
     zIndex: 1,
   },
   coverPhotoFadeBottom: {
@@ -1337,6 +1559,47 @@ const styles = StyleSheet.create({
     height: 3,
     borderRadius: 1.5,
     backgroundColor: '#333',
+  },
+  // Pending Section
+  pendingSection: {
+    width: '100%',
+    alignItems: 'center',
+    marginBottom: 14,
+    gap: 8,
+  },
+  startChallengeButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    backgroundColor: '#c42743',
+    paddingVertical: 12,
+    paddingHorizontal: 24,
+    borderRadius: 12,
+    minWidth: 180,
+  },
+  startChallengeButtonText: {
+    fontSize: 15,
+    fontWeight: '600',
+    color: '#fff',
+  },
+  waitingBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    backgroundColor: '#252525',
+    paddingVertical: 10,
+    paddingHorizontal: 16,
+    borderRadius: 10,
+  },
+  waitingText: {
+    fontSize: 13,
+    fontWeight: '500',
+    color: '#888',
+  },
+  durationPreview: {
+    fontSize: 12,
+    color: '#555',
   },
   // Duration Section
   durationSection: {
@@ -1795,5 +2058,68 @@ const styles = StyleSheet.create({
     fontSize: 13,
     fontWeight: '600',
     color: '#ff6b6b',
+  },
+  // Permission Modal
+  permissionModalContent: {
+    backgroundColor: '#1a1a1a',
+    borderTopLeftRadius: 20,
+    borderTopRightRadius: 20,
+    paddingBottom: 40,
+    height: '60%',
+  },
+  permissionDescription: {
+    fontSize: 12,
+    color: '#666',
+    paddingHorizontal: 20,
+    marginBottom: 10,
+  },
+  permissionOption: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingVertical: 8,
+    paddingHorizontal: 12,
+    marginHorizontal: 16,
+    marginVertical: 2,
+    backgroundColor: '#252525',
+    borderRadius: 8,
+    borderWidth: 1.5,
+    borderColor: 'transparent',
+  },
+  permissionOptionActive: {
+    backgroundColor: '#1f1518',
+    borderColor: '#c42743',
+  },
+  permissionOptionLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  permissionOptionIcon: {
+    width: 26,
+    height: 26,
+    borderRadius: 6,
+    backgroundColor: '#333',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  permissionOptionIconActive: {
+    backgroundColor: '#c42743',
+  },
+  permissionOptionTitle: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: '#888',
+  },
+  permissionOptionTitleActive: {
+    color: '#fff',
+  },
+  permissionOptionSubtitle: {
+    fontSize: 10,
+    color: '#555',
+  },
+  permissionUpdating: {
+    paddingVertical: 10,
+    alignItems: 'center',
   },
 });

@@ -8,6 +8,8 @@ import { collection, query, where, getDocs, orderBy, limit, doc, setDoc, deleteD
 import { db } from '@/config/firebase';
 import { useAuth } from '@/contexts/AuthContext';
 import { calculateTierBorderColor } from '@/utils/tierBorderUtils';
+import { LinearGradient } from 'expo-linear-gradient';
+import Animated, { useSharedValue, useAnimatedStyle, withRepeat, withTiming, interpolate } from 'react-native-reanimated';
 
 interface SearchUser {
   id: string;
@@ -22,6 +24,132 @@ interface SearchUser {
 }
 
 const MAX_HISTORY_ITEMS = 7;
+
+// Skeleton item component with shimmer effect
+const SkeletonItem = ({ index }: { index: number }) => {
+  const shimmerValue = useSharedValue(0);
+
+  useEffect(() => {
+    shimmerValue.value = withRepeat(
+      withTiming(1, { duration: 1200 }),
+      -1,
+      false
+    );
+  }, []);
+
+  const shimmerStyle = useAnimatedStyle(() => {
+    const translateX = interpolate(
+      shimmerValue.value,
+      [0, 1],
+      [-200, 200]
+    );
+    return {
+      transform: [{ translateX }],
+    };
+  });
+
+  return (
+    <View style={skeletonStyles.card}>
+      <View style={skeletonStyles.left}>
+        <View style={skeletonStyles.avatar}>
+          <Animated.View style={[skeletonStyles.shimmerOverlay, shimmerStyle]}>
+            <LinearGradient
+              colors={['transparent', 'rgba(255,255,255,0.08)', 'transparent']}
+              start={{ x: 0, y: 0 }}
+              end={{ x: 1, y: 0 }}
+              style={skeletonStyles.gradient}
+            />
+          </Animated.View>
+        </View>
+        <View style={skeletonStyles.textContainer}>
+          <View style={skeletonStyles.username}>
+            <Animated.View style={[skeletonStyles.shimmerOverlay, shimmerStyle]}>
+              <LinearGradient
+                colors={['transparent', 'rgba(255,255,255,0.08)', 'transparent']}
+                start={{ x: 0, y: 0 }}
+                end={{ x: 1, y: 0 }}
+                style={skeletonStyles.gradient}
+              />
+            </Animated.View>
+          </View>
+        </View>
+      </View>
+      <View style={skeletonStyles.deleteButton}>
+        <Animated.View style={[skeletonStyles.shimmerOverlay, shimmerStyle]}>
+          <LinearGradient
+            colors={['transparent', 'rgba(255,255,255,0.08)', 'transparent']}
+            start={{ x: 0, y: 0 }}
+            end={{ x: 1, y: 0 }}
+            style={skeletonStyles.gradient}
+          />
+        </Animated.View>
+      </View>
+    </View>
+  );
+};
+
+const skeletonStyles = StyleSheet.create({
+  card: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingVertical: 10,
+    paddingHorizontal: 0,
+    marginBottom: 2,
+  },
+  left: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    flex: 1,
+  },
+  avatar: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: '#1a1a1a',
+    overflow: 'hidden',
+  },
+  textContainer: {
+    flex: 1,
+  },
+  username: {
+    width: '60%',
+    height: 14,
+    borderRadius: 7,
+    backgroundColor: '#1a1a1a',
+    overflow: 'hidden',
+  },
+  deleteButton: {
+    width: 14,
+    height: 14,
+    borderRadius: 7,
+    backgroundColor: '#1a1a1a',
+    overflow: 'hidden',
+    marginRight: 8,
+  },
+  shimmerOverlay: {
+    ...StyleSheet.absoluteFillObject,
+  },
+  gradient: {
+    flex: 1,
+    width: 200,
+  },
+});
+
+const SkeletonLoader = () => {
+  return (
+    <View>
+      <View style={styles.historyHeader}>
+        <View style={{ width: 50, height: 12, borderRadius: 6, backgroundColor: '#1a1a1a' }} />
+        <View style={{ width: 50, height: 12, borderRadius: 6, backgroundColor: '#1a1a1a' }} />
+      </View>
+      {[0, 1, 2, 3, 4].map((index) => (
+        <SkeletonItem key={index} index={index} />
+      ))}
+    </View>
+  );
+};
 
 export default function SearchScreen() {
   const router = useRouter();
@@ -260,9 +388,7 @@ export default function SearchScreen() {
 
       <ScrollView style={styles.scrollView} showsVerticalScrollIndicator={false}>
         {searchQuery.trim() === '' && loadingHistory ? (
-          <View style={styles.loadingState}>
-            <ActivityIndicator size="small" color="#666" />
-          </View>
+          <SkeletonLoader />
         ) : searchQuery.trim() === '' && searchHistory.length > 0 ? (
           <View>
             <View style={styles.historyHeader}>

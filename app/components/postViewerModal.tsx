@@ -41,6 +41,7 @@ interface PostViewerModalProps {
   onCommentAdded?: () => void;
   onDelete?: (post: Post) => void;
   onEditCaption?: (post: Post, newCaption: string) => void;
+  onArchive?: (post: Post) => void;
   enableVideoScrubber?: boolean;
 }
 
@@ -55,6 +56,7 @@ export default function PostViewerModal({
   onCommentAdded,
   onDelete,
   onEditCaption,
+  onArchive,
   enableVideoScrubber = false
 }: PostViewerModalProps) {
   const router = useRouter();
@@ -382,6 +384,7 @@ export default function PostViewerModal({
         enableVideoScrubber={enableVideoScrubber}
         onDelete={onDelete}
         onEditCaption={onEditCaption}
+        onArchive={onArchive}
       />
     );
   };

@@ -80,6 +80,7 @@ export default function ProfileScreen() {
   const [hasConsumedPreloadRiot, setHasConsumedPreloadRiot] = useState(false);
   const [showSocialsDropdown, setShowSocialsDropdown] = useState(false);
   const scrollY = useRef(new Animated.Value(0)).current;
+  const isRemovingPost = useRef(false); // Track when we're removing a post (archive/delete)
 
   // Post images loading state
   const [postImagesLoadedCount, setPostImagesLoadedCount] = useState(0);
@@ -99,6 +100,7 @@ export default function ProfileScreen() {
 
   // Create modal state
   const [showCreateModal, setShowCreateModal] = useState(false);
+  const [showAvatarModal, setShowAvatarModal] = useState(false);
 
   // Track if this is the first time loading the profile
   const [isFirstLoad, setIsFirstLoad] = useState(true);
@@ -148,8 +150,12 @@ export default function ProfileScreen() {
     }
   }, [postImagesLoadedCount, posts.length]);
 
-  // Reset all loading states when posts change
+  // Reset all loading states when posts change (but not when removing a post)
   useEffect(() => {
+    if (isRemovingPost.current) {
+      isRemovingPost.current = false;
+      return; // Don't reset loading states for post removal (archive/delete)
+    }
     setPostImagesLoadedCount(0);
     setAllPostImagesLoaded(false);
     setAllContentLoaded(false);
@@ -510,8 +516,10 @@ export default function ProfileScreen() {
         ...doc.data()
       } as Post));
 
-      // Sort by newest first
-      fetchedPosts = fetchedPosts.sort((a, b) => b.createdAt.toMillis() - a.createdAt.toMillis());
+      // Filter out archived posts and sort by newest first
+      fetchedPosts = fetchedPosts
+        .filter(post => !(post as any).archived)
+        .sort((a, b) => b.createdAt.toMillis() - a.createdAt.toMillis());
 
       setPosts(fetchedPosts);
     } catch (error) {
@@ -526,7 +534,9 @@ export default function ProfileScreen() {
   useEffect(() => {
     if (preloadedProfilePosts && !hasConsumedPreloadPosts) {
       console.log('✅ Using preloaded profile posts from loading screen:', preloadedProfilePosts.length);
-      setPosts(preloadedProfilePosts);
+      // Filter out archived posts from preloaded data
+      const nonArchivedPosts = preloadedProfilePosts.filter(post => !(post as any).archived);
+      setPosts(nonArchivedPosts);
       setLoadingPosts(false);
       setHasConsumedPreloadPosts(true);
     }
@@ -748,8 +758,11 @@ export default function ProfileScreen() {
                 await refreshUser();
               }
 
+              // Mark that we're removing a post (to prevent loading state reset)
+              isRemovingPost.current = true;
+
               // Update local state
-              setPosts(posts.filter(p => p.id !== post.id));
+              setPosts(prevPosts => prevPosts.filter(p => p.id !== post.id));
 
               Alert.alert('Success', 'Post deleted successfully');
             } catch (error: any) {
@@ -811,6 +824,43 @@ export default function ProfileScreen() {
     }
   };
 
+  const handleArchivePost = (post: Post) => {
+    Alert.alert(
+      'Archive Post',
+      'This post will be hidden from your profile. You can view archived posts in your settings.',
+      [
+        {
+          text: 'Cancel',
+          style: 'cancel',
+        },
+        {
+          text: 'Archive',
+          onPress: async () => {
+            try {
+              // Update post in Firestore to mark as archived
+              await updateDoc(doc(db, 'posts', post.id), {
+                archived: true,
+              });
+
+              // Mark that we're removing a post (to prevent loading state reset)
+              isRemovingPost.current = true;
+
+              // Remove from local state (hide from profile)
+              setPosts(prevPosts => prevPosts.filter(p => p.id !== post.id));
+
+              // Close the post viewer modal
+              closePostViewer();
+
+              Alert.alert('Success', 'Post archived successfully');
+            } catch (error: any) {
+              console.error('Archive post error:', error);
+              Alert.alert('Error', 'Failed to archive post');
+            }
+          },
+        },
+      ]
+    );
+  };
 
   // Calculate tier border color based on current ranks
   const tierBorderColor = calculateTierBorderColor(
@@ -864,6 +914,13 @@ export default function ProfileScreen() {
             <View style={styles.headerIconsSpacer} />
             <TouchableOpacity
               style={styles.headerIconButton}
+              onPress={() => router.push('/chatPages/chatList')}
+              activeOpacity={0.7}
+            >
+              <IconSymbol size={22} name="paperplane.fill" color="#fff" />
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={styles.headerIconButton}
               onPress={() => router.push('/profilePages/settings')}
               activeOpacity={0.7}
             >
@@ -891,7 +948,7 @@ export default function ProfileScreen() {
             )}
             {/* Top fade */}
             <LinearGradient
-              colors={['rgba(15, 15, 15, 0.75)', 'transparent']}
+              colors={['rgba(15, 15, 15, 0.25)', 'transparent']}
               start={{ x: 0, y: 0 }}
               end={{ x: 0, y: 1 }}
               style={styles.coverPhotoFadeTop}
@@ -912,7 +969,7 @@ export default function ProfileScreen() {
             {/* Profile Avatar */}
             <TouchableOpacity
               style={styles.profileAvatarButton}
-              onPress={() => router.push('/profilePages/settings')}
+              onPress={() => setShowAvatarModal(true)}
               activeOpacity={0.7}
             >
               {tierBorderGradient ? (
@@ -1041,15 +1098,6 @@ export default function ProfileScreen() {
               />
             </TouchableOpacity>
 
-            {/* Messages */}
-            <TouchableOpacity
-              style={styles.socialIconButton}
-              onPress={() => router.push('/chatPages/chatList')}
-              activeOpacity={0.7}
-            >
-              <IconSymbol size={20} name="envelope.fill" color="#fff" />
-            </TouchableOpacity>
-
             {/* Edit Profile */}
             <TouchableOpacity
               style={styles.editProfileButton}
@@ -1072,7 +1120,6 @@ export default function ProfileScreen() {
             {/* Clips Section Header */}
             <View style={styles.sectionHeader}>
               <View style={styles.sectionHeaderLeft}>
-                <IconSymbol size={18} name="play.rectangle.fill" color="#fff" />
                 <ThemedText style={styles.sectionHeaderTitle}>Clips</ThemedText>
               </View>
             </View>
@@ -1154,7 +1201,6 @@ export default function ProfileScreen() {
           {/* Rank Cards Section Header */}
           <View style={styles.sectionHeader}>
             <View style={styles.sectionHeaderLeft}>
-              <IconSymbol size={18} name="star.fill" color="#fff" />
               <ThemedText style={styles.sectionHeaderTitle}>Rank Cards</ThemedText>
             </View>
           </View>
@@ -1340,7 +1386,6 @@ export default function ProfileScreen() {
           {/* Achievements Section Header */}
           <View style={styles.sectionHeader}>
             <View style={styles.sectionHeaderLeft}>
-              <IconSymbol size={18} name="trophy.fill" color="#fff" />
               <ThemedText style={styles.sectionHeaderTitle}>Achievements</ThemedText>
             </View>
           </View>
@@ -1402,6 +1447,7 @@ export default function ProfileScreen() {
         onCommentAdded={handleCommentAdded}
         onDelete={handleDeletePost}
         onEditCaption={handleEditCaption}
+        onArchive={handleArchivePost}
         enableVideoScrubber={false}
       />
 
@@ -1472,6 +1518,58 @@ export default function ProfileScreen() {
         </TouchableOpacity>
       </Modal>
 
+      {/* Avatar Preview Modal */}
+      <Modal
+        visible={showAvatarModal}
+        animationType="none"
+        transparent={true}
+        onRequestClose={() => setShowAvatarModal(false)}
+      >
+        <TouchableOpacity
+          style={styles.avatarModalOverlay}
+          activeOpacity={1}
+          onPress={() => setShowAvatarModal(false)}
+        >
+          <View style={styles.avatarModalContent}>
+            {tierBorderGradient ? (
+              <GradientBorder
+                colors={tierBorderGradient}
+                borderWidth={4}
+                borderRadius={100}
+              >
+                <View style={styles.avatarModalCircleWithGradient}>
+                  {user?.avatar && user.avatar.startsWith('http') && !avatarError ? (
+                    <Image
+                      source={{ uri: `${user.avatar}&t=${avatarKey}` }}
+                      style={styles.avatarModalImage}
+                      resizeMode="cover"
+                    />
+                  ) : (
+                    <ThemedText style={styles.avatarModalInitial}>
+                      {user?.username?.[0]?.toUpperCase() || 'U'}
+                    </ThemedText>
+                  )}
+                </View>
+              </GradientBorder>
+            ) : (
+              <View style={styles.avatarModalCircle}>
+                {user?.avatar && user.avatar.startsWith('http') && !avatarError ? (
+                  <Image
+                    source={{ uri: `${user.avatar}&t=${avatarKey}` }}
+                    style={styles.avatarModalImage}
+                    resizeMode="cover"
+                  />
+                ) : (
+                  <ThemedText style={styles.avatarModalInitial}>
+                    {user?.username?.[0]?.toUpperCase() || 'U'}
+                  </ThemedText>
+                )}
+              </View>
+            )}
+          </View>
+        </TouchableOpacity>
+      </Modal>
+
     </ThemedView>
   );
 }
@@ -1528,7 +1626,7 @@ const styles = StyleSheet.create({
     top: 0,
     left: 0,
     right: 0,
-    height: 80,
+    height: 50,
     zIndex: 1,
   },
   coverPhotoFadeBottom: {
@@ -2240,5 +2338,46 @@ const styles = StyleSheet.create({
     height: 1,
     backgroundColor: '#252525',
     marginLeft: 72,
+  },
+  // Avatar Modal styles
+  avatarModalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.9)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  avatarModalContent: {
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  avatarModalCircle: {
+    width: 200,
+    height: 200,
+    borderRadius: 100,
+    backgroundColor: '#36393e',
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 4,
+    borderColor: '#2c2f33',
+    overflow: 'hidden',
+  },
+  avatarModalCircleWithGradient: {
+    width: 200,
+    height: 200,
+    borderRadius: 100,
+    backgroundColor: '#36393e',
+    alignItems: 'center',
+    justifyContent: 'center',
+    overflow: 'hidden',
+  },
+  avatarModalImage: {
+    width: '100%',
+    height: '100%',
+    borderRadius: 100,
+  },
+  avatarModalInitial: {
+    fontSize: 72,
+    fontWeight: '700',
+    color: '#fff',
   },
 });
