@@ -17,6 +17,7 @@ interface Leaderboard {
   icon: string;
   game: string;
   members: number;
+  maxMembers?: number;
   userRank?: number | null;
   isJoined?: boolean;
   players?: any[];
@@ -80,6 +81,7 @@ const calculateDaysInfo = (startDate: any, endDate: any): { currentDay: number; 
 export default function LeaderboardCard({ leaderboard, onPress, showDivider = true }: LeaderboardCardProps) {
   const daysInfo = calculateDaysInfo(leaderboard.startDate, leaderboard.endDate);
   const gameLogo = GAME_LOGOS[leaderboard.game];
+  const maxMembers = leaderboard.maxMembers ?? 10;
 
   // Get gradient colors based on game
   const getGradientColors = (): [string, string, string] => {
@@ -94,226 +96,235 @@ export default function LeaderboardCard({ leaderboard, onPress, showDivider = tr
   ).slice(0, 3);
 
   return (
-    <>
-      <TouchableOpacity
-        activeOpacity={0.7}
-        onPress={() => onPress(leaderboard)}
-        style={styles.container}
+    <TouchableOpacity
+      activeOpacity={0.8}
+      onPress={() => onPress(leaderboard)}
+      style={styles.container}
+    >
+      <LinearGradient
+        colors={getGradientColors()}
+        start={{ x: 0, y: 0 }}
+        end={{ x: 1, y: 1 }}
+        style={styles.gradientBorder}
       >
-        <LinearGradient
-          colors={getGradientColors()}
-          start={{ x: 0, y: 0 }}
-          end={{ x: 1, y: 1 }}
-          style={styles.gradientBorder}
-        >
-          <View style={styles.innerContent}>
-        <View style={styles.content}>
-          {/* Leaderboard Icon */}
-          {leaderboard.partyIcon ? (
-            <View style={styles.iconContainer}>
+        <View style={styles.innerContent}>
+          {/* Left Section - Leaderboard Icon */}
+          <View style={styles.leftSection}>
+            {leaderboard.partyIcon ? (
               <Image
                 source={{ uri: leaderboard.partyIcon }}
                 style={styles.leaderboardIcon}
                 resizeMode="cover"
               />
-            </View>
-          ) : (
-            <View style={styles.iconPlaceholder}>
-              <ThemedText style={styles.iconPlaceholderText}>
-                {leaderboard.name.charAt(0).toUpperCase()}
-              </ThemedText>
-            </View>
-          )}
+            ) : (
+              <View style={styles.iconPlaceholder}>
+                <ThemedText style={styles.iconPlaceholderText}>
+                  {leaderboard.name.charAt(0).toUpperCase()}
+                </ThemedText>
+              </View>
+            )}
+          </View>
 
-          {/* Info */}
-          <View style={styles.info}>
+          {/* Center Section - Name & Game */}
+          <View style={styles.centerSection}>
             <ThemedText style={styles.name} numberOfLines={1}>
-              {leaderboard.name}
+              {leaderboard.name.toUpperCase()}
             </ThemedText>
-            <View style={styles.metaRow}>
+            <View style={styles.gameRow}>
+              <ThemedText style={styles.gameName}>{leaderboard.game}</ThemedText>
               {gameLogo && (
-                <Image source={gameLogo} style={styles.gameLogo} resizeMode="contain" />
+                <>
+                  <View style={styles.gameDivider} />
+                  <Image source={gameLogo} style={styles.gameLogoInline} resizeMode="contain" />
+                </>
               )}
-              <ThemedText style={styles.meta}>
-                {leaderboard.game}
-              </ThemedText>
-              <View style={styles.statsRow}>
-                <View style={styles.statItem}>
-                  <IconSymbol size={14} name="person.2.fill" color="#fff" />
-                  <ThemedText style={styles.statText}>{leaderboard.members}</ThemedText>
+            </View>
+            {/* Top players indicator */}
+            {topPlayers.length > 0 && (
+              <View style={styles.playersRow}>
+                <View style={styles.stackedAvatars}>
+                  {topPlayers.map((player, index) => (
+                    <View
+                      key={player.odId || index}
+                      style={[
+                        styles.miniAvatar,
+                        { marginLeft: index === 0 ? 0 : -6, zIndex: 5 - index }
+                      ]}
+                    >
+                      {player.photoUrl ? (
+                        <Image
+                          source={{ uri: player.photoUrl }}
+                          style={styles.miniAvatarImage}
+                        />
+                      ) : (
+                        <View style={styles.miniAvatarPlaceholder}>
+                          <ThemedText style={styles.miniAvatarText}>
+                            {(player.displayName || '?').charAt(0)}
+                          </ThemedText>
+                        </View>
+                      )}
+                    </View>
+                  ))}
                 </View>
                 {daysInfo && (
-                  <View style={styles.statItem}>
-                    <IconSymbol size={14} name="hourglass" color="#fff" />
-                    <ThemedText style={styles.statText}>{daysInfo.daysLeft}d</ThemedText>
-                  </View>
+                  <ThemedText style={styles.daysLeftText}>
+                    {daysInfo.daysLeft}d left
+                  </ThemedText>
                 )}
               </View>
+            )}
+          </View>
+
+          {/* Right Section - Member Count */}
+          <View style={styles.rightSection}>
+            <View style={styles.memberCount}>
+              <IconSymbol size={16} name="person.2.fill" color="#888" />
+              <ThemedText style={styles.memberText}>
+                <ThemedText style={styles.currentMembers}>{leaderboard.members}</ThemedText>
+                <ThemedText style={styles.maxMembers}>/{maxMembers}</ThemedText>
+              </ThemedText>
             </View>
           </View>
 
-          {/* Right Side - Stacked Profile Avatars */}
-          {topPlayers.length > 0 && (
-          <View style={styles.stackedAvatars}>
-            {topPlayers.map((player, index) => (
-              <View
-                key={player.odId || index}
-                style={[
-                  styles.stackedAvatarContainer,
-                  { zIndex: 5 - index, marginLeft: index === 0 ? 0 : -10 }
-                ]}
-              >
-                {player.photoUrl ? (
-                  <Image
-                    source={{ uri: player.photoUrl }}
-                    style={styles.stackedAvatar}
-                    resizeMode="cover"
-                  />
-                ) : (
-                  <View style={styles.stackedAvatarPlaceholder}>
-                    <ThemedText style={styles.stackedAvatarText}>
-                      {(player.displayName || player.username || '?').charAt(0).toUpperCase()}
-                    </ThemedText>
-                  </View>
-                )}
-              </View>
-            ))}
+          {/* Enter Arrow */}
+          <View style={styles.enterArrow}>
+            <IconSymbol size={18} name="chevron.right" color="#555" />
           </View>
-          )}
         </View>
-          </View>
-        </LinearGradient>
-      </TouchableOpacity>
-      {showDivider && <View style={styles.divider} />}
-    </>
+      </LinearGradient>
+    </TouchableOpacity>
   );
 }
 
 const styles = StyleSheet.create({
   container: {
-    borderRadius: 12,
-    shadowColor: '#000',
-    shadowOffset: {
-      width: -3,
-      height: 4,
-    },
-    shadowOpacity: 0.5,
-    shadowRadius: 6,
-    elevation: 8,
+    marginBottom: 10,
   },
   gradientBorder: {
-    borderRadius: 12,
-    padding: 1.5,
+    borderRadius: 0,
+    padding: 2,
   },
   innerContent: {
-    backgroundColor: '#252525',
-    borderRadius: 10,
-    overflow: 'hidden',
-  },
-  content: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingVertical: 24,
-    paddingHorizontal: 12,
-    gap: 14,
-  },
-  iconContainer: {
-    width: 52,
-    height: 52,
-    borderRadius: 10,
-    overflow: 'hidden',
     backgroundColor: '#1a1a1a',
+    paddingVertical: 10,
+    paddingHorizontal: 12,
+  },
+  leftSection: {
+    marginRight: 14,
   },
   leaderboardIcon: {
-    width: '100%',
-    height: '100%',
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    backgroundColor: '#2a2a2a',
   },
   iconPlaceholder: {
-    width: 52,
-    height: 52,
-    borderRadius: 10,
-    backgroundColor: '#1a1a1a',
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    backgroundColor: '#2a2a2a',
     alignItems: 'center',
     justifyContent: 'center',
+    borderWidth: 1,
+    borderColor: '#444',
   },
   iconPlaceholderText: {
-    fontSize: 20,
+    fontSize: 18,
     fontWeight: '700',
-    color: '#444',
+    color: '#666',
   },
-  info: {
+  centerSection: {
     flex: 1,
-    gap: 6,
+    justifyContent: 'center',
+    minHeight: 72,
   },
   name: {
-    fontSize: 16,
+    fontSize: 17,
     fontWeight: '600',
     color: '#fff',
+    letterSpacing: 0.5,
   },
-  metaRow: {
+  gameRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 6,
+    marginTop: 2,
   },
-  gameLogo: {
+  gameName: {
+    fontSize: 13,
+    color: '#888',
+  },
+  gameDivider: {
+    width: 1,
+    height: 10,
+    backgroundColor: '#555',
+    marginHorizontal: 8,
+  },
+  gameLogoInline: {
     width: 16,
     height: 16,
     opacity: 0.8,
   },
-  meta: {
-    fontSize: 14,
-    color: '#fff',
-  },
-  statsRow: {
+  playersRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 10,
-    marginLeft: 6,
-  },
-  statItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 4,
-  },
-  statText: {
-    fontSize: 13,
-    color: '#fff',
-    fontWeight: '500',
+    marginTop: 4,
   },
   stackedAvatars: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginBottom: 16,
   },
-  stackedAvatarContainer: {
-    width: 32,
-    height: 32,
-    borderRadius: 16,
-    borderWidth: 2,
-    borderColor: '#252525',
+  miniAvatar: {
+    width: 18,
+    height: 18,
+    borderRadius: 9,
+    borderWidth: 1.5,
+    borderColor: '#1a1a1a',
     overflow: 'hidden',
   },
-  stackedAvatar: {
+  miniAvatarImage: {
     width: '100%',
     height: '100%',
   },
-  stackedAvatarPlaceholder: {
+  miniAvatarPlaceholder: {
     width: '100%',
     height: '100%',
     backgroundColor: '#333',
     alignItems: 'center',
     justifyContent: 'center',
   },
-  stackedAvatarText: {
-    fontSize: 11,
+  miniAvatarText: {
+    fontSize: 8,
     fontWeight: '600',
     color: '#888',
   },
-  divider: {
-    height: 1,
-    backgroundColor: '#333',
-    marginVertical: 10,
-    width: '30%',
-    alignSelf: 'center',
+  daysLeftText: {
+    fontSize: 12,
+    color: '#666',
+    marginLeft: 8,
+  },
+  rightSection: {
+    alignItems: 'flex-end',
+    marginRight: 8,
+  },
+  memberCount: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+  },
+  memberText: {
+    fontSize: 14,
+  },
+  currentMembers: {
+    color: '#fff',
+    fontWeight: '600',
+  },
+  maxMembers: {
+    color: '#666',
+    fontWeight: '400',
+  },
+  enterArrow: {
+    paddingLeft: 4,
   },
 });

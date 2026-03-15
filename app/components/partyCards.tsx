@@ -1,5 +1,5 @@
 import { ThemedText } from '@/components/themed-text';
-import { Image, ImageBackground, StyleSheet, TouchableOpacity, View } from 'react-native';
+import { Image, StyleSheet, TouchableOpacity, View } from 'react-native';
 import { IconSymbol } from '@/components/ui/icon-symbol';
 
 // Game logo mapping
@@ -23,6 +23,7 @@ interface Leaderboard {
   icon: string;
   game: string;
   members: number;
+  maxMembers?: number;
   userRank?: number | null;
   isJoined?: boolean;
   players?: any[];
@@ -42,253 +43,228 @@ interface PartyCardsProps {
 }
 
 export default function PartyCards({ leaderboard, onPress, showDivider = true }: PartyCardsProps) {
-  const isLeaderboard = leaderboard.type === 'leaderboard';
-  const isParty = leaderboard.type === 'party';
   const gameLogo = GAME_LOGOS[leaderboard.game];
+  const maxMembers = leaderboard.maxMembers ?? 10;
 
   // Get up to 3 mutual followers for stacked avatars
   const mutualFollowers = (leaderboard.mutualFollowers || []).slice(0, 3);
 
-  const cardContent = (
-    <View style={styles.content}>
-      {/* Party Icon */}
-      {leaderboard.partyIcon ? (
-        <View style={styles.iconContainer}>
+  return (
+    <TouchableOpacity
+      activeOpacity={0.8}
+      onPress={() => onPress(leaderboard)}
+      style={styles.container}
+    >
+      {/* Left Section - Party Icon */}
+      <View style={styles.leftSection}>
+        {leaderboard.partyIcon ? (
           <Image
             source={{ uri: leaderboard.partyIcon }}
-            style={styles.icon}
+            style={styles.partyIcon}
             resizeMode="cover"
           />
-        </View>
-      ) : (
-        <View style={styles.iconPlaceholder}>
-          <ThemedText style={styles.iconPlaceholderText}>
-            {leaderboard.name.charAt(0).toUpperCase()}
-          </ThemedText>
-        </View>
-      )}
-
-      {/* Info */}
-      <View style={styles.info}>
-        <ThemedText style={styles.name} numberOfLines={1}>
-          {leaderboard.name}
-        </ThemedText>
-        <View style={styles.metaRow}>
-          {gameLogo && (
-            <Image source={gameLogo} style={styles.gameLogo} resizeMode="contain" />
-          )}
-          <ThemedText style={styles.meta} numberOfLines={1}>
-            {leaderboard.game}
-          </ThemedText>
-          <View style={styles.statsRow}>
-            <View style={styles.statItem}>
-              <IconSymbol size={14} name="person.2.fill" color="#fff" />
-              <ThemedText style={styles.statText}>{leaderboard.members}</ThemedText>
-            </View>
+        ) : (
+          <View style={styles.iconPlaceholder}>
+            <ThemedText style={styles.iconPlaceholderText}>
+              {leaderboard.name.charAt(0).toUpperCase()}
+            </ThemedText>
           </View>
+        )}
+      </View>
+
+      {/* Center Section - Party Name & Game */}
+      <View style={styles.centerSection}>
+        <ThemedText style={styles.partyName} numberOfLines={1}>
+          {leaderboard.name.toUpperCase()}
+        </ThemedText>
+        <View style={styles.gameRow}>
+          <ThemedText style={styles.gameName}>{leaderboard.game}</ThemedText>
+          {gameLogo && (
+            <>
+              <View style={styles.gameDivider} />
+              <Image source={gameLogo} style={styles.gameLogoInline} resizeMode="contain" />
+            </>
+          )}
+        </View>
+        {/* Mutual followers indicator */}
+        {mutualFollowers.length > 0 && (
+          <View style={styles.mutualRow}>
+            <View style={styles.stackedAvatars}>
+              {mutualFollowers.map((follower, index) => (
+                <View
+                  key={follower.odId || index}
+                  style={[
+                    styles.miniAvatar,
+                    { marginLeft: index === 0 ? 0 : -6, zIndex: 5 - index }
+                  ]}
+                >
+                  {follower.photoUrl ? (
+                    <Image
+                      source={{ uri: follower.photoUrl }}
+                      style={styles.miniAvatarImage}
+                    />
+                  ) : (
+                    <View style={styles.miniAvatarPlaceholder}>
+                      <ThemedText style={styles.miniAvatarText}>
+                        {(follower.displayName || '?').charAt(0)}
+                      </ThemedText>
+                    </View>
+                  )}
+                </View>
+              ))}
+            </View>
+            <ThemedText style={styles.mutualText}>
+              {mutualFollowers.length} mutual{mutualFollowers.length > 1 ? 's' : ''}
+            </ThemedText>
+          </View>
+        )}
+      </View>
+
+      {/* Right Section - Member Count */}
+      <View style={styles.rightSection}>
+        <View style={styles.memberCount}>
+          <IconSymbol size={16} name="person.2.fill" color="#888" />
+          <ThemedText style={styles.memberText}>
+            <ThemedText style={styles.currentMembers}>{leaderboard.members}</ThemedText>
+            <ThemedText style={styles.maxMembers}>/{maxMembers}</ThemedText>
+          </ThemedText>
         </View>
       </View>
 
-      {/* Right Side - Stacked Mutual Follower Avatars */}
-      {mutualFollowers.length > 0 && (
-        <View style={styles.stackedAvatars}>
-          {mutualFollowers.map((follower, index) => (
-            <View
-              key={follower.odId || index}
-              style={[
-                styles.stackedAvatarContainer,
-                { zIndex: 5 - index, marginLeft: index === 0 ? 0 : -10 }
-              ]}
-            >
-              {follower.photoUrl ? (
-                <Image
-                  source={{ uri: follower.photoUrl }}
-                  style={styles.stackedAvatar}
-                  resizeMode="cover"
-                />
-              ) : (
-                <View style={styles.stackedAvatarPlaceholder}>
-                  <ThemedText style={styles.stackedAvatarText}>
-                    {(follower.displayName || follower.username || '?').charAt(0).toUpperCase()}
-                  </ThemedText>
-                </View>
-              )}
-            </View>
-          ))}
-        </View>
-      )}
-    </View>
-  );
-
-  return (
-    <>
-      <TouchableOpacity
-        activeOpacity={0.7}
-        onPress={() => onPress(leaderboard)}
-        style={styles.container}
-      >
-        {leaderboard.coverPhoto ? (
-          <View style={styles.coverWrapper}>
-            <ImageBackground
-              source={{ uri: leaderboard.coverPhoto }}
-              style={styles.coverBackground}
-              imageStyle={styles.coverImage}
-              resizeMode="cover"
-            >
-              <View style={styles.coverOverlay} />
-            </ImageBackground>
-            <View style={styles.contentOverCover}>
-              {cardContent}
-            </View>
-          </View>
-        ) : (
-          cardContent
-        )}
-      </TouchableOpacity>
-      {showDivider && <View style={styles.divider} />}
-    </>
+      {/* Enter Arrow */}
+      <View style={styles.enterArrow}>
+        <IconSymbol size={18} name="chevron.right" color="#555" />
+      </View>
+    </TouchableOpacity>
   );
 }
 
 const styles = StyleSheet.create({
   container: {
-    backgroundColor: '#252525',
-    borderRadius: 12,
-    shadowColor: '#000',
-    shadowOffset: {
-      width: -3,
-      height: 4,
-    },
-    shadowOpacity: 0.5,
-    shadowRadius: 6,
-    elevation: 8,
-  },
-  coverWrapper: {
-    position: 'relative',
-    borderRadius: 12,
-    overflow: 'hidden',
-  },
-  coverBackground: {
-    position: 'absolute',
-    top: 0,
-    left: 0,
-    right: 0,
-    bottom: 0,
-  },
-  coverImage: {
-    opacity: 0.35,
-  },
-  coverOverlay: {
-    ...StyleSheet.absoluteFillObject,
-    backgroundColor: 'rgba(0, 0, 0, 0.3)',
-  },
-  contentOverCover: {
-    position: 'relative',
-  },
-  content: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingVertical: 24,
-    paddingHorizontal: 12,
-    gap: 14,
+    backgroundColor: 'transparent',
+    borderWidth: 2,
+    borderColor: '#3a3a3a',
+    borderRadius: 0,
+    paddingVertical: 12,
+    paddingHorizontal: 14,
+    marginBottom: 10,
   },
-  iconContainer: {
-    width: 52,
-    height: 52,
-    borderRadius: 10,
-    overflow: 'hidden',
-    backgroundColor: '#1a1a1a',
+  leftSection: {
+    marginRight: 14,
   },
-  icon: {
-    width: '100%',
-    height: '100%',
+  partyIcon: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    backgroundColor: '#2a2a2a',
   },
   iconPlaceholder: {
-    width: 52,
-    height: 52,
-    borderRadius: 10,
-    backgroundColor: '#1a1a1a',
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    backgroundColor: '#2a2a2a',
     alignItems: 'center',
     justifyContent: 'center',
+    borderWidth: 1,
+    borderColor: '#444',
   },
   iconPlaceholderText: {
-    fontSize: 20,
+    fontSize: 18,
     fontWeight: '700',
-    color: '#444',
+    color: '#666',
   },
-  info: {
+  centerSection: {
     flex: 1,
-    gap: 6,
+    justifyContent: 'center',
+    minHeight: 72,
   },
-  name: {
-    fontSize: 16,
+  partyName: {
+    fontSize: 17,
     fontWeight: '600',
     color: '#fff',
+    letterSpacing: 0.5,
   },
-  metaRow: {
+  gameRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 6,
+    marginTop: 2,
   },
-  gameLogo: {
+  gameName: {
+    fontSize: 13,
+    color: '#888',
+  },
+  gameDivider: {
+    width: 1,
+    height: 10,
+    backgroundColor: '#555',
+    marginHorizontal: 8,
+  },
+  gameLogoInline: {
     width: 16,
     height: 16,
     opacity: 0.8,
   },
-  meta: {
-    fontSize: 14,
-    color: '#fff',
-  },
-  statsRow: {
+  mutualRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 10,
-    marginLeft: 6,
-  },
-  statItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 4,
-  },
-  statText: {
-    fontSize: 13,
-    color: '#fff',
-    fontWeight: '500',
+    marginTop: 4,
   },
   stackedAvatars: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginBottom: 16,
   },
-  stackedAvatarContainer: {
-    width: 32,
-    height: 32,
-    borderRadius: 16,
-    borderWidth: 2,
-    borderColor: '#0f0f0f',
+  miniAvatar: {
+    width: 18,
+    height: 18,
+    borderRadius: 9,
+    borderWidth: 1.5,
+    borderColor: '#1a1a1a',
     overflow: 'hidden',
   },
-  stackedAvatar: {
+  miniAvatarImage: {
     width: '100%',
     height: '100%',
   },
-  stackedAvatarPlaceholder: {
+  miniAvatarPlaceholder: {
     width: '100%',
     height: '100%',
     backgroundColor: '#333',
     alignItems: 'center',
     justifyContent: 'center',
   },
-  stackedAvatarText: {
-    fontSize: 11,
+  miniAvatarText: {
+    fontSize: 8,
     fontWeight: '600',
     color: '#888',
   },
-  divider: {
-    height: 1,
-    backgroundColor: '#333',
-    marginVertical: 10,
-    width: '30%',
-    alignSelf: 'center',
+  mutualText: {
+    fontSize: 12,
+    color: '#666',
+    marginLeft: 6,
+  },
+  rightSection: {
+    alignItems: 'flex-end',
+    marginRight: 8,
+  },
+  memberCount: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+  },
+  memberText: {
+    fontSize: 14,
+  },
+  currentMembers: {
+    color: '#fff',
+    fontWeight: '400',
+  },
+  maxMembers: {
+    color: '#666',
+    fontWeight: '400',
+  },
+  enterArrow: {
+    paddingLeft: 4,
   },
 });

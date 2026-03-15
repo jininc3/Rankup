@@ -63,6 +63,7 @@ export default function CreatePartySimpleScreen() {
   const [uploading, setUploading] = useState(false);
   const [inviteModalVisible, setInviteModalVisible] = useState(false);
   const [invitePermission, setInvitePermission] = useState<'leader_only' | 'anyone'>('leader_only');
+  const [maxMembers, setMaxMembers] = useState<number>(10);
 
   useEffect(() => {
     const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
@@ -230,6 +231,7 @@ export default function CreatePartySimpleScreen() {
         game: selectedGame.name,
         gameId: selectedGame.id,
         type: 'party',
+        maxMembers,
         inviteCode: inviteCode || '',
         invitePermission,
         createdBy: user.id,
@@ -417,6 +419,28 @@ export default function CreatePartySimpleScreen() {
                     styles.gameOptionName,
                     selectedGame?.id === game.id && styles.gameOptionNameSelected
                   ]}>{game.name}</ThemedText>
+                </TouchableOpacity>
+              ))}
+            </View>
+          </View>
+
+          {/* Max Members */}
+          <View style={styles.inputGroup}>
+            <ThemedText style={styles.label}>Max Members</ThemedText>
+            <View style={styles.maxMembersRow}>
+              {[5, 10, 20].map((limit) => (
+                <TouchableOpacity
+                  key={limit}
+                  style={[
+                    styles.maxMembersButton,
+                    maxMembers === limit && styles.maxMembersButtonActive
+                  ]}
+                  onPress={() => setMaxMembers(limit)}
+                >
+                  <ThemedText style={[
+                    styles.maxMembersButtonText,
+                    maxMembers === limit && styles.maxMembersButtonTextActive
+                  ]}>{limit}</ThemedText>
                 </TouchableOpacity>
               ))}
             </View>
@@ -787,6 +811,32 @@ const styles = StyleSheet.create({
     color: '#666',
   },
   gameOptionNameSelected: {
+    color: '#fff',
+  },
+  // Max Members
+  maxMembersRow: {
+    flexDirection: 'row',
+    gap: 10,
+  },
+  maxMembersButton: {
+    flex: 1,
+    backgroundColor: '#1a1a1a',
+    borderRadius: 10,
+    paddingVertical: 14,
+    alignItems: 'center',
+    borderWidth: 1.5,
+    borderColor: 'transparent',
+  },
+  maxMembersButtonActive: {
+    backgroundColor: '#c42743',
+    borderColor: '#c42743',
+  },
+  maxMembersButtonText: {
+    fontSize: 15,
+    fontWeight: '600',
+    color: '#666',
+  },
+  maxMembersButtonTextActive: {
     color: '#fff',
   },
   // Invite Code

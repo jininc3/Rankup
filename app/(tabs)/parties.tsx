@@ -107,6 +107,7 @@ export default function LeaderboardScreen() {
             name: data.partyName,
             game: data.game,
             members: data.members?.length || 0,
+            maxMembers: data.maxMembers || 10,
             memberIds: data.members || [],
             memberDetails: data.memberDetails || [],
             description: `Created on ${data.startDate}`,
