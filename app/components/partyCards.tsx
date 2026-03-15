@@ -1,6 +1,5 @@
 import { ThemedText } from '@/components/themed-text';
 import { Image, StyleSheet, TouchableOpacity, View } from 'react-native';
-import { IconSymbol } from '@/components/ui/icon-symbol';
 
 // Game logo mapping
 const GAME_LOGOS: { [key: string]: any } = {
@@ -8,6 +7,13 @@ const GAME_LOGOS: { [key: string]: any } = {
   'League of Legends': require('@/assets/images/lol-icon.png'),
   'League': require('@/assets/images/lol-icon.png'),
   'Apex Legends': require('@/assets/images/apex.png'),
+};
+
+// Background image mapping
+const GAME_BACKGROUNDS: { [key: string]: any } = {
+  'Valorant': require('@/assets/images/valorant-red.png'),
+  'League of Legends': require('@/assets/images/lol.png'),
+  'League': require('@/assets/images/lol.png'),
 };
 
 interface MutualFollower {
@@ -34,6 +40,7 @@ interface Leaderboard {
   partyIcon?: string;
   coverPhoto?: string;
   mutualFollowers?: MutualFollower[];
+  invitePermission?: 'leader_only' | 'anyone';
 }
 
 interface PartyCardsProps {
@@ -42,15 +49,26 @@ interface PartyCardsProps {
   showDivider?: boolean;
 }
 
-export default function PartyCards({ leaderboard, onPress, showDivider = true }: PartyCardsProps) {
+export default function PartyCards({ leaderboard, onPress }: PartyCardsProps) {
   const gameLogo = GAME_LOGOS[leaderboard.game];
+  const gameBackground = GAME_BACKGROUNDS[leaderboard.game];
   const maxMembers = leaderboard.maxMembers ?? 10;
 
   // Get up to 3 mutual followers for stacked avatars
   const mutualFollowers = (leaderboard.mutualFollowers || []).slice(0, 3);
 
-  // Get the first place player (leader)
-  const leader = leaderboard.players && leaderboard.players.length > 0 ? leaderboard.players[0] : null;
+  // Get border color based on game
+  const getBorderColor = (): string => {
+    if (leaderboard.game === 'Valorant') return '#c42743';
+    if (leaderboard.game === 'League of Legends' || leaderboard.game === 'League') return '#0a84ff';
+    return '#333';
+  };
+
+  // Get format text based on invite permission
+  const getFormatText = (): string => {
+    if (leaderboard.invitePermission === 'anyone') return 'Public';
+    return 'Invite Only';
+  };
 
   return (
     <TouchableOpacity
@@ -58,106 +76,109 @@ export default function PartyCards({ leaderboard, onPress, showDivider = true }:
       onPress={() => onPress(leaderboard)}
       style={styles.container}
     >
-      {/* Left Section - Party Icon */}
-      <View style={styles.leftSection}>
-        {leaderboard.partyIcon ? (
+      <View style={[styles.card, { borderColor: getBorderColor() }]}>
+        {/* Background Logo */}
+        {gameBackground && (
           <Image
-            source={{ uri: leaderboard.partyIcon }}
-            style={styles.partyIcon}
-            resizeMode="cover"
+            source={gameBackground}
+            style={[
+              styles.backgroundLogo,
+              (leaderboard.game === 'League of Legends' || leaderboard.game === 'League') && styles.backgroundLogoLol
+            ]}
+            resizeMode="contain"
           />
-        ) : (
-          <View style={styles.iconPlaceholder}>
-            <ThemedText style={styles.iconPlaceholderText}>
-              {leaderboard.name.charAt(0).toUpperCase()}
-            </ThemedText>
-          </View>
         )}
-      </View>
 
-      {/* Center Section - Party Name & Game */}
-      <View style={styles.centerSection}>
-        <ThemedText style={styles.partyName} numberOfLines={1}>
-          {leaderboard.name.toUpperCase()}
-        </ThemedText>
-        <View style={styles.gameRow}>
-          <ThemedText style={styles.gameName}>{leaderboard.game}</ThemedText>
-          {gameLogo && (
-            <>
-              <View style={styles.gameDivider} />
-              <Image source={gameLogo} style={styles.gameLogoInline} resizeMode="contain" />
-            </>
+        {/* Header Section - Icon & Name */}
+        <View style={styles.headerSection}>
+          {leaderboard.partyIcon ? (
+            <Image
+              source={{ uri: leaderboard.partyIcon }}
+              style={styles.partyIcon}
+              resizeMode="cover"
+            />
+          ) : gameLogo ? (
+            <Image
+              source={gameLogo}
+              style={styles.partyIcon}
+              resizeMode="contain"
+            />
+          ) : (
+            <View style={styles.iconPlaceholder}>
+              <ThemedText style={styles.iconPlaceholderText}>
+                {leaderboard.name.charAt(0).toUpperCase()}
+              </ThemedText>
+            </View>
           )}
+          <View style={styles.headerInfo}>
+            <ThemedText style={styles.name} numberOfLines={1}>
+              {leaderboard.name.toUpperCase()}
+            </ThemedText>
+            <ThemedText style={styles.gameName}>{leaderboard.game}</ThemedText>
+          </View>
         </View>
-        {/* Mutual followers indicator */}
-        {mutualFollowers.length > 0 && (
-          <View style={styles.mutualRow}>
-            <View style={styles.stackedAvatars}>
-              {mutualFollowers.map((follower, index) => (
-                <View
-                  key={follower.odId || index}
-                  style={[
-                    styles.miniAvatar,
-                    { marginLeft: index === 0 ? 0 : -6, zIndex: 5 - index }
-                  ]}
-                >
-                  {follower.photoUrl ? (
-                    <Image
-                      source={{ uri: follower.photoUrl }}
-                      style={styles.miniAvatarImage}
-                    />
-                  ) : (
-                    <View style={styles.miniAvatarPlaceholder}>
-                      <ThemedText style={styles.miniAvatarText}>
-                        {(follower.displayName || '?').charAt(0)}
-                      </ThemedText>
-                    </View>
-                  )}
-                </View>
-              ))}
-            </View>
-            <ThemedText style={styles.mutualText}>
-              {mutualFollowers.length} mutual{mutualFollowers.length > 1 ? 's' : ''}
+
+        {/* Divider */}
+        <View style={styles.divider} />
+
+        {/* Info Rows */}
+        <View style={styles.infoSection}>
+          <View style={styles.infoRow}>
+            <ThemedText style={styles.infoLabel}>Type</ThemedText>
+            <ThemedText style={styles.infoValue}>Party</ThemedText>
+          </View>
+
+          <View style={styles.infoRow}>
+            <ThemedText style={styles.infoLabel}>Players</ThemedText>
+            <ThemedText style={styles.infoValue}>
+              {leaderboard.members}/{maxMembers === 0 ? '∞' : maxMembers}
             </ThemedText>
           </View>
-        )}
-      </View>
 
-      {/* Right Section - Leader & Member Count */}
-      <View style={styles.rightSection}>
-        {/* Leader Avatar with Crown - Only for leaderboards */}
-        {leader && leaderboard.type === 'leaderboard' && (
-          <View style={styles.leaderContainer}>
-            <View style={styles.crownBadge}>
-              <IconSymbol size={10} name="crown.fill" color="#FFD700" />
-            </View>
-            <View style={styles.leaderAvatar}>
-              {leader.avatar ? (
-                <Image source={{ uri: leader.avatar }} style={styles.leaderAvatarImage} />
-              ) : (
-                <View style={styles.leaderAvatarPlaceholder}>
-                  <ThemedText style={styles.leaderAvatarText}>
-                    {(leader.username || '?').charAt(0).toUpperCase()}
-                  </ThemedText>
+          <View style={styles.infoRow}>
+            <ThemedText style={styles.infoLabel}>Format</ThemedText>
+            <ThemedText style={styles.infoValue}>{getFormatText()}</ThemedText>
+          </View>
+
+          <View style={styles.infoRow}>
+            <ThemedText style={styles.infoLabel}>Mutuals</ThemedText>
+            <View style={styles.mutualsValue}>
+              {mutualFollowers.length > 0 ? (
+                <View style={styles.stackedAvatars}>
+                  {mutualFollowers.map((follower, index) => (
+                    <View
+                      key={follower.odId || index}
+                      style={[
+                        styles.miniAvatar,
+                        { marginLeft: index === 0 ? 0 : -8, zIndex: 5 - index }
+                      ]}
+                    >
+                      {follower.photoUrl ? (
+                        <Image
+                          source={{ uri: follower.photoUrl }}
+                          style={styles.miniAvatarImage}
+                        />
+                      ) : (
+                        <View style={styles.miniAvatarPlaceholder}>
+                          <ThemedText style={styles.miniAvatarText}>
+                            {(follower.displayName || '?').charAt(0)}
+                          </ThemedText>
+                        </View>
+                      )}
+                    </View>
+                  ))}
                 </View>
+              ) : (
+                <ThemedText style={styles.infoValue}>-</ThemedText>
               )}
             </View>
           </View>
-        )}
-        <View style={styles.memberCount}>
-          <IconSymbol size={16} name="person.2.fill" color="#888" />
-          <ThemedText style={styles.memberText}>
-            <ThemedText style={styles.currentMembers}>{leaderboard.members}</ThemedText>
-            {maxMembers > 0 && (
-              <ThemedText style={styles.maxMembers}>/{maxMembers}</ThemedText>
-            )}
-          </ThemedText>
         </View>
-      </View>
 
-      {/* Enter Arrow */}
-      <View style={styles.enterArrow}>
-        <IconSymbol size={18} name="chevron.right" color="#555" />
+        {/* View Button */}
+        <View style={styles.viewButton}>
+          <ThemedText style={styles.viewButtonText}>View Party</ThemedText>
+        </View>
       </View>
     </TouchableOpacity>
   );
@@ -165,29 +186,48 @@ export default function PartyCards({ leaderboard, onPress, showDivider = true }:
 
 const styles = StyleSheet.create({
   container: {
+    marginBottom: 12,
+    paddingHorizontal: 4,
+  },
+  card: {
+    backgroundColor: '#1a1a1a',
+    borderRadius: 16,
+    padding: 16,
+    borderWidth: 1,
+    overflow: 'hidden',
+  },
+  backgroundLogo: {
+    position: 'absolute',
+    top: '50%',
+    left: '50%',
+    width: 140,
+    height: 140,
+    marginTop: -70,
+    marginLeft: -60,
+    opacity: 0.06,
+  },
+  backgroundLogoLol: {
+    width: 180,
+    height: 180,
+    marginTop: -90,
+    marginLeft: -75,
+  },
+  // Header Section
+  headerSection: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: 'transparent',
-    borderWidth: 2,
-    borderColor: '#3a3a3a',
-    borderRadius: 0,
-    paddingVertical: 12,
-    paddingHorizontal: 14,
-    marginBottom: 10,
-  },
-  leftSection: {
-    marginRight: 14,
+    marginBottom: 14,
   },
   partyIcon: {
-    width: 44,
-    height: 44,
-    borderRadius: 22,
+    width: 56,
+    height: 56,
+    borderRadius: 12,
     backgroundColor: '#2a2a2a',
   },
   iconPlaceholder: {
-    width: 44,
-    height: 44,
-    borderRadius: 22,
+    width: 56,
+    height: 56,
+    borderRadius: 12,
     backgroundColor: '#2a2a2a',
     alignItems: 'center',
     justifyContent: 'center',
@@ -195,55 +235,63 @@ const styles = StyleSheet.create({
     borderColor: '#444',
   },
   iconPlaceholderText: {
-    fontSize: 18,
+    fontSize: 22,
     fontWeight: '700',
     color: '#666',
   },
-  centerSection: {
+  headerInfo: {
     flex: 1,
-    justifyContent: 'center',
-    minHeight: 72,
+    marginLeft: 14,
   },
-  partyName: {
-    fontSize: 17,
-    fontWeight: '600',
+  name: {
+    fontSize: 18,
+    fontWeight: '700',
     color: '#fff',
     letterSpacing: 0.5,
-  },
-  gameRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginTop: 2,
+    marginBottom: 4,
   },
   gameName: {
-    fontSize: 13,
+    fontSize: 14,
     color: '#888',
   },
-  gameDivider: {
-    width: 1,
-    height: 10,
-    backgroundColor: '#555',
-    marginHorizontal: 8,
+  // Divider
+  divider: {
+    height: 1,
+    backgroundColor: '#333',
+    marginBottom: 14,
   },
-  gameLogoInline: {
-    width: 16,
-    height: 16,
-    opacity: 0.8,
+  // Info Section
+  infoSection: {
+    gap: 10,
   },
-  mutualRow: {
+  infoRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
+  infoLabel: {
+    fontSize: 14,
+    color: '#888',
+  },
+  infoValue: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#fff',
+  },
+  mutualsValue: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginTop: 4,
   },
+  // Stacked Avatars
   stackedAvatars: {
     flexDirection: 'row',
     alignItems: 'center',
   },
   miniAvatar: {
-    width: 18,
-    height: 18,
-    borderRadius: 9,
-    borderWidth: 1.5,
+    width: 24,
+    height: 24,
+    borderRadius: 12,
+    borderWidth: 2,
     borderColor: '#1a1a1a',
     overflow: 'hidden',
   },
@@ -259,70 +307,22 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   miniAvatarText: {
-    fontSize: 8,
+    fontSize: 10,
     fontWeight: '600',
     color: '#888',
   },
-  mutualText: {
-    fontSize: 12,
-    color: '#666',
-    marginLeft: 6,
-  },
-  rightSection: {
-    alignItems: 'flex-end',
-    marginRight: 8,
-    gap: 6,
-  },
-  leaderContainer: {
-    position: 'relative',
+  // View Button
+  viewButton: {
+    borderWidth: 1,
+    borderColor: '#333',
+    borderRadius: 8,
+    paddingVertical: 10,
     alignItems: 'center',
+    marginTop: 14,
   },
-  crownBadge: {
-    position: 'absolute',
-    top: -6,
-    zIndex: 10,
-  },
-  leaderAvatar: {
-    width: 28,
-    height: 28,
-    borderRadius: 14,
-    overflow: 'hidden',
-    borderWidth: 1.5,
-    borderColor: '#FFD700',
-  },
-  leaderAvatarImage: {
-    width: '100%',
-    height: '100%',
-  },
-  leaderAvatarPlaceholder: {
-    width: '100%',
-    height: '100%',
-    backgroundColor: '#2a2a2a',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  leaderAvatarText: {
-    fontSize: 12,
-    fontWeight: '600',
-    color: '#888',
-  },
-  memberCount: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 4,
-  },
-  memberText: {
-    fontSize: 14,
-  },
-  currentMembers: {
+  viewButtonText: {
+    fontSize: 13,
+    fontWeight: '500',
     color: '#fff',
-    fontWeight: '400',
-  },
-  maxMembers: {
-    color: '#666',
-    fontWeight: '400',
-  },
-  enterArrow: {
-    paddingLeft: 4,
   },
 });

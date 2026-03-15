@@ -17,6 +17,7 @@ import {
   Modal,
   NativeSyntheticEvent,
   NativeScrollEvent,
+  KeyboardAvoidingView,
 } from 'react-native';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import * as Clipboard2 from 'expo-clipboard';
@@ -839,7 +840,10 @@ export default function CreateLeaderboardScreen() {
         transparent={true}
         onRequestClose={() => setInviteModalVisible(false)}
       >
-        <View style={styles.modalOverlay}>
+        <KeyboardAvoidingView
+          behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+          style={styles.modalOverlay}
+        >
           <View style={styles.modalContainer}>
             <View style={styles.modalHeader}>
               <ThemedText style={styles.modalTitle}>Invite Members</ThemedText>
@@ -908,7 +912,7 @@ export default function CreateLeaderboardScreen() {
               <ThemedText style={styles.modalDoneButtonText}>Done</ThemedText>
             </TouchableOpacity>
           </View>
-        </View>
+        </KeyboardAvoidingView>
       </Modal>
     </ThemedView>
   );
@@ -1200,7 +1204,7 @@ const styles = StyleSheet.create({
   codeText: {
     fontSize: 18,
     fontWeight: '700',
-    color: '#c42743',
+    color: '#fff',
     letterSpacing: 3,
   },
   // Permission
@@ -1364,16 +1368,17 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   modalDoneButton: {
-    backgroundColor: '#c42743',
+    borderWidth: 1,
+    borderColor: '#c42743',
     borderRadius: 10,
     padding: 12,
     alignItems: 'center',
     marginTop: 10,
   },
   modalDoneButtonText: {
-    fontSize: 15,
-    fontWeight: '600',
-    color: '#fff',
+    fontSize: 14,
+    fontWeight: '500',
+    color: '#c42743',
   },
   selectedBadge: {
     backgroundColor: '#c42743',
@@ -1455,7 +1460,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     marginTop: 8,
     borderWidth: 1,
-    borderColor: '#333',
+    borderColor: '#c42743',
   },
   createButtonText: {
     fontSize: 16,

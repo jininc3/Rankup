@@ -1,7 +1,5 @@
 import { ThemedText } from '@/components/themed-text';
 import { Image, StyleSheet, TouchableOpacity, View } from 'react-native';
-import { IconSymbol } from '@/components/ui/icon-symbol';
-import { LinearGradient } from 'expo-linear-gradient';
 
 // Game logo mapping
 const GAME_LOGOS: { [key: string]: any } = {
@@ -9,6 +7,13 @@ const GAME_LOGOS: { [key: string]: any } = {
   'League of Legends': require('@/assets/images/lol-icon.png'),
   'League': require('@/assets/images/lol-icon.png'),
   'Apex Legends': require('@/assets/images/apex.png'),
+};
+
+// Background image mapping
+const GAME_BACKGROUNDS: { [key: string]: any } = {
+  'Valorant': require('@/assets/images/valorant-red.png'),
+  'League of Legends': require('@/assets/images/lol.png'),
+  'League': require('@/assets/images/lol.png'),
 };
 
 interface Leaderboard {
@@ -26,6 +31,7 @@ interface Leaderboard {
   type?: 'party' | 'leaderboard';
   coverPhoto?: string;
   partyIcon?: string;
+  challengeType?: 'climbing' | 'rank';
 }
 
 interface LeaderboardCardProps {
@@ -78,22 +84,29 @@ const calculateDaysInfo = (startDate: any, endDate: any): { currentDay: number; 
   return { currentDay: Math.max(1, currentDay), totalDays, daysLeft };
 };
 
-export default function LeaderboardCard({ leaderboard, onPress, showDivider = true }: LeaderboardCardProps) {
+export default function LeaderboardCard({ leaderboard, onPress }: LeaderboardCardProps) {
   const daysInfo = calculateDaysInfo(leaderboard.startDate, leaderboard.endDate);
   const gameLogo = GAME_LOGOS[leaderboard.game];
+  const gameBackground = GAME_BACKGROUNDS[leaderboard.game];
   const maxMembers = leaderboard.maxMembers ?? 10;
 
-  // Get gradient colors based on game
-  const getGradientColors = (): [string, string, string] => {
-    if (leaderboard.game === 'Valorant') return ['#c42743', '#ff6b6b', '#c42743'];
-    if (leaderboard.game === 'League of Legends' || leaderboard.game === 'League') return ['#0a84ff', '#00d4ff', '#0a84ff'];
-    return ['#333', '#555', '#333'];
+  // Get border color based on game
+  const getBorderColor = (): string => {
+    if (leaderboard.game === 'Valorant') return '#c42743';
+    if (leaderboard.game === 'League of Legends' || leaderboard.game === 'League') return '#0a84ff';
+    return '#333';
   };
 
-  // Get top 3 players for stacked avatars (only show if we have real player data)
+  // Get top 3 players for stacked avatars
   const topPlayers = (leaderboard.players || []).filter(
     (player: any) => player && (player.photoUrl || player.displayName || player.username)
   ).slice(0, 3);
+
+  // Get challenge type display text
+  const getChallengeTypeText = (): string => {
+    if (leaderboard.challengeType === 'rank') return 'Highest Rank';
+    return 'LP Climbing';
+  };
 
   return (
     <TouchableOpacity
@@ -101,54 +114,88 @@ export default function LeaderboardCard({ leaderboard, onPress, showDivider = tr
       onPress={() => onPress(leaderboard)}
       style={styles.container}
     >
-      <LinearGradient
-        colors={getGradientColors()}
-        start={{ x: 0, y: 0 }}
-        end={{ x: 1, y: 1 }}
-        style={styles.gradientBorder}
-      >
-        <View style={styles.innerContent}>
-          {/* Left Section - Leaderboard Icon */}
-          <View style={styles.leftSection}>
-            {leaderboard.partyIcon ? (
-              <Image
-                source={{ uri: leaderboard.partyIcon }}
-                style={styles.leaderboardIcon}
-                resizeMode="cover"
-              />
-            ) : (
-              <View style={styles.iconPlaceholder}>
-                <ThemedText style={styles.iconPlaceholderText}>
-                  {leaderboard.name.charAt(0).toUpperCase()}
-                </ThemedText>
-              </View>
-            )}
-          </View>
+      <View style={[styles.card, { borderColor: getBorderColor() }]}>
+        {/* Background Logo */}
+        {gameBackground && (
+          <Image
+            source={gameBackground}
+            style={[
+              styles.backgroundLogo,
+              (leaderboard.game === 'League of Legends' || leaderboard.game === 'League') && styles.backgroundLogoLol
+            ]}
+            resizeMode="contain"
+          />
+        )}
 
-          {/* Center Section - Name & Game */}
-          <View style={styles.centerSection}>
+        {/* Header Section - Icon & Name */}
+        <View style={styles.headerSection}>
+          {leaderboard.partyIcon ? (
+            <Image
+              source={{ uri: leaderboard.partyIcon }}
+              style={styles.leaderboardIcon}
+              resizeMode="cover"
+            />
+          ) : gameLogo ? (
+            <Image
+              source={gameLogo}
+              style={styles.leaderboardIcon}
+              resizeMode="contain"
+            />
+          ) : (
+            <View style={styles.iconPlaceholder}>
+              <ThemedText style={styles.iconPlaceholderText}>
+                {leaderboard.name.charAt(0).toUpperCase()}
+              </ThemedText>
+            </View>
+          )}
+          <View style={styles.headerInfo}>
             <ThemedText style={styles.name} numberOfLines={1}>
               {leaderboard.name.toUpperCase()}
             </ThemedText>
-            <View style={styles.gameRow}>
-              <ThemedText style={styles.gameName}>{leaderboard.game}</ThemedText>
-              {gameLogo && (
-                <>
-                  <View style={styles.gameDivider} />
-                  <Image source={gameLogo} style={styles.gameLogoInline} resizeMode="contain" />
-                </>
-              )}
-            </View>
-            {/* Top players indicator */}
-            {topPlayers.length > 0 && (
-              <View style={styles.playersRow}>
+            <ThemedText style={styles.gameName}>{leaderboard.game}</ThemedText>
+          </View>
+        </View>
+
+        {/* Divider */}
+        <View style={styles.divider} />
+
+        {/* Info Rows */}
+        <View style={styles.infoSection}>
+          <View style={styles.infoRow}>
+            <ThemedText style={styles.infoLabel}>Type</ThemedText>
+            <ThemedText style={styles.infoValue}>Leaderboard</ThemedText>
+          </View>
+
+          <View style={styles.infoRow}>
+            <ThemedText style={styles.infoLabel}>Date</ThemedText>
+            <ThemedText style={styles.infoValue}>
+              {daysInfo ? `${daysInfo.daysLeft}d left` : '-'}
+            </ThemedText>
+          </View>
+
+          <View style={styles.infoRow}>
+            <ThemedText style={styles.infoLabel}>Players</ThemedText>
+            <ThemedText style={styles.infoValue}>
+              {leaderboard.members}/{maxMembers}
+            </ThemedText>
+          </View>
+
+          <View style={styles.infoRow}>
+            <ThemedText style={styles.infoLabel}>Format</ThemedText>
+            <ThemedText style={styles.infoValue}>{getChallengeTypeText()}</ThemedText>
+          </View>
+
+          <View style={styles.infoRow}>
+            <ThemedText style={styles.infoLabel}>Ranking</ThemedText>
+            <View style={styles.rankingValue}>
+              {topPlayers.length > 0 ? (
                 <View style={styles.stackedAvatars}>
                   {topPlayers.map((player, index) => (
                     <View
                       key={player.odId || index}
                       style={[
                         styles.miniAvatar,
-                        { marginLeft: index === 0 ? 0 : -6, zIndex: 5 - index }
+                        { marginLeft: index === 0 ? 0 : -8, zIndex: 5 - index }
                       ]}
                     >
                       {player.photoUrl ? (
@@ -166,64 +213,66 @@ export default function LeaderboardCard({ leaderboard, onPress, showDivider = tr
                     </View>
                   ))}
                 </View>
-                {daysInfo && (
-                  <ThemedText style={styles.daysLeftText}>
-                    {daysInfo.daysLeft}d left
-                  </ThemedText>
-                )}
-              </View>
-            )}
-          </View>
-
-          {/* Right Section - Member Count */}
-          <View style={styles.rightSection}>
-            <View style={styles.memberCount}>
-              <IconSymbol size={16} name="person.2.fill" color="#888" />
-              <ThemedText style={styles.memberText}>
-                <ThemedText style={styles.currentMembers}>{leaderboard.members}</ThemedText>
-                <ThemedText style={styles.maxMembers}>/{maxMembers}</ThemedText>
-              </ThemedText>
+              ) : (
+                <ThemedText style={styles.infoValue}>-</ThemedText>
+              )}
             </View>
           </View>
-
-          {/* Enter Arrow */}
-          <View style={styles.enterArrow}>
-            <IconSymbol size={18} name="chevron.right" color="#555" />
-          </View>
         </View>
-      </LinearGradient>
+
+        {/* View Button */}
+        <View style={styles.viewButton}>
+          <ThemedText style={styles.viewButtonText}>View Leaderboard</ThemedText>
+        </View>
+      </View>
     </TouchableOpacity>
   );
 }
 
 const styles = StyleSheet.create({
   container: {
-    marginBottom: 10,
+    marginBottom: 12,
+    paddingHorizontal: 4,
   },
-  gradientBorder: {
-    borderRadius: 0,
-    padding: 2,
+  card: {
+    backgroundColor: '#1a1a1a',
+    borderRadius: 16,
+    padding: 16,
+    borderWidth: 1,
+    overflow: 'hidden',
   },
-  innerContent: {
+  backgroundLogo: {
+    position: 'absolute',
+    top: '50%',
+    left: '50%',
+    width: 140,
+    height: 140,
+    marginTop: -70,
+    marginLeft: -60,
+    opacity: 0.06,
+  },
+  backgroundLogoLol: {
+    width: 180,
+    height: 180,
+    marginTop: -90,
+    marginLeft: -75,
+  },
+  // Header Section
+  headerSection: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#1a1a1a',
-    paddingVertical: 10,
-    paddingHorizontal: 12,
-  },
-  leftSection: {
-    marginRight: 14,
+    marginBottom: 14,
   },
   leaderboardIcon: {
-    width: 44,
-    height: 44,
-    borderRadius: 22,
+    width: 56,
+    height: 56,
+    borderRadius: 12,
     backgroundColor: '#2a2a2a',
   },
   iconPlaceholder: {
-    width: 44,
-    height: 44,
-    borderRadius: 22,
+    width: 56,
+    height: 56,
+    borderRadius: 12,
     backgroundColor: '#2a2a2a',
     alignItems: 'center',
     justifyContent: 'center',
@@ -231,55 +280,63 @@ const styles = StyleSheet.create({
     borderColor: '#444',
   },
   iconPlaceholderText: {
-    fontSize: 18,
+    fontSize: 22,
     fontWeight: '700',
     color: '#666',
   },
-  centerSection: {
+  headerInfo: {
     flex: 1,
-    justifyContent: 'center',
-    minHeight: 72,
+    marginLeft: 14,
   },
   name: {
-    fontSize: 17,
-    fontWeight: '600',
+    fontSize: 18,
+    fontWeight: '700',
     color: '#fff',
     letterSpacing: 0.5,
-  },
-  gameRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginTop: 2,
+    marginBottom: 4,
   },
   gameName: {
-    fontSize: 13,
+    fontSize: 14,
     color: '#888',
   },
-  gameDivider: {
-    width: 1,
-    height: 10,
-    backgroundColor: '#555',
-    marginHorizontal: 8,
+  // Divider
+  divider: {
+    height: 1,
+    backgroundColor: '#333',
+    marginBottom: 14,
   },
-  gameLogoInline: {
-    width: 16,
-    height: 16,
-    opacity: 0.8,
+  // Info Section
+  infoSection: {
+    gap: 10,
   },
-  playersRow: {
+  infoRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
+  infoLabel: {
+    fontSize: 14,
+    color: '#888',
+  },
+  infoValue: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#fff',
+  },
+  rankingValue: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginTop: 4,
   },
+  // Stacked Avatars
   stackedAvatars: {
     flexDirection: 'row',
     alignItems: 'center',
   },
   miniAvatar: {
-    width: 18,
-    height: 18,
-    borderRadius: 9,
-    borderWidth: 1.5,
+    width: 24,
+    height: 24,
+    borderRadius: 12,
+    borderWidth: 2,
     borderColor: '#1a1a1a',
     overflow: 'hidden',
   },
@@ -295,36 +352,22 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   miniAvatarText: {
-    fontSize: 8,
+    fontSize: 10,
     fontWeight: '600',
     color: '#888',
   },
-  daysLeftText: {
-    fontSize: 12,
-    color: '#666',
-    marginLeft: 8,
-  },
-  rightSection: {
-    alignItems: 'flex-end',
-    marginRight: 8,
-  },
-  memberCount: {
-    flexDirection: 'row',
+  // View Button
+  viewButton: {
+    borderWidth: 1,
+    borderColor: '#333',
+    borderRadius: 8,
+    paddingVertical: 10,
     alignItems: 'center',
-    gap: 4,
+    marginTop: 14,
   },
-  memberText: {
-    fontSize: 14,
-  },
-  currentMembers: {
+  viewButtonText: {
+    fontSize: 13,
+    fontWeight: '500',
     color: '#fff',
-    fontWeight: '600',
-  },
-  maxMembers: {
-    color: '#666',
-    fontWeight: '400',
-  },
-  enterArrow: {
-    paddingLeft: 4,
   },
 });
