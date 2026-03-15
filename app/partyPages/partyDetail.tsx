@@ -554,7 +554,7 @@ export default function PartyDetail() {
             <View style={styles.headerRightButtons}>
               {isCreator && (
                 <TouchableOpacity style={styles.editButton} onPress={() => setShowEditModal(true)}>
-                  <IconSymbol size={16} name="pencil" color="#fff" />
+                  <ThemedText style={styles.editButtonText}>Edit</ThemedText>
                 </TouchableOpacity>
               )}
               <TouchableOpacity style={styles.leaveButton} onPress={handleLeaveParty}>
@@ -1073,12 +1073,17 @@ const styles = StyleSheet.create({
     gap: 8,
   },
   editButton: {
-    width: 38,
-    height: 38,
-    borderRadius: 19,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: 16,
     backgroundColor: 'rgba(0,0,0,0.5)',
     alignItems: 'center',
     justifyContent: 'center',
+  },
+  editButtonText: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: '#fff',
   },
   leaveButton: {
     width: 38,
@@ -1163,6 +1168,8 @@ const styles = StyleSheet.create({
     letterSpacing: -0.5,
     textAlign: 'center',
     marginBottom: 6,
+    textTransform: 'uppercase',
+    width: '100%',
   },
   partyMeta: {
     flexDirection: 'row',

@@ -974,7 +974,7 @@ export default function LeaderboardDetail() {
               : getValorantRankIcon(player.currentRank);
 
             return (
-              <TouchableOpacity
+              <View
                 key={player.userId}
                 style={[
                   styles.playerRow,
@@ -982,8 +982,6 @@ export default function LeaderboardDetail() {
                   player.isCurrentUser && styles.currentUserRow,
                   { borderLeftWidth: 4, borderLeftColor: getBorderColor(player.rank) },
                 ]}
-                onPress={() => handlePlayerPress(player)}
-                activeOpacity={0.7}
               >
                 {/* Rank Number */}
                 <View style={styles.rankContainer}>
@@ -992,7 +990,11 @@ export default function LeaderboardDetail() {
 
                 {/* Player Info */}
                 <View style={styles.playerInfo}>
-                  <View style={styles.playerAvatar}>
+                  <TouchableOpacity
+                    style={styles.playerAvatar}
+                    onPress={() => handlePlayerPress(player)}
+                    activeOpacity={0.7}
+                  >
                     {player.avatar && player.avatar.startsWith('http') ? (
                       <Image source={{ uri: player.avatar }} style={styles.playerAvatarImage} />
                     ) : (
@@ -1000,11 +1002,13 @@ export default function LeaderboardDetail() {
                         {player.avatar || player.username[0].toUpperCase()}
                       </ThemedText>
                     )}
-                  </View>
+                  </TouchableOpacity>
                   <View style={styles.playerNameContainer}>
-                    <ThemedText style={styles.playerName} numberOfLines={1}>
-                      {player.username}
-                    </ThemedText>
+                    <TouchableOpacity onPress={() => handlePlayerPress(player)} activeOpacity={0.7}>
+                      <ThemedText style={styles.playerName} numberOfLines={1}>
+                        {player.username}
+                      </ThemedText>
+                    </TouchableOpacity>
                     {player.userId === partyData?.createdBy && (
                       <View style={styles.leaderBadge}>
                         <IconSymbol size={10} name="crown.fill" color="#FFD700" />
@@ -1026,7 +1030,7 @@ export default function LeaderboardDetail() {
                     </ThemedText>
                   </View>
                 </View>
-              </TouchableOpacity>
+              </View>
             );
           })}
         </View>

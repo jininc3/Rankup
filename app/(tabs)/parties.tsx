@@ -122,6 +122,7 @@ export default function LeaderboardScreen() {
             partyIcon: data.partyIcon || null,
             partyId: data.partyId || docId,
             mutualFollowers: existingParty?.mutualFollowers || [],
+            challengeStatus: data.challengeStatus || 'active',
           };
         });
 
@@ -361,20 +362,35 @@ export default function LeaderboardScreen() {
         },
       });
     } else {
-      // Leaderboard type
-      router.push({
-        pathname: '/partyPages/leaderboardDetail',
-        params: {
-          name: leaderboard.name,
-          icon: leaderboard.icon,
-          game: leaderboard.game,
-          members: leaderboard.members.toString(),
-          players: JSON.stringify(leaderboard.players),
-          id: leaderboard.id,
-          startDate: leaderboard.startDate,
-          endDate: leaderboard.endDate,
-        },
-      });
+      // Leaderboard type - check if challenge is completed
+      if (leaderboard.challengeStatus === 'completed') {
+        router.push({
+          pathname: '/partyPages/leaderboardResults',
+          params: {
+            name: leaderboard.name,
+            icon: leaderboard.icon,
+            game: leaderboard.game,
+            members: leaderboard.members.toString(),
+            id: leaderboard.id,
+            startDate: leaderboard.startDate,
+            endDate: leaderboard.endDate,
+          },
+        });
+      } else {
+        router.push({
+          pathname: '/partyPages/leaderboardDetail',
+          params: {
+            name: leaderboard.name,
+            icon: leaderboard.icon,
+            game: leaderboard.game,
+            members: leaderboard.members.toString(),
+            players: JSON.stringify(leaderboard.players),
+            id: leaderboard.id,
+            startDate: leaderboard.startDate,
+            endDate: leaderboard.endDate,
+          },
+        });
+      }
     }
   };
 
@@ -470,25 +486,37 @@ export default function LeaderboardScreen() {
               showsVerticalScrollIndicator={false}
               contentContainerStyle={styles.pageContent}
             >
-              {leaderboardTypeParties.length > 0 ? (
-                <View style={styles.cardsContainer}>
-                  {leaderboardTypeParties.map((leaderboard, index) => (
-                    <LeaderboardCard
-                      key={leaderboard.id}
-                      leaderboard={leaderboard}
-                      onPress={handleLeaderboardPress}
-                      showDivider={index < leaderboardTypeParties.length - 1}
-                    />
-                  ))}
-                </View>
-              ) : (
-                <View style={styles.emptyState}>
-                  <ThemedText style={styles.emptyStateText}>No leaderboards yet</ThemedText>
-                  <ThemedText style={styles.emptyStateSubtext}>
-                    Join a leaderboard to track your rank against others
-                  </ThemedText>
-                </View>
-              )}
+              <View style={styles.cardsContainer}>
+                {/* Preview Results Button */}
+                <TouchableOpacity
+                  style={styles.previewResultsButton}
+                  onPress={() => router.push('/partyPages/leaderboardResults?preview=true')}
+                  activeOpacity={0.7}
+                >
+                  <IconSymbol size={16} name="eye.fill" color="#888" />
+                  <ThemedText style={styles.previewResultsText}>Preview Results Page</ThemedText>
+                </TouchableOpacity>
+
+                {leaderboardTypeParties.length > 0 ? (
+                  <>
+                    {leaderboardTypeParties.map((leaderboard, index) => (
+                      <LeaderboardCard
+                        key={leaderboard.id}
+                        leaderboard={leaderboard}
+                        onPress={handleLeaderboardPress}
+                        showDivider={index < leaderboardTypeParties.length - 1}
+                      />
+                    ))}
+                  </>
+                ) : (
+                  <View style={styles.emptyState}>
+                    <ThemedText style={styles.emptyStateText}>No leaderboards yet</ThemedText>
+                    <ThemedText style={styles.emptyStateSubtext}>
+                      Join a leaderboard to track your rank against others
+                    </ThemedText>
+                  </View>
+                )}
+              </View>
               <View style={styles.bottomSpacer} />
             </ScrollView>
           </ScrollView>
@@ -509,7 +537,7 @@ export default function LeaderboardScreen() {
         >
           <View style={styles.modalContent}>
             <View style={styles.modalHandle} />
-            <ThemedText style={styles.modalTitle}>Create</ThemedText>
+            <ThemedText style={styles.modalTitle}>CREATE</ThemedText>
             <View style={styles.modalDivider} />
 
             {/* Party Option */}
@@ -517,7 +545,7 @@ export default function LeaderboardScreen() {
               style={styles.modalOption}
               onPress={() => {
                 setShowCreateModal(false);
-                router.push('/partyPages/createPartySimple');
+                router.push('/partyPages/createParty');
               }}
               activeOpacity={0.7}
             >
@@ -525,7 +553,7 @@ export default function LeaderboardScreen() {
                 <IconSymbol size={22} name="person.2.fill" color="#fff" />
               </View>
               <View style={styles.modalOptionText}>
-                <ThemedText style={styles.modalOptionTitle}>Party</ThemedText>
+                <ThemedText style={styles.modalOptionTitle}>PARTY</ThemedText>
                 <ThemedText style={styles.modalOptionSubtitle}>Casual group for playing together</ThemedText>
               </View>
             </TouchableOpacity>
@@ -543,7 +571,7 @@ export default function LeaderboardScreen() {
                 <IconSymbol size={22} name="trophy.fill" color="#fff" />
               </View>
               <View style={styles.modalOptionText}>
-                <ThemedText style={styles.modalOptionTitle}>Leaderboard</ThemedText>
+                <ThemedText style={styles.modalOptionTitle}>LEADERBOARD</ThemedText>
                 <ThemedText style={styles.modalOptionSubtitle}>Compete with friends for rankings</ThemedText>
               </View>
             </TouchableOpacity>
@@ -661,6 +689,23 @@ const styles = StyleSheet.create({
     fontSize: 13,
     color: '#b9bbbe',
     textAlign: 'center',
+  },
+  previewResultsButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    backgroundColor: '#1a1a1a',
+    borderWidth: 1,
+    borderColor: '#333',
+    borderRadius: 10,
+    paddingVertical: 12,
+    marginBottom: 12,
+  },
+  previewResultsText: {
+    fontSize: 14,
+    fontWeight: '500',
+    color: '#888',
   },
   bottomSpacer: {
     height: 40,

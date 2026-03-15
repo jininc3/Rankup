@@ -1,6 +1,7 @@
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { IconSymbol } from '@/components/ui/icon-symbol';
+import PartyCards from '@/app/components/partyCards';
 import { useRouter } from 'expo-router';
 import { useState, useEffect, useRef } from 'react';
 import {
@@ -12,21 +13,19 @@ import {
   Alert,
   ActivityIndicator,
   Image,
-  Dimensions,
-  Platform,
   Modal,
+  Dimensions,
   NativeSyntheticEvent,
   NativeScrollEvent,
 } from 'react-native';
-import DateTimePicker from '@react-native-community/datetimepicker';
+
+const { width: SCREEN_WIDTH } = Dimensions.get('window');
 import * as Clipboard2 from 'expo-clipboard';
 import * as ImagePicker from 'expo-image-picker';
 import { useAuth } from '@/contexts/AuthContext';
 import { db } from '@/config/firebase';
-import { collection, getDocs, doc, getDoc, addDoc, serverTimestamp, updateDoc } from 'firebase/firestore';
+import { collection, getDocs, doc, getDoc, addDoc, serverTimestamp } from 'firebase/firestore';
 import { uploadPartyIcon, uploadPartyCoverPhoto } from '@/services/storageService';
-
-const { width: SCREEN_WIDTH } = Dimensions.get('window');
 
 // Available games
 const AVAILABLE_GAMES = [
@@ -48,75 +47,28 @@ interface Follower {
   avatar: string;
 }
 
-export default function CreateLeaderboardScreen() {
+export default function CreatePartySimpleScreen() {
   const router = useRouter();
   const { user } = useAuth();
 
   const tabScrollRef = useRef<ScrollView>(null);
 
-  const formatDate = (date: Date) => {
-    const month = String(date.getMonth() + 1).padStart(2, '0');
-    const day = String(date.getDate()).padStart(2, '0');
-    const year = date.getFullYear();
-    return `${month}/${day}/${year}`;
-  };
-
-  const getDefaultDates = () => {
-    const today = new Date();
-    const thirtyDaysLater = new Date(today);
-    thirtyDaysLater.setDate(today.getDate() + 30);
-    return { start: today, end: thirtyDaysLater };
-  };
-
-  const defaultDates = getDefaultDates();
-
   const [selectedGame, setSelectedGame] = useState<typeof AVAILABLE_GAMES[0] | null>(null);
-  const [leaderboardName, setLeaderboardName] = useState('');
+  const [partyName, setPartyName] = useState('');
   const [inviteCode, setInviteCode] = useState('');
   const [selectedFollowers, setSelectedFollowers] = useState<string[]>([]);
   const [followers, setFollowers] = useState<Follower[]>([]);
   const [mutualFollowers, setMutualFollowers] = useState<Follower[]>([]);
   const [loadingFollowers, setLoadingFollowers] = useState(true);
-  const [activeTab, setActiveTab] = useState<'leaderboard' | 'invite'>('leaderboard');
   const [searchQuery, setSearchQuery] = useState('');
-  const [leaderboardIcon, setLeaderboardIcon] = useState<string | null>(null);
+  const [partyIcon, setPartyIcon] = useState<string | null>(null);
   const [coverPhoto, setCoverPhoto] = useState<string | null>(null);
   const [uploading, setUploading] = useState(false);
-  const [startDate, setStartDate] = useState<Date>(defaultDates.start);
-  const [endDate, setEndDate] = useState<Date>(defaultDates.end);
-  const [showEndDatePicker, setShowEndDatePicker] = useState(false);
-  const [challengeType, setChallengeType] = useState<'climbing' | 'rank'>('climbing');
-  const [selectedDuration, setSelectedDuration] = useState<number>(30);
   const [inviteModalVisible, setInviteModalVisible] = useState(false);
   const [invitePermission, setInvitePermission] = useState<'leader_only' | 'anyone'>('leader_only');
   const [maxMembers, setMaxMembers] = useState<number>(10);
-
-  const formatDateShort = (date: Date) => {
-    return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
-  };
-
-  const handleDurationSelect = (days: number) => {
-    setSelectedDuration(days);
-    setShowEndDatePicker(false);
-    const newEndDate = new Date(startDate);
-    newEndDate.setDate(startDate.getDate() + days);
-    setEndDate(newEndDate);
-  };
-
-  const handleCustomDuration = () => {
-    setSelectedDuration(0);
-    setShowEndDatePicker(!showEndDatePicker);
-  };
-
-  const handleEndDateChange = (event: any, selectedDate?: Date) => {
-    setShowEndDatePicker(Platform.OS === 'ios');
-    if (selectedDate) {
-      setEndDate(selectedDate);
-      const diffTime = selectedDate.getTime() - startDate.getTime();
-      const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-      setSelectedDuration(diffDays);
-    }
-  };
+  const [activeTab, setActiveTab] = useState<'party' | 'invite'>('party');
+  const [showPreview, setShowPreview] = useState(false);
 
   useEffect(() => {
     const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
@@ -210,9 +162,9 @@ export default function CreateLeaderboardScreen() {
   const filteredFollowers = getFilteredFollowers();
 
   // Handle tab switching via tap
-  const handleTabPress = (tab: 'leaderboard' | 'invite') => {
+  const handleTabPress = (tab: 'party' | 'invite') => {
     setActiveTab(tab);
-    const pageIndex = tab === 'leaderboard' ? 0 : 1;
+    const pageIndex = tab === 'party' ? 0 : 1;
     tabScrollRef.current?.scrollTo({ x: pageIndex * SCREEN_WIDTH, animated: true });
   };
 
@@ -221,7 +173,7 @@ export default function CreateLeaderboardScreen() {
     const offsetX = event.nativeEvent.contentOffset.x;
     // Update tab when past 50% of the page width
     const pageIndex = Math.round(offsetX / SCREEN_WIDTH);
-    const newTab = pageIndex === 0 ? 'leaderboard' : 'invite';
+    const newTab = pageIndex === 0 ? 'party' : 'invite';
     if (newTab !== activeTab) {
       setActiveTab(newTab);
     }
@@ -234,7 +186,7 @@ export default function CreateLeaderboardScreen() {
     }
   };
 
-  const handlePickLeaderboardIcon = async () => {
+  const handlePickPartyIcon = async () => {
     try {
       const result = await ImagePicker.launchImageLibraryAsync({
         mediaTypes: ImagePicker.MediaTypeOptions.Images,
@@ -244,11 +196,11 @@ export default function CreateLeaderboardScreen() {
       });
 
       if (!result.canceled && result.assets[0]) {
-        setLeaderboardIcon(result.assets[0].uri);
+        setPartyIcon(result.assets[0].uri);
       }
     } catch (error) {
-      console.error('Error picking leaderboard icon:', error);
-      Alert.alert('Error', 'Failed to select leaderboard icon');
+      console.error('Error picking party icon:', error);
+      Alert.alert('Error', 'Failed to select party icon');
     }
   };
 
@@ -270,17 +222,17 @@ export default function CreateLeaderboardScreen() {
     }
   };
 
-  const handleCreateLeaderboard = async () => {
+  const handleCreateParty = async () => {
     if (!selectedGame) {
       Alert.alert('Error', 'Please select a game');
       return;
     }
-    if (!leaderboardName.trim()) {
-      Alert.alert('Error', 'Please enter a leaderboard name');
+    if (!partyName.trim()) {
+      Alert.alert('Error', 'Please enter a party name');
       return;
     }
     if (!user?.id) {
-      Alert.alert('Error', 'You must be logged in to create a leaderboard');
+      Alert.alert('Error', 'You must be logged in to create a party');
       return;
     }
 
@@ -315,17 +267,12 @@ export default function CreateLeaderboardScreen() {
         }
       }
 
-      const leaderboardData = {
-        partyName: leaderboardName,
+      const partyData = {
+        partyName: partyName.toUpperCase(),
         game: selectedGame.name,
         gameId: selectedGame.id,
-        type: 'leaderboard',
+        type: 'party',
         maxMembers,
-        duration: selectedDuration,
-        startDate: null,
-        endDate: null,
-        challengeStatus: 'pending',
-        challengeType,
         inviteCode: inviteCode || '',
         invitePermission,
         createdBy: user.id,
@@ -335,20 +282,21 @@ export default function CreateLeaderboardScreen() {
         pendingInvites,
       };
 
-      // Create the leaderboard first to get the document ID
-      const leaderboardDocRef = await addDoc(partiesRef, leaderboardData);
-      const generatedPartyId = leaderboardDocRef.id;
+      // Create the party first to get the document ID
+      const partyDocRef = await addDoc(partiesRef, partyData);
+      const generatedPartyId = partyDocRef.id;
 
-      // Update with partyId field
-      await updateDoc(leaderboardDocRef, { partyId: generatedPartyId });
+      // Update the party with the partyId field (document ID)
+      const { updateDoc } = await import('firebase/firestore');
+      await updateDoc(partyDocRef, { partyId: generatedPartyId });
 
-      // Upload leaderboard icon if selected
-      if (leaderboardIcon) {
+      // Upload party icon if selected
+      if (partyIcon) {
         try {
-          const iconUrl = await uploadPartyIcon(generatedPartyId, leaderboardIcon);
-          await updateDoc(leaderboardDocRef, { partyIcon: iconUrl });
+          const partyIconUrl = await uploadPartyIcon(generatedPartyId, partyIcon);
+          await updateDoc(partyDocRef, { partyIcon: partyIconUrl });
         } catch (uploadError) {
-          console.error('Error uploading leaderboard icon:', uploadError);
+          console.error('Error uploading party icon:', uploadError);
         }
       }
 
@@ -356,7 +304,7 @@ export default function CreateLeaderboardScreen() {
       if (coverPhoto) {
         try {
           const coverPhotoUrl = await uploadPartyCoverPhoto(generatedPartyId, coverPhoto);
-          await updateDoc(leaderboardDocRef, { coverPhoto: coverPhotoUrl });
+          await updateDoc(partyDocRef, { coverPhoto: coverPhotoUrl });
         } catch (uploadError) {
           console.error('Error uploading cover photo:', uploadError);
         }
@@ -372,7 +320,7 @@ export default function CreateLeaderboardScreen() {
               fromUsername: userData?.username || 'Unknown',
               fromAvatar: userData?.avatar || '',
               partyId: generatedPartyId,
-              partyName: leaderboardName,
+              partyName: partyName.toUpperCase(),
               game: selectedGame.name,
               read: false,
               createdAt: serverTimestamp(),
@@ -388,29 +336,26 @@ export default function CreateLeaderboardScreen() {
       Alert.alert(
         'Success',
         selectedFollowers.length > 0
-          ? `Leaderboard created! Invitations sent to ${selectedFollowers.length} player${selectedFollowers.length !== 1 ? 's' : ''}.`
-          : 'Leaderboard created!',
+          ? `Party created! Invitations sent to ${selectedFollowers.length} player${selectedFollowers.length !== 1 ? 's' : ''}.`
+          : 'Party created!',
         [{
           text: 'OK',
           onPress: () => {
             router.replace({
-              pathname: '/partyPages/leaderboardDetail',
+              pathname: '/partyPages/partyDetail',
               params: {
-                id: generatedPartyId,
-                name: leaderboardName,
+                name: partyName.toUpperCase(),
+                partyId: generatedPartyId,
                 game: selectedGame.name,
-                members: '1',
-                startDate: formatDate(startDate),
-                endDate: formatDate(endDate),
               },
             });
           },
         }]
       );
     } catch (error) {
-      console.error('Error creating leaderboard:', error);
+      console.error('Error creating party:', error);
       setUploading(false);
-      Alert.alert('Error', 'Failed to create leaderboard. Please try again.');
+      Alert.alert('Error', 'Failed to create party. Please try again.');
     }
   };
 
@@ -421,19 +366,19 @@ export default function CreateLeaderboardScreen() {
         <TouchableOpacity style={styles.backButton} onPress={() => router.back()}>
           <IconSymbol size={20} name="chevron.left" color="#fff" />
         </TouchableOpacity>
-        <ThemedText style={styles.headerTitle}>Create Leaderboard</ThemedText>
+        <ThemedText style={styles.headerTitle}>Create Party</ThemedText>
         <View style={styles.headerSpacer} />
       </View>
 
       {/* Tabs */}
       <View style={styles.tabsContainer}>
         <TouchableOpacity
-          style={[styles.tab, activeTab === 'leaderboard' && styles.tabActive]}
-          onPress={() => handleTabPress('leaderboard')}
+          style={[styles.tab, activeTab === 'party' && styles.tabActive]}
+          onPress={() => handleTabPress('party')}
         >
-          <IconSymbol size={16} name="gearshape.fill" color={activeTab === 'leaderboard' ? '#fff' : '#666'} />
-          <ThemedText style={[styles.tabText, activeTab === 'leaderboard' && styles.tabTextActive]}>
-            LEADERBOARD
+          <IconSymbol size={16} name="gearshape.fill" color={activeTab === 'party' ? '#fff' : '#666'} />
+          <ThemedText style={[styles.tabText, activeTab === 'party' && styles.tabTextActive]}>
+            PARTY SETTINGS
           </ThemedText>
         </TouchableOpacity>
         <TouchableOpacity
@@ -457,7 +402,7 @@ export default function CreateLeaderboardScreen() {
         scrollEventThrottle={16}
         style={styles.tabContentScroll}
       >
-        {/* Leaderboard Settings Tab */}
+        {/* Party Settings Tab */}
         <ScrollView
           style={styles.tabPage}
           showsVerticalScrollIndicator={false}
@@ -465,209 +410,107 @@ export default function CreateLeaderboardScreen() {
           nestedScrollEnabled
         >
           <View style={styles.formContent}>
-            {/* Name & Icon Row */}
-            <View style={styles.nameIconRow}>
-              {/* Leaderboard Icon */}
-              <TouchableOpacity
-                style={styles.leaderboardIconPicker}
-                onPress={handlePickLeaderboardIcon}
-                activeOpacity={0.7}
-              >
-                {leaderboardIcon ? (
-                  <Image source={{ uri: leaderboardIcon }} style={styles.leaderboardIconPreview} />
-                ) : (
-                  <View style={styles.leaderboardIconPlaceholder}>
-                    <IconSymbol size={24} name="camera.fill" color="#555" />
-                  </View>
-                )}
-              </TouchableOpacity>
-
-              {/* Leaderboard Name */}
-              <View style={styles.nameInputContainer}>
-                <ThemedText style={styles.label}>Leaderboard Name</ThemedText>
-                <TextInput
-                  style={[styles.input, styles.inputUppercase]}
-                  placeholder="Enter leaderboard name"
-                  placeholderTextColor="#444"
-                  value={leaderboardName}
-                  onChangeText={(text) => setLeaderboardName(text.toUpperCase())}
-                  maxLength={30}
-                  autoCapitalize="characters"
-                />
-              </View>
-            </View>
-
-            {/* Cover Photo */}
-            <View style={styles.inputGroup}>
-              <ThemedText style={styles.label}>Cover Photo</ThemedText>
-              <TouchableOpacity
-                style={styles.coverPhotoPicker}
-                onPress={handlePickCoverPhoto}
-                activeOpacity={0.7}
-              >
-                {coverPhoto ? (
-                  <Image source={{ uri: coverPhoto }} style={styles.coverPhotoPreview} />
-                ) : (
-                  <View style={styles.coverPhotoPlaceholderInline}>
-                    <IconSymbol size={28} name="photo" color="#555" />
-                    <ThemedText style={styles.placeholderText}>Add Cover Photo</ThemedText>
-                  </View>
-                )}
-              </TouchableOpacity>
-            </View>
-
-            {/* Game Selection */}
-            <View style={styles.inputGroup}>
-              <ThemedText style={styles.label}>Game</ThemedText>
-              <View style={styles.gameSelectionRow}>
-                {AVAILABLE_GAMES.map((game) => (
-                  <TouchableOpacity
-                    key={game.id}
-                    style={[
-                      styles.gameOptionCircle,
-                      selectedGame?.id === game.id && styles.gameOptionCircleSelected
-                    ]}
-                    onPress={() => setSelectedGame(game)}
-                  >
-                    <Image source={game.logo} style={styles.gameOptionLogoCircle} />
-                  </TouchableOpacity>
-                ))}
-              </View>
-            </View>
-
-            {/* Max Members */}
-            <View style={styles.inputGroup}>
-              <ThemedText style={styles.label}>Max Members</ThemedText>
-              <View style={styles.membersRow}>
-                {[5, 10, 20, 0].map((limit) => (
-                  <TouchableOpacity
-                    key={limit}
-                    style={[
-                      styles.membersChip,
-                      maxMembers === limit && styles.membersChipActive
-                    ]}
-                    onPress={() => setMaxMembers(limit)}
-                  >
-                    <ThemedText style={[
-                      styles.membersChipText,
-                      maxMembers === limit && styles.membersChipTextActive
-                    ]}>{limit === 0 ? 'NO LIMIT' : limit}</ThemedText>
-                  </TouchableOpacity>
-                ))}
-              </View>
-            </View>
-
-            {/* Duration */}
-            <View style={styles.inputGroup}>
-              <ThemedText style={styles.label}>Duration</ThemedText>
-              <View style={styles.durationRow}>
+            {/* Party Name & Icon Row */}
+              <View style={styles.nameIconRow}>
+                {/* Party Icon */}
                 <TouchableOpacity
-                  style={[
-                    styles.durationButton,
-                    selectedDuration === 10 && styles.durationButtonActive
-                  ]}
-                  onPress={() => handleDurationSelect(10)}
+                  style={styles.partyIconPicker}
+                  onPress={handlePickPartyIcon}
+                  activeOpacity={0.7}
                 >
-                  <ThemedText style={[
-                    styles.durationButtonText,
-                    selectedDuration === 10 && styles.durationButtonTextActive
-                  ]}>10 days</ThemedText>
+                  {partyIcon ? (
+                    <Image source={{ uri: partyIcon }} style={styles.partyIconPreview} />
+                  ) : (
+                    <View style={styles.partyIconPlaceholder}>
+                      <IconSymbol size={24} name="camera.fill" color="#555" />
+                    </View>
+                  )}
                 </TouchableOpacity>
-                <TouchableOpacity
-                  style={[
-                    styles.durationButton,
-                    selectedDuration === 30 && styles.durationButtonActive
-                  ]}
-                  onPress={() => handleDurationSelect(30)}
-                >
-                  <ThemedText style={[
-                    styles.durationButtonText,
-                    selectedDuration === 30 && styles.durationButtonTextActive
-                  ]}>30 days</ThemedText>
-                </TouchableOpacity>
-                <TouchableOpacity
-                  style={[
-                    styles.durationButton,
-                    selectedDuration !== 10 && selectedDuration !== 30 && styles.durationButtonActive
-                  ]}
-                  onPress={handleCustomDuration}
-                >
-                  <ThemedText style={[
-                    styles.durationButtonText,
-                    selectedDuration !== 10 && selectedDuration !== 30 && styles.durationButtonTextActive
-                  ]}>Custom</ThemedText>
-                </TouchableOpacity>
-              </View>
-              <View style={styles.endDateRow}>
-                <ThemedText style={styles.endDateLabel}>Ends on</ThemedText>
-                <ThemedText style={styles.endDateValue}>{formatDateShort(endDate)}</ThemedText>
-              </View>
-              {showEndDatePicker && (
-                <DateTimePicker
-                  value={endDate}
-                  mode="date"
-                  display={Platform.OS === 'ios' ? 'spinner' : 'default'}
-                  onChange={handleEndDateChange}
-                  minimumDate={startDate}
-                  textColor="#fff"
-                  themeVariant="dark"
-                />
-              )}
-            </View>
 
-            {/* Challenge Type */}
-            <View style={styles.inputGroup}>
-              <ThemedText style={styles.label}>Challenge Type</ThemedText>
-              <View style={styles.challengeRow}>
-                <TouchableOpacity
-                  style={[
-                    styles.challengeButton,
-                    challengeType === 'climbing' && styles.challengeButtonActive
-                  ]}
-                  onPress={() => setChallengeType('climbing')}
-                >
-                  <IconSymbol
-                    size={18}
-                    name="chart.line.uptrend.xyaxis"
-                    color={challengeType === 'climbing' ? '#c42743' : '#666'}
+                {/* Party Name */}
+                <View style={styles.nameInputContainer}>
+                  <ThemedText style={styles.label}>Party Name</ThemedText>
+                  <TextInput
+                    style={[styles.input, styles.inputUppercase]}
+                    placeholder="Enter party name"
+                    placeholderTextColor="#444"
+                    value={partyName}
+                    onChangeText={(text) => setPartyName(text.toUpperCase())}
+                    maxLength={30}
+                    autoCapitalize="characters"
                   />
-                  <View style={styles.challengeInfo}>
-                    <ThemedText style={[
-                      styles.challengeTitle,
-                      challengeType === 'climbing' && styles.challengeTitleActive
-                    ]}>Climbing</ThemedText>
-                    <ThemedText style={[
-                      styles.challengeDesc,
-                      challengeType === 'climbing' && styles.challengeDescActive
-                    ]}>Most LP/RR gained</ThemedText>
-                  </View>
-                </TouchableOpacity>
+                </View>
+              </View>
 
+              {/* Cover Photo */}
+              <View style={styles.inputGroup}>
+                <ThemedText style={styles.label}>Cover Photo</ThemedText>
                 <TouchableOpacity
-                  style={[
-                    styles.challengeButton,
-                    challengeType === 'rank' && styles.challengeButtonActive
-                  ]}
-                  onPress={() => setChallengeType('rank')}
+                  style={styles.coverPhotoPicker}
+                  onPress={handlePickCoverPhoto}
+                  activeOpacity={0.7}
                 >
-                  <IconSymbol
-                    size={18}
-                    name="trophy.fill"
-                    color={challengeType === 'rank' ? '#c42743' : '#666'}
-                  />
-                  <View style={styles.challengeInfo}>
-                    <ThemedText style={[
-                      styles.challengeTitle,
-                      challengeType === 'rank' && styles.challengeTitleActive
-                    ]}>Rank</ThemedText>
-                    <ThemedText style={[
-                      styles.challengeDesc,
-                      challengeType === 'rank' && styles.challengeDescActive
-                    ]}>Highest rank wins</ThemedText>
-                  </View>
+                  {coverPhoto ? (
+                    <Image source={{ uri: coverPhoto }} style={styles.coverPhotoPreview} />
+                  ) : (
+                    <View style={styles.coverPhotoPlaceholder}>
+                      <IconSymbol size={28} name="photo" color="#555" />
+                      <ThemedText style={styles.placeholderText}>Add Cover Photo</ThemedText>
+                    </View>
+                  )}
                 </TouchableOpacity>
               </View>
-            </View>
+
+              {/* Game Selection */}
+              <View style={styles.inputGroup}>
+                <ThemedText style={styles.label}>Game</ThemedText>
+                <View style={styles.gameSelectionRow}>
+                  {AVAILABLE_GAMES.map((game) => (
+                    <TouchableOpacity
+                      key={game.id}
+                      style={[
+                        styles.gameOptionCircle,
+                        selectedGame?.id === game.id && styles.gameOptionCircleSelected
+                      ]}
+                      onPress={() => setSelectedGame(game)}
+                    >
+                      <Image source={game.logo} style={styles.gameOptionLogoCircle} />
+                    </TouchableOpacity>
+                  ))}
+                </View>
+              </View>
+
+              {/* Max Members */}
+              <View style={styles.inputGroup}>
+                <ThemedText style={styles.label}>Max Members</ThemedText>
+                <View style={styles.membersRow}>
+                  {[5, 10, 20, 0].map((limit) => (
+                    <TouchableOpacity
+                      key={limit}
+                      style={[
+                        styles.membersChip,
+                        maxMembers === limit && styles.membersChipActive
+                      ]}
+                      onPress={() => setMaxMembers(limit)}
+                    >
+                      <ThemedText style={[
+                        styles.membersChipText,
+                        maxMembers === limit && styles.membersChipTextActive
+                      ]}>{limit === 0 ? 'NO LIMIT' : limit}</ThemedText>
+                    </TouchableOpacity>
+                  ))}
+                </View>
+              </View>
+
+            {/* Preview Button */}
+            <TouchableOpacity
+              style={styles.previewButton}
+              onPress={() => setShowPreview(true)}
+              activeOpacity={0.7}
+            >
+              <IconSymbol size={18} name="eye.fill" color="#888" />
+              <ThemedText style={styles.previewButtonText}>Preview Card</ThemedText>
+            </TouchableOpacity>
 
             <View style={styles.bottomSpacer} />
           </View>
@@ -682,139 +525,139 @@ export default function CreateLeaderboardScreen() {
         >
           <View style={styles.formContent}>
             {/* Invite Code */}
-            <View style={styles.inputGroup}>
-              <ThemedText style={styles.label}>Invite Code</ThemedText>
-              <TouchableOpacity style={styles.codeButton} onPress={handleCopyInviteCode}>
-                <ThemedText style={styles.codeText}>{inviteCode}</ThemedText>
-                <IconSymbol size={16} name="doc.on.doc" color="#666" />
-              </TouchableOpacity>
-            </View>
-
-            {/* Invite Permission */}
-            <View style={styles.inputGroup}>
-              <ThemedText style={styles.label}>Who Can Invite</ThemedText>
-              <View style={styles.permissionRow}>
-                <TouchableOpacity
-                  style={[
-                    styles.permissionButton,
-                    invitePermission === 'leader_only' && styles.permissionButtonActive
-                  ]}
-                  onPress={() => setInvitePermission('leader_only')}
-                >
-                  <IconSymbol
-                    size={16}
-                    name="crown.fill"
-                    color={invitePermission === 'leader_only' ? '#c42743' : '#666'}
-                  />
-                  <ThemedText style={[
-                    styles.permissionButtonText,
-                    invitePermission === 'leader_only' && styles.permissionButtonTextActive
-                  ]}>Leader Only</ThemedText>
-                </TouchableOpacity>
-                <TouchableOpacity
-                  style={[
-                    styles.permissionButton,
-                    invitePermission === 'anyone' && styles.permissionButtonActive
-                  ]}
-                  onPress={() => setInvitePermission('anyone')}
-                >
-                  <IconSymbol
-                    size={16}
-                    name="person.2.fill"
-                    color={invitePermission === 'anyone' ? '#c42743' : '#666'}
-                  />
-                  <ThemedText style={[
-                    styles.permissionButtonText,
-                    invitePermission === 'anyone' && styles.permissionButtonTextActive
-                  ]}>Anyone</ThemedText>
-                </TouchableOpacity>
-              </View>
-              <ThemedText style={styles.permissionHint}>You can change this later in leaderboard settings</ThemedText>
-            </View>
-
-            {/* Suggestions from Mutual Followers */}
-            {!loadingFollowers && mutualFollowers.length > 0 && (
               <View style={styles.inputGroup}>
-                <ThemedText style={styles.label}>Suggestions</ThemedText>
-                <View style={styles.suggestionsContainer}>
-                  {mutualFollowers
-                    .filter((f) => !selectedFollowers.includes(f.id))
-                    .slice(0, 5)
-                    .map((follower) => (
-                      <TouchableOpacity
-                        key={follower.id}
-                        style={styles.suggestionItem}
-                        onPress={() => toggleFollower(follower.id)}
-                      >
-                        <View style={styles.suggestionAvatarWrapper}>
-                          <View style={styles.suggestionAvatar}>
-                            {follower.avatar && follower.avatar.startsWith('http') ? (
-                              <Image source={{ uri: follower.avatar }} style={styles.suggestionAvatarImage} />
-                            ) : (
-                              <ThemedText style={styles.suggestionAvatarText}>
-                                {follower.username[0].toUpperCase()}
-                              </ThemedText>
-                            )}
-                          </View>
-                          <View style={styles.suggestionAddButton}>
-                            <IconSymbol size={10} name="plus" color="#fff" />
-                          </View>
-                        </View>
-                        <ThemedText style={styles.suggestionName} numberOfLines={1}>
-                          {follower.username}
-                        </ThemedText>
-                      </TouchableOpacity>
-                    ))}
-                  {mutualFollowers.filter((f) => !selectedFollowers.includes(f.id)).length === 0 && (
-                    <ThemedText style={styles.noSuggestionsText}>All mutual followers selected</ThemedText>
-                  )}
+                <ThemedText style={styles.label}>Invite Code</ThemedText>
+                <TouchableOpacity style={styles.codeButton} onPress={handleCopyInviteCode}>
+                  <ThemedText style={styles.codeText}>{inviteCode}</ThemedText>
+                  <IconSymbol size={16} name="doc.on.doc" color="#666" />
+                </TouchableOpacity>
+              </View>
+
+              {/* Invite Permission */}
+              <View style={styles.inputGroup}>
+                <ThemedText style={styles.label}>Who Can Invite</ThemedText>
+                <View style={styles.permissionRow}>
+                  <TouchableOpacity
+                    style={[
+                      styles.permissionButton,
+                      invitePermission === 'leader_only' && styles.permissionButtonActive
+                    ]}
+                    onPress={() => setInvitePermission('leader_only')}
+                  >
+                    <IconSymbol
+                      size={16}
+                      name="crown.fill"
+                      color={invitePermission === 'leader_only' ? '#c42743' : '#666'}
+                    />
+                    <ThemedText style={[
+                      styles.permissionButtonText,
+                      invitePermission === 'leader_only' && styles.permissionButtonTextActive
+                    ]}>Leader Only</ThemedText>
+                  </TouchableOpacity>
+                  <TouchableOpacity
+                    style={[
+                      styles.permissionButton,
+                      invitePermission === 'anyone' && styles.permissionButtonActive
+                    ]}
+                    onPress={() => setInvitePermission('anyone')}
+                  >
+                    <IconSymbol
+                      size={16}
+                      name="person.2.fill"
+                      color={invitePermission === 'anyone' ? '#c42743' : '#666'}
+                    />
+                    <ThemedText style={[
+                      styles.permissionButtonText,
+                      invitePermission === 'anyone' && styles.permissionButtonTextActive
+                    ]}>Anyone</ThemedText>
+                  </TouchableOpacity>
                 </View>
-              </View>
-            )}
-
-            {/* Invite Members */}
-            <View style={styles.inputGroup}>
-              <View style={styles.labelRow}>
-                <ThemedText style={styles.label}>Invite Members</ThemedText>
-                {selectedFollowers.length > 0 && (
-                  <View style={styles.selectedBadge}>
-                    <ThemedText style={styles.selectedBadgeText}>{selectedFollowers.length}</ThemedText>
-                  </View>
-                )}
+                <ThemedText style={styles.permissionHint}>You can change this later in party settings</ThemedText>
               </View>
 
-              {/* Selected followers chips */}
-              {selectedFollowers.length > 0 && (
-                <View style={styles.selectedChipsContainer}>
-                  {followers
-                    .filter(f => selectedFollowers.includes(f.id))
-                    .map((follower) => (
-                      <View key={follower.id} style={styles.selectedChip}>
-                        <ThemedText style={styles.selectedChipText}>{follower.username}</ThemedText>
-                        <TouchableOpacity onPress={() => toggleFollower(follower.id)}>
-                          <IconSymbol size={14} name="xmark" color="#888" />
+              {/* Suggestions from Mutual Followers */}
+              {!loadingFollowers && mutualFollowers.length > 0 && (
+                <View style={styles.inputGroup}>
+                  <ThemedText style={styles.label}>Suggestions</ThemedText>
+                  <View style={styles.suggestionsContainer}>
+                    {mutualFollowers
+                      .filter((f) => !selectedFollowers.includes(f.id))
+                      .slice(0, 5)
+                      .map((follower) => (
+                        <TouchableOpacity
+                          key={follower.id}
+                          style={styles.suggestionItem}
+                          onPress={() => toggleFollower(follower.id)}
+                        >
+                          <View style={styles.suggestionAvatarWrapper}>
+                            <View style={styles.suggestionAvatar}>
+                              {follower.avatar && follower.avatar.startsWith('http') ? (
+                                <Image source={{ uri: follower.avatar }} style={styles.suggestionAvatarImage} />
+                              ) : (
+                                <ThemedText style={styles.suggestionAvatarText}>
+                                  {follower.username[0].toUpperCase()}
+                                </ThemedText>
+                              )}
+                            </View>
+                            <View style={styles.suggestionAddButton}>
+                              <IconSymbol size={10} name="plus" color="#fff" />
+                            </View>
+                          </View>
+                          <ThemedText style={styles.suggestionName} numberOfLines={1}>
+                            {follower.username}
+                          </ThemedText>
                         </TouchableOpacity>
-                      </View>
-                    ))}
+                      ))}
+                    {mutualFollowers.filter((f) => !selectedFollowers.includes(f.id)).length === 0 && (
+                      <ThemedText style={styles.noSuggestionsText}>All mutual followers selected</ThemedText>
+                    )}
+                  </View>
                 </View>
               )}
 
-              {/* Touchable to open modal */}
-              <TouchableOpacity
-                style={styles.inviteSearchButton}
-                onPress={() => setInviteModalVisible(true)}
-              >
-                <IconSymbol size={16} name="magnifyingglass" color="#444" />
-                <ThemedText style={styles.inviteSearchPlaceholder}>
-                  {loadingFollowers ? 'Loading...' : followers.length === 0 ? 'No followers to invite' : 'Search followers...'}
-                </ThemedText>
-              </TouchableOpacity>
-            </View>
+              {/* Invite Members */}
+              <View style={styles.inputGroup}>
+                <View style={styles.labelRow}>
+                  <ThemedText style={styles.label}>Invite Members</ThemedText>
+                  {selectedFollowers.length > 0 && (
+                    <View style={styles.selectedBadge}>
+                      <ThemedText style={styles.selectedBadgeText}>{selectedFollowers.length}</ThemedText>
+                    </View>
+                  )}
+                </View>
+
+                {/* Selected followers chips */}
+                {selectedFollowers.length > 0 && (
+                  <View style={styles.selectedChipsContainer}>
+                    {followers
+                      .filter(f => selectedFollowers.includes(f.id))
+                      .map((follower) => (
+                        <View key={follower.id} style={styles.selectedChip}>
+                          <ThemedText style={styles.selectedChipText}>{follower.username}</ThemedText>
+                          <TouchableOpacity onPress={() => toggleFollower(follower.id)}>
+                            <IconSymbol size={14} name="xmark" color="#888" />
+                          </TouchableOpacity>
+                        </View>
+                      ))}
+                  </View>
+                )}
+
+                {/* Touchable to open modal */}
+                <TouchableOpacity
+                  style={styles.inviteSearchButton}
+                  onPress={() => setInviteModalVisible(true)}
+                >
+                  <IconSymbol size={16} name="magnifyingglass" color="#444" />
+                  <ThemedText style={styles.inviteSearchPlaceholder}>
+                    {loadingFollowers ? 'Loading...' : followers.length === 0 ? 'No followers to invite' : 'Search followers...'}
+                  </ThemedText>
+                </TouchableOpacity>
+              </View>
 
             {/* Create Button */}
             <TouchableOpacity
               style={[styles.createButton, uploading && styles.createButtonDisabled]}
-              onPress={handleCreateLeaderboard}
+              onPress={handleCreateParty}
               disabled={uploading}
             >
               {uploading ? (
@@ -823,7 +666,7 @@ export default function CreateLeaderboardScreen() {
                   <ThemedText style={styles.createButtonText}>Creating...</ThemedText>
                 </View>
               ) : (
-                <ThemedText style={styles.createButtonText}>Create Leaderboard</ThemedText>
+                <ThemedText style={styles.createButtonText}>Create Party</ThemedText>
               )}
             </TouchableOpacity>
 
@@ -910,6 +753,42 @@ export default function CreateLeaderboardScreen() {
           </View>
         </View>
       </Modal>
+
+      {/* Preview Modal */}
+      <Modal
+        visible={showPreview}
+        animationType="fade"
+        transparent={true}
+        onRequestClose={() => setShowPreview(false)}
+      >
+        <TouchableOpacity
+          style={styles.previewModalOverlay}
+          activeOpacity={1}
+          onPress={() => setShowPreview(false)}
+        >
+          <View style={styles.previewModalContent}>
+            <ThemedText style={styles.previewModalTitle}>CARD PREVIEW</ThemedText>
+            <View style={styles.previewCardContainer}>
+              <PartyCards
+                leaderboard={{
+                  id: 'preview',
+                  name: partyName || 'Party Name',
+                  icon: '',
+                  game: selectedGame?.name || 'Select a game',
+                  members: 1,
+                  maxMembers: maxMembers || 0,
+                  type: 'party',
+                  partyIcon: partyIcon || undefined,
+                  coverPhoto: coverPhoto || undefined,
+                }}
+                onPress={() => {}}
+                showDivider={false}
+              />
+            </View>
+            <ThemedText style={styles.previewHint}>Tap anywhere to close</ThemedText>
+          </View>
+        </TouchableOpacity>
+      </Modal>
     </ThemedView>
   );
 }
@@ -963,7 +842,7 @@ const styles = StyleSheet.create({
     borderColor: '#444',
   },
   tabText: {
-    fontSize: 11,
+    fontSize: 13,
     fontWeight: '600',
     color: '#666',
   },
@@ -986,19 +865,19 @@ const styles = StyleSheet.create({
   nameInputContainer: {
     flex: 1,
   },
-  // Leaderboard Icon Picker
-  leaderboardIconPicker: {
+  // Party Icon Picker
+  partyIconPicker: {
     width: 72,
     height: 72,
     borderRadius: 18,
     overflow: 'hidden',
     backgroundColor: '#1a1a1a',
   },
-  leaderboardIconPreview: {
+  partyIconPreview: {
     width: '100%',
     height: '100%',
   },
-  leaderboardIconPlaceholder: {
+  partyIconPlaceholder: {
     flex: 1,
     alignItems: 'center',
     justifyContent: 'center',
@@ -1015,7 +894,7 @@ const styles = StyleSheet.create({
     width: '100%',
     height: '100%',
   },
-  coverPhotoPlaceholderInline: {
+  coverPhotoPlaceholder: {
     flex: 1,
     alignItems: 'center',
     justifyContent: 'center',
@@ -1105,88 +984,48 @@ const styles = StyleSheet.create({
   membersChipTextActive: {
     color: '#c42743',
   },
-  // Duration
-  durationRow: {
+  // Preview Button
+  previewButton: {
     flexDirection: 'row',
-    gap: 10,
-    marginBottom: 12,
-  },
-  durationButton: {
-    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
     backgroundColor: '#1a1a1a',
     borderRadius: 10,
-    paddingVertical: 12,
-    alignItems: 'center',
-    borderWidth: 1.5,
-    borderColor: 'transparent',
+    paddingVertical: 14,
+    borderWidth: 1,
+    borderColor: '#333',
   },
-  durationButtonActive: {
-    backgroundColor: '#252525',
-    borderColor: '#c42743',
-  },
-  durationButtonText: {
-    fontSize: 13,
-    fontWeight: '600',
-    color: '#666',
-  },
-  durationButtonTextActive: {
-    color: '#c42743',
-  },
-  endDateRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    backgroundColor: '#1a1a1a',
-    borderRadius: 10,
-    padding: 14,
-  },
-  endDateLabel: {
-    fontSize: 13,
-    color: '#666',
-  },
-  endDateValue: {
+  previewButtonText: {
     fontSize: 14,
-    fontWeight: '600',
-    color: '#fff',
-  },
-  // Challenge Type
-  challengeRow: {
-    flexDirection: 'row',
-    gap: 10,
-  },
-  challengeButton: {
-    flex: 1,
-    backgroundColor: '#1a1a1a',
-    borderRadius: 12,
-    padding: 14,
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 10,
-    borderWidth: 1.5,
-    borderColor: 'transparent',
-  },
-  challengeButtonActive: {
-    backgroundColor: '#252525',
-    borderColor: '#c42743',
-  },
-  challengeInfo: {
-    flex: 1,
-  },
-  challengeTitle: {
-    fontSize: 14,
-    fontWeight: '600',
+    fontWeight: '500',
     color: '#888',
   },
-  challengeTitleActive: {
-    color: '#c42743',
+  // Preview Modal
+  previewModalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.85)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 20,
   },
-  challengeDesc: {
-    fontSize: 11,
+  previewModalContent: {
+    width: '100%',
+    alignItems: 'center',
+  },
+  previewModalTitle: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#888',
+    marginBottom: 20,
+  },
+  previewCardContainer: {
+    width: '100%',
+  },
+  previewHint: {
+    fontSize: 13,
     color: '#555',
-    marginTop: 2,
-  },
-  challengeDescActive: {
-    color: '#888',
+    marginTop: 20,
   },
   // Invite Code
   codeButton: {
@@ -1293,6 +1132,14 @@ const styles = StyleSheet.create({
     fontStyle: 'italic',
   },
   // Search
+  searchInput: {
+    backgroundColor: '#1a1a1a',
+    borderRadius: 12,
+    padding: 12,
+    fontSize: 15,
+    color: '#fff',
+    marginBottom: 12,
+  },
   inviteSearchButton: {
     flexDirection: 'row',
     alignItems: 'center',

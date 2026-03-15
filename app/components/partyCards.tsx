@@ -49,6 +49,9 @@ export default function PartyCards({ leaderboard, onPress, showDivider = true }:
   // Get up to 3 mutual followers for stacked avatars
   const mutualFollowers = (leaderboard.mutualFollowers || []).slice(0, 3);
 
+  // Get the first place player (leader)
+  const leader = leaderboard.players && leaderboard.players.length > 0 ? leaderboard.players[0] : null;
+
   return (
     <TouchableOpacity
       activeOpacity={0.8}
@@ -120,13 +123,34 @@ export default function PartyCards({ leaderboard, onPress, showDivider = true }:
         )}
       </View>
 
-      {/* Right Section - Member Count */}
+      {/* Right Section - Leader & Member Count */}
       <View style={styles.rightSection}>
+        {/* Leader Avatar with Crown - Only for leaderboards */}
+        {leader && leaderboard.type === 'leaderboard' && (
+          <View style={styles.leaderContainer}>
+            <View style={styles.crownBadge}>
+              <IconSymbol size={10} name="crown.fill" color="#FFD700" />
+            </View>
+            <View style={styles.leaderAvatar}>
+              {leader.avatar ? (
+                <Image source={{ uri: leader.avatar }} style={styles.leaderAvatarImage} />
+              ) : (
+                <View style={styles.leaderAvatarPlaceholder}>
+                  <ThemedText style={styles.leaderAvatarText}>
+                    {(leader.username || '?').charAt(0).toUpperCase()}
+                  </ThemedText>
+                </View>
+              )}
+            </View>
+          </View>
+        )}
         <View style={styles.memberCount}>
           <IconSymbol size={16} name="person.2.fill" color="#888" />
           <ThemedText style={styles.memberText}>
             <ThemedText style={styles.currentMembers}>{leaderboard.members}</ThemedText>
-            <ThemedText style={styles.maxMembers}>/{maxMembers}</ThemedText>
+            {maxMembers > 0 && (
+              <ThemedText style={styles.maxMembers}>/{maxMembers}</ThemedText>
+            )}
           </ThemedText>
         </View>
       </View>
@@ -247,6 +271,40 @@ const styles = StyleSheet.create({
   rightSection: {
     alignItems: 'flex-end',
     marginRight: 8,
+    gap: 6,
+  },
+  leaderContainer: {
+    position: 'relative',
+    alignItems: 'center',
+  },
+  crownBadge: {
+    position: 'absolute',
+    top: -6,
+    zIndex: 10,
+  },
+  leaderAvatar: {
+    width: 28,
+    height: 28,
+    borderRadius: 14,
+    overflow: 'hidden',
+    borderWidth: 1.5,
+    borderColor: '#FFD700',
+  },
+  leaderAvatarImage: {
+    width: '100%',
+    height: '100%',
+  },
+  leaderAvatarPlaceholder: {
+    width: '100%',
+    height: '100%',
+    backgroundColor: '#2a2a2a',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  leaderAvatarText: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: '#888',
   },
   memberCount: {
     flexDirection: 'row',
