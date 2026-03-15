@@ -304,19 +304,9 @@ export default function ProfileScreen() {
 
     if (focusedCardIndex !== null) {
       if (pressedIndex === focusedCardIndex) {
-        // Clicking the focused card - navigate to game stats
-        const game = userGames[pressedIndex];
-        if (game.name === 'Valorant') {
-          router.push({
-            pathname: '/components/valorantGameStats',
-            params: { game: JSON.stringify(game) },
-          });
-        } else if (game.name === 'League of Legends' || game.name === 'TFT') {
-          router.push({
-            pathname: '/components/leagueGameStats',
-            params: { game: JSON.stringify(game) },
-          });
-        }
+        // Clicking the focused card - let the card handle its own flip
+        // Do nothing here, the card will flip via its internal handler
+        return;
       } else {
         // Clicking a non-focused card - collapse back to stack
         LayoutAnimation.configureNext(
@@ -1263,29 +1253,13 @@ export default function ProfileScreen() {
                   displayUsername = `${riotAccount.gameName}#${riotAccount.tagLine}`;
                 }
 
-                const handleSingleCardPress = () => {
-                  if (game.name === 'Valorant') {
-                    router.push({
-                      pathname: '/components/valorantGameStats',
-                      params: { game: JSON.stringify(game) },
-                    });
-                  } else if (game.name === 'League of Legends' || game.name === 'TFT') {
-                    router.push({
-                      pathname: '/components/leagueGameStats',
-                      params: { game: JSON.stringify(game) },
-                    });
-                  }
-                };
-
                 return (
-                  <TouchableOpacity
+                  <View
                     key={game.id}
                     style={styles.verticalCardWrapper}
-                    onPress={handleSingleCardPress}
-                    activeOpacity={0.9}
                   >
-                    <RankCard game={game} username={displayUsername} viewOnly={true} />
-                  </TouchableOpacity>
+                    <RankCard game={game} username={displayUsername} viewOnly={false} isFocused={true} />
+                  </View>
                 );
               })()}
             </View>
@@ -1366,13 +1340,21 @@ export default function ProfileScreen() {
                             }
                           ]}
                         >
-                          <TouchableOpacity
-                            onPress={() => handleCardPress(index)}
-                            activeOpacity={0.9}
-                            style={{ width: '100%' }}
-                          >
-                            <RankCard game={game} username={displayUsername} viewOnly={true} />
-                          </TouchableOpacity>
+                          {focusedCardIndex === index ? (
+                            // Focused card - let it handle its own press (flip)
+                            <View style={{ width: '100%' }}>
+                              <RankCard game={game} username={displayUsername} viewOnly={false} isFocused={true} />
+                            </View>
+                          ) : (
+                            // Non-focused card - handle press to focus/collapse
+                            <TouchableOpacity
+                              onPress={() => handleCardPress(index)}
+                              activeOpacity={0.9}
+                              style={{ width: '100%' }}
+                            >
+                              <RankCard game={game} username={displayUsername} viewOnly={true} isFocused={false} />
+                            </TouchableOpacity>
+                          )}
                         </Animated.View>
                       );
                     })}

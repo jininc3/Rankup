@@ -20,13 +20,14 @@ interface RankCardProps {
   username: string;
   viewOnly?: boolean;
   userId?: string; // ID of the user whose stats to view (for viewing other users)
+  isFocused?: boolean; // If true, card is in focused/unstacked mode and can be flipped
 }
 
-export default function rankCard({ game, username, viewOnly = false, userId }: RankCardProps) {
+export default function rankCard({ game, username, viewOnly = false, userId, isFocused = false }: RankCardProps) {
   // Route to the appropriate rank card based on game
   switch (game.name) {
     case 'Valorant':
-      return <ValorantRankCard game={game} username={username} viewOnly={viewOnly} userId={userId} />;
+      return <ValorantRankCard game={game} username={username} viewOnly={viewOnly} userId={userId} isFocused={isFocused} />;
     case 'TFT':
       return <TftRankCard game={game} username={username} viewOnly={viewOnly} userId={userId} />;
     case 'League of Legends':

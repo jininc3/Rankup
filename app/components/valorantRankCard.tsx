@@ -1,7 +1,7 @@
 import { ThemedText } from '@/components/themed-text';
 import { LinearGradient } from 'expo-linear-gradient';
-import { useRouter } from 'expo-router';
-import { Image, StyleSheet, View } from 'react-native';
+import { Image, StyleSheet, View, TouchableOpacity, Animated } from 'react-native';
+import { useState, useRef, useEffect } from 'react';
 
 interface Game {
   id: number;
@@ -22,6 +22,7 @@ interface ValorantRankCardProps {
   username: string;
   viewOnly?: boolean; // If true, card is not clickable (for viewing other users)
   userId?: string; // ID of the user whose stats to view (for viewing other users)
+  isFocused?: boolean; // If true, card is in focused/unstacked mode and can be flipped
 }
 
 // Valorant rank icon mapping - Includes subdivision ranks
@@ -65,18 +66,36 @@ const VALORANT_RANK_ICONS: { [key: string]: any } = {
   immortal3: require('@/assets/images/valorantranks/immortal3.png'),
 };
 
-export default function ValorantRankCard({ game, username, viewOnly = false, userId }: ValorantRankCardProps) {
-  const router = useRouter();
+export default function ValorantRankCard({ game, username, viewOnly = false, userId, isFocused = false }: ValorantRankCardProps) {
+  const [isFlipped, setIsFlipped] = useState(false);
+  const [showBack, setShowBack] = useState(false);
+  const flipAnimation = useRef(new Animated.Value(0)).current;
+
+  // Listen to animation value to swap content at midpoint
+  useEffect(() => {
+    const listenerId = flipAnimation.addListener(({ value }) => {
+      // Swap content when we cross the midpoint
+      if (value >= 0.5 && !showBack) {
+        setShowBack(true);
+      } else if (value < 0.5 && showBack) {
+        setShowBack(false);
+      }
+    });
+    return () => flipAnimation.removeListener(listenerId);
+  }, [showBack]);
 
   const handlePress = () => {
-    if (viewOnly) return; // Don't navigate if view only
-    router.push({
-      pathname: '/components/valorantGameStats',
-      params: {
-        game: JSON.stringify(game),
-        ...(userId && { userId }), // Only include userId if provided
-      },
-    });
+    if (viewOnly) return;
+
+    // Flip the card
+    const toValue = isFlipped ? 0 : 1;
+    Animated.spring(flipAnimation, {
+      toValue,
+      friction: 8,
+      tension: 10,
+      useNativeDriver: false, // Need JS driver for listener to work properly
+    }).start();
+    setIsFlipped(!isFlipped);
   };
 
   const getRankIcon = (rank: string) => {
@@ -84,95 +103,100 @@ export default function ValorantRankCard({ game, username, viewOnly = false, use
       return VALORANT_RANK_ICONS.unranked;
     }
 
-    // Extract tier and subdivision (e.g., "Gold 3" → "gold3")
     const parts = rank.split(' ');
-    const tier = parts[0].toLowerCase(); // e.g., "gold"
-    const subdivision = parts[1]; // e.g., "3"
+    const tier = parts[0].toLowerCase();
+    const subdivision = parts[1];
 
-    // Try to get subdivision rank first (e.g., "gold3")
     if (subdivision) {
-      const subdivisionKey = tier + subdivision; // e.g., "gold3"
+      const subdivisionKey = tier + subdivision;
       if (VALORANT_RANK_ICONS[subdivisionKey]) {
         return VALORANT_RANK_ICONS[subdivisionKey];
       }
     }
 
-    // Fallback to base tier (e.g., "gold") or radiant (which has no subdivision)
     return VALORANT_RANK_ICONS[tier] || VALORANT_RANK_ICONS.unranked;
   };
 
-  // Navigation temporarily disabled
-  // const CardWrapper = viewOnly ? View : TouchableOpacity;
+  // Scale-based flip animation (more reliable than 3D rotation)
+  const scaleY = flipAnimation.interpolate({
+    inputRange: [0, 0.5, 1],
+    outputRange: [1, 0, 1],
+  });
+
+  const animatedStyle = {
+    transform: [{ scaleY }],
+  };
 
   return (
-    <View style={styles.cardOuter}>
-      {/* 3D Shadow layers - light from right side */}
+    <TouchableOpacity
+      style={styles.cardOuter}
+      onPress={handlePress}
+      activeOpacity={isFocused ? 0.9 : 1}
+      disabled={!isFocused && viewOnly}
+    >
+      {/* 3D Shadow layers */}
       <View style={styles.shadow3} />
       <View style={styles.shadow2} />
       <View style={styles.shadow1} />
 
-      <View style={styles.rankCard}>
+      {/* Single animated card that swaps content at midpoint */}
+      <Animated.View style={[styles.rankCard, animatedStyle]}>
         <LinearGradient
-        colors={['#DC3D4B', '#8B1E2B', '#5C141D']}
-        start={{ x: 0, y: 0 }}
-        end={{ x: 1, y: 1 }}
-        style={styles.cardBackground}
-      >
-        {/* Valorant logo watermark */}
-        <Image
-          source={require('@/assets/images/valorant-black.png')}
-          style={styles.backgroundLogo}
-          resizeMode="contain"
-        />
+          colors={showBack ? ['#5C141D', '#8B1E2B', '#DC3D4B'] : ['#DC3D4B', '#8B1E2B', '#5C141D']}
+          start={{ x: 0, y: 0 }}
+          end={{ x: 1, y: 1 }}
+          style={styles.cardBackground}
+        >
+          {/* Inside border */}
+          <View style={styles.innerBorder} />
 
-        {/* Inside border */}
-        <View style={styles.innerBorder} />
+          {showBack ? (
+            /* Back content */
+            <View style={styles.cardBackContent}>
+              {/* Player Card */}
+              {game.valorantCard && (
+                <Image
+                  source={{ uri: game.valorantCard }}
+                  style={styles.backProfileIcon}
+                />
+              )}
 
-        {/* Front of card - Credit card style */}
-        <View style={styles.cardFront}>
-          {/* Game Logo - Top Left */}
-          <View style={styles.cardGameLogo}>
-            <Image
-              source={require('@/assets/images/valorant.png')}
-              style={styles.gameLogo}
-              resizeMode="contain"
-            />
-          </View>
+              {/* Current Rank */}
+              <ThemedText style={styles.backRankLabel}>CURRENT RANK</ThemedText>
+              <ThemedText style={styles.backRankValue}>{game.rank}</ThemedText>
 
-          {/* Player Card - Top Right */}
-          <View style={styles.cardHeader}>
-            {game.valorantCard ? (
-              <Image
-                source={{ uri: game.valorantCard }}
-                defaultSource={require('@/assets/images/valorant-black.png')}
-                style={styles.cardProfileIcon}
-              />
-            ) : (
-              <ThemedText style={styles.cardGameIcon}>{game.icon}</ThemedText>
-            )}
-          </View>
-
-          {/* Current Rank - Centered */}
-          <View style={styles.cardMiddle}>
-            <ThemedText style={styles.cardRankLabel}>CURRENT RANK</ThemedText>
-            <ThemedText style={styles.cardRankValue}>{game.rank}</ThemedText>
-            <Image
-              source={getRankIcon(game.rank)}
-              style={styles.rankIcon}
-              resizeMode="contain"
-            />
-          </View>
-
-          {/* Footer - Bottom */}
-          <View style={styles.cardFooter}>
-            <View style={styles.cardUserInfo}>
-              <ThemedText style={styles.cardUsername}>{username}</ThemedText>
+              {/* Username */}
+              <View style={styles.backFooter}>
+                <ThemedText style={styles.backUsername}>{username}</ThemedText>
+              </View>
             </View>
-          </View>
-        </View>
-      </LinearGradient>
-    </View>
-    </View>
+          ) : (
+            /* Front content */
+            <View style={styles.cardFront}>
+              {/* Valorant logo - centered and higher */}
+              <Image
+                source={require('@/assets/images/valorant-black.png')}
+                style={styles.frontLogo}
+                resizeMode="contain"
+              />
+
+              {/* Current Rank | Username row */}
+              <View style={styles.frontInfoRow}>
+                <View style={styles.frontInfoItem}>
+                  <ThemedText style={styles.frontInfoLabel}>Current Rank</ThemedText>
+                  <ThemedText style={styles.frontInfoValue}>{game.rank || 'Unranked'}</ThemedText>
+                </View>
+                <View style={styles.frontInfoDivider} />
+                <View style={styles.frontInfoItem}>
+                  <ThemedText style={styles.frontInfoLabel}>Player</ThemedText>
+                  <ThemedText style={styles.frontInfoValue}>{username}</ThemedText>
+                </View>
+              </View>
+            </View>
+          )}
+        </LinearGradient>
+      </Animated.View>
+    </TouchableOpacity>
   );
 }
 
@@ -181,7 +205,7 @@ const styles = StyleSheet.create({
     position: 'relative',
     height: 220,
   },
-  // 3D Shadow layers - light from right side
+  // 3D Shadow layers
   shadow3: {
     position: 'absolute',
     top: 10,
@@ -189,7 +213,7 @@ const styles = StyleSheet.create({
     right: 14,
     bottom: -10,
     backgroundColor: '#000',
-    borderRadius: 26,
+    borderRadius: 18,
     opacity: 0.2,
   },
   shadow2: {
@@ -199,7 +223,7 @@ const styles = StyleSheet.create({
     right: 10,
     bottom: -6,
     backgroundColor: '#000',
-    borderRadius: 25,
+    borderRadius: 17,
     opacity: 0.25,
   },
   shadow1: {
@@ -209,119 +233,109 @@ const styles = StyleSheet.create({
     right: 5,
     bottom: -3,
     backgroundColor: '#000',
-    borderRadius: 24,
+    borderRadius: 16,
     opacity: 0.3,
   },
   rankCard: {
-    borderRadius: 24,
+    borderRadius: 16,
     height: 220,
-    borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.1)',
+    borderWidth: 4,
+    borderColor: '#000',
     overflow: 'hidden',
   },
   cardBackground: {
     flex: 1,
-    borderRadius: 24,
+    borderRadius: 12,
   },
   innerBorder: {
     position: 'absolute',
-    top: 4,
-    left: 4,
-    right: 4,
-    bottom: 4,
-    borderRadius: 21,
-    borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.08)',
-  },
-  backgroundLogo: {
-    position: 'absolute',
-    width: 266,
-    height: 266,
-    top: '50%',
-    left: '50%',
-    marginTop: -133,
-    marginLeft: -133,
-    opacity: 0.12,
-    tintColor: '#000',
+    top: 8,
+    left: 8,
+    right: 8,
+    bottom: 8,
+    borderRadius: 10,
+    borderWidth: 2,
+    borderColor: 'rgba(255,255,255,0.25)',
   },
   cardFront: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    padding: 30,
+    paddingHorizontal: 20,
+    paddingTop: 20,
+    paddingBottom: 30,
   },
-  cardGameLogo: {
-    position: 'absolute',
-    top: 10,
-    left: 10,
+  frontLogo: {
+    width: 100,
+    height: 50,
+    marginBottom: 20,
   },
-  gameLogo: {
-    width: 32,
-    height: 32,
-    opacity: 0.9,
-  },
-  cardHeader: {
-    position: 'absolute',
-    top: 10,
-    right: 10,
-  },
-  cardGameIcon: {
-    fontSize: 42,
-  },
-  cardProfileIcon: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
-    borderWidth: 2,
-    borderColor: 'rgba(255,255,255,0.3)',
-  },
-  cardMiddle: {
+  frontInfoRow: {
+    flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    marginTop: -40, // Position for Valorant card
+    position: 'absolute',
+    bottom: 25,
+    left: 20,
+    right: 20,
   },
-  cardRankLabel: {
+  frontInfoItem: {
+    alignItems: 'center',
+    flex: 1,
+  },
+  frontInfoLabel: {
     fontSize: 11,
-    color: '#94a3b8',
+    color: 'rgba(255,255,255,0.6)',
+    marginBottom: 4,
+  },
+  frontInfoValue: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#fff',
+  },
+  frontInfoDivider: {
+    width: 1,
+    height: 30,
+    backgroundColor: 'rgba(255,255,255,0.2)',
+    marginHorizontal: 15,
+  },
+  // Back of card styles
+  cardBackContent: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 20,
+  },
+  backProfileIcon: {
+    width: 50,
+    height: 50,
+    borderRadius: 25,
+    borderWidth: 2,
+    borderColor: 'rgba(255,255,255,0.3)',
+    marginBottom: 12,
+  },
+  backRankLabel: {
+    fontSize: 10,
+    color: 'rgba(255,255,255,0.6)',
     letterSpacing: 2,
     fontWeight: '600',
     textTransform: 'uppercase',
+    marginBottom: 4,
   },
-  rankIcon: {
-    width: 70,
-    height: 70,
-    marginTop: 5,
-    marginBottom: 2,
-  },
-  cardRankValue: {
-    fontSize: 24,
+  backRankValue: {
+    fontSize: 22,
     fontWeight: '700',
     color: '#fff',
-    letterSpacing: -1,
-    marginTop: 0,
-    lineHeight: 28,
-    includeFontPadding: false,
+    letterSpacing: -0.5,
   },
-  cardFooter: {
+  backFooter: {
     position: 'absolute',
-    bottom: 10,
-    left: 10,
-    right: 10,
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'flex-end',
+    bottom: 16,
+    left: 16,
   },
-  cardUserInfo: {
-    flex: 1,
-  },
-  cardUsername: {
-    fontSize: 10,
+  backUsername: {
+    fontSize: 12,
     color: 'rgba(255,255,255,0.8)',
     fontWeight: '600',
-  },
-  swipeHint: {
-    fontSize: 9,
-    color: 'rgba(255,255,255,0.4)',
-    fontStyle: 'italic',
   },
 });
