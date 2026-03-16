@@ -75,6 +75,36 @@ const LEAGUE_CHAMPIONS: { [key: string]: string[] } = {
   'Support': ['Thresh', 'Leona', 'Lulu', 'Nami', 'Braum', 'Nautilus', 'Soraka'],
 };
 
+// Helper function to format relative time
+const formatTimeAgo = (timestamp: number): string => {
+  const now = Date.now();
+  const diff = now - timestamp;
+
+  const minutes = Math.floor(diff / (1000 * 60));
+  const hours = Math.floor(diff / (1000 * 60 * 60));
+  const days = Math.floor(diff / (1000 * 60 * 60 * 24));
+
+  if (minutes < 60) {
+    return `${minutes}m ago`;
+  } else if (hours < 24) {
+    return `${hours}h ago`;
+  } else if (days < 7) {
+    return `${days}d ago`;
+  } else {
+    return `${Math.floor(days / 7)}w ago`;
+  }
+};
+
+// Check if most recent match is within 3 months
+const isMatchesRecent = (matches: RecentMatchResult[]): boolean => {
+  if (matches.length === 0) return false;
+  const mostRecentMatch = matches[0];
+  if (!mostRecentMatch.playedAt) return true; // Show if no timestamp available
+
+  const threeMonthsAgo = Date.now() - (90 * 24 * 60 * 60 * 1000);
+  return mostRecentMatch.playedAt > threeMonthsAgo;
+};
+
 export default function DuoCardDetailScreen() {
   const router = useRouter();
   const params = useLocalSearchParams();
@@ -94,6 +124,18 @@ export default function DuoCardDetailScreen() {
       avatar = `${baseUrl}/o/${encodedPath}${queryString ? '?' + queryString : ''}`;
     }
   }
+
+  // Parse new stats params
+  const rawInGameIcon = params.inGameIcon;
+  const inGameIcon = Array.isArray(rawInGameIcon) ? rawInGameIcon[0] : rawInGameIcon;
+  const rawInGameName = params.inGameName;
+  const inGameName = Array.isArray(rawInGameName) ? rawInGameName[0] : rawInGameName;
+  const rawWinRate = params.winRate;
+  const winRateStr = Array.isArray(rawWinRate) ? rawWinRate[0] : rawWinRate;
+  const winRate = winRateStr ? parseFloat(winRateStr) : undefined;
+  const rawGamesPlayed = params.gamesPlayed;
+  const gamesPlayedStr = Array.isArray(rawGamesPlayed) ? rawGamesPlayed[0] : rawGamesPlayed;
+  const gamesPlayed = gamesPlayedStr ? parseInt(gamesPlayedStr, 10) : undefined;
 
   const peakRank = params.peakRank as string;
   const currentRank = params.currentRank as string;
@@ -249,7 +291,13 @@ export default function DuoCardDetailScreen() {
                 {/* Avatar */}
                 <View style={styles.avatarSection}>
                   <View style={[styles.avatarFrame, { borderColor: gameAccentColor }]}>
-                    {avatar && avatar.startsWith('http') && !avatarError ? (
+                    {inGameIcon && inGameIcon.startsWith('http') && !avatarError ? (
+                      <Image
+                        source={{ uri: inGameIcon }}
+                        style={styles.avatar}
+                        onError={() => setAvatarError(true)}
+                      />
+                    ) : avatar && avatar.startsWith('http') && !avatarError ? (
                       <Image
                         source={{ uri: avatar }}
                         style={styles.avatar}
@@ -271,6 +319,9 @@ export default function DuoCardDetailScreen() {
                 {/* User Info */}
                 <View style={styles.userInfo}>
                   <ThemedText style={styles.username} numberOfLines={1}>{username}</ThemedText>
+                  {inGameName && inGameName !== username && (
+                    <ThemedText style={styles.inGameNameText} numberOfLines={1}>{inGameName}</ThemedText>
+                  )}
                   <View style={styles.regionBadge}>
                     <ThemedText style={styles.regionText}>{region?.toUpperCase()}</ThemedText>
                   </View>
@@ -331,39 +382,78 @@ export default function DuoCardDetailScreen() {
               </View>
             </View>
 
-            {/* Divider */}
-            <View style={styles.divider} />
-
-            {/* Recent Games */}
-            <View style={styles.recentGamesSection}>
-              <ThemedText style={styles.sectionLabel}>LAST 5 GAMES</ThemedText>
-              <View style={styles.recentGamesRow}>
-                {loadingMatches ? (
-                  [0, 1, 2, 3, 4].map((i) => (
-                    <View key={i} style={styles.gameCirclePlaceholder} />
-                  ))
-                ) : recentMatches.length > 0 ? (
-                  [0, 1, 2, 3, 4].map((i) => {
-                    const match = recentMatches[i];
-                    if (!match) {
-                      return <View key={i} style={styles.gameCirclePlaceholder} />;
-                    }
-                    return (
-                      <View key={i} style={[styles.gameCircle, match.won ? styles.gameCircleWin : styles.gameCircleLoss]}>
-                        <ThemedText style={styles.gameCircleText}>
-                          {match.won ? 'W' : 'L'}
+            {/* Stats Section */}
+            {(winRate !== undefined || gamesPlayed !== undefined) && (
+              <>
+                <View style={styles.divider} />
+                <View style={styles.statsSection}>
+                  <ThemedText style={styles.sectionLabel}>STATS</ThemedText>
+                  <View style={styles.statsRow}>
+                    {winRate !== undefined && (
+                      <View style={styles.statBox}>
+                        <ThemedText style={styles.statLabel}>WIN RATE</ThemedText>
+                        <ThemedText style={[styles.statValue, { color: '#4ade80' }]}>
+                          {winRate.toFixed(1)}%
                         </ThemedText>
                       </View>
-                    );
-                  })
-                ) : (
-                  <ThemedText style={styles.noGamesText}>No recent games</ThemedText>
-                )}
-              </View>
-            </View>
+                    )}
+                    {gamesPlayed !== undefined && (
+                      <View style={styles.statBox}>
+                        <ThemedText style={styles.statLabel}>GAMES</ThemedText>
+                        <ThemedText style={[styles.statValue, { color: '#60a5fa' }]}>
+                          {gamesPlayed}
+                        </ThemedText>
+                      </View>
+                    )}
+                  </View>
+                </View>
+              </>
+            )}
 
             {/* Divider */}
             <View style={styles.divider} />
+
+            {/* Recent Games - Only show if played within last 3 months */}
+            {!loadingMatches && isMatchesRecent(recentMatches) && (
+              <>
+                <View style={styles.recentGamesSection}>
+                  <ThemedText style={styles.sectionLabel}>RECENT MATCHES</ThemedText>
+                  <View style={styles.matchList}>
+                    {recentMatches.slice(0, 5).map((match, i) => (
+                      <View key={i} style={[styles.matchRow, match.won ? styles.matchRowWin : styles.matchRowLoss]}>
+                        {/* Result indicator */}
+                        <View style={[styles.matchResultBadge, match.won ? styles.matchResultWin : styles.matchResultLoss]}>
+                          <ThemedText style={styles.matchResultText}>{match.won ? 'W' : 'L'}</ThemedText>
+                        </View>
+                        {/* Agent & KDA */}
+                        <View style={styles.matchInfo}>
+                          <ThemedText style={styles.matchAgent} numberOfLines={1}>
+                            {match.agent || 'Unknown'}
+                          </ThemedText>
+                          <ThemedText style={styles.matchKda}>
+                            {match.kills ?? 0}/{match.deaths ?? 0}/{match.assists ?? 0}
+                          </ThemedText>
+                        </View>
+                        {/* Map & Time */}
+                        <View style={styles.matchMeta}>
+                          {match.map && (
+                            <ThemedText style={styles.matchMap} numberOfLines={1}>{match.map}</ThemedText>
+                          )}
+                          {match.playedAt && (
+                            <ThemedText style={styles.matchTime}>
+                              {formatTimeAgo(match.playedAt)}
+                            </ThemedText>
+                          )}
+                        </View>
+                      </View>
+                    ))}
+                  </View>
+                </View>
+
+                {/* Divider */}
+                <View style={styles.divider} />
+              </>
+            )}
 
             {/* Player Info / Edit Section */}
             <View style={styles.playerInfoSection}>
@@ -757,6 +847,12 @@ const styles = StyleSheet.create({
     color: '#e5e5e5',
     letterSpacing: -0.3,
   },
+  inGameNameText: {
+    fontSize: 12,
+    fontWeight: '500',
+    color: '#6a6d72',
+    marginTop: 2,
+  },
   regionBadge: {
     alignSelf: 'flex-start',
     backgroundColor: '#1a1c1e',
@@ -854,6 +950,35 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     letterSpacing: -0.2,
   },
+  // Stats Section
+  statsSection: {
+    padding: 16,
+    gap: 12,
+  },
+  statsRow: {
+    flexDirection: 'row',
+    gap: 12,
+  },
+  statBox: {
+    flex: 1,
+    alignItems: 'center',
+    backgroundColor: '#13151a',
+    borderRadius: 10,
+    padding: 14,
+    gap: 6,
+    borderWidth: 1,
+    borderColor: '#1e2023',
+  },
+  statLabel: {
+    fontSize: 8,
+    fontWeight: '700',
+    color: '#4a4d52',
+    letterSpacing: 0.8,
+  },
+  statValue: {
+    fontSize: 18,
+    fontWeight: '700',
+  },
   // Recent Games
   recentGamesSection: {
     padding: 16,
@@ -896,6 +1021,83 @@ const styles = StyleSheet.create({
   },
   noGamesText: {
     fontSize: 11,
+    color: '#4a4d52',
+  },
+  // Match List Styles
+  matchLoadingContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+  },
+  matchLoadingText: {
+    fontSize: 11,
+    color: '#4a4d52',
+  },
+  matchList: {
+    gap: 8,
+  },
+  matchRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#13151a',
+    borderRadius: 8,
+    padding: 10,
+    gap: 10,
+    borderWidth: 1,
+    borderLeftWidth: 3,
+  },
+  matchRowWin: {
+    borderColor: '#1e2023',
+    borderLeftColor: '#4ade80',
+  },
+  matchRowLoss: {
+    borderColor: '#1e2023',
+    borderLeftColor: '#ef4444',
+  },
+  matchResultBadge: {
+    width: 28,
+    height: 28,
+    borderRadius: 6,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  matchResultWin: {
+    backgroundColor: '#1a4a2e',
+  },
+  matchResultLoss: {
+    backgroundColor: '#4a1a1a',
+  },
+  matchResultText: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: '#fff',
+  },
+  matchInfo: {
+    flex: 1,
+    gap: 2,
+  },
+  matchAgent: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: '#e5e5e5',
+  },
+  matchKda: {
+    fontSize: 11,
+    fontWeight: '500',
+    color: '#6a6d72',
+  },
+  matchMeta: {
+    alignItems: 'flex-end',
+    gap: 2,
+  },
+  matchMap: {
+    fontSize: 11,
+    fontWeight: '500',
+    color: '#6a6d72',
+    maxWidth: 70,
+  },
+  matchTime: {
+    fontSize: 10,
     color: '#4a4d52',
   },
   // Player Info Section

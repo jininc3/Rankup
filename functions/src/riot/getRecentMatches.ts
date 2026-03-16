@@ -14,6 +14,16 @@ import {getValorantMatches} from "../valorant/valorantApi";
 
 export interface RecentMatchResult {
   won: boolean;
+  // Valorant-specific fields
+  agent?: string;
+  kills?: number;
+  deaths?: number;
+  assists?: number;
+  map?: string;
+  playedAt?: number; // Unix timestamp in milliseconds
+  // League-specific fields
+  champion?: string;
+  championId?: number;
 }
 
 export interface GetRecentMatchesRequest {
@@ -151,7 +161,7 @@ async function getValorantRecentMatches(userData: any): Promise<GetRecentMatches
     };
   }
 
-  // Determine which team this player is on, then check if that team won
+  // Extract detailed match info for each match
   const matches: RecentMatchResult[] = henrikMatches.map((match) => {
     const player = match.players.all_players.find(
       (p) => p.name.toLowerCase() === gameName.toLowerCase() && p.tag.toLowerCase() === tag.toLowerCase()
@@ -159,13 +169,25 @@ async function getValorantRecentMatches(userData: any): Promise<GetRecentMatches
 
     if (!player) {
       // Fallback: can't determine team, default to red team
-      return {won: match.teams.red.has_won};
+      return {
+        won: match.teams.red.has_won,
+        map: match.metadata?.map,
+        playedAt: match.metadata?.game_start,
+      };
     }
 
     const playerTeam = player.team.toLowerCase(); // "red" or "blue"
     const won = playerTeam === "red" ? match.teams.red.has_won : match.teams.blue.has_won;
 
-    return {won};
+    return {
+      won,
+      agent: player.character,
+      kills: player.stats?.kills,
+      deaths: player.stats?.deaths,
+      assists: player.stats?.assists,
+      map: match.metadata?.map,
+      playedAt: match.metadata?.game_start,
+    };
   });
 
   return {

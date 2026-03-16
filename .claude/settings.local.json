@@ -19,7 +19,8 @@
       "Bash(eas build:*)",
       "Bash(npx expo install:*)",
       "Bash(curl:*)",
-      "WebFetch(domain:www.riotgames.com)"
+      "WebFetch(domain:www.riotgames.com)",
+      "Bash(npm run deploy:*)"
     ],
     "deny": [],
     "ask": []

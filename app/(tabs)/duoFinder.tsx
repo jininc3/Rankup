@@ -17,6 +17,10 @@ interface DuoCardWithId extends DuoCardData {
   userId: string;
   updatedAt?: any;
   avatar?: string;
+  inGameIcon?: string;
+  inGameName?: string;
+  winRate?: number;
+  gamesPlayed?: number;
 }
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
@@ -94,6 +98,16 @@ export default function DuoFinderScreen() {
   const [showEditModal, setShowEditModal] = useState(false);
   const [editingGame, setEditingGame] = useState<'valorant' | 'league' | null>(null);
 
+  // User's in-game icons, names, and stats for their own cards
+  const [valorantInGameIcon, setValorantInGameIcon] = useState<string | undefined>(undefined);
+  const [valorantInGameName, setValorantInGameName] = useState<string | undefined>(undefined);
+  const [valorantWinRate, setValorantWinRate] = useState<number | undefined>(undefined);
+  const [valorantGamesPlayed, setValorantGamesPlayed] = useState<number | undefined>(undefined);
+  const [leagueInGameIcon, setLeagueInGameIcon] = useState<string | undefined>(undefined);
+  const [leagueInGameName, setLeagueInGameName] = useState<string | undefined>(undefined);
+  const [leagueWinRate, setLeagueWinRate] = useState<number | undefined>(undefined);
+  const [leagueGamesPlayed, setLeagueGamesPlayed] = useState<number | undefined>(undefined);
+
   // Function to sync duo cards with rank stats
   const syncDuoCardsWithStats = async (isManualRefresh: boolean = false) => {
     if (isManualRefresh) {
@@ -108,6 +122,40 @@ export default function DuoFinderScreen() {
 
       if (userDoc.exists()) {
         const userData = userDoc.data();
+
+        // Extract in-game icons, names, and stats from user stats
+        if (userData.valorantStats?.card?.small) {
+          setValorantInGameIcon(userData.valorantStats.card.small);
+        }
+        if (userData.valorantStats?.gameName) {
+          setValorantInGameName(userData.valorantStats.gameName);
+        }
+        if (userData.valorantStats?.winRate !== undefined) {
+          setValorantWinRate(userData.valorantStats.winRate);
+        }
+        if (userData.valorantStats?.gamesPlayed !== undefined) {
+          setValorantGamesPlayed(userData.valorantStats.gamesPlayed);
+        }
+        // League stores profileIconId, need to construct URL
+        if (userData.riotStats?.profileIconId) {
+          setLeagueInGameIcon(`https://ddragon.leagueoflegends.com/cdn/14.24.1/img/profileicon/${userData.riotStats.profileIconId}.png`);
+        }
+        if (userData.riotAccount?.gameName) {
+          const tagLine = userData.riotAccount.tagLine || '';
+          setLeagueInGameName(`${userData.riotAccount.gameName}#${tagLine}`);
+        }
+        // League ranked stats
+        if (userData.riotStats?.rankedSolo) {
+          const rankedSolo = userData.riotStats.rankedSolo;
+          if (rankedSolo.winRate !== undefined) {
+            setLeagueWinRate(rankedSolo.winRate);
+          }
+          const wins = rankedSolo.wins || 0;
+          const losses = rankedSolo.losses || 0;
+          if (wins > 0 || losses > 0) {
+            setLeagueGamesPlayed(wins + losses);
+          }
+        }
 
         // Load and sync Valorant card
         const valorantCardRef = doc(db, 'duoCards', `${user.id}_valorant`);
@@ -428,16 +476,59 @@ export default function DuoFinderScreen() {
             .map(async (docSnapshot) => {
               const cardData = docSnapshot.data();
 
-              // Fetch user's avatar
+              // Fetch user's avatar, in-game icon, in-game name, and stats
               let avatar = undefined;
+              let inGameIcon = undefined;
+              let inGameName = undefined;
+              let winRate = undefined;
+              let gamesPlayed = undefined;
               try {
                 const userDocRef = doc(db, 'users', cardData.userId);
                 const userDoc = await getDoc(userDocRef);
                 if (userDoc.exists()) {
-                  avatar = userDoc.data()?.avatar;
+                  const userData = userDoc.data();
+                  avatar = userData?.avatar;
+                  // Get in-game icon, name, and stats based on game type
+                  if (cardData.game === 'valorant') {
+                    if (userData?.valorantStats?.card?.small) {
+                      inGameIcon = userData.valorantStats.card.small;
+                    }
+                    if (userData?.valorantStats?.gameName) {
+                      inGameName = userData.valorantStats.gameName;
+                    }
+                    // Get win rate and games played for Valorant
+                    if (userData?.valorantStats?.winRate !== undefined) {
+                      winRate = userData.valorantStats.winRate;
+                    }
+                    if (userData?.valorantStats?.gamesPlayed !== undefined) {
+                      gamesPlayed = userData.valorantStats.gamesPlayed;
+                    }
+                  } else if (cardData.game === 'league') {
+                    // League stores profileIconId, need to construct URL
+                    if (userData?.riotStats?.profileIconId) {
+                      inGameIcon = `https://ddragon.leagueoflegends.com/cdn/14.24.1/img/profileicon/${userData.riotStats.profileIconId}.png`;
+                    }
+                    if (userData?.riotAccount?.gameName) {
+                      const tagLine = userData.riotAccount.tagLine || '';
+                      inGameName = `${userData.riotAccount.gameName}#${tagLine}`;
+                    }
+                    // Get win rate and games played for League (from rankedSolo)
+                    if (userData?.riotStats?.rankedSolo) {
+                      const rankedSolo = userData.riotStats.rankedSolo;
+                      if (rankedSolo.winRate !== undefined) {
+                        winRate = rankedSolo.winRate;
+                      }
+                      // Calculate games played from wins + losses
+                      const wins = rankedSolo.wins || 0;
+                      const losses = rankedSolo.losses || 0;
+                      if (wins > 0 || losses > 0) {
+                        gamesPlayed = wins + losses;
+                      }
+                    }
+                  }
                 }
               } catch (error) {
-                console.error('Error fetching avatar for user:', cardData.userId, error);
+                console.error('Error fetching user data for:', cardData.userId, error);
               }
 
               return {
@@ -453,6 +544,10 @@ export default function DuoFinderScreen() {
                 lookingFor: cardData.lookingFor || 'Any',
                 updatedAt: cardData.updatedAt,
                 avatar: avatar,
+                inGameIcon: inGameIcon,
+                inGameName: inGameName,
+                winRate: winRate,
+                gamesPlayed: gamesPlayed,
               };
             })
         ) as DuoCardWithId[];
@@ -498,12 +593,20 @@ export default function DuoFinderScreen() {
     const cardData = game === 'valorant' ? valorantCard : leagueCard;
     if (cardData) {
       const avatarUrl = user?.avatar || '';
+      const inGameIcon = game === 'valorant' ? valorantInGameIcon : leagueInGameIcon;
+      const inGameName = game === 'valorant' ? valorantInGameName : leagueInGameName;
+      const winRate = game === 'valorant' ? valorantWinRate : leagueWinRate;
+      const gamesPlayed = game === 'valorant' ? valorantGamesPlayed : leagueGamesPlayed;
       router.push({
         pathname: '/profilePages/duoCardDetail',
         params: {
           game: cardData.game,
           username: cardData.username,
           avatar: avatarUrl,
+          inGameIcon: inGameIcon || '',
+          inGameName: inGameName || '',
+          winRate: winRate !== undefined ? String(winRate) : '',
+          gamesPlayed: gamesPlayed !== undefined ? String(gamesPlayed) : '',
           peakRank: cardData.peakRank,
           currentRank: cardData.currentRank,
           region: cardData.region,
@@ -527,6 +630,10 @@ export default function DuoFinderScreen() {
         game: card.game,
         username: card.username,
         avatar: avatarUrl,
+        inGameIcon: card.inGameIcon || '',
+        inGameName: card.inGameName || '',
+        winRate: card.winRate !== undefined ? String(card.winRate) : '',
+        gamesPlayed: card.gamesPlayed !== undefined ? String(card.gamesPlayed) : '',
         peakRank: card.peakRank,
         currentRank: card.currentRank,
         region: card.region,
@@ -774,12 +881,13 @@ export default function DuoFinderScreen() {
                       key={card.id}
                       game={card.game}
                       username={card.username}
-                      avatar={card.avatar}
+                      inGameName={card.inGameName || card.username}
+                      inGameIcon={card.inGameIcon}
                       currentRank={card.currentRank}
-                      peakRank={card.peakRank}
                       mainRole={card.mainRole}
-                      preferredDuoRole={card.lookingFor || 'Any'}
+                      mainAgent={card.mainAgent}
                       onPress={() => handleFindDuoCardPress(card)}
+                      onViewProfile={() => handleFindDuoCardPress(card)}
                       onAvatarLoad={() => setAvatarsLoadedCount(prev => prev + 1)}
                       showContent={true}
                     />
@@ -851,12 +959,13 @@ export default function DuoFinderScreen() {
                       <CompactDuoCard
                         game="valorant"
                         username={valorantCard.username}
-                        avatar={user?.avatar}
+                        inGameName={valorantInGameName || valorantCard.username}
+                        inGameIcon={valorantInGameIcon}
                         currentRank={valorantCard.currentRank}
-                        peakRank={valorantCard.peakRank}
                         mainRole={valorantCard.mainRole}
-                        preferredDuoRole={valorantCard.lookingFor || 'Any'}
+                        mainAgent={valorantCard.mainAgent}
                         onPress={() => handleCardPress('valorant')}
+                        onViewProfile={() => handleCardPress('valorant')}
                       />
                     )}
 
@@ -865,12 +974,13 @@ export default function DuoFinderScreen() {
                       <CompactDuoCard
                         game="league"
                         username={leagueCard.username}
-                        avatar={user?.avatar}
+                        inGameName={leagueInGameName || leagueCard.username}
+                        inGameIcon={leagueInGameIcon}
                         currentRank={leagueCard.currentRank}
-                        peakRank={leagueCard.peakRank}
                         mainRole={leagueCard.mainRole}
-                        preferredDuoRole={leagueCard.lookingFor || 'Any'}
+                        mainAgent={leagueCard.mainAgent}
                         onPress={() => handleCardPress('league')}
+                        onViewProfile={() => handleCardPress('league')}
                       />
                     )}
                   </View>

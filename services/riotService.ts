@@ -109,6 +109,16 @@ export interface UnlinkAccountResponse {
 // Recent matches types
 export interface RecentMatchResult {
   won: boolean;
+  // Valorant-specific fields
+  agent?: string;
+  kills?: number;
+  deaths?: number;
+  assists?: number;
+  map?: string;
+  playedAt?: number; // Unix timestamp in milliseconds
+  // League-specific fields
+  champion?: string;
+  championId?: number;
 }
 
 export interface GetRecentMatchesRequest {

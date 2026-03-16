@@ -63,11 +63,29 @@ export interface HenrikMMRData {
  * Match data from Henrik's API
  */
 export interface HenrikMatch {
+  metadata: {
+    match_id: string;
+    map: string;
+    game_start: number; // Unix timestamp in milliseconds
+    game_length: number; // Duration in milliseconds
+    mode: string;
+  };
   players: {
     all_players: Array<{
       name: string;
       tag: string;
       team: string; // "Red" or "Blue"
+      character: string; // Agent name (e.g., "Jett", "Sova")
+      stats: {
+        kills: number;
+        deaths: number;
+        assists: number;
+        score: number;
+        headshots: number;
+        bodyshots: number;
+        legshots: number;
+      };
+      currenttier_patched?: string; // Rank at time of match
     }>;
   };
   teams: {

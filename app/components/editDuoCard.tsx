@@ -111,12 +111,18 @@ export default function EditDuoCard({
 }: EditDuoCardProps) {
   const { user } = useAuth();
   const [mainRole, setMainRole] = useState(initialMainRole);
-  const [mainAgent, setMainAgent] = useState(initialMainAgent);
+  // Support multiple agents (up to 3) - stored as comma-separated string
+  const [selectedAgents, setSelectedAgents] = useState<string[]>(() => {
+    if (!initialMainAgent) return [];
+    return initialMainAgent.split(',').map(a => a.trim()).filter(Boolean);
+  });
   const [lookingFor, setLookingFor] = useState(initialLookingFor);
 
   const [showRoleDropdown, setShowRoleDropdown] = useState(false);
   const [showAgentDropdown, setShowAgentDropdown] = useState(false);
   const [showLookingForDropdown, setShowLookingForDropdown] = useState(false);
+
+  const MAX_AGENTS = 3;
 
   const handleDelete = () => {
     Alert.alert(
@@ -140,10 +146,27 @@ export default function EditDuoCard({
   useEffect(() => {
     if (visible) {
       setMainRole(initialMainRole);
-      setMainAgent(initialMainAgent);
+      // Parse comma-separated agents
+      if (initialMainAgent) {
+        setSelectedAgents(initialMainAgent.split(',').map(a => a.trim()).filter(Boolean));
+      } else {
+        setSelectedAgents([]);
+      }
       setLookingFor(initialLookingFor);
     }
   }, [visible, initialMainRole, initialMainAgent, initialLookingFor]);
+
+  // Toggle agent selection
+  const toggleAgent = (agent: string) => {
+    setSelectedAgents(prev => {
+      if (prev.includes(agent)) {
+        return prev.filter(a => a !== agent);
+      } else if (prev.length < MAX_AGENTS) {
+        return [...prev, agent];
+      }
+      return prev;
+    });
+  };
 
   // Helper function to get rank icon
   const getRankIcon = (rank: string) => {
@@ -166,19 +189,23 @@ export default function EditDuoCard({
   };
 
   const handleSave = () => {
-    if (!mainRole || !mainAgent) {
-      Alert.alert('Missing Information', 'Please select your main role and main agent/champion');
+    if (!mainRole || selectedAgents.length === 0) {
+      Alert.alert('Missing Information', 'Please select your main role and at least one agent/champion');
       return;
     }
 
+    // Join agents as comma-separated string for storage
+    const mainAgent = selectedAgents.join(', ');
     onSave(mainRole, mainAgent, lookingFor);
     onClose();
   };
 
   const roles = game === 'valorant' ? VALORANT_ROLES : LEAGUE_ROLES;
-  const agents = mainRole
-    ? (game === 'valorant' ? VALORANT_AGENTS[mainRole] : LEAGUE_CHAMPIONS[mainRole])
-    : [];
+
+  // Get ALL agents/champions for the game (not filtered by role)
+  const allAgents = game === 'valorant'
+    ? Object.values(VALORANT_AGENTS).flat()
+    : Object.values(LEAGUE_CHAMPIONS).flat();
 
   return (
     <Modal
@@ -274,14 +301,16 @@ export default function EditDuoCard({
                     </View>
                   </View>
 
-                  {/* Main Agent - Full Width */}
+                  {/* Main Agents - Full Width */}
                   <View style={styles.detailRow}>
                     <IconSymbol size={20} name="star.fill" color="#94a3b8" />
                     <View style={styles.detailTextContainer}>
                       <ThemedText style={styles.detailLabel}>
-                        {game === 'valorant' ? 'Main Agent' : 'Main Champion'}
+                        {game === 'valorant' ? 'Main Agents' : 'Main Champions'} ({selectedAgents.length}/{MAX_AGENTS})
                       </ThemedText>
-                      <ThemedText style={styles.detailValue}>{mainAgent || 'Not Selected'}</ThemedText>
+                      <ThemedText style={styles.detailValue}>
+                        {selectedAgents.length > 0 ? selectedAgents.join(', ') : 'Not Selected'}
+                      </ThemedText>
                     </View>
                   </View>
                 </View>
@@ -328,7 +357,7 @@ export default function EditDuoCard({
                           style={styles.dropdownOption}
                           onPress={() => {
                             setMainRole(role);
-                            setMainAgent(''); // Reset agent when role changes
+                            setSelectedAgents([]); // Reset agents when role changes
                             setShowRoleDropdown(false);
                           }}
                         >
@@ -347,52 +376,77 @@ export default function EditDuoCard({
                 )}
               </View>
 
-              {/* Main Agent/Champion */}
+              {/* Main Agents/Champions - Multi-select up to 3 */}
               <View style={styles.inputGroup}>
                 <ThemedText style={styles.label}>
-                  {game === 'valorant' ? 'Main Agent *' : 'Main Champion *'}
+                  {game === 'valorant' ? 'Main Agents *' : 'Main Champions *'} (Select up to {MAX_AGENTS})
                 </ThemedText>
                 <TouchableOpacity
-                  style={[styles.input, !mainRole && styles.inputDisabled]}
+                  style={styles.input}
                   onPress={() => {
-                    if (mainRole) {
-                      setShowAgentDropdown(!showAgentDropdown);
-                      setShowRoleDropdown(false);
-                      setShowLookingForDropdown(false);
-                    }
+                    setShowAgentDropdown(!showAgentDropdown);
+                    setShowRoleDropdown(false);
+                    setShowLookingForDropdown(false);
                   }}
-                  disabled={!mainRole}
                 >
                   <View style={styles.inputContent}>
-                    <ThemedText style={mainAgent ? styles.inputText : styles.inputPlaceholder}>
-                      {mainAgent || `Select your main ${game === 'valorant' ? 'agent' : 'champion'}`}
+                    <ThemedText style={selectedAgents.length > 0 ? styles.inputText : styles.inputPlaceholder}>
+                      {selectedAgents.length > 0
+                        ? selectedAgents.join(', ')
+                        : `Select your main ${game === 'valorant' ? 'agents' : 'champions'}`}
                     </ThemedText>
                   </View>
-                  {mainRole && <IconSymbol size={20} name="chevron.down" color="#999" />}
+                  <IconSymbol size={20} name="chevron.down" color="#999" />
                 </TouchableOpacity>
 
-                {/* Agent Dropdown */}
-                {showAgentDropdown && mainRole && (
-                  <View style={styles.dropdown}>
-                    <ScrollView style={styles.dropdownScroll} nestedScrollEnabled={true}>
-                      {agents.map((agent) => (
-                        <TouchableOpacity
-                          key={agent}
-                          style={styles.dropdownOption}
-                          onPress={() => {
-                            setMainAgent(agent);
-                            setShowAgentDropdown(false);
-                          }}
-                        >
-                          <ThemedText style={styles.dropdownOptionText}>{agent}</ThemedText>
-                        </TouchableOpacity>
-                      ))}
-                    </ScrollView>
+                {/* Selected Agents Pills */}
+                {selectedAgents.length > 0 && (
+                  <View style={styles.selectedAgentsContainer}>
+                    {selectedAgents.map((agent) => (
+                      <TouchableOpacity
+                        key={agent}
+                        style={styles.agentPill}
+                        onPress={() => toggleAgent(agent)}
+                      >
+                        <ThemedText style={styles.agentPillText}>{agent}</ThemedText>
+                        <IconSymbol size={14} name="xmark" color="#fff" />
+                      </TouchableOpacity>
+                    ))}
                   </View>
                 )}
 
-                {!mainRole && (
-                  <ThemedText style={styles.inputHint}>Select a role first</ThemedText>
+                {/* Agent Dropdown - Multi-select */}
+                {showAgentDropdown && (
+                  <View style={styles.dropdown}>
+                    <ScrollView style={styles.dropdownScrollLarge} nestedScrollEnabled={true}>
+                      {allAgents.map((agent) => {
+                        const isSelected = selectedAgents.includes(agent);
+                        const isDisabled = !isSelected && selectedAgents.length >= MAX_AGENTS;
+                        return (
+                          <TouchableOpacity
+                            key={agent}
+                            style={[
+                              styles.dropdownOption,
+                              isSelected && styles.dropdownOptionSelected,
+                              isDisabled && styles.dropdownOptionDisabled,
+                            ]}
+                            onPress={() => !isDisabled && toggleAgent(agent)}
+                            disabled={isDisabled}
+                          >
+                            <ThemedText style={[
+                              styles.dropdownOptionText,
+                              isDisabled && styles.dropdownOptionTextDisabled,
+                            ]}>
+                              {agent}
+                            </ThemedText>
+                            {isSelected && (
+                              <IconSymbol size={18} name="checkmark" color="#c42743" />
+                            )}
+                          </TouchableOpacity>
+                        );
+                      })}
+                    </ScrollView>
+                  </View>
                 )}
               </View>
 
@@ -695,21 +749,55 @@ const styles = StyleSheet.create({
   dropdownScroll: {
     maxHeight: 200,
   },
+  dropdownScrollLarge: {
+    maxHeight: 300,
+  },
   dropdownOption: {
     flexDirection: 'row',
     alignItems: 'center',
+    justifyContent: 'space-between',
     padding: 14,
     gap: 12,
     borderBottomWidth: 1,
     borderBottomColor: '#3a3f44',
   },
+  dropdownOptionSelected: {
+    backgroundColor: 'rgba(196, 39, 67, 0.15)',
+  },
+  dropdownOptionDisabled: {
+    opacity: 0.4,
+  },
   dropdownOptionText: {
     fontSize: 16,
     color: '#fff',
+    flex: 1,
+  },
+  dropdownOptionTextDisabled: {
+    color: '#666',
   },
   roleIcon: {
     width: 28,
     height: 28,
+  },
+  selectedAgentsContainer: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8,
+    marginTop: 8,
+  },
+  agentPill: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    backgroundColor: '#c42743',
+    paddingVertical: 6,
+    paddingHorizontal: 12,
+    borderRadius: 16,
+  },
+  agentPillText: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#fff',
   },
   saveButton: {
     backgroundColor: '#c42743',
