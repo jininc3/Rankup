@@ -1,8 +1,8 @@
 import { ThemedText } from '@/components/themed-text';
-import { StyleSheet, TouchableOpacity, View, Image } from 'react-native';
-import { useRouter } from 'expo-router';
+import { StyleSheet, TouchableOpacity, View, Image, Animated } from 'react-native';
 import { getProfileIconUrl } from '@/services/riotService';
 import { LinearGradient } from 'expo-linear-gradient';
+import { useState, useRef, useEffect } from 'react';
 
 interface Game {
   id: number;
@@ -20,8 +20,9 @@ interface Game {
 interface LeagueRankCardProps {
   game: Game;
   username: string;
-  viewOnly?: boolean; // If true, card is not clickable (for viewing other users)
-  userId?: string; // ID of the user whose stats to view (for viewing other users)
+  viewOnly?: boolean;
+  userId?: string;
+  isFocused?: boolean;
 }
 
 // League of Legends rank icon mapping
@@ -39,18 +40,34 @@ const LEAGUE_RANK_ICONS: { [key: string]: any } = {
   unranked: require('@/assets/images/leagueranks/unranked.png'),
 };
 
-export default function LeagueRankCard({ game, username, viewOnly = false, userId }: LeagueRankCardProps) {
-  const router = useRouter();
+export default function LeagueRankCard({ game, username, viewOnly = false, userId, isFocused = false }: LeagueRankCardProps) {
+  const [isFlipped, setIsFlipped] = useState(false);
+  const [showBack, setShowBack] = useState(false);
+  const flipAnimation = useRef(new Animated.Value(0)).current;
+
+  // Listen to animation value to swap content at midpoint
+  useEffect(() => {
+    const listenerId = flipAnimation.addListener(({ value }) => {
+      if (value >= 0.5 && !showBack) {
+        setShowBack(true);
+      } else if (value < 0.5 && showBack) {
+        setShowBack(false);
+      }
+    });
+    return () => flipAnimation.removeListener(listenerId);
+  }, [showBack]);
 
   const handlePress = () => {
-    if (viewOnly) return; // Don't navigate if view only
-    router.push({
-      pathname: '/components/leagueGameStats',
-      params: {
-        game: JSON.stringify(game),
-        ...(userId && { userId }), // Only include userId if provided
-      },
-    });
+    if (viewOnly) return;
+
+    const toValue = isFlipped ? 0 : 1;
+    Animated.spring(flipAnimation, {
+      toValue,
+      friction: 8,
+      tension: 10,
+      useNativeDriver: false,
+    }).start();
+    setIsFlipped(!isFlipped);
   };
 
   const getRankIcon = (rank: string) => {
@@ -61,78 +78,89 @@ export default function LeagueRankCard({ game, username, viewOnly = false, userI
     return LEAGUE_RANK_ICONS[tier] || LEAGUE_RANK_ICONS.unranked;
   };
 
-  // Navigation temporarily disabled
-  // const CardWrapper = viewOnly ? View : TouchableOpacity;
+  const scaleY = flipAnimation.interpolate({
+    inputRange: [0, 0.5, 1],
+    outputRange: [1, 0, 1],
+  });
+
+  const animatedStyle = {
+    transform: [{ scaleY }],
+  };
 
   return (
-    <View style={styles.cardOuter}>
-      {/* 3D Shadow layers - light from right side */}
+    <TouchableOpacity
+      style={styles.cardOuter}
+      onPress={handlePress}
+      activeOpacity={isFocused ? 0.9 : 1}
+      disabled={!isFocused && viewOnly}
+    >
+      {/* 3D Shadow layers */}
       <View style={styles.shadow3} />
       <View style={styles.shadow2} />
       <View style={styles.shadow1} />
 
-      <View style={styles.rankCard}>
+      <Animated.View style={[styles.rankCard, animatedStyle]}>
         <LinearGradient
-        colors={['#1a3a5c', '#0f1f3d', '#091428']}
-        start={{ x: 0, y: 0 }}
-        end={{ x: 1, y: 1 }}
-        style={styles.cardBackground}
-      >
-        {/* League of Legends logo watermark */}
-        <Image
-          source={require('@/assets/images/lol.png')}
-          style={styles.backgroundLogo}
-          resizeMode="contain"
-        />
+          colors={showBack ? ['#091428', '#0f1f3d', '#1a3a5c'] : ['#1a3a5c', '#0f1f3d', '#091428']}
+          start={{ x: 0, y: 0 }}
+          end={{ x: 1, y: 1 }}
+          style={styles.cardBackground}
+        >
+          {/* Inside border */}
+          <View style={styles.innerBorder} />
 
-        {/* Inside border */}
-        <View style={styles.innerBorder} />
-
-        {/* Front of card - Credit card style */}
-        <View style={styles.cardFront}>
-          {/* Game Logo - Top Left */}
-          <View style={styles.cardGameLogo}>
-            <Image
-              source={require('@/assets/images/lol-icon.png')}
-              style={styles.gameLogoLarge}
-              resizeMode="contain"
-            />
-          </View>
-
-          {/* Profile Icon - Top Right */}
-          <View style={styles.cardHeader}>
-            {game.profileIconId ? (
+          {showBack ? (
+            /* Back content - player card style */
+            <View style={styles.cardBackContent}>
+              {/* Background logo watermark */}
               <Image
-                source={{ uri: getProfileIconUrl(game.profileIconId) }}
-                defaultSource={require('@/assets/images/lol.png')}
-                style={styles.cardProfileIcon}
+                source={require('@/assets/images/lol.png')}
+                style={styles.backgroundLogo}
+                resizeMode="contain"
               />
-            ) : (
-              <ThemedText style={styles.cardGameIcon}>{game.icon}</ThemedText>
-            )}
-          </View>
 
-          {/* Current Rank - Centered */}
-          <View style={styles.cardMiddle}>
-            <ThemedText style={styles.cardRankLabel}>CURRENT RANK</ThemedText>
-            <ThemedText style={styles.cardRankValue}>{game.rank}</ThemedText>
-            <Image
-              source={getRankIcon(game.rank)}
-              style={styles.rankIcon}
-              resizeMode="contain"
-            />
-          </View>
+              {/* Profile Icon - centered */}
+              {game.profileIconId ? (
+                <Image
+                  source={{ uri: getProfileIconUrl(game.profileIconId) }}
+                  defaultSource={require('@/assets/images/lol.png')}
+                  style={styles.backPlayerCard}
+                />
+              ) : null}
 
-          {/* Footer - Bottom */}
-          <View style={styles.cardFooter}>
-            <View style={styles.cardUserInfo}>
-              <ThemedText style={styles.cardUsername}>{username}</ThemedText>
+              {/* Rank icon */}
+              <Image
+                source={getRankIcon(game.rank)}
+                style={styles.backRankIcon}
+                resizeMode="contain"
+              />
+
+              {/* Player info at bottom */}
+              <View style={styles.backFooter}>
+                <ThemedText style={styles.backUsername}>{username}</ThemedText>
+                <ThemedText style={styles.backRankText}>{game.rank || 'Unranked'}</ThemedText>
+              </View>
             </View>
-          </View>
-        </View>
-      </LinearGradient>
-    </View>
-    </View>
+          ) : (
+            /* Front content - clean card back */
+            <View style={styles.cardFront}>
+              {/* LoL logo - large centered background watermark */}
+              <Image
+                source={require('@/assets/images/lol.png')}
+                style={styles.backgroundLogo}
+                resizeMode="contain"
+              />
+
+              {/* Corner accents for visual interest */}
+              <View style={styles.cornerAccentTL} />
+              <View style={styles.cornerAccentTR} />
+              <View style={styles.cornerAccentBL} />
+              <View style={styles.cornerAccentBR} />
+            </View>
+          )}
+        </LinearGradient>
+      </Animated.View>
+    </TouchableOpacity>
   );
 }
 
@@ -141,7 +169,6 @@ const styles = StyleSheet.create({
     position: 'relative',
     height: 220,
   },
-  // 3D Shadow layers - light from right side
   shadow3: {
     position: 'absolute',
     top: 10,
@@ -149,7 +176,7 @@ const styles = StyleSheet.create({
     right: 14,
     bottom: -10,
     backgroundColor: '#000',
-    borderRadius: 26,
+    borderRadius: 18,
     opacity: 0.2,
   },
   shadow2: {
@@ -159,7 +186,7 @@ const styles = StyleSheet.create({
     right: 10,
     bottom: -6,
     backgroundColor: '#000',
-    borderRadius: 25,
+    borderRadius: 17,
     opacity: 0.25,
   },
   shadow1: {
@@ -169,123 +196,125 @@ const styles = StyleSheet.create({
     right: 5,
     bottom: -3,
     backgroundColor: '#000',
-    borderRadius: 24,
+    borderRadius: 16,
     opacity: 0.3,
   },
   rankCard: {
-    borderRadius: 24,
+    borderRadius: 16,
     height: 220,
-    borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.1)',
     overflow: 'hidden',
   },
   cardBackground: {
     flex: 1,
-    borderRadius: 24,
+    borderRadius: 12,
   },
   innerBorder: {
     position: 'absolute',
-    top: 4,
-    left: 4,
-    right: 4,
-    bottom: 4,
-    borderRadius: 21,
-    borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.08)',
-  },
-  backgroundLogo: {
-    position: 'absolute',
-    width: 302,
-    height: 302,
-    top: '50%',
-    left: '50%',
-    marginTop: -151,
-    marginLeft: -151,
-    opacity: 0.08,
+    top: 8,
+    left: 8,
+    right: 8,
+    bottom: 8,
+    borderRadius: 10,
+    borderWidth: 2,
+    borderColor: 'rgba(255,255,255,0.25)',
   },
   cardFront: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    padding: 30,
   },
-  cardGameLogo: {
+  cornerAccentTL: {
     position: 'absolute',
-    top: 10,
-    left: 10,
+    top: 16,
+    left: 16,
+    width: 24,
+    height: 24,
+    borderTopWidth: 2,
+    borderLeftWidth: 2,
+    borderColor: 'rgba(255,255,255,0.3)',
+    borderTopLeftRadius: 4,
   },
-  gameLogo: {
-    width: 32,
-    height: 32,
-    opacity: 0.9,
-  },
-  gameLogoLarge: {
-    width: 38,
-    height: 38,
-    opacity: 0.9,
-  },
-  cardHeader: {
+  cornerAccentTR: {
     position: 'absolute',
-    top: 10,
-    right: 10,
+    top: 16,
+    right: 16,
+    width: 24,
+    height: 24,
+    borderTopWidth: 2,
+    borderRightWidth: 2,
+    borderColor: 'rgba(255,255,255,0.3)',
+    borderTopRightRadius: 4,
   },
-  cardGameIcon: {
-    fontSize: 42,
+  cornerAccentBL: {
+    position: 'absolute',
+    bottom: 16,
+    left: 16,
+    width: 24,
+    height: 24,
+    borderBottomWidth: 2,
+    borderLeftWidth: 2,
+    borderColor: 'rgba(255,255,255,0.3)',
+    borderBottomLeftRadius: 4,
   },
-  cardProfileIcon: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
+  cornerAccentBR: {
+    position: 'absolute',
+    bottom: 16,
+    right: 16,
+    width: 24,
+    height: 24,
+    borderBottomWidth: 2,
+    borderRightWidth: 2,
+    borderColor: 'rgba(255,255,255,0.3)',
+    borderBottomRightRadius: 4,
+  },
+  backgroundLogo: {
+    position: 'absolute',
+    width: 250,
+    height: 250,
+    top: '50%',
+    left: '50%',
+    marginTop: -125,
+    marginLeft: -125,
+    opacity: 0.08,
+  },
+  // Back of card styles
+  cardBackContent: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  backPlayerCard: {
+    width: 80,
+    height: 80,
+    borderRadius: 8,
     borderWidth: 2,
     borderColor: 'rgba(255,255,255,0.3)',
+    marginBottom: 8,
   },
-  cardMiddle: {
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginTop: -30, // Lower position for League card
-  },
-  cardRankLabel: {
-    fontSize: 11,
-    color: '#94a3b8',
-    letterSpacing: 2,
-    fontWeight: '600',
-    textTransform: 'uppercase',
-  },
-  rankIcon: {
-    width: 100,
-    height: 100,
-    marginTop: -10,
-    marginBottom: 2,
-  },
-  cardRankValue: {
-    fontSize: 24,
-    fontWeight: '700',
-    color: '#fff',
-    letterSpacing: -1,
-    marginTop: 0,
-    lineHeight: 28,
-    includeFontPadding: false,
-  },
-  cardFooter: {
+  backRankIcon: {
+    width: 60,
+    height: 60,
     position: 'absolute',
-    bottom: 10,
-    left: 10,
-    right: 10,
+    top: 18,
+    right: 18,
+  },
+  backFooter: {
+    position: 'absolute',
+    bottom: 18,
+    left: 18,
+    right: 18,
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'flex-end',
   },
-  cardUserInfo: {
-    flex: 1,
+  backUsername: {
+    fontSize: 14,
+    color: '#fff',
+    fontWeight: '700',
   },
-  cardUsername: {
-    fontSize: 10,
-    color: 'rgba(255,255,255,0.8)',
+  backRankText: {
+    fontSize: 12,
+    color: 'rgba(255,255,255,0.7)',
     fontWeight: '600',
-  },
-  swipeHint: {
-    fontSize: 9,
-    color: 'rgba(255,255,255,0.4)',
-    fontStyle: 'italic',
   },
 });

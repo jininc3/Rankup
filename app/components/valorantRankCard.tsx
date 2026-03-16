@@ -151,47 +151,51 @@ export default function ValorantRankCard({ game, username, viewOnly = false, use
           <View style={styles.innerBorder} />
 
           {showBack ? (
-            /* Back content */
+            /* Back content - player card style */
             <View style={styles.cardBackContent}>
-              {/* Player Card */}
-              {game.valorantCard && (
-                <Image
-                  source={{ uri: game.valorantCard }}
-                  style={styles.backProfileIcon}
-                />
-              )}
-
-              {/* Current Rank */}
-              <ThemedText style={styles.backRankLabel}>CURRENT RANK</ThemedText>
-              <ThemedText style={styles.backRankValue}>{game.rank}</ThemedText>
-
-              {/* Username */}
-              <View style={styles.backFooter}>
-                <ThemedText style={styles.backUsername}>{username}</ThemedText>
-              </View>
-            </View>
-          ) : (
-            /* Front content */
-            <View style={styles.cardFront}>
-              {/* Valorant logo - centered and higher */}
+              {/* Background logo watermark */}
               <Image
                 source={require('@/assets/images/valorant-black.png')}
-                style={styles.frontLogo}
+                style={styles.backgroundLogo}
                 resizeMode="contain"
               />
 
-              {/* Current Rank | Username row */}
-              <View style={styles.frontInfoRow}>
-                <View style={styles.frontInfoItem}>
-                  <ThemedText style={styles.frontInfoLabel}>Current Rank</ThemedText>
-                  <ThemedText style={styles.frontInfoValue}>{game.rank || 'Unranked'}</ThemedText>
-                </View>
-                <View style={styles.frontInfoDivider} />
-                <View style={styles.frontInfoItem}>
-                  <ThemedText style={styles.frontInfoLabel}>Player</ThemedText>
-                  <ThemedText style={styles.frontInfoValue}>{username}</ThemedText>
-                </View>
+              {/* Player Card Image - large and prominent */}
+              {game.valorantCard && (
+                <Image
+                  source={{ uri: game.valorantCard }}
+                  style={styles.backPlayerCard}
+                />
+              )}
+
+              {/* Rank icon */}
+              <Image
+                source={getRankIcon(game.rank)}
+                style={styles.backRankIcon}
+                resizeMode="contain"
+              />
+
+              {/* Player info at bottom */}
+              <View style={styles.backFooter}>
+                <ThemedText style={styles.backUsername}>{username}</ThemedText>
+                <ThemedText style={styles.backRankText}>{game.rank || 'Unranked'}</ThemedText>
               </View>
+            </View>
+          ) : (
+            /* Front content - enticing card front */
+            <View style={styles.cardFront}>
+              {/* Valorant logo - large centered background watermark */}
+              <Image
+                source={require('@/assets/images/valorant-black.png')}
+                style={styles.backgroundLogo}
+                resizeMode="contain"
+              />
+
+              {/* Corner accents for visual interest */}
+              <View style={styles.cornerAccentTL} />
+              <View style={styles.cornerAccentTR} />
+              <View style={styles.cornerAccentBL} />
+              <View style={styles.cornerAccentBR} />
             </View>
           )}
         </LinearGradient>
@@ -239,8 +243,6 @@ const styles = StyleSheet.create({
   rankCard: {
     borderRadius: 16,
     height: 220,
-    borderWidth: 4,
-    borderColor: '#000',
     overflow: 'hidden',
   },
   cardBackground: {
@@ -261,81 +263,99 @@ const styles = StyleSheet.create({
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    paddingHorizontal: 20,
-    paddingTop: 20,
-    paddingBottom: 30,
   },
-  frontLogo: {
-    width: 100,
-    height: 50,
-    marginBottom: 20,
-  },
-  frontInfoRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
+  cornerAccentTL: {
     position: 'absolute',
-    bottom: 25,
-    left: 20,
-    right: 20,
+    top: 16,
+    left: 16,
+    width: 24,
+    height: 24,
+    borderTopWidth: 2,
+    borderLeftWidth: 2,
+    borderColor: 'rgba(255,255,255,0.3)',
+    borderTopLeftRadius: 4,
   },
-  frontInfoItem: {
-    alignItems: 'center',
-    flex: 1,
+  cornerAccentTR: {
+    position: 'absolute',
+    top: 16,
+    right: 16,
+    width: 24,
+    height: 24,
+    borderTopWidth: 2,
+    borderRightWidth: 2,
+    borderColor: 'rgba(255,255,255,0.3)',
+    borderTopRightRadius: 4,
   },
-  frontInfoLabel: {
-    fontSize: 11,
-    color: 'rgba(255,255,255,0.6)',
-    marginBottom: 4,
+  cornerAccentBL: {
+    position: 'absolute',
+    bottom: 16,
+    left: 16,
+    width: 24,
+    height: 24,
+    borderBottomWidth: 2,
+    borderLeftWidth: 2,
+    borderColor: 'rgba(255,255,255,0.3)',
+    borderBottomLeftRadius: 4,
   },
-  frontInfoValue: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: '#fff',
+  cornerAccentBR: {
+    position: 'absolute',
+    bottom: 16,
+    right: 16,
+    width: 24,
+    height: 24,
+    borderBottomWidth: 2,
+    borderRightWidth: 2,
+    borderColor: 'rgba(255,255,255,0.3)',
+    borderBottomRightRadius: 4,
   },
-  frontInfoDivider: {
-    width: 1,
-    height: 30,
-    backgroundColor: 'rgba(255,255,255,0.2)',
-    marginHorizontal: 15,
+  backgroundLogo: {
+    position: 'absolute',
+    width: 250,
+    height: 250,
+    top: '50%',
+    left: '50%',
+    marginTop: -125,
+    marginLeft: -125,
+    opacity: 0.08,
   },
   // Back of card styles
   cardBackContent: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    padding: 20,
   },
-  backProfileIcon: {
-    width: 50,
-    height: 50,
-    borderRadius: 25,
+  backPlayerCard: {
+    width: 80,
+    height: 80,
+    borderRadius: 8,
     borderWidth: 2,
     borderColor: 'rgba(255,255,255,0.3)',
-    marginBottom: 12,
+    marginBottom: 8,
   },
-  backRankLabel: {
-    fontSize: 10,
-    color: 'rgba(255,255,255,0.6)',
-    letterSpacing: 2,
-    fontWeight: '600',
-    textTransform: 'uppercase',
-    marginBottom: 4,
-  },
-  backRankValue: {
-    fontSize: 22,
-    fontWeight: '700',
-    color: '#fff',
-    letterSpacing: -0.5,
+  backRankIcon: {
+    width: 60,
+    height: 60,
+    position: 'absolute',
+    top: 18,
+    right: 18,
   },
   backFooter: {
     position: 'absolute',
-    bottom: 16,
-    left: 16,
+    bottom: 18,
+    left: 18,
+    right: 18,
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'flex-end',
   },
   backUsername: {
+    fontSize: 14,
+    color: '#fff',
+    fontWeight: '700',
+  },
+  backRankText: {
     fontSize: 12,
-    color: 'rgba(255,255,255,0.8)',
+    color: 'rgba(255,255,255,0.7)',
     fontWeight: '600',
   },
 });
