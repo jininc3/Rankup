@@ -230,6 +230,11 @@ export default function SearchScreen() {
   const [showResults, setShowResults] = useState(false);
   const avatarTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
+  // Avatar loading coordination for search history
+  const [historyAvatarsLoadedCount, setHistoryAvatarsLoadedCount] = useState(0);
+  const [showHistory, setShowHistory] = useState(false);
+  const historyAvatarTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+
   // Load search history from Firestore
   const loadSearchHistory = async () => {
     if (!currentUser?.id) {
@@ -260,8 +265,21 @@ export default function SearchScreen() {
       });
 
       setSearchHistory(history);
+
+      // Set up avatar loading coordination for history
+      const usersWithAvatars = history.filter(u => u.avatar && u.avatar.startsWith('http'));
+      if (history.length === 0 || usersWithAvatars.length === 0) {
+        setShowHistory(true);
+      } else {
+        setHistoryAvatarsLoadedCount(0);
+        setShowHistory(false);
+        historyAvatarTimeoutRef.current = setTimeout(() => {
+          setShowHistory(true);
+        }, 1500);
+      }
     } catch (error) {
       console.error('Error loading search history:', error);
+      setShowHistory(true);
     } finally {
       setLoadingHistory(false);
     }
@@ -342,6 +360,18 @@ export default function SearchScreen() {
       setLoadingHistory(false);
       setHasConsumedPreload(true);
       clearPreloadedSearchHistory();
+
+      // Set up avatar loading coordination for preloaded history
+      const usersWithAvatars = preloadedSearchHistory.filter(u => u.avatar && u.avatar.startsWith('http'));
+      if (preloadedSearchHistory.length === 0 || usersWithAvatars.length === 0) {
+        setShowHistory(true);
+      } else {
+        setHistoryAvatarsLoadedCount(0);
+        setShowHistory(false);
+        historyAvatarTimeoutRef.current = setTimeout(() => {
+          setShowHistory(true);
+        }, 1500);
+      }
     }
   }, [preloadedSearchHistory, hasConsumedPreload, clearPreloadedSearchHistory]);
 
@@ -454,17 +484,37 @@ export default function SearchScreen() {
     }
   }, [avatarsLoadedCount, searchResults, showResults]);
 
-  // Cleanup timeout on unmount
+  // Track history avatar loading and show history when all avatars are loaded
+  useEffect(() => {
+    if (searchHistory.length > 0 && !showHistory && !loadingHistory) {
+      const usersWithAvatars = searchHistory.filter(u => u.avatar && u.avatar.startsWith('http'));
+      if (usersWithAvatars.length > 0 && historyAvatarsLoadedCount >= usersWithAvatars.length) {
+        if (historyAvatarTimeoutRef.current) {
+          clearTimeout(historyAvatarTimeoutRef.current);
+        }
+        setShowHistory(true);
+      }
+    }
+  }, [historyAvatarsLoadedCount, searchHistory, showHistory, loadingHistory]);
+
+  // Cleanup timeouts on unmount
   useEffect(() => {
     return () => {
       if (avatarTimeoutRef.current) {
         clearTimeout(avatarTimeoutRef.current);
+      }
+      if (historyAvatarTimeoutRef.current) {
+        clearTimeout(historyAvatarTimeoutRef.current);
       }
     };
   }, []);
 
   const handleAvatarLoad = useCallback(() => {
     setAvatarsLoadedCount(prev => prev + 1);
+  }, []);
+
+  const handleHistoryAvatarLoad = useCallback(() => {
+    setHistoryAvatarsLoadedCount(prev => prev + 1);
   }, []);
 
   const handleUserClick = async (user: SearchUser) => {
@@ -504,9 +554,9 @@ export default function SearchScreen() {
       </View>
 
       <ScrollView style={styles.scrollView} showsVerticalScrollIndicator={false}>
-        {searchQuery.trim() === '' && loadingHistory ? (
+        {searchQuery.trim() === '' && (loadingHistory || (searchHistory.length > 0 && !showHistory)) ? (
           <SkeletonLoader />
-        ) : searchQuery.trim() === '' && searchHistory.length > 0 ? (
+        ) : searchQuery.trim() === '' && searchHistory.length > 0 && showHistory ? (
           <View>
             <View style={styles.historyHeader}>
               <ThemedText style={styles.historyTitle}>Recent</ThemedText>
@@ -529,7 +579,12 @@ export default function SearchScreen() {
                     tierBorderColor ? { borderWidth: 2, borderColor: tierBorderColor } : {}
                   ]}>
                     {user.avatar && user.avatar.startsWith('http') ? (
-                      <Image source={{ uri: user.avatar }} style={styles.historyAvatarImage} />
+                      <Image
+                        source={{ uri: user.avatar }}
+                        style={styles.historyAvatarImage}
+                        onLoad={handleHistoryAvatarLoad}
+                        onError={handleHistoryAvatarLoad}
+                      />
                     ) : (
                       <ThemedText style={styles.historyAvatarInitial}>
                         {user.username[0].toUpperCase()}

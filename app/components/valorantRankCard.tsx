@@ -1,7 +1,10 @@
 import { ThemedText } from '@/components/themed-text';
+import { BlurView } from 'expo-blur';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useEffect, useRef, useState } from 'react';
-import { Animated, Image, StyleSheet, TouchableOpacity, View } from 'react-native';
+import { Animated, Dimensions, Easing, Image, Modal, Pressable, StyleSheet, TouchableOpacity, View } from 'react-native';
+
+const { height: SCREEN_HEIGHT } = Dimensions.get('window');
 
 interface Game {
   id: number;
@@ -69,7 +72,14 @@ const VALORANT_RANK_ICONS: { [key: string]: any } = {
 export default function ValorantRankCard({ game, username, viewOnly = false, userId, isFocused = false }: ValorantRankCardProps) {
   const [isFlipped, setIsFlipped] = useState(false);
   const [showBack, setShowBack] = useState(false);
+  const [modalVisible, setModalVisible] = useState(false);
+  const [cardHidden, setCardHidden] = useState(false);
+  const [cardPosition, setCardPosition] = useState({ x: 20, y: SCREEN_HEIGHT - 350, width: 0 });
+
+  const cardRef = useRef<View>(null);
   const flipAnimation = useRef(new Animated.Value(0)).current;
+  const slideAnimation = useRef(new Animated.Value(0)).current;
+  const overlayOpacity = useRef(new Animated.Value(0)).current;
 
   // Listen to animation value to swap content at midpoint
   useEffect(() => {
@@ -87,15 +97,87 @@ export default function ValorantRankCard({ game, username, viewOnly = false, use
   const handlePress = () => {
     if (viewOnly) return;
 
-    // Flip the card
-    const toValue = isFlipped ? 0 : 1;
-    Animated.spring(flipAnimation, {
-      toValue,
-      friction: 8,
-      tension: 10,
-      useNativeDriver: false, // Need JS driver for listener to work properly
-    }).start();
-    setIsFlipped(!isFlipped);
+    // Measure card position before opening modal
+    cardRef.current?.measureInWindow((x, y, width, height) => {
+      setCardPosition({ x, y, width });
+      setCardHidden(true);
+
+      // Open modal and animate
+      setModalVisible(true);
+
+      // Animation: brief pause, then smooth slide up with blur, then flip
+      Animated.sequence([
+        // Brief pause for anticipation
+        Animated.delay(100),
+        // Blur/overlay fades in and card slides up together
+        Animated.parallel([
+          Animated.timing(overlayOpacity, {
+            toValue: 1,
+            duration: 400,
+            easing: Easing.out(Easing.cubic),
+            useNativeDriver: true,
+          }),
+          Animated.timing(slideAnimation, {
+            toValue: 1,
+            duration: 500,
+            easing: Easing.out(Easing.back(1.1)), // Slight overshoot for smooth feel
+            useNativeDriver: false,
+          }),
+        ]),
+        // Small pause before flip
+        Animated.delay(50),
+        // Then flip the card
+        Animated.spring(flipAnimation, {
+          toValue: 1,
+          friction: 8,
+          tension: 10,
+          useNativeDriver: false,
+        }),
+      ]).start();
+
+      setIsFlipped(true);
+    });
+  };
+
+  const handleCloseModal = () => {
+    // Reverse: flip first, then smooth slide down + fade out
+    Animated.sequence([
+      // Flip back to front
+      Animated.spring(flipAnimation, {
+        toValue: 0,
+        friction: 8,
+        tension: 10,
+        useNativeDriver: false,
+      }),
+      // Small pause
+      Animated.delay(50),
+      // Slide down and fade out overlay (card stays at original position)
+      Animated.parallel([
+        Animated.timing(slideAnimation, {
+          toValue: 0,
+          duration: 450,
+          easing: Easing.inOut(Easing.cubic),
+          useNativeDriver: false,
+        }),
+        Animated.timing(overlayOpacity, {
+          toValue: 0,
+          duration: 400,
+          easing: Easing.inOut(Easing.cubic),
+          useNativeDriver: true,
+        }),
+      ]),
+    ]).start(() => {
+      // Modal card is now exactly over original card position
+      // Show original card first
+      setCardHidden(false);
+      setIsFlipped(false);
+
+      // Close modal after original card is rendered to prevent flash
+      // Use setTimeout to ensure original card has painted
+      setTimeout(() => {
+        setModalVisible(false);
+      }, 50);
+    });
   };
 
   const getRankIcon = (rank: string) => {
@@ -123,84 +205,159 @@ export default function ValorantRankCard({ game, username, viewOnly = false, use
     outputRange: [1, 0, 1],
   });
 
+  // Slide animation - moves card from its exact position to top
+  const translateY = slideAnimation.interpolate({
+    inputRange: [0, 1],
+    outputRange: [cardPosition.y, 80], // Start from measured position, slide to top
+  });
+
   const animatedStyle = {
     transform: [{ scaleY }],
   };
 
-  return (
-    <TouchableOpacity
-      style={styles.cardOuter}
-      onPress={handlePress}
-      activeOpacity={isFocused ? 0.9 : 1}
-      disabled={!isFocused && viewOnly}
+  const modalCardStyle = {
+    transform: [{ translateY }, { scaleY }],
+  };
+
+  // Render card content (shared between static card and modal card)
+  const renderCardContent = () => (
+    <LinearGradient
+      colors={showBack ? ['#5C141D', '#8B1E2B', '#DC3D4B'] : ['#DC3D4B', '#8B1E2B', '#5C141D']}
+      start={{ x: 0, y: 0 }}
+      end={{ x: 1, y: 1 }}
+      style={styles.cardBackground}
     >
-      {/* 3D Shadow layers */}
-      <View style={styles.shadow3} />
-      <View style={styles.shadow2} />
-      <View style={styles.shadow1} />
+      {/* Inside border */}
+      <View style={styles.innerBorder} />
 
-      {/* Single animated card that swaps content at midpoint */}
-      <Animated.View style={[styles.rankCard, animatedStyle]}>
-        <LinearGradient
-          colors={showBack ? ['#5C141D', '#8B1E2B', '#DC3D4B'] : ['#DC3D4B', '#8B1E2B', '#5C141D']}
-          start={{ x: 0, y: 0 }}
-          end={{ x: 1, y: 1 }}
-          style={styles.cardBackground}
-        >
-          {/* Inside border */}
-          <View style={styles.innerBorder} />
-
-          {showBack ? (
-            /* Back content - player card style */
-            <View style={styles.cardBackContent}>
-              {/* Background logo watermark */}
-              <Image
-                source={require('@/assets/images/valorant-black.png')}
-                style={styles.backgroundLogo}
-                resizeMode="contain"
-              />
-
-              {/* Player Card Image - large and prominent */}
+      {showBack ? (
+        /* Back content - rank showcase */
+        <View style={styles.cardBackContent}>
+          {/* Header - Profile and username */}
+          <View style={styles.backHeader}>
+            <View style={styles.profileRow}>
               {game.valorantCard && (
                 <Image
                   source={{ uri: game.valorantCard }}
                   style={styles.backPlayerCard}
                 />
               )}
-
-              {/* Rank icon */}
-              <Image
-                source={getRankIcon(game.rank)}
-                style={styles.backRankIcon}
-                resizeMode="contain"
-              />
-
-              {/* Player info at bottom */}
-              <View style={styles.backFooter}>
+              <View style={styles.usernameContainer}>
                 <ThemedText style={styles.backUsername}>{username}</ThemedText>
-                <ThemedText style={styles.backRankText}>{game.rank || 'Unranked'}</ThemedText>
+                <ThemedText style={styles.backLevelText}>Level {game.trophies || 1}</ThemedText>
               </View>
             </View>
-          ) : (
-            /* Front content - enticing card front */
-            <View style={styles.cardFront}>
-              {/* Valorant logo - large centered background watermark */}
-              <Image
-                source={require('@/assets/images/valorant-black.png')}
-                style={styles.backgroundLogo}
-                resizeMode="contain"
-              />
+          </View>
 
-              {/* Corner accents for visual interest */}
-              <View style={styles.cornerAccentTL} />
-              <View style={styles.cornerAccentTR} />
-              <View style={styles.cornerAccentBL} />
-              <View style={styles.cornerAccentBR} />
+          {/* Center - Large rank showcase */}
+          <View style={styles.rankShowcase}>
+            {/* Glow effect behind rank */}
+            <View style={styles.rankGlow} />
+            <View style={styles.rankGlowInner} />
+            <Image
+              source={getRankIcon(game.rank)}
+              style={styles.backRankIcon}
+              resizeMode="contain"
+            />
+            <ThemedText style={styles.backRankText}>{game.rank || 'Unranked'}</ThemedText>
+          </View>
+
+          {/* Footer - Sleek minimal stats */}
+          <View style={styles.statsFooter}>
+            <View style={styles.statItem}>
+              <ThemedText style={styles.statValue}>{game.wins + game.losses}</ThemedText>
+              <ThemedText style={styles.statLabel}>matches</ThemedText>
             </View>
-          )}
-        </LinearGradient>
-      </Animated.View>
-    </TouchableOpacity>
+            <View style={styles.statDot} />
+            <View style={styles.statItem}>
+              <ThemedText style={styles.statValue}>{game.winRate}</ThemedText>
+              <ThemedText style={styles.statPercent}>%</ThemedText>
+              <ThemedText style={styles.statLabel}>win rate</ThemedText>
+            </View>
+          </View>
+        </View>
+      ) : (
+        /* Front content - enticing card front */
+        <View style={styles.cardFront}>
+          {/* Valorant logo - large centered background watermark */}
+          <Image
+            source={require('@/assets/images/valorant-black.png')}
+            style={styles.backgroundLogo}
+            resizeMode="contain"
+          />
+
+          {/* Corner accents for visual interest */}
+          <View style={styles.cornerAccentTL} />
+          <View style={styles.cornerAccentTR} />
+          <View style={styles.cornerAccentBL} />
+          <View style={styles.cornerAccentBR} />
+        </View>
+      )}
+    </LinearGradient>
+  );
+
+  return (
+    <>
+      <TouchableOpacity
+        ref={cardRef as any}
+        style={[styles.cardOuter, cardHidden && styles.cardHidden]}
+        onPress={handlePress}
+        activeOpacity={isFocused ? 0.9 : 1}
+        disabled={!isFocused && viewOnly}
+      >
+        {/* 3D Shadow layers */}
+        <View style={styles.shadow3} />
+        <View style={styles.shadow2} />
+        <View style={styles.shadow1} />
+
+        {/* Single animated card that swaps content at midpoint */}
+        <Animated.View style={[styles.rankCard, animatedStyle]}>
+          {renderCardContent()}
+        </Animated.View>
+      </TouchableOpacity>
+
+      {/* Modal for expanded card view */}
+      <Modal
+        visible={modalVisible}
+        transparent
+        animationType="none"
+        onRequestClose={handleCloseModal}
+      >
+        {/* Blurred overlay - tappable to close */}
+        <Pressable style={styles.modalOverlay} onPress={handleCloseModal}>
+          <Animated.View
+            style={[styles.overlayBackground, { opacity: overlayOpacity }]}
+          >
+            <BlurView
+              intensity={40}
+              tint="dark"
+              style={StyleSheet.absoluteFill}
+            />
+            {/* Dark tint over blur */}
+            <View style={styles.blurTint} />
+          </Animated.View>
+        </Pressable>
+
+        {/* Animated card in modal - positioned exactly over original */}
+        <Animated.View
+          style={[
+            styles.modalCard,
+            { left: cardPosition.x, width: cardPosition.width || undefined },
+            modalCardStyle
+          ]}
+          pointerEvents="none"
+        >
+          {/* 3D Shadow layers */}
+          <View style={styles.shadow3} />
+          <View style={styles.shadow2} />
+          <View style={styles.shadow1} />
+
+          <View style={styles.rankCard}>
+            {renderCardContent()}
+          </View>
+        </Animated.View>
+      </Modal>
+    </>
   );
 }
 
@@ -208,6 +365,9 @@ const styles = StyleSheet.create({
   cardOuter: {
     position: 'relative',
     height: 220,
+  },
+  cardHidden: {
+    opacity: 0,
   },
   // 3D Shadow layers
   shadow3: {
@@ -321,41 +481,124 @@ const styles = StyleSheet.create({
   // Back of card styles
   cardBackContent: {
     flex: 1,
-    justifyContent: 'center',
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    justifyContent: 'space-between',
+  },
+  backHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  profileRow: {
+    flexDirection: 'row',
     alignItems: 'center',
   },
   backPlayerCard: {
-    width: 80,
-    height: 80,
-    borderRadius: 8,
-    borderWidth: 2,
-    borderColor: 'rgba(255,255,255,0.3)',
-    marginBottom: 8,
+    width: 36,
+    height: 36,
+    borderRadius: 6,
+    borderWidth: 1.5,
+    borderColor: 'rgba(255,255,255,0.4)',
   },
-  backRankIcon: {
-    width: 60,
-    height: 60,
-    position: 'absolute',
-    top: 18,
-    right: 18,
-  },
-  backFooter: {
-    position: 'absolute',
-    bottom: 18,
-    left: 18,
-    right: 18,
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'flex-end',
+  usernameContainer: {
+    marginLeft: 10,
   },
   backUsername: {
     fontSize: 14,
     color: '#fff',
     fontWeight: '700',
   },
+  backLevelText: {
+    fontSize: 10,
+    color: 'rgba(255,255,255,0.6)',
+    fontWeight: '500',
+    marginTop: 1,
+  },
+  // Rank showcase - center focus
+  rankShowcase: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginVertical: -8,
+  },
+  rankGlow: {
+    position: 'absolute',
+    width: 100,
+    height: 100,
+    borderRadius: 50,
+    backgroundColor: 'rgba(255,255,255,0.08)',
+  },
+  rankGlowInner: {
+    position: 'absolute',
+    width: 70,
+    height: 70,
+    borderRadius: 35,
+    backgroundColor: 'rgba(255,255,255,0.06)',
+  },
+  backRankIcon: {
+    width: 80,
+    height: 80,
+    zIndex: 1,
+  },
   backRankText: {
+    fontSize: 16,
+    color: '#fff',
+    fontWeight: '800',
+    textAlign: 'center',
+    marginTop: 4,
+    letterSpacing: 1,
+    textTransform: 'uppercase',
+  },
+  // Sleek stats footer
+  statsFooter: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 16,
+  },
+  statItem: {
+    flexDirection: 'row',
+    alignItems: 'baseline',
+    gap: 4,
+  },
+  statValue: {
+    fontSize: 20,
+    color: '#fff',
+    fontWeight: '300',
+    letterSpacing: -0.5,
+  },
+  statPercent: {
     fontSize: 12,
-    color: 'rgba(255,255,255,0.7)',
-    fontWeight: '600',
+    color: '#fff',
+    fontWeight: '300',
+    marginRight: 2,
+  },
+  statLabel: {
+    fontSize: 11,
+    color: 'rgba(255,255,255,0.45)',
+    fontWeight: '400',
+  },
+  statDot: {
+    width: 3,
+    height: 3,
+    borderRadius: 1.5,
+    backgroundColor: 'rgba(255,255,255,0.3)',
+  },
+  // Modal styles
+  modalOverlay: {
+    ...StyleSheet.absoluteFillObject,
+    zIndex: 1,
+  },
+  overlayBackground: {
+    ...StyleSheet.absoluteFillObject,
+    overflow: 'hidden',
+  },
+  blurTint: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: 'rgba(0, 0, 0, 0.3)',
+  },
+  modalCard: {
+    position: 'absolute',
+    height: 220,
+    zIndex: 2,
   },
 });
