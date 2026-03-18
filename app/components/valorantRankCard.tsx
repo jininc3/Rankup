@@ -362,6 +362,19 @@ export default function ValorantRankCard({ game, username, viewOnly = false, use
       ) : (
         /* Front content - enticing card front */
         <View style={styles.cardFront}>
+          {/* Subtle glass overlay */}
+          <LinearGradient
+            colors={[
+              'rgba(255,255,255,0.12)',
+              'rgba(255,255,255,0.05)',
+              'rgba(255,255,255,0.02)',
+              'rgba(255,255,255,0.05)',
+            ]}
+            start={{ x: 0, y: 0 }}
+            end={{ x: 1, y: 1 }}
+            style={styles.glassOverlay}
+          />
+
           {/* Valorant logo - large centered background watermark */}
           <Image
             source={require('@/assets/images/valorant-black.png')}
@@ -578,6 +591,14 @@ const styles = StyleSheet.create({
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
+  },
+  glassOverlay: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    zIndex: 1,
   },
   cornerAccentTL: {
     position: 'absolute',
