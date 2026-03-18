@@ -108,7 +108,7 @@ export default function ValorantRankCard({ game, username, viewOnly = false, use
       // Animation: brief pause, then smooth slide up with blur, then flip
       Animated.sequence([
         // Brief pause for anticipation
-        Animated.delay(100),
+        Animated.delay(150),
         // Blur/overlay fades in and card slides up together
         Animated.parallel([
           Animated.timing(overlayOpacity, {
@@ -145,23 +145,21 @@ export default function ValorantRankCard({ game, username, viewOnly = false, use
       // Flip back to front
       Animated.spring(flipAnimation, {
         toValue: 0,
-        friction: 8,
-        tension: 10,
+        friction: 7,
+        tension: 20,
         useNativeDriver: false,
       }),
-      // Small pause
-      Animated.delay(50),
-      // Slide down and fade out overlay (card stays at original position)
+      // Slide down and fade out overlay
       Animated.parallel([
         Animated.timing(slideAnimation, {
           toValue: 0,
-          duration: 450,
+          duration: 350,
           easing: Easing.inOut(Easing.cubic),
           useNativeDriver: false,
         }),
         Animated.timing(overlayOpacity, {
           toValue: 0,
-          duration: 400,
+          duration: 300,
           easing: Easing.inOut(Easing.cubic),
           useNativeDriver: true,
         }),
@@ -231,48 +229,64 @@ export default function ValorantRankCard({ game, username, viewOnly = false, use
       <View style={styles.innerBorder} />
 
       {showBack ? (
-        /* Back content - rank showcase */
+        /* Back content - modern techy stats display */
         <View style={styles.cardBackContent}>
+          {/* Decorative tech lines */}
+          <View style={styles.techLineTop} />
+          <View style={styles.techLineBottom} />
+          <View style={styles.techCornerTR} />
+          <View style={styles.techCornerBL} />
+
           {/* Header - Profile and username */}
           <View style={styles.backHeader}>
             <View style={styles.profileRow}>
               {game.valorantCard && (
-                <Image
-                  source={{ uri: game.valorantCard }}
-                  style={styles.backPlayerCard}
-                />
+                <View style={styles.profileImageWrapper}>
+                  <Image
+                    source={{ uri: game.valorantCard }}
+                    style={styles.backPlayerCard}
+                  />
+                  <View style={styles.profileGlow} />
+                </View>
               )}
               <View style={styles.usernameContainer}>
                 <ThemedText style={styles.backUsername}>{username}</ThemedText>
-                <ThemedText style={styles.backLevelText}>Level {game.trophies || 1}</ThemedText>
+                <View style={styles.levelBadge}>
+                  <ThemedText style={styles.backLevelText}>LVL {game.trophies || 1}</ThemedText>
+                </View>
               </View>
             </View>
           </View>
 
-          {/* Center - Large rank showcase */}
-          <View style={styles.rankShowcase}>
-            {/* Glow effect behind rank */}
-            <View style={styles.rankGlow} />
-            <View style={styles.rankGlowInner} />
-            <Image
-              source={getRankIcon(game.rank)}
-              style={styles.backRankIcon}
-              resizeMode="contain"
-            />
-            <ThemedText style={styles.backRankText}>{game.rank || 'Unranked'}</ThemedText>
+          {/* Center - Rank display */}
+          <View style={styles.rankDisplayContainer}>
+            <ThemedText style={styles.currentRankLabel}>Current Rank</ThemedText>
+            <View style={styles.rankIconWrapper}>
+              <View style={styles.rankGlowOuter} />
+              <View style={styles.rankGlowInner} />
+              <Image
+                source={getRankIcon(game.rank)}
+                style={styles.statsRankIcon}
+                resizeMode="contain"
+              />
+            </View>
+            <ThemedText style={styles.rankName}>{game.rank || 'Unranked'}</ThemedText>
+            <ThemedText style={styles.rankPoints}>{game.trophies || 0} pts</ThemedText>
           </View>
 
-          {/* Footer - Sleek minimal stats */}
-          <View style={styles.statsFooter}>
-            <View style={styles.statItem}>
-              <ThemedText style={styles.statValue}>{game.wins + game.losses}</ThemedText>
-              <ThemedText style={styles.statLabel}>matches</ThemedText>
+          {/* Bottom - Stats row */}
+          <View style={styles.statsRow}>
+            <View style={styles.statColumn}>
+              <ThemedText style={styles.statColumnLabel}>Wins</ThemedText>
+              <ThemedText style={styles.statColumnValue}>{game.wins}</ThemedText>
             </View>
-            <View style={styles.statDot} />
-            <View style={styles.statItem}>
-              <ThemedText style={styles.statValue}>{game.winRate}</ThemedText>
-              <ThemedText style={styles.statPercent}>%</ThemedText>
-              <ThemedText style={styles.statLabel}>win rate</ThemedText>
+            <View style={styles.statColumn}>
+              <ThemedText style={styles.statColumnLabel}>Losses</ThemedText>
+              <ThemedText style={styles.statColumnValue}>{game.losses}</ThemedText>
+            </View>
+            <View style={styles.statColumn}>
+              <ThemedText style={styles.statColumnLabel}>Wins %</ThemedText>
+              <ThemedText style={styles.statColumnValue}>{game.winRate}%</ThemedText>
             </View>
           </View>
         </View>
@@ -478,110 +492,173 @@ const styles = StyleSheet.create({
     marginLeft: -125,
     opacity: 0.08,
   },
-  // Back of card styles
+  // Back of card styles - Modern Techy
   cardBackContent: {
     flex: 1,
     paddingHorizontal: 16,
-    paddingVertical: 12,
+    paddingVertical: 14,
     justifyContent: 'space-between',
+  },
+  // Decorative tech elements
+  techLineTop: {
+    position: 'absolute',
+    top: 50,
+    left: 16,
+    right: 16,
+    height: 1,
+    backgroundColor: 'rgba(255,255,255,0.08)',
+  },
+  techLineBottom: {
+    position: 'absolute',
+    bottom: 20,
+    left: 16,
+    right: 16,
+    height: 1,
+    backgroundColor: 'rgba(255,255,255,0.08)',
+  },
+  techCornerTR: {
+    position: 'absolute',
+    top: 12,
+    right: 12,
+    width: 20,
+    height: 20,
+    borderTopWidth: 2,
+    borderRightWidth: 2,
+    borderColor: 'rgba(255,255,255,0.15)',
+  },
+  techCornerBL: {
+    position: 'absolute',
+    bottom: 12,
+    left: 12,
+    width: 20,
+    height: 20,
+    borderBottomWidth: 2,
+    borderLeftWidth: 2,
+    borderColor: 'rgba(255,255,255,0.15)',
   },
   backHeader: {
     flexDirection: 'row',
     alignItems: 'center',
+    zIndex: 1,
   },
   profileRow: {
     flexDirection: 'row',
     alignItems: 'center',
   },
+  profileImageWrapper: {
+    position: 'relative',
+  },
   backPlayerCard: {
-    width: 36,
-    height: 36,
+    width: 38,
+    height: 38,
+    borderRadius: 4,
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.5)',
+  },
+  profileGlow: {
+    position: 'absolute',
+    top: -2,
+    left: -2,
+    right: -2,
+    bottom: -2,
     borderRadius: 6,
-    borderWidth: 1.5,
-    borderColor: 'rgba(255,255,255,0.4)',
+    borderWidth: 1,
+    borderColor: 'rgba(255,100,100,0.3)',
   },
   usernameContainer: {
     marginLeft: 10,
   },
   backUsername: {
-    fontSize: 14,
+    fontSize: 13,
     color: '#fff',
     fontWeight: '700',
+    letterSpacing: 0.5,
+    textTransform: 'uppercase',
+  },
+  levelBadge: {
+    marginTop: 3,
+    backgroundColor: 'rgba(0,0,0,0.3)',
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderRadius: 3,
+    alignSelf: 'flex-start',
   },
   backLevelText: {
-    fontSize: 10,
-    color: 'rgba(255,255,255,0.6)',
-    fontWeight: '500',
-    marginTop: 1,
+    fontSize: 9,
+    color: 'rgba(255,255,255,0.8)',
+    fontWeight: '600',
+    letterSpacing: 1,
   },
-  // Rank showcase - center focus
-  rankShowcase: {
+  // Rank display container - centered
+  rankDisplayContainer: {
+    flex: 1,
     alignItems: 'center',
     justifyContent: 'center',
-    marginVertical: -8,
   },
-  rankGlow: {
+  currentRankLabel: {
+    fontSize: 11,
+    color: 'rgba(255,255,255,0.6)',
+    fontWeight: '500',
+    letterSpacing: 0.5,
+    marginBottom: 6,
+  },
+  rankIconWrapper: {
+    position: 'relative',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  rankGlowOuter: {
     position: 'absolute',
-    width: 100,
-    height: 100,
-    borderRadius: 50,
-    backgroundColor: 'rgba(255,255,255,0.08)',
+    width: 80,
+    height: 80,
+    borderRadius: 40,
+    backgroundColor: 'rgba(255,255,255,0.05)',
   },
   rankGlowInner: {
     position: 'absolute',
+    width: 60,
+    height: 60,
+    borderRadius: 30,
+    backgroundColor: 'rgba(255,255,255,0.08)',
+  },
+  statsRankIcon: {
     width: 70,
     height: 70,
-    borderRadius: 35,
-    backgroundColor: 'rgba(255,255,255,0.06)',
-  },
-  backRankIcon: {
-    width: 80,
-    height: 80,
     zIndex: 1,
   },
-  backRankText: {
+  rankName: {
+    fontSize: 14,
+    color: '#fff',
+    fontWeight: '700',
+    marginTop: 6,
+    textAlign: 'center',
+  },
+  rankPoints: {
+    fontSize: 11,
+    color: 'rgba(255,255,255,0.5)',
+    fontWeight: '500',
+    marginTop: 2,
+  },
+  // Stats row - horizontal layout
+  statsRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    paddingHorizontal: 8,
+  },
+  statColumn: {
+    flex: 1,
+    alignItems: 'center',
+  },
+  statColumnLabel: {
+    fontSize: 11,
+    color: 'rgba(255,255,255,0.5)',
+    fontWeight: '500',
+    marginBottom: 4,
+  },
+  statColumnValue: {
     fontSize: 16,
     color: '#fff',
-    fontWeight: '800',
-    textAlign: 'center',
-    marginTop: 4,
-    letterSpacing: 1,
-    textTransform: 'uppercase',
-  },
-  // Sleek stats footer
-  statsFooter: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 16,
-  },
-  statItem: {
-    flexDirection: 'row',
-    alignItems: 'baseline',
-    gap: 4,
-  },
-  statValue: {
-    fontSize: 20,
-    color: '#fff',
-    fontWeight: '300',
-    letterSpacing: -0.5,
-  },
-  statPercent: {
-    fontSize: 12,
-    color: '#fff',
-    fontWeight: '300',
-    marginRight: 2,
-  },
-  statLabel: {
-    fontSize: 11,
-    color: 'rgba(255,255,255,0.45)',
-    fontWeight: '400',
-  },
-  statDot: {
-    width: 3,
-    height: 3,
-    borderRadius: 1.5,
-    backgroundColor: 'rgba(255,255,255,0.3)',
+    fontWeight: '600',
   },
   // Modal styles
   modalOverlay: {
