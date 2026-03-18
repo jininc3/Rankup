@@ -1,8 +1,8 @@
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { IconSymbol } from '@/components/ui/icon-symbol';
-import { useState, useCallback, useEffect } from 'react';
-import { ScrollView, StyleSheet, TextInput, TouchableOpacity, View, Image, ActivityIndicator } from 'react-native';
+import { useState, useCallback, useEffect, useRef } from 'react';
+import { ScrollView, StyleSheet, TextInput, TouchableOpacity, View, Image } from 'react-native';
 import { useRouter } from 'expo-router';
 import { collection, query, where, getDocs, orderBy, limit, doc, setDoc, deleteDoc, getDoc, Timestamp } from 'firebase/firestore';
 import { db } from '@/config/firebase';
@@ -151,6 +151,70 @@ const SkeletonLoader = () => {
   );
 };
 
+// Search result skeleton item (no delete button)
+const SearchResultSkeletonItem = ({ index }: { index: number }) => {
+  const shimmerValue = useSharedValue(0);
+
+  useEffect(() => {
+    shimmerValue.value = withRepeat(
+      withTiming(1, { duration: 1200 }),
+      -1,
+      false
+    );
+  }, []);
+
+  const shimmerStyle = useAnimatedStyle(() => {
+    const translateX = interpolate(
+      shimmerValue.value,
+      [0, 1],
+      [-200, 200]
+    );
+    return {
+      transform: [{ translateX }],
+    };
+  });
+
+  return (
+    <View style={skeletonStyles.card}>
+      <View style={skeletonStyles.left}>
+        <View style={skeletonStyles.avatar}>
+          <Animated.View style={[skeletonStyles.shimmerOverlay, shimmerStyle]}>
+            <LinearGradient
+              colors={['transparent', 'rgba(255,255,255,0.08)', 'transparent']}
+              start={{ x: 0, y: 0 }}
+              end={{ x: 1, y: 0 }}
+              style={skeletonStyles.gradient}
+            />
+          </Animated.View>
+        </View>
+        <View style={skeletonStyles.textContainer}>
+          <View style={[skeletonStyles.username, { width: index % 2 === 0 ? '55%' : '65%' }]}>
+            <Animated.View style={[skeletonStyles.shimmerOverlay, shimmerStyle]}>
+              <LinearGradient
+                colors={['transparent', 'rgba(255,255,255,0.08)', 'transparent']}
+                start={{ x: 0, y: 0 }}
+                end={{ x: 1, y: 0 }}
+                style={skeletonStyles.gradient}
+              />
+            </Animated.View>
+          </View>
+        </View>
+      </View>
+    </View>
+  );
+};
+
+// Search results skeleton loader
+const SearchResultsSkeletonLoader = () => {
+  return (
+    <View>
+      {[0, 1, 2, 3, 4, 5].map((index) => (
+        <SearchResultSkeletonItem key={index} index={index} />
+      ))}
+    </View>
+  );
+};
+
 export default function SearchScreen() {
   const router = useRouter();
   const { user: currentUser, preloadedSearchHistory, clearPreloadedSearchHistory } = useAuth();
@@ -160,6 +224,11 @@ export default function SearchScreen() {
   const [searchHistory, setSearchHistory] = useState<SearchUser[]>([]);
   const [loadingHistory, setLoadingHistory] = useState(true);
   const [hasConsumedPreload, setHasConsumedPreload] = useState(false);
+
+  // Avatar loading coordination for search results
+  const [avatarsLoadedCount, setAvatarsLoadedCount] = useState(0);
+  const [showResults, setShowResults] = useState(false);
+  const avatarTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
   // Load search history from Firestore
   const loadSearchHistory = async () => {
@@ -293,11 +362,21 @@ export default function SearchScreen() {
 
     if (text.trim() === '') {
       setSearchResults([]);
-      // Don't automatically show history when clearing - only show when focused
+      setShowResults(false);
+      setAvatarsLoadedCount(0);
+      if (avatarTimeoutRef.current) {
+        clearTimeout(avatarTimeoutRef.current);
+      }
       return;
     }
 
+    // Reset avatar loading state for new search
+    setShowResults(false);
+    setAvatarsLoadedCount(0);
     setSearching(true);
+    if (avatarTimeoutRef.current) {
+      clearTimeout(avatarTimeoutRef.current);
+    }
 
     try {
       // Search for users whose username starts with the search query (lowercase)
@@ -342,13 +421,51 @@ export default function SearchScreen() {
       });
 
       setSearchResults(users);
+
+      // If no results or no avatars to load, show immediately
+      const usersWithAvatars = users.filter(u => u.avatar && u.avatar.startsWith('http'));
+      if (users.length === 0 || usersWithAvatars.length === 0) {
+        setShowResults(true);
+      } else {
+        // Set timeout fallback to show results after 1.5s even if avatars haven't loaded
+        avatarTimeoutRef.current = setTimeout(() => {
+          setShowResults(true);
+        }, 1500);
+      }
     } catch (error) {
       console.error('Error searching users:', error);
       setSearchResults([]);
+      setShowResults(true);
     } finally {
       setSearching(false);
     }
   };
+
+  // Track avatar loading and show results when all avatars are loaded
+  useEffect(() => {
+    if (searchResults.length > 0 && !showResults) {
+      const usersWithAvatars = searchResults.filter(u => u.avatar && u.avatar.startsWith('http'));
+      if (usersWithAvatars.length > 0 && avatarsLoadedCount >= usersWithAvatars.length) {
+        if (avatarTimeoutRef.current) {
+          clearTimeout(avatarTimeoutRef.current);
+        }
+        setShowResults(true);
+      }
+    }
+  }, [avatarsLoadedCount, searchResults, showResults]);
+
+  // Cleanup timeout on unmount
+  useEffect(() => {
+    return () => {
+      if (avatarTimeoutRef.current) {
+        clearTimeout(avatarTimeoutRef.current);
+      }
+    };
+  }, []);
+
+  const handleAvatarLoad = useCallback(() => {
+    setAvatarsLoadedCount(prev => prev + 1);
+  }, []);
 
   const handleUserClick = async (user: SearchUser) => {
     // Navigate to profile immediately
@@ -438,11 +555,9 @@ export default function SearchScreen() {
             <ThemedText style={styles.emptyText}>No recent searches</ThemedText>
             <ThemedText style={styles.emptySubtext}>Search history will appear here</ThemedText>
           </View>
-        ) : searching ? (
-          <View style={styles.loadingState}>
-            <ActivityIndicator size="small" color="#666" />
-          </View>
-        ) : searchResults.length > 0 ? (
+        ) : searching || (searchResults.length > 0 && !showResults) ? (
+          <SearchResultsSkeletonLoader />
+        ) : searchResults.length > 0 && showResults ? (
           searchResults.map((user) => {
             const tierBorderColor = calculateTierBorderColor(user.leagueRank, user.valorantRank);
             return (
@@ -458,7 +573,12 @@ export default function SearchScreen() {
                   tierBorderColor ? { borderWidth: 2, borderColor: tierBorderColor } : {}
                 ]}>
                   {user.avatar && user.avatar.startsWith('http') ? (
-                    <Image source={{ uri: user.avatar }} style={styles.historyAvatarImage} />
+                    <Image
+                      source={{ uri: user.avatar }}
+                      style={styles.historyAvatarImage}
+                      onLoad={handleAvatarLoad}
+                      onError={handleAvatarLoad}
+                    />
                   ) : (
                     <ThemedText style={styles.historyAvatarInitial}>
                       {user.username[0].toUpperCase()}
@@ -470,13 +590,13 @@ export default function SearchScreen() {
             </TouchableOpacity>
             );
           })
-        ) : (
+        ) : searchQuery.trim() !== '' ? (
           <View style={styles.emptyState}>
             <IconSymbol size={48} name="person.slash" color="#333" />
             <ThemedText style={styles.emptyText}>No users found</ThemedText>
             <ThemedText style={styles.emptySubtext}>Try a different search term</ThemedText>
           </View>
-        )}
+        ) : null}
       </ScrollView>
     </ThemedView>
   );
@@ -587,17 +707,6 @@ const styles = StyleSheet.create({
     fontSize: 13,
     color: '#999',
     marginTop: 2,
-  },
-  loadingState: {
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingTop: 120,
-    gap: 16,
-  },
-  loadingText: {
-    fontSize: 14,
-    color: '#666',
-    letterSpacing: 0.3,
   },
   emptyState: {
     alignItems: 'center',

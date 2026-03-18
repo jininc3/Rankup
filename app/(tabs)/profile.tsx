@@ -279,6 +279,8 @@ export default function ProfileScreen() {
             recentMatches: ['+18', '+22', '-16', '+20', '-15'],
             valorantCard: valorantStats.card?.small,
             peakRank: valorantStats.peakRank?.tier,
+            accountLevel: valorantStats.accountLevel,
+            gamesPlayed: valorantStats.gamesPlayed,
           };
         }
         return null;
@@ -340,7 +342,7 @@ export default function ProfileScreen() {
       );
 
       // Focused card moves to back card position, others stack below
-      const CARD_HEIGHT = 220;
+      const CARD_HEIGHT = 240;
       const STACK_OFFSET = 50;
       const GAP = 20; // Gap between focused card and pushed cards
 
@@ -1267,7 +1269,7 @@ export default function ProfileScreen() {
             // Multiple Cards View - Apple Wallet style stacked cards
             (() => {
               const totalCards = userGames.length;
-              const CARD_HEIGHT = 220;
+              const CARD_HEIGHT = 240;
               const STACK_OFFSET = 50; // How much each card peeks from behind
               const GAP = 20; // Gap between focused card and pushed cards
 
@@ -2052,7 +2054,7 @@ const styles = StyleSheet.create({
     color: '#666',
   },
   verticalRankCardsContainer: {
-    paddingHorizontal: 12,
+    paddingHorizontal: 6,
     paddingTop: 18,
     paddingBottom: 20,
     gap: 16,

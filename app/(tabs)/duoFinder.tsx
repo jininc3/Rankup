@@ -5,9 +5,10 @@ import DuoFilterModal, { DuoFilterOptions } from '@/app/profilePages/duoFilterMo
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { IconSymbol } from '@/components/ui/icon-symbol';
+import { DuoCardSkeleton } from '@/components/ui/Skeleton';
 import { useAuth } from '@/contexts/AuthContext';
 import { useState, useEffect, useCallback, useRef } from 'react';
-import { Alert, ScrollView, StyleSheet, TouchableOpacity, View, RefreshControl, Dimensions, ActivityIndicator, Image } from 'react-native';
+import { Alert, ScrollView, StyleSheet, TouchableOpacity, View, RefreshControl, Dimensions, Image } from 'react-native';
 import { doc, getDoc, setDoc, deleteDoc, serverTimestamp, collection, query, where, getDocs, orderBy, limit } from 'firebase/firestore';
 import { db } from '@/config/firebase';
 import { useRouter } from 'expo-router';
@@ -829,9 +830,9 @@ export default function DuoFinderScreen() {
 
               {/* Content Area */}
               {loadingDuoCards || (duoCards.length > 0 && !showCards) ? (
-                <View style={styles.loadingContainer}>
-                  <ActivityIndicator size="large" color="#c42743" />
-                  <ThemedText style={styles.loadingText}>Finding players...</ThemedText>
+                <View style={styles.cardsList}>
+                  <DuoCardSkeleton />
+                  <DuoCardSkeleton />
                 </View>
               ) : duoCards.length === 0 ? (
                 <View style={styles.emptyState}>
@@ -1332,17 +1333,6 @@ const styles = StyleSheet.create({
     height: 6,
     borderRadius: 3,
     backgroundColor: '#4ade80',
-  },
-  loadingContainer: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    paddingVertical: 60,
-    gap: 16,
-  },
-  loadingText: {
-    fontSize: 14,
-    color: '#72767d',
   },
   // Empty States - Profile style
   emptyState: {

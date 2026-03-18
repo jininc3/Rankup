@@ -1,7 +1,7 @@
 import { ThemedText } from '@/components/themed-text';
 import { LinearGradient } from 'expo-linear-gradient';
-import { Image, StyleSheet, View, TouchableOpacity, Animated } from 'react-native';
-import { useState, useRef, useEffect } from 'react';
+import { useEffect, useRef, useState } from 'react';
+import { Animated, Image, StyleSheet, TouchableOpacity, View } from 'react-native';
 
 interface Game {
   id: number;

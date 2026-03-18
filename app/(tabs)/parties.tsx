@@ -3,12 +3,13 @@ import LeaderboardCard from '@/app/components/leaderboardCard';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { IconSymbol } from '@/components/ui/icon-symbol';
+import { PartyCardSkeleton, LeaderboardCardSkeleton } from '@/components/ui/Skeleton';
 import { db } from '@/config/firebase';
 import { useAuth } from '@/contexts/AuthContext';
 import { useRouter } from 'expo-router';
 import { collection, doc, getDoc, getDocs, onSnapshot, query, where } from 'firebase/firestore';
 import { useEffect, useState, useRef } from 'react';
-import { ActivityIndicator, Dimensions, Image, Modal, ScrollView, StyleSheet, TouchableOpacity, View } from 'react-native';
+import { Dimensions, Image, Modal, ScrollView, StyleSheet, TouchableOpacity, View } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 
 // Game logo mapping
@@ -54,6 +55,9 @@ const getValorantRankValue = (currentRank: string, rr: number): number => {
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 
+// Minimum time to show skeleton for smooth UX transition
+const MINIMUM_SKELETON_TIME = 800;
+
 export default function LeaderboardScreen() {
   const router = useRouter();
   const { user } = useAuth();
@@ -63,6 +67,7 @@ export default function LeaderboardScreen() {
   const [showCreateModal, setShowCreateModal] = useState(false);
   const pagerRef = useRef<ScrollView>(null);
   const [mutualIds, setMutualIds] = useState<Set<string>>(new Set());
+  const skeletonStartTime = useRef<number>(Date.now());
 
   // Handle tab press - scroll to page
   const handleTabPress = (tab: 'parties' | 'leaderboards') => {
@@ -128,7 +133,13 @@ export default function LeaderboardScreen() {
 
         return fetchedParties;
       });
-      setLoading(false);
+
+      // Ensure skeleton shows for minimum time for smooth transition
+      const elapsedTime = Date.now() - skeletonStartTime.current;
+      const remainingTime = Math.max(0, MINIMUM_SKELETON_TIME - elapsedTime);
+      setTimeout(() => {
+        setLoading(false);
+      }, remainingTime);
     });
 
     return () => unsubscribe();
@@ -406,110 +417,113 @@ export default function LeaderboardScreen() {
           <IconSymbol size={20} name="plus" color="#fff" />
         </TouchableOpacity>
       </View>
-      {loading ? (
-        <View style={styles.loadingContainer}>
-          <ActivityIndicator size="large" color="#c42743" />
-          <ThemedText style={styles.loadingText}>Loading parties...</ThemedText>
-        </View>
-      ) : (
-        <>
-          {/* Tabs - Fixed at top */}
-          <View style={styles.tabsContainer}>
-            <TouchableOpacity
-              style={styles.tab}
-              onPress={() => handleTabPress('parties')}
-              activeOpacity={0.7}
-            >
-              <ThemedText style={[styles.tabText, selectedTab === 'parties' && styles.tabTextActive]}>
-                PARTIES
-              </ThemedText>
-              <ThemedText style={[styles.tabCount, selectedTab === 'parties' && styles.tabCountActive]}>
-                {partyTypeParties.length}
-              </ThemedText>
-            </TouchableOpacity>
-            <View style={styles.tabDivider} />
-            <TouchableOpacity
-              style={styles.tab}
-              onPress={() => handleTabPress('leaderboards')}
-              activeOpacity={0.7}
-            >
-              <ThemedText style={[styles.tabText, selectedTab === 'leaderboards' && styles.tabTextActive]}>
-                LEADERBOARDS
-              </ThemedText>
-              <ThemedText style={[styles.tabCount, selectedTab === 'leaderboards' && styles.tabCountActive]}>
-                {leaderboardTypeParties.length}
-              </ThemedText>
-            </TouchableOpacity>
-          </View>
+      {/* Tabs - Always visible */}
+      <View style={styles.tabsContainer}>
+        <TouchableOpacity
+          style={styles.tab}
+          onPress={() => handleTabPress('parties')}
+          activeOpacity={0.7}
+        >
+          <ThemedText style={[styles.tabText, selectedTab === 'parties' && styles.tabTextActive]}>
+            PARTIES
+          </ThemedText>
+          <ThemedText style={[styles.tabCount, selectedTab === 'parties' && styles.tabCountActive]}>
+            {loading ? '-' : partyTypeParties.length}
+          </ThemedText>
+        </TouchableOpacity>
+        <View style={styles.tabDivider} />
+        <TouchableOpacity
+          style={styles.tab}
+          onPress={() => handleTabPress('leaderboards')}
+          activeOpacity={0.7}
+        >
+          <ThemedText style={[styles.tabText, selectedTab === 'leaderboards' && styles.tabTextActive]}>
+            LEADERBOARDS
+          </ThemedText>
+          <ThemedText style={[styles.tabCount, selectedTab === 'leaderboards' && styles.tabCountActive]}>
+            {loading ? '-' : leaderboardTypeParties.length}
+          </ThemedText>
+        </TouchableOpacity>
+      </View>
 
-          {/* Swipeable Pages */}
-          <ScrollView
-            ref={pagerRef}
-            horizontal
-            pagingEnabled
-            showsHorizontalScrollIndicator={false}
-            onScroll={handlePageScroll}
-            scrollEventThrottle={16}
-            style={styles.pagerContainer}
-          >
-            {/* Parties Page */}
-            <ScrollView
-              style={[styles.pageContainer, { width: SCREEN_WIDTH }]}
-              showsVerticalScrollIndicator={false}
-              contentContainerStyle={styles.pageContent}
-            >
-              {partyTypeParties.length > 0 ? (
-                <View style={styles.cardsContainer}>
-                  {partyTypeParties.map((leaderboard, index) => (
-                    <PartyCards
-                      key={leaderboard.id}
-                      leaderboard={leaderboard}
-                      onPress={handleLeaderboardPress}
-                      showDivider={index < partyTypeParties.length - 1}
-                    />
-                  ))}
-                </View>
-              ) : (
-                <View style={styles.emptyState}>
-                  <ThemedText style={styles.emptyStateText}>No parties yet</ThemedText>
-                  <ThemedText style={styles.emptyStateSubtext}>
-                    Create a party to compete with friends
-                  </ThemedText>
-                </View>
-              )}
-              <View style={styles.bottomSpacer} />
-            </ScrollView>
+      {/* Swipeable Pages */}
+      <ScrollView
+        ref={pagerRef}
+        horizontal
+        pagingEnabled
+        showsHorizontalScrollIndicator={false}
+        onScroll={handlePageScroll}
+        scrollEventThrottle={16}
+        style={styles.pagerContainer}
+      >
+        {/* Parties Page */}
+        <ScrollView
+          style={[styles.pageContainer, { width: SCREEN_WIDTH }]}
+          showsVerticalScrollIndicator={false}
+          contentContainerStyle={styles.pageContent}
+        >
+          {loading ? (
+            <View style={styles.cardsContainer}>
+              {[1, 2, 3].map((i) => (
+                <PartyCardSkeleton key={i} />
+              ))}
+            </View>
+          ) : partyTypeParties.length > 0 ? (
+            <View style={styles.cardsContainer}>
+              {partyTypeParties.map((leaderboard, index) => (
+                <PartyCards
+                  key={leaderboard.id}
+                  leaderboard={leaderboard}
+                  onPress={handleLeaderboardPress}
+                  showDivider={index < partyTypeParties.length - 1}
+                />
+              ))}
+            </View>
+          ) : (
+            <View style={styles.emptyState}>
+              <ThemedText style={styles.emptyStateText}>No parties yet</ThemedText>
+              <ThemedText style={styles.emptyStateSubtext}>
+                Create a party to compete with friends
+              </ThemedText>
+            </View>
+          )}
+          <View style={styles.bottomSpacer} />
+        </ScrollView>
 
-            {/* Leaderboards Page */}
-            <ScrollView
-              style={[styles.pageContainer, { width: SCREEN_WIDTH }]}
-              showsVerticalScrollIndicator={false}
-              contentContainerStyle={styles.pageContent}
-            >
-              {leaderboardTypeParties.length > 0 ? (
-                <View style={styles.cardsContainer}>
-                  {leaderboardTypeParties.map((leaderboard, index) => (
-                    <LeaderboardCard
-                      key={leaderboard.id}
-                      leaderboard={leaderboard}
-                      onPress={handleLeaderboardPress}
-                      showDivider={index < leaderboardTypeParties.length - 1}
-                    />
-                  ))}
-                </View>
-              ) : (
-                <View style={styles.emptyState}>
-                  <ThemedText style={styles.emptyStateText}>No leaderboards yet</ThemedText>
-                  <ThemedText style={styles.emptyStateSubtext}>
-                    Join a leaderboard to track your rank against others
-                  </ThemedText>
-                </View>
-              )}
-              <View style={styles.bottomSpacer} />
-            </ScrollView>
-          </ScrollView>
-        </>
-      )}
+        {/* Leaderboards Page */}
+        <ScrollView
+          style={[styles.pageContainer, { width: SCREEN_WIDTH }]}
+          showsVerticalScrollIndicator={false}
+          contentContainerStyle={styles.pageContent}
+        >
+          {loading ? (
+            <View style={styles.cardsContainer}>
+              {[1, 2, 3].map((i) => (
+                <LeaderboardCardSkeleton key={i} />
+              ))}
+            </View>
+          ) : leaderboardTypeParties.length > 0 ? (
+            <View style={styles.cardsContainer}>
+              {leaderboardTypeParties.map((leaderboard, index) => (
+                <LeaderboardCard
+                  key={leaderboard.id}
+                  leaderboard={leaderboard}
+                  onPress={handleLeaderboardPress}
+                  showDivider={index < leaderboardTypeParties.length - 1}
+                />
+              ))}
+            </View>
+          ) : (
+            <View style={styles.emptyState}>
+              <ThemedText style={styles.emptyStateText}>No leaderboards yet</ThemedText>
+              <ThemedText style={styles.emptyStateSubtext}>
+                Join a leaderboard to track your rank against others
+              </ThemedText>
+            </View>
+          )}
+          <View style={styles.bottomSpacer} />
+        </ScrollView>
+      </ScrollView>
 
       {/* Create Modal */}
       <Modal
@@ -598,16 +612,6 @@ const styles = StyleSheet.create({
     backgroundColor: '#1a1a1a',
     alignItems: 'center',
     justifyContent: 'center',
-  },
-  loadingContainer: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    gap: 12,
-  },
-  loadingText: {
-    fontSize: 14,
-    color: '#b9bbbe',
   },
   pagerContainer: {
     flex: 1,

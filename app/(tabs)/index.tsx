@@ -1,6 +1,7 @@
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { IconSymbol } from '@/components/ui/icon-symbol';
+import { FeedSkeleton } from '@/components/ui/Skeleton';
 import { db } from '@/config/firebase';
 import { useAuth } from '@/contexts/AuthContext';
 import { getFollowing } from '@/services/followService';
@@ -156,6 +157,10 @@ export default function HomeScreen() {
     fetchFollowingUsers();
   }, [currentUser?.id]);
 
+  // Minimum time to show skeleton for smooth UX transition
+  const MINIMUM_SKELETON_TIME = 800;
+  const skeletonStartTime = useRef<number>(Date.now());
+
   // Consume preloaded posts from AuthContext (loaded during loading screen)
   useEffect(() => {
     const enrichPreloadedPosts = async () => {
@@ -201,18 +206,31 @@ export default function HomeScreen() {
           })
         );
 
-        setFollowingPosts(enrichedPosts);
-        setLoading(false);
-        setHasConsumedPreload(true);
-        // Clear preloaded posts to prevent reuse
-        clearPreloadedPosts();
+        // Ensure skeleton shows for minimum time for smooth transition
+        const elapsedTime = Date.now() - skeletonStartTime.current;
+        const remainingTime = Math.max(0, MINIMUM_SKELETON_TIME - elapsedTime);
+
+        setTimeout(() => {
+          setFollowingPosts(enrichedPosts);
+          setLoading(false);
+          setHasConsumedPreload(true);
+          // Clear preloaded posts to prevent reuse
+          clearPreloadedPosts();
+        }, remainingTime);
       } else if (preloadedPosts && preloadedPosts.length === 0 && !hasConsumedPreload) {
         // Preload returned empty array (no following users)
         console.log('✅ Preload returned no posts (no following)');
-        setFollowingPosts([]);
-        setLoading(false);
-        setHasConsumedPreload(true);
-        clearPreloadedPosts();
+
+        // Ensure skeleton shows for minimum time
+        const elapsedTime = Date.now() - skeletonStartTime.current;
+        const remainingTime = Math.max(0, MINIMUM_SKELETON_TIME - elapsedTime);
+
+        setTimeout(() => {
+          setFollowingPosts([]);
+          setLoading(false);
+          setHasConsumedPreload(true);
+          clearPreloadedPosts();
+        }, remainingTime);
       }
     };
 
@@ -335,6 +353,7 @@ export default function HomeScreen() {
     if (isLoadMore) {
       setLoadingMore(true);
     } else {
+      skeletonStartTime.current = Date.now(); // Reset skeleton timer for fresh loads
       setLoading(true);
       setLastDoc(null);
       setHasMore(true);
@@ -493,10 +512,14 @@ export default function HomeScreen() {
 
     if (followingUserIds.length > 0 || activeTab === 'forYou') {
       fetchPostsWithPagination(false);
-    } else {
+    } else if (preloadedPosts !== null && preloadedPosts.length === 0) {
+      // Only set loading to false if preloadedPosts has been determined to be empty
+      // preloadedPosts === null means still loading, so keep skeleton visible
       setLoading(false);
     }
-  }, [currentUser?.id, followingUserIds, activeTab, selectedGameFilter, hasConsumedPreload]);
+    // If preloadedPosts is null (still loading) or has items, keep loading=true
+    // The enrichPreloadedPosts effect will handle setting loading=false
+  }, [currentUser?.id, followingUserIds, activeTab, selectedGameFilter, hasConsumedPreload, preloadedPosts]);
 
   // Check which posts are liked by the current user
   useEffect(() => {
@@ -945,10 +968,7 @@ export default function HomeScreen() {
         </TouchableOpacity>
 
         {loading ? (
-          <View style={styles.loadingContainer}>
-            <ActivityIndicator size="large" color="#000" />
-            <ThemedText style={styles.loadingText}>Loading posts...</ThemedText>
-          </View>
+          <FeedSkeleton count={3} />
         ) : currentPosts.length > 0 ? (
           <>
             {currentPosts.map((post, index) => {
@@ -1364,16 +1384,6 @@ const styles = StyleSheet.create({
   scrollViewContent: {
     paddingBottom: 100,
     backgroundColor: '#0f0f0f',
-  },
-  loadingContainer: {
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingVertical: 100,
-    gap: 12,
-  },
-  loadingText: {
-    fontSize: 16,
-    color: '#fff',
   },
   emptyContainer: {
     alignItems: 'center',
