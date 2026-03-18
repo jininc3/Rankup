@@ -1,6 +1,19 @@
 import { httpsCallable } from 'firebase/functions';
 import { functions, auth } from '@/config/firebase';
 
+// Match history entry type
+export interface MatchHistoryEntry {
+  matchId: string;
+  agent: string;
+  kills: number;
+  deaths: number;
+  assists: number;
+  won: boolean;
+  map: string;
+  gameStart: number; // Unix timestamp
+  score: string; // e.g., "13-7"
+}
+
 // Types for Valorant stats (Henrik's API)
 export interface ValorantStats {
   gameName: string;
@@ -30,6 +43,7 @@ export interface ValorantStats {
   wins: number;
   losses: number;
   winRate: number;
+  matchHistory?: MatchHistoryEntry[]; // Last 5 matches
   lastUpdated: any;
 }
 

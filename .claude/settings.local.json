@@ -20,7 +20,8 @@
       "Bash(npx expo install:*)",
       "Bash(curl:*)",
       "WebFetch(domain:www.riotgames.com)",
-      "Bash(npm run deploy:*)"
+      "Bash(npm run deploy:*)",
+      "WebFetch(domain:valapidocs.techchrism.me)"
     ],
     "deny": [],
     "ask": []

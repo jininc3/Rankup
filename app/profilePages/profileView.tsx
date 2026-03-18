@@ -782,6 +782,16 @@ export default function ProfileViewScreen() {
             <IconSymbol size={18} name="play.rectangle.fill" color="#fff" />
             <ThemedText style={styles.sectionHeaderTitle}>Clips</ThemedText>
           </View>
+          {posts.length > 0 && (
+            <TouchableOpacity
+              style={styles.viewAllButton}
+              onPress={() => router.push(`/profilePages/clips?userId=${userId}`)}
+              activeOpacity={0.7}
+            >
+              <ThemedText style={styles.viewAllButtonText}>View All</ThemedText>
+              <IconSymbol size={14} name="chevron.right" color="#666" />
+            </TouchableOpacity>
+          )}
         </View>
 
         {/* Clips Content */}
@@ -1473,6 +1483,16 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     color: '#fff',
     letterSpacing: -0.5,
+  },
+  viewAllButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+  },
+  viewAllButtonText: {
+    fontSize: 14,
+    fontWeight: '500',
+    color: '#666',
   },
   walletViewButton: {
     width: 36,

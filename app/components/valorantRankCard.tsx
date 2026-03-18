@@ -1,10 +1,23 @@
 import { ThemedText } from '@/components/themed-text';
+import { IconSymbol } from '@/components/ui/icon-symbol';
 import { BlurView } from 'expo-blur';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useEffect, useRef, useState } from 'react';
-import { Animated, Dimensions, Easing, Image, Modal, Pressable, StyleSheet, TouchableOpacity, View } from 'react-native';
+import { Animated, Dimensions, Easing, Image, Modal, Pressable, ScrollView, StyleSheet, TouchableOpacity, View } from 'react-native';
 
 const { height: SCREEN_HEIGHT } = Dimensions.get('window');
+
+interface MatchHistoryEntry {
+  matchId: string;
+  agent: string;
+  kills: number;
+  deaths: number;
+  assists: number;
+  won: boolean;
+  map: string;
+  gameStart: number; // Unix timestamp
+  score: string; // e.g., "13-7"
+}
 
 interface Game {
   id: number;
@@ -15,7 +28,7 @@ interface Game {
   wins: number;
   losses: number;
   winRate: number;
-  recentMatches: string[];
+  matchHistory?: MatchHistoryEntry[];
   profileIconId?: number;
   valorantCard?: string; // Valorant player card URL
 }
@@ -75,11 +88,14 @@ export default function ValorantRankCard({ game, username, viewOnly = false, use
   const [modalVisible, setModalVisible] = useState(false);
   const [cardHidden, setCardHidden] = useState(false);
   const [cardPosition, setCardPosition] = useState({ x: 20, y: SCREEN_HEIGHT - 350, width: 0 });
+  const [showMatchHistory, setShowMatchHistory] = useState(false);
 
   const cardRef = useRef<View>(null);
   const flipAnimation = useRef(new Animated.Value(0)).current;
   const slideAnimation = useRef(new Animated.Value(0)).current;
   const overlayOpacity = useRef(new Animated.Value(0)).current;
+  const startY = useRef(new Animated.Value(SCREEN_HEIGHT - 350)).current;
+  const matchHistoryAnimation = useRef(new Animated.Value(0)).current;
 
   // Listen to animation value to swap content at midpoint
   useEffect(() => {
@@ -100,6 +116,7 @@ export default function ValorantRankCard({ game, username, viewOnly = false, use
     // Measure card position before opening modal
     cardRef.current?.measureInWindow((x, y, width, height) => {
       setCardPosition({ x, y, width });
+      startY.setValue(y); // Set immediately for animation
       setCardHidden(true);
 
       // Open modal and animate
@@ -140,6 +157,19 @@ export default function ValorantRankCard({ game, username, viewOnly = false, use
   };
 
   const handleCloseModal = () => {
+    // If match history is open, close it first
+    if (showMatchHistory) {
+      Animated.timing(matchHistoryAnimation, {
+        toValue: 0,
+        duration: 300,
+        easing: Easing.out(Easing.cubic),
+        useNativeDriver: false,
+      }).start(() => {
+        setShowMatchHistory(false);
+      });
+      return;
+    }
+
     // Reverse: flip first, then smooth slide down + fade out
     Animated.sequence([
       // Flip back to front
@@ -149,33 +179,53 @@ export default function ValorantRankCard({ game, username, viewOnly = false, use
         tension: 20,
         useNativeDriver: false,
       }),
-      // Slide down and fade out overlay
+      // Slide down and fade out overlay - use linear easing to prevent overshoot
       Animated.parallel([
         Animated.timing(slideAnimation, {
           toValue: 0,
-          duration: 350,
-          easing: Easing.inOut(Easing.cubic),
+          duration: 400,
+          easing: Easing.linear,
           useNativeDriver: false,
         }),
         Animated.timing(overlayOpacity, {
           toValue: 0,
-          duration: 300,
-          easing: Easing.inOut(Easing.cubic),
+          duration: 350,
+          easing: Easing.linear,
           useNativeDriver: true,
         }),
       ]),
     ]).start(() => {
-      // Modal card is now exactly over original card position
-      // Show original card first
       setCardHidden(false);
       setIsFlipped(false);
-
-      // Close modal after original card is rendered to prevent flash
-      // Use setTimeout to ensure original card has painted
+      matchHistoryAnimation.setValue(0);
+      setShowMatchHistory(false);
       setTimeout(() => {
         setModalVisible(false);
       }, 50);
     });
+  };
+
+  const handleMatchHistoryPress = () => {
+    if (showMatchHistory) {
+      // Collapse match history
+      Animated.timing(matchHistoryAnimation, {
+        toValue: 0,
+        duration: 300,
+        easing: Easing.out(Easing.cubic),
+        useNativeDriver: false,
+      }).start(() => {
+        setShowMatchHistory(false);
+      });
+    } else {
+      // Expand match history
+      setShowMatchHistory(true);
+      Animated.timing(matchHistoryAnimation, {
+        toValue: 1,
+        duration: 400,
+        easing: Easing.out(Easing.back(1.05)),
+        useNativeDriver: false,
+      }).start();
+    }
   };
 
   const getRankIcon = (rank: string) => {
@@ -204,9 +254,35 @@ export default function ValorantRankCard({ game, username, viewOnly = false, use
   });
 
   // Slide animation - moves card from its exact position to top
-  const translateY = slideAnimation.interpolate({
+  // translateY = startY * (1 - slide) + 80 * slide
+  const inverseSlide = slideAnimation.interpolate({
     inputRange: [0, 1],
-    outputRange: [cardPosition.y, 80], // Start from measured position, slide to top
+    outputRange: [1, 0],
+  });
+
+  const translateY = Animated.add(
+    Animated.multiply(startY, inverseSlide),
+    Animated.multiply(slideAnimation, 80)
+  );
+
+  // Match history container height animation - expands upward from bottom
+  // When expanded, it should go to just below the rank card (card is at y=80, height=220, so bottom is 300 + 16px gap = 316)
+  const expandedHeight = SCREEN_HEIGHT - 316;
+  const matchHistoryHeight = matchHistoryAnimation.interpolate({
+    inputRange: [0, 1],
+    outputRange: [90, expandedHeight], // From peek height to just below the card
+  });
+
+  // Chevron rotation
+  const chevronRotation = matchHistoryAnimation.interpolate({
+    inputRange: [0, 1],
+    outputRange: ['0deg', '180deg'],
+  });
+
+  // Match history opacity for content (fade in when expanded)
+  const matchHistoryContentOpacity = matchHistoryAnimation.interpolate({
+    inputRange: [0, 0.5, 1],
+    outputRange: [0, 0, 1],
   });
 
   const animatedStyle = {
@@ -231,36 +307,32 @@ export default function ValorantRankCard({ game, username, viewOnly = false, use
       {showBack ? (
         /* Back content - modern techy stats display */
         <View style={styles.cardBackContent}>
-          {/* Decorative tech lines */}
-          <View style={styles.techLineTop} />
-          <View style={styles.techLineBottom} />
-          <View style={styles.techCornerTR} />
-          <View style={styles.techCornerBL} />
+          {/* Decorative corner accents */}
+          <View style={styles.techCornerTL} />
+          <View style={styles.techCornerBR} />
 
-          {/* Header - Profile and username */}
-          <View style={styles.backHeader}>
-            <View style={styles.profileRow}>
-              {game.valorantCard && (
-                <View style={styles.profileImageWrapper}>
-                  <Image
-                    source={{ uri: game.valorantCard }}
-                    style={styles.backPlayerCard}
-                  />
-                  <View style={styles.profileGlow} />
-                </View>
-              )}
-              <View style={styles.usernameContainer}>
-                <ThemedText style={styles.backUsername}>{username}</ThemedText>
-                <View style={styles.levelBadge}>
-                  <ThemedText style={styles.backLevelText}>LVL {game.trophies || 1}</ThemedText>
-                </View>
+          {/* Profile section - Top Left */}
+          <View style={styles.profileSection}>
+            {game.valorantCard && (
+              <View style={styles.profileImageWrapper}>
+                <Image
+                  source={{ uri: game.valorantCard }}
+                  style={styles.backPlayerCard}
+                />
+                <View style={styles.profileGlow} />
+              </View>
+            )}
+            <View style={styles.usernameContainer}>
+              <ThemedText style={styles.backUsername}>{username}</ThemedText>
+              <View style={styles.levelBadge}>
+                <ThemedText style={styles.backLevelText}>LVL {game.trophies || 1}</ThemedText>
               </View>
             </View>
           </View>
 
-          {/* Center - Rank display */}
-          <View style={styles.rankDisplayContainer}>
-            <ThemedText style={styles.currentRankLabel}>Current Rank</ThemedText>
+          {/* Rank section - Right side */}
+          <View style={styles.rankSection}>
+            <ThemedText style={styles.rankLabel}>CURRENT</ThemedText>
             <View style={styles.rankIconWrapper}>
               <View style={styles.rankGlowOuter} />
               <View style={styles.rankGlowInner} />
@@ -271,22 +343,19 @@ export default function ValorantRankCard({ game, username, viewOnly = false, use
               />
             </View>
             <ThemedText style={styles.rankName}>{game.rank || 'Unranked'}</ThemedText>
-            <ThemedText style={styles.rankPoints}>{game.trophies || 0} pts</ThemedText>
+            <ThemedText style={styles.rankPoints}>{game.trophies} RR</ThemedText>
           </View>
 
-          {/* Bottom - Stats row */}
-          <View style={styles.statsRow}>
+          {/* Stats - Bottom Left */}
+          <View style={styles.statsSection}>
             <View style={styles.statColumn}>
-              <ThemedText style={styles.statColumnLabel}>Wins</ThemedText>
               <ThemedText style={styles.statColumnValue}>{game.wins}</ThemedText>
+              <ThemedText style={styles.statColumnLabel}>Wins</ThemedText>
             </View>
+            <View style={styles.statDivider} />
             <View style={styles.statColumn}>
-              <ThemedText style={styles.statColumnLabel}>Losses</ThemedText>
-              <ThemedText style={styles.statColumnValue}>{game.losses}</ThemedText>
-            </View>
-            <View style={styles.statColumn}>
-              <ThemedText style={styles.statColumnLabel}>Wins %</ThemedText>
               <ThemedText style={styles.statColumnValue}>{game.winRate}%</ThemedText>
+              <ThemedText style={styles.statColumnLabel}>Win Rate</ThemedText>
             </View>
           </View>
         </View>
@@ -369,6 +438,78 @@ export default function ValorantRankCard({ game, username, viewOnly = false, use
           <View style={styles.rankCard}>
             {renderCardContent()}
           </View>
+        </Animated.View>
+
+        {/* Match History Container - Fixed at bottom of screen */}
+        <Animated.View
+          style={[
+            styles.matchHistoryContainer,
+            { height: matchHistoryHeight }
+          ]}
+        >
+          <TouchableOpacity
+            style={styles.matchHistoryHeader}
+            onPress={handleMatchHistoryPress}
+            activeOpacity={0.8}
+          >
+            <View style={styles.matchHistoryHeaderLeft}>
+              <View style={styles.matchHistoryIcon}>
+                <IconSymbol size={18} name="clock.arrow.circlepath" color="#DC3D4B" />
+              </View>
+              <ThemedText style={styles.matchHistoryTitle}>Match History</ThemedText>
+            </View>
+            <Animated.View style={{ transform: [{ rotate: chevronRotation }] }}>
+              <IconSymbol size={20} name="chevron.up" color="rgba(255,255,255,0.6)" />
+            </Animated.View>
+          </TouchableOpacity>
+
+          {/* Match History Content */}
+          <Animated.View style={[styles.matchHistoryContentWrapper, { opacity: matchHistoryContentOpacity }]}>
+            {/* Table Header */}
+            <View style={styles.matchTableHeader}>
+              <ThemedText style={[styles.matchTableHeaderText, styles.matchColAgent]}>Agent</ThemedText>
+              <ThemedText style={[styles.matchTableHeaderText, styles.matchColKDA]}>KDA</ThemedText>
+              <ThemedText style={[styles.matchTableHeaderText, styles.matchColResult]}>Result</ThemedText>
+              <ThemedText style={[styles.matchTableHeaderText, styles.matchColDate]}>Date</ThemedText>
+            </View>
+            <ScrollView
+              style={styles.matchHistoryContent}
+              showsVerticalScrollIndicator={false}
+              contentContainerStyle={styles.matchHistoryScrollContent}
+            >
+              {game.matchHistory && game.matchHistory.length > 0 ? (
+                game.matchHistory.map((match, index) => {
+                  const date = new Date(match.gameStart);
+                  const formattedDate = `${date.getMonth() + 1}/${date.getDate()}`;
+                  return (
+                    <View key={match.matchId || index} style={styles.matchItem}>
+                      <View style={[styles.matchIndicator, match.won ? styles.matchWin : styles.matchLoss]} />
+                      <ThemedText style={[styles.matchCellText, styles.matchColAgent]} numberOfLines={1}>
+                        {match.agent}
+                      </ThemedText>
+                      <ThemedText style={[styles.matchCellText, styles.matchColKDA]}>
+                        {match.kills}/{match.deaths}/{match.assists}
+                      </ThemedText>
+                      <ThemedText style={[
+                        styles.matchCellText,
+                        styles.matchColResult,
+                        match.won ? styles.matchResultWin : styles.matchResultLoss
+                      ]}>
+                        {match.won ? 'Victory' : 'Defeat'}
+                      </ThemedText>
+                      <ThemedText style={[styles.matchCellText, styles.matchColDate, styles.matchDateText]}>
+                        {formattedDate}
+                      </ThemedText>
+                    </View>
+                  );
+                })
+              ) : (
+                <View style={styles.noMatchesContainer}>
+                  <ThemedText style={styles.noMatchesText}>No recent matches</ThemedText>
+                </View>
+              )}
+            </ScrollView>
+          </Animated.View>
         </Animated.View>
       </Modal>
     </>
@@ -495,62 +636,46 @@ const styles = StyleSheet.create({
   // Back of card styles - Modern Techy
   cardBackContent: {
     flex: 1,
-    paddingHorizontal: 16,
-    paddingVertical: 14,
-    justifyContent: 'space-between',
+    padding: 16,
   },
-  // Decorative tech elements
-  techLineTop: {
+  // Decorative corner accents (matching front style)
+  techCornerTL: {
     position: 'absolute',
-    top: 50,
+    top: 16,
     left: 16,
-    right: 16,
-    height: 1,
-    backgroundColor: 'rgba(255,255,255,0.08)',
-  },
-  techLineBottom: {
-    position: 'absolute',
-    bottom: 20,
-    left: 16,
-    right: 16,
-    height: 1,
-    backgroundColor: 'rgba(255,255,255,0.08)',
-  },
-  techCornerTR: {
-    position: 'absolute',
-    top: 12,
-    right: 12,
-    width: 20,
-    height: 20,
+    width: 24,
+    height: 24,
     borderTopWidth: 2,
-    borderRightWidth: 2,
-    borderColor: 'rgba(255,255,255,0.15)',
-  },
-  techCornerBL: {
-    position: 'absolute',
-    bottom: 12,
-    left: 12,
-    width: 20,
-    height: 20,
-    borderBottomWidth: 2,
     borderLeftWidth: 2,
-    borderColor: 'rgba(255,255,255,0.15)',
+    borderColor: 'rgba(255,255,255,0.3)',
+    borderTopLeftRadius: 4,
   },
-  backHeader: {
+  techCornerBR: {
+    position: 'absolute',
+    bottom: 16,
+    right: 16,
+    width: 24,
+    height: 24,
+    borderBottomWidth: 2,
+    borderRightWidth: 2,
+    borderColor: 'rgba(255,255,255,0.3)',
+    borderBottomRightRadius: 4,
+  },
+  // Profile section - Top Left (inside corner border)
+  profileSection: {
+    position: 'absolute',
+    top: 20,
+    left: 30,
     flexDirection: 'row',
     alignItems: 'center',
     zIndex: 1,
-  },
-  profileRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
   },
   profileImageWrapper: {
     position: 'relative',
   },
   backPlayerCard: {
-    width: 38,
-    height: 38,
+    width: 32,
+    height: 32,
     borderRadius: 4,
     borderWidth: 1,
     borderColor: 'rgba(255,255,255,0.5)',
@@ -566,10 +691,11 @@ const styles = StyleSheet.create({
     borderColor: 'rgba(255,100,100,0.3)',
   },
   usernameContainer: {
-    marginLeft: 10,
+    marginLeft: 8,
+    alignItems: 'flex-start',
   },
   backUsername: {
-    fontSize: 13,
+    fontSize: 11,
     color: '#fff',
     fontWeight: '700',
     letterSpacing: 0.5,
@@ -581,84 +707,97 @@ const styles = StyleSheet.create({
     paddingHorizontal: 6,
     paddingVertical: 2,
     borderRadius: 3,
-    alignSelf: 'flex-start',
   },
   backLevelText: {
-    fontSize: 9,
+    fontSize: 8,
     color: 'rgba(255,255,255,0.8)',
     fontWeight: '600',
     letterSpacing: 1,
   },
-  // Rank display container - centered
-  rankDisplayContainer: {
-    flex: 1,
-    alignItems: 'center',
+  // Rank section - Right side, vertically centered
+  rankSection: {
+    position: 'absolute',
+    right: 40,
+    top: 0,
+    bottom: 0,
     justifyContent: 'center',
-  },
-  currentRankLabel: {
-    fontSize: 11,
-    color: 'rgba(255,255,255,0.6)',
-    fontWeight: '500',
-    letterSpacing: 0.5,
-    marginBottom: 6,
+    alignItems: 'center',
   },
   rankIconWrapper: {
     position: 'relative',
     alignItems: 'center',
     justifyContent: 'center',
+    marginBottom: 4,
   },
   rankGlowOuter: {
     position: 'absolute',
-    width: 80,
-    height: 80,
-    borderRadius: 40,
+    width: 100,
+    height: 100,
+    borderRadius: 50,
     backgroundColor: 'rgba(255,255,255,0.05)',
   },
   rankGlowInner: {
     position: 'absolute',
-    width: 60,
-    height: 60,
-    borderRadius: 30,
+    width: 75,
+    height: 75,
+    borderRadius: 37,
     backgroundColor: 'rgba(255,255,255,0.08)',
   },
   statsRankIcon: {
-    width: 70,
-    height: 70,
+    width: 85,
+    height: 85,
     zIndex: 1,
   },
+  rankLabel: {
+    fontSize: 9,
+    fontWeight: '800',
+    color: '#8e9297',
+    letterSpacing: 1,
+    marginBottom: 8,
+    textTransform: 'uppercase',
+  },
   rankName: {
-    fontSize: 14,
+    fontSize: 13,
+    fontWeight: '800',
     color: '#fff',
-    fontWeight: '700',
-    marginTop: 6,
     textAlign: 'center',
+    letterSpacing: -0.3,
   },
   rankPoints: {
     fontSize: 11,
-    color: 'rgba(255,255,255,0.5)',
-    fontWeight: '500',
+    fontWeight: '600',
+    color: '#5c6066',
     marginTop: 2,
   },
-  // Stats row - horizontal layout
-  statsRow: {
+  // Stats section - Bottom Left (inside border)
+  statsSection: {
+    position: 'absolute',
+    bottom: 28,
+    left: 30,
     flexDirection: 'row',
-    justifyContent: 'space-between',
-    paddingHorizontal: 8,
-  },
-  statColumn: {
-    flex: 1,
     alignItems: 'center',
   },
+  statColumn: {
+    alignItems: 'center',
+  },
+  statDivider: {
+    width: 1,
+    height: 24,
+    backgroundColor: 'rgba(255,255,255,0.2)',
+    marginHorizontal: 14,
+  },
   statColumnLabel: {
-    fontSize: 11,
+    fontSize: 8,
     color: 'rgba(255,255,255,0.5)',
-    fontWeight: '500',
-    marginBottom: 4,
+    fontWeight: '600',
+    letterSpacing: 0.5,
+    textTransform: 'uppercase',
+    marginTop: 2,
   },
   statColumnValue: {
-    fontSize: 16,
+    fontSize: 18,
     color: '#fff',
-    fontWeight: '600',
+    fontWeight: '700',
   },
   // Modal styles
   modalOverlay: {
@@ -675,7 +814,137 @@ const styles = StyleSheet.create({
   },
   modalCard: {
     position: 'absolute',
-    height: 220,
+    top: 0,
     zIndex: 2,
+  },
+  // Match History styles
+  matchHistoryContainer: {
+    position: 'absolute',
+    bottom: 0,
+    left: 0,
+    right: 0,
+    backgroundColor: '#1a1d21',
+    borderTopLeftRadius: 24,
+    borderTopRightRadius: 24,
+    overflow: 'hidden',
+    zIndex: 10,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: -8 },
+    shadowOpacity: 0.4,
+    shadowRadius: 16,
+    elevation: 20,
+  },
+  matchHistoryHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: 20,
+    paddingTop: 24,
+    paddingBottom: 20,
+    borderBottomWidth: 1,
+    borderBottomColor: 'rgba(255, 255, 255, 0.08)',
+  },
+  matchHistoryHeaderLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+  },
+  matchHistoryIcon: {
+    width: 36,
+    height: 36,
+    borderRadius: 10,
+    backgroundColor: 'rgba(220, 61, 75, 0.15)',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  matchHistoryTitle: {
+    fontSize: 16,
+    fontWeight: '700',
+    color: '#fff',
+    letterSpacing: 0.3,
+  },
+  matchHistoryContentWrapper: {
+    flex: 1,
+  },
+  matchTableHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 20,
+    paddingVertical: 10,
+    paddingLeft: 34, // Account for indicator
+    borderBottomWidth: 1,
+    borderBottomColor: 'rgba(255, 255, 255, 0.1)',
+  },
+  matchTableHeaderText: {
+    fontSize: 11,
+    fontWeight: '700',
+    color: '#72767d',
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
+  },
+  matchHistoryContent: {
+    flex: 1,
+  },
+  matchHistoryScrollContent: {
+    paddingHorizontal: 16,
+    paddingBottom: 40,
+  },
+  matchItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 14,
+    paddingHorizontal: 4,
+    borderBottomWidth: 1,
+    borderBottomColor: 'rgba(255, 255, 255, 0.05)',
+  },
+  matchIndicator: {
+    width: 4,
+    height: 36,
+    borderRadius: 2,
+    marginRight: 14,
+  },
+  matchWin: {
+    backgroundColor: '#4CAF50',
+  },
+  matchLoss: {
+    backgroundColor: '#DC3D4B',
+  },
+  // Column widths
+  matchColAgent: {
+    width: 80,
+  },
+  matchColKDA: {
+    width: 70,
+    textAlign: 'center',
+  },
+  matchColResult: {
+    width: 65,
+    textAlign: 'center',
+  },
+  matchColDate: {
+    flex: 1,
+    textAlign: 'right',
+  },
+  matchCellText: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: '#fff',
+  },
+  matchResultWin: {
+    color: '#4CAF50',
+  },
+  matchResultLoss: {
+    color: '#DC3D4B',
+  },
+  matchDateText: {
+    color: '#72767d',
+  },
+  noMatchesContainer: {
+    paddingVertical: 40,
+    alignItems: 'center',
+  },
+  noMatchesText: {
+    fontSize: 14,
+    color: '#72767d',
   },
 });

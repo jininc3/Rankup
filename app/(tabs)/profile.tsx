@@ -276,7 +276,7 @@ export default function ProfileScreen() {
             wins: valorantStats.wins || 0,
             losses: valorantStats.losses || 0,
             winRate: valorantStats.winRate || 0,
-            recentMatches: ['+18', '+22', '-16', '+20', '-15'],
+            matchHistory: valorantStats.matchHistory || [],
             valorantCard: valorantStats.card?.small,
             peakRank: valorantStats.peakRank?.tier,
             accountLevel: valorantStats.accountLevel,
@@ -469,9 +469,15 @@ export default function ProfileScreen() {
             setValorantStats(data.valorantStats);
           }
 
+          // Check if matchHistory is missing from cached data - if so, force refresh
+          const needsMatchHistoryRefresh = !data.valorantStats?.matchHistory ||
+            !Array.isArray(data.valorantStats.matchHistory) ||
+            data.valorantStats.matchHistory.length === 0;
+
           try {
-            console.log('Fetching fresh Valorant stats, forceRefresh:', forceRefresh);
-            const valorantResponse = await getValorantStats(forceRefresh);
+            const shouldForceRefresh = forceRefresh || needsMatchHistoryRefresh;
+            console.log('Fetching fresh Valorant stats, forceRefresh:', shouldForceRefresh, 'needsMatchHistoryRefresh:', needsMatchHistoryRefresh);
+            const valorantResponse = await getValorantStats(shouldForceRefresh);
             console.log('Valorant response:', valorantResponse);
             if (valorantResponse.success && valorantResponse.stats) {
               console.log('Setting fresh valorant stats:', valorantResponse.stats);
@@ -1107,6 +1113,62 @@ export default function ProfileScreen() {
             </View>
           )}
 
+          {/* Temporary Game Stats Buttons */}
+          <View style={styles.tempStatsButtonsContainer}>
+            <TouchableOpacity
+              style={styles.tempStatsButton}
+              onPress={() => {
+                const leagueGame = userGames.find(g => g.name === 'League of Legends');
+                if (leagueGame) {
+                  router.push({
+                    pathname: '/gameStats/league',
+                    params: { game: JSON.stringify(leagueGame) }
+                  });
+                } else {
+                  // Navigate without game data - component will load from cache
+                  router.push({
+                    pathname: '/gameStats/league',
+                    params: { game: JSON.stringify({ name: 'League of Legends' }) }
+                  });
+                }
+              }}
+              activeOpacity={0.7}
+            >
+              <Image
+                source={require('@/assets/images/leagueoflegends.png')}
+                style={styles.tempStatsButtonIcon}
+                resizeMode="contain"
+              />
+              <ThemedText style={styles.tempStatsButtonText}>League Stats</ThemedText>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={styles.tempStatsButton}
+              onPress={() => {
+                const valorantGame = userGames.find(g => g.name === 'Valorant');
+                if (valorantGame) {
+                  router.push({
+                    pathname: '/gameStats/valorant',
+                    params: { game: JSON.stringify(valorantGame) }
+                  });
+                } else {
+                  // Navigate without game data - component will load from cache
+                  router.push({
+                    pathname: '/gameStats/valorant',
+                    params: { game: JSON.stringify({ name: 'Valorant' }) }
+                  });
+                }
+              }}
+              activeOpacity={0.7}
+            >
+              <Image
+                source={require('@/assets/images/valorant-logo.png')}
+                style={styles.tempStatsButtonIcon}
+                resizeMode="contain"
+              />
+              <ThemedText style={styles.tempStatsButtonText}>Valorant Stats</ThemedText>
+            </TouchableOpacity>
+          </View>
+
           {/* Content Section */}
           <View>
             {/* Clips Section Header */}
@@ -1114,6 +1176,16 @@ export default function ProfileScreen() {
               <View style={styles.sectionHeaderLeft}>
                 <ThemedText style={styles.sectionHeaderTitle}>Clips</ThemedText>
               </View>
+              {posts.length > 0 && (
+                <TouchableOpacity
+                  style={styles.viewAllButton}
+                  onPress={() => router.push('/profilePages/clips')}
+                  activeOpacity={0.7}
+                >
+                  <ThemedText style={styles.viewAllButtonText}>View All</ThemedText>
+                  <IconSymbol size={14} name="chevron.right" color="#666" />
+                </TouchableOpacity>
+              )}
             </View>
 
           {/* Clips Content */}
@@ -1832,6 +1904,16 @@ const styles = StyleSheet.create({
     color: '#fff',
     letterSpacing: -0.5,
   },
+  viewAllButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+  },
+  viewAllButtonText: {
+    fontSize: 14,
+    fontWeight: '500',
+    color: '#666',
+  },
   walletViewButton: {
     width: 36,
     height: 36,
@@ -2362,6 +2444,34 @@ const styles = StyleSheet.create({
   avatarModalInitial: {
     fontSize: 72,
     fontWeight: '700',
+    color: '#fff',
+  },
+  // Temporary Game Stats Buttons
+  tempStatsButtonsContainer: {
+    flexDirection: 'row',
+    paddingHorizontal: 20,
+    gap: 12,
+    marginBottom: 8,
+  },
+  tempStatsButton: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    paddingVertical: 12,
+    backgroundColor: '#2c2f33',
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: '#36393e',
+  },
+  tempStatsButtonIcon: {
+    width: 20,
+    height: 20,
+  },
+  tempStatsButtonText: {
+    fontSize: 13,
+    fontWeight: '600',
     color: '#fff',
   },
 });

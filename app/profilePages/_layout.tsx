@@ -117,6 +117,12 @@ export default function ProfilePagesLayout() {
           headerShown: false,
         }}
       />
+      <Stack.Screen
+        name="clips"
+        options={{
+          headerShown: false,
+        }}
+      />
     </Stack>
   );
 }

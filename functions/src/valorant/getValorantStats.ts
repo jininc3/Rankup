@@ -10,7 +10,20 @@ import * as logger from "firebase-functions/logger";
 import {
   getValorantMMR,
   getValorantAccountByRiotId,
+  getValorantMatches,
 } from "./valorantApi";
+
+export interface MatchHistoryEntry {
+  matchId: string;
+  agent: string;
+  kills: number;
+  deaths: number;
+  assists: number;
+  won: boolean;
+  map: string;
+  gameStart: number; // Unix timestamp
+  score: string; // e.g., "13-7"
+}
 
 export interface ValorantStats {
   gameName: string;
@@ -34,6 +47,7 @@ export interface ValorantStats {
   wins: number;
   losses: number;
   winRate: number;
+  matchHistory?: MatchHistoryEntry[]; // Last 5 matches
   lastUpdated: any;
 }
 
@@ -94,7 +108,10 @@ export const getValorantStatsFunction = onCall(
       const cacheAge = cacheTime ? Date.now() - cacheTime.getTime() : Infinity;
       const CACHE_TTL = 3 * 60 * 60 * 1000; // 3 hours
 
-      if (!forceRefresh && cachedStats && cacheAge < CACHE_TTL) {
+      // Also check if matchHistory is missing (old cache format)
+      const hasMatchHistory = cachedStats?.matchHistory && Array.isArray(cachedStats.matchHistory);
+
+      if (!forceRefresh && cachedStats && cacheAge < CACHE_TTL && hasMatchHistory) {
         logger.info(`Returning cached Valorant stats for user ${userId}`);
         return {
           success: true,
@@ -104,12 +121,18 @@ export const getValorantStatsFunction = onCall(
         };
       }
 
+      // If cache is missing matchHistory, log it
+      if (cachedStats && !hasMatchHistory) {
+        logger.info(`Cache missing matchHistory, fetching fresh data for user ${userId}`);
+      }
+
       logger.info(`Fetching fresh Valorant stats for user ${userId}: ${gameName}#${tag}`);
 
       // Fetch fresh data from Henrik's API
-      const [accountData, mmrData] = await Promise.all([
+      const [accountData, mmrData, matchesData] = await Promise.all([
         getValorantAccountByRiotId(gameName, tag),
         getValorantMMR(region, gameName, tag),
+        getValorantMatches(region, gameName, tag, 5), // Get last 5 matches
       ]);
 
       // Get seasonal stats from MMR data
@@ -162,6 +185,42 @@ export const getValorantStatsFunction = onCall(
 
       const winRate = totalGames > 0 ? (wins / totalGames) * 100 : 0;
 
+      // Process match history
+      const matchHistory: MatchHistoryEntry[] = matchesData.map((match) => {
+        // Find the player in this match
+        const player = match.players.all_players.find(
+          (p) => p.name.toLowerCase() === gameName.toLowerCase() && p.tag.toLowerCase() === tag.toLowerCase()
+        );
+
+        if (!player) {
+          return null;
+        }
+
+        // Determine if player won
+        const playerTeam = player.team.toLowerCase(); // "red" or "blue"
+        const teamData = playerTeam === "red" ? match.teams.red : match.teams.blue;
+        const won = teamData.has_won;
+
+        // Build score string
+        const redRounds = match.teams.red.rounds_won;
+        const blueRounds = match.teams.blue.rounds_won;
+        const score = playerTeam === "red"
+          ? `${redRounds}-${blueRounds}`
+          : `${blueRounds}-${redRounds}`;
+
+        return {
+          matchId: match.metadata.match_id,
+          agent: player.character,
+          kills: player.stats.kills,
+          deaths: player.stats.deaths,
+          assists: player.stats.assists,
+          won,
+          map: match.metadata.map,
+          gameStart: match.metadata.game_start,
+          score,
+        };
+      }).filter((entry): entry is MatchHistoryEntry => entry !== null);
+
       // Build stats object
       const stats: ValorantStats = {
         gameName: accountData.name,
@@ -180,6 +239,7 @@ export const getValorantStatsFunction = onCall(
         wins,
         losses,
         winRate: parseFloat(winRate.toFixed(2)),
+        matchHistory,
         lastUpdated: admin.firestore.FieldValue.serverTimestamp() as any,
       };
 
