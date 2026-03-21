@@ -21,7 +21,8 @@
       "Bash(curl:*)",
       "WebFetch(domain:www.riotgames.com)",
       "Bash(npm run deploy:*)",
-      "WebFetch(domain:valapidocs.techchrism.me)"
+      "WebFetch(domain:valapidocs.techchrism.me)",
+      "Bash(node test-valorant-api.js:*)"
     ],
     "deny": [],
     "ask": []

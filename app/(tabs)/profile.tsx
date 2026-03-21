@@ -278,9 +278,11 @@ export default function ProfileScreen() {
             winRate: valorantStats.winRate || 0,
             matchHistory: valorantStats.matchHistory || [],
             valorantCard: valorantStats.card?.small,
-            peakRank: valorantStats.peakRank?.tier,
+            peakRank: valorantStats.peakRank ? { tier: valorantStats.peakRank.tier, season: valorantStats.peakRank.season } : undefined,
             accountLevel: valorantStats.accountLevel,
             gamesPlayed: valorantStats.gamesPlayed,
+            mmr: valorantStats.mmr,
+            mostPlayedAgent: valorantStats.mostPlayedAgent,
           };
         }
         return null;

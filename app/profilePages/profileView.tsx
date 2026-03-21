@@ -139,7 +139,7 @@ export default function ProfileViewScreen() {
             id: 3,
             name: 'Valorant',
             rank: valorantStats.currentRank || 'Unranked',
-            trophies: 654,
+            trophies: valorantStats.rankRating || 0,
             icon: '🎯',
             image: require('@/assets/images/valorant-black.png'),
             wins: valorantStats.wins || 0,
@@ -147,6 +147,11 @@ export default function ProfileViewScreen() {
             winRate: valorantStats.winRate || 0,
             recentMatches: [],
             valorantCard: valorantStats.card?.small,
+            peakRank: valorantStats.peakRank ? { tier: valorantStats.peakRank.tier, season: valorantStats.peakRank.season } : undefined,
+            accountLevel: valorantStats.accountLevel,
+            gamesPlayed: valorantStats.gamesPlayed,
+            mmr: valorantStats.mmr,
+            mostPlayedAgent: valorantStats.mostPlayedAgent,
           };
         }
         return null;

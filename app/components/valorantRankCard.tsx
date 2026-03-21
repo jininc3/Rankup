@@ -31,6 +31,11 @@ interface Game {
   matchHistory?: MatchHistoryEntry[];
   profileIconId?: number;
   valorantCard?: string; // Valorant player card URL
+  peakRank?: { tier: string; season: string };
+  gamesPlayed?: number;
+  mmr?: number;
+  accountLevel?: number;
+  mostPlayedAgent?: string; // Most played agent from recent matches
 }
 
 interface ValorantRankCardProps {
@@ -82,6 +87,22 @@ const VALORANT_RANK_ICONS: { [key: string]: any } = {
   immortal3: require('@/assets/images/valorantranks/immortal3.png'),
 };
 
+// Valorant agent image mapping
+const VALORANT_AGENT_ICONS: { [key: string]: any } = {
+  brimstone: require('@/assets/images/valorantagents/brimstone.png'),
+  breach: require('@/assets/images/valorantagents/breach.png'),
+  cypher: require('@/assets/images/valorantagents/cypher.png'),
+  jett: require('@/assets/images/valorantagents/jett.png'),
+  killjoy: require('@/assets/images/valorantagents/killjoy.png'),
+  omen: require('@/assets/images/valorantagents/omen.png'),
+  phoenix: require('@/assets/images/valorantagents/phoenix.png'),
+  raze: require('@/assets/images/valorantagents/raze.png'),
+  reyna: require('@/assets/images/valorantagents/reyna.png'),
+  sage: require('@/assets/images/valorantagents/sage.png'),
+  sova: require('@/assets/images/valorantagents/sova.png'),
+  viper: require('@/assets/images/valorantagents/viper.png'),
+};
+
 export default function ValorantRankCard({ game, username, viewOnly = false, userId, isFocused = false }: ValorantRankCardProps) {
   const [isFlipped, setIsFlipped] = useState(false);
   const [showBack, setShowBack] = useState(false);
@@ -89,6 +110,27 @@ export default function ValorantRankCard({ game, username, viewOnly = false, use
   const [cardHidden, setCardHidden] = useState(false);
   const [cardPosition, setCardPosition] = useState({ x: 20, y: SCREEN_HEIGHT - 350, width: 0 });
   const [showMatchHistory, setShowMatchHistory] = useState(false);
+  const [matchHistoryExpanded, setMatchHistoryExpanded] = useState(false);
+
+  // Calculate most played agent from match history if not provided
+  const mostPlayedAgent = game.mostPlayedAgent || (() => {
+    if (!game.matchHistory || game.matchHistory.length === 0) return null;
+    const agentCounts: { [agent: string]: number } = {};
+    game.matchHistory.forEach((match) => {
+      if (match.agent) {
+        agentCounts[match.agent] = (agentCounts[match.agent] || 0) + 1;
+      }
+    });
+    let topAgent: string | null = null;
+    let maxCount = 0;
+    for (const [agent, count] of Object.entries(agentCounts)) {
+      if (count > maxCount) {
+        maxCount = count;
+        topAgent = agent;
+      }
+    }
+    return topAgent;
+  })();
 
   const cardRef = useRef<View>(null);
   const flipAnimation = useRef(new Animated.Value(0)).current;
@@ -96,6 +138,7 @@ export default function ValorantRankCard({ game, username, viewOnly = false, use
   const overlayOpacity = useRef(new Animated.Value(0)).current;
   const startY = useRef(new Animated.Value(SCREEN_HEIGHT - 350)).current;
   const matchHistoryAnimation = useRef(new Animated.Value(0)).current;
+  const matchHistoryExpandAnimation = useRef(new Animated.Value(0)).current;
   const shimmerAnimation = useRef(new Animated.Value(0)).current;
 
   // Shimmer animation loop
@@ -149,13 +192,14 @@ export default function ValorantRankCard({ game, username, viewOnly = false, use
 
       // Open modal and animate
       setModalVisible(true);
-      setShowMatchHistory(true); // Show match history when card is clicked
+      setShowMatchHistory(true); // Show cards container
+      setMatchHistoryExpanded(false); // Start with match history collapsed
 
-      // Animation: brief pause, then smooth slide up with blur + match history expand, then flip
+      // Animation: brief pause, then smooth slide up with blur + cards expand, then flip
       Animated.sequence([
         // Brief pause for anticipation
         Animated.delay(150),
-        // Blur/overlay fades in, card slides up, and match history expands together
+        // Blur/overlay fades in, card slides up, and cards container expands together
         Animated.parallel([
           Animated.timing(overlayOpacity, {
             toValue: 1,
@@ -191,16 +235,36 @@ export default function ValorantRankCard({ game, username, viewOnly = false, use
     });
   };
 
+  const handleMatchHistoryToggle = () => {
+    const toValue = matchHistoryExpanded ? 0 : 1;
+    setMatchHistoryExpanded(!matchHistoryExpanded);
+    Animated.timing(matchHistoryExpandAnimation, {
+      toValue,
+      duration: 300,
+      easing: Easing.out(Easing.cubic),
+      useNativeDriver: false,
+    }).start();
+  };
+
   const handleCloseModal = () => {
     // If match history is open, close it first
     if (showMatchHistory) {
-      Animated.timing(matchHistoryAnimation, {
-        toValue: 0,
-        duration: 300,
-        easing: Easing.out(Easing.cubic),
-        useNativeDriver: false,
-      }).start(() => {
+      Animated.parallel([
+        Animated.timing(matchHistoryAnimation, {
+          toValue: 0,
+          duration: 300,
+          easing: Easing.out(Easing.cubic),
+          useNativeDriver: false,
+        }),
+        Animated.timing(matchHistoryExpandAnimation, {
+          toValue: 0,
+          duration: 300,
+          easing: Easing.out(Easing.cubic),
+          useNativeDriver: false,
+        }),
+      ]).start(() => {
         setShowMatchHistory(false);
+        setMatchHistoryExpanded(false);
       });
       return;
     }
@@ -282,6 +346,12 @@ export default function ValorantRankCard({ game, username, viewOnly = false, use
     return VALORANT_RANK_ICONS[tier] || VALORANT_RANK_ICONS.unranked;
   };
 
+  const getAgentIcon = (agent: string) => {
+    if (!agent) return null;
+    const agentKey = agent.toLowerCase();
+    return VALORANT_AGENT_ICONS[agentKey] || null;
+  };
+
   // Scale-based flip animation (more reliable than 3D rotation)
   const scaleY = flipAnimation.interpolate({
     inputRange: [0, 0.5, 1],
@@ -300,22 +370,45 @@ export default function ValorantRankCard({ game, username, viewOnly = false, use
     Animated.multiply(slideAnimation, 80)
   );
 
-  // Match history container height animation - expands upward from bottom
-  // When expanded, it should go to just below the rank card (card is at y=80, height=220, so bottom is 300 + 16px gap = 316)
-  const expandedHeight = SCREEN_HEIGHT - 316;
-  const matchHistoryHeight = matchHistoryAnimation.interpolate({
+  // Statistics card slides up from bottom to just below rank card
+  const STATS_CARD_HEADER_HEIGHT = 58;
+  const STATS_CARD_FULL_HEIGHT = 220;
+  const MATCH_HISTORY_HEADER_HEIGHT = 76;
+  const RANK_CARD_BOTTOM = 316; // Rank card is at y=80, height=220, plus 16px gap
+
+  // Statistics card top position - slides up to just below rank card
+  const statisticsTop = matchHistoryAnimation.interpolate({
     inputRange: [0, 1],
-    outputRange: [90, expandedHeight], // From peek height to just below the card
+    outputRange: [SCREEN_HEIGHT, RANK_CARD_BOTTOM], // Start off-screen, end just below rank card
   });
 
-  // Chevron rotation
-  const chevronRotation = matchHistoryAnimation.interpolate({
+  // Statistics card height - shrinks when match history expands
+  const statisticsHeight = matchHistoryExpandAnimation.interpolate({
+    inputRange: [0, 1],
+    outputRange: [STATS_CARD_FULL_HEIGHT, STATS_CARD_HEADER_HEIGHT], // Full height to just header
+  });
+
+  // Statistics content opacity - fades out when match history expands
+  const statisticsContentOpacity = matchHistoryExpandAnimation.interpolate({
+    inputRange: [0, 0.3],
+    outputRange: [1, 0],
+  });
+
+  // Match history height - expands when clicked, stops below Statistics header divider
+  const matchHistoryExpandedHeight = SCREEN_HEIGHT - RANK_CARD_BOTTOM - STATS_CARD_HEADER_HEIGHT - 8; // 8px below the divider
+  const matchHistoryHeight = matchHistoryExpandAnimation.interpolate({
+    inputRange: [0, 1],
+    outputRange: [MATCH_HISTORY_HEADER_HEIGHT, matchHistoryExpandedHeight], // From header only to below stats header divider
+  });
+
+  // Match history chevron rotation
+  const matchHistoryChevronRotation = matchHistoryExpandAnimation.interpolate({
     inputRange: [0, 1],
     outputRange: ['0deg', '180deg'],
   });
 
-  // Match history opacity for content (fade in when expanded)
-  const matchHistoryContentOpacity = matchHistoryAnimation.interpolate({
+  // Statistics/cards visibility (fade in when modal opens)
+  const cardsContentOpacity = matchHistoryAnimation.interpolate({
     inputRange: [0, 0.5, 1],
     outputRange: [0, 0, 1],
   });
@@ -395,57 +488,58 @@ export default function ValorantRankCard({ game, username, viewOnly = false, use
       <View style={styles.innerBorder} />
 
       {showBack ? (
-        /* Back content - modern techy stats display */
+        /* Back content - Hero Rank layout */
         <View style={styles.cardBackContent}>
           {/* Decorative corner accents */}
           <View style={styles.techCornerTL} />
           <View style={styles.techCornerBR} />
 
-          {/* Profile section - Top Left */}
-          <View style={styles.profileSection}>
-            {game.valorantCard && (
-              <View style={styles.profileImageWrapper}>
-                <Image
-                  source={{ uri: game.valorantCard }}
-                  style={styles.backPlayerCard}
-                />
-                <View style={styles.profileGlow} />
-              </View>
-            )}
-            <View style={styles.usernameContainer}>
+          {/* Header Row - Profile */}
+          <View style={styles.heroHeader}>
+            <View style={styles.heroProfileSection}>
+              {game.valorantCard && (
+                <View style={styles.profileImageWrapper}>
+                  <Image
+                    source={{ uri: game.valorantCard }}
+                    style={styles.backPlayerCard}
+                  />
+                  <View style={styles.profileGlow} />
+                </View>
+              )}
               <ThemedText style={styles.backUsername}>{username}</ThemedText>
-              <View style={styles.levelBadge}>
-                <ThemedText style={styles.backLevelText}>LVL {game.trophies || 1}</ThemedText>
-              </View>
             </View>
           </View>
 
-          {/* Rank section - Right side */}
-          <View style={styles.rankSection}>
-            <ThemedText style={styles.rankLabel}>CURRENT</ThemedText>
-            <View style={styles.rankIconWrapper}>
-              <View style={styles.rankGlowOuter} />
-              <View style={styles.rankGlowInner} />
+          {/* Center Area - Both Ranks Equal Size */}
+          <View style={styles.ranksRow}>
+            {/* Current Rank */}
+            <View style={styles.rankBox}>
+              <ThemedText style={styles.rankBoxLabel}>CURRENT</ThemedText>
               <Image
                 source={getRankIcon(game.rank)}
-                style={styles.statsRankIcon}
+                style={styles.rankBoxIcon}
                 resizeMode="contain"
               />
+              <ThemedText style={styles.rankBoxName}>{game.rank || 'Unranked'}</ThemedText>
+              <ThemedText style={styles.rankBoxSub}>{game.trophies} RR</ThemedText>
             </View>
-            <ThemedText style={styles.rankName}>{game.rank || 'Unranked'}</ThemedText>
-            <ThemedText style={styles.rankPoints}>{game.trophies} RR</ThemedText>
-          </View>
 
-          {/* Stats - Bottom Left */}
-          <View style={styles.statsSection}>
-            <View style={styles.statColumn}>
-              <ThemedText style={styles.statColumnValue}>{game.wins}</ThemedText>
-              <ThemedText style={styles.statColumnLabel}>Wins</ThemedText>
-            </View>
-            <View style={styles.statDivider} />
-            <View style={styles.statColumn}>
-              <ThemedText style={styles.statColumnValue}>{game.winRate}%</ThemedText>
-              <ThemedText style={styles.statColumnLabel}>Win Rate</ThemedText>
+            <View style={styles.ranksDivider} />
+
+            {/* Peak Rank */}
+            <View style={styles.rankBox}>
+              <ThemedText style={styles.rankBoxLabel}>PEAK</ThemedText>
+              <Image
+                source={getRankIcon(game.peakRank?.tier || 'Unranked')}
+                style={styles.rankBoxIcon}
+                resizeMode="contain"
+              />
+              <ThemedText style={styles.rankBoxName}>{game.peakRank?.tier || 'N/A'}</ThemedText>
+              {game.peakRank ? (
+                <ThemedText style={styles.rankBoxSub}>S{game.peakRank.season}</ThemedText>
+              ) : (
+                <ThemedText style={styles.rankBoxSub}> </ThemedText>
+              )}
             </View>
           </View>
         </View>
@@ -543,81 +637,147 @@ export default function ValorantRankCard({ game, username, viewOnly = false, use
           </View>
         </Animated.View>
 
-        {/* Match History Container - Fixed at bottom of screen */}
+        {/* Statistics Card - Slides up to just below rank card, stretches to bottom */}
         <Animated.View
           style={[
-            styles.matchHistoryContainer,
-            { height: matchHistoryHeight }
+            styles.statisticsCard,
+            {
+              top: statisticsTop,
+              bottom: 0,
+              opacity: cardsContentOpacity,
+            }
+          ]}
+        >
+          <View style={styles.statisticsHeader}>
+            <View style={styles.statisticsHeaderLeft}>
+              <View style={styles.statisticsIcon}>
+                <IconSymbol size={14} name="chart.bar.fill" color="#DC3D4B" />
+              </View>
+              <ThemedText style={styles.statisticsTitle}>Statistics</ThemedText>
+            </View>
+          </View>
+
+          {/* Statistics Content */}
+          <Animated.View style={[styles.statisticsContent, { opacity: statisticsContentOpacity }]}>
+            <View style={styles.statsRow}>
+              <View style={styles.statBox}>
+                <ThemedText style={styles.statBoxValue}>{game.winRate}%</ThemedText>
+                <ThemedText style={styles.statBoxLabel}>Win Rate</ThemedText>
+              </View>
+              <View style={styles.statBoxDivider} />
+              <View style={styles.statBox}>
+                <ThemedText style={styles.statBoxValue}>{game.gamesPlayed || 0}</ThemedText>
+                <ThemedText style={styles.statBoxLabel}>Games</ThemedText>
+              </View>
+              <View style={styles.statBoxDivider} />
+              <View style={styles.statBox}>
+                <ThemedText style={styles.statBoxValue}>{game.mmr || 0}</ThemedText>
+                <ThemedText style={styles.statBoxLabel}>MMR</ThemedText>
+              </View>
+            </View>
+
+            {/* Recently Playing Section */}
+            {mostPlayedAgent && (
+              <View style={styles.recentlyPlayingSection}>
+                <View style={styles.recentlyPlayingDivider} />
+                <View style={styles.recentlyPlayingContent}>
+                  <View style={styles.recentlyPlayingInfo}>
+                    <ThemedText style={styles.recentlyPlayingLabel}>Recently Playing</ThemedText>
+                    <ThemedText style={styles.recentlyPlayingAgent}>{mostPlayedAgent}</ThemedText>
+                  </View>
+                  {getAgentIcon(mostPlayedAgent) && (
+                    <Image
+                      source={getAgentIcon(mostPlayedAgent)}
+                      style={styles.recentlyPlayingImage}
+                      resizeMode="contain"
+                    />
+                  )}
+                </View>
+              </View>
+            )}
+          </Animated.View>
+        </Animated.View>
+
+        {/* Match History Card - Fixed at bottom, expands upward */}
+        <Animated.View
+          style={[
+            styles.matchHistoryCard,
+            {
+              height: matchHistoryHeight,
+              opacity: cardsContentOpacity,
+            }
           ]}
         >
           <TouchableOpacity
             style={styles.matchHistoryHeader}
-            onPress={handleMatchHistoryPress}
+            onPress={handleMatchHistoryToggle}
             activeOpacity={0.8}
           >
             <View style={styles.matchHistoryHeaderLeft}>
               <View style={styles.matchHistoryIcon}>
-                <IconSymbol size={18} name="clock.arrow.circlepath" color="#DC3D4B" />
+                <IconSymbol size={14} name="clock.arrow.circlepath" color="#DC3D4B" />
               </View>
               <ThemedText style={styles.matchHistoryTitle}>Match History</ThemedText>
             </View>
-            <Animated.View style={{ transform: [{ rotate: chevronRotation }] }}>
-              <IconSymbol size={20} name="chevron.up" color="rgba(255,255,255,0.6)" />
+            <Animated.View style={{ transform: [{ rotate: matchHistoryChevronRotation }] }}>
+              <IconSymbol size={16} name="chevron.up" color="rgba(255,255,255,0.6)" />
             </Animated.View>
           </TouchableOpacity>
 
           {/* Match History Content */}
-          <Animated.View style={[styles.matchHistoryContentWrapper, { opacity: matchHistoryContentOpacity }]}>
-            {/* Table Header */}
-            <View style={styles.matchTableHeader}>
-              <ThemedText style={[styles.matchTableHeaderText, styles.matchColAgent]}>Agent</ThemedText>
-              <ThemedText style={[styles.matchTableHeaderText, styles.matchColKDA]}>KDA</ThemedText>
-              <ThemedText style={[styles.matchTableHeaderText, styles.matchColResult]}>Result</ThemedText>
-              <ThemedText style={[styles.matchTableHeaderText, styles.matchColDate]}>Date</ThemedText>
+          {matchHistoryExpanded && (
+            <View style={styles.matchHistoryContentWrapper}>
+              {/* Table Header */}
+              <View style={styles.matchTableHeader}>
+                <ThemedText style={[styles.matchTableHeaderText, styles.matchColAgent]}>Agent</ThemedText>
+                <ThemedText style={[styles.matchTableHeaderText, styles.matchColKDA]}>KDA</ThemedText>
+                <ThemedText style={[styles.matchTableHeaderText, styles.matchColResult]}>Result</ThemedText>
+                <ThemedText style={[styles.matchTableHeaderText, styles.matchColDate]}>Date</ThemedText>
+              </View>
+              <ScrollView
+                style={styles.matchHistoryContent}
+                showsVerticalScrollIndicator={false}
+                contentContainerStyle={styles.matchHistoryScrollContent}
+              >
+                {game.matchHistory && game.matchHistory.length > 0 ? (
+                  game.matchHistory.map((match, index) => {
+                    // gameStart could be in seconds or milliseconds - handle both
+                    const timestamp = match.gameStart < 10000000000 ? match.gameStart * 1000 : match.gameStart;
+                    const date = new Date(timestamp);
+                    const day = date.getDate().toString().padStart(2, '0');
+                    const month = (date.getMonth() + 1).toString().padStart(2, '0');
+                    const year = date.getFullYear();
+                    const formattedDate = `${day}/${month}/${year}`;
+                    return (
+                      <View key={match.matchId || index} style={styles.matchItem}>
+                        <View style={[styles.matchIndicator, match.won ? styles.matchWin : styles.matchLoss]} />
+                        <ThemedText style={[styles.matchCellText, styles.matchColAgent]} numberOfLines={1}>
+                          {match.agent}
+                        </ThemedText>
+                        <ThemedText style={[styles.matchCellText, styles.matchColKDA]}>
+                          {match.kills}/{match.deaths}/{match.assists}
+                        </ThemedText>
+                        <ThemedText style={[
+                          styles.matchCellText,
+                          styles.matchColResult,
+                          match.won ? styles.matchResultWin : styles.matchResultLoss
+                        ]}>
+                          {match.won ? '✅ Victory' : '❌ Defeat'}
+                        </ThemedText>
+                        <ThemedText style={[styles.matchCellText, styles.matchColDate, styles.matchDateText]}>
+                          {formattedDate}
+                        </ThemedText>
+                      </View>
+                    );
+                  })
+                ) : (
+                  <View style={styles.noMatchesContainer}>
+                    <ThemedText style={styles.noMatchesText}>No recent matches</ThemedText>
+                  </View>
+                )}
+              </ScrollView>
             </View>
-            <ScrollView
-              style={styles.matchHistoryContent}
-              showsVerticalScrollIndicator={false}
-              contentContainerStyle={styles.matchHistoryScrollContent}
-            >
-              {game.matchHistory && game.matchHistory.length > 0 ? (
-                game.matchHistory.map((match, index) => {
-                  // gameStart could be in seconds or milliseconds - handle both
-                  const timestamp = match.gameStart < 10000000000 ? match.gameStart * 1000 : match.gameStart;
-                  const date = new Date(timestamp);
-                  const day = date.getDate().toString().padStart(2, '0');
-                  const month = (date.getMonth() + 1).toString().padStart(2, '0');
-                  const year = date.getFullYear();
-                  const formattedDate = `${day}/${month}/${year}`;
-                  return (
-                    <View key={match.matchId || index} style={styles.matchItem}>
-                      <View style={[styles.matchIndicator, match.won ? styles.matchWin : styles.matchLoss]} />
-                      <ThemedText style={[styles.matchCellText, styles.matchColAgent]} numberOfLines={1}>
-                        {match.agent}
-                      </ThemedText>
-                      <ThemedText style={[styles.matchCellText, styles.matchColKDA]}>
-                        {match.kills}/{match.deaths}/{match.assists}
-                      </ThemedText>
-                      <ThemedText style={[
-                        styles.matchCellText,
-                        styles.matchColResult,
-                        match.won ? styles.matchResultWin : styles.matchResultLoss
-                      ]}>
-                        {match.won ? '✅ Victory' : '❌ Defeat'}
-                      </ThemedText>
-                      <ThemedText style={[styles.matchCellText, styles.matchColDate, styles.matchDateText]}>
-                        {formattedDate}
-                      </ThemedText>
-                    </View>
-                  );
-                })
-              ) : (
-                <View style={styles.noMatchesContainer}>
-                  <ThemedText style={styles.noMatchesText}>No recent matches</ThemedText>
-                </View>
-              )}
-            </ScrollView>
-          </Animated.View>
+          )}
         </Animated.View>
       </Modal>
     </>
@@ -781,7 +941,9 @@ const styles = StyleSheet.create({
   // Back of card styles - Modern Techy
   cardBackContent: {
     flex: 1,
-    padding: 16,
+    paddingHorizontal: 16,
+    paddingTop: 14,
+    paddingBottom: 12,
   },
   // Decorative corner accents (matching front style)
   techCornerTL: {
@@ -806,21 +968,21 @@ const styles = StyleSheet.create({
     borderColor: 'rgba(255,255,255,0.3)',
     borderBottomRightRadius: 4,
   },
-  // Profile section - Top Left (inside corner border)
-  profileSection: {
-    position: 'absolute',
-    top: 20,
-    left: 30,
+  // Hero Rank Layout - Header
+  heroHeader: {
     flexDirection: 'row',
     alignItems: 'center',
-    zIndex: 1,
+  },
+  heroProfileSection: {
+    flexDirection: 'row',
+    alignItems: 'center',
   },
   profileImageWrapper: {
     position: 'relative',
   },
   backPlayerCard: {
-    width: 32,
-    height: 32,
+    width: 24,
+    height: 24,
     borderRadius: 4,
     borderWidth: 1,
     borderColor: 'rgba(255,255,255,0.5)',
@@ -835,114 +997,173 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: 'rgba(255,100,100,0.3)',
   },
-  usernameContainer: {
-    marginLeft: 8,
-    alignItems: 'flex-start',
-  },
   backUsername: {
-    fontSize: 11,
+    fontSize: 9,
     color: '#fff',
     fontWeight: '700',
     letterSpacing: 0.5,
     textTransform: 'uppercase',
+    marginLeft: 6,
   },
-  levelBadge: {
-    marginTop: 3,
-    backgroundColor: 'rgba(0,0,0,0.3)',
-    paddingHorizontal: 6,
-    paddingVertical: 2,
-    borderRadius: 3,
+  // Center Area - Both Ranks Row
+  ranksRow: {
+    flex: 1,
+    flexDirection: 'row',
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingHorizontal: 8,
   },
-  backLevelText: {
+  ranksDivider: {
+    width: 1,
+    height: 70,
+    backgroundColor: 'rgba(255,255,255,0.15)',
+    marginHorizontal: 16,
+  },
+  rankBox: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  rankBoxLabel: {
     fontSize: 8,
-    color: 'rgba(255,255,255,0.8)',
-    fontWeight: '600',
-    letterSpacing: 1,
-  },
-  // Rank section - Right side, vertically centered
-  rankSection: {
-    position: 'absolute',
-    right: 40,
-    top: 0,
-    bottom: 0,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  rankIconWrapper: {
-    position: 'relative',
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginBottom: 4,
-  },
-  rankGlowOuter: {
-    position: 'absolute',
-    width: 100,
-    height: 100,
-    borderRadius: 50,
-    backgroundColor: 'rgba(255,255,255,0.05)',
-  },
-  rankGlowInner: {
-    position: 'absolute',
-    width: 75,
-    height: 75,
-    borderRadius: 37,
-    backgroundColor: 'rgba(255,255,255,0.08)',
-  },
-  statsRankIcon: {
-    width: 85,
-    height: 85,
-    zIndex: 1,
-  },
-  rankLabel: {
-    fontSize: 9,
     fontWeight: '800',
-    color: '#8e9297',
+    color: 'rgba(255,255,255,0.5)',
     letterSpacing: 1,
-    marginBottom: 8,
+    marginBottom: 2,
+  },
+  rankBoxIcon: {
+    width: 46,
+    height: 46,
+    marginBottom: 2,
+  },
+  rankBoxName: {
+    fontSize: 10,
+    fontWeight: '700',
+    color: '#fff',
+    textAlign: 'center',
+  },
+  rankBoxSub: {
+    fontSize: 8,
+    fontWeight: '600',
+    color: 'rgba(255,255,255,0.5)',
+    marginTop: 1,
+  },
+  // Bottom Stats Bar
+  statsBar: {
+    flexDirection: 'row',
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingTop: 8,
+    borderTopWidth: 1,
+    borderTopColor: 'rgba(255,255,255,0.12)',
+  },
+  statsBarItem: {
+    flex: 1,
+    alignItems: 'center',
+  },
+  statsBarValue: {
+    fontSize: 12,
+    fontWeight: '800',
+    color: '#fff',
+  },
+  statsBarLabel: {
+    fontSize: 7,
+    fontWeight: '600',
+    color: 'rgba(255,255,255,0.5)',
+    marginTop: 1,
     textTransform: 'uppercase',
   },
-  rankName: {
-    fontSize: 13,
+  statsBarDivider: {
+    width: 1,
+    height: 22,
+    backgroundColor: 'rgba(255,255,255,0.12)',
+  },
+  // Stats Layout (legacy)
+  statsLayout: {
+    position: 'absolute',
+    top: 58,
+    left: 16,
+    right: 16,
+    bottom: 14,
+    justifyContent: 'space-between',
+  },
+  // Main Stats (Current & Peak Rank)
+  mainStatsRow: {
+    flexDirection: 'row',
+    justifyContent: 'center',
+    alignItems: 'center',
+    flex: 1,
+  },
+  mainStatItem: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  mainStatLabel: {
+    fontSize: 8,
+    fontWeight: '800',
+    color: 'rgba(255,255,255,0.6)',
+    letterSpacing: 1,
+    marginBottom: 4,
+    textTransform: 'uppercase',
+  },
+  mainRankIcon: {
+    width: 48,
+    height: 48,
+    marginBottom: 4,
+  },
+  mainStatValue: {
+    fontSize: 11,
     fontWeight: '800',
     color: '#fff',
     textAlign: 'center',
     letterSpacing: -0.3,
   },
-  rankPoints: {
-    fontSize: 11,
+  mainStatSubtext: {
+    fontSize: 9,
     fontWeight: '600',
-    color: '#5c6066',
-    marginTop: 2,
-  },
-  // Stats section - Bottom Left (inside border)
-  statsSection: {
-    position: 'absolute',
-    bottom: 28,
-    left: 30,
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
-  statColumn: {
-    alignItems: 'center',
-  },
-  statDivider: {
-    width: 1,
-    height: 24,
-    backgroundColor: 'rgba(255,255,255,0.2)',
-    marginHorizontal: 14,
-  },
-  statColumnLabel: {
-    fontSize: 8,
     color: 'rgba(255,255,255,0.5)',
-    fontWeight: '600',
-    letterSpacing: 0.5,
-    textTransform: 'uppercase',
     marginTop: 2,
   },
-  statColumnValue: {
-    fontSize: 18,
-    color: '#fff',
+  mainStatDivider: {
+    width: 1,
+    height: 70,
+    backgroundColor: 'rgba(255,255,255,0.15)',
+    marginHorizontal: 12,
+  },
+  // Side Stats (Win Rate, Games, MMR)
+  sideStatsRow: {
+    flexDirection: 'row',
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingTop: 6,
+    borderTopWidth: 1,
+    borderTopColor: 'rgba(255,255,255,0.1)',
+  },
+  sideStatItem: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  sideStatLabel: {
+    fontSize: 6,
     fontWeight: '700',
+    color: 'rgba(255,255,255,0.4)',
+    letterSpacing: 0.5,
+    marginTop: 2,
+    textTransform: 'uppercase',
+  },
+  sideStatValue: {
+    fontSize: 11,
+    fontWeight: '800',
+    color: '#fff',
+    textAlign: 'center',
+  },
+  sideStatDivider: {
+    width: 1,
+    height: 20,
+    backgroundColor: 'rgba(255,255,255,0.1)',
+    marginHorizontal: 4,
   },
   // Modal styles
   modalOverlay: {
@@ -962,10 +1183,9 @@ const styles = StyleSheet.create({
     top: 0,
     zIndex: 2,
   },
-  // Match History styles
-  matchHistoryContainer: {
+  // Statistics Card styles - stretches from below rank card to bottom, behind match history
+  statisticsCard: {
     position: 'absolute',
-    bottom: 0,
     left: 0,
     right: 0,
     backgroundColor: '#1a1d21',
@@ -979,13 +1199,129 @@ const styles = StyleSheet.create({
     shadowRadius: 16,
     elevation: 20,
   },
+  statisticsHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: 20,
+    paddingTop: 20,
+    paddingBottom: 16,
+    borderBottomWidth: 1,
+    borderBottomColor: 'rgba(255, 255, 255, 0.08)',
+  },
+  statisticsHeaderLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+  },
+  statisticsIcon: {
+    width: 36,
+    height: 36,
+    borderRadius: 10,
+    backgroundColor: 'rgba(220, 61, 75, 0.15)',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  statisticsTitle: {
+    fontSize: 14,
+    fontWeight: '800',
+    color: '#fff',
+    letterSpacing: 0.5,
+    textTransform: 'uppercase',
+  },
+  statisticsContent: {
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+  },
+  statsRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-around',
+    alignItems: 'center',
+  },
+  statBox: {
+    flex: 1,
+    alignItems: 'center',
+  },
+  statBoxValue: {
+    fontSize: 20,
+    fontWeight: '800',
+    color: '#fff',
+  },
+  statBoxLabel: {
+    fontSize: 10,
+    fontWeight: '600',
+    color: 'rgba(255,255,255,0.5)',
+    marginTop: 4,
+    textTransform: 'uppercase',
+  },
+  statBoxDivider: {
+    width: 1,
+    height: 36,
+    backgroundColor: 'rgba(255,255,255,0.1)',
+  },
+  // Recently Playing styles
+  recentlyPlayingSection: {
+    marginTop: 12,
+  },
+  recentlyPlayingDivider: {
+    height: 1,
+    backgroundColor: 'rgba(255,255,255,0.08)',
+    marginBottom: 12,
+  },
+  recentlyPlayingContent: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    position: 'relative',
+    overflow: 'visible',
+  },
+  recentlyPlayingInfo: {
+    flex: 1,
+  },
+  recentlyPlayingLabel: {
+    fontSize: 10,
+    fontWeight: '600',
+    color: 'rgba(255,255,255,0.5)',
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
+  },
+  recentlyPlayingAgent: {
+    fontSize: 16,
+    fontWeight: '800',
+    color: '#fff',
+    marginTop: 2,
+  },
+  recentlyPlayingImage: {
+    position: 'absolute',
+    right: -30,
+    top: -100,
+    width: 260,
+    height: 400,
+    opacity: 0.9,
+  },
+  // Match History Card styles - fixed at bottom, expands upward
+  matchHistoryCard: {
+    position: 'absolute',
+    bottom: 0,
+    left: 0,
+    right: 0,
+    backgroundColor: '#22262b',
+    borderTopLeftRadius: 20,
+    borderTopRightRadius: 20,
+    zIndex: 15,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: -4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 12,
+    elevation: 25,
+  },
   matchHistoryHeader: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
     paddingHorizontal: 20,
-    paddingTop: 24,
-    paddingBottom: 20,
+    paddingTop: 18,
+    paddingBottom: 16,
     borderBottomWidth: 1,
     borderBottomColor: 'rgba(255, 255, 255, 0.08)',
   },
@@ -1003,10 +1339,11 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   matchHistoryTitle: {
-    fontSize: 16,
-    fontWeight: '700',
+    fontSize: 14,
+    fontWeight: '800',
     color: '#fff',
-    letterSpacing: 0.3,
+    letterSpacing: 0.5,
+    textTransform: 'uppercase',
   },
   matchHistoryContentWrapper: {
     flex: 1,
@@ -1014,39 +1351,39 @@ const styles = StyleSheet.create({
   matchTableHeader: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingHorizontal: 20,
-    paddingVertical: 10,
-    paddingLeft: 34, // Account for indicator
+    paddingHorizontal: 14,
+    paddingVertical: 6,
+    paddingLeft: 24,
     borderBottomWidth: 1,
     borderBottomColor: 'rgba(255, 255, 255, 0.1)',
   },
   matchTableHeaderText: {
-    fontSize: 11,
-    fontWeight: '700',
-    color: '#72767d',
+    fontSize: 7,
+    fontWeight: '800',
+    color: 'rgba(255,255,255,0.5)',
     textTransform: 'uppercase',
-    letterSpacing: 0.5,
+    letterSpacing: 0.8,
   },
   matchHistoryContent: {
     flex: 1,
   },
   matchHistoryScrollContent: {
-    paddingHorizontal: 16,
-    paddingBottom: 40,
+    paddingHorizontal: 12,
+    paddingBottom: 30,
   },
   matchItem: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingVertical: 14,
-    paddingHorizontal: 4,
+    paddingVertical: 8,
+    paddingHorizontal: 2,
     borderBottomWidth: 1,
     borderBottomColor: 'rgba(255, 255, 255, 0.05)',
   },
   matchIndicator: {
-    width: 4,
-    height: 36,
-    borderRadius: 2,
-    marginRight: 14,
+    width: 3,
+    height: 24,
+    borderRadius: 1.5,
+    marginRight: 10,
   },
   matchWin: {
     backgroundColor: '#4CAF50',
@@ -1056,14 +1393,14 @@ const styles = StyleSheet.create({
   },
   // Column widths
   matchColAgent: {
-    width: 80,
+    width: 65,
   },
   matchColKDA: {
-    width: 70,
+    width: 55,
     textAlign: 'center',
   },
   matchColResult: {
-    width: 85,
+    width: 70,
     textAlign: 'center',
   },
   matchColDate: {
@@ -1071,8 +1408,8 @@ const styles = StyleSheet.create({
     textAlign: 'right',
   },
   matchCellText: {
-    fontSize: 13,
-    fontWeight: '600',
+    fontSize: 9,
+    fontWeight: '700',
     color: '#fff',
   },
   matchResultWin: {
@@ -1082,14 +1419,15 @@ const styles = StyleSheet.create({
     color: '#DC3D4B',
   },
   matchDateText: {
-    color: '#72767d',
+    color: 'rgba(255,255,255,0.5)',
+    fontSize: 8,
   },
   noMatchesContainer: {
-    paddingVertical: 40,
+    paddingVertical: 24,
     alignItems: 'center',
   },
   noMatchesText: {
-    fontSize: 14,
-    color: '#72767d',
+    fontSize: 10,
+    color: 'rgba(255,255,255,0.5)',
   },
 });

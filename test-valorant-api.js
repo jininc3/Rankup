@@ -176,7 +176,7 @@ async function testGetMatchHistory() {
   console.log('\n📝 Test 3: Getting match history for stats...');
   console.log('   ℹ️  Fetching recent matches to verify games count...');
 
-  const url = `https://api.henrikdev.xyz/valorant/v3/matches/${REGION}/${encodeURIComponent(TEST_NAME)}/${TEST_TAG}?mode=competitive&size=50`;
+  const url = `https://api.henrikdev.xyz/valorant/v3/matches/${REGION}/${encodeURIComponent(TEST_NAME)}/${TEST_TAG}?mode=competitive&size=15`;
 
   try {
     const response = await makeRequest(url, API_KEY);
@@ -271,12 +271,36 @@ async function testGetMatchHistory() {
       console.log(`   Matches in Last 30 Days: ${recentMatches}`);
     }
 
+    // Calculate most played agent
+    const agentCounts = {};
+    matchDetails.forEach((match) => {
+      const agent = match.agent;
+      if (agent) {
+        agentCounts[agent] = (agentCounts[agent] || 0) + 1;
+      }
+    });
+
+    // Sort agents by play count
+    const sortedAgents = Object.entries(agentCounts)
+      .sort((a, b) => b[1] - a[1]);
+
+    console.log(`\n   🎭 MOST PLAYED AGENTS:`);
+    sortedAgents.slice(0, 5).forEach(([agent, count], index) => {
+      const percentage = ((count / matchDetails.length) * 100).toFixed(1);
+      console.log(`   ${index + 1}. ${agent.padEnd(12)} - ${count} games (${percentage}%)`);
+    });
+
+    const mostPlayedAgent = sortedAgents.length > 0 ? sortedAgents[0][0] : null;
+    console.log(`\n   ⭐ Most Played Agent: ${mostPlayedAgent || 'N/A'}`);
+
     return {
       matches: data,
       matchDetails,
       wins,
       losses,
-      totalGames: wins + losses
+      totalGames: wins + losses,
+      mostPlayedAgent,
+      agentStats: sortedAgents
     };
   } catch (error) {
     console.log('   ❌ Failed!');

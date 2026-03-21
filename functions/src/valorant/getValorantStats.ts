@@ -48,6 +48,7 @@ export interface ValorantStats {
   losses: number;
   winRate: number;
   matchHistory?: MatchHistoryEntry[]; // Last 5 matches
+  mostPlayedAgent?: string; // Most played agent from recent matches
   lastUpdated: any;
 }
 
@@ -131,10 +132,11 @@ export const getValorantStatsFunction = onCall(
       logger.info(`Fetching fresh Valorant stats for user ${userId}: ${gameName}#${tag}`);
 
       // Fetch fresh data from Henrik's API
+      // Fetch 15 matches to calculate most played agent, but only show 5 in history
       const [accountData, mmrData, matchesData] = await Promise.all([
         getValorantAccountByRiotId(gameName, tag),
         getValorantMMR(region, gameName, tag),
-        getValorantMatches(region, gameName, tag, 5), // Get last 5 matches
+        getValorantMatches(region, gameName, tag, 15), // Get last 15 matches for agent calculation
       ]);
 
       // Get seasonal stats from MMR data
@@ -189,7 +191,7 @@ export const getValorantStatsFunction = onCall(
 
       // Process match history
       logger.info(`Raw matches data length: ${matchesData?.length || 0}`);
-      const matchHistory: MatchHistoryEntry[] = matchesData.map((match) => {
+      const allMatches: MatchHistoryEntry[] = matchesData.map((match) => {
         // Validate match has required metadata
         // Note: API returns 'matchid' (no underscore), not 'match_id'
         if (!match?.metadata?.matchid || !match?.players?.all_players || !match?.teams) {
@@ -234,6 +236,29 @@ export const getValorantStatsFunction = onCall(
         };
       }).filter((entry): entry is MatchHistoryEntry => entry !== null);
 
+      // Calculate most played agent from all matches
+      const agentCounts: { [agent: string]: number } = {};
+      allMatches.forEach((match) => {
+        if (match.agent) {
+          agentCounts[match.agent] = (agentCounts[match.agent] || 0) + 1;
+        }
+      });
+
+      // Find the most played agent
+      let mostPlayedAgent: string | undefined;
+      let maxCount = 0;
+      for (const [agent, count] of Object.entries(agentCounts)) {
+        if (count > maxCount) {
+          maxCount = count;
+          mostPlayedAgent = agent;
+        }
+      }
+
+      logger.info(`Most played agent: ${mostPlayedAgent} (${maxCount} games)`);
+
+      // Only keep the last 5 matches for display
+      const matchHistory = allMatches.slice(0, 5);
+
       logger.info(`Processed match history length: ${matchHistory.length}`);
       if (matchHistory.length > 0) {
         logger.info(`First match: ${JSON.stringify(matchHistory[0])}`);
@@ -265,6 +290,9 @@ export const getValorantStatsFunction = onCall(
           tier: mmrData.highest_rank.patched_tier,
           season: mmrData.highest_rank.season,
         };
+      }
+      if (mostPlayedAgent) {
+        stats.mostPlayedAgent = mostPlayedAgent;
       }
 
       // Cache the stats in Firestore
