@@ -3,7 +3,7 @@ import { IconSymbol } from '@/components/ui/icon-symbol';
 import { BlurView } from 'expo-blur';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useEffect, useRef, useState } from 'react';
-import { Animated, Dimensions, Easing, Image, Modal, Pressable, ScrollView, StyleSheet, TouchableOpacity, View } from 'react-native';
+import { Animated, Dimensions, Easing, Image, Modal, PanResponder, Pressable, ScrollView, StyleSheet, TouchableOpacity, View } from 'react-native';
 
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
 
@@ -87,20 +87,70 @@ const VALORANT_RANK_ICONS: { [key: string]: any } = {
   immortal3: require('@/assets/images/valorantranks/immortal3.png'),
 };
 
-// Valorant agent image mapping
+// Valorant agent small icons (for match history)
+const VALORANT_AGENT_SMALL_ICONS: { [key: string]: any } = {
+  astra: require('@/assets/images/valoranticons/astra.png'),
+  breach: require('@/assets/images/valoranticons/breach.png'),
+  brimstone: require('@/assets/images/valoranticons/brimstone.png'),
+  chamber: require('@/assets/images/valoranticons/chamber.png'),
+  clove: require('@/assets/images/valoranticons/clove.png'),
+  cypher: require('@/assets/images/valoranticons/cypher.png'),
+  deadlock: require('@/assets/images/valoranticons/deadlock.png'),
+  fade: require('@/assets/images/valoranticons/fade.png'),
+  gekko: require('@/assets/images/valoranticons/gekko.png'),
+  harbor: require('@/assets/images/valoranticons/harbor.png'),
+  iso: require('@/assets/images/valoranticons/iso.png'),
+  jett: require('@/assets/images/valoranticons/jett.png'),
+  kayo: require('@/assets/images/valoranticons/kayo.png'),
+  killjoy: require('@/assets/images/valoranticons/killjoy.png'),
+  miks: require('@/assets/images/valoranticons/miks.png'),
+  neon: require('@/assets/images/valoranticons/neon.png'),
+  omen: require('@/assets/images/valoranticons/omen.png'),
+  phoenix: require('@/assets/images/valoranticons/phoenix.png'),
+  raze: require('@/assets/images/valoranticons/raze.png'),
+  reyna: require('@/assets/images/valoranticons/reyna.png'),
+  sage: require('@/assets/images/valoranticons/sage.png'),
+  skye: require('@/assets/images/valoranticons/skye.png'),
+  sova: require('@/assets/images/valoranticons/sova.png'),
+  tejo: require('@/assets/images/valoranticons/tejo.png'),
+  veto: require('@/assets/images/valoranticons/veto.png'),
+  viper: require('@/assets/images/valoranticons/viper.png'),
+  vyse: require('@/assets/images/valoranticons/vyse.png'),
+  waylay: require('@/assets/images/valoranticons/waylay.png'),
+  yoru: require('@/assets/images/valoranticons/yoru.png'),
+};
+
+// Valorant agent image mapping (large, for statistics card)
 const VALORANT_AGENT_ICONS: { [key: string]: any } = {
-  brimstone: require('@/assets/images/valorantagents/brimstone.png'),
+  astra: require('@/assets/images/valorantagents/astra.png'),
   breach: require('@/assets/images/valorantagents/breach.png'),
+  brimstone: require('@/assets/images/valorantagents/brimstone.png'),
+  chamber: require('@/assets/images/valorantagents/chamber.png'),
+  clove: require('@/assets/images/valorantagents/clove.png'),
   cypher: require('@/assets/images/valorantagents/cypher.png'),
+  deadlock: require('@/assets/images/valorantagents/deadlock.png'),
+  fade: require('@/assets/images/valorantagents/fade.png'),
+  gekko: require('@/assets/images/valorantagents/gekko.png'),
+  harbor: require('@/assets/images/valorantagents/harbor.png'),
+  iso: require('@/assets/images/valorantagents/iso.png'),
   jett: require('@/assets/images/valorantagents/jett.png'),
+  kayo: require('@/assets/images/valorantagents/kayo.png'),
   killjoy: require('@/assets/images/valorantagents/killjoy.png'),
+  miks: require('@/assets/images/valorantagents/miks.png'),
+  neon: require('@/assets/images/valorantagents/neon.png'),
   omen: require('@/assets/images/valorantagents/omen.png'),
   phoenix: require('@/assets/images/valorantagents/phoenix.png'),
   raze: require('@/assets/images/valorantagents/raze.png'),
   reyna: require('@/assets/images/valorantagents/reyna.png'),
   sage: require('@/assets/images/valorantagents/sage.png'),
+  skye: require('@/assets/images/valorantagents/skye.png'),
   sova: require('@/assets/images/valorantagents/sova.png'),
+  tejo: require('@/assets/images/valorantagents/tejo.png'),
+  veto: require('@/assets/images/valorantagents/veto.png'),
   viper: require('@/assets/images/valorantagents/viper.png'),
+  vyse: require('@/assets/images/valorantagents/vyse.png'),
+  waylay: require('@/assets/images/valorantagents/waylay.png'),
+  yoru: require('@/assets/images/valorantagents/yoru.png'),
 };
 
 export default function ValorantRankCard({ game, username, viewOnly = false, userId, isFocused = false }: ValorantRankCardProps) {
@@ -304,6 +354,126 @@ export default function ValorantRankCard({ game, username, viewOnly = false, use
     });
   };
 
+  // Handle clicking on the rank card back - closes everything and flips card
+  const handleCardBackPress = () => {
+    // Close everything at once: cards slide down, flip, fade out
+    Animated.parallel([
+      // Collapse match history and statistics
+      Animated.timing(matchHistoryAnimation, {
+        toValue: 0,
+        duration: 300,
+        easing: Easing.out(Easing.cubic),
+        useNativeDriver: false,
+      }),
+      Animated.timing(matchHistoryExpandAnimation, {
+        toValue: 0,
+        duration: 300,
+        easing: Easing.out(Easing.cubic),
+        useNativeDriver: false,
+      }),
+      // Flip back to front
+      Animated.spring(flipAnimation, {
+        toValue: 0,
+        friction: 7,
+        tension: 20,
+        useNativeDriver: false,
+      }),
+      // Slide down
+      Animated.timing(slideAnimation, {
+        toValue: 0,
+        duration: 400,
+        easing: Easing.out(Easing.cubic),
+        useNativeDriver: false,
+      }),
+      // Fade out overlay
+      Animated.timing(overlayOpacity, {
+        toValue: 0,
+        duration: 350,
+        easing: Easing.out(Easing.cubic),
+        useNativeDriver: true,
+      }),
+    ]).start(() => {
+      setCardHidden(false);
+      setIsFlipped(false);
+      setShowMatchHistory(false);
+      setMatchHistoryExpanded(false);
+      setTimeout(() => {
+        setModalVisible(false);
+      }, 50);
+    });
+  };
+
+  // Ref to always have access to latest handleCardBackPress
+  const handleCardBackPressRef = useRef(handleCardBackPress);
+  handleCardBackPressRef.current = handleCardBackPress;
+
+  // Pan responder for swipe down to close modal
+  const statisticsSwipePanResponder = useRef(
+    PanResponder.create({
+      onStartShouldSetPanResponder: () => false,
+      onMoveShouldSetPanResponder: (_, gestureState) => {
+        // Only respond to vertical swipes (down)
+        return gestureState.dy > 10 && Math.abs(gestureState.dy) > Math.abs(gestureState.dx);
+      },
+      onPanResponderRelease: (_, gestureState) => {
+        // If swiped down more than 50px, close the modal
+        if (gestureState.dy > 50) {
+          handleCardBackPressRef.current();
+        }
+      },
+    })
+  ).current;
+
+  // Refs for match history expand/collapse state
+  const matchHistoryExpandedRef = useRef(matchHistoryExpanded);
+  matchHistoryExpandedRef.current = matchHistoryExpanded;
+
+  // Pan responder for swipe up on collapsed match history to expand
+  const matchHistorySwipeUpPanResponder = useRef(
+    PanResponder.create({
+      onStartShouldSetPanResponder: () => false,
+      onMoveShouldSetPanResponder: (_, gestureState) => {
+        // Only respond to vertical swipes (up) when collapsed
+        return !matchHistoryExpandedRef.current && gestureState.dy < -10 && Math.abs(gestureState.dy) > Math.abs(gestureState.dx);
+      },
+      onPanResponderRelease: (_, gestureState) => {
+        // If swiped up more than 30px, expand
+        if (gestureState.dy < -30) {
+          setMatchHistoryExpanded(true);
+          Animated.timing(matchHistoryExpandAnimation, {
+            toValue: 1,
+            duration: 300,
+            easing: Easing.out(Easing.cubic),
+            useNativeDriver: false,
+          }).start();
+        }
+      },
+    })
+  ).current;
+
+  // Pan responder for swipe down on match history header to collapse
+  const matchHistorySwipeDownPanResponder = useRef(
+    PanResponder.create({
+      onStartShouldSetPanResponder: () => false,
+      onMoveShouldSetPanResponder: (_, gestureState) => {
+        // Only respond to vertical swipes (down) when expanded
+        return matchHistoryExpandedRef.current && gestureState.dy > 10 && Math.abs(gestureState.dy) > Math.abs(gestureState.dx);
+      },
+      onPanResponderRelease: (_, gestureState) => {
+        // If swiped down more than 30px, collapse
+        if (gestureState.dy > 30) {
+          setMatchHistoryExpanded(false);
+          Animated.timing(matchHistoryExpandAnimation, {
+            toValue: 0,
+            duration: 300,
+            easing: Easing.out(Easing.cubic),
+            useNativeDriver: false,
+          }).start();
+        }
+      },
+    })
+  ).current;
+
   const handleMatchHistoryPress = () => {
     if (showMatchHistory) {
       // Collapse match history
@@ -350,6 +520,12 @@ export default function ValorantRankCard({ game, username, viewOnly = false, use
     if (!agent) return null;
     const agentKey = agent.toLowerCase();
     return VALORANT_AGENT_ICONS[agentKey] || null;
+  };
+
+  const getAgentSmallIcon = (agent: string) => {
+    if (!agent) return null;
+    const agentKey = agent.toLowerCase();
+    return VALORANT_AGENT_SMALL_ICONS[agentKey] || null;
   };
 
   // Scale-based flip animation (more reliable than 3D rotation)
@@ -535,11 +711,6 @@ export default function ValorantRankCard({ game, username, viewOnly = false, use
                 resizeMode="contain"
               />
               <ThemedText style={styles.rankBoxName}>{game.peakRank?.tier || 'N/A'}</ThemedText>
-              {game.peakRank ? (
-                <ThemedText style={styles.rankBoxSub}>S{game.peakRank.season}</ThemedText>
-              ) : (
-                <ThemedText style={styles.rankBoxSub}> </ThemedText>
-              )}
             </View>
           </View>
         </View>
@@ -625,16 +796,19 @@ export default function ValorantRankCard({ game, username, viewOnly = false, use
             { left: cardPosition.x, width: cardPosition.width || undefined },
             modalCardStyle
           ]}
-          pointerEvents="none"
         >
           {/* 3D Shadow layers */}
           <View style={styles.shadow3} />
           <View style={styles.shadow2} />
           <View style={styles.shadow1} />
 
-          <View style={styles.rankCard}>
+          <TouchableOpacity
+            style={styles.rankCard}
+            onPress={handleCardBackPress}
+            activeOpacity={0.95}
+          >
             {renderCardContent()}
-          </View>
+          </TouchableOpacity>
         </Animated.View>
 
         {/* Statistics Card - Slides up to just below rank card, stretches to bottom */}
@@ -647,55 +821,67 @@ export default function ValorantRankCard({ game, username, viewOnly = false, use
               opacity: cardsContentOpacity,
             }
           ]}
+          {...statisticsSwipePanResponder.panHandlers}
         >
-          <View style={styles.statisticsHeader}>
-            <View style={styles.statisticsHeaderLeft}>
-              <View style={styles.statisticsIcon}>
-                <IconSymbol size={14} name="chart.bar.fill" color="#DC3D4B" />
-              </View>
-              <ThemedText style={styles.statisticsTitle}>Statistics</ThemedText>
-            </View>
-          </View>
-
-          {/* Statistics Content */}
-          <Animated.View style={[styles.statisticsContent, { opacity: statisticsContentOpacity }]}>
-            <View style={styles.statsRow}>
-              <View style={styles.statBox}>
-                <ThemedText style={styles.statBoxValue}>{game.winRate}%</ThemedText>
-                <ThemedText style={styles.statBoxLabel}>Win Rate</ThemedText>
-              </View>
-              <View style={styles.statBoxDivider} />
-              <View style={styles.statBox}>
-                <ThemedText style={styles.statBoxValue}>{game.gamesPlayed || 0}</ThemedText>
-                <ThemedText style={styles.statBoxLabel}>Games</ThemedText>
-              </View>
-              <View style={styles.statBoxDivider} />
-              <View style={styles.statBox}>
-                <ThemedText style={styles.statBoxValue}>{game.mmr || 0}</ThemedText>
-                <ThemedText style={styles.statBoxLabel}>MMR</ThemedText>
+          <Pressable
+            onPress={() => {
+              if (matchHistoryExpanded) {
+                setMatchHistoryExpanded(false);
+                Animated.timing(matchHistoryExpandAnimation, {
+                  toValue: 0,
+                  duration: 300,
+                  easing: Easing.out(Easing.cubic),
+                  useNativeDriver: false,
+                }).start();
+              }
+            }}
+          >
+            <View style={styles.statisticsHeader}>
+              <View style={styles.statisticsHeaderLeft}>
+                <ThemedText style={styles.statisticsTitle}>Statistics</ThemedText>
               </View>
             </View>
 
-            {/* Recently Playing Section */}
-            {mostPlayedAgent && (
-              <View style={styles.recentlyPlayingSection}>
-                <View style={styles.recentlyPlayingDivider} />
-                <View style={styles.recentlyPlayingContent}>
-                  <View style={styles.recentlyPlayingInfo}>
-                    <ThemedText style={styles.recentlyPlayingLabel}>Recently Playing</ThemedText>
-                    <ThemedText style={styles.recentlyPlayingAgent}>{mostPlayedAgent}</ThemedText>
-                  </View>
-                  {getAgentIcon(mostPlayedAgent) && (
-                    <Image
-                      source={getAgentIcon(mostPlayedAgent)}
-                      style={styles.recentlyPlayingImage}
-                      resizeMode="contain"
-                    />
-                  )}
+            {/* Statistics Content */}
+            <Animated.View style={[styles.statisticsContent, { opacity: statisticsContentOpacity }]}>
+              <View style={styles.statsRow}>
+                <View style={styles.statBox}>
+                  <ThemedText style={styles.statBoxValue}>{game.winRate}%</ThemedText>
+                  <ThemedText style={styles.statBoxLabel}>Win Rate</ThemedText>
+                </View>
+                <View style={styles.statBoxDivider} />
+                <View style={styles.statBox}>
+                  <ThemedText style={styles.statBoxValue}>{game.gamesPlayed || 0}</ThemedText>
+                  <ThemedText style={styles.statBoxLabel}>Games</ThemedText>
+                </View>
+                <View style={styles.statBoxDivider} />
+                <View style={styles.statBox}>
+                  <ThemedText style={styles.statBoxValue}>{game.mmr || 0}</ThemedText>
+                  <ThemedText style={styles.statBoxLabel}>MMR</ThemedText>
                 </View>
               </View>
-            )}
-          </Animated.View>
+
+              {/* Recently Playing Section */}
+              {mostPlayedAgent && (
+                <View style={styles.recentlyPlayingSection}>
+                  <View style={styles.recentlyPlayingDivider} />
+                  <View style={styles.recentlyPlayingContent}>
+                    <View style={styles.recentlyPlayingInfo}>
+                      <ThemedText style={styles.recentlyPlayingLabel}>Recently Playing</ThemedText>
+                      <ThemedText style={styles.recentlyPlayingAgent}>{mostPlayedAgent}</ThemedText>
+                    </View>
+                    {getAgentIcon(mostPlayedAgent) && (
+                      <Image
+                        source={getAgentIcon(mostPlayedAgent)}
+                        style={styles.recentlyPlayingImage}
+                        resizeMode="contain"
+                      />
+                    )}
+                  </View>
+                </View>
+              )}
+            </Animated.View>
+          </Pressable>
         </Animated.View>
 
         {/* Match History Card - Fixed at bottom, expands upward */}
@@ -707,31 +893,36 @@ export default function ValorantRankCard({ game, username, viewOnly = false, use
               opacity: cardsContentOpacity,
             }
           ]}
+          {...matchHistorySwipeUpPanResponder.panHandlers}
         >
-          <TouchableOpacity
+          <View
             style={styles.matchHistoryHeader}
-            onPress={handleMatchHistoryToggle}
-            activeOpacity={0.8}
+            {...matchHistorySwipeDownPanResponder.panHandlers}
           >
-            <View style={styles.matchHistoryHeaderLeft}>
-              <View style={styles.matchHistoryIcon}>
-                <IconSymbol size={14} name="clock.arrow.circlepath" color="#DC3D4B" />
+            <TouchableOpacity
+              style={styles.matchHistoryHeaderContent}
+              onPress={handleMatchHistoryToggle}
+              activeOpacity={0.8}
+            >
+              <View style={styles.matchHistoryHeaderLeft}>
+                <ThemedText style={styles.matchHistoryTitle}>Match History</ThemedText>
               </View>
-              <ThemedText style={styles.matchHistoryTitle}>Match History</ThemedText>
-            </View>
-            <Animated.View style={{ transform: [{ rotate: matchHistoryChevronRotation }] }}>
-              <IconSymbol size={16} name="chevron.up" color="rgba(255,255,255,0.6)" />
-            </Animated.View>
-          </TouchableOpacity>
+              <Animated.View style={{ transform: [{ rotate: matchHistoryChevronRotation }] }}>
+                <IconSymbol size={16} name="chevron.up" color="rgba(255,255,255,0.6)" />
+              </Animated.View>
+            </TouchableOpacity>
+          </View>
 
           {/* Match History Content */}
           {matchHistoryExpanded && (
             <View style={styles.matchHistoryContentWrapper}>
               {/* Table Header */}
               <View style={styles.matchTableHeader}>
+                <View style={styles.matchIndicatorSpacer} />
                 <ThemedText style={[styles.matchTableHeaderText, styles.matchColAgent]}>Agent</ThemedText>
                 <ThemedText style={[styles.matchTableHeaderText, styles.matchColKDA]}>KDA</ThemedText>
                 <ThemedText style={[styles.matchTableHeaderText, styles.matchColResult]}>Result</ThemedText>
+                <ThemedText style={[styles.matchTableHeaderText, styles.matchColScore]}>Score</ThemedText>
                 <ThemedText style={[styles.matchTableHeaderText, styles.matchColDate]}>Date</ThemedText>
               </View>
               <ScrollView
@@ -744,16 +935,40 @@ export default function ValorantRankCard({ game, username, viewOnly = false, use
                     // gameStart could be in seconds or milliseconds - handle both
                     const timestamp = match.gameStart < 10000000000 ? match.gameStart * 1000 : match.gameStart;
                     const date = new Date(timestamp);
-                    const day = date.getDate().toString().padStart(2, '0');
-                    const month = (date.getMonth() + 1).toString().padStart(2, '0');
-                    const year = date.getFullYear();
-                    const formattedDate = `${day}/${month}/${year}`;
+                    const now = Date.now();
+                    const diffMs = now - timestamp;
+                    const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
+
+                    let formattedDate: string;
+                    const diffHours = Math.floor(diffMs / (1000 * 60 * 60));
+                    if (diffHours < 1) {
+                      formattedDate = 'Just now';
+                    } else if (diffHours < 24) {
+                      formattedDate = diffHours === 1 ? '1 hr ago' : `${diffHours} hrs ago`;
+                    } else if (diffDays === 1) {
+                      formattedDate = '1 day ago';
+                    } else if (diffDays < 30) {
+                      formattedDate = `${diffDays} days ago`;
+                    } else {
+                      const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+                      formattedDate = `${date.getDate()}${months[date.getMonth()]}`;
+                    }
                     return (
                       <View key={match.matchId || index} style={styles.matchItem}>
                         <View style={[styles.matchIndicator, match.won ? styles.matchWin : styles.matchLoss]} />
-                        <ThemedText style={[styles.matchCellText, styles.matchColAgent]} numberOfLines={1}>
-                          {match.agent}
-                        </ThemedText>
+                        <View style={styles.matchColAgent}>
+                          {getAgentSmallIcon(match.agent) ? (
+                            <Image
+                              source={getAgentSmallIcon(match.agent)}
+                              style={styles.matchAgentIcon}
+                              resizeMode="contain"
+                            />
+                          ) : (
+                            <ThemedText style={styles.matchCellText} numberOfLines={1}>
+                              {match.agent}
+                            </ThemedText>
+                          )}
+                        </View>
                         <ThemedText style={[styles.matchCellText, styles.matchColKDA]}>
                           {match.kills}/{match.deaths}/{match.assists}
                         </ThemedText>
@@ -762,7 +977,10 @@ export default function ValorantRankCard({ game, username, viewOnly = false, use
                           styles.matchColResult,
                           match.won ? styles.matchResultWin : styles.matchResultLoss
                         ]}>
-                          {match.won ? '✅ Victory' : '❌ Defeat'}
+                          {match.won ? 'Victory' : 'Defeat'}
+                        </ThemedText>
+                        <ThemedText style={[styles.matchCellText, styles.matchColScore]}>
+                          {match.score || '-'}
                         </ThemedText>
                         <ThemedText style={[styles.matchCellText, styles.matchColDate, styles.matchDateText]}>
                           {formattedDate}
@@ -1025,28 +1243,28 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   rankBoxLabel: {
-    fontSize: 8,
+    fontSize: 10,
     fontWeight: '800',
     color: 'rgba(255,255,255,0.5)',
     letterSpacing: 1,
-    marginBottom: 2,
+    marginBottom: 4,
   },
   rankBoxIcon: {
-    width: 46,
-    height: 46,
-    marginBottom: 2,
+    width: 64,
+    height: 64,
+    marginBottom: 4,
   },
   rankBoxName: {
-    fontSize: 10,
+    fontSize: 13,
     fontWeight: '700',
     color: '#fff',
     textAlign: 'center',
   },
   rankBoxSub: {
-    fontSize: 8,
+    fontSize: 10,
     fontWeight: '600',
     color: 'rgba(255,255,255,0.5)',
-    marginTop: 1,
+    marginTop: 2,
   },
   // Bottom Stats Bar
   statsBar: {
@@ -1212,15 +1430,6 @@ const styles = StyleSheet.create({
   statisticsHeaderLeft: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 12,
-  },
-  statisticsIcon: {
-    width: 36,
-    height: 36,
-    borderRadius: 10,
-    backgroundColor: 'rgba(220, 61, 75, 0.15)',
-    alignItems: 'center',
-    justifyContent: 'center',
   },
   statisticsTitle: {
     fontSize: 14,
@@ -1294,7 +1503,7 @@ const styles = StyleSheet.create({
   recentlyPlayingImage: {
     position: 'absolute',
     right: -30,
-    top: -100,
+    top: -40,
     width: 260,
     height: 400,
     opacity: 0.9,
@@ -1316,27 +1525,20 @@ const styles = StyleSheet.create({
     elevation: 25,
   },
   matchHistoryHeader: {
+    borderBottomWidth: 1,
+    borderBottomColor: 'rgba(255, 255, 255, 0.08)',
+  },
+  matchHistoryHeaderContent: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
     paddingHorizontal: 20,
     paddingTop: 18,
     paddingBottom: 16,
-    borderBottomWidth: 1,
-    borderBottomColor: 'rgba(255, 255, 255, 0.08)',
   },
   matchHistoryHeaderLeft: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 12,
-  },
-  matchHistoryIcon: {
-    width: 36,
-    height: 36,
-    borderRadius: 10,
-    backgroundColor: 'rgba(220, 61, 75, 0.15)',
-    alignItems: 'center',
-    justifyContent: 'center',
   },
   matchHistoryTitle: {
     fontSize: 14,
@@ -1351,14 +1553,15 @@ const styles = StyleSheet.create({
   matchTableHeader: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingHorizontal: 14,
-    paddingVertical: 6,
-    paddingLeft: 24,
+    justifyContent: 'space-between',
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+    paddingLeft: 20,
     borderBottomWidth: 1,
     borderBottomColor: 'rgba(255, 255, 255, 0.1)',
   },
   matchTableHeaderText: {
-    fontSize: 7,
+    fontSize: 9,
     fontWeight: '800',
     color: 'rgba(255,255,255,0.5)',
     textTransform: 'uppercase',
@@ -1374,16 +1577,20 @@ const styles = StyleSheet.create({
   matchItem: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingVertical: 8,
-    paddingHorizontal: 2,
+    justifyContent: 'space-between',
+    paddingVertical: 12,
+    paddingHorizontal: 4,
     borderBottomWidth: 1,
     borderBottomColor: 'rgba(255, 255, 255, 0.05)',
   },
   matchIndicator: {
-    width: 3,
-    height: 24,
-    borderRadius: 1.5,
-    marginRight: 10,
+    width: 4,
+    height: 36,
+    borderRadius: 2,
+    marginRight: 12,
+  },
+  matchIndicatorSpacer: {
+    width: 16,
   },
   matchWin: {
     backgroundColor: '#4CAF50',
@@ -1393,22 +1600,33 @@ const styles = StyleSheet.create({
   },
   // Column widths
   matchColAgent: {
-    width: 65,
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  matchAgentIcon: {
+    width: 36,
+    height: 36,
+    borderRadius: 6,
   },
   matchColKDA: {
-    width: 55,
+    flex: 1.2,
     textAlign: 'center',
   },
   matchColResult: {
-    width: 70,
+    flex: 1.2,
+    textAlign: 'center',
+  },
+  matchColScore: {
+    flex: 1,
     textAlign: 'center',
   },
   matchColDate: {
-    flex: 1,
+    flex: 1.5,
     textAlign: 'right',
   },
   matchCellText: {
-    fontSize: 9,
+    fontSize: 12,
     fontWeight: '700',
     color: '#fff',
   },
@@ -1420,7 +1638,7 @@ const styles = StyleSheet.create({
   },
   matchDateText: {
     color: 'rgba(255,255,255,0.5)',
-    fontSize: 8,
+    fontSize: 11,
   },
   noMatchesContainer: {
     paddingVertical: 24,
