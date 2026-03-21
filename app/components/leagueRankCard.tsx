@@ -2,7 +2,7 @@ import { ThemedText } from '@/components/themed-text';
 import { BlurView } from 'expo-blur';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useEffect, useRef, useState } from 'react';
-import { Animated, Dimensions, Easing, Image, Modal, Pressable, StyleSheet, TouchableOpacity, View } from 'react-native';
+import { Animated, Dimensions, Easing, Image, Modal, PanResponder, StyleSheet, TouchableOpacity, View } from 'react-native';
 import { getProfileIconUrl } from '@/services/riotService';
 
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
@@ -178,6 +178,39 @@ export default function LeagueRankCard({ game, username, viewOnly = false, userI
       }, 50);
     });
   };
+
+  // Just flip the card without closing the modal
+  const handleCardFlip = () => {
+    const toValue = isFlipped ? 0 : 1;
+    Animated.timing(flipAnimation, {
+      toValue,
+      duration: 300,
+      easing: Easing.out(Easing.cubic),
+      useNativeDriver: false,
+    }).start();
+    setIsFlipped(!isFlipped);
+  };
+
+  // Ref to always have access to latest handleCloseModal
+  const handleCloseModalRef = useRef(handleCloseModal);
+  handleCloseModalRef.current = handleCloseModal;
+
+  // Pan responder for swipe down on rank card to close modal
+  const rankCardSwipePanResponder = useRef(
+    PanResponder.create({
+      onStartShouldSetPanResponder: () => false,
+      onMoveShouldSetPanResponder: (_, gestureState) => {
+        // Only respond to vertical swipes (down)
+        return gestureState.dy > 10 && Math.abs(gestureState.dy) > Math.abs(gestureState.dx);
+      },
+      onPanResponderRelease: (_, gestureState) => {
+        // If swiped down more than 50px, close the modal
+        if (gestureState.dy > 50) {
+          handleCloseModalRef.current();
+        }
+      },
+    })
+  ).current;
 
   const getRankIcon = (rank: string) => {
     if (!rank || rank === 'Unranked') {
@@ -395,8 +428,8 @@ export default function LeagueRankCard({ game, username, viewOnly = false, userI
         animationType="none"
         onRequestClose={handleCloseModal}
       >
-        {/* Blurred overlay - tappable to close */}
-        <Pressable style={styles.modalOverlay} onPress={handleCloseModal}>
+        {/* Blurred overlay - not tappable, only swipe down on card closes modal */}
+        <View style={styles.modalOverlay}>
           <Animated.View
             style={[styles.overlayBackground, { opacity: overlayOpacity }]}
           >
@@ -408,7 +441,7 @@ export default function LeagueRankCard({ game, username, viewOnly = false, userI
             {/* Dark tint over blur */}
             <View style={styles.blurTint} />
           </Animated.View>
-        </Pressable>
+        </View>
 
         {/* Animated card in modal - positioned exactly over original */}
         <Animated.View
@@ -417,16 +450,20 @@ export default function LeagueRankCard({ game, username, viewOnly = false, userI
             { left: cardPosition.x, width: cardPosition.width || undefined },
             modalCardStyle
           ]}
-          pointerEvents="none"
+          {...rankCardSwipePanResponder.panHandlers}
         >
           {/* 3D Shadow layers */}
           <View style={styles.shadow3} />
           <View style={styles.shadow2} />
           <View style={styles.shadow1} />
 
-          <View style={styles.rankCard}>
+          <TouchableOpacity
+            style={styles.rankCard}
+            onPress={handleCardFlip}
+            activeOpacity={0.95}
+          >
             {renderCardContent()}
-          </View>
+          </TouchableOpacity>
         </Animated.View>
       </Modal>
     </>

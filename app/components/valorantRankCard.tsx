@@ -296,6 +296,18 @@ export default function ValorantRankCard({ game, username, viewOnly = false, use
     }).start();
   };
 
+  // Just flip the card without closing the modal
+  const handleCardFlip = () => {
+    const toValue = isFlipped ? 0 : 1;
+    Animated.timing(flipAnimation, {
+      toValue,
+      duration: 500,
+      easing: Easing.out(Easing.cubic),
+      useNativeDriver: false,
+    }).start();
+    setIsFlipped(!isFlipped);
+  };
+
   const handleCloseModal = () => {
     // If match history is open, close it first
     if (showMatchHistory) {
@@ -356,42 +368,46 @@ export default function ValorantRankCard({ game, username, viewOnly = false, use
 
   // Handle clicking on the rank card back - closes everything and flips card
   const handleCardBackPress = () => {
-    // Close everything at once: cards slide down, flip, fade out
-    Animated.parallel([
-      // Collapse match history and statistics
-      Animated.timing(matchHistoryAnimation, {
-        toValue: 0,
-        duration: 300,
-        easing: Easing.out(Easing.cubic),
-        useNativeDriver: false,
-      }),
-      Animated.timing(matchHistoryExpandAnimation, {
-        toValue: 0,
-        duration: 300,
-        easing: Easing.out(Easing.cubic),
-        useNativeDriver: false,
-      }),
-      // Flip back to front
-      Animated.spring(flipAnimation, {
-        toValue: 0,
-        friction: 7,
-        tension: 20,
-        useNativeDriver: false,
-      }),
-      // Slide down
-      Animated.timing(slideAnimation, {
-        toValue: 0,
-        duration: 400,
-        easing: Easing.out(Easing.cubic),
-        useNativeDriver: false,
-      }),
-      // Fade out overlay
-      Animated.timing(overlayOpacity, {
-        toValue: 0,
-        duration: 350,
-        easing: Easing.out(Easing.cubic),
-        useNativeDriver: true,
-      }),
+    // Flip first, then slide down
+    Animated.sequence([
+      // First: Collapse match history/statistics and flip card together
+      Animated.parallel([
+        // Collapse match history and statistics
+        Animated.timing(matchHistoryAnimation, {
+          toValue: 0,
+          duration: 300,
+          easing: Easing.out(Easing.cubic),
+          useNativeDriver: false,
+        }),
+        Animated.timing(matchHistoryExpandAnimation, {
+          toValue: 0,
+          duration: 300,
+          easing: Easing.out(Easing.cubic),
+          useNativeDriver: false,
+        }),
+        // Flip back to front
+        Animated.timing(flipAnimation, {
+          toValue: 0,
+          duration: 300,
+          easing: Easing.out(Easing.cubic),
+          useNativeDriver: false,
+        }),
+      ]),
+      // Then: Slide down and fade out
+      Animated.parallel([
+        Animated.timing(slideAnimation, {
+          toValue: 0,
+          duration: 400,
+          easing: Easing.out(Easing.cubic),
+          useNativeDriver: false,
+        }),
+        Animated.timing(overlayOpacity, {
+          toValue: 0,
+          duration: 350,
+          easing: Easing.out(Easing.cubic),
+          useNativeDriver: true,
+        }),
+      ]),
     ]).start(() => {
       setCardHidden(false);
       setIsFlipped(false);
@@ -407,8 +423,25 @@ export default function ValorantRankCard({ game, username, viewOnly = false, use
   const handleCardBackPressRef = useRef(handleCardBackPress);
   handleCardBackPressRef.current = handleCardBackPress;
 
-  // Pan responder for swipe down to close modal
+  // Pan responder for swipe down to close modal (on statistics card)
   const statisticsSwipePanResponder = useRef(
+    PanResponder.create({
+      onStartShouldSetPanResponder: () => false,
+      onMoveShouldSetPanResponder: (_, gestureState) => {
+        // Only respond to vertical swipes (down)
+        return gestureState.dy > 10 && Math.abs(gestureState.dy) > Math.abs(gestureState.dx);
+      },
+      onPanResponderRelease: (_, gestureState) => {
+        // If swiped down more than 50px, close the modal
+        if (gestureState.dy > 50) {
+          handleCardBackPressRef.current();
+        }
+      },
+    })
+  ).current;
+
+  // Pan responder for swipe down on rank card back to close modal
+  const rankCardSwipePanResponder = useRef(
     PanResponder.create({
       onStartShouldSetPanResponder: () => false,
       onMoveShouldSetPanResponder: (_, gestureState) => {
@@ -774,8 +807,8 @@ export default function ValorantRankCard({ game, username, viewOnly = false, use
         animationType="none"
         onRequestClose={handleCloseModal}
       >
-        {/* Blurred overlay - tappable to close */}
-        <Pressable style={styles.modalOverlay} onPress={handleCloseModal}>
+        {/* Blurred overlay - not tappable, only swipe down on cards closes modal */}
+        <View style={styles.modalOverlay}>
           <Animated.View
             style={[styles.overlayBackground, { opacity: overlayOpacity }]}
           >
@@ -787,7 +820,7 @@ export default function ValorantRankCard({ game, username, viewOnly = false, use
             {/* Dark tint over blur */}
             <View style={styles.blurTint} />
           </Animated.View>
-        </Pressable>
+        </View>
 
         {/* Animated card in modal - positioned exactly over original */}
         <Animated.View
@@ -796,6 +829,7 @@ export default function ValorantRankCard({ game, username, viewOnly = false, use
             { left: cardPosition.x, width: cardPosition.width || undefined },
             modalCardStyle
           ]}
+          {...rankCardSwipePanResponder.panHandlers}
         >
           {/* 3D Shadow layers */}
           <View style={styles.shadow3} />
@@ -804,7 +838,7 @@ export default function ValorantRankCard({ game, username, viewOnly = false, use
 
           <TouchableOpacity
             style={styles.rankCard}
-            onPress={handleCardBackPress}
+            onPress={handleCardFlip}
             activeOpacity={0.95}
           >
             {renderCardContent()}
