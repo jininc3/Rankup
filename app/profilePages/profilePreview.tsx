@@ -763,7 +763,6 @@ export default function ProfilePreviewScreen() {
         userAvatar={viewedUser?.avatar}
         onClose={closePostViewer}
         onNavigate={handleNavigatePost}
-        enableVideoScrubber={false}
       />
     </ThemedView>
   );

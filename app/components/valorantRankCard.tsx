@@ -5,7 +5,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { useEffect, useRef, useState } from 'react';
 import { Animated, Dimensions, Easing, Image, Modal, Pressable, ScrollView, StyleSheet, TouchableOpacity, View } from 'react-native';
 
-const { height: SCREEN_HEIGHT } = Dimensions.get('window');
+const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
 
 interface MatchHistoryEntry {
   matchId: string;
@@ -96,6 +96,34 @@ export default function ValorantRankCard({ game, username, viewOnly = false, use
   const overlayOpacity = useRef(new Animated.Value(0)).current;
   const startY = useRef(new Animated.Value(SCREEN_HEIGHT - 350)).current;
   const matchHistoryAnimation = useRef(new Animated.Value(0)).current;
+  const shimmerAnimation = useRef(new Animated.Value(0)).current;
+
+  // Shimmer animation loop
+  useEffect(() => {
+    const shimmerLoop = Animated.loop(
+      Animated.sequence([
+        Animated.timing(shimmerAnimation, {
+          toValue: 1,
+          duration: 2500,
+          easing: Easing.linear,
+          useNativeDriver: true,
+        }),
+        Animated.timing(shimmerAnimation, {
+          toValue: 0,
+          duration: 0,
+          useNativeDriver: true,
+        }),
+      ])
+    );
+    shimmerLoop.start();
+    return () => shimmerLoop.stop();
+  }, []);
+
+  // Shimmer translate animation
+  const shimmerTranslate = shimmerAnimation.interpolate({
+    inputRange: [0, 1],
+    outputRange: [-SCREEN_WIDTH * 1.5, SCREEN_WIDTH * 1.5],
+  });
 
   // Listen to animation value to swap content at midpoint
   useEffect(() => {
@@ -121,12 +149,13 @@ export default function ValorantRankCard({ game, username, viewOnly = false, use
 
       // Open modal and animate
       setModalVisible(true);
+      setShowMatchHistory(true); // Show match history when card is clicked
 
-      // Animation: brief pause, then smooth slide up with blur, then flip
+      // Animation: brief pause, then smooth slide up with blur + match history expand, then flip
       Animated.sequence([
         // Brief pause for anticipation
         Animated.delay(150),
-        // Blur/overlay fades in and card slides up together
+        // Blur/overlay fades in, card slides up, and match history expands together
         Animated.parallel([
           Animated.timing(overlayOpacity, {
             toValue: 1,
@@ -138,6 +167,12 @@ export default function ValorantRankCard({ game, username, viewOnly = false, use
             toValue: 1,
             duration: 500,
             easing: Easing.out(Easing.back(1.1)), // Slight overshoot for smooth feel
+            useNativeDriver: false,
+          }),
+          Animated.timing(matchHistoryAnimation, {
+            toValue: 1,
+            duration: 500,
+            easing: Easing.out(Easing.back(1.05)), // Match the card slide timing
             useNativeDriver: false,
           }),
         ]),
@@ -301,6 +336,61 @@ export default function ValorantRankCard({ game, username, viewOnly = false, use
       end={{ x: 1, y: 1 }}
       style={styles.cardBackground}
     >
+      {/* Static shimmer/gloss effect - left */}
+      <LinearGradient
+        colors={[
+          'rgba(255,255,255,0.15)',
+          'rgba(255,255,255,0.05)',
+          'transparent',
+          'transparent',
+          'rgba(255,255,255,0.03)',
+        ]}
+        start={{ x: 0, y: 0 }}
+        end={{ x: 1, y: 1 }}
+        style={styles.staticShimmer}
+        pointerEvents="none"
+      />
+
+      {/* Static shimmer/gloss effect - right */}
+      <LinearGradient
+        colors={[
+          'rgba(255,255,255,0.12)',
+          'rgba(255,255,255,0.04)',
+          'transparent',
+          'transparent',
+        ]}
+        start={{ x: 1, y: 0 }}
+        end={{ x: 0, y: 1 }}
+        style={styles.staticShimmerRight}
+        pointerEvents="none"
+      />
+
+      {/* Animated shimmer effect overlay */}
+      <Animated.View
+        style={[
+          styles.shimmerContainer,
+          {
+            transform: [{ translateX: shimmerTranslate }, { rotate: '25deg' }],
+          },
+        ]}
+        pointerEvents="none"
+      >
+        <LinearGradient
+          colors={[
+            'transparent',
+            'rgba(255,255,255,0.03)',
+            'rgba(255,255,255,0.08)',
+            'rgba(255,255,255,0.15)',
+            'rgba(255,255,255,0.08)',
+            'rgba(255,255,255,0.03)',
+            'transparent',
+          ]}
+          start={{ x: 0, y: 0.5 }}
+          end={{ x: 1, y: 0.5 }}
+          style={styles.shimmerGradient}
+        />
+      </Animated.View>
+
       {/* Inside border */}
       <View style={styles.innerBorder} />
 
@@ -492,8 +582,13 @@ export default function ValorantRankCard({ game, username, viewOnly = false, use
             >
               {game.matchHistory && game.matchHistory.length > 0 ? (
                 game.matchHistory.map((match, index) => {
-                  const date = new Date(match.gameStart);
-                  const formattedDate = `${date.getMonth() + 1}/${date.getDate()}`;
+                  // gameStart could be in seconds or milliseconds - handle both
+                  const timestamp = match.gameStart < 10000000000 ? match.gameStart * 1000 : match.gameStart;
+                  const date = new Date(timestamp);
+                  const day = date.getDate().toString().padStart(2, '0');
+                  const month = (date.getMonth() + 1).toString().padStart(2, '0');
+                  const year = date.getFullYear();
+                  const formattedDate = `${day}/${month}/${year}`;
                   return (
                     <View key={match.matchId || index} style={styles.matchItem}>
                       <View style={[styles.matchIndicator, match.won ? styles.matchWin : styles.matchLoss]} />
@@ -508,7 +603,7 @@ export default function ValorantRankCard({ game, username, viewOnly = false, use
                         styles.matchColResult,
                         match.won ? styles.matchResultWin : styles.matchResultLoss
                       ]}>
-                        {match.won ? 'Victory' : 'Defeat'}
+                        {match.won ? '✅ Victory' : '❌ Defeat'}
                       </ThemedText>
                       <ThemedText style={[styles.matchCellText, styles.matchColDate, styles.matchDateText]}>
                         {formattedDate}
@@ -576,6 +671,35 @@ const styles = StyleSheet.create({
   cardBackground: {
     flex: 1,
     borderRadius: 12,
+    overflow: 'hidden',
+  },
+  staticShimmer: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    zIndex: 5,
+  },
+  staticShimmerRight: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    zIndex: 6,
+  },
+  shimmerContainer: {
+    position: 'absolute',
+    top: -100,
+    left: -100,
+    right: -100,
+    bottom: -100,
+    zIndex: 10,
+  },
+  shimmerGradient: {
+    width: 120,
+    height: '200%',
   },
   innerBorder: {
     position: 'absolute',
@@ -939,7 +1063,7 @@ const styles = StyleSheet.create({
     textAlign: 'center',
   },
   matchColResult: {
-    width: 65,
+    width: 85,
     textAlign: 'center',
   },
   matchColDate: {

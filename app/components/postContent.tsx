@@ -3,7 +3,7 @@ import { IconSymbol } from '@/components/ui/icon-symbol';
 import { VideoView, useVideoPlayer } from 'expo-video';
 import { Timestamp } from 'firebase/firestore';
 import { useEffect, useState, useRef } from 'react';
-import { Alert, Animated, Dimensions, FlatList, Image, StyleSheet, TouchableOpacity, View, PanResponder, TextInput } from 'react-native';
+import { Alert, Animated, Dimensions, FlatList, Image, StyleSheet, TouchableOpacity, View, TextInput } from 'react-native';
 import { getComments, CommentData } from '@/services/commentService';
 import { TaggedUser } from '@/app/components/tagUsersModal';
 import { calculateTierBorderColor } from '@/utils/tierBorderUtils';
@@ -77,14 +77,12 @@ const VideoPlayerComponent = ({
   isPlaying,
   onPlayerReady,
   onDoubleTap,
-  enableScrubber = false
 }: {
   postId: string;
   mediaUrl: string;
   isPlaying: boolean;
   onPlayerReady: (postId: string, player: any) => void;
   onDoubleTap?: () => void;
-  enableScrubber?: boolean;
 }) => {
   const player = useVideoPlayer(mediaUrl, (player) => {
     player.loop = true;
@@ -96,9 +94,6 @@ const VideoPlayerComponent = ({
   const [showHeart, setShowHeart] = useState(false);
   const [showPauseIcon, setShowPauseIcon] = useState(false);
   const [pauseIconType, setPauseIconType] = useState<'pause' | 'play'>('pause');
-  const [currentTime, setCurrentTime] = useState(0);
-  const [duration, setDuration] = useState(0);
-  const [isSeeking, setIsSeeking] = useState(false);
   const lastTap = useRef<number | null>(null);
   const pauseIconTimeout = useRef<NodeJS.Timeout | null>(null);
   const doubleTapDelay = 300; // ms
@@ -146,20 +141,6 @@ const VideoPlayerComponent = ({
     player.muted = isMuted;
   }, [isMuted, player]);
 
-  // Track video progress for scrubber
-  useEffect(() => {
-    if (!enableScrubber) return;
-
-    const interval = setInterval(() => {
-      if (player.status === 'readyToPlay' && !isSeeking) {
-        setCurrentTime(player.currentTime);
-        setDuration(player.duration);
-      }
-    }, 100);
-
-    return () => clearInterval(interval);
-  }, [player, enableScrubber, isSeeking]);
-
   const handleVideoPress = () => {
     const now = Date.now();
 
@@ -206,19 +187,6 @@ const VideoPlayerComponent = ({
 
   const toggleMute = () => {
     setIsMuted(!isMuted);
-  };
-
-  const handleSeek = (value: number) => {
-    setIsSeeking(true);
-    player.currentTime = value;
-    setCurrentTime(value);
-    setTimeout(() => setIsSeeking(false), 100);
-  };
-
-  const formatTime = (seconds: number) => {
-    const mins = Math.floor(seconds / 60);
-    const secs = Math.floor(seconds % 60);
-    return `${mins}:${secs.toString().padStart(2, '0')}`;
   };
 
   return (
@@ -276,53 +244,6 @@ const VideoPlayerComponent = ({
         </TouchableOpacity>
       )}
 
-      {/* Scrubber/Progress Bar */}
-      {enableScrubber && duration > 0 && (
-        <View style={styles.scrubberContainer}>
-          <ThemedText style={styles.timeText}>{formatTime(currentTime)}</ThemedText>
-          <View style={styles.progressBarContainer}>
-            <View style={styles.progressBarBackground}>
-              <View
-                style={[
-                  styles.progressBarFill,
-                  { width: `${(currentTime / duration) * 100}%` }
-                ]}
-              />
-            </View>
-            <TouchableOpacity
-              style={[
-                styles.scrubberThumb,
-                { left: `${(currentTime / duration) * 100}%` }
-              ]}
-              onPress={(e) => {
-                e.stopPropagation();
-              }}
-              {...PanResponder.create({
-                onStartShouldSetPanResponder: () => true,
-                onMoveShouldSetPanResponder: () => true,
-                onPanResponderGrant: () => {
-                  setIsSeeking(true);
-                },
-                onPanResponderMove: (_, gesture) => {
-                  const containerWidth = screenWidth - 80; // Account for padding and time text
-                  const newPosition = Math.max(0, Math.min(containerWidth, gesture.moveX - 60));
-                  const percentage = newPosition / containerWidth;
-                  const newTime = percentage * duration;
-                  setCurrentTime(newTime);
-                },
-                onPanResponderRelease: (_, gesture) => {
-                  const containerWidth = screenWidth - 80;
-                  const newPosition = Math.max(0, Math.min(containerWidth, gesture.moveX - 60));
-                  const percentage = newPosition / containerWidth;
-                  const newTime = percentage * duration;
-                  handleSeek(newTime);
-                },
-              }).panHandlers}
-            />
-          </View>
-          <ThemedText style={styles.timeText}>{formatTime(duration)}</ThemedText>
-        </View>
-      )}
     </View>
   );
 };
@@ -396,7 +317,6 @@ interface PostContentProps {
   isLiking: boolean;
   onPlayerReady: (postId: string, player: any) => void;
   showRecentComments?: boolean;
-  enableVideoScrubber?: boolean;
   onDelete?: (post: Post) => void;
   onEditCaption?: (post: Post, newCaption: string) => void;
   onArchive?: (post: Post) => void;
@@ -418,7 +338,6 @@ export default function PostContent({
   isLiking,
   onPlayerReady,
   showRecentComments = true,
-  enableVideoScrubber = false,
   onDelete,
   onEditCaption,
   onArchive
@@ -657,7 +576,6 @@ export default function PostContent({
                         isPlaying={playingVideoId === post.id && activeMediaIndex === index}
                         onPlayerReady={onPlayerReady}
                         onDoubleTap={() => onLikeToggle(post)}
-                        enableScrubber={enableVideoScrubber}
                       />
                     ) : (
                       <Image
@@ -692,7 +610,6 @@ export default function PostContent({
                 isPlaying={playingVideoId === post.id}
                 onPlayerReady={onPlayerReady}
                 onDoubleTap={() => onLikeToggle(post)}
-                enableScrubber={enableVideoScrubber}
               />
             ) : (
               <Image
@@ -1018,54 +935,6 @@ const styles = StyleSheet.create({
     height: 40,
     justifyContent: 'center',
     alignItems: 'center',
-  },
-  scrubberContainer: {
-    position: 'absolute',
-    bottom: 12,
-    left: 12,
-    right: 12,
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-    zIndex: 2,
-  },
-  timeText: {
-    fontSize: 12,
-    fontWeight: '600',
-    color: '#fff',
-    textShadowColor: 'rgba(0, 0, 0, 0.75)',
-    textShadowOffset: { width: 0, height: 1 },
-    textShadowRadius: 3,
-  },
-  progressBarContainer: {
-    flex: 1,
-    height: 24,
-    justifyContent: 'center',
-    position: 'relative',
-  },
-  progressBarBackground: {
-    height: 4,
-    backgroundColor: 'rgba(255, 255, 255, 0.3)',
-    borderRadius: 2,
-    overflow: 'hidden',
-  },
-  progressBarFill: {
-    height: '100%',
-    backgroundColor: '#c42743',
-    borderRadius: 2,
-  },
-  scrubberThumb: {
-    position: 'absolute',
-    width: 16,
-    height: 16,
-    borderRadius: 8,
-    backgroundColor: '#fff',
-    marginLeft: -8,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.3,
-    shadowRadius: 3,
-    elevation: 3,
   },
   indicatorContainer: {
     position: 'absolute',

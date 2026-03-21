@@ -146,7 +146,16 @@ export const getValorantStats = async (
       throw new Error('Authentication error. Please try logging out and back in.');
     }
 
-    throw new Error(error.message || 'Failed to fetch Valorant stats');
+    if (error.code === 'resource-exhausted') {
+      throw new Error('Rate limit exceeded. Please wait a few minutes and try again.');
+    }
+
+    if (error.code === 'failed-precondition') {
+      throw new Error(error.message || 'Please link your Valorant account first.');
+    }
+
+    // Pass through the detailed error message from the server
+    throw new Error(error.message || 'Failed to fetch Valorant stats. Please try again.');
   }
 };
 

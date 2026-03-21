@@ -5,7 +5,7 @@ import { useEffect, useRef, useState } from 'react';
 import { Animated, Dimensions, Easing, Image, Modal, Pressable, StyleSheet, TouchableOpacity, View } from 'react-native';
 import { getProfileIconUrl } from '@/services/riotService';
 
-const { height: SCREEN_HEIGHT } = Dimensions.get('window');
+const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
 
 interface Game {
   id: number;
@@ -55,6 +55,34 @@ export default function LeagueRankCard({ game, username, viewOnly = false, userI
   const slideAnimation = useRef(new Animated.Value(0)).current;
   const overlayOpacity = useRef(new Animated.Value(0)).current;
   const startY = useRef(new Animated.Value(SCREEN_HEIGHT - 350)).current;
+  const shimmerAnimation = useRef(new Animated.Value(0)).current;
+
+  // Shimmer animation loop
+  useEffect(() => {
+    const shimmerLoop = Animated.loop(
+      Animated.sequence([
+        Animated.timing(shimmerAnimation, {
+          toValue: 1,
+          duration: 2500,
+          easing: Easing.linear,
+          useNativeDriver: true,
+        }),
+        Animated.timing(shimmerAnimation, {
+          toValue: 0,
+          duration: 0,
+          useNativeDriver: true,
+        }),
+      ])
+    );
+    shimmerLoop.start();
+    return () => shimmerLoop.stop();
+  }, []);
+
+  // Shimmer translate animation
+  const shimmerTranslate = shimmerAnimation.interpolate({
+    inputRange: [0, 1],
+    outputRange: [-SCREEN_WIDTH * 1.5, SCREEN_WIDTH * 1.5],
+  });
 
   // Listen to animation value to swap content at midpoint
   useEffect(() => {
@@ -193,6 +221,61 @@ export default function LeagueRankCard({ game, username, viewOnly = false, userI
       end={{ x: 1, y: 1 }}
       style={styles.cardBackground}
     >
+      {/* Static shimmer/gloss effect - left */}
+      <LinearGradient
+        colors={[
+          'rgba(255,255,255,0.15)',
+          'rgba(255,255,255,0.05)',
+          'transparent',
+          'transparent',
+          'rgba(255,255,255,0.03)',
+        ]}
+        start={{ x: 0, y: 0 }}
+        end={{ x: 1, y: 1 }}
+        style={styles.staticShimmer}
+        pointerEvents="none"
+      />
+
+      {/* Static shimmer/gloss effect - right */}
+      <LinearGradient
+        colors={[
+          'rgba(255,255,255,0.12)',
+          'rgba(255,255,255,0.04)',
+          'transparent',
+          'transparent',
+        ]}
+        start={{ x: 1, y: 0 }}
+        end={{ x: 0, y: 1 }}
+        style={styles.staticShimmerRight}
+        pointerEvents="none"
+      />
+
+      {/* Animated shimmer effect overlay */}
+      <Animated.View
+        style={[
+          styles.shimmerContainer,
+          {
+            transform: [{ translateX: shimmerTranslate }, { rotate: '25deg' }],
+          },
+        ]}
+        pointerEvents="none"
+      >
+        <LinearGradient
+          colors={[
+            'transparent',
+            'rgba(255,255,255,0.03)',
+            'rgba(255,255,255,0.08)',
+            'rgba(255,255,255,0.15)',
+            'rgba(255,255,255,0.08)',
+            'rgba(255,255,255,0.03)',
+            'transparent',
+          ]}
+          start={{ x: 0, y: 0.5 }}
+          end={{ x: 1, y: 0.5 }}
+          style={styles.shimmerGradient}
+        />
+      </Animated.View>
+
       {/* Inside border */}
       <View style={styles.innerBorder} />
 
@@ -396,6 +479,35 @@ const styles = StyleSheet.create({
   cardBackground: {
     flex: 1,
     borderRadius: 12,
+    overflow: 'hidden',
+  },
+  staticShimmer: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    zIndex: 5,
+  },
+  staticShimmerRight: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    zIndex: 6,
+  },
+  shimmerContainer: {
+    position: 'absolute',
+    top: -100,
+    left: -100,
+    right: -100,
+    bottom: -100,
+    zIndex: 10,
+  },
+  shimmerGradient: {
+    width: 120,
+    height: '200%',
   },
   innerBorder: {
     position: 'absolute',

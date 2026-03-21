@@ -17,8 +17,8 @@ const https = require('https');
 // CONFIGURATION
 // ============================================
 const API_KEY = 'HDEV-3cca151f-b55f-4369-a5bf-09780e2d843b'; // Replace with your Henrik API key
-const TEST_NAME = 'Aruarian Dance'; // Example: 'SEN TenZ'
-const TEST_TAG = '1337'; // Example: 'SEN'
+const TEST_NAME = 'Abidnaz'; // Example: 'SEN TenZ'
+const TEST_TAG = '1903'; // Example: 'SEN'
 const REGION = 'eu'; // Region: na, eu, ap, kr, latam, br
 
 // ============================================
@@ -196,27 +196,44 @@ async function testGetMatchHistory() {
     // Also track match dates to see timeframe
     const matchDates = [];
 
+    // Store detailed match info
+    const matchDetails = [];
+
     data.forEach((match) => {
-      // Find the player's team
-      const playerTeam = match.players.all_players.find(
+      // Find the player in the match
+      const player = match.players.all_players.find(
         p => p.name.toLowerCase() === TEST_NAME.toLowerCase() &&
              p.tag.toLowerCase() === TEST_TAG.toLowerCase()
-      )?.team;
+      );
 
-      if (playerTeam) {
+      if (player) {
         const teams = match.teams;
-        const playerTeamData = playerTeam.toLowerCase() === 'red' ? teams.red : teams.blue;
+        const playerTeamData = player.team.toLowerCase() === 'red' ? teams.red : teams.blue;
+        const won = playerTeamData.has_won;
 
-        if (playerTeamData.has_won) {
+        if (won) {
           wins++;
         } else {
           losses++;
         }
 
         // Track when match was played
-        if (match.metadata && match.metadata.started_at) {
-          matchDates.push(new Date(match.metadata.started_at));
+        const matchDate = match.metadata?.game_start ? new Date(match.metadata.game_start * 1000) : null;
+        if (matchDate) {
+          matchDates.push(matchDate);
         }
+
+        // Store match details
+        matchDetails.push({
+          agent: player.character,
+          kills: player.stats.kills,
+          deaths: player.stats.deaths,
+          assists: player.stats.assists,
+          won: won,
+          date: matchDate,
+          map: match.metadata?.map,
+          score: `${teams.red.rounds_won}-${teams.blue.rounds_won}`
+        });
       }
     });
 
@@ -225,6 +242,20 @@ async function testGetMatchHistory() {
     console.log(`   Wins: ${wins}`);
     console.log(`   Losses: ${losses}`);
     console.log(`   Win Rate: ${((wins / (wins + losses)) * 100).toFixed(2)}%`);
+
+    // Display detailed match history
+    console.log(`\n   📋 DETAILED MATCH HISTORY:`);
+    console.log('   ' + '-'.repeat(70));
+    console.log(`   ${'Agent'.padEnd(12)} | ${'KDA'.padEnd(12)} | ${'Result'.padEnd(10)} | Date`);
+    console.log('   ' + '-'.repeat(70));
+
+    matchDetails.forEach((match) => {
+      const kda = `${match.kills}/${match.deaths}/${match.assists}`;
+      const result = match.won ? '✅ Victory' : '❌ Defeat';
+      const dateStr = match.date ? match.date.toLocaleDateString() : 'Unknown';
+      console.log(`   ${match.agent.padEnd(12)} | ${kda.padEnd(12)} | ${result.padEnd(10)} | ${dateStr}`);
+    });
+    console.log('   ' + '-'.repeat(70));
 
     if (matchDates.length > 0) {
       const oldestMatch = new Date(Math.min(...matchDates));
@@ -242,6 +273,7 @@ async function testGetMatchHistory() {
 
     return {
       matches: data,
+      matchDetails,
       wins,
       losses,
       totalGames: wins + losses

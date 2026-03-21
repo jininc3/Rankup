@@ -42,7 +42,6 @@ interface PostViewerModalProps {
   onDelete?: (post: Post) => void;
   onEditCaption?: (post: Post, newCaption: string) => void;
   onArchive?: (post: Post) => void;
-  enableVideoScrubber?: boolean;
 }
 
 export default function PostViewerModal({
@@ -57,7 +56,6 @@ export default function PostViewerModal({
   onDelete,
   onEditCaption,
   onArchive,
-  enableVideoScrubber = false
 }: PostViewerModalProps) {
   const router = useRouter();
   const { user: currentUser } = useAuth();
@@ -381,7 +379,6 @@ export default function PostViewerModal({
         isLiking={likingInProgress.has(item.id)}
         onPlayerReady={handlePlayerReady}
         showRecentComments={true}
-        enableVideoScrubber={enableVideoScrubber}
         onDelete={onDelete}
         onEditCaption={onEditCaption}
         onArchive={onArchive}

@@ -64,10 +64,10 @@ export interface HenrikMMRData {
  */
 export interface HenrikMatch {
   metadata: {
-    match_id: string;
+    matchid: string; // Note: API returns 'matchid' without underscore
     map: string;
-    game_start: number; // Unix timestamp in milliseconds
-    game_length: number; // Duration in milliseconds
+    game_start: number; // Unix timestamp in seconds
+    game_length: number; // Duration in seconds
     mode: string;
   };
   players: {

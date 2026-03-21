@@ -469,18 +469,21 @@ export default function ProfileScreen() {
             setValorantStats(data.valorantStats);
           }
 
-          // Check if matchHistory is missing from cached data - if so, force refresh
+          // Check if matchHistory is missing or empty from cached data - if so, force refresh
           const needsMatchHistoryRefresh = !data.valorantStats?.matchHistory ||
             !Array.isArray(data.valorantStats.matchHistory) ||
             data.valorantStats.matchHistory.length === 0;
+          console.log('needsMatchHistoryRefresh:', needsMatchHistoryRefresh, 'cached matchHistory:', data.valorantStats?.matchHistory);
 
           try {
             const shouldForceRefresh = forceRefresh || needsMatchHistoryRefresh;
             console.log('Fetching fresh Valorant stats, forceRefresh:', shouldForceRefresh, 'needsMatchHistoryRefresh:', needsMatchHistoryRefresh);
             const valorantResponse = await getValorantStats(shouldForceRefresh);
             console.log('Valorant response:', valorantResponse);
+            console.log('Match History from API:', valorantResponse.stats?.matchHistory);
             if (valorantResponse.success && valorantResponse.stats) {
               console.log('Setting fresh valorant stats:', valorantResponse.stats);
+              console.log('Match History length:', valorantResponse.stats.matchHistory?.length);
               setValorantStats(valorantResponse.stats);
             } else {
               console.log('Valorant stats not successful, using cached data');
@@ -1504,7 +1507,6 @@ export default function ProfileScreen() {
         onDelete={handleDeletePost}
         onEditCaption={handleEditCaption}
         onArchive={handleArchivePost}
-        enableVideoScrubber={false}
       />
 
       {/* New Post Modal */}

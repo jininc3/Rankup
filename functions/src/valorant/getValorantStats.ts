@@ -100,7 +100,9 @@ export const getValorantStatsFunction = onCall(
         );
       }
 
-      const {gameName, tag, region} = valorantAccount;
+      const {gameName, tag: rawTag, region} = valorantAccount;
+      // Ensure tag is a string (might be stored as number in Firestore)
+      const tag = String(rawTag);
 
       // Check cache (stats updated in last 3 hours)
       const cachedStats = userData?.valorantStats;
@@ -108,8 +110,8 @@ export const getValorantStatsFunction = onCall(
       const cacheAge = cacheTime ? Date.now() - cacheTime.getTime() : Infinity;
       const CACHE_TTL = 3 * 60 * 60 * 1000; // 3 hours
 
-      // Also check if matchHistory is missing (old cache format)
-      const hasMatchHistory = cachedStats?.matchHistory && Array.isArray(cachedStats.matchHistory);
+      // Also check if matchHistory is missing or empty (old cache format)
+      const hasMatchHistory = cachedStats?.matchHistory && Array.isArray(cachedStats.matchHistory) && cachedStats.matchHistory.length > 0;
 
       if (!forceRefresh && cachedStats && cacheAge < CACHE_TTL && hasMatchHistory) {
         logger.info(`Returning cached Valorant stats for user ${userId}`);
@@ -186,55 +188,66 @@ export const getValorantStatsFunction = onCall(
       const winRate = totalGames > 0 ? (wins / totalGames) * 100 : 0;
 
       // Process match history
+      logger.info(`Raw matches data length: ${matchesData?.length || 0}`);
       const matchHistory: MatchHistoryEntry[] = matchesData.map((match) => {
+        // Validate match has required metadata
+        // Note: API returns 'matchid' (no underscore), not 'match_id'
+        if (!match?.metadata?.matchid || !match?.players?.all_players || !match?.teams) {
+          return null;
+        }
+
         // Find the player in this match
+        // Convert tags to strings for comparison (API returns string, Firestore might store number)
         const player = match.players.all_players.find(
-          (p) => p.name.toLowerCase() === gameName.toLowerCase() && p.tag.toLowerCase() === tag.toLowerCase()
+          (p: any) => p.name?.toLowerCase() === gameName.toLowerCase() && String(p.tag).toLowerCase() === tag.toLowerCase()
         );
 
-        if (!player) {
+        if (!player || !player.stats || !player.team || !player.character) {
           return null;
         }
 
         // Determine if player won
         const playerTeam = player.team.toLowerCase(); // "red" or "blue"
         const teamData = playerTeam === "red" ? match.teams.red : match.teams.blue;
-        const won = teamData.has_won;
+        if (!teamData) {
+          return null;
+        }
+        const won = teamData.has_won ?? false;
 
         // Build score string
-        const redRounds = match.teams.red.rounds_won;
-        const blueRounds = match.teams.blue.rounds_won;
+        const redRounds = match.teams.red?.rounds_won ?? 0;
+        const blueRounds = match.teams.blue?.rounds_won ?? 0;
         const score = playerTeam === "red"
           ? `${redRounds}-${blueRounds}`
           : `${blueRounds}-${redRounds}`;
 
         return {
-          matchId: match.metadata.match_id,
+          matchId: match.metadata.matchid,
           agent: player.character,
-          kills: player.stats.kills,
-          deaths: player.stats.deaths,
-          assists: player.stats.assists,
+          kills: player.stats.kills ?? 0,
+          deaths: player.stats.deaths ?? 0,
+          assists: player.stats.assists ?? 0,
           won,
-          map: match.metadata.map,
-          gameStart: match.metadata.game_start,
+          map: match.metadata.map ?? "Unknown",
+          gameStart: match.metadata.game_start ?? Date.now(),
           score,
         };
       }).filter((entry): entry is MatchHistoryEntry => entry !== null);
 
-      // Build stats object
+      logger.info(`Processed match history length: ${matchHistory.length}`);
+      if (matchHistory.length > 0) {
+        logger.info(`First match: ${JSON.stringify(matchHistory[0])}`);
+      }
+
+      // Build stats object - ensure no undefined values for Firestore
       const stats: ValorantStats = {
-        gameName: accountData.name,
-        tag: accountData.tag,
+        gameName: accountData.name ?? gameName,
+        tag: accountData.tag ?? tag,
         region,
-        accountLevel: accountData.account_level,
-        card: accountData.card,
-        currentRank: mmrData.current_data.currenttierpatched,
-        rankRating: mmrData.current_data.ranking_in_tier,
-        mmr: mmrData.current_data.elo,
-        peakRank: mmrData.highest_rank ? {
-          tier: mmrData.highest_rank.patched_tier,
-          season: mmrData.highest_rank.season,
-        } : undefined,
+        accountLevel: accountData.account_level ?? 0,
+        currentRank: mmrData.current_data?.currenttierpatched ?? "Unranked",
+        rankRating: mmrData.current_data?.ranking_in_tier ?? 0,
+        mmr: mmrData.current_data?.elo ?? 0,
         gamesPlayed: totalGames,
         wins,
         losses,
@@ -242,6 +255,17 @@ export const getValorantStatsFunction = onCall(
         matchHistory,
         lastUpdated: admin.firestore.FieldValue.serverTimestamp() as any,
       };
+
+      // Only add optional fields if they have values (Firestore doesn't accept undefined)
+      if (accountData.card) {
+        stats.card = accountData.card;
+      }
+      if (mmrData.highest_rank?.patched_tier && mmrData.highest_rank?.season) {
+        stats.peakRank = {
+          tier: mmrData.highest_rank.patched_tier,
+          season: mmrData.highest_rank.season,
+        };
+      }
 
       // Cache the stats in Firestore
       await userRef.update({
@@ -265,16 +289,20 @@ export const getValorantStatsFunction = onCall(
         stats,
         cached: false,
       };
-    } catch (error) {
+    } catch (error: any) {
       logger.error("Error fetching Valorant stats:", error);
 
       if (error instanceof HttpsError) {
         throw error;
       }
 
+      // Include the actual error message for debugging
+      const errorMessage = error?.message || error?.toString() || "Unknown error";
+      logger.error("Detailed error:", errorMessage);
+
       throw new HttpsError(
         "internal",
-        "Failed to fetch Valorant stats. Please try again."
+        `Failed to fetch Valorant stats: ${errorMessage}`
       );
     }
   }

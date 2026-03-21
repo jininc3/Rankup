@@ -24,6 +24,7 @@ export default function LoginScreen() {
   const [emailOrUsername, setEmailOrUsername] = useState('');
   const [password, setPassword] = useState('');
   const [isLoading, setIsLoading] = useState(false);
+  const [showEmailForm, setShowEmailForm] = useState(false);
   const googleAuth = useGoogleAuth();
 
   // Ref for password field
@@ -154,69 +155,6 @@ export default function LoginScreen() {
             </View>
 
             <View style={styles.form}>
-              <View style={styles.inputContainer}>
-                <ThemedText style={styles.label}>Email or Username</ThemedText>
-                <View style={styles.inputWrapper}>
-                  <MaterialIcons name="person" size={20} color="#999" style={styles.inputIcon} />
-                  <TextInput
-                    style={styles.inputWithIcon}
-                    placeholder="Enter your email or username"
-                    placeholderTextColor="#999"
-                    value={emailOrUsername}
-                    onChangeText={setEmailOrUsername}
-                    autoCapitalize="none"
-                    editable={!isLoading}
-                    returnKeyType="next"
-                    onSubmitEditing={() => passwordRef.current?.focus()}
-                    blurOnSubmit={false}
-                  />
-                </View>
-              </View>
-
-              <View style={styles.inputContainer}>
-                <ThemedText style={styles.label}>Password</ThemedText>
-                <View style={styles.inputWrapper}>
-                  <MaterialIcons name="vpn-key" size={20} color="#999" style={styles.inputIcon} />
-                  <TextInput
-                    ref={passwordRef}
-                    style={styles.inputWithIcon}
-                    placeholder="Enter your password"
-                    placeholderTextColor="#999"
-                    value={password}
-                    onChangeText={setPassword}
-                    secureTextEntry
-                    editable={!isLoading}
-                    returnKeyType="done"
-                    onSubmitEditing={handleEmailLogin}
-                  />
-                </View>
-                <TouchableOpacity
-                  style={styles.forgotPasswordButton}
-                  onPress={handleForgotPassword}
-                  disabled={isLoading}
-                >
-                  <ThemedText style={styles.forgotPasswordText}>
-                    Forgot Password?
-                  </ThemedText>
-                </TouchableOpacity>
-              </View>
-
-              <TouchableOpacity
-                style={[styles.loginButton, isLoading && styles.buttonDisabled]}
-                onPress={handleEmailLogin}
-                disabled={isLoading}
-              >
-                <ThemedText style={styles.loginButtonText}>
-                  {isLoading ? 'Signing in...' : 'Sign In'}
-                </ThemedText>
-              </TouchableOpacity>
-
-              <View style={styles.divider}>
-                <View style={styles.dividerLine} />
-                <ThemedText style={styles.dividerText}>OR</ThemedText>
-                <View style={styles.dividerLine} />
-              </View>
-
               <TouchableOpacity
                 style={[styles.socialButton, styles.googleButton, isLoading && styles.buttonDisabled]}
                 onPress={handleGoogleLogin}
@@ -227,6 +165,83 @@ export default function LoginScreen() {
                   Continue with Google
                 </ThemedText>
               </TouchableOpacity>
+
+              {!showEmailForm ? (
+                <TouchableOpacity
+                  style={[styles.socialButton, styles.emailButton]}
+                  onPress={() => setShowEmailForm(true)}
+                >
+                  <MaterialIcons name="email" size={20} color="#fff" />
+                  <ThemedText style={styles.socialButtonText}>
+                    Continue with Email
+                  </ThemedText>
+                </TouchableOpacity>
+              ) : (
+                <View style={styles.emailFormContainer}>
+                  <View style={styles.divider}>
+                    <View style={styles.dividerLine} />
+                    <ThemedText style={styles.dividerText}>OR</ThemedText>
+                    <View style={styles.dividerLine} />
+                  </View>
+
+                  <View style={styles.inputContainer}>
+                    <ThemedText style={styles.label}>Email or Username</ThemedText>
+                    <View style={styles.inputWrapper}>
+                      <MaterialIcons name="person" size={20} color="#999" style={styles.inputIcon} />
+                      <TextInput
+                        style={styles.inputWithIcon}
+                        placeholder="Enter your email or username"
+                        placeholderTextColor="#999"
+                        value={emailOrUsername}
+                        onChangeText={setEmailOrUsername}
+                        autoCapitalize="none"
+                        editable={!isLoading}
+                        returnKeyType="next"
+                        onSubmitEditing={() => passwordRef.current?.focus()}
+                        blurOnSubmit={false}
+                      />
+                    </View>
+                  </View>
+
+                  <View style={styles.inputContainer}>
+                    <ThemedText style={styles.label}>Password</ThemedText>
+                    <View style={styles.inputWrapper}>
+                      <MaterialIcons name="vpn-key" size={20} color="#999" style={styles.inputIcon} />
+                      <TextInput
+                        ref={passwordRef}
+                        style={styles.inputWithIcon}
+                        placeholder="Enter your password"
+                        placeholderTextColor="#999"
+                        value={password}
+                        onChangeText={setPassword}
+                        secureTextEntry
+                        editable={!isLoading}
+                        returnKeyType="done"
+                        onSubmitEditing={handleEmailLogin}
+                      />
+                    </View>
+                    <TouchableOpacity
+                      style={styles.forgotPasswordButton}
+                      onPress={handleForgotPassword}
+                      disabled={isLoading}
+                    >
+                      <ThemedText style={styles.forgotPasswordText}>
+                        Forgot Password?
+                      </ThemedText>
+                    </TouchableOpacity>
+                  </View>
+
+                  <TouchableOpacity
+                    style={[styles.loginButton, isLoading && styles.buttonDisabled]}
+                    onPress={handleEmailLogin}
+                    disabled={isLoading}
+                  >
+                    <ThemedText style={styles.loginButtonText}>
+                      {isLoading ? 'Signing in...' : 'Sign In'}
+                    </ThemedText>
+                  </TouchableOpacity>
+                </View>
+              )}
             </View>
 
             <View style={styles.footer}>
@@ -360,6 +375,12 @@ const styles = StyleSheet.create({
   },
   googleButton: {
     backgroundColor: '#c42743',
+  },
+  emailButton: {
+    backgroundColor: '#2c2f33',
+  },
+  emailFormContainer: {
+    marginTop: 8,
   },
   googleIcon: {
     width: 20,

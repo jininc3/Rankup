@@ -1057,7 +1057,6 @@ export default function ProfileViewScreen() {
         userAvatar={viewedUser?.avatar}
         onClose={closePostViewer}
         onCommentAdded={fetchPosts}
-        enableVideoScrubber={true}
       />
 
       {/* Socials Bottom Sheet */}
