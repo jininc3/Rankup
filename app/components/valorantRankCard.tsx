@@ -238,7 +238,7 @@ export default function ValorantRankCard({ game, username, viewOnly = false, use
     cardRef.current?.measureInWindow((x, y, width, height) => {
       setCardPosition({ x, y, width });
       startY.setValue(y); // Set immediately for animation
-      setCardHidden(true);
+      // Don't hide original card - the modal overlay covers it anyway
 
       // Open modal and animate
       setModalVisible(true);
@@ -356,13 +356,10 @@ export default function ValorantRankCard({ game, username, viewOnly = false, use
         }),
       ]),
     ]).start(() => {
-      setCardHidden(false);
+      setModalVisible(false);
       setIsFlipped(false);
       matchHistoryAnimation.setValue(0);
       setShowMatchHistory(false);
-      setTimeout(() => {
-        setModalVisible(false);
-      }, 50);
     });
   };
 
@@ -409,13 +406,10 @@ export default function ValorantRankCard({ game, username, viewOnly = false, use
         }),
       ]),
     ]).start(() => {
-      setCardHidden(false);
+      setModalVisible(false);
       setIsFlipped(false);
       setShowMatchHistory(false);
       setMatchHistoryExpanded(false);
-      setTimeout(() => {
-        setModalVisible(false);
-      }, 50);
     });
   };
 

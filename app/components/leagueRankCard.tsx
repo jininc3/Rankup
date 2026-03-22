@@ -123,7 +123,7 @@ export default function LeagueRankCard({ game, username, viewOnly = false, userI
     cardRef.current?.measureInWindow((x, y, width, height) => {
       setCardPosition({ x, y, width });
       startY.setValue(y);
-      setCardHidden(true);
+      // Don't hide original card - the modal overlay covers it anyway
 
       // Open modal and animate
       setModalVisible(true);
@@ -237,11 +237,8 @@ export default function LeagueRankCard({ game, username, viewOnly = false, userI
     ]).start(() => {
       slideAnimation.setValue(0);
       flipAnimation.setValue(0);
-      setCardHidden(false);
+      setModalVisible(false);
       setIsFlipped(false);
-      setTimeout(() => {
-        setModalVisible(false);
-      }, 50);
     });
   };
 
@@ -286,13 +283,10 @@ export default function LeagueRankCard({ game, username, viewOnly = false, userI
         }),
       ]),
     ]).start(() => {
-      setCardHidden(false);
+      setModalVisible(false);
       setIsFlipped(false);
       setShowMatchHistory(false);
       setMatchHistoryExpanded(false);
-      setTimeout(() => {
-        setModalVisible(false);
-      }, 50);
     });
   };
 
