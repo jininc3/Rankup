@@ -1,11 +1,24 @@
 import { ThemedText } from '@/components/themed-text';
+import { IconSymbol } from '@/components/ui/icon-symbol';
 import { BlurView } from 'expo-blur';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useEffect, useRef, useState } from 'react';
-import { Animated, Dimensions, Easing, Image, Modal, PanResponder, StyleSheet, TouchableOpacity, View } from 'react-native';
+import { Animated, Dimensions, Easing, Image, Modal, PanResponder, Pressable, ScrollView, StyleSheet, TouchableOpacity, View } from 'react-native';
 import { getProfileIconUrl } from '@/services/riotService';
 
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
+
+interface MatchHistoryEntry {
+  matchId: string;
+  champion: string;
+  kills: number;
+  deaths: number;
+  assists: number;
+  won: boolean;
+  gameMode: string;
+  gameStart: number;
+  lpChange?: number;
+}
 
 interface Game {
   id: number;
@@ -18,6 +31,9 @@ interface Game {
   winRate: number;
   recentMatches: string[];
   profileIconId?: number;
+  matchHistory?: MatchHistoryEntry[];
+  gamesPlayed?: number;
+  peakRank?: { tier: string; season: string };
 }
 
 interface LeagueRankCardProps {
@@ -49,12 +65,16 @@ export default function LeagueRankCard({ game, username, viewOnly = false, userI
   const [modalVisible, setModalVisible] = useState(false);
   const [cardHidden, setCardHidden] = useState(false);
   const [cardPosition, setCardPosition] = useState({ x: 20, y: SCREEN_HEIGHT - 350, width: 0 });
+  const [showMatchHistory, setShowMatchHistory] = useState(false);
+  const [matchHistoryExpanded, setMatchHistoryExpanded] = useState(false);
 
   const cardRef = useRef<View>(null);
   const flipAnimation = useRef(new Animated.Value(0)).current;
   const slideAnimation = useRef(new Animated.Value(0)).current;
   const overlayOpacity = useRef(new Animated.Value(0)).current;
   const startY = useRef(new Animated.Value(SCREEN_HEIGHT - 350)).current;
+  const matchHistoryAnimation = useRef(new Animated.Value(0)).current;
+  const matchHistoryExpandAnimation = useRef(new Animated.Value(0)).current;
   const shimmerAnimation = useRef(new Animated.Value(0)).current;
 
   // Shimmer animation loop
@@ -102,17 +122,17 @@ export default function LeagueRankCard({ game, username, viewOnly = false, userI
     // Measure card position before opening modal
     cardRef.current?.measureInWindow((x, y, width, height) => {
       setCardPosition({ x, y, width });
-      startY.setValue(y); // Set immediately for animation
+      startY.setValue(y);
       setCardHidden(true);
 
       // Open modal and animate
       setModalVisible(true);
+      setShowMatchHistory(true);
+      setMatchHistoryExpanded(false);
 
-      // Animation: brief pause, then smooth slide up with blur, then flip
+      // Animation: brief pause, then smooth slide up with blur + cards expand, then flip
       Animated.sequence([
-        // Brief pause for anticipation
         Animated.delay(150),
-        // Blur/overlay fades in and card slides up together
         Animated.parallel([
           Animated.timing(overlayOpacity, {
             toValue: 1,
@@ -126,10 +146,14 @@ export default function LeagueRankCard({ game, username, viewOnly = false, userI
             easing: Easing.out(Easing.back(1.1)),
             useNativeDriver: false,
           }),
+          Animated.timing(matchHistoryAnimation, {
+            toValue: 1,
+            duration: 500,
+            easing: Easing.out(Easing.back(1.05)),
+            useNativeDriver: false,
+          }),
         ]),
-        // Small pause before flip
         Animated.delay(50),
-        // Then flip the card
         Animated.spring(flipAnimation, {
           toValue: 1,
           friction: 8,
@@ -142,17 +166,60 @@ export default function LeagueRankCard({ game, username, viewOnly = false, userI
     });
   };
 
+  const handleMatchHistoryToggle = () => {
+    const toValue = matchHistoryExpanded ? 0 : 1;
+    setMatchHistoryExpanded(!matchHistoryExpanded);
+    Animated.timing(matchHistoryExpandAnimation, {
+      toValue,
+      duration: 300,
+      easing: Easing.out(Easing.cubic),
+      useNativeDriver: false,
+    }).start();
+  };
+
+  // Just flip the card without closing the modal
+  const handleCardFlip = () => {
+    const toValue = isFlipped ? 0 : 1;
+    Animated.timing(flipAnimation, {
+      toValue,
+      duration: 500,
+      easing: Easing.out(Easing.cubic),
+      useNativeDriver: false,
+    }).start();
+    setIsFlipped(!isFlipped);
+  };
+
   const handleCloseModal = () => {
+    // If match history is open, close it first
+    if (showMatchHistory) {
+      Animated.parallel([
+        Animated.timing(matchHistoryAnimation, {
+          toValue: 0,
+          duration: 300,
+          easing: Easing.out(Easing.cubic),
+          useNativeDriver: false,
+        }),
+        Animated.timing(matchHistoryExpandAnimation, {
+          toValue: 0,
+          duration: 300,
+          easing: Easing.out(Easing.cubic),
+          useNativeDriver: false,
+        }),
+      ]).start(() => {
+        setShowMatchHistory(false);
+        setMatchHistoryExpanded(false);
+      });
+      return;
+    }
+
     // Reverse: flip first, then smooth slide down + fade out
     Animated.sequence([
-      // Flip back to front - use timing for predictable completion
       Animated.timing(flipAnimation, {
         toValue: 0,
         duration: 300,
         easing: Easing.out(Easing.cubic),
         useNativeDriver: false,
       }),
-      // Slide down and fade out overlay - use linear easing to prevent overshoot
       Animated.parallel([
         Animated.timing(slideAnimation, {
           toValue: 0,
@@ -168,7 +235,6 @@ export default function LeagueRankCard({ game, username, viewOnly = false, userI
         }),
       ]),
     ]).start(() => {
-      // Reset all animation values to ensure clean state
       slideAnimation.setValue(0);
       flipAnimation.setValue(0);
       setCardHidden(false);
@@ -179,34 +245,132 @@ export default function LeagueRankCard({ game, username, viewOnly = false, userI
     });
   };
 
-  // Just flip the card without closing the modal
-  const handleCardFlip = () => {
-    const toValue = isFlipped ? 0 : 1;
-    Animated.timing(flipAnimation, {
-      toValue,
-      duration: 300,
-      easing: Easing.out(Easing.cubic),
-      useNativeDriver: false,
-    }).start();
-    setIsFlipped(!isFlipped);
+  // Handle clicking on the rank card back - closes everything and flips card
+  const handleCardBackPress = () => {
+    // Flip first, then slide down
+    Animated.sequence([
+      // First: Collapse match history/statistics and flip card together
+      Animated.parallel([
+        Animated.timing(matchHistoryAnimation, {
+          toValue: 0,
+          duration: 300,
+          easing: Easing.out(Easing.cubic),
+          useNativeDriver: false,
+        }),
+        Animated.timing(matchHistoryExpandAnimation, {
+          toValue: 0,
+          duration: 300,
+          easing: Easing.out(Easing.cubic),
+          useNativeDriver: false,
+        }),
+        Animated.timing(flipAnimation, {
+          toValue: 0,
+          duration: 300,
+          easing: Easing.out(Easing.cubic),
+          useNativeDriver: false,
+        }),
+      ]),
+      // Then: Slide down and fade out
+      Animated.parallel([
+        Animated.timing(slideAnimation, {
+          toValue: 0,
+          duration: 400,
+          easing: Easing.out(Easing.cubic),
+          useNativeDriver: false,
+        }),
+        Animated.timing(overlayOpacity, {
+          toValue: 0,
+          duration: 350,
+          easing: Easing.out(Easing.cubic),
+          useNativeDriver: true,
+        }),
+      ]),
+    ]).start(() => {
+      setCardHidden(false);
+      setIsFlipped(false);
+      setShowMatchHistory(false);
+      setMatchHistoryExpanded(false);
+      setTimeout(() => {
+        setModalVisible(false);
+      }, 50);
+    });
   };
 
-  // Ref to always have access to latest handleCloseModal
-  const handleCloseModalRef = useRef(handleCloseModal);
-  handleCloseModalRef.current = handleCloseModal;
+  // Ref to always have access to latest handleCardBackPress
+  const handleCardBackPressRef = useRef(handleCardBackPress);
+  handleCardBackPressRef.current = handleCardBackPress;
 
-  // Pan responder for swipe down on rank card to close modal
+  // Pan responder for swipe down to close modal (on statistics card)
+  const statisticsSwipePanResponder = useRef(
+    PanResponder.create({
+      onStartShouldSetPanResponder: () => false,
+      onMoveShouldSetPanResponder: (_, gestureState) => {
+        return gestureState.dy > 10 && Math.abs(gestureState.dy) > Math.abs(gestureState.dx);
+      },
+      onPanResponderRelease: (_, gestureState) => {
+        if (gestureState.dy > 50) {
+          handleCardBackPressRef.current();
+        }
+      },
+    })
+  ).current;
+
+  // Pan responder for swipe down on rank card back to close modal
   const rankCardSwipePanResponder = useRef(
     PanResponder.create({
       onStartShouldSetPanResponder: () => false,
       onMoveShouldSetPanResponder: (_, gestureState) => {
-        // Only respond to vertical swipes (down)
         return gestureState.dy > 10 && Math.abs(gestureState.dy) > Math.abs(gestureState.dx);
       },
       onPanResponderRelease: (_, gestureState) => {
-        // If swiped down more than 50px, close the modal
         if (gestureState.dy > 50) {
-          handleCloseModalRef.current();
+          handleCardBackPressRef.current();
+        }
+      },
+    })
+  ).current;
+
+  // Refs for match history expand/collapse state
+  const matchHistoryExpandedRef = useRef(matchHistoryExpanded);
+  matchHistoryExpandedRef.current = matchHistoryExpanded;
+
+  // Pan responder for swipe up on collapsed match history to expand
+  const matchHistorySwipeUpPanResponder = useRef(
+    PanResponder.create({
+      onStartShouldSetPanResponder: () => false,
+      onMoveShouldSetPanResponder: (_, gestureState) => {
+        return !matchHistoryExpandedRef.current && gestureState.dy < -10 && Math.abs(gestureState.dy) > Math.abs(gestureState.dx);
+      },
+      onPanResponderRelease: (_, gestureState) => {
+        if (gestureState.dy < -30) {
+          setMatchHistoryExpanded(true);
+          Animated.timing(matchHistoryExpandAnimation, {
+            toValue: 1,
+            duration: 300,
+            easing: Easing.out(Easing.cubic),
+            useNativeDriver: false,
+          }).start();
+        }
+      },
+    })
+  ).current;
+
+  // Pan responder for swipe down on match history header to collapse
+  const matchHistorySwipeDownPanResponder = useRef(
+    PanResponder.create({
+      onStartShouldSetPanResponder: () => false,
+      onMoveShouldSetPanResponder: (_, gestureState) => {
+        return matchHistoryExpandedRef.current && gestureState.dy > 10 && Math.abs(gestureState.dy) > Math.abs(gestureState.dx);
+      },
+      onPanResponderRelease: (_, gestureState) => {
+        if (gestureState.dy > 30) {
+          setMatchHistoryExpanded(false);
+          Animated.timing(matchHistoryExpandAnimation, {
+            toValue: 0,
+            duration: 300,
+            easing: Easing.out(Easing.cubic),
+            useNativeDriver: false,
+          }).start();
         }
       },
     })
@@ -226,8 +390,7 @@ export default function LeagueRankCard({ game, username, viewOnly = false, userI
     outputRange: [1, 0, 1],
   });
 
-  // Slide animation - moves card from its exact position to top
-  // translateY = startY * (1 - slide) + 80 * slide
+  // Slide animation
   const inverseSlide = slideAnimation.interpolate({
     inputRange: [0, 1],
     outputRange: [1, 0],
@@ -246,7 +409,39 @@ export default function LeagueRankCard({ game, username, viewOnly = false, userI
     transform: [{ translateY }, { scaleY }],
   };
 
-  // Render card content (shared between static card and modal card)
+  // Statistics card animations
+  const statisticsTop = matchHistoryAnimation.interpolate({
+    inputRange: [0, 1],
+    outputRange: [SCREEN_HEIGHT, 310],
+  });
+
+  const cardsContentOpacity = matchHistoryAnimation.interpolate({
+    inputRange: [0, 0.5, 1],
+    outputRange: [0, 0.5, 1],
+  });
+
+  const statisticsContentOpacity = matchHistoryAnimation.interpolate({
+    inputRange: [0, 0.7, 1],
+    outputRange: [0, 0, 1],
+  });
+
+  // Match history height animation - expands to just below statistics header
+  const MATCH_HISTORY_HEADER_HEIGHT = 76;
+  const RANK_CARD_BOTTOM = 316; // Rank card is at y=80, height=220, plus 16px gap
+  const STATS_CARD_HEADER_HEIGHT = 60;
+  const matchHistoryExpandedHeight = SCREEN_HEIGHT - RANK_CARD_BOTTOM - STATS_CARD_HEADER_HEIGHT - 8;
+  const matchHistoryHeight = matchHistoryExpandAnimation.interpolate({
+    inputRange: [0, 1],
+    outputRange: [MATCH_HISTORY_HEADER_HEIGHT, matchHistoryExpandedHeight],
+  });
+
+  // Match history chevron rotation
+  const matchHistoryChevronRotation = matchHistoryExpandAnimation.interpolate({
+    inputRange: [0, 1],
+    outputRange: ['0deg', '180deg'],
+  });
+
+  // Render card content
   const renderCardContent = () => (
     <LinearGradient
       colors={showBack ? ['#091428', '#0f1f3d', '#1a3a5c'] : ['#1a3a5c', '#0f1f3d', '#091428']}
@@ -254,144 +449,96 @@ export default function LeagueRankCard({ game, username, viewOnly = false, userI
       end={{ x: 1, y: 1 }}
       style={styles.cardBackground}
     >
-      {/* Static shimmer/gloss effect - left */}
+      {/* Static shimmer effects */}
       <LinearGradient
-        colors={[
-          'rgba(255,255,255,0.15)',
-          'rgba(255,255,255,0.05)',
-          'transparent',
-          'transparent',
-          'rgba(255,255,255,0.03)',
-        ]}
+        colors={['rgba(255,255,255,0.15)', 'rgba(255,255,255,0.05)', 'transparent', 'transparent', 'rgba(255,255,255,0.03)']}
         start={{ x: 0, y: 0 }}
         end={{ x: 1, y: 1 }}
         style={styles.staticShimmer}
         pointerEvents="none"
       />
-
-      {/* Static shimmer/gloss effect - right */}
       <LinearGradient
-        colors={[
-          'rgba(255,255,255,0.12)',
-          'rgba(255,255,255,0.04)',
-          'transparent',
-          'transparent',
-        ]}
+        colors={['rgba(255,255,255,0.12)', 'rgba(255,255,255,0.04)', 'transparent', 'transparent']}
         start={{ x: 1, y: 0 }}
         end={{ x: 0, y: 1 }}
         style={styles.staticShimmerRight}
         pointerEvents="none"
       />
 
-      {/* Animated shimmer effect overlay */}
+      {/* Animated shimmer */}
       <Animated.View
-        style={[
-          styles.shimmerContainer,
-          {
-            transform: [{ translateX: shimmerTranslate }, { rotate: '25deg' }],
-          },
-        ]}
+        style={[styles.shimmerContainer, { transform: [{ translateX: shimmerTranslate }, { rotate: '25deg' }] }]}
         pointerEvents="none"
       >
         <LinearGradient
-          colors={[
-            'transparent',
-            'rgba(255,255,255,0.03)',
-            'rgba(255,255,255,0.08)',
-            'rgba(255,255,255,0.15)',
-            'rgba(255,255,255,0.08)',
-            'rgba(255,255,255,0.03)',
-            'transparent',
-          ]}
+          colors={['transparent', 'rgba(255,255,255,0.03)', 'rgba(255,255,255,0.08)', 'rgba(255,255,255,0.15)', 'rgba(255,255,255,0.08)', 'rgba(255,255,255,0.03)', 'transparent']}
           start={{ x: 0, y: 0.5 }}
           end={{ x: 1, y: 0.5 }}
           style={styles.shimmerGradient}
         />
       </Animated.View>
 
-      {/* Inside border */}
       <View style={styles.innerBorder} />
 
       {showBack ? (
-        /* Back content - modern stats display */
         <View style={styles.cardBackContent}>
-          {/* Decorative corner accents */}
           <View style={styles.techCornerTL} />
           <View style={styles.techCornerBR} />
 
-          {/* Profile section - Top Left */}
-          <View style={styles.profileSection}>
-            {game.profileIconId ? (
-              <View style={styles.profileImageWrapper}>
-                <Image
-                  source={{ uri: getProfileIconUrl(game.profileIconId) }}
-                  defaultSource={require('@/assets/images/lol.png')}
-                  style={styles.backPlayerCard}
-                />
-                <View style={styles.profileGlow} />
-              </View>
-            ) : null}
-            <View style={styles.usernameContainer}>
+          {/* Header Row - Profile */}
+          <View style={styles.heroHeader}>
+            <View style={styles.heroProfileSection}>
+              {game.profileIconId ? (
+                <View style={styles.profileImageWrapper}>
+                  <Image
+                    source={{ uri: getProfileIconUrl(game.profileIconId) }}
+                    defaultSource={require('@/assets/images/lol.png')}
+                    style={styles.backPlayerCard}
+                  />
+                  <View style={styles.profileGlow} />
+                </View>
+              ) : null}
               <ThemedText style={styles.backUsername}>{username}</ThemedText>
-              <View style={styles.levelBadge}>
-                <ThemedText style={styles.backLevelText}>LVL {game.trophies || 1}</ThemedText>
-              </View>
             </View>
           </View>
 
-          {/* Rank section - Right side */}
-          <View style={styles.rankSection}>
-            <ThemedText style={styles.rankLabel}>CURRENT</ThemedText>
-            <View style={styles.rankIconWrapper}>
-              <View style={styles.rankGlowOuter} />
-              <View style={styles.rankGlowInner} />
+          {/* Center Area - Both Ranks Equal Size */}
+          <View style={styles.ranksRow}>
+            {/* Current Rank */}
+            <View style={styles.rankBox}>
+              <ThemedText style={styles.rankBoxLabel}>CURRENT</ThemedText>
               <Image
                 source={getRankIcon(game.rank)}
-                style={styles.statsRankIcon}
+                style={styles.rankBoxIcon}
                 resizeMode="contain"
               />
+              <ThemedText style={styles.rankBoxName}>{game.rank || 'Unranked'}</ThemedText>
+              <ThemedText style={styles.rankBoxSub}>{game.trophies} LP</ThemedText>
             </View>
-            <ThemedText style={styles.rankName}>{game.rank || 'Unranked'}</ThemedText>
-            <ThemedText style={styles.rankPoints}>{game.trophies} LP</ThemedText>
-          </View>
 
-          {/* Stats - Bottom Left */}
-          <View style={styles.statsSection}>
-            <View style={styles.statColumn}>
-              <ThemedText style={styles.statColumnValue}>{game.wins}</ThemedText>
-              <ThemedText style={styles.statColumnLabel}>Wins</ThemedText>
-            </View>
-            <View style={styles.statDivider} />
-            <View style={styles.statColumn}>
-              <ThemedText style={styles.statColumnValue}>{game.winRate}%</ThemedText>
-              <ThemedText style={styles.statColumnLabel}>Win Rate</ThemedText>
+            <View style={styles.ranksDivider} />
+
+            {/* Peak Rank */}
+            <View style={styles.rankBox}>
+              <ThemedText style={styles.rankBoxLabel}>PEAK</ThemedText>
+              <Image
+                source={getRankIcon(game.peakRank?.tier || 'Unranked')}
+                style={styles.rankBoxIcon}
+                resizeMode="contain"
+              />
+              <ThemedText style={styles.rankBoxName}>{game.peakRank?.tier || 'N/A'}</ThemedText>
             </View>
           </View>
         </View>
       ) : (
-        /* Front content - clean card front */
         <View style={styles.cardFront}>
-          {/* Subtle glass overlay */}
           <LinearGradient
-            colors={[
-              'rgba(255,255,255,0.12)',
-              'rgba(255,255,255,0.05)',
-              'rgba(255,255,255,0.02)',
-              'rgba(255,255,255,0.05)',
-            ]}
+            colors={['rgba(255,255,255,0.12)', 'rgba(255,255,255,0.05)', 'rgba(255,255,255,0.02)', 'rgba(255,255,255,0.05)']}
             start={{ x: 0, y: 0 }}
             end={{ x: 1, y: 1 }}
             style={styles.glassOverlay}
           />
-
-          {/* LoL logo - large centered background watermark */}
-          <Image
-            source={require('@/assets/images/lol.png')}
-            style={styles.backgroundLogo}
-            resizeMode="contain"
-          />
-
-          {/* Corner accents for visual interest */}
+          <Image source={require('@/assets/images/lol.png')} style={styles.backgroundLogo} resizeMode="contain" />
           <View style={styles.cornerAccentTL} />
           <View style={styles.cornerAccentTR} />
           <View style={styles.cornerAccentBL} />
@@ -410,60 +557,136 @@ export default function LeagueRankCard({ game, username, viewOnly = false, userI
         activeOpacity={isFocused ? 0.9 : 1}
         disabled={!isFocused && viewOnly}
       >
-        {/* 3D Shadow layers */}
         <View style={styles.shadow3} />
         <View style={styles.shadow2} />
         <View style={styles.shadow1} />
-
-        {/* Single animated card that swaps content at midpoint */}
         <Animated.View style={[styles.rankCard, animatedStyle]}>
           {renderCardContent()}
         </Animated.View>
       </TouchableOpacity>
 
-      {/* Modal for expanded card view */}
-      <Modal
-        visible={modalVisible}
-        transparent
-        animationType="none"
-        onRequestClose={handleCloseModal}
-      >
-        {/* Blurred overlay - not tappable, only swipe down on card closes modal */}
+      <Modal visible={modalVisible} transparent animationType="none" onRequestClose={handleCloseModal}>
+        {/* Blurred overlay */}
         <View style={styles.modalOverlay}>
-          <Animated.View
-            style={[styles.overlayBackground, { opacity: overlayOpacity }]}
-          >
-            <BlurView
-              intensity={40}
-              tint="dark"
-              style={StyleSheet.absoluteFill}
-            />
-            {/* Dark tint over blur */}
+          <Animated.View style={[styles.overlayBackground, { opacity: overlayOpacity }]}>
+            <BlurView intensity={40} tint="dark" style={StyleSheet.absoluteFill} />
             <View style={styles.blurTint} />
           </Animated.View>
         </View>
 
-        {/* Animated card in modal - positioned exactly over original */}
+        {/* Animated card in modal */}
         <Animated.View
-          style={[
-            styles.modalCard,
-            { left: cardPosition.x, width: cardPosition.width || undefined },
-            modalCardStyle
-          ]}
+          style={[styles.modalCard, { left: cardPosition.x, width: cardPosition.width || undefined }, modalCardStyle]}
           {...rankCardSwipePanResponder.panHandlers}
         >
-          {/* 3D Shadow layers */}
           <View style={styles.shadow3} />
           <View style={styles.shadow2} />
           <View style={styles.shadow1} />
-
-          <TouchableOpacity
-            style={styles.rankCard}
-            onPress={handleCardFlip}
-            activeOpacity={0.95}
-          >
+          <TouchableOpacity style={styles.rankCard} onPress={handleCardFlip} activeOpacity={0.95}>
             {renderCardContent()}
           </TouchableOpacity>
+        </Animated.View>
+
+        {/* Statistics Card */}
+        <Animated.View
+          style={[styles.statisticsCard, { top: statisticsTop, bottom: 0, opacity: cardsContentOpacity }]}
+          {...statisticsSwipePanResponder.panHandlers}
+        >
+          <Pressable
+            onPress={() => {
+              if (matchHistoryExpanded) {
+                setMatchHistoryExpanded(false);
+                Animated.timing(matchHistoryExpandAnimation, {
+                  toValue: 0,
+                  duration: 300,
+                  easing: Easing.out(Easing.cubic),
+                  useNativeDriver: false,
+                }).start();
+              }
+            }}
+          >
+            <View style={styles.statisticsHeader}>
+              <View style={styles.statisticsHeaderLeft}>
+                <ThemedText style={styles.statisticsTitle}>Statistics</ThemedText>
+              </View>
+            </View>
+
+            <Animated.View style={[styles.statisticsContent, { opacity: statisticsContentOpacity }]}>
+              <View style={styles.statsRow}>
+                <View style={styles.statBox}>
+                  <ThemedText style={styles.statBoxValue}>{game.winRate}%</ThemedText>
+                  <ThemedText style={styles.statBoxLabel}>Win Rate</ThemedText>
+                </View>
+                <View style={styles.statBoxDivider} />
+                <View style={styles.statBox}>
+                  <ThemedText style={styles.statBoxValue}>{game.wins}</ThemedText>
+                  <ThemedText style={styles.statBoxLabel}>Wins</ThemedText>
+                </View>
+                <View style={styles.statBoxDivider} />
+                <View style={styles.statBox}>
+                  <ThemedText style={styles.statBoxValue}>{game.losses}</ThemedText>
+                  <ThemedText style={styles.statBoxLabel}>Losses</ThemedText>
+                </View>
+              </View>
+
+              {/* Rank Icon */}
+              <Image source={getRankIcon(game.rank)} style={styles.recentlyPlayingImage} resizeMode="contain" />
+            </Animated.View>
+          </Pressable>
+        </Animated.View>
+
+        {/* Match History Card */}
+        <Animated.View
+          style={[styles.matchHistoryCard, { height: matchHistoryHeight, opacity: cardsContentOpacity }]}
+          {...matchHistorySwipeUpPanResponder.panHandlers}
+        >
+          <View style={styles.matchHistoryHeader} {...matchHistorySwipeDownPanResponder.panHandlers}>
+            <TouchableOpacity style={styles.matchHistoryHeaderContent} onPress={handleMatchHistoryToggle} activeOpacity={0.8}>
+              <View style={styles.matchHistoryHeaderLeft}>
+                <ThemedText style={styles.matchHistoryTitle}>Match History</ThemedText>
+              </View>
+              <Animated.View style={{ transform: [{ rotate: matchHistoryChevronRotation }] }}>
+                <IconSymbol size={16} name="chevron.up" color="rgba(255,255,255,0.6)" />
+              </Animated.View>
+            </TouchableOpacity>
+          </View>
+
+          {matchHistoryExpanded && (
+            <View style={styles.matchHistoryContentWrapper}>
+              <View style={styles.matchTableHeader}>
+                <View style={styles.matchIndicatorSpacer} />
+                <ThemedText style={[styles.matchTableHeaderText, styles.matchColChamp]}>Champ</ThemedText>
+                <ThemedText style={[styles.matchTableHeaderText, styles.matchColKDA]}>KDA</ThemedText>
+                <ThemedText style={[styles.matchTableHeaderText, styles.matchColResult]}>Result</ThemedText>
+                <ThemedText style={[styles.matchTableHeaderText, styles.matchColLP]}>LP</ThemedText>
+              </View>
+              <ScrollView style={styles.matchHistoryContent} showsVerticalScrollIndicator={false} contentContainerStyle={styles.matchHistoryScrollContent}>
+                {game.matchHistory && game.matchHistory.length > 0 ? (
+                  game.matchHistory.map((match, index) => (
+                    <View key={match.matchId || index} style={styles.matchItem}>
+                      <View style={[styles.matchIndicator, match.won ? styles.matchWin : styles.matchLoss]} />
+                      <ThemedText style={[styles.matchCellText, styles.matchColChamp]} numberOfLines={1}>
+                        {match.champion}
+                      </ThemedText>
+                      <ThemedText style={[styles.matchCellText, styles.matchColKDA]}>
+                        {match.kills}/{match.deaths}/{match.assists}
+                      </ThemedText>
+                      <ThemedText style={[styles.matchCellText, styles.matchColResult, match.won ? styles.matchResultWin : styles.matchResultLoss]}>
+                        {match.won ? 'Victory' : 'Defeat'}
+                      </ThemedText>
+                      <ThemedText style={[styles.matchCellText, styles.matchColLP, match.lpChange && match.lpChange > 0 ? styles.matchResultWin : styles.matchResultLoss]}>
+                        {match.lpChange ? (match.lpChange > 0 ? `+${match.lpChange}` : match.lpChange) : '-'}
+                      </ThemedText>
+                    </View>
+                  ))
+                ) : (
+                  <View style={styles.noMatchesContainer}>
+                    <ThemedText style={styles.noMatchesText}>No match history available</ThemedText>
+                  </View>
+                )}
+              </ScrollView>
+            </View>
+          )}
         </Animated.View>
       </Modal>
     </>
@@ -471,341 +694,159 @@ export default function LeagueRankCard({ game, username, viewOnly = false, userI
 }
 
 const styles = StyleSheet.create({
-  cardOuter: {
-    position: 'relative',
-    height: 220,
-  },
-  cardHidden: {
-    opacity: 0,
-  },
-  shadow3: {
-    position: 'absolute',
-    top: 10,
-    left: -10,
-    right: 14,
-    bottom: -10,
-    backgroundColor: '#000',
-    borderRadius: 18,
-    opacity: 0.2,
-  },
-  shadow2: {
-    position: 'absolute',
-    top: 6,
-    left: -6,
-    right: 10,
-    bottom: -6,
-    backgroundColor: '#000',
-    borderRadius: 17,
-    opacity: 0.25,
-  },
-  shadow1: {
-    position: 'absolute',
-    top: 3,
-    left: -3,
-    right: 5,
-    bottom: -3,
-    backgroundColor: '#000',
-    borderRadius: 16,
-    opacity: 0.3,
-  },
-  rankCard: {
-    borderRadius: 16,
-    height: 220,
-    overflow: 'hidden',
-  },
-  cardBackground: {
-    flex: 1,
-    borderRadius: 12,
-    overflow: 'hidden',
-  },
-  staticShimmer: {
-    position: 'absolute',
-    top: 0,
-    left: 0,
-    right: 0,
-    bottom: 0,
-    zIndex: 5,
-  },
-  staticShimmerRight: {
-    position: 'absolute',
-    top: 0,
-    left: 0,
-    right: 0,
-    bottom: 0,
-    zIndex: 6,
-  },
-  shimmerContainer: {
-    position: 'absolute',
-    top: -100,
-    left: -100,
-    right: -100,
-    bottom: -100,
-    zIndex: 10,
-  },
-  shimmerGradient: {
-    width: 120,
-    height: '200%',
-  },
-  innerBorder: {
-    position: 'absolute',
-    top: 8,
-    left: 8,
-    right: 8,
-    bottom: 8,
-    borderRadius: 10,
-    borderWidth: 2,
-    borderColor: 'rgba(255,255,255,0.25)',
-  },
-  cardFront: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  glassOverlay: {
-    position: 'absolute',
-    top: 0,
-    left: 0,
-    right: 0,
-    bottom: 0,
-    zIndex: 1,
-  },
-  cornerAccentTL: {
-    position: 'absolute',
-    top: 16,
-    left: 16,
-    width: 24,
-    height: 24,
-    borderTopWidth: 2,
-    borderLeftWidth: 2,
-    borderColor: 'rgba(255,255,255,0.3)',
-    borderTopLeftRadius: 4,
-  },
-  cornerAccentTR: {
-    position: 'absolute',
-    top: 16,
-    right: 16,
-    width: 24,
-    height: 24,
-    borderTopWidth: 2,
-    borderRightWidth: 2,
-    borderColor: 'rgba(255,255,255,0.3)',
-    borderTopRightRadius: 4,
-  },
-  cornerAccentBL: {
-    position: 'absolute',
-    bottom: 16,
-    left: 16,
-    width: 24,
-    height: 24,
-    borderBottomWidth: 2,
-    borderLeftWidth: 2,
-    borderColor: 'rgba(255,255,255,0.3)',
-    borderBottomLeftRadius: 4,
-  },
-  cornerAccentBR: {
-    position: 'absolute',
-    bottom: 16,
-    right: 16,
-    width: 24,
-    height: 24,
-    borderBottomWidth: 2,
-    borderRightWidth: 2,
-    borderColor: 'rgba(255,255,255,0.3)',
-    borderBottomRightRadius: 4,
-  },
-  backgroundLogo: {
-    position: 'absolute',
-    width: 250,
-    height: 250,
-    top: '50%',
-    left: '50%',
-    marginTop: -125,
-    marginLeft: -125,
-    opacity: 0.08,
-  },
-  // Back of card styles - Modern Techy
-  cardBackContent: {
-    flex: 1,
-    padding: 16,
-  },
-  // Decorative corner accents (matching front style)
-  techCornerTL: {
-    position: 'absolute',
-    top: 16,
-    left: 16,
-    width: 24,
-    height: 24,
-    borderTopWidth: 2,
-    borderLeftWidth: 2,
-    borderColor: 'rgba(255,255,255,0.3)',
-    borderTopLeftRadius: 4,
-  },
-  techCornerBR: {
-    position: 'absolute',
-    bottom: 16,
-    right: 16,
-    width: 24,
-    height: 24,
-    borderBottomWidth: 2,
-    borderRightWidth: 2,
-    borderColor: 'rgba(255,255,255,0.3)',
-    borderBottomRightRadius: 4,
-  },
-  // Profile section - Top Left (inside corner border)
-  profileSection: {
-    position: 'absolute',
-    top: 20,
-    left: 30,
+  cardOuter: { position: 'relative', height: 220 },
+  cardHidden: { opacity: 0 },
+  shadow3: { position: 'absolute', top: 10, left: -10, right: 14, bottom: -10, backgroundColor: '#000', borderRadius: 18, opacity: 0.2 },
+  shadow2: { position: 'absolute', top: 6, left: -6, right: 10, bottom: -6, backgroundColor: '#000', borderRadius: 17, opacity: 0.25 },
+  shadow1: { position: 'absolute', top: 3, left: -3, right: 5, bottom: -3, backgroundColor: '#000', borderRadius: 16, opacity: 0.3 },
+  rankCard: { borderRadius: 16, height: 220, overflow: 'hidden' },
+  cardBackground: { flex: 1, borderRadius: 12, overflow: 'hidden' },
+  staticShimmer: { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, zIndex: 5 },
+  staticShimmerRight: { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, zIndex: 6 },
+  shimmerContainer: { position: 'absolute', top: -100, left: -100, right: -100, bottom: -100, zIndex: 10 },
+  shimmerGradient: { width: 120, height: '200%' },
+  innerBorder: { position: 'absolute', top: 8, left: 8, right: 8, bottom: 8, borderRadius: 10, borderWidth: 2, borderColor: 'rgba(255,255,255,0.25)' },
+  cardFront: { flex: 1, justifyContent: 'center', alignItems: 'center' },
+  glassOverlay: { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, zIndex: 1 },
+  cornerAccentTL: { position: 'absolute', top: 16, left: 16, width: 24, height: 24, borderTopWidth: 2, borderLeftWidth: 2, borderColor: 'rgba(255,255,255,0.3)', borderTopLeftRadius: 4 },
+  cornerAccentTR: { position: 'absolute', top: 16, right: 16, width: 24, height: 24, borderTopWidth: 2, borderRightWidth: 2, borderColor: 'rgba(255,255,255,0.3)', borderTopRightRadius: 4 },
+  cornerAccentBL: { position: 'absolute', bottom: 16, left: 16, width: 24, height: 24, borderBottomWidth: 2, borderLeftWidth: 2, borderColor: 'rgba(255,255,255,0.3)', borderBottomLeftRadius: 4 },
+  cornerAccentBR: { position: 'absolute', bottom: 16, right: 16, width: 24, height: 24, borderBottomWidth: 2, borderRightWidth: 2, borderColor: 'rgba(255,255,255,0.3)', borderBottomRightRadius: 4 },
+  backgroundLogo: { position: 'absolute', width: 250, height: 250, top: '50%', left: '50%', marginTop: -125, marginLeft: -125, opacity: 0.08 },
+  cardBackContent: { flex: 1, padding: 16 },
+  techCornerTL: { position: 'absolute', top: 16, left: 16, width: 24, height: 24, borderTopWidth: 2, borderLeftWidth: 2, borderColor: 'rgba(255,255,255,0.3)', borderTopLeftRadius: 4 },
+  techCornerBR: { position: 'absolute', bottom: 16, right: 16, width: 24, height: 24, borderBottomWidth: 2, borderRightWidth: 2, borderColor: 'rgba(255,255,255,0.3)', borderBottomRightRadius: 4 },
+  heroHeader: {
     flexDirection: 'row',
     alignItems: 'center',
-    zIndex: 1,
   },
-  profileImageWrapper: {
-    position: 'relative',
-  },
-  backPlayerCard: {
-    width: 32,
-    height: 32,
-    borderRadius: 4,
-    borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.5)',
-  },
-  profileGlow: {
-    position: 'absolute',
-    top: -2,
-    left: -2,
-    right: -2,
-    bottom: -2,
-    borderRadius: 6,
-    borderWidth: 1,
-    borderColor: 'rgba(100,150,255,0.3)',
-  },
-  usernameContainer: {
-    marginLeft: 8,
-    alignItems: 'flex-start',
-  },
-  backUsername: {
-    fontSize: 11,
-    color: '#fff',
-    fontWeight: '700',
-    letterSpacing: 0.5,
-    textTransform: 'uppercase',
-  },
-  levelBadge: {
-    marginTop: 3,
-    backgroundColor: 'rgba(0,0,0,0.3)',
-    paddingHorizontal: 6,
-    paddingVertical: 2,
-    borderRadius: 3,
-  },
-  backLevelText: {
-    fontSize: 8,
-    color: 'rgba(255,255,255,0.8)',
-    fontWeight: '600',
-    letterSpacing: 1,
-  },
-  // Rank section - Right side, vertically centered
-  rankSection: {
-    position: 'absolute',
-    right: 40,
-    top: 0,
-    bottom: 0,
-    justifyContent: 'center',
+  heroProfileSection: {
+    flexDirection: 'row',
     alignItems: 'center',
   },
-  rankIconWrapper: {
-    position: 'relative',
+  profileImageWrapper: { position: 'relative' },
+  backPlayerCard: { width: 24, height: 24, borderRadius: 4, borderWidth: 1, borderColor: 'rgba(255,255,255,0.5)' },
+  profileGlow: { position: 'absolute', top: -2, left: -2, right: -2, bottom: -2, borderRadius: 6, borderWidth: 1, borderColor: 'rgba(100,150,255,0.3)' },
+  backUsername: { fontSize: 9, color: '#fff', fontWeight: '700', letterSpacing: 0.5, textTransform: 'uppercase', marginLeft: 6 },
+  ranksRow: {
+    flex: 1,
+    flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    marginBottom: 4,
+    paddingHorizontal: 20,
+    marginTop: 20,
   },
-  rankGlowOuter: {
-    position: 'absolute',
-    width: 100,
-    height: 100,
-    borderRadius: 50,
-    backgroundColor: 'rgba(255,255,255,0.05)',
+  rankBox: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
-  rankGlowInner: {
-    position: 'absolute',
-    width: 75,
-    height: 75,
-    borderRadius: 37,
-    backgroundColor: 'rgba(255,255,255,0.08)',
-  },
-  statsRankIcon: {
-    width: 85,
-    height: 85,
-    zIndex: 1,
-  },
-  rankLabel: {
-    fontSize: 9,
+  rankBoxLabel: {
+    fontSize: 10,
     fontWeight: '800',
-    color: '#8e9297',
+    color: 'rgba(255,255,255,0.5)',
     letterSpacing: 1,
-    marginBottom: 8,
-    textTransform: 'uppercase',
+    marginBottom: 6,
   },
-  rankName: {
+  rankBoxIcon: {
+    width: 64,
+    height: 64,
+    marginBottom: 6,
+  },
+  rankBoxName: {
     fontSize: 13,
-    fontWeight: '800',
+    fontWeight: '700',
     color: '#fff',
     textAlign: 'center',
-    letterSpacing: -0.3,
   },
-  rankPoints: {
-    fontSize: 11,
+  rankBoxSub: {
+    fontSize: 10,
     fontWeight: '600',
-    color: '#5c6066',
+    color: 'rgba(255,255,255,0.5)',
     marginTop: 2,
   },
-  // Stats section - Bottom Left (inside border)
-  statsSection: {
+  ranksDivider: {
+    width: 1,
+    height: 80,
+    backgroundColor: 'rgba(255,255,255,0.15)',
+    marginHorizontal: 16,
+  },
+  modalOverlay: { ...StyleSheet.absoluteFillObject, zIndex: 1 },
+  overlayBackground: { ...StyleSheet.absoluteFillObject, overflow: 'hidden' },
+  blurTint: { ...StyleSheet.absoluteFillObject, backgroundColor: 'rgba(0, 0, 0, 0.3)' },
+  modalCard: { position: 'absolute', top: 0, height: 220, zIndex: 2 },
+  // Statistics Card
+  statisticsCard: {
     position: 'absolute',
-    bottom: 28,
-    left: 30,
+    left: 0,
+    right: 0,
+    backgroundColor: '#1a1d21',
+    borderTopLeftRadius: 24,
+    borderTopRightRadius: 24,
+    overflow: 'hidden',
+    zIndex: 10,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: -8 },
+    shadowOpacity: 0.4,
+    shadowRadius: 16,
+    elevation: 20,
+  },
+  statisticsHeader: {
     flexDirection: 'row',
     alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: 20,
+    paddingTop: 18,
+    paddingBottom: 14,
+    borderBottomWidth: 1,
+    borderBottomColor: 'rgba(255, 255, 255, 0.08)',
   },
-  statColumn: {
-    alignItems: 'center',
-  },
-  statDivider: {
-    width: 1,
-    height: 24,
-    backgroundColor: 'rgba(255,255,255,0.2)',
-    marginHorizontal: 14,
-  },
-  statColumnLabel: {
-    fontSize: 8,
-    color: 'rgba(255,255,255,0.5)',
-    fontWeight: '600',
-    letterSpacing: 0.5,
-    textTransform: 'uppercase',
-    marginTop: 2,
-  },
-  statColumnValue: {
-    fontSize: 18,
-    color: '#fff',
-    fontWeight: '700',
-  },
-  // Modal styles
-  modalOverlay: {
-    ...StyleSheet.absoluteFillObject,
-    zIndex: 1,
-  },
-  overlayBackground: {
-    ...StyleSheet.absoluteFillObject,
-    overflow: 'hidden',
-  },
-  blurTint: {
-    ...StyleSheet.absoluteFillObject,
-    backgroundColor: 'rgba(0, 0, 0, 0.3)',
-  },
-  modalCard: {
+  statisticsHeaderLeft: { flexDirection: 'row', alignItems: 'center' },
+  statisticsTitle: { fontSize: 16, fontWeight: '800', color: '#fff', letterSpacing: -0.3 },
+  statisticsContent: { paddingHorizontal: 20, paddingVertical: 20 },
+  statsRow: { flexDirection: 'row', justifyContent: 'space-around', alignItems: 'center' },
+  statBox: { alignItems: 'center', flex: 1 },
+  statBoxDivider: { width: 1, height: 40, backgroundColor: 'rgba(255,255,255,0.1)' },
+  statBoxValue: { fontSize: 24, fontWeight: '800', color: '#fff' },
+  statBoxLabel: { fontSize: 11, fontWeight: '600', color: 'rgba(255,255,255,0.5)', marginTop: 4, textTransform: 'uppercase', letterSpacing: 0.5 },
+  recentlyPlayingImage: { position: 'absolute', right: -30, top: -40, width: 200, height: 300, opacity: 0.15 },
+  // Match History Card
+  matchHistoryCard: {
     position: 'absolute',
-    top: 0,
-    height: 220,
-    zIndex: 2,
+    bottom: 0,
+    left: 0,
+    right: 0,
+    backgroundColor: '#22262b',
+    borderTopLeftRadius: 20,
+    borderTopRightRadius: 20,
+    zIndex: 15,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: -4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 12,
+    elevation: 25,
   },
+  matchHistoryHeader: { borderBottomWidth: 1, borderBottomColor: 'rgba(255, 255, 255, 0.08)' },
+  matchHistoryHeaderContent: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 20, paddingTop: 18, paddingBottom: 16 },
+  matchHistoryHeaderLeft: { flexDirection: 'row', alignItems: 'center' },
+  matchHistoryTitle: { fontSize: 14, fontWeight: '800', color: '#fff', letterSpacing: -0.2 },
+  matchHistoryContentWrapper: { flex: 1 },
+  matchTableHeader: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 16, paddingVertical: 10, paddingLeft: 20, borderBottomWidth: 1, borderBottomColor: 'rgba(255, 255, 255, 0.1)' },
+  matchTableHeaderText: { fontSize: 9, fontWeight: '800', color: 'rgba(255,255,255,0.5)', textTransform: 'uppercase', letterSpacing: 0.8 },
+  matchHistoryContent: { flex: 1 },
+  matchHistoryScrollContent: { paddingHorizontal: 12, paddingBottom: 30 },
+  matchItem: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingVertical: 12, paddingHorizontal: 4, borderBottomWidth: 1, borderBottomColor: 'rgba(255, 255, 255, 0.05)' },
+  matchIndicator: { width: 4, height: 36, borderRadius: 2, marginRight: 12 },
+  matchIndicatorSpacer: { width: 16 },
+  matchWin: { backgroundColor: '#4CAF50' },
+  matchLoss: { backgroundColor: '#DC3D4B' },
+  matchColChamp: { flex: 1.2, textAlign: 'center' },
+  matchColKDA: { flex: 1.2, textAlign: 'center' },
+  matchColResult: { flex: 1.2, textAlign: 'center' },
+  matchColLP: { flex: 1, textAlign: 'right' },
+  matchCellText: { fontSize: 12, fontWeight: '700', color: '#fff' },
+  matchResultWin: { color: '#4CAF50' },
+  matchResultLoss: { color: '#DC3D4B' },
+  noMatchesContainer: { paddingVertical: 24, alignItems: 'center' },
+  noMatchesText: { fontSize: 12, color: 'rgba(255,255,255,0.4)' },
 });
