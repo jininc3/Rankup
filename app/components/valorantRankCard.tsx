@@ -751,7 +751,7 @@ export default function ValorantRankCard({ game, username, viewOnly = false, use
             </View>
           </View>
 
-          {/* Center Area - Both Ranks Equal Size */}
+          {/* Ranks Row */}
           <View style={styles.ranksRow}>
             {/* Current Rank */}
             <View style={styles.rankBox}>
@@ -1251,10 +1251,11 @@ const styles = StyleSheet.create({
     borderColor: 'rgba(255,255,255,0.3)',
     borderBottomRightRadius: 4,
   },
-  // Hero Rank Layout - Header
+  // Hero Rank Layout - Header (centered)
   heroHeader: {
-    flexDirection: 'row',
     alignItems: 'center',
+    justifyContent: 'center',
+    flex: 1,
   },
   heroProfileSection: {
     flexDirection: 'row',
@@ -1264,9 +1265,9 @@ const styles = StyleSheet.create({
     position: 'relative',
   },
   backPlayerCard: {
-    width: 24,
-    height: 24,
-    borderRadius: 4,
+    width: 36,
+    height: 36,
+    borderRadius: 6,
     borderWidth: 1,
     borderColor: 'rgba(255,255,255,0.5)',
   },
@@ -1276,60 +1277,60 @@ const styles = StyleSheet.create({
     left: -2,
     right: -2,
     bottom: -2,
-    borderRadius: 6,
+    borderRadius: 8,
     borderWidth: 1,
     borderColor: 'rgba(255,100,100,0.3)',
   },
   backUsername: {
-    fontSize: 9,
+    fontSize: 12,
     color: '#fff',
     fontWeight: '700',
     letterSpacing: 0.5,
     textTransform: 'uppercase',
-    marginLeft: 6,
+    marginLeft: 8,
   },
-  // Center Area - Both Ranks Row
+  // Rank containers row
   ranksRow: {
-    flex: 1,
     flexDirection: 'row',
     justifyContent: 'center',
-    alignItems: 'center',
+    alignItems: 'stretch',
     paddingHorizontal: 8,
-  },
-  ranksDivider: {
-    width: 1,
-    height: 70,
-    backgroundColor: 'rgba(255,255,255,0.15)',
-    marginHorizontal: 16,
+    paddingBottom: 8,
+    gap: 10,
   },
   rankBox: {
     flex: 1,
     alignItems: 'center',
-    justifyContent: 'center',
+    justifyContent: 'flex-start',
+  },
+  ranksDivider: {
+    width: 1,
+    height: 60,
+    backgroundColor: 'rgba(255,255,255,0.15)',
   },
   rankBoxLabel: {
-    fontSize: 10,
+    fontSize: 8,
     fontWeight: '800',
     color: 'rgba(255,255,255,0.5)',
     letterSpacing: 1,
     marginBottom: 4,
   },
   rankBoxIcon: {
-    width: 64,
-    height: 64,
-    marginBottom: 4,
+    width: 52,
+    height: 52,
+    marginBottom: 3,
   },
   rankBoxName: {
-    fontSize: 13,
+    fontSize: 9,
     fontWeight: '700',
     color: '#fff',
     textAlign: 'center',
   },
   rankBoxSub: {
-    fontSize: 10,
+    fontSize: 7,
     fontWeight: '600',
     color: 'rgba(255,255,255,0.5)',
-    marginTop: 2,
+    marginTop: 1,
   },
   // Bottom Stats Bar
   statsBar: {

@@ -780,16 +780,10 @@ export default function ProfileScreen() {
                 style={styles.coverPhotoGradient}
               />
             )}
-            {/* Top fade */}
+            {/* Bottom fade - subtle blend into background */}
             <LinearGradient
-              colors={['rgba(15, 15, 15, 0.25)', 'transparent']}
-              start={{ x: 0, y: 0 }}
-              end={{ x: 0, y: 1 }}
-              style={styles.coverPhotoFadeTop}
-            />
-            {/* Bottom fade */}
-            <LinearGradient
-              colors={['transparent', '#0f0f0f']}
+              colors={['transparent', 'rgba(15, 15, 15, 0.6)', '#0f0f0f']}
+              locations={[0, 0.6, 1]}
               start={{ x: 0, y: 0 }}
               end={{ x: 0, y: 1 }}
               style={styles.coverPhotoFadeBottom}
@@ -1405,20 +1399,12 @@ const styles = StyleSheet.create({
     width: '100%',
     height: '100%',
   },
-  coverPhotoFadeTop: {
-    position: 'absolute',
-    top: 0,
-    left: 0,
-    right: 0,
-    height: 50,
-    zIndex: 1,
-  },
   coverPhotoFadeBottom: {
     position: 'absolute',
     bottom: 0,
     left: 0,
     right: 0,
-    height: 100,
+    height: 15,
     zIndex: 1,
   },
   // Username row with avatar
