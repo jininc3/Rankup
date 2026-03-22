@@ -40,6 +40,8 @@ interface Post {
   createdAt: Timestamp;
   likes: number;
   commentsCount?: number;
+  leagueRank?: string;
+  valorantRank?: string;
 }
 
 interface SearchUser {
@@ -56,6 +58,7 @@ interface AuthContextType {
   user: User | null;
   isLoading: boolean;
   preloadedPosts: Post[] | null;
+  preloadedFollowingIds: string[] | null;
   preloadedSearchHistory: SearchUser[] | null;
   preloadedProfilePosts: Post[] | null;
   preloadedRiotStats: any | null;
@@ -87,22 +90,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [preloadedRiotStats, setPreloadedRiotStats] = useState<any | null>(null);
   const [newlyFollowedUserPosts, setNewlyFollowedUserPostsState] = useState<Post[] | null>(null);
   const [newlyFollowedUserId, setNewlyFollowedUserIdState] = useState<string | null>(null);
+  const [preloadedFollowingIds, setPreloadedFollowingIds] = useState<string[] | null>(null);
   const [newlyUnfollowedUserId, setNewlyUnfollowedUserIdState] = useState<string | null>(null);
-  const loadingStartTime = useRef<number>(Date.now());
-
-  // Helper to ensure minimum loading time of 4.6 seconds
+  // Immediately transition to home screen (skeleton shimmer shows there)
   const setLoadingFalse = () => {
-    const MINIMUM_LOADING_TIME = 4600; // 4.6 seconds to match loading screen animation
-    const elapsedTime = Date.now() - loadingStartTime.current;
-    const remainingTime = Math.max(0, MINIMUM_LOADING_TIME - elapsedTime);
-
-    if (remainingTime > 0) {
-      setTimeout(() => {
-        setIsLoading(false);
-      }, remainingTime);
-    } else {
-      setIsLoading(false);
-    }
+    setIsLoading(false);
   };
 
   // Preload feed posts while loading screen is shown
@@ -116,6 +108,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
       // Remove current user from the list
       userIds = userIds.filter(id => id !== userId);
+
+      // Store following IDs so home screen doesn't need to re-fetch
+      setPreloadedFollowingIds(userIds);
 
       if (userIds.length === 0) {
         setPreloadedPosts([]);
@@ -155,23 +150,61 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       // Take only what we need (8 posts)
       const postsToShow = allBatchPosts.slice(0, POSTS_PER_PAGE);
 
-      setPreloadedPosts(postsToShow);
-      console.log(`✅ Preloaded ${postsToShow.length} posts`);
+      // Enrich posts with user avatar and rank data (so home screen doesn't need to)
+      const uniquePostUserIds = [...new Set(postsToShow.map((p: Post) => p.userId))];
+      const userDataMap = new Map<string, any>();
+      const userBatchSize = 10;
+      for (let i = 0; i < uniquePostUserIds.length; i += userBatchSize) {
+        const batch = uniquePostUserIds.slice(i, i + userBatchSize);
+        try {
+          const userQuery = query(
+            collection(db, 'users'),
+            where('__name__', 'in', batch)
+          );
+          const userSnapshot = await getDocs(userQuery);
+          userSnapshot.docs.forEach(doc => {
+            userDataMap.set(doc.id, doc.data());
+          });
+        } catch (error) {
+          console.error('Error batch fetching users for enrichment:', error);
+        }
+      }
+
+      const enrichedPosts = postsToShow.map((post: Post) => {
+        const userData = userDataMap.get(post.userId);
+        if (userData) {
+          let leagueRank = undefined;
+          let valorantRank = undefined;
+          if (userData.riotStats?.rankedSolo) {
+            leagueRank = `${userData.riotStats.rankedSolo.tier} ${userData.riotStats.rankedSolo.rank}`;
+          }
+          if (userData.valorantStats?.currentRank) {
+            valorantRank = userData.valorantStats.currentRank;
+          }
+          return {
+            ...post,
+            avatar: userData.avatar || post.avatar || null,
+            leagueRank,
+            valorantRank
+          };
+        }
+        return post;
+      });
+
+      setPreloadedPosts(enrichedPosts);
+      console.log(`✅ Preloaded ${enrichedPosts.length} posts (enriched)`);
 
       // Prefetch feed images for instant rendering
       const imageUrls: string[] = [];
-      postsToShow.forEach(post => {
-        // Add user avatar
+      enrichedPosts.forEach((post: Post) => {
         if (post.avatar) {
           imageUrls.push(post.avatar);
         }
-        // Add thumbnail for videos, or main image for images
         if (post.mediaType === 'video' && post.thumbnailUrl) {
           imageUrls.push(post.thumbnailUrl);
         } else if (post.mediaUrl) {
           imageUrls.push(post.mediaUrl);
         }
-        // Also prefetch additional media if present
         if (post.mediaUrls && post.mediaUrls.length > 1) {
           post.mediaUrls.forEach(url => imageUrls.push(url));
         }
@@ -236,7 +269,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   // Preload profile posts and Riot stats while loading screen is shown
   const preloadProfileData = async (userId: string, userProfile?: any) => {
     try {
-      // Prefetch user's avatar and cover photo first for instant header (CRITICAL - blocks loading)
+      // Prefetch user's avatar and cover photo in background (non-blocking)
       const headerImages: string[] = [];
       if (userProfile?.avatar) {
         headerImages.push(userProfile.avatar);
@@ -245,7 +278,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         headerImages.push(userProfile.coverPhoto);
       }
       if (headerImages.length > 0) {
-        await Promise.all(
+        Promise.all(
           headerImages.map(url => Image.prefetch(url).catch(() => {}))
         );
       }
@@ -288,18 +321,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         );
       }
 
-      // Preload Riot stats (import getLeagueStats at top)
+      // Use cached Riot stats from Firestore (no cloud function call during preload)
       try {
         const userDoc = await getDocs(query(collection(db, 'users'), where('__name__', '==', userId)));
         if (!userDoc.empty) {
           const userData = userDoc.docs[0].data();
-          if (userData.riotAccount) {
-            // Dynamically import to avoid circular dependency
-            const { getLeagueStats } = await import('@/services/riotService');
-            const leagueResponse = await getLeagueStats(false);
-            if (leagueResponse.success && leagueResponse.stats) {
-              setPreloadedRiotStats(leagueResponse.stats);
-            }
+          if (userData.riotStats) {
+            setPreloadedRiotStats(userData.riotStats);
           }
         }
       } catch (error) {
@@ -346,15 +374,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
               provider: userProfile.provider,
             });
 
-            // Preload all data if user doesn't need username setup
-            // Keep loading screen visible until preload completes
+            // Preload feed before showing home page; others run in background
             if (!userProfile.needsUsernameSetup) {
-              // Run all preloads in parallel for faster loading
-              await Promise.all([
-                preloadFeed(userProfile.id),
-                preloadSearchHistory(userProfile.id),
-                preloadProfileData(userProfile.id, userProfile),
-              ]);
+              await preloadFeed(userProfile.id);
+              // Don't block home page for search/profile data
+              preloadSearchHistory(userProfile.id).catch(() => {});
+              preloadProfileData(userProfile.id, userProfile).catch(() => {});
             }
 
             // Register for push notifications (run in background, don't block loading)
@@ -382,18 +407,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
               provider: isGoogleUser ? 'google' : 'email',
             });
 
-            // Preload all data if user doesn't need username setup
-            // Keep loading screen visible until preload completes
+            // Preload feed before showing home page; others run in background
             if (!isGoogleUser) {
-              // Run all preloads in parallel for faster loading
-              await Promise.all([
-                preloadFeed(firebaseUser.uid),
-                preloadSearchHistory(firebaseUser.uid),
-                preloadProfileData(firebaseUser.uid, {
-                  avatar: firebaseUser.photoURL,
-                  coverPhoto: undefined,
-                }),
-              ]);
+              await preloadFeed(firebaseUser.uid);
+              preloadSearchHistory(firebaseUser.uid).catch(() => {});
+              preloadProfileData(firebaseUser.uid, {
+                avatar: firebaseUser.photoURL,
+                coverPhoto: undefined,
+              }).catch(() => {});
             }
 
             // Register for push notifications (run in background, don't block loading)
@@ -453,6 +474,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       await authSignOut();
       setUser(null);
       setPreloadedPosts(null);
+      setPreloadedFollowingIds(null);
       setPreloadedSearchHistory(null);
       setPreloadedProfilePosts(null);
       setPreloadedRiotStats(null);
@@ -499,6 +521,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         user,
         isLoading,
         preloadedPosts,
+        preloadedFollowingIds,
         preloadedSearchHistory,
         preloadedProfilePosts,
         preloadedRiotStats,

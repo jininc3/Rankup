@@ -22,7 +22,8 @@
       "WebFetch(domain:www.riotgames.com)",
       "Bash(npm run deploy:*)",
       "WebFetch(domain:valapidocs.techchrism.me)",
-      "Bash(node test-valorant-api.js:*)"
+      "Bash(node test-valorant-api.js:*)",
+      "Bash(grep -r \"matchHistory\\\\|getRecentMatches\" /c/Users/jinha/Desktop/RankUp/app --include=*.ts --include=*.tsx)"
     ],
     "deny": [],
     "ask": []

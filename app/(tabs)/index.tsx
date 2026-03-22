@@ -82,6 +82,7 @@ export default function HomeScreen() {
   const {
     user: currentUser,
     preloadedPosts,
+    preloadedFollowingIds,
     clearPreloadedPosts,
     newlyFollowedUserPosts,
     newlyFollowedUserId,
@@ -122,6 +123,7 @@ export default function HomeScreen() {
     videoPlayers.current[postId] = player;
   }, []);
 
+
   // Listen for unread notifications count in real-time
   useEffect(() => {
     if (!currentUser?.id) return;
@@ -136,18 +138,20 @@ export default function HomeScreen() {
     return () => unsubscribe();
   }, [currentUser?.id]);
 
-  // Fetch users that current user is following
+  // Use preloaded following IDs if available, otherwise fetch
   useEffect(() => {
+    if (preloadedFollowingIds) {
+      setFollowingUserIds(preloadedFollowingIds);
+      return;
+    }
+
     const fetchFollowingUsers = async () => {
       if (!currentUser?.id) return;
 
       try {
         const followingData = await getFollowing(currentUser.id);
         let userIds = followingData.map(follow => follow.followingId);
-
-        // Remove current user from the list to avoid fetching own posts
         userIds = userIds.filter(id => id !== currentUser.id);
-
         setFollowingUserIds(userIds);
       } catch (error) {
         console.error('Error fetching following:', error);
@@ -155,86 +159,16 @@ export default function HomeScreen() {
     };
 
     fetchFollowingUsers();
-  }, [currentUser?.id]);
+  }, [currentUser?.id, preloadedFollowingIds]);
 
-  // Minimum time to show skeleton for smooth UX transition
-  const MINIMUM_SKELETON_TIME = 800;
-  const skeletonStartTime = useRef<number>(Date.now());
-
-  // Consume preloaded posts from AuthContext (loaded during loading screen)
+  // Consume preloaded posts from AuthContext (already enriched with rank data)
   useEffect(() => {
-    const enrichPreloadedPosts = async () => {
-      if (preloadedPosts && preloadedPosts.length > 0 && !hasConsumedPreload) {
-        console.log('✅ Using preloaded posts from loading screen:', preloadedPosts.length);
-
-        // Enrich preloaded posts with rank data
-        const enrichedPosts = await Promise.all(
-          preloadedPosts.map(async (post) => {
-            try {
-              const userQuery = query(
-                collection(db, 'users'),
-                where('__name__', '==', post.userId)
-              );
-              const userSnapshot = await getDocs(userQuery);
-
-              if (!userSnapshot.empty) {
-                const userData = userSnapshot.docs[0].data();
-
-                // Get rank data for tier border
-                let leagueRank = undefined;
-                let valorantRank = undefined;
-
-                if (userData.riotStats?.rankedSolo) {
-                  leagueRank = `${userData.riotStats.rankedSolo.tier} ${userData.riotStats.rankedSolo.rank}`;
-                }
-                if (userData.valorantStats?.currentRank) {
-                  valorantRank = userData.valorantStats.currentRank;
-                }
-
-                return {
-                  ...post,
-                  avatar: userData.avatar || post.avatar || null,
-                  leagueRank,
-                  valorantRank
-                };
-              }
-            } catch (error) {
-              console.error(`Error enriching post ${post.id}:`, error);
-            }
-
-            return post;
-          })
-        );
-
-        // Ensure skeleton shows for minimum time for smooth transition
-        const elapsedTime = Date.now() - skeletonStartTime.current;
-        const remainingTime = Math.max(0, MINIMUM_SKELETON_TIME - elapsedTime);
-
-        setTimeout(() => {
-          setFollowingPosts(enrichedPosts);
-          setLoading(false);
-          setHasConsumedPreload(true);
-          // Clear preloaded posts to prevent reuse
-          clearPreloadedPosts();
-        }, remainingTime);
-      } else if (preloadedPosts && preloadedPosts.length === 0 && !hasConsumedPreload) {
-        // Preload returned empty array (no following users)
-        console.log('✅ Preload returned no posts (no following)');
-
-        // Ensure skeleton shows for minimum time
-        const elapsedTime = Date.now() - skeletonStartTime.current;
-        const remainingTime = Math.max(0, MINIMUM_SKELETON_TIME - elapsedTime);
-
-        setTimeout(() => {
-          setFollowingPosts([]);
-          setLoading(false);
-          setHasConsumedPreload(true);
-          clearPreloadedPosts();
-        }, remainingTime);
-      }
-    };
-
-    enrichPreloadedPosts();
+    if (preloadedPosts && !hasConsumedPreload) {
+      setFollowingPosts(preloadedPosts);
+      setLoading(false);
+      setHasConsumedPreload(true);
+      clearPreloadedPosts();
+    }
   }, [preloadedPosts, hasConsumedPreload, clearPreloadedPosts]);
 
   // Smart merge logic for newly followed user posts
@@ -353,7 +287,6 @@ export default function HomeScreen() {
     if (isLoadMore) {
       setLoadingMore(true);
     } else {
-      skeletonStartTime.current = Date.now(); // Reset skeleton timer for fresh loads
       setLoading(true);
       setLastDoc(null);
       setHasMore(true);

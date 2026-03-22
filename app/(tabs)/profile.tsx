@@ -13,14 +13,14 @@ import { useRouter, useLocalSearchParams } from 'expo-router';
 import { useFocusEffect } from '@react-navigation/native';
 import { collection, getDocs, query, Timestamp, where, doc, getDoc, updateDoc, increment } from 'firebase/firestore';
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { ActivityIndicator, Alert, Dimensions, Image, Linking, Modal, RefreshControl, ScrollView, StyleSheet, TouchableOpacity, View, LayoutAnimation, Platform, UIManager, Animated } from 'react-native';
+import { Alert, Dimensions, Image, Linking, Modal, RefreshControl, ScrollView, StyleSheet, TouchableOpacity, View, LayoutAnimation, Platform, UIManager, Animated } from 'react-native';
 import * as Clipboard from 'expo-clipboard';
-import AsyncStorage from '@react-native-async-storage/async-storage';
 import { getLeagueStats, getTftStats, formatRank } from '@/services/riotService';
 import { getValorantStats } from '@/services/valorantService';
 import { deletePostMedia } from '@/services/storageService';
 import { deleteDoc } from 'firebase/firestore';
 import { calculateTierBorderColor, calculateTierBorderGradient } from '@/utils/tierBorderUtils';
+import { ProfileClipsSkeleton, ProfileRankCardSkeleton, ProfileAchievementsSkeleton } from '@/components/ui/Skeleton';
 import GradientBorder from '@/components/GradientBorder';
 import { LinearGradient } from 'expo-linear-gradient';
 
@@ -60,29 +60,25 @@ export default function ProfileScreen() {
   const { refresh } = useLocalSearchParams<{ refresh?: string }>();
   const { user, refreshUser, preloadedProfilePosts, preloadedRiotStats, clearPreloadedProfileData } = useAuth();
   const [posts, setPosts] = useState<Post[]>([]);
-  const [loadingPosts, setLoadingPosts] = useState(false);
+  const [loadingPosts, setLoadingPosts] = useState(true);
   const [selectedPost, setSelectedPost] = useState<Post | null>(null);
   const [selectedPostIndex, setSelectedPostIndex] = useState(0);
   const [showPostViewer, setShowPostViewer] = useState(false);
   const [showNewPost, setShowNewPost] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
   const [achievements, setAchievements] = useState<{ partyName: string; game: string; placement: number; endDate: string }[]>([]);
-  const [loadingAchievements, setLoadingAchievements] = useState(false);
+  const [loadingAchievements, setLoadingAchievements] = useState(true);
   const [riotAccount, setRiotAccount] = useState<any>(null);
   const [valorantAccount, setValorantAccount] = useState<any>(null);
   const [riotStats, setRiotStats] = useState<any>(null);
   const [tftStats, setTftStats] = useState<any>(null);
   const [valorantStats, setValorantStats] = useState<any>(null);
   const [enabledRankCards, setEnabledRankCards] = useState<string[]>([]);
+  const [loadingRankCards, setLoadingRankCards] = useState(true);
   const [hasConsumedPreloadPosts, setHasConsumedPreloadPosts] = useState(false);
   const [hasConsumedPreloadRiot, setHasConsumedPreloadRiot] = useState(false);
   const [showSocialsDropdown, setShowSocialsDropdown] = useState(false);
   const scrollY = useRef(new Animated.Value(0)).current;
-  const isRemovingPost = useRef(false); // Track when we're removing a post (archive/delete)
-
-  // Post images loading state
-  const [postImagesLoadedCount, setPostImagesLoadedCount] = useState(0);
-  const [allPostImagesLoaded, setAllPostImagesLoaded] = useState(false);
 
   // Avatar loading state
   const [avatarLoaded, setAvatarLoaded] = useState(false);
@@ -93,16 +89,12 @@ export default function ProfileScreen() {
   const [coverPhotoLoaded, setCoverPhotoLoaded] = useState(false);
   const [coverPhotoKey, setCoverPhotoKey] = useState(0); // Key to force image reload
 
-  // Combined loading state - avatar, cover photo, and posts all loaded
+  // Combined loading state - all data fetched, ready to reveal everything together
   const [allContentLoaded, setAllContentLoaded] = useState(false);
 
   // Create modal state
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [showAvatarModal, setShowAvatarModal] = useState(false);
-
-  // Track if this is the first time loading the profile
-  const [isFirstLoad, setIsFirstLoad] = useState(true);
-  const [hasCheckedFirstLoad, setHasCheckedFirstLoad] = useState(false);
 
   // Enable LayoutAnimation on Android
   useEffect(() => {
@@ -110,54 +102,6 @@ export default function ProfileScreen() {
       UIManager.setLayoutAnimationEnabledExperimental(true);
     }
   }, []);
-
-  // Check if this is the first load
-  useEffect(() => {
-    const checkFirstLoad = async () => {
-      try {
-        const hasLoadedBefore = await AsyncStorage.getItem('profile_loaded_before');
-        if (hasLoadedBefore === 'true') {
-          setIsFirstLoad(false);
-          setAllContentLoaded(true); // Show content instantly if not first load
-        }
-        setHasCheckedFirstLoad(true);
-      } catch (error) {
-        console.error('Error checking first load:', error);
-        setHasCheckedFirstLoad(true);
-      }
-    };
-
-    checkFirstLoad();
-  }, []);
-
-  // Mark profile as loaded after first successful load
-  useEffect(() => {
-    if (allContentLoaded && isFirstLoad && hasCheckedFirstLoad) {
-      AsyncStorage.setItem('profile_loaded_before', 'true').catch(error => {
-        console.error('Error saving first load flag:', error);
-      });
-    }
-  }, [allContentLoaded, isFirstLoad, hasCheckedFirstLoad]);
-
-  // Track when all post images are loaded
-  useEffect(() => {
-    if (posts.length > 0 && postImagesLoadedCount >= posts.length) {
-      setAllPostImagesLoaded(true);
-    } else if (posts.length === 0) {
-      setAllPostImagesLoaded(true);
-    }
-  }, [postImagesLoadedCount, posts.length]);
-
-  // Reset all loading states when posts change (but not when removing a post)
-  useEffect(() => {
-    if (isRemovingPost.current) {
-      isRemovingPost.current = false;
-      return; // Don't reset loading states for post removal (archive/delete)
-    }
-    setPostImagesLoadedCount(0);
-    setAllPostImagesLoaded(false);
-    setAllContentLoaded(false);
-  }, [posts]);
 
   // Set avatar as loaded if it's not an image (emoji or letter)
   // Also increment avatarKey to force image reload when avatar changes
@@ -182,36 +126,28 @@ export default function ProfileScreen() {
     }
   }, [user?.coverPhoto]);
 
-  // Coordinate avatar, cover photo, and posts loading - reveal together (only on first load)
+  // Coordinate all sections - reveal everything together once all data is fetched
   useEffect(() => {
-    if (!hasCheckedFirstLoad) return; // Wait until we've checked first load status
-
-    // If not first load, show content immediately
-    if (!isFirstLoad) {
-      setAllContentLoaded(true);
-      return;
-    }
-
-    // On first load, wait for all content to load
-    console.log('Loading status - Avatar:', avatarLoaded, 'Cover:', coverPhotoLoaded, 'Posts:', allPostImagesLoaded);
-    if (avatarLoaded && coverPhotoLoaded && allPostImagesLoaded) {
-      console.log('✅ All content loaded, revealing together');
+    if (!loadingPosts && !loadingRankCards && !loadingAchievements && avatarLoaded && coverPhotoLoaded) {
+      console.log('✅ All profile content loaded, revealing together');
+      // Small delay for images to paint
       setTimeout(() => {
         setAllContentLoaded(true);
       }, 50);
     }
-  }, [avatarLoaded, coverPhotoLoaded, allPostImagesLoaded, isFirstLoad, hasCheckedFirstLoad]);
+  }, [loadingPosts, loadingRankCards, loadingAchievements, avatarLoaded, coverPhotoLoaded]);
 
-  // Timeout fallback - if images take too long (3 seconds), reveal anyway (only on first load)
+  // Timeout fallback - if data takes too long (4 seconds), reveal anyway
   useEffect(() => {
-    if (!allContentLoaded && user?.id && isFirstLoad && hasCheckedFirstLoad) {
+    if (!allContentLoaded && user?.id) {
       const timeout = setTimeout(() => {
+        console.log('⏱️ Profile load timeout, revealing content');
         setAllContentLoaded(true);
-      }, 3000);
+      }, 4000);
 
       return () => clearTimeout(timeout);
     }
-  }, [allContentLoaded, user?.id, isFirstLoad, hasCheckedFirstLoad]);
+  }, [allContentLoaded, user?.id]);
 
   // Debug logging - only when values change
   useEffect(() => {
@@ -310,6 +246,10 @@ export default function ProfileScreen() {
     if (!user?.id) return;
 
     try {
+      // Only show skeleton if we don't have any rank data yet
+      if (!riotAccount && !valorantAccount) {
+        setLoadingRankCards(true);
+      }
       // Fetch Riot account info from Firestore
       const userDoc = await getDoc(doc(db, 'users', user.id));
       if (userDoc.exists()) {
@@ -383,6 +323,8 @@ export default function ProfileScreen() {
       }
     } catch (error) {
       console.error('Error fetching Riot data:', error);
+    } finally {
+      setLoadingRankCards(false);
     }
   };
 
@@ -460,6 +402,8 @@ export default function ProfileScreen() {
           }
         } catch (error) {
           console.error('Error fetching riotAccount:', error);
+        } finally {
+          setLoadingRankCards(false);
         }
       })();
     }
@@ -511,71 +455,75 @@ export default function ProfileScreen() {
   }, [refresh, user?.id]);
 
   // Fetch achievements (completed parties where user placed top 3)
-  useEffect(() => {
+  const fetchAchievements = async () => {
     if (!user?.id) return;
 
-    const fetchAchievements = async () => {
-      setLoadingAchievements(true);
-      try {
-        const partiesRef = collection(db, 'parties');
-        const partiesQuery = query(partiesRef, where('members', 'array-contains', user.id));
-        const snapshot = await getDocs(partiesQuery);
+    setLoadingAchievements(true);
+    try {
+      const partiesRef = collection(db, 'parties');
+      const partiesQuery = query(partiesRef, where('members', 'array-contains', user.id));
+      const snapshot = await getDocs(partiesQuery);
 
-        const today = new Date();
-        today.setHours(0, 0, 0, 0);
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
 
-        const results: { partyName: string; game: string; placement: number; endDate: string }[] = [];
+      const results: { partyName: string; game: string; placement: number; endDate: string }[] = [];
 
-        snapshot.docs.forEach((doc) => {
-          const data = doc.data();
-          if (!data.endDate || !data.rankings) return;
+      snapshot.docs.forEach((doc) => {
+        const data = doc.data();
+        if (!data.endDate || !data.rankings) return;
 
-          // Parse endDate (MM/DD/YYYY)
-          const [month, day, year] = data.endDate.split('/').map(Number);
-          const endDate = new Date(year, month - 1, day);
-          if (endDate >= today) return; // Not completed yet
+        // Parse endDate (MM/DD/YYYY)
+        const [month, day, year] = data.endDate.split('/').map(Number);
+        const endDate = new Date(year, month - 1, day);
+        if (endDate >= today) return; // Not completed yet
 
-          // Find user's ranking
-          const userRanking = data.rankings.find((r: any) => r.userId === user.id);
-          if (userRanking && userRanking.rank >= 1 && userRanking.rank <= 3) {
-            results.push({
-              partyName: data.partyName,
-              game: data.game,
-              placement: userRanking.rank,
-              endDate: data.endDate,
-            });
-          }
-        });
+        // Find user's ranking
+        const userRanking = data.rankings.find((r: any) => r.userId === user.id);
+        if (userRanking && userRanking.rank >= 1 && userRanking.rank <= 3) {
+          results.push({
+            partyName: data.partyName,
+            game: data.game,
+            placement: userRanking.rank,
+            endDate: data.endDate,
+          });
+        }
+      });
 
-        // Sort by placement (1st first), then by endDate (most recent first)
-        results.sort((a, b) => a.placement - b.placement || b.endDate.localeCompare(a.endDate));
-        setAchievements(results);
-      } catch (error) {
-        console.error('Error fetching achievements:', error);
-      } finally {
-        setLoadingAchievements(false);
-      }
-    };
+      // Sort by placement (1st first), then by endDate (most recent first)
+      results.sort((a, b) => a.placement - b.placement || b.endDate.localeCompare(a.endDate));
+      setAchievements(results);
+    } catch (error) {
+      console.error('Error fetching achievements:', error);
+    } finally {
+      setLoadingAchievements(false);
+    }
+  };
 
-    fetchAchievements();
+  useEffect(() => {
+    if (user?.id) {
+      fetchAchievements();
+    }
   }, [user?.id]);
 
   // Handle pull-to-refresh
   const onRefresh = useCallback(async () => {
     setRefreshing(true);
-    // Reset all image loading states
-    setPostImagesLoadedCount(0);
-    setAllPostImagesLoaded(false);
+    // Reset loading states to show skeletons
+    setAllContentLoaded(false);
+    setLoadingPosts(true);
+    setLoadingRankCards(true);
+    setLoadingAchievements(true);
     setAvatarLoaded(false);
     setAvatarError(false);
     setCoverPhotoLoaded(false);
-    setAllContentLoaded(false);
-    // Treat pull-to-refresh like a first load (wait for images)
-    setIsFirstLoad(true);
 
     await refreshUser(); // Refresh user data from AuthContext
-    await fetchRiotData(true); // Force refresh Riot data from API
-    await fetchPosts(); // Refresh posts
+    await Promise.all([
+      fetchRiotData(true), // Force refresh Riot data from API
+      fetchPosts(), // Refresh posts
+      fetchAchievements(), // Refresh achievements
+    ]);
     setRefreshing(false);
   }, [user?.id]);
 
@@ -646,9 +594,6 @@ export default function ProfileScreen() {
                 // Refresh user data to update the UI
                 await refreshUser();
               }
-
-              // Mark that we're removing a post (to prevent loading state reset)
-              isRemovingPost.current = true;
 
               // Update local state
               setPosts(prevPosts => prevPosts.filter(p => p.id !== post.id));
@@ -823,7 +768,7 @@ export default function ProfileScreen() {
               <Image
                 key={`cover-${coverPhotoKey}`}
                 source={{ uri: `${user.coverPhoto}&t=${coverPhotoKey}` }}
-                style={[styles.coverPhotoImage, { opacity: allContentLoaded ? 1 : 0 }]}
+                style={styles.coverPhotoImage}
                 onLoad={() => setCoverPhotoLoaded(true)}
                 onError={() => setCoverPhotoLoaded(true)}
               />
@@ -872,7 +817,7 @@ export default function ProfileScreen() {
                       <Image
                         key={`avatar-${avatarKey}`}
                         source={{ uri: `${user.avatar}&t=${avatarKey}` }}
-                        style={[styles.profileAvatarImage, { opacity: allContentLoaded ? 1 : 0 }]}
+                        style={styles.profileAvatarImage}
                         onLoad={() => setAvatarLoaded(true)}
                         onError={() => {
                           setAvatarLoaded(true);
@@ -892,7 +837,7 @@ export default function ProfileScreen() {
                     <Image
                       key={`avatar-${avatarKey}`}
                       source={{ uri: `${user.avatar}&t=${avatarKey}` }}
-                      style={[styles.profileAvatarImage, { opacity: allContentLoaded ? 1 : 0 }]}
+                      style={styles.profileAvatarImage}
                       onLoad={() => setAvatarLoaded(true)}
                       onError={() => {
                         setAvatarLoaded(true);
@@ -1025,11 +970,8 @@ export default function ProfileScreen() {
 
           {/* Clips Content */}
           <View style={styles.clipsSection}>
-          {loadingPosts ? (
-            <View style={styles.emptyState}>
-              <ActivityIndicator size="large" color="#c42743" />
-              <ThemedText style={styles.emptyStateText}>Loading posts...</ThemedText>
-            </View>
+          {!allContentLoaded ? (
+            <ProfileClipsSkeleton />
           ) : posts.length > 0 ? (
             <ScrollView
               horizontal
@@ -1045,22 +987,17 @@ export default function ProfileScreen() {
                 >
                   <Image
                     source={{ uri: post.mediaType === 'video' && post.thumbnailUrl ? post.thumbnailUrl : post.mediaUrl }}
-                    style={[
-                      styles.horizontalClipImage,
-                      { opacity: allContentLoaded ? 1 : 0 }
-                    ]}
+                    style={styles.horizontalClipImage}
                     resizeMode="cover"
-                    onLoad={() => setPostImagesLoadedCount(prev => prev + 1)}
-                    onError={() => setPostImagesLoadedCount(prev => prev + 1)}
                   />
-                  {allContentLoaded && post.mediaType === 'video' && (
+                  {post.mediaType === 'video' && (
                     <View style={styles.videoDuration}>
                       <ThemedText style={styles.videoDurationText}>
                         {formatDuration(post.duration)}
                       </ThemedText>
                     </View>
                   )}
-                  {allContentLoaded && post.mediaUrls && post.mediaUrls.length > 1 && (
+                  {post.mediaUrls && post.mediaUrls.length > 1 && (
                     <View style={styles.multipleIndicator}>
                       <IconSymbol size={18} name="square.on.square" color="#fff" />
                     </View>
@@ -1108,7 +1045,9 @@ export default function ProfileScreen() {
           <View style={[styles.rankCardsSection, {
             marginBottom: userGames.length > 2 ? 15 : userGames.length > 1 ? 20 : 25
           }]}>
-          {!riotAccount && !valorantAccount ? (
+          {!allContentLoaded ? (
+            <ProfileRankCardSkeleton />
+          ) : !riotAccount && !valorantAccount ? (
             // Empty state for new users
             <View style={styles.emptyState}>
               <View style={styles.emptyGameLogos}>
@@ -1241,11 +1180,8 @@ export default function ProfileScreen() {
 
           {/* Achievements Content */}
           <View style={styles.achievementsSection}>
-            {loadingAchievements ? (
-              <View style={styles.emptyState}>
-                <ActivityIndicator size="large" color="#c42743" />
-                <ThemedText style={styles.emptyStateText}>Loading achievements...</ThemedText>
-              </View>
+            {!allContentLoaded ? (
+              <ProfileAchievementsSkeleton />
             ) : achievements.length > 0 ? (
               <ScrollView
                 horizontal

@@ -549,4 +549,50 @@ const styles = StyleSheet.create({
   },
 });
 
+// Profile page skeletons
+
+// Clips skeleton - matches horizontalClipItem: width 200, height 120, borderRadius 12
+export const ProfileClipsSkeleton: React.FC = () => (
+  <View style={profileStyles.clipsRow}>
+    {[0, 1, 2].map(i => (
+      <Skeleton key={i} width={200} height={120} borderRadius={12} />
+    ))}
+  </View>
+);
+
+// Rank card skeleton - matches the rank card area (borderRadius 24, ~240 height)
+export const ProfileRankCardSkeleton: React.FC = () => (
+  <View style={profileStyles.rankCardWrapper}>
+    <Skeleton width={screenWidth - 12} height={240} borderRadius={24} />
+  </View>
+);
+
+// Achievements skeleton - matches achievementCard: width 140, height 140, borderRadius 12
+export const ProfileAchievementsSkeleton: React.FC = () => (
+  <View style={profileStyles.achievementsRow}>
+    {[0, 1, 2].map(i => (
+      <Skeleton key={i} width={140} height={140} borderRadius={12} />
+    ))}
+  </View>
+);
+
+const profileStyles = StyleSheet.create({
+  clipsRow: {
+    flexDirection: 'row',
+    paddingHorizontal: 16,
+    gap: 12,
+  },
+  rankCardWrapper: {
+    paddingHorizontal: 6,
+    paddingTop: 18,
+    paddingBottom: 20,
+    alignItems: 'center',
+  },
+  achievementsRow: {
+    flexDirection: 'row',
+    paddingHorizontal: 16,
+    gap: 12,
+  },
+});
+
 export default Skeleton;

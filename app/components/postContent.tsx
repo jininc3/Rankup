@@ -77,12 +77,14 @@ const VideoPlayerComponent = ({
   isPlaying,
   onPlayerReady,
   onDoubleTap,
+  onVideoReady,
 }: {
   postId: string;
   mediaUrl: string;
   isPlaying: boolean;
   onPlayerReady: (postId: string, player: any) => void;
   onDoubleTap?: () => void;
+  onVideoReady?: () => void;
 }) => {
   const player = useVideoPlayer(mediaUrl, (player) => {
     player.loop = true;
@@ -101,6 +103,22 @@ const VideoPlayerComponent = ({
   useEffect(() => {
     onPlayerReady(postId, player);
   }, [player, postId, onPlayerReady]);
+
+  // Notify parent when video is ready to play
+  useEffect(() => {
+    if (player.status === 'readyToPlay') {
+      onVideoReady?.();
+      return;
+    }
+    const subscription = player.addListener('statusChange', (event: any) => {
+      if (event.status === 'readyToPlay') {
+        onVideoReady?.();
+      }
+    });
+    return () => {
+      subscription.remove();
+    };
+  }, [player, onVideoReady]);
 
   useEffect(() => {
     if (isPlaying && !isLocallyPaused) {
@@ -320,6 +338,7 @@ interface PostContentProps {
   onDelete?: (post: Post) => void;
   onEditCaption?: (post: Post, newCaption: string) => void;
   onArchive?: (post: Post) => void;
+  onVideoReady?: () => void;
 }
 
 export default function PostContent({
@@ -340,7 +359,8 @@ export default function PostContent({
   showRecentComments = true,
   onDelete,
   onEditCaption,
-  onArchive
+  onArchive,
+  onVideoReady
 }: PostContentProps) {
   // Calculate tier border color
   const tierBorderColor = calculateTierBorderColor(post.leagueRank, post.valorantRank);
@@ -576,6 +596,7 @@ export default function PostContent({
                         isPlaying={playingVideoId === post.id && activeMediaIndex === index}
                         onPlayerReady={onPlayerReady}
                         onDoubleTap={() => onLikeToggle(post)}
+                        onVideoReady={index === 0 ? onVideoReady : undefined}
                       />
                     ) : (
                       <Image
@@ -610,6 +631,7 @@ export default function PostContent({
                 isPlaying={playingVideoId === post.id}
                 onPlayerReady={onPlayerReady}
                 onDoubleTap={() => onLikeToggle(post)}
+                onVideoReady={onVideoReady}
               />
             ) : (
               <Image

@@ -190,6 +190,7 @@ export default function ValorantRankCard({ game, username, viewOnly = false, use
   const matchHistoryExpandAnimation = useRef(new Animated.Value(0)).current;
   const shimmerAnimation = useRef(new Animated.Value(0)).current;
   const stackCardOpacity = useRef(new Animated.Value(1)).current;
+  const modalCardOpacity = useRef(new Animated.Value(1)).current;
 
   // Shimmer animation loop
   useEffect(() => {
@@ -238,18 +239,25 @@ export default function ValorantRankCard({ game, username, viewOnly = false, use
     cardRef.current?.measureInWindow((x, y, width, height) => {
       setCardPosition({ x, y, width });
       startY.setValue(y); // Set immediately for animation
-      // Don't hide original card - the modal overlay covers it anyway
 
       // Open modal and animate
       setModalVisible(true);
-      stackCardOpacity.setValue(0); // Hide original card in stack instantly
+      modalCardOpacity.setValue(1); // Reset modal card opacity
       setShowMatchHistory(true); // Show cards container
       setMatchHistoryExpanded(false); // Start with match history collapsed
 
-      // Animation: brief pause, then smooth slide up with blur + cards expand, then flip
+      // Animation: wait for modal to render, hide stack card, then slide up
       Animated.sequence([
+        // Wait for modal to render first
+        Animated.delay(50),
+        // Hide stack card (modal card is now covering it)
+        Animated.timing(stackCardOpacity, {
+          toValue: 0,
+          duration: 1,
+          useNativeDriver: false,
+        }),
         // Brief pause for anticipation
-        Animated.delay(150),
+        Animated.delay(100),
         // Blur/overlay fades in, card slides up, and cards container expands together
         Animated.parallel([
           Animated.timing(overlayOpacity, {
@@ -332,7 +340,7 @@ export default function ValorantRankCard({ game, username, viewOnly = false, use
       return;
     }
 
-    // Reverse: flip first, then smooth slide down + fade out
+    // Reverse: flip first, then smooth slide down + crossfade
     Animated.sequence([
       // Flip back to front
       Animated.spring(flipAnimation, {
@@ -341,7 +349,7 @@ export default function ValorantRankCard({ game, username, viewOnly = false, use
         tension: 20,
         useNativeDriver: false,
       }),
-      // Slide down and fade out overlay - stack card stays hidden
+      // Slide down, fade out overlay, crossfade modal card with stack card
       Animated.parallel([
         Animated.timing(slideAnimation, {
           toValue: 0,
@@ -355,15 +363,23 @@ export default function ValorantRankCard({ game, username, viewOnly = false, use
           easing: Easing.linear,
           useNativeDriver: true,
         }),
+        // Fade out modal card
+        Animated.timing(modalCardOpacity, {
+          toValue: 0,
+          duration: 400,
+          easing: Easing.linear,
+          useNativeDriver: false,
+        }),
+        // Fade in stack card
+        Animated.timing(stackCardOpacity, {
+          toValue: 1,
+          duration: 400,
+          easing: Easing.linear,
+          useNativeDriver: false,
+        }),
       ]),
-      // Show stack card at the end (modal card is now covering it)
-      Animated.timing(stackCardOpacity, {
-        toValue: 1,
-        duration: 1,
-        useNativeDriver: true,
-      }),
     ]).start(() => {
-      // Stack card is now visible - safe to close modal
+      // Both cards have crossfaded - safe to close modal
       setModalVisible(false);
       setIsFlipped(false);
       matchHistoryAnimation.setValue(0);
@@ -397,7 +413,7 @@ export default function ValorantRankCard({ game, username, viewOnly = false, use
           useNativeDriver: false,
         }),
       ]),
-      // Then: Slide down and fade out - stack card stays hidden
+      // Then: Slide down, fade out overlay, crossfade modal card with stack card
       Animated.parallel([
         Animated.timing(slideAnimation, {
           toValue: 0,
@@ -411,15 +427,23 @@ export default function ValorantRankCard({ game, username, viewOnly = false, use
           easing: Easing.out(Easing.cubic),
           useNativeDriver: true,
         }),
+        // Fade out modal card
+        Animated.timing(modalCardOpacity, {
+          toValue: 0,
+          duration: 400,
+          easing: Easing.out(Easing.cubic),
+          useNativeDriver: false,
+        }),
+        // Fade in stack card
+        Animated.timing(stackCardOpacity, {
+          toValue: 1,
+          duration: 400,
+          easing: Easing.out(Easing.cubic),
+          useNativeDriver: false,
+        }),
       ]),
-      // Show stack card at the end (modal card is now covering it)
-      Animated.timing(stackCardOpacity, {
-        toValue: 1,
-        duration: 1,
-        useNativeDriver: true,
-      }),
     ]).start(() => {
-      // Stack card is now visible - safe to close modal
+      // Both cards have crossfaded - safe to close modal
       setModalVisible(false);
       setIsFlipped(false);
       setShowMatchHistory(false);
@@ -836,7 +860,7 @@ export default function ValorantRankCard({ game, username, viewOnly = false, use
         <Animated.View
           style={[
             styles.modalCard,
-            { left: cardPosition.x, width: cardPosition.width || undefined },
+            { left: cardPosition.x, width: cardPosition.width || undefined, opacity: modalCardOpacity },
             modalCardStyle
           ]}
           {...rankCardSwipePanResponder.panHandlers}
