@@ -63,7 +63,6 @@ export default function LeagueRankCard({ game, username, viewOnly = false, userI
   const [isFlipped, setIsFlipped] = useState(false);
   const [showBack, setShowBack] = useState(false);
   const [modalVisible, setModalVisible] = useState(false);
-  const [cardHidden, setCardHidden] = useState(false);
   const [cardPosition, setCardPosition] = useState({ x: 20, y: SCREEN_HEIGHT - 350, width: 0 });
   const [showMatchHistory, setShowMatchHistory] = useState(false);
   const [matchHistoryExpanded, setMatchHistoryExpanded] = useState(false);
@@ -76,6 +75,7 @@ export default function LeagueRankCard({ game, username, viewOnly = false, userI
   const matchHistoryAnimation = useRef(new Animated.Value(0)).current;
   const matchHistoryExpandAnimation = useRef(new Animated.Value(0)).current;
   const shimmerAnimation = useRef(new Animated.Value(0)).current;
+  const stackCardOpacity = useRef(new Animated.Value(1)).current;
 
   // Shimmer animation loop
   useEffect(() => {
@@ -127,6 +127,7 @@ export default function LeagueRankCard({ game, username, viewOnly = false, userI
 
       // Open modal and animate
       setModalVisible(true);
+      stackCardOpacity.setValue(0); // Hide original card in stack instantly
       setShowMatchHistory(true);
       setMatchHistoryExpanded(false);
 
@@ -214,12 +215,14 @@ export default function LeagueRankCard({ game, username, viewOnly = false, userI
 
     // Reverse: flip first, then smooth slide down + fade out
     Animated.sequence([
+      // Flip back to front first
       Animated.timing(flipAnimation, {
         toValue: 0,
         duration: 300,
         easing: Easing.out(Easing.cubic),
         useNativeDriver: false,
       }),
+      // Slide down and fade out overlay - stack card stays hidden
       Animated.parallel([
         Animated.timing(slideAnimation, {
           toValue: 0,
@@ -234,7 +237,14 @@ export default function LeagueRankCard({ game, username, viewOnly = false, userI
           useNativeDriver: true,
         }),
       ]),
+      // Show stack card at the end (modal card is now covering it)
+      Animated.timing(stackCardOpacity, {
+        toValue: 1,
+        duration: 1,
+        useNativeDriver: true,
+      }),
     ]).start(() => {
+      // Stack card is now visible - safe to close modal
       slideAnimation.setValue(0);
       flipAnimation.setValue(0);
       setModalVisible(false);
@@ -244,7 +254,6 @@ export default function LeagueRankCard({ game, username, viewOnly = false, userI
 
   // Handle clicking on the rank card back - closes everything and flips card
   const handleCardBackPress = () => {
-    // Flip first, then slide down
     Animated.sequence([
       // First: Collapse match history/statistics and flip card together
       Animated.parallel([
@@ -267,7 +276,7 @@ export default function LeagueRankCard({ game, username, viewOnly = false, userI
           useNativeDriver: false,
         }),
       ]),
-      // Then: Slide down and fade out
+      // Then: Slide down and fade out - stack card stays hidden
       Animated.parallel([
         Animated.timing(slideAnimation, {
           toValue: 0,
@@ -282,7 +291,14 @@ export default function LeagueRankCard({ game, username, viewOnly = false, userI
           useNativeDriver: true,
         }),
       ]),
+      // Show stack card at the end (modal card is now covering it)
+      Animated.timing(stackCardOpacity, {
+        toValue: 1,
+        duration: 1,
+        useNativeDriver: true,
+      }),
     ]).start(() => {
+      // Stack card is now visible - safe to close modal
       setModalVisible(false);
       setIsFlipped(false);
       setShowMatchHistory(false);
@@ -544,20 +560,22 @@ export default function LeagueRankCard({ game, username, viewOnly = false, userI
 
   return (
     <>
-      <TouchableOpacity
-        ref={cardRef as any}
-        style={[styles.cardOuter, cardHidden && styles.cardHidden]}
-        onPress={handlePress}
-        activeOpacity={isFocused ? 0.9 : 1}
-        disabled={!isFocused && viewOnly}
-      >
-        <View style={styles.shadow3} />
-        <View style={styles.shadow2} />
-        <View style={styles.shadow1} />
-        <Animated.View style={[styles.rankCard, animatedStyle]}>
-          {renderCardContent()}
-        </Animated.View>
-      </TouchableOpacity>
+      <Animated.View style={{ opacity: stackCardOpacity }}>
+        <TouchableOpacity
+          ref={cardRef as any}
+          style={styles.cardOuter}
+          onPress={handlePress}
+          activeOpacity={isFocused ? 0.9 : 1}
+          disabled={!isFocused && viewOnly}
+        >
+          <View style={styles.shadow3} />
+          <View style={styles.shadow2} />
+          <View style={styles.shadow1} />
+          <Animated.View style={[styles.rankCard, animatedStyle]}>
+            {renderCardContent()}
+          </Animated.View>
+        </TouchableOpacity>
+      </Animated.View>
 
       <Modal visible={modalVisible} transparent animationType="none" onRequestClose={handleCloseModal}>
         {/* Blurred overlay */}
@@ -689,7 +707,6 @@ export default function LeagueRankCard({ game, username, viewOnly = false, userI
 
 const styles = StyleSheet.create({
   cardOuter: { position: 'relative', height: 220 },
-  cardHidden: { opacity: 0 },
   shadow3: { position: 'absolute', top: 10, left: -10, right: 14, bottom: -10, backgroundColor: '#000', borderRadius: 18, opacity: 0.2 },
   shadow2: { position: 'absolute', top: 6, left: -6, right: 10, bottom: -6, backgroundColor: '#000', borderRadius: 17, opacity: 0.25 },
   shadow1: { position: 'absolute', top: 3, left: -3, right: 5, bottom: -3, backgroundColor: '#000', borderRadius: 16, opacity: 0.3 },

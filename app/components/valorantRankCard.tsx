@@ -157,7 +157,6 @@ export default function ValorantRankCard({ game, username, viewOnly = false, use
   const [isFlipped, setIsFlipped] = useState(false);
   const [showBack, setShowBack] = useState(false);
   const [modalVisible, setModalVisible] = useState(false);
-  const [cardHidden, setCardHidden] = useState(false);
   const [cardPosition, setCardPosition] = useState({ x: 20, y: SCREEN_HEIGHT - 350, width: 0 });
   const [showMatchHistory, setShowMatchHistory] = useState(false);
   const [matchHistoryExpanded, setMatchHistoryExpanded] = useState(false);
@@ -190,6 +189,7 @@ export default function ValorantRankCard({ game, username, viewOnly = false, use
   const matchHistoryAnimation = useRef(new Animated.Value(0)).current;
   const matchHistoryExpandAnimation = useRef(new Animated.Value(0)).current;
   const shimmerAnimation = useRef(new Animated.Value(0)).current;
+  const stackCardOpacity = useRef(new Animated.Value(1)).current;
 
   // Shimmer animation loop
   useEffect(() => {
@@ -242,6 +242,7 @@ export default function ValorantRankCard({ game, username, viewOnly = false, use
 
       // Open modal and animate
       setModalVisible(true);
+      stackCardOpacity.setValue(0); // Hide original card in stack instantly
       setShowMatchHistory(true); // Show cards container
       setMatchHistoryExpanded(false); // Start with match history collapsed
 
@@ -340,7 +341,7 @@ export default function ValorantRankCard({ game, username, viewOnly = false, use
         tension: 20,
         useNativeDriver: false,
       }),
-      // Slide down and fade out overlay - use linear easing to prevent overshoot
+      // Slide down and fade out overlay - stack card stays hidden
       Animated.parallel([
         Animated.timing(slideAnimation, {
           toValue: 0,
@@ -355,7 +356,14 @@ export default function ValorantRankCard({ game, username, viewOnly = false, use
           useNativeDriver: true,
         }),
       ]),
+      // Show stack card at the end (modal card is now covering it)
+      Animated.timing(stackCardOpacity, {
+        toValue: 1,
+        duration: 1,
+        useNativeDriver: true,
+      }),
     ]).start(() => {
+      // Stack card is now visible - safe to close modal
       setModalVisible(false);
       setIsFlipped(false);
       matchHistoryAnimation.setValue(0);
@@ -365,7 +373,6 @@ export default function ValorantRankCard({ game, username, viewOnly = false, use
 
   // Handle clicking on the rank card back - closes everything and flips card
   const handleCardBackPress = () => {
-    // Flip first, then slide down
     Animated.sequence([
       // First: Collapse match history/statistics and flip card together
       Animated.parallel([
@@ -390,7 +397,7 @@ export default function ValorantRankCard({ game, username, viewOnly = false, use
           useNativeDriver: false,
         }),
       ]),
-      // Then: Slide down and fade out
+      // Then: Slide down and fade out - stack card stays hidden
       Animated.parallel([
         Animated.timing(slideAnimation, {
           toValue: 0,
@@ -405,7 +412,14 @@ export default function ValorantRankCard({ game, username, viewOnly = false, use
           useNativeDriver: true,
         }),
       ]),
+      // Show stack card at the end (modal card is now covering it)
+      Animated.timing(stackCardOpacity, {
+        toValue: 1,
+        duration: 1,
+        useNativeDriver: true,
+      }),
     ]).start(() => {
+      // Stack card is now visible - safe to close modal
       setModalVisible(false);
       setIsFlipped(false);
       setShowMatchHistory(false);
@@ -776,23 +790,25 @@ export default function ValorantRankCard({ game, username, viewOnly = false, use
 
   return (
     <>
-      <TouchableOpacity
-        ref={cardRef as any}
-        style={[styles.cardOuter, cardHidden && styles.cardHidden]}
-        onPress={handlePress}
-        activeOpacity={isFocused ? 0.9 : 1}
-        disabled={!isFocused && viewOnly}
-      >
-        {/* 3D Shadow layers */}
-        <View style={styles.shadow3} />
-        <View style={styles.shadow2} />
-        <View style={styles.shadow1} />
+      <Animated.View style={{ opacity: stackCardOpacity }}>
+        <TouchableOpacity
+          ref={cardRef as any}
+          style={styles.cardOuter}
+          onPress={handlePress}
+          activeOpacity={isFocused ? 0.9 : 1}
+          disabled={!isFocused && viewOnly}
+        >
+          {/* 3D Shadow layers */}
+          <View style={styles.shadow3} />
+          <View style={styles.shadow2} />
+          <View style={styles.shadow1} />
 
         {/* Single animated card that swaps content at midpoint */}
         <Animated.View style={[styles.rankCard, animatedStyle]}>
           {renderCardContent()}
         </Animated.View>
-      </TouchableOpacity>
+        </TouchableOpacity>
+      </Animated.View>
 
       {/* Modal for expanded card view */}
       <Modal
@@ -1034,9 +1050,6 @@ const styles = StyleSheet.create({
   cardOuter: {
     position: 'relative',
     height: 220,
-  },
-  cardHidden: {
-    opacity: 0,
   },
   // 3D Shadow layers
   shadow3: {
