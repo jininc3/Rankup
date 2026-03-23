@@ -20,7 +20,7 @@ import { getValorantStats } from '@/services/valorantService';
 import { deletePostMedia } from '@/services/storageService';
 import { deleteDoc } from 'firebase/firestore';
 import { calculateTierBorderColor, calculateTierBorderGradient } from '@/utils/tierBorderUtils';
-import { ProfileClipsSkeleton, ProfileRankCardSkeleton, ProfileAchievementsSkeleton } from '@/components/ui/Skeleton';
+import { ProfilePageSkeleton } from '@/components/ui/Skeleton';
 import GradientBorder from '@/components/GradientBorder';
 import { LinearGradient } from 'expo-linear-gradient';
 
@@ -128,14 +128,14 @@ export default function ProfileScreen() {
 
   // Coordinate all sections - reveal everything together once all data is fetched
   useEffect(() => {
-    if (!loadingPosts && !loadingRankCards && !loadingAchievements && avatarLoaded && coverPhotoLoaded) {
+    if (!loadingPosts && !loadingRankCards && !loadingAchievements) {
       console.log('✅ All profile content loaded, revealing together');
       // Small delay for images to paint
       setTimeout(() => {
         setAllContentLoaded(true);
       }, 50);
     }
-  }, [loadingPosts, loadingRankCards, loadingAchievements, avatarLoaded, coverPhotoLoaded]);
+  }, [loadingPosts, loadingRankCards, loadingAchievements]);
 
   // Timeout fallback - if data takes too long (4 seconds), reveal anyway
   useEffect(() => {
@@ -762,6 +762,10 @@ export default function ProfileScreen() {
             </TouchableOpacity>
           </View>
 
+          {!allContentLoaded ? (
+            <ProfilePageSkeleton />
+          ) : (
+          <>
           {/* Cover Photo Area */}
           <View style={styles.coverPhotoWrapper}>
             {user?.coverPhoto ? (
@@ -964,9 +968,7 @@ export default function ProfileScreen() {
 
           {/* Clips Content */}
           <View style={styles.clipsSection}>
-          {!allContentLoaded ? (
-            <ProfileClipsSkeleton />
-          ) : posts.length > 0 ? (
+          {posts.length > 0 ? (
             <ScrollView
               horizontal
               showsHorizontalScrollIndicator={false}
@@ -1039,9 +1041,7 @@ export default function ProfileScreen() {
           <View style={[styles.rankCardsSection, {
             marginBottom: userGames.length > 2 ? 15 : userGames.length > 1 ? 20 : 25
           }]}>
-          {!allContentLoaded ? (
-            <ProfileRankCardSkeleton />
-          ) : !riotAccount && !valorantAccount ? (
+          {!riotAccount && !valorantAccount ? (
             // Empty state for new users
             <View style={styles.emptyState}>
               <View style={styles.emptyGameLogos}>
@@ -1174,9 +1174,7 @@ export default function ProfileScreen() {
 
           {/* Achievements Content */}
           <View style={styles.achievementsSection}>
-            {!allContentLoaded ? (
-              <ProfileAchievementsSkeleton />
-            ) : achievements.length > 0 ? (
+            {achievements.length > 0 ? (
               <ScrollView
                 horizontal
                 showsHorizontalScrollIndicator={false}
@@ -1211,6 +1209,8 @@ export default function ProfileScreen() {
           </View>
 
           </View>
+          </>
+          )}
         </View>
       </Animated.ScrollView>
 
@@ -1413,8 +1413,8 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'space-between',
     paddingHorizontal: 20,
-    marginTop: 16,
-    marginBottom: 8,
+    marginTop: -12,
+    marginBottom: -6,
   },
   largeUsername: {
     fontSize: 28,
@@ -1427,6 +1427,7 @@ const styles = StyleSheet.create({
   },
   // Profile avatar (next to username)
   profileAvatarButton: {
+    marginTop: 14,
   },
   profileAvatarCircle: {
     width: 56,
@@ -1461,7 +1462,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     paddingHorizontal: 20,
-    marginBottom: 16,
+    marginBottom: 4,
   },
   followStatItem: {
     flexDirection: 'row',
@@ -1488,7 +1489,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     paddingHorizontal: 20,
-    marginBottom: 20,
+    marginBottom: 6,
     gap: 12,
   },
   socialIconButton: {

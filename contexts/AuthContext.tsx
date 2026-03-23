@@ -52,6 +52,8 @@ interface SearchUser {
   followersCount?: number;
   followingCount?: number;
   postsCount?: number;
+  leagueRank?: string;
+  valorantRank?: string;
 }
 
 interface AuthContextType {
@@ -242,6 +244,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           followersCount: data.followersCount,
           followingCount: data.followingCount,
           postsCount: data.postsCount,
+          leagueRank: data.leagueRank,
+          valorantRank: data.valorantRank,
         });
       });
 

@@ -576,6 +576,116 @@ export const ProfileAchievementsSkeleton: React.FC = () => (
   </View>
 );
 
+// Full profile page skeleton - shows shimmer for the entire profile page
+// Matches profile.tsx layout: cover photo, username+avatar, followers, socials, bio, clips, rank cards, achievements
+export const ProfilePageSkeleton: React.FC = () => (
+  <View style={profilePageStyles.container}>
+    {/* Cover Photo Area - height 200 */}
+    <Skeleton width={screenWidth} height={200} borderRadius={0} />
+
+    {/* Username Row with Avatar */}
+    <View style={profilePageStyles.usernameRow}>
+      <Skeleton width={160} height={28} borderRadius={6} />
+      <Skeleton width={56} height={56} borderRadius={28} />
+    </View>
+
+    {/* Followers / Following Row */}
+    <View style={profilePageStyles.followStatsRow}>
+      <Skeleton width={80} height={14} borderRadius={4} />
+      <View style={profilePageStyles.followStatDivider} />
+      <Skeleton width={80} height={14} borderRadius={4} />
+    </View>
+
+    {/* Social Icons Row + Edit Profile */}
+    <View style={profilePageStyles.socialIconsRow}>
+      <Skeleton width={36} height={36} borderRadius={8} />
+      <Skeleton width={36} height={36} borderRadius={8} />
+      <Skeleton width={80} height={20} borderRadius={4} />
+    </View>
+
+    {/* Bio placeholder */}
+    <View style={profilePageStyles.bioSection}>
+      <Skeleton width="70%" height={14} borderRadius={4} />
+    </View>
+
+    {/* Clips Section Header */}
+    <View style={profilePageStyles.sectionHeader}>
+      <Skeleton width={50} height={18} borderRadius={4} />
+    </View>
+
+    {/* Clips Skeleton */}
+    <View style={profileStyles.clipsRow}>
+      {[0, 1, 2].map(i => (
+        <Skeleton key={i} width={200} height={120} borderRadius={12} />
+      ))}
+    </View>
+
+    {/* Rank Cards Section Header */}
+    <View style={profilePageStyles.sectionHeader}>
+      <Skeleton width={100} height={18} borderRadius={4} />
+    </View>
+
+    {/* Rank Card Skeleton */}
+    <View style={profileStyles.rankCardWrapper}>
+      <Skeleton width={screenWidth - 12} height={240} borderRadius={24} />
+    </View>
+
+    {/* Achievements Section Header */}
+    <View style={profilePageStyles.sectionHeader}>
+      <Skeleton width={110} height={18} borderRadius={4} />
+    </View>
+
+    {/* Achievements Skeleton */}
+    <View style={profileStyles.achievementsRow}>
+      {[0, 1, 2].map(i => (
+        <Skeleton key={i} width={140} height={140} borderRadius={12} />
+      ))}
+    </View>
+  </View>
+);
+
+const profilePageStyles = StyleSheet.create({
+  container: {
+    backgroundColor: '#0f0f0f',
+  },
+  usernameRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: 20,
+    marginTop: -12,
+    marginBottom: 2,
+  },
+  followStatsRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 20,
+    marginBottom: 4,
+  },
+  followStatDivider: {
+    width: 1,
+    height: 14,
+    backgroundColor: '#1a1a1a',
+    marginHorizontal: 12,
+  },
+  socialIconsRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 20,
+    marginBottom: 6,
+    gap: 12,
+  },
+  bioSection: {
+    paddingHorizontal: 20,
+    marginBottom: 8,
+  },
+  sectionHeader: {
+    paddingHorizontal: 16,
+    paddingTop: 16,
+    paddingBottom: 12,
+  },
+});
+
 const profileStyles = StyleSheet.create({
   clipsRow: {
     flexDirection: 'row',

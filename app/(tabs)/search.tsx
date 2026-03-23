@@ -1,7 +1,7 @@
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { IconSymbol } from '@/components/ui/icon-symbol';
-import { useState, useCallback, useEffect, useRef } from 'react';
+import { useState, useEffect } from 'react';
 import { ScrollView, StyleSheet, TextInput, TouchableOpacity, View, Image } from 'react-native';
 import { useRouter } from 'expo-router';
 import { collection, query, where, getDocs, orderBy, limit, doc, setDoc, deleteDoc, getDoc, Timestamp } from 'firebase/firestore';
@@ -225,15 +225,61 @@ export default function SearchScreen() {
   const [loadingHistory, setLoadingHistory] = useState(true);
   const [hasConsumedPreload, setHasConsumedPreload] = useState(false);
 
-  // Avatar loading coordination for search results
-  const [avatarsLoadedCount, setAvatarsLoadedCount] = useState(0);
+  // Show flags - set to true after data + avatars are prefetched
   const [showResults, setShowResults] = useState(false);
-  const avatarTimeoutRef = useRef<NodeJS.Timeout | null>(null);
-
-  // Avatar loading coordination for search history
-  const [historyAvatarsLoadedCount, setHistoryAvatarsLoadedCount] = useState(0);
   const [showHistory, setShowHistory] = useState(false);
-  const historyAvatarTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+
+  // Prefetch avatar images and resolve when all done (or timeout)
+  const prefetchAvatars = (users: SearchUser[], timeoutMs: number = 2000): Promise<void> => {
+    const avatarUrls = users
+      .map(u => u.avatar)
+      .filter((url): url is string => !!url && url.startsWith('http'));
+
+    if (avatarUrls.length === 0) return Promise.resolve();
+
+    return new Promise<void>((resolve) => {
+      const timeout = setTimeout(resolve, timeoutMs);
+      Promise.all(avatarUrls.map(url => Image.prefetch(url).catch(() => {})))
+        .then(() => { clearTimeout(timeout); resolve(); })
+        .catch(() => { clearTimeout(timeout); resolve(); });
+    });
+  };
+
+  // Enrich history entries with fresh rank data from user profiles
+  const enrichWithRankData = async (history: SearchUser[]): Promise<SearchUser[]> => {
+    try {
+      const enriched = await Promise.all(
+        history.map(async (user) => {
+          try {
+            const userDoc = await getDoc(doc(db, 'users', user.id));
+            if (userDoc.exists()) {
+              const data = userDoc.data();
+              let leagueRank: string | undefined;
+              let valorantRank: string | undefined;
+
+              if (data.riotStats?.rankedSolo) {
+                leagueRank = `${data.riotStats.rankedSolo.tier} ${data.riotStats.rankedSolo.rank}`;
+              }
+              if (data.valorantStats?.currentRank) {
+                valorantRank = data.valorantStats.currentRank;
+              }
+
+              return {
+                ...user,
+                avatar: data.avatar || user.avatar,
+                leagueRank,
+                valorantRank,
+              };
+            }
+          } catch {}
+          return user;
+        })
+      );
+      return enriched;
+    } catch {
+      return history;
+    }
+  };
 
   // Load search history from Firestore
   const loadSearchHistory = async () => {
@@ -264,19 +310,13 @@ export default function SearchScreen() {
         });
       });
 
-      setSearchHistory(history);
+      // Enrich with fresh rank data from user profiles
+      const enrichedHistory = await enrichWithRankData(history);
+      setSearchHistory(enrichedHistory);
 
-      // Set up avatar loading coordination for history
-      const usersWithAvatars = history.filter(u => u.avatar && u.avatar.startsWith('http'));
-      if (history.length === 0 || usersWithAvatars.length === 0) {
-        setShowHistory(true);
-      } else {
-        setHistoryAvatarsLoadedCount(0);
-        setShowHistory(false);
-        historyAvatarTimeoutRef.current = setTimeout(() => {
-          setShowHistory(true);
-        }, 1500);
-      }
+      // Prefetch all avatars before revealing
+      await prefetchAvatars(enrichedHistory);
+      setShowHistory(true);
     } catch (error) {
       console.error('Error loading search history:', error);
       setShowHistory(true);
@@ -361,17 +401,13 @@ export default function SearchScreen() {
       setHasConsumedPreload(true);
       clearPreloadedSearchHistory();
 
-      // Set up avatar loading coordination for preloaded history
-      const usersWithAvatars = preloadedSearchHistory.filter(u => u.avatar && u.avatar.startsWith('http'));
-      if (preloadedSearchHistory.length === 0 || usersWithAvatars.length === 0) {
+      // Enrich with fresh rank data, prefetch avatars, then reveal
+      enrichWithRankData(preloadedSearchHistory).then((enriched) => {
+        setSearchHistory(enriched);
+        return prefetchAvatars(enriched);
+      }).then(() => {
         setShowHistory(true);
-      } else {
-        setHistoryAvatarsLoadedCount(0);
-        setShowHistory(false);
-        historyAvatarTimeoutRef.current = setTimeout(() => {
-          setShowHistory(true);
-        }, 1500);
-      }
+      });
     }
   }, [preloadedSearchHistory, hasConsumedPreload, clearPreloadedSearchHistory]);
 
@@ -393,20 +429,12 @@ export default function SearchScreen() {
     if (text.trim() === '') {
       setSearchResults([]);
       setShowResults(false);
-      setAvatarsLoadedCount(0);
-      if (avatarTimeoutRef.current) {
-        clearTimeout(avatarTimeoutRef.current);
-      }
       return;
     }
 
-    // Reset avatar loading state for new search
+    // Reset state for new search
     setShowResults(false);
-    setAvatarsLoadedCount(0);
     setSearching(true);
-    if (avatarTimeoutRef.current) {
-      clearTimeout(avatarTimeoutRef.current);
-    }
 
     try {
       // Search for users whose username starts with the search query (lowercase)
@@ -451,71 +479,19 @@ export default function SearchScreen() {
       });
 
       setSearchResults(users);
+      setSearching(false);
 
-      // If no results or no avatars to load, show immediately
-      const usersWithAvatars = users.filter(u => u.avatar && u.avatar.startsWith('http'));
-      if (users.length === 0 || usersWithAvatars.length === 0) {
-        setShowResults(true);
-      } else {
-        // Set timeout fallback to show results after 1.5s even if avatars haven't loaded
-        avatarTimeoutRef.current = setTimeout(() => {
-          setShowResults(true);
-        }, 1500);
-      }
+      // Prefetch all avatars before revealing results
+      await prefetchAvatars(users, 1500);
+      setShowResults(true);
     } catch (error) {
       console.error('Error searching users:', error);
       setSearchResults([]);
       setShowResults(true);
-    } finally {
       setSearching(false);
     }
   };
 
-  // Track avatar loading and show results when all avatars are loaded
-  useEffect(() => {
-    if (searchResults.length > 0 && !showResults) {
-      const usersWithAvatars = searchResults.filter(u => u.avatar && u.avatar.startsWith('http'));
-      if (usersWithAvatars.length > 0 && avatarsLoadedCount >= usersWithAvatars.length) {
-        if (avatarTimeoutRef.current) {
-          clearTimeout(avatarTimeoutRef.current);
-        }
-        setShowResults(true);
-      }
-    }
-  }, [avatarsLoadedCount, searchResults, showResults]);
-
-  // Track history avatar loading and show history when all avatars are loaded
-  useEffect(() => {
-    if (searchHistory.length > 0 && !showHistory && !loadingHistory) {
-      const usersWithAvatars = searchHistory.filter(u => u.avatar && u.avatar.startsWith('http'));
-      if (usersWithAvatars.length > 0 && historyAvatarsLoadedCount >= usersWithAvatars.length) {
-        if (historyAvatarTimeoutRef.current) {
-          clearTimeout(historyAvatarTimeoutRef.current);
-        }
-        setShowHistory(true);
-      }
-    }
-  }, [historyAvatarsLoadedCount, searchHistory, showHistory, loadingHistory]);
-
-  // Cleanup timeouts on unmount
-  useEffect(() => {
-    return () => {
-      if (avatarTimeoutRef.current) {
-        clearTimeout(avatarTimeoutRef.current);
-      }
-      if (historyAvatarTimeoutRef.current) {
-        clearTimeout(historyAvatarTimeoutRef.current);
-      }
-    };
-  }, []);
-
-  const handleAvatarLoad = useCallback(() => {
-    setAvatarsLoadedCount(prev => prev + 1);
-  }, []);
-
-  const handleHistoryAvatarLoad = useCallback(() => {
-    setHistoryAvatarsLoadedCount(prev => prev + 1);
-  }, []);
 
   const handleUserClick = async (user: SearchUser) => {
     // Navigate to profile immediately
@@ -582,8 +558,6 @@ export default function SearchScreen() {
                       <Image
                         source={{ uri: user.avatar }}
                         style={styles.historyAvatarImage}
-                        onLoad={handleHistoryAvatarLoad}
-                        onError={handleHistoryAvatarLoad}
                       />
                     ) : (
                       <ThemedText style={styles.historyAvatarInitial}>
@@ -631,8 +605,6 @@ export default function SearchScreen() {
                     <Image
                       source={{ uri: user.avatar }}
                       style={styles.historyAvatarImage}
-                      onLoad={handleAvatarLoad}
-                      onError={handleAvatarLoad}
                     />
                   ) : (
                     <ThemedText style={styles.historyAvatarInitial}>
