@@ -792,13 +792,10 @@ export default function ProfileScreen() {
               end={{ x: 0, y: 1 }}
               style={styles.coverPhotoFadeBottom}
             />
-          </View>
+            {/* Username overlaid on cover photo */}
+            <ThemedText style={styles.coverPhotoUsername}>{user?.username || 'User'}</ThemedText>
 
-          {/* Username Row with Profile Avatar on Right */}
-          <View style={styles.usernameRow}>
-            <ThemedText style={styles.largeUsername}>{user?.username || 'User'}</ThemedText>
-
-            {/* Profile Avatar */}
+            {/* Profile Avatar - positioned bottom-right, half overlapping */}
             <TouchableOpacity
               style={styles.profileAvatarButton}
               onPress={() => setShowAvatarModal(true)}
@@ -1387,6 +1384,8 @@ const styles = StyleSheet.create({
     width: '100%',
     height: 200,
     backgroundColor: '#2c2f33',
+    overflow: 'visible',
+    zIndex: 2,
   },
   coverPhotoImage: {
     position: 'absolute',
@@ -1394,6 +1393,7 @@ const styles = StyleSheet.create({
     left: 0,
     width: '100%',
     height: '100%',
+    opacity: 0.6,
   },
   coverPhotoGradient: {
     width: '100%',
@@ -1404,30 +1404,28 @@ const styles = StyleSheet.create({
     bottom: 0,
     left: 0,
     right: 0,
-    height: 15,
+    height: 60,
     zIndex: 1,
   },
-  // Username row with avatar
-  usernameRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingHorizontal: 20,
-    marginTop: -12,
-    marginBottom: -6,
-  },
-  largeUsername: {
+  coverPhotoUsername: {
+    position: 'absolute',
+    bottom: 8,
+    left: 20,
     fontSize: 28,
     fontWeight: '800',
     color: '#fff',
     letterSpacing: -0.5,
-    flex: 1,
-    lineHeight: 36,
-    paddingTop: 4,
+    opacity: 1,
+    zIndex: 2,
+    lineHeight: 34,
+    includeFontPadding: false,
   },
-  // Profile avatar (next to username)
+  // Profile avatar - absolutely positioned bottom-right of cover photo, half overlapping
   profileAvatarButton: {
-    marginTop: 14,
+    position: 'absolute',
+    bottom: -28,
+    right: 20,
+    zIndex: 4,
   },
   profileAvatarCircle: {
     width: 56,
@@ -1462,6 +1460,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     paddingHorizontal: 20,
+    marginTop: 4,
     marginBottom: 4,
   },
   followStatItem: {

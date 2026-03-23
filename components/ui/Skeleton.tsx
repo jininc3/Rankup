@@ -580,13 +580,15 @@ export const ProfileAchievementsSkeleton: React.FC = () => (
 // Matches profile.tsx layout: cover photo, username+avatar, followers, socials, bio, clips, rank cards, achievements
 export const ProfilePageSkeleton: React.FC = () => (
   <View style={profilePageStyles.container}>
-    {/* Cover Photo Area - height 200 */}
-    <Skeleton width={screenWidth} height={200} borderRadius={0} />
-
-    {/* Username Row with Avatar */}
-    <View style={profilePageStyles.usernameRow}>
-      <Skeleton width={160} height={28} borderRadius={6} />
-      <Skeleton width={56} height={56} borderRadius={28} />
+    {/* Cover Photo Area with username overlay + avatar */}
+    <View style={profilePageStyles.coverPhotoWrapper}>
+      <Skeleton width={screenWidth} height={200} borderRadius={0} />
+      <View style={profilePageStyles.coverPhotoUsernamePosition}>
+        <Skeleton width={160} height={28} borderRadius={6} />
+      </View>
+      <View style={profilePageStyles.avatarPosition}>
+        <Skeleton width={56} height={56} borderRadius={28} />
+      </View>
     </View>
 
     {/* Followers / Following Row */}
@@ -648,13 +650,23 @@ const profilePageStyles = StyleSheet.create({
   container: {
     backgroundColor: '#0f0f0f',
   },
-  usernameRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingHorizontal: 20,
-    marginTop: -12,
-    marginBottom: 2,
+  coverPhotoWrapper: {
+    width: '100%',
+    height: 200,
+    overflow: 'visible',
+    zIndex: 2,
+  },
+  coverPhotoUsernamePosition: {
+    position: 'absolute',
+    bottom: 10,
+    left: 20,
+    zIndex: 2,
+  },
+  avatarPosition: {
+    position: 'absolute',
+    bottom: -28,
+    right: 20,
+    zIndex: 4,
   },
   followStatsRow: {
     flexDirection: 'row',
