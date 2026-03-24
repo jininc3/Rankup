@@ -17,6 +17,7 @@ import { followUser, unfollowUser, isFollowing as checkIsFollowing, getUserRecen
 import { createOrGetChat } from '@/services/chatService';
 import PostViewerModal from '@/app/components/postViewerModal';
 import { calculateTierBorderColor, calculateTierBorderGradient } from '@/utils/tierBorderUtils';
+import { formatCount } from '@/utils/formatCount';
 import GradientBorder from '@/components/GradientBorder';
 import { LinearGradient } from 'expo-linear-gradient';
 
@@ -621,26 +622,37 @@ export default function ProfileViewScreen() {
               end={{ x: 0, y: 1 }}
               style={styles.coverPhotoFadeBottom}
             />
-          </View>
-
-          {/* Username Row with Profile Avatar on Right */}
-          <View style={styles.usernameRow}>
+            {/* Username overlaid on cover photo */}
             {loadingUser && !viewedUser ? (
-              <View style={[styles.skeletonText, { width: 120, height: 28, flex: 1 }]} />
+              <View style={[styles.coverPhotoUsername, styles.skeletonText, { width: 120, height: 28 }]} />
             ) : (
-              <ThemedText style={styles.largeUsername}>{viewedUser?.username || 'User'}</ThemedText>
+              <ThemedText style={styles.coverPhotoUsername}>{viewedUser?.username || 'User'}</ThemedText>
             )}
 
-            {/* Profile Avatar */}
+            {/* Profile Avatar - positioned bottom-right, half overlapping */}
             {loadingUser && !viewedUser ? (
-              <View style={[styles.profileAvatarCircle, styles.skeletonAvatar]} />
+              <View style={[styles.profileAvatarButton, styles.profileAvatarCircle, styles.skeletonAvatar]} />
             ) : tierBorderGradient ? (
-              <GradientBorder
-                colors={tierBorderGradient}
-                borderWidth={2}
-                borderRadius={28}
-              >
-                <View style={styles.profileAvatarCircleWithGradient}>
+              <View style={styles.profileAvatarButton}>
+                <GradientBorder
+                  colors={tierBorderGradient}
+                  borderWidth={2}
+                  borderRadius={28}
+                >
+                  <View style={styles.profileAvatarCircleWithGradient}>
+                    {viewedUser?.avatar && viewedUser.avatar.startsWith('http') ? (
+                      <Image source={{ uri: viewedUser.avatar }} style={styles.profileAvatarImage} />
+                    ) : (
+                      <ThemedText style={styles.profileAvatarInitial}>
+                        {viewedUser?.avatar || viewedUser?.username?.[0]?.toUpperCase() || 'U'}
+                      </ThemedText>
+                    )}
+                  </View>
+                </GradientBorder>
+              </View>
+            ) : (
+              <View style={styles.profileAvatarButton}>
+                <View style={styles.profileAvatarCircle}>
                   {viewedUser?.avatar && viewedUser.avatar.startsWith('http') ? (
                     <Image source={{ uri: viewedUser.avatar }} style={styles.profileAvatarImage} />
                   ) : (
@@ -649,16 +661,6 @@ export default function ProfileViewScreen() {
                     </ThemedText>
                   )}
                 </View>
-              </GradientBorder>
-            ) : (
-              <View style={styles.profileAvatarCircle}>
-                {viewedUser?.avatar && viewedUser.avatar.startsWith('http') ? (
-                  <Image source={{ uri: viewedUser.avatar }} style={styles.profileAvatarImage} />
-                ) : (
-                  <ThemedText style={styles.profileAvatarInitial}>
-                    {viewedUser?.avatar || viewedUser?.username?.[0]?.toUpperCase() || 'U'}
-                  </ThemedText>
-                )}
               </View>
             )}
           </View>
@@ -673,7 +675,7 @@ export default function ProfileViewScreen() {
               })}
               activeOpacity={0.7}
             >
-              <ThemedText style={styles.followStatNumber}>{viewedUser?.followersCount || 0}</ThemedText>
+              <ThemedText style={styles.followStatNumber}>{formatCount(viewedUser?.followersCount)}</ThemedText>
               <ThemedText style={styles.followStatLabel}> Followers</ThemedText>
             </TouchableOpacity>
             <View style={styles.followStatDivider} />
@@ -685,7 +687,7 @@ export default function ProfileViewScreen() {
               })}
               activeOpacity={0.7}
             >
-              <ThemedText style={styles.followStatNumber}>{viewedUser?.followingCount || 0}</ThemedText>
+              <ThemedText style={styles.followStatNumber}>{formatCount(viewedUser?.followingCount)}</ThemedText>
               <ThemedText style={styles.followStatLabel}> Following</ThemedText>
             </TouchableOpacity>
           </View>
@@ -1205,6 +1207,8 @@ const styles = StyleSheet.create({
     width: '100%',
     height: 200,
     backgroundColor: '#2c2f33',
+    overflow: 'visible',
+    zIndex: 2,
   },
   coverPhotoImage: {
     position: 'absolute',
@@ -1212,6 +1216,7 @@ const styles = StyleSheet.create({
     left: 0,
     width: '100%',
     height: '100%',
+    opacity: 0.6,
   },
   coverPhotoGradient: {
     width: '100%',
@@ -1222,28 +1227,29 @@ const styles = StyleSheet.create({
     bottom: 0,
     left: 0,
     right: 0,
-    height: 15,
+    height: 60,
     zIndex: 1,
   },
-  // Username row with avatar
-  usernameRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingHorizontal: 20,
-    marginTop: 16,
-    marginBottom: 8,
-  },
-  largeUsername: {
+  coverPhotoUsername: {
+    position: 'absolute',
+    bottom: 8,
+    left: 20,
     fontSize: 28,
     fontWeight: '800',
     color: '#fff',
     letterSpacing: -0.5,
-    flex: 1,
-    lineHeight: 36,
-    paddingTop: 4,
+    opacity: 1,
+    zIndex: 2,
+    lineHeight: 34,
+    includeFontPadding: false,
   },
-  // Profile avatar (next to username)
+  // Profile avatar - absolutely positioned bottom-right of cover photo, half overlapping
+  profileAvatarButton: {
+    position: 'absolute',
+    bottom: -28,
+    right: 20,
+    zIndex: 4,
+  },
   profileAvatarCircle: {
     width: 56,
     height: 56,
@@ -1277,7 +1283,8 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     paddingHorizontal: 20,
-    marginBottom: 16,
+    marginTop: 4,
+    marginBottom: 4,
   },
   followStatItem: {
     flexDirection: 'row',
@@ -1304,7 +1311,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     paddingHorizontal: 20,
-    marginBottom: 20,
+    marginBottom: 6,
     gap: 12,
   },
   socialIconButton: {

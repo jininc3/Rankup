@@ -16,6 +16,7 @@ import { db } from '@/config/firebase';
 import { collection, query, where, getDocs, Timestamp, doc, getDoc } from 'firebase/firestore';
 import { followUser, unfollowUser, isFollowing as checkIsFollowing } from '@/services/followService';
 import { calculateTierBorderColor, calculateTierBorderGradient } from '@/utils/tierBorderUtils';
+import { formatCount } from '@/utils/formatCount';
 import GradientBorder from '@/components/GradientBorder';
 import { LinearGradient } from 'expo-linear-gradient';
 
@@ -414,13 +415,10 @@ export default function ProfilePreviewScreen() {
               end={{ x: 0, y: 1 }}
               style={styles.coverPhotoFadeBottom}
             />
-          </View>
+            {/* Username overlaid on cover photo */}
+            <ThemedText style={styles.coverPhotoUsername}>{viewedUser?.username || 'User'}</ThemedText>
 
-          {/* Username Row with Profile Avatar on Right */}
-          <View style={styles.usernameRow}>
-            <ThemedText style={styles.largeUsername}>{viewedUser?.username || 'User'}</ThemedText>
-
-            {/* Profile Avatar */}
+            {/* Profile Avatar - positioned bottom-right, half overlapping */}
             <View style={styles.profileAvatarButton}>
               {tierBorderGradient ? (
                 <GradientBorder
@@ -461,12 +459,12 @@ export default function ProfilePreviewScreen() {
           {/* Followers / Following Row */}
           <View style={styles.followStatsRow}>
             <View style={styles.followStatItem}>
-              <ThemedText style={styles.followStatNumber}>{viewedUser?.followersCount || 0}</ThemedText>
+              <ThemedText style={styles.followStatNumber}>{formatCount(viewedUser?.followersCount)}</ThemedText>
               <ThemedText style={styles.followStatLabel}> Followers</ThemedText>
             </View>
             <View style={styles.followStatDivider} />
             <View style={styles.followStatItem}>
-              <ThemedText style={styles.followStatNumber}>{viewedUser?.followingCount || 0}</ThemedText>
+              <ThemedText style={styles.followStatNumber}>{formatCount(viewedUser?.followingCount)}</ThemedText>
               <ThemedText style={styles.followStatLabel}> Following</ThemedText>
             </View>
           </View>
@@ -794,6 +792,8 @@ const styles = StyleSheet.create({
     width: '100%',
     height: 200,
     backgroundColor: '#2c2f33',
+    overflow: 'visible',
+    zIndex: 2,
   },
   coverPhotoImage: {
     position: 'absolute',
@@ -801,6 +801,7 @@ const styles = StyleSheet.create({
     left: 0,
     width: '100%',
     height: '100%',
+    opacity: 0.6,
   },
   coverPhotoGradient: {
     width: '100%',
@@ -811,27 +812,27 @@ const styles = StyleSheet.create({
     bottom: 0,
     left: 0,
     right: 0,
-    height: 15,
+    height: 60,
     zIndex: 1,
   },
-  usernameRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingHorizontal: 20,
-    marginTop: 16,
-    marginBottom: 8,
-  },
-  largeUsername: {
+  coverPhotoUsername: {
+    position: 'absolute',
+    bottom: 8,
+    left: 20,
     fontSize: 28,
     fontWeight: '800',
     color: '#fff',
     letterSpacing: -0.5,
-    flex: 1,
-    lineHeight: 36,
-    paddingTop: 4,
+    opacity: 1,
+    zIndex: 2,
+    lineHeight: 34,
+    includeFontPadding: false,
   },
   profileAvatarButton: {
+    position: 'absolute',
+    bottom: -28,
+    right: 20,
+    zIndex: 4,
   },
   profileAvatarCircle: {
     width: 56,
@@ -865,7 +866,8 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     paddingHorizontal: 20,
-    marginBottom: 16,
+    marginTop: 4,
+    marginBottom: 4,
   },
   followStatItem: {
     flexDirection: 'row',
@@ -891,7 +893,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     paddingHorizontal: 20,
-    marginBottom: 20,
+    marginBottom: 6,
     gap: 12,
   },
   socialIconButton: {

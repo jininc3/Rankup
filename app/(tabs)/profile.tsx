@@ -20,6 +20,7 @@ import { getValorantStats } from '@/services/valorantService';
 import { deletePostMedia } from '@/services/storageService';
 import { deleteDoc } from 'firebase/firestore';
 import { calculateTierBorderColor, calculateTierBorderGradient } from '@/utils/tierBorderUtils';
+import { formatCount } from '@/utils/formatCount';
 import { ProfilePageSkeleton } from '@/components/ui/Skeleton';
 import GradientBorder from '@/components/GradientBorder';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -856,7 +857,7 @@ export default function ProfileScreen() {
               onPress={() => router.push('/profilePages/followers')}
               activeOpacity={0.7}
             >
-              <ThemedText style={styles.followStatNumber}>{user?.followersCount || 0}</ThemedText>
+              <ThemedText style={styles.followStatNumber}>{formatCount(user?.followersCount)}</ThemedText>
               <ThemedText style={styles.followStatLabel}> Followers</ThemedText>
             </TouchableOpacity>
             <View style={styles.followStatDivider} />
@@ -865,7 +866,7 @@ export default function ProfileScreen() {
               onPress={() => router.push('/profilePages/following')}
               activeOpacity={0.7}
             >
-              <ThemedText style={styles.followStatNumber}>{user?.followingCount || 0}</ThemedText>
+              <ThemedText style={styles.followStatNumber}>{formatCount(user?.followingCount)}</ThemedText>
               <ThemedText style={styles.followStatLabel}> Following</ThemedText>
             </TouchableOpacity>
           </View>
@@ -946,6 +947,8 @@ export default function ProfileScreen() {
 
           {/* Content Section */}
           <View>
+          {/* Clips Container */}
+          <View style={styles.sectionContainer}>
             {/* Clips Section Header */}
             <View style={styles.sectionHeader}>
               <View style={styles.sectionHeaderLeft}>
@@ -1026,7 +1029,12 @@ export default function ProfileScreen() {
             </View>
           )}
           </View>
+          </View>
 
+          {/* Rank Cards Container */}
+          <View style={[styles.sectionContainer, {
+            paddingBottom: userGames.length > 2 ? 10 : userGames.length > 1 ? 8 : 4
+          }]}>
           {/* Rank Cards Section Header */}
           <View style={styles.sectionHeader}>
             <View style={styles.sectionHeaderLeft}>
@@ -1035,9 +1043,7 @@ export default function ProfileScreen() {
           </View>
 
           {/* Rank Cards Content */}
-          <View style={[styles.rankCardsSection, {
-            marginBottom: userGames.length > 2 ? 15 : userGames.length > 1 ? 20 : 25
-          }]}>
+          <View style={styles.rankCardsSection}>
           {!riotAccount && !valorantAccount ? (
             // Empty state for new users
             <View style={styles.emptyState}>
@@ -1161,7 +1167,10 @@ export default function ProfileScreen() {
             })()
           )}
           </View>
+          </View>
 
+          {/* Achievements Container */}
+          <View style={styles.sectionContainer}>
           {/* Achievements Section Header */}
           <View style={styles.sectionHeader}>
             <View style={styles.sectionHeaderLeft}>
@@ -1203,6 +1212,7 @@ export default function ProfileScreen() {
                 </ThemedText>
               </View>
             )}
+          </View>
           </View>
 
           </View>
@@ -1648,14 +1658,24 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: '#424549',
   },
+  sectionContainer: {
+    backgroundColor: 'rgba(255, 255, 255, 0.03)',
+    borderRadius: 16,
+    marginHorizontal: 10,
+    marginBottom: 12,
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.06)',
+    overflow: 'hidden',
+  },
   clipsSection: {
     marginBottom: 20,
   },
   rankCardsSection: {
-    marginBottom: 20,
+    marginBottom: 12,
   },
   horizontalClipsContainer: {
-    paddingHorizontal: 16,
+    paddingLeft: 16,
+    paddingRight: 16,
     gap: 12,
   },
   horizontalClipItem: {

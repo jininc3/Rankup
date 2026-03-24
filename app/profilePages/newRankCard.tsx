@@ -17,11 +17,9 @@ import { db } from '@/config/firebase';
 import { doc, getDoc, updateDoc, arrayUnion } from 'firebase/firestore';
 import { getValorantStats } from '@/services/valorantService';
 import { unlinkRiotAccount } from '@/services/riotService';
-import { LinearGradient } from 'expo-linear-gradient';
 import { formatRank } from '@/services/riotService';
 
 const { width: screenWidth } = Dimensions.get('window');
-const CARD_WIDTH = screenWidth - 40;
 
 type GameType = 'league' | 'valorant' | 'tft';
 
@@ -71,31 +69,24 @@ export default function NewRankCardScreen() {
 
     // Valorant uses Henrik's API - separate flow
     if (game === 'valorant') {
-      // Check if Valorant account is already linked
       if (valorantAccount) {
-        // Account already linked, just add the rank card
         try {
           await updateDoc(doc(db, 'users', user.id), {
             enabledRankCards: arrayUnion(game),
           });
-          // Update local state immediately
           setEnabledRankCards([...enabledRankCards, game]);
 
-          // Fetch stats to ensure they're cached for profile viewing
           try {
-            console.log('Fetching Valorant stats to cache for profile viewing');
             await getValorantStats(false);
           } catch (statsError) {
             console.warn('Failed to fetch stats, but rank card added:', statsError);
           }
 
-          // Navigate back to profile to show the new rank card
           router.back();
         } catch (error) {
           console.error('Error adding rank card:', error);
         }
       } else {
-        // Not linked yet, navigate to link page
         router.push('/profilePages/linkValorantAccount');
       }
       return;
@@ -107,16 +98,12 @@ export default function NewRankCardScreen() {
         await updateDoc(doc(db, 'users', user.id), {
           enabledRankCards: arrayUnion(game),
         });
-        // Update local state immediately
         setEnabledRankCards([...enabledRankCards, game]);
-
-        // Navigate back to profile to show the new rank card
         router.back();
       } catch (error) {
         console.error('Error adding rank card:', error);
       }
     } else {
-      // Navigate to link account with selected game
       router.push({
         pathname: '/profilePages/linkRiotAccount',
         params: { selectedGame: game },
@@ -131,10 +118,7 @@ export default function NewRankCardScreen() {
       'Unlink League of Legends Account',
       `Are you sure you want to unlink ${riotAccount?.gameName}#${riotAccount?.tagLine}? All League and TFT rank cards will be removed from your profile.`,
       [
-        {
-          text: 'Cancel',
-          style: 'cancel',
-        },
+        { text: 'Cancel', style: 'cancel' },
         {
           text: 'Unlink',
           style: 'destructive',
@@ -142,7 +126,6 @@ export default function NewRankCardScreen() {
             try {
               await unlinkRiotAccount();
 
-              // Remove League and TFT rank cards from enabled list
               if (user?.id) {
                 const userDoc = await getDoc(doc(db, 'users', user.id));
                 if (userDoc.exists()) {
@@ -154,7 +137,6 @@ export default function NewRankCardScreen() {
                     enabledRankCards: updatedCards,
                   });
 
-                  // Update local state
                   setEnabledRankCards(updatedCards);
                 }
               }
@@ -179,23 +161,18 @@ export default function NewRankCardScreen() {
       'Unlink Valorant Account',
       `Are you sure you want to unlink ${valorantAccount?.gameName}#${valorantAccount?.tagLine}? Your Valorant rank card will be removed from your profile.`,
       [
-        {
-          text: 'Cancel',
-          style: 'cancel',
-        },
+        { text: 'Cancel', style: 'cancel' },
         {
           text: 'Unlink',
           style: 'destructive',
           onPress: async () => {
             try {
-              // Remove Valorant account from Firestore
               if (user?.id) {
                 await updateDoc(doc(db, 'users', user.id), {
                   valorantAccount: null,
                   valorantStats: null,
                 });
 
-                // Remove Valorant rank card from enabled list
                 const userDoc = await getDoc(doc(db, 'users', user.id));
                 if (userDoc.exists()) {
                   const data = userDoc.data();
@@ -206,7 +183,6 @@ export default function NewRankCardScreen() {
                     enabledRankCards: updatedCards,
                   });
 
-                  // Update local state
                   setEnabledRankCards(updatedCards);
                 }
               }
@@ -235,12 +211,87 @@ export default function NewRankCardScreen() {
     return valorantStats?.currentRank || 'Unranked';
   };
 
+  const renderGameRow = (
+    game: GameType,
+    name: string,
+    logo: any,
+    account: any,
+    rankText: string,
+    onUnlink: () => void,
+  ) => {
+    const isLinked = !!account;
+    const isEnabled = enabledRankCards.includes(game);
+
+    return (
+      <View style={styles.gameRow} key={game}>
+        <TouchableOpacity
+          style={styles.gameCard}
+          onPress={() => {
+            if (!isLinked) {
+              handleGameSelect(game);
+            } else if (!isEnabled) {
+              handleGameSelect(game);
+            }
+          }}
+          activeOpacity={isLinked && isEnabled ? 1 : 0.7}
+        >
+          {/* Left: Logo */}
+          <View style={styles.logoContainer}>
+            <Image source={logo} style={styles.gameLogo} resizeMode="contain" />
+          </View>
+
+          {/* Middle: Info */}
+          <View style={styles.gameInfo}>
+            <ThemedText style={styles.gameName}>{name}</ThemedText>
+            {isLinked ? (
+              <>
+                <ThemedText style={styles.accountName}>
+                  {account.gameName}#{account.tagLine || account.tag}
+                </ThemedText>
+                <ThemedText style={styles.rankText}>{rankText}</ThemedText>
+              </>
+            ) : (
+              <ThemedText style={styles.notLinkedText}>Not linked</ThemedText>
+            )}
+          </View>
+
+          {/* Right: Action */}
+          <View style={styles.cardAction}>
+            {isLinked && isEnabled ? (
+              <View style={styles.activePill}>
+                <View style={styles.activeDot} />
+                <ThemedText style={styles.activePillText}>Active</ThemedText>
+              </View>
+            ) : isLinked ? (
+              <View style={styles.addPill}>
+                <IconSymbol size={14} name="plus" color="#fff" />
+                <ThemedText style={styles.addPillText}>Add</ThemedText>
+              </View>
+            ) : (
+              <View style={styles.linkPill}>
+                <IconSymbol size={14} name="link" color="#fff" />
+                <ThemedText style={styles.linkPillText}>Link</ThemedText>
+              </View>
+            )}
+          </View>
+        </TouchableOpacity>
+
+        {/* Unlink */}
+        {isLinked && (
+          <TouchableOpacity style={styles.unlinkButton} onPress={onUnlink}>
+            <ThemedText style={styles.unlinkText}>Unlink</ThemedText>
+          </TouchableOpacity>
+        )}
+      </View>
+    );
+  };
+
   return (
     <ScrollView style={styles.container} showsVerticalScrollIndicator={false}>
       {/* Header */}
       <View style={styles.header}>
         <TouchableOpacity style={styles.backButton} onPress={() => router.back()}>
-          <IconSymbol size={24} name="chevron.left" color="#fff" />
+          <IconSymbol size={20} name="chevron.left" color="#fff" />
         </TouchableOpacity>
         <ThemedText style={styles.headerTitle}>Rank Cards</ThemedText>
       </View>
@@ -253,189 +304,36 @@ export default function NewRankCardScreen() {
           </View>
         ) : (
           <>
-            {/* League of Legends Card */}
-            <TouchableOpacity
-              style={styles.gameCardWrapper}
-              onPress={() => !riotAccount && handleGameSelect('league')}
-              activeOpacity={riotAccount ? 1 : 0.8}
-            >
-              <LinearGradient
-                colors={riotAccount ? ['#1a3a5c', '#0f1f3d', '#091428'] : ['#1a1a1a', '#141414', '#0f0f0f']}
-                start={{ x: 0, y: 0 }}
-                end={{ x: 1, y: 1 }}
-                style={styles.gameCard}
-              >
-                {/* Game Logo */}
-                <View style={styles.logoContainer}>
-                  <Image
-                    source={require('@/assets/images/lol-icon.png')}
-                    style={styles.gameLogo}
-                    resizeMode="contain"
-                  />
-                </View>
+            {/* Section Container */}
+            <View style={styles.sectionContainer}>
+              <ThemedText style={styles.sectionLabel}>Games</ThemedText>
 
-                {/* Game Info */}
-                <View style={styles.gameInfo}>
-                  <ThemedText style={styles.gameName}>League of Legends</ThemedText>
-
-                  {riotAccount ? (
-                    <>
-                      <View style={styles.accountRow}>
-                        <IconSymbol size={14} name="person.fill" color="rgba(255, 255, 255, 0.7)" />
-                        <ThemedText style={styles.accountName}>
-                          {riotAccount.gameName}#{riotAccount.tagLine}
-                        </ThemedText>
-                      </View>
-                      <View style={styles.rankRow}>
-                        <ThemedText style={styles.rankLabel}>Rank:</ThemedText>
-                        <ThemedText style={styles.rankValue}>{getLeagueRank()}</ThemedText>
-                      </View>
-                    </>
-                  ) : (
-                    <View style={styles.notLinkedRow}>
-                      <IconSymbol size={14} name="link" color="#666" />
-                      <ThemedText style={styles.notLinkedText}>Not linked</ThemedText>
-                    </View>
-                  )}
-                </View>
-
-                {/* Active badge - top right */}
-                {riotAccount && enabledRankCards.includes('league') && (
-                  <View style={styles.activeBadge}>
-                    <IconSymbol size={10} name="checkmark" color="#4ade80" />
-                  </View>
-                )}
-
-                {/* Status/Action */}
-                <View style={styles.cardAction}>
-                  {riotAccount ? (
-                    !enabledRankCards.includes('league') && (
-                      <TouchableOpacity
-                        style={styles.addButton}
-                        onPress={() => handleGameSelect('league')}
-                      >
-                        <IconSymbol size={18} name="plus" color="#fff" />
-                        <ThemedText style={styles.addButtonText}>Add</ThemedText>
-                      </TouchableOpacity>
-                    )
-                  ) : (
-                    <View style={styles.linkButton}>
-                      <IconSymbol size={16} name="link" color="#fff" />
-                      <ThemedText style={styles.linkButtonText}>Link</ThemedText>
-                    </View>
-                  )}
-                </View>
-
-                {/* Decorative elements */}
-                <View style={[styles.glowOrb, styles.glowOrbTopRight, riotAccount && styles.glowOrbActive]} />
-                <View style={[styles.glowOrb, styles.glowOrbBottomLeft, riotAccount && styles.glowOrbActive]} />
-              </LinearGradient>
-
-              {/* Unlink option */}
-              {riotAccount && (
-                <TouchableOpacity
-                  style={styles.unlinkButton}
-                  onPress={handleUnlinkRiotAccount}
-                >
-                  <ThemedText style={styles.unlinkText}>Unlink Account</ThemedText>
-                </TouchableOpacity>
+              {renderGameRow(
+                'league',
+                'League of Legends',
+                require('@/assets/images/lol-icon.png'),
+                riotAccount,
+                getLeagueRank(),
+                handleUnlinkRiotAccount,
               )}
-            </TouchableOpacity>
 
-            {/* Valorant Card */}
-            <TouchableOpacity
-              style={styles.gameCardWrapper}
-              onPress={() => !valorantAccount && handleGameSelect('valorant')}
-              activeOpacity={valorantAccount ? 1 : 0.8}
-            >
-              <LinearGradient
-                colors={valorantAccount ? ['#DC3D4B', '#8B1E2B', '#5C141D'] : ['#1a1a1a', '#141414', '#0f0f0f']}
-                start={{ x: 0, y: 0 }}
-                end={{ x: 1, y: 1 }}
-                style={styles.gameCard}
-              >
-                {/* Game Logo */}
-                <View style={styles.logoContainer}>
-                  <Image
-                    source={require('@/assets/images/valorant.png')}
-                    style={styles.gameLogo}
-                    resizeMode="contain"
-                  />
-                </View>
+              <View style={styles.divider} />
 
-                {/* Game Info */}
-                <View style={styles.gameInfo}>
-                  <ThemedText style={styles.gameName}>Valorant</ThemedText>
-
-                  {valorantAccount ? (
-                    <>
-                      <View style={styles.accountRow}>
-                        <IconSymbol size={14} name="person.fill" color="rgba(255, 255, 255, 0.7)" />
-                        <ThemedText style={styles.accountName}>
-                          {valorantAccount.gameName}#{valorantAccount.tagLine}
-                        </ThemedText>
-                      </View>
-                      <View style={styles.rankRow}>
-                        <ThemedText style={styles.rankLabel}>Rank:</ThemedText>
-                        <ThemedText style={styles.rankValue}>{getValorantRank()}</ThemedText>
-                      </View>
-                    </>
-                  ) : (
-                    <View style={styles.notLinkedRow}>
-                      <IconSymbol size={14} name="link" color="#666" />
-                      <ThemedText style={styles.notLinkedText}>Not linked</ThemedText>
-                    </View>
-                  )}
-                </View>
-
-                {/* Active badge - top right */}
-                {valorantAccount && enabledRankCards.includes('valorant') && (
-                  <View style={styles.activeBadge}>
-                    <IconSymbol size={10} name="checkmark" color="#4ade80" />
-                  </View>
-                )}
-
-                {/* Status/Action */}
-                <View style={styles.cardAction}>
-                  {valorantAccount ? (
-                    !enabledRankCards.includes('valorant') && (
-                      <TouchableOpacity
-                        style={styles.addButton}
-                        onPress={() => handleGameSelect('valorant')}
-                      >
-                        <IconSymbol size={18} name="plus" color="#fff" />
-                        <ThemedText style={styles.addButtonText}>Add</ThemedText>
-                      </TouchableOpacity>
-                    )
-                  ) : (
-                    <View style={styles.linkButton}>
-                      <IconSymbol size={16} name="link" color="#fff" />
-                      <ThemedText style={styles.linkButtonText}>Link</ThemedText>
-                    </View>
-                  )}
-                </View>
-
-                {/* Decorative elements */}
-                <View style={[styles.glowOrb, styles.glowOrbTopRight, valorantAccount && styles.glowOrbActiveRed]} />
-                <View style={[styles.glowOrb, styles.glowOrbBottomLeft, valorantAccount && styles.glowOrbActiveRed]} />
-              </LinearGradient>
-
-              {/* Unlink option */}
-              {valorantAccount && (
-                <TouchableOpacity
-                  style={styles.unlinkButton}
-                  onPress={handleUnlinkValorantAccount}
-                >
-                  <ThemedText style={styles.unlinkText}>Unlink Account</ThemedText>
-                </TouchableOpacity>
+              {renderGameRow(
+                'valorant',
+                'Valorant',
+                require('@/assets/images/valorant.png'),
+                valorantAccount,
+                getValorantRank(),
+                handleUnlinkValorantAccount,
               )}
-            </TouchableOpacity>
+            </View>
 
-            {/* Info text */}
+            {/* Info */}
             <View style={styles.infoContainer}>
-              <IconSymbol size={16} name="info.circle" color="#666" />
+              <IconSymbol size={14} name="info.circle" color="#555" />
               <ThemedText style={styles.infoText}>
-                Linked accounts will display your current rank on your profile. You can manage visibility in Edit Profile.
+                Linked accounts display your current rank on your profile. Manage visibility in Edit Profile.
               </ThemedText>
             </View>
           </>
@@ -455,190 +353,171 @@ const styles = StyleSheet.create({
   header: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingHorizontal: 20,
-    paddingTop: 60,
-    paddingBottom: 20,
+    paddingHorizontal: 16,
+    paddingTop: 58,
+    paddingBottom: 16,
   },
   backButton: {
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginRight: 16,
-    padding: 4,
+    padding: 6,
+    marginRight: 12,
   },
   headerTitle: {
-    fontSize: 24,
+    fontSize: 20,
     fontWeight: '700',
     color: '#fff',
+    letterSpacing: -0.3,
   },
   content: {
-    paddingHorizontal: 20,
-    paddingTop: 10,
+    paddingHorizontal: 10,
+    paddingTop: 4,
   },
   loadingContainer: {
     paddingVertical: 100,
     alignItems: 'center',
     justifyContent: 'center',
   },
-  gameCardWrapper: {
-    marginBottom: 20,
+  sectionContainer: {
+    backgroundColor: 'rgba(255, 255, 255, 0.03)',
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.06)',
+    padding: 16,
+  },
+  sectionLabel: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: '#666',
+    letterSpacing: 0.5,
+    textTransform: 'uppercase',
+    marginBottom: 14,
+  },
+  divider: {
+    height: 1,
+    backgroundColor: 'rgba(255, 255, 255, 0.06)',
+    marginVertical: 4,
+  },
+  gameRow: {
+    marginVertical: 4,
   },
   gameCard: {
-    width: CARD_WIDTH,
-    height: 160,
-    borderRadius: 20,
-    padding: 20,
     flexDirection: 'row',
     alignItems: 'center',
-    overflow: 'hidden',
-    borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.1)',
+    paddingVertical: 12,
+    paddingHorizontal: 4,
   },
   logoContainer: {
-    width: 80,
-    height: 80,
-    backgroundColor: 'rgba(0, 0, 0, 0.3)',
-    borderRadius: 16,
+    width: 48,
+    height: 48,
+    backgroundColor: 'rgba(255, 255, 255, 0.05)',
+    borderRadius: 12,
     alignItems: 'center',
     justifyContent: 'center',
-    marginRight: 16,
+    marginRight: 14,
   },
   gameLogo: {
-    width: 50,
-    height: 50,
+    width: 30,
+    height: 30,
   },
   gameInfo: {
     flex: 1,
-    justifyContent: 'center',
-    gap: 6,
+    gap: 2,
   },
   gameName: {
-    fontSize: 20,
-    fontWeight: '700',
-    color: '#fff',
-    marginBottom: 4,
-  },
-  accountRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-  },
-  accountName: {
-    fontSize: 14,
-    fontWeight: '500',
-    color: 'rgba(255, 255, 255, 0.9)',
-  },
-  rankRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-  },
-  rankLabel: {
-    fontSize: 13,
-    fontWeight: '500',
-    color: 'rgba(255, 255, 255, 0.6)',
-  },
-  rankValue: {
-    fontSize: 13,
+    fontSize: 16,
     fontWeight: '600',
     color: '#fff',
   },
-  notLinkedRow: {
+  accountName: {
+    fontSize: 13,
+    fontWeight: '400',
+    color: 'rgba(255, 255, 255, 0.5)',
+  },
+  rankText: {
+    fontSize: 13,
+    fontWeight: '500',
+    color: 'rgba(255, 255, 255, 0.7)',
+  },
+  notLinkedText: {
+    fontSize: 13,
+    fontWeight: '400',
+    color: '#555',
+  },
+  cardAction: {
+    marginLeft: 12,
+  },
+  activePill: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 6,
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: 20,
   },
-  notLinkedText: {
-    fontSize: 14,
+  activeDot: {
+    width: 7,
+    height: 7,
+    borderRadius: 4,
+    backgroundColor: '#4ade80',
+  },
+  activePillText: {
+    fontSize: 12,
     fontWeight: '500',
-    color: '#666',
+    color: 'rgba(255, 255, 255, 0.4)',
   },
-  cardAction: {
-    marginLeft: 'auto',
-  },
-  activeBadge: {
-    position: 'absolute',
-    top: 12,
-    right: 12,
-    width: 22,
-    height: 22,
-    borderRadius: 11,
-    backgroundColor: 'rgba(74, 222, 128, 0.15)',
-    alignItems: 'center',
-    justifyContent: 'center',
-    borderWidth: 1,
-    borderColor: 'rgba(74, 222, 128, 0.3)',
-  },
-  addButton: {
+  addPill: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 4,
-    backgroundColor: 'rgba(255, 255, 255, 0.15)',
-    paddingHorizontal: 14,
-    paddingVertical: 8,
+    backgroundColor: 'rgba(255, 255, 255, 0.08)',
+    paddingHorizontal: 12,
+    paddingVertical: 6,
     borderRadius: 20,
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.1)',
   },
-  addButtonText: {
-    fontSize: 13,
+  addPillText: {
+    fontSize: 12,
     fontWeight: '600',
     color: '#fff',
   },
-  linkButton: {
+  linkPill: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 6,
-    backgroundColor: '#c42743',
-    paddingHorizontal: 14,
-    paddingVertical: 8,
+    gap: 4,
+    backgroundColor: 'rgba(196, 39, 67, 0.15)',
+    paddingHorizontal: 12,
+    paddingVertical: 6,
     borderRadius: 20,
+    borderWidth: 1,
+    borderColor: 'rgba(196, 39, 67, 0.3)',
   },
-  linkButtonText: {
-    fontSize: 13,
+  linkPillText: {
+    fontSize: 12,
     fontWeight: '600',
-    color: '#fff',
-  },
-  glowOrb: {
-    position: 'absolute',
-    width: 100,
-    height: 100,
-    borderRadius: 50,
-    backgroundColor: 'rgba(255, 255, 255, 0.03)',
-  },
-  glowOrbTopRight: {
-    top: -30,
-    right: -30,
-  },
-  glowOrbBottomLeft: {
-    bottom: -40,
-    left: -40,
-  },
-  glowOrbActive: {
-    backgroundColor: 'rgba(74, 180, 255, 0.15)',
-  },
-  glowOrbActiveRed: {
-    backgroundColor: 'rgba(255, 100, 100, 0.15)',
+    color: '#c42743',
   },
   unlinkButton: {
-    alignSelf: 'flex-start',
-    marginTop: 8,
-    marginLeft: 4,
+    alignSelf: 'flex-end',
+    paddingVertical: 4,
+    paddingHorizontal: 4,
   },
   unlinkText: {
-    fontSize: 13,
+    fontSize: 12,
     fontWeight: '500',
-    color: '#c42743',
+    color: '#555',
   },
   infoContainer: {
     flexDirection: 'row',
     alignItems: 'flex-start',
-    gap: 10,
-    marginTop: 10,
-    paddingHorizontal: 4,
+    gap: 8,
+    marginTop: 16,
+    paddingHorizontal: 6,
   },
   infoText: {
     flex: 1,
-    fontSize: 13,
-    color: '#666',
-    lineHeight: 18,
+    fontSize: 12,
+    color: '#555',
+    lineHeight: 17,
   },
   bottomSpacer: {
     height: 60,

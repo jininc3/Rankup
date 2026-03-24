@@ -1,7 +1,7 @@
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { IconSymbol } from '@/components/ui/icon-symbol';
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { ScrollView, StyleSheet, TextInput, TouchableOpacity, View, Image } from 'react-native';
 import { useRouter } from 'expo-router';
 import { collection, query, where, getDocs, orderBy, limit, doc, setDoc, deleteDoc, getDoc, Timestamp } from 'firebase/firestore';
@@ -211,6 +211,54 @@ const SearchResultsSkeletonLoader = () => {
       {[0, 1, 2, 3, 4, 5].map((index) => (
         <SearchResultSkeletonItem key={index} index={index} />
       ))}
+    </View>
+  );
+};
+
+// Avatar component that shows skeleton shimmer until image loads
+const AvatarWithSkeleton = ({ uri, style }: { uri: string; style: any }) => {
+  const [loaded, setLoaded] = useState(false);
+  const shimmerValue = useSharedValue(0);
+
+  useEffect(() => {
+    if (!loaded) {
+      shimmerValue.value = withRepeat(
+        withTiming(1, { duration: 1200 }),
+        -1,
+        false
+      );
+    }
+  }, [loaded]);
+
+  const shimmerStyle = useAnimatedStyle(() => {
+    const translateX = interpolate(
+      shimmerValue.value,
+      [0, 1],
+      [-200, 200]
+    );
+    return { transform: [{ translateX }] };
+  });
+
+  return (
+    <View style={{ width: '100%', height: '100%' }}>
+      {!loaded && (
+        <View style={[style, { position: 'absolute', backgroundColor: '#1a1a1a', overflow: 'hidden' }]}>
+          <Animated.View style={[StyleSheet.absoluteFill, shimmerStyle]}>
+            <LinearGradient
+              colors={['transparent', 'rgba(255,255,255,0.08)', 'transparent']}
+              start={{ x: 0, y: 0 }}
+              end={{ x: 1, y: 0 }}
+              style={{ flex: 1, width: 200 }}
+            />
+          </Animated.View>
+        </View>
+      )}
+      <Image
+        source={{ uri }}
+        style={style}
+        onLoad={() => setLoaded(true)}
+        onError={() => setLoaded(true)}
+      />
     </View>
   );
 };
@@ -530,64 +578,20 @@ export default function SearchScreen() {
       </View>
 
       <ScrollView style={styles.scrollView} showsVerticalScrollIndicator={false}>
-        {searchQuery.trim() === '' && (loadingHistory || (searchHistory.length > 0 && !showHistory)) ? (
+        {/* History skeleton - only when initially loading */}
+        {searchQuery.trim() === '' && (loadingHistory || (searchHistory.length > 0 && !showHistory)) && (
           <SkeletonLoader />
-        ) : searchQuery.trim() === '' && searchHistory.length > 0 && showHistory ? (
-          <View>
-            <View style={styles.historyHeader}>
-              <ThemedText style={styles.historyTitle}>Recent</ThemedText>
-              <TouchableOpacity onPress={clearHistory}>
-                <ThemedText style={styles.clearButton}>Clear All</ThemedText>
-              </TouchableOpacity>
-            </View>
-            {searchHistory.map((user) => {
-              const tierBorderColor = calculateTierBorderColor(user.leagueRank, user.valorantRank);
-              return (
-              <TouchableOpacity
-                key={user.id}
-                style={styles.historyCard}
-                onPress={() => handleUserClick(user)}
-                activeOpacity={0.7}
-              >
-                <View style={styles.historyLeft}>
-                  <View style={[
-                    styles.historyAvatar,
-                    tierBorderColor ? { borderWidth: 2, borderColor: tierBorderColor } : {}
-                  ]}>
-                    {user.avatar && user.avatar.startsWith('http') ? (
-                      <Image
-                        source={{ uri: user.avatar }}
-                        style={styles.historyAvatarImage}
-                      />
-                    ) : (
-                      <ThemedText style={styles.historyAvatarInitial}>
-                        {user.username[0].toUpperCase()}
-                      </ThemedText>
-                    )}
-                  </View>
-                  <ThemedText style={styles.historyUsername}>{user.username}</ThemedText>
-                </View>
-                <TouchableOpacity
-                  onPress={(e) => removeFromHistory(user.id, e)}
-                  style={styles.deleteButton}
-                  hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
-                >
-                  <IconSymbol size={14} name="xmark" color="#444" />
-                </TouchableOpacity>
-              </TouchableOpacity>
-              );
-            })}
+        )}
+
+        {/* Recent searches - stays mounted to keep avatars cached, hidden via display */}
+        <View style={{ display: searchQuery.trim() === '' && searchHistory.length > 0 && showHistory ? 'flex' : 'none' }}>
+          <View style={styles.historyHeader}>
+            <ThemedText style={styles.historyTitle}>Recent</ThemedText>
+            <TouchableOpacity onPress={clearHistory}>
+              <ThemedText style={styles.clearButton}>Clear All</ThemedText>
+            </TouchableOpacity>
           </View>
-        ) : searchQuery.trim() === '' && searchHistory.length === 0 ? (
-          <View style={styles.emptyState}>
-            <IconSymbol size={48} name="magnifyingglass" color="#333" />
-            <ThemedText style={styles.emptyText}>No recent searches</ThemedText>
-            <ThemedText style={styles.emptySubtext}>Search history will appear here</ThemedText>
-          </View>
-        ) : searching || (searchResults.length > 0 && !showResults) ? (
-          <SearchResultsSkeletonLoader />
-        ) : searchResults.length > 0 && showResults ? (
-          searchResults.map((user) => {
+          {searchHistory.map((user) => {
             const tierBorderColor = calculateTierBorderColor(user.leagueRank, user.valorantRank);
             return (
             <TouchableOpacity
@@ -602,10 +606,59 @@ export default function SearchScreen() {
                   tierBorderColor ? { borderWidth: 2, borderColor: tierBorderColor } : {}
                 ]}>
                   {user.avatar && user.avatar.startsWith('http') ? (
-                    <Image
-                      source={{ uri: user.avatar }}
-                      style={styles.historyAvatarImage}
-                    />
+                    <AvatarWithSkeleton uri={user.avatar} style={styles.historyAvatarImage} />
+                  ) : (
+                    <ThemedText style={styles.historyAvatarInitial}>
+                      {user.username[0].toUpperCase()}
+                    </ThemedText>
+                  )}
+                </View>
+                <ThemedText style={styles.historyUsername}>{user.username}</ThemedText>
+              </View>
+              <TouchableOpacity
+                onPress={(e) => removeFromHistory(user.id, e)}
+                style={styles.deleteButton}
+                hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+              >
+                <IconSymbol size={14} name="xmark" color="#444" />
+              </TouchableOpacity>
+            </TouchableOpacity>
+            );
+          })}
+        </View>
+
+        {/* Empty history state */}
+        {searchQuery.trim() === '' && searchHistory.length === 0 && !loadingHistory && (
+          <View style={styles.emptyState}>
+            <IconSymbol size={48} name="magnifyingglass" color="#333" />
+            <ThemedText style={styles.emptyText}>No recent searches</ThemedText>
+            <ThemedText style={styles.emptySubtext}>Search history will appear here</ThemedText>
+          </View>
+        )}
+
+        {/* Search results skeleton - visible while searching or prefetching avatars */}
+        {searchQuery.trim() !== '' && (searching || (searchResults.length > 0 && !showResults)) && (
+          <SearchResultsSkeletonLoader />
+        )}
+
+        {/* Search results - stays mounted to keep avatars cached, hidden via display */}
+        <View style={{ display: searchQuery.trim() !== '' && searchResults.length > 0 && showResults ? 'flex' : 'none' }}>
+          {searchResults.map((user) => {
+            const tierBorderColor = calculateTierBorderColor(user.leagueRank, user.valorantRank);
+            return (
+            <TouchableOpacity
+              key={user.id}
+              style={styles.historyCard}
+              onPress={() => handleUserClick(user)}
+              activeOpacity={0.7}
+            >
+              <View style={styles.historyLeft}>
+                <View style={[
+                  styles.historyAvatar,
+                  tierBorderColor ? { borderWidth: 2, borderColor: tierBorderColor } : {}
+                ]}>
+                  {user.avatar && user.avatar.startsWith('http') ? (
+                    <AvatarWithSkeleton uri={user.avatar} style={styles.historyAvatarImage} />
                   ) : (
                     <ThemedText style={styles.historyAvatarInitial}>
                       {user.username[0].toUpperCase()}
@@ -616,14 +669,17 @@ export default function SearchScreen() {
               </View>
             </TouchableOpacity>
             );
-          })
-        ) : searchQuery.trim() !== '' ? (
+          })}
+        </View>
+
+        {/* No results state */}
+        {searchQuery.trim() !== '' && !searching && searchResults.length === 0 && showResults && (
           <View style={styles.emptyState}>
             <IconSymbol size={48} name="person.slash" color="#333" />
             <ThemedText style={styles.emptyText}>No users found</ThemedText>
             <ThemedText style={styles.emptySubtext}>Try a different search term</ThemedText>
           </View>
-        ) : null}
+        )}
       </ScrollView>
     </ThemedView>
   );

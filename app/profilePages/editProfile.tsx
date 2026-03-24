@@ -13,6 +13,7 @@ import { doc, getDoc } from 'firebase/firestore';
 import { getLeagueStats, formatRank } from '@/services/riotService';
 import { getValorantStats } from '@/services/valorantService';
 import { LinearGradient } from 'expo-linear-gradient';
+import { formatCount } from '@/utils/formatCount';
 import DraggableFlatList, { ScaleDecorator, RenderItemParams } from 'react-native-draggable-flatlist';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { Asset } from 'expo-asset';
@@ -482,11 +483,6 @@ export default function EditProfileScreen() {
   // Render draggable rank card item
   const renderRankCardItem = useCallback(({ item, drag, isActive }: RenderItemParams<RankCardData>) => {
     const isEnabled = item.isEnabled;
-    const enabledIndex = enabledRankCards.indexOf(item.type);
-
-    const gradientColors = item.type === 'league'
-      ? ['#1a3a5c', '#0f1f3d', '#091428']
-      : ['#DC3D4B', '#8B1E2B', '#5C141D'];
 
     const logoSource = item.type === 'league'
       ? require('@/assets/images/lol-icon.png')
@@ -500,61 +496,40 @@ export default function EditProfileScreen() {
       <ScaleDecorator>
         <TouchableOpacity
           activeOpacity={1}
-          onLongPress={isEnabled ? drag : undefined}
+          onLongPress={isEnabled && enabledRankCards.length > 1 ? drag : undefined}
           delayLongPress={150}
           disabled={isActive}
           style={[
             styles.rankCardItem,
-            !isEnabled && styles.rankCardItemDisabled,
             isActive && styles.rankCardItemDragging,
           ]}
         >
           {/* Drag handle */}
           {isEnabled && enabledRankCards.length > 1 && (
             <View style={styles.dragHandle}>
-              <IconSymbol size={20} name="line.3.horizontal" color="#666" />
+              <IconSymbol size={16} name="line.3.horizontal" color="#444" />
             </View>
           )}
 
-          {/* Order number badge */}
-          {isEnabled && (
-            <View style={styles.orderBadge}>
-              <ThemedText style={styles.orderBadgeText}>{enabledIndex + 1}</ThemedText>
-            </View>
-          )}
+          {/* Logo */}
+          <View style={styles.rankCardLogo}>
+            <Image source={logoSource} style={styles.rankCardLogoImage} resizeMode="contain" />
+          </View>
 
-          {/* Card preview */}
-          <View style={[styles.rankCardPreview, !isEnabled && styles.rankCardPreviewDisabled]}>
-            <LinearGradient
-              colors={gradientColors as [string, string, ...string[]]}
-              start={{ x: 0, y: 0 }}
-              end={{ x: 1, y: 1 }}
-              style={styles.rankCardPreviewGradient}
-            >
-              <Image
-                source={logoSource}
-                style={styles.rankCardPreviewLogo}
-                resizeMode="contain"
-              />
-              <View style={styles.rankCardPreviewInfo}>
-                <ThemedText style={styles.rankCardPreviewName}>{item.name}</ThemedText>
-                <ThemedText style={styles.rankCardPreviewRank}>{rankText}</ThemedText>
-              </View>
-            </LinearGradient>
+          {/* Info */}
+          <View style={styles.rankCardInfo}>
+            <ThemedText style={[styles.rankCardName, !isEnabled && { opacity: 0.4 }]}>{item.name}</ThemedText>
+            <ThemedText style={[styles.rankCardRank, !isEnabled && { opacity: 0.3 }]}>{rankText}</ThemedText>
           </View>
 
           {/* Toggle */}
-          <View style={styles.rankCardToggle}>
-            <ThemedText style={styles.rankCardToggleLabel}>
-              {isEnabled ? 'Visible' : 'Hidden'}
-            </ThemedText>
-            <Switch
-              value={isEnabled}
-              onValueChange={() => toggleRankCard(item.type)}
-              trackColor={{ false: '#252525', true: '#c42743' }}
-              thumbColor="#fff"
-            />
-          </View>
+          <Switch
+            value={isEnabled}
+            onValueChange={() => toggleRankCard(item.type)}
+            trackColor={{ false: '#252525', true: '#c42743' }}
+            thumbColor="#fff"
+            style={{ transform: [{ scale: 0.85 }] }}
+          />
         </TouchableOpacity>
       </ScaleDecorator>
     );
@@ -734,12 +709,10 @@ export default function EditProfileScreen() {
             >
               <IconSymbol size={20} name="camera.fill" color="#fff" />
             </TouchableOpacity>
-          </View>
 
-          {/* Username Row with Profile Avatar on Right */}
-          <View style={styles.usernameRow}>
+            {/* Username overlaid on cover photo */}
             <TextInput
-              style={styles.largeUsernameInput}
+              style={styles.coverPhotoUsernameInput}
               value={username}
               onChangeText={(text) => setUsername(text.toLowerCase())}
               placeholder="Username"
@@ -747,7 +720,7 @@ export default function EditProfileScreen() {
               autoCapitalize="none"
             />
 
-            {/* Profile Avatar */}
+            {/* Profile Avatar - positioned bottom-right, half overlapping */}
             <TouchableOpacity
               style={styles.profileAvatarButton}
               onPress={showImageOptions}
@@ -776,12 +749,12 @@ export default function EditProfileScreen() {
           {/* Followers / Following Row */}
           <View style={styles.followStatsRow}>
             <View style={styles.followStatItem}>
-              <ThemedText style={styles.followStatNumber}>{user?.followersCount || 0}</ThemedText>
+              <ThemedText style={styles.followStatNumber}>{formatCount(user?.followersCount)}</ThemedText>
               <ThemedText style={styles.followStatLabel}> Followers</ThemedText>
             </View>
             <View style={styles.followStatDivider} />
             <View style={styles.followStatItem}>
-              <ThemedText style={styles.followStatNumber}>{user?.followingCount || 0}</ThemedText>
+              <ThemedText style={styles.followStatNumber}>{formatCount(user?.followingCount)}</ThemedText>
               <ThemedText style={styles.followStatLabel}> Following</ThemedText>
             </View>
           </View>
@@ -836,64 +809,47 @@ export default function EditProfileScreen() {
           </View>
 
           {/* Rank Cards Section */}
-          <View style={styles.sectionContainer}>
-            <View style={styles.sectionHeaderRow}>
-              <View style={styles.sectionHeaderLeft}>
-                <IconSymbol size={18} name="star.fill" color="#fff" />
-                <ThemedText style={styles.sectionTitleLarge}>Rank Cards</ThemedText>
-              </View>
+          <View style={styles.rankCardsSectionOuter}>
+            <View style={styles.rankCardsSectionHeader}>
+              <ThemedText style={styles.rankCardsSectionTitle}>Rank Cards</ThemedText>
               <TouchableOpacity
                 style={styles.linkAccountButton}
                 onPress={() => router.push('/profilePages/newRankCard')}
                 activeOpacity={0.7}
               >
-                <IconSymbol size={14} name="plus" color="#c42743" />
-                <ThemedText style={styles.linkAccountText}>Link Account</ThemedText>
+                <IconSymbol size={12} name="plus" color="#c42743" />
+                <ThemedText style={styles.linkAccountText}>Manage</ThemedText>
               </TouchableOpacity>
             </View>
-            <ThemedText style={styles.sectionSubtitle}>
-              Choose which rank cards to display on your profile
-            </ThemedText>
 
-            {loadingRankCards ? (
-              <View style={styles.rankCardsLoading}>
-                <ActivityIndicator size="small" color="#c42743" />
-              </View>
-            ) : !riotAccount && !valorantAccount ? (
-              <View style={styles.noAccountsContainer}>
-                <View style={styles.noAccountsIconRow}>
-                  <Image
-                    source={require('@/assets/images/valorant-logo.png')}
-                    style={styles.noAccountsIcon}
-                    resizeMode="contain"
-                  />
-                  <Image
-                    source={require('@/assets/images/leagueoflegends.png')}
-                    style={styles.noAccountsIcon}
-                    resizeMode="contain"
-                  />
+            <View style={styles.rankCardsSectionCard}>
+              {loadingRankCards ? (
+                <View style={styles.rankCardsLoading}>
+                  <ActivityIndicator size="small" color="#c42743" />
                 </View>
-                <ThemedText style={styles.noAccountsText}>
-                  Link your Riot or Valorant account to display rank cards
-                </ThemedText>
-              </View>
-            ) : (
-              <GestureHandlerRootView style={styles.rankCardsContainer}>
-                <DraggableFlatList
-                  data={getAvailableCards()}
-                  onDragEnd={handleDragEnd}
-                  keyExtractor={(item) => item.type}
-                  renderItem={renderRankCardItem}
-                  scrollEnabled={false}
-                  containerStyle={styles.draggableList}
-                />
-                {enabledRankCards.length > 1 && (
-                  <ThemedText style={styles.dragHint}>
-                    Hold and drag to reorder
+              ) : !riotAccount && !valorantAccount ? (
+                <View style={styles.noAccountsContainer}>
+                  <ThemedText style={styles.noAccountsText}>
+                    No accounts linked
                   </ThemedText>
-                )}
-              </GestureHandlerRootView>
-            )}
+                </View>
+              ) : (
+                <GestureHandlerRootView>
+                  <DraggableFlatList
+                    data={getAvailableCards()}
+                    onDragEnd={handleDragEnd}
+                    keyExtractor={(item) => item.type}
+                    renderItem={renderRankCardItem}
+                    scrollEnabled={false}
+                  />
+                  {enabledRankCards.length > 1 && (
+                    <ThemedText style={styles.dragHint}>
+                      Hold and drag to reorder
+                    </ThemedText>
+                  )}
+                </GestureHandlerRootView>
+              )}
+            </View>
           </View>
         </View>
       </ScrollView>
@@ -1057,11 +1013,13 @@ const styles = StyleSheet.create({
     width: '100%',
     height: 200,
     backgroundColor: '#2c2f33',
-    position: 'relative',
+    overflow: 'visible',
+    zIndex: 2,
   },
   coverPhotoImage: {
     width: '100%',
     height: '100%',
+    opacity: 0.6,
   },
   coverPhotoGradientPlaceholder: {
     width: '100%',
@@ -1073,12 +1031,12 @@ const styles = StyleSheet.create({
     bottom: 0,
     left: 0,
     right: 0,
-    height: 15,
+    height: 60,
     zIndex: 1,
   },
   editCoverButton: {
     position: 'absolute',
-    bottom: 12,
+    top: 12,
     right: 12,
     width: 40,
     height: 40,
@@ -1086,30 +1044,28 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(0, 0, 0, 0.6)',
     alignItems: 'center',
     justifyContent: 'center',
-    zIndex: 2,
+    zIndex: 5,
   },
-  // Username row with avatar
-  usernameRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingHorizontal: 20,
-    marginTop: 16,
-    marginBottom: 8,
-  },
-  largeUsernameInput: {
+  coverPhotoUsernameInput: {
+    position: 'absolute',
+    bottom: 8,
+    left: 20,
+    right: 80,
     fontSize: 28,
     fontWeight: '800',
     color: '#fff',
     letterSpacing: -0.5,
-    flex: 1,
-    lineHeight: 36,
-    paddingTop: 4,
+    opacity: 1,
+    zIndex: 2,
+    lineHeight: 34,
     padding: 0,
   },
-  // Profile avatar (next to username)
+  // Profile avatar - absolutely positioned bottom-right of cover photo, half overlapping
   profileAvatarButton: {
-    position: 'relative',
+    position: 'absolute',
+    bottom: -28,
+    right: 20,
+    zIndex: 4,
   },
   profileAvatarCircle: {
     width: 56,
@@ -1149,7 +1105,8 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     paddingHorizontal: 20,
-    marginBottom: 16,
+    marginTop: 4,
+    marginBottom: 4,
   },
   followStatItem: {
     flexDirection: 'row',
@@ -1176,7 +1133,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     paddingHorizontal: 20,
-    marginBottom: 20,
+    marginBottom: 6,
     gap: 12,
   },
   socialIconButton: {
@@ -1254,162 +1211,99 @@ const styles = StyleSheet.create({
     fontWeight: '700',
   },
   // Rank Cards Section Styles
-  sectionHeaderRow: {
+  rankCardsSectionOuter: {
+    paddingHorizontal: 10,
+    marginBottom: 20,
+  },
+  rankCardsSectionHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: 4,
+    paddingHorizontal: 6,
+    marginBottom: 10,
   },
-  sectionHeaderLeft: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-  },
-  sectionTitleLarge: {
-    fontSize: 18,
-    fontWeight: '700',
+  rankCardsSectionTitle: {
+    fontSize: 14,
+    fontWeight: '600',
     color: '#fff',
-    letterSpacing: -0.5,
-  },
-  sectionSubtitle: {
-    fontSize: 13,
-    color: '#666',
-    marginBottom: 16,
   },
   linkAccountButton: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 4,
-    paddingVertical: 6,
-    paddingHorizontal: 10,
-    backgroundColor: 'rgba(196, 39, 67, 0.15)',
-    borderRadius: 8,
   },
   linkAccountText: {
     fontSize: 13,
-    fontWeight: '600',
+    fontWeight: '500',
     color: '#c42743',
   },
+  rankCardsSectionCard: {
+    backgroundColor: 'rgba(255, 255, 255, 0.03)',
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.06)',
+    padding: 8,
+  },
   rankCardsLoading: {
-    paddingVertical: 40,
+    paddingVertical: 30,
     alignItems: 'center',
   },
   noAccountsContainer: {
     alignItems: 'center',
-    paddingVertical: 32,
-    paddingHorizontal: 20,
-    backgroundColor: '#1a1a1a',
-    borderRadius: 16,
-  },
-  noAccountsIconRow: {
-    flexDirection: 'row',
-    gap: 16,
-    marginBottom: 16,
-  },
-  noAccountsIcon: {
-    width: 40,
-    height: 40,
-    opacity: 0.5,
+    paddingVertical: 24,
   },
   noAccountsText: {
-    fontSize: 14,
-    color: '#666',
-    textAlign: 'center',
-    lineHeight: 20,
-  },
-  rankCardsContainer: {
-    gap: 12,
+    fontSize: 13,
+    color: '#555',
   },
   rankCardItem: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#1a1a1a',
-    borderRadius: 16,
-    padding: 12,
-    gap: 10,
-  },
-  rankCardItemDisabled: {
-    opacity: 0.6,
+    paddingVertical: 10,
+    paddingHorizontal: 8,
+    gap: 12,
   },
   rankCardItemDragging: {
-    backgroundColor: '#252525',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 8 },
-    shadowOpacity: 0.4,
-    shadowRadius: 12,
-    elevation: 8,
+    backgroundColor: 'rgba(255, 255, 255, 0.04)',
+    borderRadius: 12,
   },
   dragHandle: {
-    width: 28,
-    height: 40,
+    width: 20,
     alignItems: 'center',
     justifyContent: 'center',
-  },
-  draggableList: {
-    gap: 12,
   },
   dragHint: {
-    fontSize: 12,
-    color: '#666',
+    fontSize: 11,
+    color: '#444',
     textAlign: 'center',
-    marginTop: 12,
-    fontStyle: 'italic',
+    marginTop: 4,
+    marginBottom: 4,
   },
-  orderBadge: {
-    width: 24,
-    height: 24,
-    borderRadius: 12,
-    backgroundColor: '#c42743',
+  rankCardLogo: {
+    width: 40,
+    height: 40,
+    backgroundColor: 'rgba(255, 255, 255, 0.05)',
+    borderRadius: 10,
     alignItems: 'center',
     justifyContent: 'center',
   },
-  orderBadgeText: {
-    fontSize: 12,
-    fontWeight: '700',
+  rankCardLogoImage: {
+    width: 24,
+    height: 24,
+  },
+  rankCardInfo: {
+    flex: 1,
+    gap: 1,
+  },
+  rankCardName: {
+    fontSize: 15,
+    fontWeight: '600',
     color: '#fff',
   },
-  rankCardPreview: {
-    flex: 1,
-    height: 70,
-    borderRadius: 12,
-    overflow: 'hidden',
-  },
-  rankCardPreviewDisabled: {
-    opacity: 0.5,
-  },
-  rankCardPreviewGradient: {
-    flex: 1,
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: 14,
-    gap: 12,
-  },
-  rankCardPreviewLogo: {
-    width: 36,
-    height: 36,
-  },
-  rankCardPreviewInfo: {
-    flex: 1,
-  },
-  rankCardPreviewName: {
-    fontSize: 14,
-    fontWeight: '700',
-    color: '#fff',
-    marginBottom: 2,
-  },
-  rankCardPreviewRank: {
+  rankCardRank: {
     fontSize: 12,
-    fontWeight: '500',
-    color: 'rgba(255, 255, 255, 0.7)',
-  },
-  rankCardToggle: {
-    alignItems: 'center',
-    gap: 4,
-  },
-  rankCardToggleLabel: {
-    fontSize: 11,
-    fontWeight: '500',
-    color: '#666',
+    fontWeight: '400',
+    color: 'rgba(255, 255, 255, 0.4)',
   },
   // Modal styles
   modalOverlay: {
