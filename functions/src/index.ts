@@ -42,3 +42,7 @@ export {
 
 // Export Party Management functions
 export {checkCompletedPartiesScheduled} from "./parties/checkCompletedParties";
+
+// Export Duo Matching functions
+export {onDuoQueueCreated} from "./duo/onDuoQueueCreated";
+export {cleanupDuoQueueScheduled} from "./duo/cleanupDuoQueue";

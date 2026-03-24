@@ -24,7 +24,10 @@
       "WebFetch(domain:valapidocs.techchrism.me)",
       "Bash(node test-valorant-api.js:*)",
       "Bash(grep -r \"matchHistory\\\\|getRecentMatches\" /c/Users/jinha/Desktop/RankUp/app --include=*.ts --include=*.tsx)",
-      "Bash(grep -E \"\\\\.\\(tsx|ts\\)$\")"
+      "Bash(grep -E \"\\\\.\\(tsx|ts\\)$\")",
+      "Bash(find /c/Users/jinha/Desktop/RankUp -name *duo* -o -name *party* -o -name *match*)",
+      "Bash(grep -E \"\\\\.\\(ts|tsx\\)$\")",
+      "Bash(find C:UsersjinhaDesktopRankUpassetsimages -iname *valorant* -o -iname *background*)"
     ],
     "deny": [],
     "ask": []

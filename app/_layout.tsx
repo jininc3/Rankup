@@ -102,9 +102,9 @@ function RootLayoutNav() {
       } else if (data.type === 'message') {
         message = 'sent you a message';
       } else if (data.type === 'party_invite') {
-        message = `invited you to ${data.partyName || 'a party'}`;
+        message = `invited you to ${data.partyName || 'a leaderboard'}`;
       } else if (data.type === 'party_complete') {
-        message = data.winnerUsername ? `${data.winnerUsername} won the party!` : 'Party completed!';
+        message = data.winnerUsername ? `${data.winnerUsername} won the leaderboard!` : 'Leaderboard completed!';
       } else if (data.type === 'party_ranking_change') {
         if (data.newRank) {
           const rankEmoji = data.newRank === 1 ? '🥇' : data.newRank === 2 ? '🥈' : data.newRank === 3 ? '🥉' : '';

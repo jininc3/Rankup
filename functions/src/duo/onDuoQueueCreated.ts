@@ -1,0 +1,129 @@
+/**
+ * Cloud Function: Match duo queue entries
+ * Triggered when a new duo queue document is created.
+ * Finds another searching user for the same game and creates a match.
+ */
+
+import * as admin from "firebase-admin";
+import {onDocumentCreated} from "firebase-functions/v2/firestore";
+import {logger} from "firebase-functions/v2";
+
+export const onDuoQueueCreated = onDocumentCreated(
+  "duoQueue/{docId}",
+  async (event) => {
+    const snapshot = event.data;
+    if (!snapshot) {
+      logger.error("No data associated with the event");
+      return;
+    }
+
+    const newEntry = snapshot.data();
+    const newEntryRef = snapshot.ref;
+    const newUserId = newEntry.userId;
+    const game = newEntry.game;
+
+    logger.info(`Duo queue entry created: ${newUserId} searching for ${game}`);
+
+    const db = admin.firestore();
+
+    try {
+      // Find another user searching for the same game
+      const candidatesQuery = db
+        .collection("duoQueue")
+        .where("status", "==", "searching")
+        .where("game", "==", game);
+
+      const candidatesSnapshot = await candidatesQuery.get();
+
+      // Filter out the current user
+      const candidate = candidatesSnapshot.docs.find(
+        (doc) => doc.data().userId !== newUserId
+      );
+
+      if (!candidate) {
+        logger.info(`No match found for ${newUserId}, staying in queue`);
+        return;
+      }
+
+      const candidateData = candidate.data();
+      const candidateRef = candidate.ref;
+
+      // Use a transaction to atomically create the match
+      await db.runTransaction(async (transaction) => {
+        // Re-read both documents inside the transaction
+        const freshNewEntry = await transaction.get(newEntryRef);
+        const freshCandidate = await transaction.get(candidateRef);
+
+        // Verify both are still searching
+        if (
+          !freshNewEntry.exists ||
+          freshNewEntry.data()?.status !== "searching"
+        ) {
+          logger.info(`New entry ${newUserId} is no longer searching`);
+          return;
+        }
+        if (
+          !freshCandidate.exists ||
+          freshCandidate.data()?.status !== "searching"
+        ) {
+          logger.info(
+            `Candidate ${candidateData.userId} is no longer searching`
+          );
+          return;
+        }
+
+        // Create the match document
+        const matchRef = db.collection("duoMatches").doc();
+        const matchData = {
+          game: game,
+          user1Id: newUserId,
+          user2Id: candidateData.userId,
+          user1Card: {
+            userId: newEntry.userId,
+            username: newEntry.username,
+            avatar: newEntry.avatar || null,
+            inGameIcon: newEntry.inGameIcon || null,
+            inGameName: newEntry.inGameName || null,
+            currentRank: newEntry.currentRank || null,
+            mainRole: newEntry.mainRole || null,
+            mainAgent: newEntry.mainAgent || null,
+          },
+          user2Card: {
+            userId: candidateData.userId,
+            username: candidateData.username,
+            avatar: candidateData.avatar || null,
+            inGameIcon: candidateData.inGameIcon || null,
+            inGameName: candidateData.inGameName || null,
+            currentRank: candidateData.currentRank || null,
+            mainRole: candidateData.mainRole || null,
+            mainAgent: candidateData.mainAgent || null,
+          },
+          status: "active",
+          createdAt: admin.firestore.FieldValue.serverTimestamp(),
+        };
+
+        transaction.set(matchRef, matchData);
+
+        // Update both queue entries
+        transaction.update(newEntryRef, {
+          status: "matched",
+          matchedWith: candidateData.userId,
+          matchId: matchRef.id,
+        });
+
+        transaction.update(candidateRef, {
+          status: "matched",
+          matchedWith: newUserId,
+          matchId: matchRef.id,
+        });
+
+        logger.info(
+          `Match created: ${matchRef.id} between ${newUserId} and ${candidateData.userId}`
+        );
+      });
+    } catch (error) {
+      logger.error("Error processing duo queue:", error);
+      throw error;
+    }
+  }
+);

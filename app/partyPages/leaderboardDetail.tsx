@@ -235,7 +235,7 @@ export default function LeaderboardDetail() {
                 const partyRef = doc(db, 'parties', partyDocId);
                 await deleteDoc(partyRef);
                 Alert.alert('Leaderboard Deleted', 'The leaderboard has been deleted.');
-                router.replace('/(tabs)/parties');
+                router.replace('/(tabs)/leaderboards');
               } catch (error) {
                 console.error('Error deleting leaderboard:', error);
                 Alert.alert('Error', 'Failed to delete leaderboard. Please try again.');
@@ -267,7 +267,7 @@ export default function LeaderboardDetail() {
               if (updatedMembers.length === 0) {
                 await deleteDoc(partyRef);
                 Alert.alert('Leaderboard Deleted', 'You were the last member. The leaderboard has been deleted.');
-                router.replace('/(tabs)/parties');
+                router.replace('/(tabs)/leaderboards');
                 return;
               }
 
@@ -294,7 +294,7 @@ export default function LeaderboardDetail() {
                 Alert.alert('Success', 'You have left the leaderboard.');
               }
 
-              router.replace('/(tabs)/parties');
+              router.replace('/(tabs)/leaderboards');
             } catch (error) {
               console.error('Error leaving leaderboard:', error);
               Alert.alert('Error', 'Failed to leave leaderboard. Please try again.');

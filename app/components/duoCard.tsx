@@ -82,9 +82,9 @@ const getRankIcon = (rank: string, game: string) => {
 
 export default function DuoCard({ duo, onPress }: DuoCardProps) {
   const game = duo.game || 'Valorant';
+  const isLeague = game === 'League' || game === 'League of Legends';
   const gameLogo = GAME_LOGOS[game];
   const currentRankIcon = getRankIcon(duo.currentRank, game);
-  const peakRankIcon = getRankIcon(duo.peakRank, game);
 
   return (
     <TouchableOpacity
@@ -117,25 +117,11 @@ export default function DuoCard({ duo, onPress }: DuoCardProps) {
         )}
       </View>
 
-      {/* Stats Row: Peak Rank | Current Rank | Role */}
+      {/* Stats Row: Current Rank | Agent/Champion | Role | Win Rate */}
       <View style={styles.statsRow}>
-        {/* Peak Rank */}
-        <View style={styles.statItem}>
-          <ThemedText style={styles.statLabel}>Peak</ThemedText>
-          <View style={styles.rankRow}>
-            <Image source={peakRankIcon} style={styles.rankIcon} resizeMode="contain" />
-            <ThemedText style={styles.rankText} numberOfLines={1}>
-              {duo.peakRank || 'Unranked'}
-            </ThemedText>
-          </View>
-        </View>
-
-        {/* Divider */}
-        <View style={styles.divider} />
-
         {/* Current Rank */}
         <View style={styles.statItem}>
-          <ThemedText style={styles.statLabel}>Current</ThemedText>
+          <ThemedText style={styles.statLabel}>Rank</ThemedText>
           <View style={styles.rankRow}>
             <Image source={currentRankIcon} style={styles.rankIcon} resizeMode="contain" />
             <ThemedText style={styles.rankText} numberOfLines={1}>
@@ -144,14 +130,35 @@ export default function DuoCard({ duo, onPress }: DuoCardProps) {
           </View>
         </View>
 
-        {/* Divider */}
         <View style={styles.divider} />
 
-        {/* Role/Position */}
+        {/* Agent (Valorant) / Champion (League) */}
+        <View style={styles.statItem}>
+          <ThemedText style={styles.statLabel}>
+            {isLeague ? 'Champion' : 'Agent'}
+          </ThemedText>
+          <ThemedText style={styles.roleText} numberOfLines={1}>
+            {duo.favoriteAgent || 'Any'}
+          </ThemedText>
+        </View>
+
+        <View style={styles.divider} />
+
+        {/* Role */}
         <View style={styles.statItem}>
           <ThemedText style={styles.statLabel}>Role</ThemedText>
           <ThemedText style={styles.roleText} numberOfLines={1}>
             {duo.favoriteRole || 'Any'}
+          </ThemedText>
+        </View>
+
+        <View style={styles.divider} />
+
+        {/* Win Rate */}
+        <View style={styles.statItem}>
+          <ThemedText style={styles.statLabel}>Win Rate</ThemedText>
+          <ThemedText style={[styles.roleText, duo.winRate >= 50 && styles.winRateGood]} numberOfLines={1}>
+            {duo.winRate > 0 ? `${duo.winRate}%` : 'N/A'}
           </ThemedText>
         </View>
       </View>
@@ -161,7 +168,7 @@ export default function DuoCard({ duo, onPress }: DuoCardProps) {
 
 const styles = StyleSheet.create({
   container: {
-    backgroundColor: '#1a1a1a',
+    backgroundColor: '#222',
     borderRadius: 12,
     padding: 14,
     height: cardHeight,
@@ -244,9 +251,12 @@ const styles = StyleSheet.create({
     color: '#fff',
   },
   roleText: {
-    fontSize: 12,
+    fontSize: 11,
     fontWeight: '600',
     color: '#fff',
+  },
+  winRateGood: {
+    color: '#4ade80',
   },
   divider: {
     width: 1,

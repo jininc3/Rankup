@@ -1208,7 +1208,7 @@ export default function ProfileScreen() {
                 <IconSymbol size={36} name="trophy" color="#72767d" />
                 <ThemedText style={styles.emptyStateTitle}>No achievements yet</ThemedText>
                 <ThemedText style={styles.emptyStateSubtext}>
-                  Place top 3 in a party to earn achievements
+                  Place top 3 in a leaderboard to earn achievements
                 </ThemedText>
               </View>
             )}

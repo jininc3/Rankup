@@ -1,17 +1,23 @@
 import CompactDuoCard from '@/app/components/compactDuoCard';
+import DuoCard from '@/app/components/duoCard';
 import AddDuoCard, { DuoCardData } from '@/app/components/addDuoCard';
 import EditDuoCard from '@/app/components/editDuoCard';
 import DuoFilterModal, { DuoFilterOptions } from '@/app/profilePages/duoFilterModal';
+import DuoSearchingAnimation from '@/app/components/duoSearchingAnimation';
+import DuoMatchResult from '@/app/components/duoMatchResult';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { IconSymbol } from '@/components/ui/icon-symbol';
 import { DuoCardSkeleton } from '@/components/ui/Skeleton';
 import { useAuth } from '@/contexts/AuthContext';
 import { useState, useEffect, useCallback, useRef } from 'react';
-import { Alert, ScrollView, StyleSheet, TouchableOpacity, View, RefreshControl, Dimensions, Image } from 'react-native';
+import { Alert, ScrollView, StyleSheet, TouchableOpacity, View, RefreshControl, Dimensions, Image, AppState, Modal, ImageBackground } from 'react-native';
+import { BlurView } from 'expo-blur';
 import { doc, getDoc, setDoc, deleteDoc, serverTimestamp, collection, query, where, getDocs, orderBy, limit } from 'firebase/firestore';
 import { db } from '@/config/firebase';
 import { useRouter } from 'expo-router';
+import { joinDuoQueue, leaveDuoQueue, subscribeToDuoQueue, getDuoMatch, DuoMatchCardData } from '@/services/duoMatchService';
+import { createOrGetChat } from '@/services/chatService';
 
 interface DuoCardWithId extends DuoCardData {
   id: string;
@@ -30,7 +36,8 @@ export default function DuoFinderScreen() {
   const { user } = useAuth();
   const router = useRouter();
   const pagerRef = useRef<ScrollView>(null);
-  const [selectedTab, setSelectedTab] = useState<'findDuo' | 'myCards'>('findDuo');
+  const [selectedTab, setSelectedTab] = useState<'liveSearch' | 'findDuo'>('liveSearch');
+  const [showMyCards, setShowMyCards] = useState(false);
   const [showAddCard, setShowAddCard] = useState(false);
   const [valorantCard, setValorantCard] = useState<DuoCardData | null>(null);
   const [leagueCard, setLeagueCard] = useState<DuoCardData | null>(null);
@@ -52,6 +59,14 @@ export default function DuoFinderScreen() {
     language: null,
   });
 
+  // Live search state
+  const [matchState, setMatchState] = useState<'idle' | 'searching' | 'matched'>('idle');
+  const [searchGame, setSearchGame] = useState<'valorant' | 'league' | null>(null);
+  const [matchedUserCard, setMatchedUserCard] = useState<DuoMatchCardData | null>(null);
+  const [matchedUserId, setMatchedUserId] = useState<string | null>(null);
+  const unsubscribeQueueRef = useRef<(() => void) | null>(null);
+  const searchTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
   // Game filter state (both selected by default to show all)
   const [selectedGames, setSelectedGames] = useState<{ valorant: boolean; league: boolean }>({
     valorant: true,
@@ -67,9 +82,9 @@ export default function DuoFinderScreen() {
   };
 
   // Handle tab press - scroll to page
-  const handleTabPress = (tab: 'findDuo' | 'myCards') => {
+  const handleTabPress = (tab: 'liveSearch' | 'findDuo') => {
     setSelectedTab(tab);
-    const pageIndex = tab === 'findDuo' ? 0 : 1;
+    const pageIndex = tab === 'liveSearch' ? 0 : 1;
     pagerRef.current?.scrollTo({ x: pageIndex * SCREEN_WIDTH, animated: true });
   };
 
@@ -77,7 +92,7 @@ export default function DuoFinderScreen() {
   const handlePageScroll = (event: any) => {
     const offsetX = event.nativeEvent.contentOffset.x;
     const progress = offsetX / SCREEN_WIDTH;
-    const newTab = progress >= 0.5 ? 'myCards' : 'findDuo';
+    const newTab = progress >= 0.5 ? 'findDuo' : 'liveSearch';
     if (newTab !== selectedTab) {
       setSelectedTab(newTab);
     }
@@ -703,15 +718,209 @@ export default function DuoFinderScreen() {
     setEditingGame(null);
   };
 
+  // --- Live Search Functions ---
+  const cleanupSearch = useCallback(() => {
+    if (unsubscribeQueueRef.current) {
+      unsubscribeQueueRef.current();
+      unsubscribeQueueRef.current = null;
+    }
+    if (searchTimeoutRef.current) {
+      clearTimeout(searchTimeoutRef.current);
+      searchTimeoutRef.current = null;
+    }
+  }, []);
+
+  const startLiveSearch = async (game: 'valorant' | 'league') => {
+    if (!user?.id) return;
+
+    const cardData = game === 'valorant' ? valorantCard : leagueCard;
+    if (!cardData) return;
+
+    setSearchGame(game);
+    setMatchState('searching');
+    setMatchedUserCard(null);
+    setMatchedUserId(null);
+
+    // Build card data with in-game info
+    const inGameIcon = game === 'valorant' ? valorantInGameIcon : leagueInGameIcon;
+    const inGameName = game === 'valorant' ? valorantInGameName : leagueInGameName;
+
+    try {
+      await joinDuoQueue(user.id, game, {
+        username: cardData.username,
+        avatar: user.avatar || undefined,
+        inGameIcon,
+        inGameName,
+        currentRank: cardData.currentRank,
+        mainRole: cardData.mainRole,
+        mainAgent: cardData.mainAgent,
+      });
+
+      // Listen for match
+      const unsubscribe = subscribeToDuoQueue(user.id, game, async (data) => {
+        if (data?.status === 'matched' && data.matchId) {
+          cleanupSearch();
+          const match = await getDuoMatch(data.matchId);
+          if (match) {
+            // Get the other user's card
+            const otherCard = match.user1Id === user.id ? match.user2Card : match.user1Card;
+            const otherUserId = match.user1Id === user.id ? match.user2Id : match.user1Id;
+            setMatchedUserCard(otherCard);
+            setMatchedUserId(otherUserId);
+            setMatchState('matched');
+          }
+        }
+      });
+      unsubscribeQueueRef.current = unsubscribe;
+
+      // 60 second timeout
+      searchTimeoutRef.current = setTimeout(() => {
+        cancelSearch();
+        Alert.alert('No Players Found', 'No one is searching right now. Try again later!');
+      }, 60000);
+    } catch (error) {
+      console.error('Error starting live search:', error);
+      setMatchState('idle');
+      setSearchGame(null);
+      Alert.alert('Error', 'Failed to start searching. Please try again.');
+    }
+  };
+
+  const cancelSearch = useCallback(() => {
+    cleanupSearch();
+    if (user?.id && searchGame) {
+      leaveDuoQueue(user.id, searchGame);
+    }
+    setMatchState('idle');
+    setSearchGame(null);
+  }, [user?.id, searchGame, cleanupSearch]);
+
+  const handleSearchAgain = () => {
+    if (searchGame) {
+      setMatchState('idle');
+      setMatchedUserCard(null);
+      setMatchedUserId(null);
+      // Small delay before re-searching
+      setTimeout(() => startLiveSearch(searchGame), 300);
+    }
+  };
+
+  const handleLiveSearchPress = () => {
+    if (!hasCards) {
+      Alert.alert('No Duo Card', 'Create a duo card first to start searching!');
+      return;
+    }
+
+    // If user has only one game card, search with that
+    if (valorantCard && !leagueCard) {
+      startLiveSearch('valorant');
+    } else if (!valorantCard && leagueCard) {
+      startLiveSearch('league');
+    } else {
+      // User has both - show picker
+      Alert.alert(
+        'Select Game',
+        'Which game do you want to find a duo for?',
+        [
+          { text: 'Valorant', onPress: () => startLiveSearch('valorant') },
+          { text: 'League', onPress: () => startLiveSearch('league') },
+          { text: 'Cancel', style: 'cancel' },
+        ]
+      );
+    }
+  };
+
+  const handleMatchViewProfile = () => {
+    if (!matchedUserCard || !searchGame) return;
+    router.push({
+      pathname: '/profilePages/duoCardDetail',
+      params: {
+        game: searchGame,
+        username: matchedUserCard.username,
+        avatar: matchedUserCard.avatar || '',
+        inGameIcon: matchedUserCard.inGameIcon || '',
+        inGameName: matchedUserCard.inGameName || '',
+        currentRank: matchedUserCard.currentRank || '',
+        peakRank: '',
+        region: '',
+        mainRole: matchedUserCard.mainRole || '',
+        mainAgent: matchedUserCard.mainAgent || '',
+        userId: matchedUserCard.userId,
+      },
+    });
+  };
+
+  const handleMatchStartChat = async () => {
+    if (!user?.id || !matchedUserCard) return;
+
+    try {
+      const chatId = await createOrGetChat(
+        user.id,
+        user.username || '',
+        user.avatar,
+        matchedUserCard.userId,
+        matchedUserCard.username,
+        matchedUserCard.avatar || undefined,
+      );
+      router.push({
+        pathname: '/chatPages/chatScreen',
+        params: {
+          chatId,
+          otherUserId: matchedUserCard.userId,
+          otherUsername: matchedUserCard.username,
+          otherUserAvatar: matchedUserCard.avatar || '',
+        },
+      });
+    } catch (error) {
+      console.error('Error starting chat:', error);
+      Alert.alert('Error', 'Failed to start chat. Please try again.');
+    }
+  };
+
+  // Cleanup on unmount or app background
+  useEffect(() => {
+    const subscription = AppState.addEventListener('change', (nextAppState) => {
+      if (nextAppState !== 'active' && matchState === 'searching') {
+        cancelSearch();
+      }
+    });
+
+    return () => {
+      subscription.remove();
+      cleanupSearch();
+      if (user?.id && searchGame && matchState === 'searching') {
+        leaveDuoQueue(user.id, searchGame);
+      }
+    };
+  }, [matchState, searchGame, user?.id]);
+
   return (
     <ThemedView style={styles.container}>
       {/* Header */}
       <View style={styles.header}>
         <ThemedText style={styles.headerTitle}>DUO FINDER</ThemedText>
+        <TouchableOpacity
+          style={styles.myCardsHeaderButton}
+          onPress={() => setShowMyCards(true)}
+          activeOpacity={0.7}
+        >
+          <IconSymbol size={18} name="person.crop.rectangle.stack" color="#fff" />
+          <ThemedText style={styles.myCardsHeaderText}>My Cards</ThemedText>
+        </TouchableOpacity>
       </View>
 
       {/* Tabs - Fixed at top */}
       <View style={styles.tabsContainer}>
+        <TouchableOpacity
+          style={styles.tab}
+          onPress={() => handleTabPress('liveSearch')}
+          activeOpacity={0.7}
+        >
+          <ThemedText style={[styles.tabText, selectedTab === 'liveSearch' && styles.tabTextActive]}>
+            LIVE SEARCH
+          </ThemedText>
+        </TouchableOpacity>
+        <View style={styles.tabDivider} />
         <TouchableOpacity
           style={styles.tab}
           onPress={() => handleTabPress('findDuo')}
@@ -722,19 +931,6 @@ export default function DuoFinderScreen() {
           </ThemedText>
           <ThemedText style={[styles.tabCount, selectedTab === 'findDuo' && styles.tabCountActive]}>
             {duoCards.length}
-          </ThemedText>
-        </TouchableOpacity>
-        <View style={styles.tabDivider} />
-        <TouchableOpacity
-          style={styles.tab}
-          onPress={() => handleTabPress('myCards')}
-          activeOpacity={0.7}
-        >
-          <ThemedText style={[styles.tabText, selectedTab === 'myCards' && styles.tabTextActive]}>
-            MY CARDS
-          </ThemedText>
-          <ThemedText style={[styles.tabCount, selectedTab === 'myCards' && styles.tabCountActive]}>
-            {(valorantCard ? 1 : 0) + (leagueCard ? 1 : 0)}
           </ThemedText>
         </TouchableOpacity>
       </View>
@@ -749,6 +945,62 @@ export default function DuoFinderScreen() {
         scrollEventThrottle={16}
         style={styles.pagerContainer}
       >
+        {/* Live Search Page */}
+        <ImageBackground
+          source={require('@/assets/images/valorant-background.png')}
+          style={[styles.pageContainer, { width: SCREEN_WIDTH }]}
+          imageStyle={{ opacity: 0.2 }}
+          resizeMode="cover"
+        >
+        <BlurView intensity={30} tint="dark" style={StyleSheet.absoluteFill} />
+        <ScrollView
+          style={styles.pageContainer}
+          showsVerticalScrollIndicator={false}
+          contentContainerStyle={styles.pageContent}
+        >
+          <View style={styles.findDuoContent}>
+            {matchState === 'searching' && searchGame ? (
+              <DuoSearchingAnimation game={searchGame} onCancel={cancelSearch} />
+            ) : matchState === 'matched' && matchedUserCard && searchGame ? (
+              <DuoMatchResult
+                game={searchGame}
+                matchedUser={matchedUserCard}
+                onViewProfile={handleMatchViewProfile}
+                onStartChat={handleMatchStartChat}
+                onSearchAgain={handleSearchAgain}
+              />
+            ) : (
+              <View style={styles.liveSearchIdleContainer}>
+                <View style={styles.liveSearchIconContainer}>
+                  <View style={styles.liveSearchIconRing}>
+                    <IconSymbol size={40} name="person.2.fill" color="#c42743" />
+                  </View>
+                </View>
+                <ThemedText style={styles.liveSearchTitle}>Find a Duo Now</ThemedText>
+                <ThemedText style={styles.liveSearchSubtitle}>
+                  Get matched instantly with another player who is searching right now
+                </ThemedText>
+                <TouchableOpacity
+                  style={styles.liveSearchButton}
+                  onPress={handleLiveSearchPress}
+                  activeOpacity={0.8}
+                >
+                  <View style={styles.liveSearchDot} />
+                  <ThemedText style={styles.liveSearchText}>Search for a live player now</ThemedText>
+                  <IconSymbol size={18} name="chevron.right" color="#fff" />
+                </TouchableOpacity>
+                {!hasCards && (
+                  <ThemedText style={styles.liveSearchHint}>
+                    You need a duo card to start searching
+                  </ThemedText>
+                )}
+              </View>
+            )}
+          </View>
+          <View style={styles.bottomSpacer} />
+        </ScrollView>
+        </ImageBackground>
+
         {/* Find Duo Page */}
         <ScrollView
           style={[styles.pageContainer, { width: SCREEN_WIDTH }]}
@@ -805,17 +1057,14 @@ export default function DuoFinderScreen() {
                   </ThemedText>
                 </View>
                 <View style={styles.headerRightSection}>
-                  <View style={styles.statusBadge}>
-                    <View style={styles.statusDotOuter}>
-                      <View style={styles.statusDot} />
-                    </View>
-                  </View>
                   <TouchableOpacity
-                    style={styles.filterButton}
+                    style={[styles.filterTextButton, activeFilterCount > 0 && styles.filterTextButtonActive]}
                     onPress={() => setShowFilterModal(true)}
                     activeOpacity={0.7}
                   >
-                    <IconSymbol size={16} name="line.3.horizontal.decrease" color={activeFilterCount > 0 ? '#c42743' : '#888'} />
+                    <ThemedText style={[styles.filterTextLabel, activeFilterCount > 0 && styles.filterTextLabelActive]}>
+                      {activeFilterCount > 0 ? `Filter (${activeFilterCount})` : 'Filter'}
+                    </ThemedText>
                   </TouchableOpacity>
                   <TouchableOpacity
                     style={styles.refreshButton}
@@ -864,10 +1113,7 @@ export default function DuoFinderScreen() {
                   {!hasCards && (
                     <TouchableOpacity
                       style={styles.emptyButton}
-                      onPress={() => {
-                        handleTabPress('myCards');
-                        setShowAddCard(true);
-                      }}
+                      onPress={() => setShowAddCard(true)}
                       activeOpacity={0.8}
                     >
                       <IconSymbol size={18} name="plus" color="#fff" />
@@ -878,20 +1124,25 @@ export default function DuoFinderScreen() {
               ) : (
                 <View style={styles.cardsList}>
                   {duoCards.map((card) => (
-                    <CompactDuoCard
-                      key={card.id}
-                      game={card.game}
-                      username={card.username}
-                      inGameName={card.inGameName || card.username}
-                      inGameIcon={card.inGameIcon}
-                      currentRank={card.currentRank}
-                      mainRole={card.mainRole}
-                      mainAgent={card.mainAgent}
-                      onPress={() => handleFindDuoCardPress(card)}
-                      onViewProfile={() => handleFindDuoCardPress(card)}
-                      onAvatarLoad={() => setAvatarsLoadedCount(prev => prev + 1)}
-                      showContent={true}
-                    />
+                    <View key={card.id} style={styles.duoCardContainer}>
+                      <DuoCard
+                        duo={{
+                          id: 0,
+                          username: card.username,
+                          status: 'active',
+                          matchPercentage: 0,
+                          currentRank: card.currentRank,
+                          peakRank: card.peakRank,
+                          favoriteAgent: card.mainAgent || '',
+                          favoriteRole: card.mainRole || '',
+                          winRate: card.winRate || 0,
+                          gamesPlayed: card.gamesPlayed || 0,
+                          game: card.game === 'valorant' ? 'Valorant' : 'League of Legends',
+                          avatar: card.avatar,
+                        }}
+                        onPress={() => handleFindDuoCardPress(card)}
+                      />
+                    </View>
                   ))}
                 </View>
               )}
@@ -899,115 +1150,138 @@ export default function DuoFinderScreen() {
           </View>
           <View style={styles.bottomSpacer} />
         </ScrollView>
+      </ScrollView>
 
-        {/* My Cards Page */}
-        <ScrollView
-          style={[styles.pageContainer, { width: SCREEN_WIDTH }]}
-          showsVerticalScrollIndicator={false}
-          contentContainerStyle={styles.pageContent}
-          refreshControl={
-            <RefreshControl
-              refreshing={refreshing}
-              onRefresh={onRefresh}
-              tintColor="#c42743"
-              colors={['#c42743']}
-            />
-          }
-        >
-          <View style={styles.myCardContent}>
-            <View style={styles.myCardsContainer}>
-              {!hasCards ? (
-                // No cards - Show add button
-                <View style={styles.emptyCardState}>
-                  <View style={styles.emptyIconsRow}>
-                    <View style={styles.emptyIconCircle}>
-                      <Image
-                        source={require('@/assets/images/valorant-logo.png')}
-                        style={styles.emptyGameLogo}
-                        resizeMode="contain"
-                      />
-                    </View>
-                    <View style={[styles.emptyIconCircle, styles.emptyIconCircleCenter]}>
-                      <IconSymbol size={36} name="person.crop.rectangle.stack.fill" color="#fff" />
-                    </View>
-                    <View style={styles.emptyIconCircle}>
-                      <Image
-                        source={require('@/assets/images/leagueoflegends.png')}
-                        style={styles.emptyGameLogo}
-                        resizeMode="contain"
-                      />
-                    </View>
+      {/* My Cards Modal */}
+      <Modal
+        visible={showMyCards}
+        animationType="slide"
+        presentationStyle="pageSheet"
+        onRequestClose={() => setShowMyCards(false)}
+      >
+        <View style={styles.myCardsModal}>
+          <View style={styles.myCardsModalHeader}>
+            <ThemedText style={styles.myCardsModalTitle}>MY CARDS</ThemedText>
+            <TouchableOpacity
+              onPress={() => setShowMyCards(false)}
+              activeOpacity={0.7}
+              style={styles.myCardsCloseButton}
+            >
+              <IconSymbol size={22} name="xmark" color="#fff" />
+            </TouchableOpacity>
+          </View>
+          <ScrollView
+            showsVerticalScrollIndicator={false}
+            contentContainerStyle={styles.myCardsModalContent}
+            refreshControl={
+              <RefreshControl
+                refreshing={refreshing}
+                onRefresh={onRefresh}
+                tintColor="#c42743"
+                colors={['#c42743']}
+              />
+            }
+          >
+            {!hasCards ? (
+              <View style={styles.emptyCardState}>
+                <View style={styles.emptyIconsRow}>
+                  <View style={styles.emptyIconCircle}>
+                    <Image
+                      source={require('@/assets/images/valorant-logo.png')}
+                      style={styles.emptyGameLogo}
+                      resizeMode="contain"
+                    />
                   </View>
-                  <ThemedText style={styles.emptyCardTitle}>Create Your Duo Card</ThemedText>
-                  <ThemedText style={styles.emptyCardText}>
-                    Share your rank and find teammates who match your skill level
-                  </ThemedText>
-                  <TouchableOpacity
-                    style={styles.addCardButton}
-                    onPress={() => setShowAddCard(true)}
-                  >
-                    <IconSymbol size={20} name="plus" color="#fff" />
-                    <ThemedText style={styles.addCardButtonText}>Create Duo Card</ThemedText>
-                  </TouchableOpacity>
+                  <View style={[styles.emptyIconCircle, styles.emptyIconCircleCenter]}>
+                    <IconSymbol size={36} name="person.crop.rectangle.stack.fill" color="#fff" />
+                  </View>
+                  <View style={styles.emptyIconCircle}>
+                    <Image
+                      source={require('@/assets/images/leagueoflegends.png')}
+                      style={styles.emptyGameLogo}
+                      resizeMode="contain"
+                    />
+                  </View>
                 </View>
-              ) : (
-                // Has cards - Show them in a row
-                <View style={styles.compactCardsContainer}>
-                  <ThemedText style={styles.myCardsTitle}>MY DUO CARDS</ThemedText>
-                  <View style={styles.myCardsRow}>
-                    {/* Valorant Card */}
-                    {valorantCard && (
-                      <CompactDuoCard
-                        game="valorant"
-                        username={valorantCard.username}
-                        inGameName={valorantInGameName || valorantCard.username}
-                        inGameIcon={valorantInGameIcon}
-                        currentRank={valorantCard.currentRank}
-                        mainRole={valorantCard.mainRole}
-                        mainAgent={valorantCard.mainAgent}
-                        onPress={() => handleCardPress('valorant')}
-                        onViewProfile={() => handleCardPress('valorant')}
-                      />
-                    )}
-
-                    {/* League Card */}
-                    {leagueCard && (
-                      <CompactDuoCard
-                        game="league"
-                        username={leagueCard.username}
-                        inGameName={leagueInGameName || leagueCard.username}
-                        inGameIcon={leagueInGameIcon}
-                        currentRank={leagueCard.currentRank}
-                        mainRole={leagueCard.mainRole}
-                        mainAgent={leagueCard.mainAgent}
-                        onPress={() => handleCardPress('league')}
-                        onViewProfile={() => handleCardPress('league')}
-                      />
-                    )}
-                  </View>
-
-                  {/* Add Another Card Button */}
-                  {(valorantCard === null || leagueCard === null) && (
-                    <TouchableOpacity
-                      style={styles.addAnotherButtonCompact}
-                      onPress={() => setShowAddCard(true)}
-                    >
-                      <IconSymbol size={24} name="plus.circle.fill" color="#c42743" />
-                      <View style={styles.addAnotherContent}>
-                        <ThemedText style={styles.addAnotherButtonText}>
-                          {valorantCard ? 'Add League Card' : 'Add Valorant Card'}
-                        </ThemedText>
-                        <ThemedText style={styles.addAnotherSubtext}>Connect another game</ThemedText>
-                      </View>
-                    </TouchableOpacity>
+                <ThemedText style={styles.emptyCardTitle}>Create Your Duo Card</ThemedText>
+                <ThemedText style={styles.emptyCardText}>
+                  Share your rank and find teammates who match your skill level
+                </ThemedText>
+                <TouchableOpacity
+                  style={styles.addCardButton}
+                  onPress={() => {
+                    setShowMyCards(false);
+                    setShowAddCard(true);
+                  }}
+                >
+                  <IconSymbol size={20} name="plus" color="#fff" />
+                  <ThemedText style={styles.addCardButtonText}>Create Duo Card</ThemedText>
+                </TouchableOpacity>
+              </View>
+            ) : (
+              <View style={styles.compactCardsContainer}>
+                <View style={styles.myCardsRow}>
+                  {valorantCard && (
+                    <CompactDuoCard
+                      game="valorant"
+                      username={valorantCard.username}
+                      inGameName={valorantInGameName || valorantCard.username}
+                      inGameIcon={valorantInGameIcon}
+                      currentRank={valorantCard.currentRank}
+                      mainRole={valorantCard.mainRole}
+                      mainAgent={valorantCard.mainAgent}
+                      onPress={() => {
+                        setShowMyCards(false);
+                        handleCardPress('valorant');
+                      }}
+                      onViewProfile={() => {
+                        setShowMyCards(false);
+                        handleCardPress('valorant');
+                      }}
+                    />
+                  )}
+                  {leagueCard && (
+                    <CompactDuoCard
+                      game="league"
+                      username={leagueCard.username}
+                      inGameName={leagueInGameName || leagueCard.username}
+                      inGameIcon={leagueInGameIcon}
+                      currentRank={leagueCard.currentRank}
+                      mainRole={leagueCard.mainRole}
+                      mainAgent={leagueCard.mainAgent}
+                      onPress={() => {
+                        setShowMyCards(false);
+                        handleCardPress('league');
+                      }}
+                      onViewProfile={() => {
+                        setShowMyCards(false);
+                        handleCardPress('league');
+                      }}
+                    />
                   )}
                 </View>
-              )}
-            </View>
-          </View>
-          <View style={styles.bottomSpacer} />
-        </ScrollView>
-      </ScrollView>
+                {(valorantCard === null || leagueCard === null) && (
+                  <TouchableOpacity
+                    style={styles.addAnotherButtonCompact}
+                    onPress={() => {
+                      setShowMyCards(false);
+                      setShowAddCard(true);
+                    }}
+                  >
+                    <IconSymbol size={24} name="plus.circle.fill" color="#c42743" />
+                    <View style={styles.addAnotherContent}>
+                      <ThemedText style={styles.addAnotherButtonText}>
+                        {valorantCard ? 'Add League Card' : 'Add Valorant Card'}
+                      </ThemedText>
+                      <ThemedText style={styles.addAnotherSubtext}>Connect another game</ThemedText>
+                    </View>
+                  </TouchableOpacity>
+                )}
+              </View>
+            )}
+          </ScrollView>
+        </View>
+      </Modal>
 
       {/* Add Duo Card Modal */}
       <AddDuoCard
@@ -1071,6 +1345,22 @@ const styles = StyleSheet.create({
     letterSpacing: 0.3,
     textTransform: 'uppercase',
   },
+  myCardsHeaderButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    paddingVertical: 6,
+    paddingHorizontal: 12,
+    backgroundColor: '#1a1a1a',
+    borderRadius: 10,
+    borderWidth: 1,
+    borderColor: '#2a2a2a',
+  },
+  myCardsHeaderText: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: '#fff',
+  },
   // Tabs
   tabsContainer: {
     flexDirection: 'row',
@@ -1123,6 +1413,75 @@ const styles = StyleSheet.create({
   },
   bottomSpacer: {
     height: 40,
+  },
+  // Live Search Idle Page
+  liveSearchIdleContainer: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: 24,
+    paddingVertical: 60,
+  },
+  liveSearchIconContainer: {
+    marginBottom: 24,
+  },
+  liveSearchIconRing: {
+    width: 100,
+    height: 100,
+    borderRadius: 50,
+    backgroundColor: 'rgba(196, 39, 67, 0.1)',
+    borderWidth: 2,
+    borderColor: 'rgba(196, 39, 67, 0.3)',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  liveSearchTitle: {
+    fontSize: 22,
+    fontWeight: '700',
+    color: '#fff',
+    marginBottom: 8,
+  },
+  liveSearchSubtitle: {
+    fontSize: 14,
+    color: '#888',
+    textAlign: 'center',
+    lineHeight: 20,
+    maxWidth: 280,
+    marginBottom: 28,
+  },
+  liveSearchHint: {
+    fontSize: 13,
+    color: '#555',
+    marginTop: 12,
+  },
+  // Live Search Button
+  liveSearchButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    marginHorizontal: 12,
+    marginTop: 14,
+    paddingVertical: 14,
+    paddingHorizontal: 18,
+    backgroundColor: '#c42743',
+    borderRadius: 14,
+    shadowColor: '#c42743',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    elevation: 6,
+  },
+  liveSearchDot: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+    backgroundColor: '#4ade80',
+  },
+  liveSearchText: {
+    flex: 1,
+    fontSize: 15,
+    fontWeight: '700',
+    color: '#fff',
   },
   // Game Filter Buttons
   gameFilterContainer: {
@@ -1294,23 +1653,30 @@ const styles = StyleSheet.create({
     borderColor: '#2a2a2a',
     overflow: 'hidden',
   },
-  filterButton: {
-    width: 28,
-    height: 28,
-    borderRadius: 14,
-    backgroundColor: '#1a1a1a',
-    alignItems: 'center',
-    justifyContent: 'center',
+  filterTextButton: {
+    paddingVertical: 5,
+    paddingHorizontal: 12,
+    borderRadius: 8,
+    backgroundColor: '#222',
+    borderWidth: 1,
+    borderColor: '#333',
+  },
+  filterTextButtonActive: {
+    backgroundColor: 'rgba(196, 39, 67, 0.15)',
+    borderColor: '#c42743',
+  },
+  filterTextLabel: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: '#888',
+  },
+  filterTextLabelActive: {
+    color: '#c42743',
   },
   headerRightSection: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 10,
-  },
-  statusBadge: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
   },
   refreshButton: {
     width: 28,
@@ -1319,20 +1685,6 @@ const styles = StyleSheet.create({
     backgroundColor: '#1a1a1a',
     alignItems: 'center',
     justifyContent: 'center',
-  },
-  statusDotOuter: {
-    width: 14,
-    height: 14,
-    borderRadius: 7,
-    backgroundColor: 'rgba(74, 222, 128, 0.15)',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  statusDot: {
-    width: 6,
-    height: 6,
-    borderRadius: 3,
-    backgroundColor: '#4ade80',
   },
   // Empty States - Profile style
   emptyState: {
@@ -1401,6 +1753,47 @@ const styles = StyleSheet.create({
   cardsList: {
     paddingHorizontal: 12,
     paddingBottom: 16,
-    gap: 16,
+    gap: 10,
+  },
+  duoCardContainer: {
+    backgroundColor: '#222',
+    borderRadius: 14,
+    borderWidth: 1,
+    borderColor: '#333',
+    padding: 4,
+    overflow: 'hidden',
+  },
+  // My Cards Modal
+  myCardsModal: {
+    flex: 1,
+    backgroundColor: '#0f0f0f',
+  },
+  myCardsModalHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingHorizontal: 16,
+    paddingTop: 16,
+    paddingBottom: 12,
+    borderBottomWidth: 1,
+    borderBottomColor: '#1a1a1a',
+  },
+  myCardsModalTitle: {
+    fontSize: 18,
+    fontWeight: '700',
+    color: '#fff',
+    letterSpacing: 0.5,
+  },
+  myCardsCloseButton: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: '#1a1a1a',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  myCardsModalContent: {
+    padding: 16,
+    flexGrow: 1,
   },
 });

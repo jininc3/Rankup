@@ -706,14 +706,6 @@ const styles = StyleSheet.create({
     letterSpacing: 0.3,
     textTransform: 'uppercase',
   },
-  headerActions: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-  },
-  headerIconButton: {
-    padding: 8,
-  },
   searchContainer: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -737,59 +729,6 @@ const styles = StyleSheet.create({
   scrollView: {
     flex: 1,
     paddingHorizontal: 16,
-  },
-  userCard: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    backgroundColor: '#fff',
-    padding: 16,
-    marginBottom: 12,
-    borderRadius: 16,
-    borderWidth: 1,
-    borderColor: '#e5e7eb',
-  },
-  userLeft: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 12,
-    flex: 1,
-  },
-  avatar: {
-    width: 50,
-    height: 50,
-    borderRadius: 25,
-    backgroundColor: '#f0f0f0',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  avatarImage: {
-    width: '100%',
-    height: '100%',
-    borderRadius: 25,
-  },
-  avatarInitial: {
-    fontSize: 20,
-    fontWeight: '600',
-  },
-  userInfo: {
-    flex: 1,
-  },
-  username: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: '#000',
-    marginBottom: 2,
-  },
-  userStats: {
-    fontSize: 13,
-    color: '#666',
-    marginBottom: 2,
-  },
-  userBio: {
-    fontSize: 13,
-    color: '#999',
-    marginTop: 2,
   },
   emptyState: {
     alignItems: 'center',

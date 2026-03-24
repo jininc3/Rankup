@@ -334,11 +334,12 @@ export default function NotificationsScreen() {
           },
         });
       } else {
-        // Default to party detail for 'party' type or unspecified
+        // Default to leaderboard detail
         router.push({
-          pathname: '/partyPages/partyDetail',
+          pathname: '/partyPages/leaderboardDetail',
           params: {
-            partyId: notification.partyId,
+            name: notification.partyName,
+            id: notification.partyId,
             game: notification.game,
           },
         });
@@ -413,24 +414,14 @@ export default function NotificationsScreen() {
         if (partySnapshot.exists()) {
           const partyData = partySnapshot.data();
 
-          if (partyData.type === 'leaderboard') {
-            router.push({
-              pathname: '/partyPages/leaderboardDetail',
-              params: {
-                id: notification.partyId,
-                name: notification.partyName || 'Party',
-                game: notification.game || '',
-              },
-            });
-          } else {
-            router.push({
-              pathname: '/partyPages/partyDetail',
-              params: {
-                partyId: notification.partyId,
-                game: notification.game || '',
-              },
-            });
-          }
+          router.push({
+            pathname: '/partyPages/leaderboardDetail',
+            params: {
+              id: notification.partyId,
+              name: notification.partyName || 'Leaderboard',
+              game: notification.game || '',
+            },
+          });
         }
       } catch (error) {
         console.error('Error fetching party for navigation:', error);
@@ -439,7 +430,7 @@ export default function NotificationsScreen() {
           pathname: '/partyPages/leaderboardDetail',
           params: {
             id: notification.partyId,
-            name: notification.partyName || 'Party',
+            name: notification.partyName || 'Leaderboard',
             game: notification.game || '',
           },
         });
