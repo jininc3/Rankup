@@ -828,7 +828,7 @@ export default function LeaderboardDetail() {
           {/* Header Icons */}
           <View style={styles.headerIconsRow}>
             <TouchableOpacity style={styles.backButton} onPress={() => router.back()}>
-              <IconSymbol size={18} name="chevron.left" color="#fff" />
+              <IconSymbol size={14} name="chevron.left" color="#fff" />
             </TouchableOpacity>
             <View style={styles.headerRightButtons}>
               {isCreator && (
@@ -871,32 +871,34 @@ export default function LeaderboardDetail() {
 
         {/* Leaderboard Info Section */}
         <View style={styles.leaderboardInfoSection}>
-          {/* Leaderboard Icon */}
-          <View style={styles.leaderboardIconWrapper}>
-            {leaderboardIcon ? (
-              <Image source={{ uri: leaderboardIcon }} style={styles.leaderboardIcon} />
-            ) : gameLogo ? (
-              <View style={styles.leaderboardIconPlaceholder}>
-                <Image source={gameLogo} style={styles.leaderboardIconGameLogo} resizeMode="contain" />
-              </View>
-            ) : (
-              <View style={styles.leaderboardIconPlaceholder}>
-                <ThemedText style={styles.leaderboardIconInitial}>{leaderboardName?.[0]?.toUpperCase()}</ThemedText>
-              </View>
-            )}
-          </View>
+          <View style={styles.infoRow}>
+            {/* Leaderboard Icon */}
+            <View style={styles.leaderboardIconWrapper}>
+              {leaderboardIcon ? (
+                <Image source={{ uri: leaderboardIcon }} style={styles.leaderboardIcon} />
+              ) : gameLogo ? (
+                <View style={styles.leaderboardIconPlaceholder}>
+                  <Image source={gameLogo} style={styles.leaderboardIconGameLogo} resizeMode="contain" />
+                </View>
+              ) : (
+                <View style={styles.leaderboardIconPlaceholder}>
+                  <ThemedText style={styles.leaderboardIconInitial}>{leaderboardName?.[0]?.toUpperCase()}</ThemedText>
+                </View>
+              )}
+            </View>
 
-          {/* Leaderboard Name */}
-          <ThemedText style={styles.leaderboardName}>{leaderboardName}</ThemedText>
-
-          {/* Game & Members */}
-          <View style={styles.leaderboardMeta}>
-            {gameLogo && (
-              <Image source={gameLogo} style={styles.gameLogoSmall} resizeMode="contain" />
-            )}
-            <ThemedText style={styles.leaderboardMetaText}>{game}</ThemedText>
-            <View style={styles.metaDot} />
-            <ThemedText style={styles.leaderboardMetaText}>{memberCount} {memberCount === 1 ? 'Player' : 'Players'}</ThemedText>
+            {/* Name & Meta */}
+            <View style={styles.infoDetails}>
+              <ThemedText style={styles.leaderboardName} numberOfLines={1}>{leaderboardName}</ThemedText>
+              <View style={styles.leaderboardMeta}>
+                {gameLogo && (
+                  <Image source={gameLogo} style={styles.gameLogoSmall} resizeMode="contain" />
+                )}
+                <ThemedText style={styles.leaderboardMetaText}>{game}</ThemedText>
+                <View style={styles.metaDot} />
+                <ThemedText style={styles.leaderboardMetaText}>{memberCount} {memberCount === 1 ? 'Player' : 'Players'}</ThemedText>
+              </View>
+            </View>
           </View>
 
           {/* Challenge Status */}
@@ -1433,7 +1435,7 @@ const styles = StyleSheet.create({
   },
   headerIconsRow: {
     position: 'absolute',
-    top: 50,
+    top: 48,
     left: 0,
     right: 0,
     flexDirection: 'row',
@@ -1443,9 +1445,9 @@ const styles = StyleSheet.create({
     zIndex: 10,
   },
   backButton: {
-    width: 38,
-    height: 38,
-    borderRadius: 19,
+    width: 30,
+    height: 30,
+    borderRadius: 15,
     backgroundColor: 'rgba(0,0,0,0.5)',
     alignItems: 'center',
     justifyContent: 'center',
@@ -1456,24 +1458,24 @@ const styles = StyleSheet.create({
     gap: 8,
   },
   editButton: {
-    width: 38,
-    height: 38,
-    borderRadius: 19,
+    width: 30,
+    height: 30,
+    borderRadius: 15,
     backgroundColor: 'rgba(0,0,0,0.5)',
     alignItems: 'center',
     justifyContent: 'center',
   },
   leaveButton: {
-    width: 38,
-    height: 38,
-    borderRadius: 19,
+    width: 30,
+    height: 30,
+    borderRadius: 15,
     backgroundColor: 'rgba(0,0,0,0.5)',
     alignItems: 'center',
     justifyContent: 'center',
   },
   coverPhotoWrapper: {
     width: '100%',
-    height: 180,
+    height: 130,
   },
   coverPhotoImage: {
     position: 'absolute',
@@ -1504,54 +1506,60 @@ const styles = StyleSheet.create({
   },
   // Leaderboard Info Section
   leaderboardInfoSection: {
-    alignItems: 'center',
-    marginTop: -44,
-    paddingHorizontal: 20,
+    marginTop: -34,
+    paddingHorizontal: 16,
     zIndex: 2,
   },
+  infoRow: {
+    flexDirection: 'row',
+    alignItems: 'flex-end',
+    gap: 14,
+  },
+  infoDetails: {
+    flex: 1,
+    paddingBottom: 4,
+  },
   leaderboardIconWrapper: {
-    marginBottom: 14,
   },
   leaderboardIcon: {
-    width: 88,
-    height: 88,
-    borderRadius: 22,
-    borderWidth: 4,
+    width: 68,
+    height: 68,
+    borderRadius: 16,
+    borderWidth: 3,
     borderColor: '#0f0f0f',
   },
   leaderboardIconPlaceholder: {
-    width: 88,
-    height: 88,
-    borderRadius: 22,
+    width: 68,
+    height: 68,
+    borderRadius: 16,
     backgroundColor: '#1a1a1a',
-    borderWidth: 4,
+    borderWidth: 3,
     borderColor: '#0f0f0f',
     alignItems: 'center',
     justifyContent: 'center',
   },
   leaderboardIconGameLogo: {
-    width: 40,
-    height: 40,
+    width: 32,
+    height: 32,
     opacity: 0.8,
   },
   leaderboardIconInitial: {
-    fontSize: 36,
+    fontSize: 28,
     fontWeight: '700',
     color: '#333',
   },
   leaderboardName: {
-    fontSize: 24,
+    fontSize: 18,
     fontWeight: '700',
     color: '#fff',
-    letterSpacing: -0.5,
-    textAlign: 'center',
-    marginBottom: 6,
+    letterSpacing: -0.3,
+    marginBottom: 4,
   },
   leaderboardMeta: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 8,
-    marginBottom: 14,
+    marginBottom: 10,
   },
   gameLogoSmall: {
     width: 16,

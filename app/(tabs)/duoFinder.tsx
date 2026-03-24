@@ -1,4 +1,3 @@
-import CompactDuoCard from '@/app/components/compactDuoCard';
 import DuoCard from '@/app/components/duoCard';
 import AddDuoCard, { DuoCardData } from '@/app/components/addDuoCard';
 import EditDuoCard from '@/app/components/editDuoCard';
@@ -1162,38 +1161,44 @@ export default function DuoFinderScreen() {
               <View style={styles.compactCardsContainer}>
                 <View style={styles.myCardsRow}>
                   {valorantCard && (
-                    <CompactDuoCard
-                      game="valorant"
-                      username={valorantCard.username}
-                      inGameName={valorantInGameName || valorantCard.username}
-                      inGameIcon={valorantInGameIcon}
-                      currentRank={valorantCard.currentRank}
-                      mainRole={valorantCard.mainRole}
-                      mainAgent={valorantCard.mainAgent}
-                      onPress={() => {
-                        setShowMyCards(false);
-                        handleCardPress('valorant');
+                    <DuoCard
+                      duo={{
+                        id: 0,
+                        username: valorantCard.username,
+                        status: 'active',
+                        matchPercentage: 0,
+                        currentRank: valorantCard.currentRank,
+                        peakRank: valorantCard.peakRank,
+                        favoriteAgent: valorantCard.mainAgent || '',
+                        favoriteRole: valorantCard.mainRole || '',
+                        winRate: valorantWinRate || 0,
+                        gamesPlayed: valorantGamesPlayed || 0,
+                        game: 'Valorant',
+                        avatar: user?.avatar,
                       }}
-                      onViewProfile={() => {
+                      onPress={() => {
                         setShowMyCards(false);
                         handleCardPress('valorant');
                       }}
                     />
                   )}
                   {leagueCard && (
-                    <CompactDuoCard
-                      game="league"
-                      username={leagueCard.username}
-                      inGameName={leagueInGameName || leagueCard.username}
-                      inGameIcon={leagueInGameIcon}
-                      currentRank={leagueCard.currentRank}
-                      mainRole={leagueCard.mainRole}
-                      mainAgent={leagueCard.mainAgent}
-                      onPress={() => {
-                        setShowMyCards(false);
-                        handleCardPress('league');
+                    <DuoCard
+                      duo={{
+                        id: 0,
+                        username: leagueCard.username,
+                        status: 'active',
+                        matchPercentage: 0,
+                        currentRank: leagueCard.currentRank,
+                        peakRank: leagueCard.peakRank,
+                        favoriteAgent: leagueCard.mainAgent || '',
+                        favoriteRole: leagueCard.mainRole || '',
+                        winRate: leagueWinRate || 0,
+                        gamesPlayed: leagueGamesPlayed || 0,
+                        game: 'League of Legends',
+                        avatar: user?.avatar,
                       }}
-                      onViewProfile={() => {
+                      onPress={() => {
                         setShowMyCards(false);
                         handleCardPress('league');
                       }}
@@ -1519,9 +1524,9 @@ const styles = StyleSheet.create({
     color: '#fff',
   },
   compactCardsContainer: {
-    gap: 16,
-    alignItems: 'center',
-    padding: 16,
+    gap: 10,
+    paddingHorizontal: 12,
+    paddingVertical: 16,
   },
   myCardsTitle: {
     fontSize: 12,
@@ -1532,8 +1537,7 @@ const styles = StyleSheet.create({
     alignSelf: 'flex-start',
   },
   myCardsRow: {
-    gap: 20,
-    alignItems: 'center',
+    gap: 12,
   },
   addAnotherButtonCompact: {
     flexDirection: 'row',
