@@ -1,4 +1,5 @@
 import { ThemedText } from '@/components/themed-text';
+import { IconSymbol } from '@/components/ui/icon-symbol';
 import { Image, StyleSheet, TouchableOpacity, View } from 'react-native';
 
 // Game logo mapping
@@ -7,13 +8,6 @@ const GAME_LOGOS: { [key: string]: any } = {
   'League of Legends': require('@/assets/images/lol-icon.png'),
   'League': require('@/assets/images/lol-icon.png'),
   'Apex Legends': require('@/assets/images/apex.png'),
-};
-
-// Background image mapping
-const GAME_BACKGROUNDS: { [key: string]: any } = {
-  'Valorant': require('@/assets/images/valorant-red.png'),
-  'League of Legends': require('@/assets/images/lol.png'),
-  'League': require('@/assets/images/lol.png'),
 };
 
 interface Leaderboard {
@@ -32,6 +26,7 @@ interface Leaderboard {
   coverPhoto?: string;
   partyIcon?: string;
   challengeType?: 'climbing' | 'rank';
+  memberDetails?: any[];
 }
 
 interface LeaderboardCardProps {
@@ -87,20 +82,7 @@ const calculateDaysInfo = (startDate: any, endDate: any): { currentDay: number; 
 export default function LeaderboardCard({ leaderboard, onPress }: LeaderboardCardProps) {
   const daysInfo = calculateDaysInfo(leaderboard.startDate, leaderboard.endDate);
   const gameLogo = GAME_LOGOS[leaderboard.game];
-  const gameBackground = GAME_BACKGROUNDS[leaderboard.game];
   const maxMembers = leaderboard.maxMembers ?? 10;
-
-  // Get border color based on game
-  const getBorderColor = (): string => {
-    if (leaderboard.game === 'Valorant') return '#c42743';
-    if (leaderboard.game === 'League of Legends' || leaderboard.game === 'League') return '#0a84ff';
-    return '#333';
-  };
-
-  // Get top 3 players for stacked avatars
-  const topPlayers = (leaderboard.players || []).filter(
-    (player: any) => player && (player.photoUrl || player.displayName || player.username)
-  ).slice(0, 3);
 
   // Get challenge type display text
   const getChallengeTypeText = (): string => {
@@ -108,122 +90,97 @@ export default function LeaderboardCard({ leaderboard, onPress }: LeaderboardCar
     return 'LP Climbing';
   };
 
+  // Get top 3 players for ranking rows
+  const topPlayers = (leaderboard.players || []).filter(
+    (player: any) => player && (player.photoUrl || player.displayName || player.username)
+  ).slice(0, 3);
+
   return (
     <TouchableOpacity
       activeOpacity={0.8}
       onPress={() => onPress(leaderboard)}
       style={styles.container}
     >
-      <View style={[styles.card, { borderColor: getBorderColor() }]}>
-        {/* Background Logo */}
-        {gameBackground && (
+      {/* Header Section */}
+      <View style={styles.headerSection}>
+        {leaderboard.partyIcon ? (
           <Image
-            source={gameBackground}
-            style={[
-              styles.backgroundLogo,
-              (leaderboard.game === 'League of Legends' || leaderboard.game === 'League') && styles.backgroundLogoLol
-            ]}
+            source={{ uri: leaderboard.partyIcon }}
+            style={styles.leaderboardIcon}
+            resizeMode="cover"
+          />
+        ) : gameLogo ? (
+          <Image
+            source={gameLogo}
+            style={styles.leaderboardIcon}
             resizeMode="contain"
           />
+        ) : (
+          <View style={styles.iconPlaceholder}>
+            <ThemedText style={styles.iconPlaceholderText}>
+              {leaderboard.name.charAt(0).toUpperCase()}
+            </ThemedText>
+          </View>
         )}
-
-        {/* Header Section - Icon & Name */}
-        <View style={styles.headerSection}>
-          {leaderboard.partyIcon ? (
-            <Image
-              source={{ uri: leaderboard.partyIcon }}
-              style={styles.leaderboardIcon}
-              resizeMode="cover"
-            />
-          ) : gameLogo ? (
-            <Image
-              source={gameLogo}
-              style={styles.leaderboardIcon}
-              resizeMode="contain"
-            />
-          ) : (
-            <View style={styles.iconPlaceholder}>
-              <ThemedText style={styles.iconPlaceholderText}>
-                {leaderboard.name.charAt(0).toUpperCase()}
-              </ThemedText>
-            </View>
-          )}
-          <View style={styles.headerInfo}>
-            <ThemedText style={styles.name} numberOfLines={1}>
-              {leaderboard.name.toUpperCase()}
-            </ThemedText>
-            <ThemedText style={styles.gameName}>{leaderboard.game}</ThemedText>
-          </View>
-        </View>
-
-        {/* Divider */}
-        <View style={styles.divider} />
-
-        {/* Info Rows */}
-        <View style={styles.infoSection}>
-          <View style={styles.infoRow}>
-            <ThemedText style={styles.infoLabel}>Type</ThemedText>
-            <ThemedText style={styles.infoValue}>Leaderboard</ThemedText>
-          </View>
-
-          <View style={styles.infoRow}>
-            <ThemedText style={styles.infoLabel}>Date</ThemedText>
-            <ThemedText style={styles.infoValue}>
-              {daysInfo ? `${daysInfo.daysLeft}d left` : '-'}
-            </ThemedText>
-          </View>
-
-          <View style={styles.infoRow}>
-            <ThemedText style={styles.infoLabel}>Players</ThemedText>
-            <ThemedText style={styles.infoValue}>
+        <View style={styles.headerInfo}>
+          <ThemedText style={styles.name} numberOfLines={1}>
+            {leaderboard.name.toUpperCase()}
+          </ThemedText>
+          <View style={styles.metaRow}>
+            <ThemedText style={styles.metaText}>{getChallengeTypeText()}</ThemedText>
+            <View style={styles.metaDot} />
+            <ThemedText style={styles.metaText}>
               {leaderboard.members}/{maxMembers}
             </ThemedText>
+            {daysInfo && (
+              <>
+                <View style={styles.metaDot} />
+                <ThemedText style={styles.metaText}>{daysInfo.daysLeft}d left</ThemedText>
+              </>
+            )}
           </View>
+        </View>
+      </View>
 
-          <View style={styles.infoRow}>
-            <ThemedText style={styles.infoLabel}>Format</ThemedText>
-            <ThemedText style={styles.infoValue}>{getChallengeTypeText()}</ThemedText>
-          </View>
-
-          <View style={styles.infoRow}>
-            <ThemedText style={styles.infoLabel}>Ranking</ThemedText>
-            <View style={styles.rankingValue}>
-              {topPlayers.length > 0 ? (
-                <View style={styles.stackedAvatars}>
-                  {topPlayers.map((player, index) => (
-                    <View
-                      key={player.odId || index}
-                      style={[
-                        styles.miniAvatar,
-                        { marginLeft: index === 0 ? 0 : -8, zIndex: 5 - index }
-                      ]}
-                    >
-                      {player.photoUrl ? (
-                        <Image
-                          source={{ uri: player.photoUrl }}
-                          style={styles.miniAvatarImage}
-                        />
-                      ) : (
-                        <View style={styles.miniAvatarPlaceholder}>
-                          <ThemedText style={styles.miniAvatarText}>
-                            {(player.displayName || '?').charAt(0)}
-                          </ThemedText>
-                        </View>
-                      )}
+      {/* Summary Footer */}
+      <View style={styles.summaryFooter}>
+        <View style={styles.summaryLeft}>
+          {topPlayers.length > 0 && (
+            <View style={styles.stackedAvatars}>
+              {topPlayers.map((player: any, index: number) => (
+                <View
+                  key={player.odId || index}
+                  style={[styles.miniAvatarWrapper, { marginLeft: index === 0 ? 0 : -8, zIndex: 5 - index }]}
+                >
+                  {index === 0 && (
+                    <View style={styles.crownContainer}>
+                      <IconSymbol size={9} name="crown.fill" color="#FFD700" />
                     </View>
-                  ))}
+                  )}
+                  <View style={styles.miniAvatar}>
+                    {player.photoUrl ? (
+                      <Image source={{ uri: player.photoUrl }} style={styles.miniAvatarImage} />
+                    ) : (
+                      <View style={styles.miniAvatarPlaceholder}>
+                        <ThemedText style={styles.miniAvatarText}>
+                          {(player.displayName || '?').charAt(0)}
+                        </ThemedText>
+                      </View>
+                    )}
+                  </View>
                 </View>
-              ) : (
-                <ThemedText style={styles.infoValue}>-</ThemedText>
-              )}
+              ))}
             </View>
+          )}
+          <ThemedText style={styles.summaryText}>
+            {leaderboard.members} player{leaderboard.members !== 1 ? 's' : ''}
+          </ThemedText>
+        </View>
+        {leaderboard.userRank && (
+          <View style={styles.yourRankBadge}>
+            <ThemedText style={styles.yourRankText}>#{leaderboard.userRank}</ThemedText>
           </View>
-        </View>
-
-        {/* View Button */}
-        <View style={styles.viewButton}>
-          <ThemedText style={styles.viewButtonText}>View Leaderboard</ThemedText>
-        </View>
+        )}
       </View>
     </TouchableOpacity>
   );
@@ -231,111 +188,94 @@ export default function LeaderboardCard({ leaderboard, onPress }: LeaderboardCar
 
 const styles = StyleSheet.create({
   container: {
-    marginBottom: 12,
-    paddingHorizontal: 4,
-  },
-  card: {
-    backgroundColor: '#1a1a1a',
-    borderRadius: 16,
-    padding: 16,
-    borderWidth: 1,
+    marginBottom: 16,
+    backgroundColor: '#141414',
+    borderRadius: 12,
     overflow: 'hidden',
   },
-  backgroundLogo: {
-    position: 'absolute',
-    top: '50%',
-    left: '50%',
-    width: 140,
-    height: 140,
-    marginTop: -70,
-    marginLeft: -60,
-    opacity: 0.06,
-  },
-  backgroundLogoLol: {
-    width: 180,
-    height: 180,
-    marginTop: -90,
-    marginLeft: -75,
-  },
-  // Header Section
+  // Header
   headerSection: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginBottom: 14,
+    padding: 14,
+    gap: 12,
   },
   leaderboardIcon: {
-    width: 56,
-    height: 56,
-    borderRadius: 12,
+    width: 44,
+    height: 44,
+    borderRadius: 10,
     backgroundColor: '#2a2a2a',
   },
   iconPlaceholder: {
-    width: 56,
-    height: 56,
-    borderRadius: 12,
+    width: 44,
+    height: 44,
+    borderRadius: 10,
     backgroundColor: '#2a2a2a',
     alignItems: 'center',
     justifyContent: 'center',
-    borderWidth: 1,
-    borderColor: '#444',
   },
   iconPlaceholderText: {
-    fontSize: 22,
+    fontSize: 18,
     fontWeight: '700',
     color: '#666',
   },
   headerInfo: {
     flex: 1,
-    marginLeft: 14,
   },
   name: {
-    fontSize: 18,
+    fontSize: 15,
     fontWeight: '700',
     color: '#fff',
-    letterSpacing: 0.5,
-    marginBottom: 4,
+    letterSpacing: 0.3,
+    marginBottom: 3,
   },
-  gameName: {
-    fontSize: 14,
-    color: '#888',
+  metaRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
   },
-  // Divider
-  divider: {
-    height: 1,
-    backgroundColor: '#333',
-    marginBottom: 14,
+  metaText: {
+    fontSize: 12,
+    color: '#666',
   },
-  // Info Section
-  infoSection: {
-    gap: 10,
+  metaDot: {
+    width: 3,
+    height: 3,
+    borderRadius: 1.5,
+    backgroundColor: '#444',
   },
-  infoRow: {
+  // Summary Footer
+  summaryFooter: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
+    paddingHorizontal: 14,
+    paddingVertical: 12,
+    backgroundColor: '#1a1a1a',
+    borderTopWidth: 1,
+    borderTopColor: '#222',
   },
-  infoLabel: {
-    fontSize: 14,
-    color: '#888',
-  },
-  infoValue: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: '#fff',
-  },
-  rankingValue: {
+  summaryLeft: {
     flexDirection: 'row',
     alignItems: 'center',
+    gap: 10,
   },
-  // Stacked Avatars
   stackedAvatars: {
     flexDirection: 'row',
     alignItems: 'center',
   },
+  miniAvatarWrapper: {
+    alignItems: 'center',
+  },
+  crownContainer: {
+    position: 'absolute',
+    top: -8,
+    zIndex: 10,
+  },
   miniAvatar: {
-    width: 24,
-    height: 24,
-    borderRadius: 12,
+    width: 26,
+    height: 26,
+    borderRadius: 13,
     borderWidth: 2,
     borderColor: '#1a1a1a',
     overflow: 'hidden',
@@ -356,18 +296,19 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     color: '#888',
   },
-  // View Button
-  viewButton: {
-    borderWidth: 1,
-    borderColor: '#333',
-    borderRadius: 8,
-    paddingVertical: 10,
-    alignItems: 'center',
-    marginTop: 14,
+  summaryText: {
+    fontSize: 12,
+    color: '#666',
   },
-  viewButtonText: {
+  yourRankBadge: {
+    backgroundColor: '#252525',
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 8,
+  },
+  yourRankText: {
     fontSize: 13,
-    fontWeight: '500',
+    fontWeight: '700',
     color: '#fff',
   },
 });

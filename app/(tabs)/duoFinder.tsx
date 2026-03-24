@@ -5,6 +5,7 @@ import EditDuoCard from '@/app/components/editDuoCard';
 import DuoFilterModal, { DuoFilterOptions } from '@/app/profilePages/duoFilterModal';
 import DuoSearchingAnimation from '@/app/components/duoSearchingAnimation';
 import DuoMatchResult from '@/app/components/duoMatchResult';
+import DuoCardDetailModal from '@/app/components/duoCardDetailModal';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { IconSymbol } from '@/components/ui/icon-symbol';
@@ -107,11 +108,8 @@ export default function DuoFinderScreen() {
     filters.language,
   ].filter(Boolean).length;
 
-  // Avatar loading coordination
-  const [avatarsLoadedCount, setAvatarsLoadedCount] = useState(0);
-  const [allAvatarsLoaded, setAllAvatarsLoaded] = useState(false);
-  const [showCards, setShowCards] = useState(false);
   const [showEditModal, setShowEditModal] = useState(false);
+  const [selectedDuoCard, setSelectedDuoCard] = useState<DuoCardWithId | null>(null);
   const [editingGame, setEditingGame] = useState<'valorant' | 'league' | null>(null);
 
   // User's in-game icons, names, and stats for their own cards
@@ -355,36 +353,6 @@ export default function DuoFinderScreen() {
   };
 
 
-  // Track when all avatars are loaded
-  useEffect(() => {
-    if (duoCards.length > 0 && avatarsLoadedCount >= duoCards.length) {
-      setAllAvatarsLoaded(true);
-      setShowCards(true);
-    } else if (duoCards.length === 0) {
-      setAllAvatarsLoaded(true);
-      setShowCards(false);
-    }
-  }, [avatarsLoadedCount, duoCards.length]);
-
-  // Reset avatar loading when duo cards change
-  useEffect(() => {
-    setAvatarsLoadedCount(0);
-    setAllAvatarsLoaded(false);
-    setShowCards(false);
-  }, [duoCards]);
-
-  // Timeout fallback - if avatars take too long (3 seconds), reveal anyway
-  useEffect(() => {
-    if (duoCards.length > 0 && !allAvatarsLoaded) {
-      const timeout = setTimeout(() => {
-        setAllAvatarsLoaded(true);
-        setShowCards(true);
-      }, 3000);
-
-      return () => clearTimeout(timeout);
-    }
-  }, [duoCards.length, allAvatarsLoaded]);
-
   // Check if user has Valorant or League accounts (RankCards)
   useEffect(() => {
     const checkLinkedAccounts = async () => {
@@ -457,7 +425,10 @@ export default function DuoFinderScreen() {
   const fetchDuoCards = async () => {
     if (!user?.id) return;
 
-    setLoadingDuoCards(true);
+    // Only show skeleton on initial load when no cards are cached
+    if (duoCards.length === 0) {
+      setLoadingDuoCards(true);
+    }
     try {
       const duoCardsRef = collection(db, 'duoCards');
 
@@ -637,27 +608,34 @@ export default function DuoFinderScreen() {
   };
 
   const handleFindDuoCardPress = (card: DuoCardWithId) => {
-    const avatarUrl = card.avatar || '';
-    console.log('Navigating with card avatar:', avatarUrl);
-    console.log('Full card object:', card);
-    router.push({
-      pathname: '/profilePages/duoCardDetail',
-      params: {
-        game: card.game,
-        username: card.username,
-        avatar: avatarUrl,
-        inGameIcon: card.inGameIcon || '',
-        inGameName: card.inGameName || '',
-        winRate: card.winRate !== undefined ? String(card.winRate) : '',
-        gamesPlayed: card.gamesPlayed !== undefined ? String(card.gamesPlayed) : '',
-        peakRank: card.peakRank,
-        currentRank: card.currentRank,
-        region: card.region,
-        mainRole: card.mainRole,
-        mainAgent: card.mainAgent || '',
-        userId: card.userId,
-      },
-    });
+    setSelectedDuoCard(card);
+  };
+
+  const handleDuoCardMessage = async (card: DuoCardWithId) => {
+    if (!user?.id) return;
+    try {
+      const chatId = await createOrGetChat(
+        user.id,
+        user.username || '',
+        user.avatar,
+        card.userId,
+        card.username,
+        card.avatar,
+      );
+      router.push({
+        pathname: '/chatPages/chatScreen',
+        params: {
+          chatId,
+          otherUserId: card.userId,
+          otherUsername: card.username,
+          otherUserAvatar: card.avatar || '',
+          focusInput: 'true',
+        },
+      });
+    } catch (error) {
+      console.error('Error starting chat:', error);
+      Alert.alert('Error', 'Failed to start chat. Please try again.');
+    }
   };
 
   const handleSaveEdit = async (mainRole: string, mainAgent: string, lookingFor: string) => {
@@ -1008,44 +986,6 @@ export default function DuoFinderScreen() {
           contentContainerStyle={styles.pageContent}
         >
           <View style={styles.findDuoContent}>
-            {/* Game Filter Buttons */}
-            <View style={styles.gameFilterContainer}>
-              <TouchableOpacity
-                style={[
-                  styles.gameFilterButton,
-                  selectedGames.league && styles.gameFilterButtonSelected,
-                ]}
-                onPress={() => toggleGameFilter('league')}
-                activeOpacity={0.7}
-              >
-                <Image
-                  source={require('@/assets/images/lol.png')}
-                  style={[
-                    styles.gameFilterLogo,
-                    !selectedGames.league && styles.gameFilterLogoInactive,
-                  ]}
-                  resizeMode="contain"
-                />
-              </TouchableOpacity>
-              <TouchableOpacity
-                style={[
-                  styles.gameFilterButton,
-                  selectedGames.valorant && styles.gameFilterButtonSelected,
-                ]}
-                onPress={() => toggleGameFilter('valorant')}
-                activeOpacity={0.7}
-              >
-                <Image
-                  source={require('@/assets/images/valorant-red.png')}
-                  style={[
-                    styles.gameFilterLogo,
-                    !selectedGames.valorant && styles.gameFilterLogoInactive,
-                  ]}
-                  resizeMode="contain"
-                />
-              </TouchableOpacity>
-            </View>
-
             {/* Find Duo Cards Container */}
             <View style={styles.findDuoContainer}>
               {/* Players Section Header */}
@@ -1078,7 +1018,7 @@ export default function DuoFinderScreen() {
               </View>
 
               {/* Content Area */}
-              {loadingDuoCards || (duoCards.length > 0 && !showCards) ? (
+              {loadingDuoCards ? (
                 <View style={styles.cardsList}>
                   <DuoCardSkeleton />
                   <DuoCardSkeleton />
@@ -1124,25 +1064,25 @@ export default function DuoFinderScreen() {
               ) : (
                 <View style={styles.cardsList}>
                   {duoCards.map((card) => (
-                    <View key={card.id} style={styles.duoCardContainer}>
-                      <DuoCard
-                        duo={{
-                          id: 0,
-                          username: card.username,
-                          status: 'active',
-                          matchPercentage: 0,
-                          currentRank: card.currentRank,
-                          peakRank: card.peakRank,
-                          favoriteAgent: card.mainAgent || '',
-                          favoriteRole: card.mainRole || '',
-                          winRate: card.winRate || 0,
-                          gamesPlayed: card.gamesPlayed || 0,
-                          game: card.game === 'valorant' ? 'Valorant' : 'League of Legends',
-                          avatar: card.avatar,
-                        }}
-                        onPress={() => handleFindDuoCardPress(card)}
-                      />
-                    </View>
+                    <DuoCard
+                      key={card.id}
+                      duo={{
+                        id: 0,
+                        username: card.username,
+                        status: 'active',
+                        matchPercentage: 0,
+                        currentRank: card.currentRank,
+                        peakRank: card.peakRank,
+                        favoriteAgent: card.mainAgent || '',
+                        favoriteRole: card.mainRole || '',
+                        winRate: card.winRate || 0,
+                        gamesPlayed: card.gamesPlayed || 0,
+                        game: card.game === 'valorant' ? 'Valorant' : 'League of Legends',
+                        avatar: card.avatar,
+                      }}
+                      onPress={() => handleFindDuoCardPress(card)}
+                      onMessage={() => handleDuoCardMessage(card)}
+                    />
                   ))}
                 </View>
               )}
@@ -1319,6 +1259,27 @@ export default function DuoFinderScreen() {
         filters={filters}
         onApplyFilters={setFilters}
       />
+
+      {/* Duo Card Detail Modal */}
+      <DuoCardDetailModal
+        visible={selectedDuoCard !== null}
+        onClose={() => setSelectedDuoCard(null)}
+        card={selectedDuoCard ? {
+          game: selectedDuoCard.game,
+          username: selectedDuoCard.username,
+          avatar: selectedDuoCard.avatar,
+          inGameIcon: selectedDuoCard.inGameIcon,
+          inGameName: selectedDuoCard.inGameName,
+          currentRank: selectedDuoCard.currentRank,
+          peakRank: selectedDuoCard.peakRank,
+          mainRole: selectedDuoCard.mainRole,
+          mainAgent: selectedDuoCard.mainAgent,
+          lookingFor: selectedDuoCard.lookingFor,
+          winRate: selectedDuoCard.winRate,
+          gamesPlayed: selectedDuoCard.gamesPlayed,
+          userId: selectedDuoCard.userId,
+        } : null}
+      />
     </ThemedView>
   );
 }
@@ -1482,46 +1443,6 @@ const styles = StyleSheet.create({
     fontSize: 15,
     fontWeight: '700',
     color: '#fff',
-  },
-  // Game Filter Buttons
-  gameFilterContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'flex-start',
-    gap: 10,
-    paddingTop: 14,
-    paddingBottom: 4,
-    paddingHorizontal: 20,
-  },
-  gameFilterButton: {
-    width: 44,
-    height: 44,
-    borderRadius: 22,
-    backgroundColor: '#1a1a1a',
-    alignItems: 'center',
-    justifyContent: 'center',
-    borderWidth: 1.5,
-    borderColor: '#2a2a2a',
-    // 3D Shadow effect
-    shadowColor: '#000',
-    shadowOffset: {
-      width: -3,
-      height: 4,
-    },
-    shadowOpacity: 0.5,
-    shadowRadius: 5,
-    elevation: 8,
-  },
-  gameFilterButtonSelected: {
-    borderColor: '#444',
-    backgroundColor: '#252525',
-  },
-  gameFilterLogo: {
-    width: 24,
-    height: 24,
-  },
-  gameFilterLogoInactive: {
-    opacity: 0.35,
   },
   // Section Headers - Parties style
   sectionHeader: {
@@ -1754,14 +1675,6 @@ const styles = StyleSheet.create({
     paddingHorizontal: 12,
     paddingBottom: 16,
     gap: 10,
-  },
-  duoCardContainer: {
-    backgroundColor: '#222',
-    borderRadius: 14,
-    borderWidth: 1,
-    borderColor: '#333',
-    padding: 4,
-    overflow: 'hidden',
   },
   // My Cards Modal
   myCardsModal: {

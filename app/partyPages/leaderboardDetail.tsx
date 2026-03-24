@@ -1009,10 +1009,15 @@ export default function LeaderboardDetail() {
                         {player.username}
                       </ThemedText>
                     </TouchableOpacity>
-                    {player.userId === partyData?.createdBy && (
+                    {player.rank === 1 && (
                       <View style={styles.leaderBadge}>
                         <IconSymbol size={10} name="crown.fill" color="#FFD700" />
-                        <ThemedText style={styles.leaderBadgeText}>Leader</ThemedText>
+                        <ThemedText style={styles.leaderBadgeText}>1st Place</ThemedText>
+                      </View>
+                    )}
+                    {player.userId === partyData?.createdBy && (
+                      <View style={styles.leaderBadge}>
+                        <ThemedText style={styles.creatorBadgeText}>Leader</ThemedText>
                       </View>
                     )}
                   </View>
@@ -1766,6 +1771,11 @@ const styles = StyleSheet.create({
     fontSize: 10,
     fontWeight: '600',
     color: '#FFD700',
+  },
+  creatorBadgeText: {
+    fontSize: 10,
+    fontWeight: '600',
+    color: '#666',
   },
   rankInfoContainer: {
     flexDirection: 'row',

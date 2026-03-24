@@ -115,6 +115,7 @@ export interface RecentMatchResult {
   deaths?: number;
   assists?: number;
   map?: string;
+  score?: string;
   playedAt?: number; // Unix timestamp in milliseconds
   // League-specific fields
   champion?: string;

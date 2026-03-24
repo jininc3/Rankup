@@ -48,9 +48,18 @@ export default function ChatScreen() {
   const chatId = params.chatId as string;
   const otherUserId = params.otherUserId as string;
   const otherUsername = params.otherUsername as string;
+  const focusInput = params.focusInput === 'true';
+  const inputRef = useRef<TextInput>(null);
 
   // Get avatar from chat data (more reliable than URL params)
   const otherUserAvatar = chat?.participantDetails?.[otherUserId]?.avatar || params.otherUserAvatar as string | undefined;
+
+  // Auto-focus input when navigating from message button
+  useEffect(() => {
+    if (focusInput && !loading) {
+      setTimeout(() => inputRef.current?.focus(), 300);
+    }
+  }, [focusInput, loading]);
 
   // Load chat details
   useEffect(() => {
@@ -313,7 +322,7 @@ export default function ChatScreen() {
           }
           ListEmptyComponent={
             <View style={styles.emptyState}>
-              <IconSymbol size={64} name="bubble.left.and.bubble.right" color="#363636" />
+              <IconSymbol size={64} name="bubble.left.and.bubble.right" color="#2a2a2a" />
               <ThemedText style={styles.emptyText}>No messages yet</ThemedText>
               <ThemedText style={styles.emptySubtext}>
                 Start the conversation with {otherUsername}
@@ -326,6 +335,7 @@ export default function ChatScreen() {
       {/* Input */}
       <View style={styles.inputContainer}>
         <TextInput
+          ref={inputRef}
           style={styles.input}
           placeholder="Type a message..."
           placeholderTextColor="#999"
@@ -357,7 +367,7 @@ export default function ChatScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#000',
+    backgroundColor: '#0f0f0f',
   },
   header: {
     flexDirection: 'row',
@@ -366,9 +376,9 @@ const styles = StyleSheet.create({
     paddingHorizontal: 8,
     paddingTop: 60,
     paddingBottom: 12,
-    backgroundColor: '#000',
-    borderBottomWidth: 0.5,
-    borderBottomColor: '#363636',
+    backgroundColor: '#0f0f0f',
+    borderBottomWidth: 1,
+    borderBottomColor: '#1a1a1a',
   },
   backButton: {
     width: 44,
@@ -386,7 +396,7 @@ const styles = StyleSheet.create({
     width: 36,
     height: 36,
     borderRadius: 18,
-    backgroundColor: '#363636',
+    backgroundColor: '#1a1a1a',
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -423,7 +433,7 @@ const styles = StyleSheet.create({
   },
   timestamp: {
     fontSize: 11,
-    color: '#8e8e8e',
+    color: '#555',
     textAlign: 'center',
     marginBottom: 8,
   },
@@ -438,7 +448,7 @@ const styles = StyleSheet.create({
     alignSelf: 'flex-end',
   },
   otherUserBubble: {
-    backgroundColor: '#363636',
+    backgroundColor: '#1a1a1a',
     alignSelf: 'flex-start',
   },
   messageText: {
@@ -476,14 +486,14 @@ const styles = StyleSheet.create({
     paddingHorizontal: 12,
     paddingTop: 8,
     paddingBottom: 30,
-    backgroundColor: '#000',
-    borderTopWidth: 0.5,
-    borderTopColor: '#363636',
+    backgroundColor: '#0f0f0f',
+    borderTopWidth: 1,
+    borderTopColor: '#1a1a1a',
     gap: 8,
   },
   input: {
     flex: 1,
-    backgroundColor: '#363636',
+    backgroundColor: '#1a1a1a',
     borderRadius: 20,
     paddingHorizontal: 16,
     paddingVertical: 10,
@@ -500,7 +510,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   sendButtonDisabled: {
-    backgroundColor: '#fff',
+    backgroundColor: '#2a2a2a',
   },
   loadingMoreContainer: {
     paddingVertical: 16,

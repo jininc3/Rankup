@@ -113,6 +113,10 @@ export const linkValorantAccount = async (
   }
 };
 
+// Client-side stats cache (30 min TTL)
+const STATS_CACHE_TTL = 30 * 60 * 1000;
+let valorantStatsCache: { data: GetValorantStatsResponse; timestamp: number } | null = null;
+
 /**
  * Get Valorant stats for the current user using Henrik's API
  * @param forceRefresh - Force refresh data from Henrik's API (bypass cache)
@@ -121,6 +125,11 @@ export const getValorantStats = async (
   forceRefresh: boolean = false
 ): Promise<GetValorantStatsResponse> => {
   try {
+    // Return client cache if fresh and not forcing refresh
+    if (!forceRefresh && valorantStatsCache && Date.now() - valorantStatsCache.timestamp < STATS_CACHE_TTL) {
+      return valorantStatsCache.data;
+    }
+
     // Check if user is authenticated
     const currentUser = auth.currentUser;
     if (!currentUser) {
@@ -137,9 +146,17 @@ export const getValorantStats = async (
 
     const result = await getValorantStatsFn({ forceRefresh });
 
+    // Update client cache
+    valorantStatsCache = { data: result.data, timestamp: Date.now() };
+
     return result.data;
   } catch (error: any) {
     console.error('Error fetching Valorant stats:', error);
+
+    // Return stale cache on error if available
+    if (valorantStatsCache) {
+      return valorantStatsCache.data;
+    }
 
     // Provide more helpful error messages
     if (error.code === 'unauthenticated') {
@@ -157,6 +174,13 @@ export const getValorantStats = async (
     // Pass through the detailed error message from the server
     throw new Error(error.message || 'Failed to fetch Valorant stats. Please try again.');
   }
+};
+
+/**
+ * Clear the client-side Valorant stats cache
+ */
+export const clearValorantStatsCache = () => {
+  valorantStatsCache = null;
 };
 
 /**

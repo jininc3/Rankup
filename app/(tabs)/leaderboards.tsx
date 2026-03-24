@@ -650,13 +650,13 @@ export default function LeaderboardScreen() {
           contentContainerStyle={styles.pageContent}
         >
           {loading ? (
-            <View style={styles.cardsContainer}>
+            <View>
               {[1, 2, 3].map((i) => (
                 <LeaderboardCardSkeleton key={i} />
               ))}
             </View>
           ) : leaderboards.length > 0 ? (
-            <View style={styles.cardsContainer}>
+            <View>
               {leaderboards.map((leaderboard, index) => (
                 <LeaderboardCard
                   key={leaderboard.id}

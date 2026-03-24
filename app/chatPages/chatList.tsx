@@ -292,7 +292,7 @@ export default function ChatListScreen() {
       {/* Search Bar */}
       <View style={styles.searchContainer}>
         <View style={styles.searchBar}>
-          <IconSymbol size={16} name="magnifyingglass" color="#8e8e8e" />
+          <IconSymbol size={16} name="magnifyingglass" color="#555" />
           <TextInput
             style={styles.searchInput}
             placeholder="Search"
@@ -330,7 +330,7 @@ export default function ChatListScreen() {
         />
       ) : (
         <View style={styles.emptyState}>
-          <IconSymbol size={64} name="bubble.left.and.bubble.right" color="#363636" />
+          <IconSymbol size={64} name="bubble.left.and.bubble.right" color="#2a2a2a" />
           <ThemedText style={styles.emptyTitle}>No messages yet</ThemedText>
           <ThemedText style={styles.emptySubtext}>
             Start a conversation by tapping the compose button
@@ -415,7 +415,7 @@ export default function ChatListScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#000',
+    backgroundColor: '#0f0f0f',
   },
   header: {
     flexDirection: 'row',
@@ -424,7 +424,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     paddingTop: 60,
     paddingBottom: 12,
-    backgroundColor: '#000',
+    backgroundColor: '#0f0f0f',
   },
   backButton: {
     width: 40,
@@ -462,7 +462,7 @@ const styles = StyleSheet.create({
   searchBar: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#363636',
+    backgroundColor: '#1a1a1a',
     borderRadius: 10,
     paddingHorizontal: 12,
     paddingVertical: 10,
@@ -503,7 +503,7 @@ const styles = StyleSheet.create({
     width: 54,
     height: 54,
     borderRadius: 27,
-    backgroundColor: '#000',
+    backgroundColor: '#0f0f0f',
     padding: 2,
     alignItems: 'center',
     justifyContent: 'center',
@@ -524,7 +524,7 @@ const styles = StyleSheet.create({
     width: 50,
     height: 50,
     borderRadius: 25,
-    backgroundColor: '#363636',
+    backgroundColor: '#1a1a1a',
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -600,7 +600,7 @@ const styles = StyleSheet.create({
   // Modal styles
   modalContainer: {
     flex: 1,
-    backgroundColor: '#000',
+    backgroundColor: '#0f0f0f',
   },
   modalHeader: {
     flexDirection: 'row',
@@ -610,7 +610,7 @@ const styles = StyleSheet.create({
     paddingTop: 16,
     paddingBottom: 16,
     borderBottomWidth: 0.5,
-    borderBottomColor: '#363636',
+    borderBottomColor: '#1a1a1a',
   },
   modalBackButton: {
     width: 40,
@@ -632,7 +632,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     paddingVertical: 12,
     borderBottomWidth: 0.5,
-    borderBottomColor: '#363636',
+    borderBottomColor: '#1a1a1a',
   },
   toLabel: {
     fontSize: 16,
@@ -676,7 +676,7 @@ const styles = StyleSheet.create({
     width: 50,
     height: 50,
     borderRadius: 25,
-    backgroundColor: '#363636',
+    backgroundColor: '#1a1a1a',
     alignItems: 'center',
     justifyContent: 'center',
   },

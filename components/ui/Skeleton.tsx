@@ -215,37 +215,43 @@ export const PartyCardSkeleton: React.FC = () => {
 // cardWidth = screenWidth - 32, cardHeight = cardWidth * 1.3
 export const DuoCardSkeleton: React.FC = () => {
   const cardWidth = screenWidth - 32;
-  const cardHeight = cardWidth * 1.3;
-  const iconSize = cardWidth * 0.28;
+  const cardHeight = cardWidth * 0.42;
 
   return (
-    <View style={[duoStyles.cardWrapper, { width: cardWidth }]}>
+    <View style={duoStyles.cardContainer}>
       <View style={[duoStyles.card, { height: cardHeight }]}>
-        {/* Game Logo - Top Left (24x24, top: 16, left: 16) */}
-        <View style={duoStyles.gameIndicator}>
+        {/* Header Row: Avatar + Username | Game Logo */}
+        <View style={duoStyles.header}>
+          <View style={duoStyles.userSection}>
+            <Skeleton width={36} height={36} borderRadius={8} />
+            <Skeleton width={100} height={15} borderRadius={4} />
+          </View>
           <Skeleton width={24} height={24} borderRadius={4} />
         </View>
 
-        {/* Card Content - centered */}
-        <View style={duoStyles.cardContent}>
-          {/* Large In-Game Icon (28% of cardWidth) */}
-          <Skeleton width={iconSize} height={iconSize} borderRadius={12} />
-
-          {/* Player Name */}
-          <Skeleton width={120} height={18} borderRadius={4} style={{ marginTop: 8 }} />
-
-          {/* Rank Icon (90x90) */}
-          <Skeleton width={90} height={90} borderRadius={8} style={{ marginTop: 8 }} />
-
-          {/* Rank Text */}
-          <Skeleton width={100} height={16} borderRadius={4} style={{ marginTop: 4 }} />
-
-          {/* Agent/Role info */}
-          <Skeleton width={80} height={14} borderRadius={3} style={{ marginTop: 4 }} />
-
-          {/* View Profile Button */}
-          <View style={duoStyles.viewProfileButton}>
-            <Skeleton width={85} height={13} borderRadius={4} />
+        {/* Stats Row: Rank | Agent | Role | Win Rate */}
+        <View style={duoStyles.statsRow}>
+          <View style={duoStyles.statItem}>
+            <Skeleton width={30} height={8} borderRadius={3} />
+            <View style={duoStyles.rankRow}>
+              <Skeleton width={20} height={20} borderRadius={4} />
+              <Skeleton width={40} height={11} borderRadius={3} />
+            </View>
+          </View>
+          <View style={duoStyles.divider} />
+          <View style={duoStyles.statItem}>
+            <Skeleton width={30} height={8} borderRadius={3} />
+            <Skeleton width={24} height={24} borderRadius={12} />
+          </View>
+          <View style={duoStyles.divider} />
+          <View style={duoStyles.statItem}>
+            <Skeleton width={24} height={8} borderRadius={3} />
+            <Skeleton width={24} height={24} borderRadius={4} />
+          </View>
+          <View style={duoStyles.divider} />
+          <View style={duoStyles.statItem}>
+            <Skeleton width={38} height={8} borderRadius={3} />
+            <Skeleton width={32} height={11} borderRadius={3} />
           </View>
         </View>
       </View>
@@ -264,52 +270,58 @@ export const DuoCardListSkeleton: React.FC<{ count?: number }> = ({ count = 2 })
   );
 };
 
-// Duo card styles - matches compactDuoCard.tsx
+// Duo card styles - matches duoCard.tsx + duoFinder container
 const duoStyles = StyleSheet.create({
   cardsList: {
-    gap: 16,
+    gap: 10,
     paddingBottom: 20,
   },
-  cardWrapper: {
-    alignSelf: 'center',
-    // Shadow matches compactDuoCard
-    shadowColor: '#000',
-    shadowOffset: { width: -4, height: 8 },
-    shadowOpacity: 0.5,
-    shadowRadius: 12,
-    elevation: 12,
+  cardContainer: {
+    backgroundColor: '#222',
+    borderRadius: 14,
+    borderWidth: 1,
+    borderColor: '#333',
+    padding: 4,
+    overflow: 'hidden',
   },
   card: {
-    width: '100%',
-    borderRadius: 20,
-    overflow: 'hidden',
-    borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.1)',
-    backgroundColor: 'rgb(18, 18, 22)',
+    backgroundColor: '#222',
+    borderRadius: 12,
+    padding: 14,
+    justifyContent: 'space-between',
   },
-  gameIndicator: {
-    position: 'absolute',
-    top: 16,
-    left: 16,
-    zIndex: 1,
-  },
-  cardContent: {
-    flex: 1,
-    flexDirection: 'column',
+  header: {
+    flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'center',
-    paddingHorizontal: 24,
-    paddingVertical: 20,
-    gap: 0,
+    justifyContent: 'space-between',
   },
-  viewProfileButton: {
-    paddingVertical: 10,
-    paddingHorizontal: 24,
-    backgroundColor: 'rgba(255, 255, 255, 0.05)',
+  userSection: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    flex: 1,
+  },
+  statsRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#141414',
     borderRadius: 10,
-    borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.1)',
-    marginTop: 8,
+    padding: 12,
+  },
+  statItem: {
+    flex: 1,
+    alignItems: 'center',
+    gap: 6,
+  },
+  rankRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+  },
+  divider: {
+    width: 1,
+    height: 30,
+    backgroundColor: '#252525',
   },
 });
 

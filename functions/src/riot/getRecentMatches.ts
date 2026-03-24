@@ -20,6 +20,7 @@ export interface RecentMatchResult {
   deaths?: number;
   assists?: number;
   map?: string;
+  score?: string;
   playedAt?: number; // Unix timestamp in milliseconds
   // League-specific fields
   champion?: string;
@@ -169,15 +170,23 @@ async function getValorantRecentMatches(userData: any): Promise<GetRecentMatches
 
     if (!player) {
       // Fallback: can't determine team, default to red team
+      const redRounds = match.teams.red?.rounds_won ?? 0;
+      const blueRounds = match.teams.blue?.rounds_won ?? 0;
       return {
         won: match.teams.red.has_won,
         map: match.metadata?.map,
+        score: `${redRounds}-${blueRounds}`,
         playedAt: match.metadata?.game_start,
       };
     }
 
     const playerTeam = player.team.toLowerCase(); // "red" or "blue"
     const won = playerTeam === "red" ? match.teams.red.has_won : match.teams.blue.has_won;
+    const redRounds = match.teams.red?.rounds_won ?? 0;
+    const blueRounds = match.teams.blue?.rounds_won ?? 0;
+    const score = playerTeam === "red"
+      ? `${redRounds}-${blueRounds}`
+      : `${blueRounds}-${redRounds}`;
 
     return {
       won,
@@ -186,6 +195,7 @@ async function getValorantRecentMatches(userData: any): Promise<GetRecentMatches
       deaths: player.stats?.deaths,
       assists: player.stats?.assists,
       map: match.metadata?.map,
+      score,
       playedAt: match.metadata?.game_start,
     };
   });

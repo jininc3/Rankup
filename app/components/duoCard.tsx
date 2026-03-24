@@ -1,8 +1,9 @@
 import { ThemedText } from '@/components/themed-text';
+import { IconSymbol } from '@/components/ui/icon-symbol';
 import { Dimensions, Image, StyleSheet, TouchableOpacity, View } from 'react-native';
 
 const { width } = Dimensions.get('window');
-const cardHeight = width * 0.42;
+const cardHeight = width * 0.52;
 
 // Game logo mapping
 const GAME_LOGOS: { [key: string]: any } = {
@@ -41,6 +42,59 @@ const LEAGUE_RANK_ICONS: { [key: string]: any } = {
   unranked: require('@/assets/images/leagueranks/unranked.png'),
 };
 
+// Valorant agent icon mapping
+const VALORANT_AGENT_ICONS: { [key: string]: any } = {
+  astra: require('@/assets/images/valoranticons/astra.png'),
+  breach: require('@/assets/images/valoranticons/breach.png'),
+  brimstone: require('@/assets/images/valoranticons/brimstone.png'),
+  chamber: require('@/assets/images/valoranticons/chamber.png'),
+  clove: require('@/assets/images/valoranticons/clove.png'),
+  cypher: require('@/assets/images/valoranticons/cypher.png'),
+  deadlock: require('@/assets/images/valoranticons/deadlock.png'),
+  fade: require('@/assets/images/valoranticons/fade.png'),
+  gekko: require('@/assets/images/valoranticons/gekko.png'),
+  harbor: require('@/assets/images/valoranticons/harbor.png'),
+  iso: require('@/assets/images/valoranticons/iso.png'),
+  jett: require('@/assets/images/valoranticons/jett.png'),
+  kayo: require('@/assets/images/valoranticons/kayo.png'),
+  killjoy: require('@/assets/images/valoranticons/killjoy.png'),
+  miks: require('@/assets/images/valoranticons/miks.png'),
+  neon: require('@/assets/images/valoranticons/neon.png'),
+  omen: require('@/assets/images/valoranticons/omen.png'),
+  phoenix: require('@/assets/images/valoranticons/phoenix.png'),
+  raze: require('@/assets/images/valoranticons/raze.png'),
+  reyna: require('@/assets/images/valoranticons/reyna.png'),
+  sage: require('@/assets/images/valoranticons/sage.png'),
+  skye: require('@/assets/images/valoranticons/skye.png'),
+  sova: require('@/assets/images/valoranticons/sova.png'),
+  tejo: require('@/assets/images/valoranticons/tejo.png'),
+  veto: require('@/assets/images/valoranticons/veto.png'),
+  viper: require('@/assets/images/valoranticons/viper.png'),
+  vyse: require('@/assets/images/valoranticons/vyse.png'),
+  waylay: require('@/assets/images/valoranticons/waylay.png'),
+  yoru: require('@/assets/images/valoranticons/yoru.png'),
+};
+
+// Valorant role icon mapping
+const VALORANT_ROLE_ICONS: { [key: string]: any } = {
+  controller: require('@/assets/images/valorantroles/Controller.png'),
+  duelist: require('@/assets/images/valorantroles/Duelist.png'),
+  initiator: require('@/assets/images/valorantroles/Initiator.png'),
+  sentinel: require('@/assets/images/valorantroles/Sentinel.png'),
+};
+
+// League lane icon mapping
+const LEAGUE_LANE_ICONS: { [key: string]: any } = {
+  top: require('@/assets/images/leaguelanes/top.png'),
+  jungle: require('@/assets/images/leaguelanes/jungle.png'),
+  mid: require('@/assets/images/leaguelanes/mid.png'),
+  middle: require('@/assets/images/leaguelanes/mid.png'),
+  bottom: require('@/assets/images/leaguelanes/bottom.png'),
+  bot: require('@/assets/images/leaguelanes/bottom.png'),
+  adc: require('@/assets/images/leaguelanes/bottom.png'),
+  support: require('@/assets/images/leaguelanes/support.png'),
+};
+
 interface Duo {
   id: number;
   odId?: string;
@@ -61,6 +115,7 @@ interface Duo {
 interface DuoCardProps {
   duo: Duo;
   onPress?: () => void;
+  onMessage?: () => void;
 }
 
 // Helper to get rank icon
@@ -80,11 +135,20 @@ const getRankIcon = (rank: string, game: string) => {
   return VALORANT_RANK_ICONS[tier] || VALORANT_RANK_ICONS.unranked;
 };
 
-export default function DuoCard({ duo, onPress }: DuoCardProps) {
+export default function DuoCard({ duo, onPress, onMessage }: DuoCardProps) {
   const game = duo.game || 'Valorant';
   const isLeague = game === 'League' || game === 'League of Legends';
   const gameLogo = GAME_LOGOS[game];
   const currentRankIcon = getRankIcon(duo.currentRank, game);
+  const agentIcon = !isLeague && duo.favoriteAgent
+    ? VALORANT_AGENT_ICONS[duo.favoriteAgent.toLowerCase()] || null
+    : null;
+  const roleIcon = !isLeague && duo.favoriteRole
+    ? VALORANT_ROLE_ICONS[duo.favoriteRole.toLowerCase()] || null
+    : null;
+  const laneIcon = isLeague && duo.favoriteRole
+    ? LEAGUE_LANE_ICONS[duo.favoriteRole.toLowerCase()] || null
+    : null;
 
   return (
     <TouchableOpacity
@@ -111,7 +175,6 @@ export default function DuoCard({ duo, onPress }: DuoCardProps) {
           </ThemedText>
         </View>
 
-        {/* Game Logo */}
         {gameLogo && (
           <Image source={gameLogo} style={styles.gameLogo} resizeMode="contain" />
         )}
@@ -120,7 +183,7 @@ export default function DuoCard({ duo, onPress }: DuoCardProps) {
       {/* Stats Row: Current Rank | Agent/Champion | Role | Win Rate */}
       <View style={styles.statsRow}>
         {/* Current Rank */}
-        <View style={styles.statItem}>
+        <View style={styles.statItemWide}>
           <ThemedText style={styles.statLabel}>Rank</ThemedText>
           <View style={styles.rankRow}>
             <Image source={currentRankIcon} style={styles.rankIcon} resizeMode="contain" />
@@ -137,9 +200,13 @@ export default function DuoCard({ duo, onPress }: DuoCardProps) {
           <ThemedText style={styles.statLabel}>
             {isLeague ? 'Champion' : 'Agent'}
           </ThemedText>
-          <ThemedText style={styles.roleText} numberOfLines={1}>
-            {duo.favoriteAgent || 'Any'}
-          </ThemedText>
+          {!isLeague && agentIcon ? (
+            <Image source={agentIcon} style={styles.agentIcon} resizeMode="contain" />
+          ) : (
+            <ThemedText style={styles.roleText} numberOfLines={1}>
+              {duo.favoriteAgent || 'Any'}
+            </ThemedText>
+          )}
         </View>
 
         <View style={styles.divider} />
@@ -147,9 +214,15 @@ export default function DuoCard({ duo, onPress }: DuoCardProps) {
         {/* Role */}
         <View style={styles.statItem}>
           <ThemedText style={styles.statLabel}>Role</ThemedText>
-          <ThemedText style={styles.roleText} numberOfLines={1}>
-            {duo.favoriteRole || 'Any'}
-          </ThemedText>
+          {!isLeague && roleIcon ? (
+            <Image source={roleIcon} style={styles.roleIcon} resizeMode="contain" />
+          ) : isLeague && laneIcon ? (
+            <Image source={laneIcon} style={styles.roleIcon} resizeMode="contain" />
+          ) : (
+            <ThemedText style={styles.roleText} numberOfLines={1}>
+              {duo.favoriteRole || 'Any'}
+            </ThemedText>
+          )}
         </View>
 
         <View style={styles.divider} />
@@ -162,6 +235,14 @@ export default function DuoCard({ duo, onPress }: DuoCardProps) {
           </ThemedText>
         </View>
       </View>
+
+      {/* Message Button */}
+      {onMessage && (
+        <TouchableOpacity style={styles.messageButton} onPress={onMessage} activeOpacity={0.7}>
+          <IconSymbol size={14} name="bubble.left.fill" color="#888" />
+          <ThemedText style={styles.messageButtonText}>Message</ThemedText>
+        </TouchableOpacity>
+      )}
     </TouchableOpacity>
   );
 }
@@ -174,6 +255,11 @@ const styles = StyleSheet.create({
     height: cardHeight,
     marginBottom: 10,
     justifyContent: 'space-between',
+    shadowColor: '#000',
+    shadowOffset: { width: -3, height: 4 },
+    shadowOpacity: 0.5,
+    shadowRadius: 5,
+    elevation: 8,
   },
   // Header
   header: {
@@ -211,6 +297,21 @@ const styles = StyleSheet.create({
     color: '#fff',
     flex: 1,
   },
+  messageButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 6,
+    paddingVertical: 10,
+    backgroundColor: '#141414',
+    borderRadius: 10,
+    marginTop: 10,
+  },
+  messageButtonText: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: '#888',
+  },
   gameLogo: {
     width: 24,
     height: 24,
@@ -229,6 +330,11 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: 6,
   },
+  statItemWide: {
+    flex: 1.4,
+    alignItems: 'center',
+    gap: 6,
+  },
   statLabel: {
     fontSize: 10,
     fontWeight: '600',
@@ -240,6 +346,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 4,
+    marginLeft: -6,
   },
   rankIcon: {
     width: 20,
@@ -249,6 +356,15 @@ const styles = StyleSheet.create({
     fontSize: 11,
     fontWeight: '600',
     color: '#fff',
+  },
+  agentIcon: {
+    width: 24,
+    height: 24,
+    borderRadius: 12,
+  },
+  roleIcon: {
+    width: 24,
+    height: 24,
   },
   roleText: {
     fontSize: 11,
