@@ -1630,9 +1630,9 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    paddingHorizontal: 16,
-    paddingTop: 16,
-    paddingBottom: 12,
+    paddingHorizontal: 20,
+    paddingTop: 20,
+    paddingBottom: 10,
   },
   sectionHeaderLeft: {
     flexDirection: 'row',
@@ -1645,10 +1645,11 @@ const styles = StyleSheet.create({
     gap: 8,
   },
   sectionHeaderTitle: {
-    fontSize: 18,
-    fontWeight: '700',
-    color: '#fff',
-    letterSpacing: -0.5,
+    fontSize: 12,
+    fontWeight: '600',
+    color: '#444',
+    letterSpacing: 1,
+    textTransform: 'uppercase',
   },
   viewAllButton: {
     flexDirection: 'row',
@@ -1656,9 +1657,9 @@ const styles = StyleSheet.create({
     gap: 4,
   },
   viewAllButtonText: {
-    fontSize: 14,
+    fontSize: 12,
     fontWeight: '500',
-    color: '#666',
+    color: '#555',
   },
   walletViewButton: {
     width: 36,
@@ -1681,23 +1682,18 @@ const styles = StyleSheet.create({
     borderColor: '#424549',
   },
   sectionContainer: {
-    backgroundColor: 'rgba(255, 255, 255, 0.03)',
-    borderRadius: 16,
-    marginHorizontal: 10,
-    marginBottom: 12,
-    borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.06)',
-    overflow: 'hidden',
+    marginHorizontal: 0,
+    marginBottom: 4,
   },
   clipsSection: {
-    marginBottom: 20,
+    marginBottom: 8,
   },
   rankCardsSection: {
-    marginBottom: 12,
+    marginBottom: 8,
   },
   horizontalClipsContainer: {
-    paddingLeft: 16,
-    paddingRight: 16,
+    paddingLeft: 20,
+    paddingRight: 20,
     gap: 6,
   },
   horizontalClipItem: {
@@ -1755,7 +1751,7 @@ const styles = StyleSheet.create({
   emptyState: {
     alignItems: 'center',
     justifyContent: 'center',
-    paddingVertical: 20,
+    paddingVertical: 16,
     paddingHorizontal: 24,
   },
   emptyGameLogos: {
@@ -2060,25 +2056,20 @@ const styles = StyleSheet.create({
     opacity: 0.5,
   },
   achievementsSection: {
-    marginBottom: 20,
+    marginBottom: 8,
   },
   horizontalAchievementsContainer: {
-    paddingHorizontal: 16,
-    gap: 12,
+    paddingHorizontal: 20,
+    gap: 8,
   },
   achievementCard: {
-    width: 140,
-    height: 140,
-    backgroundColor: '#2c2f33',
-    borderRadius: 12,
+    width: 120,
+    height: 120,
+    backgroundColor: '#141414',
+    borderRadius: 6,
     alignItems: 'center',
     justifyContent: 'center',
-    padding: 12,
-    borderWidth: 1,
-    borderTopColor: '#3a3f44',
-    borderLeftColor: '#3a3f44',
-    borderBottomColor: '#16191b',
-    borderRightColor: '#16191b',
+    padding: 10,
   },
   achievementMedal: {
     fontSize: 32,
