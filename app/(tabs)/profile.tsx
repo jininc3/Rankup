@@ -739,6 +739,9 @@ export default function ProfileScreen() {
         <View style={styles.headerSection}>
           {/* Top Header Icons */}
           <View style={styles.headerIconsRow}>
+            <View style={styles.headerUsernameOverlay} pointerEvents="none">
+              <ThemedText style={styles.headerUsername} numberOfLines={1}>{user?.username || 'User'}</ThemedText>
+            </View>
             <TouchableOpacity
               style={styles.headerIconButton}
               onPress={() => setShowCreateModal(true)}
@@ -793,9 +796,6 @@ export default function ProfileScreen() {
               end={{ x: 0, y: 1 }}
               style={styles.coverPhotoFadeBottom}
             />
-            {/* Username overlaid on cover photo */}
-            <ThemedText style={styles.coverPhotoUsername}>{user?.username || 'User'}</ThemedText>
-
             {/* Profile Avatar - positioned bottom-right, half overlapping */}
             <TouchableOpacity
               style={styles.profileAvatarButton}
@@ -995,7 +995,7 @@ export default function ProfileScreen() {
                   )}
                   {post.mediaUrls && post.mediaUrls.length > 1 && (
                     <View style={styles.multipleIndicator}>
-                      <IconSymbol size={18} name="square.on.square" color="#fff" />
+                      <IconSymbol size={14} name="square.on.square" color="#fff" />
                     </View>
                   )}
                 </TouchableOpacity>
@@ -1379,6 +1379,19 @@ const styles = StyleSheet.create({
   headerIconsSpacer: {
     flex: 1,
   },
+  headerUsernameOverlay: {
+    position: 'absolute',
+    left: 0,
+    right: 0,
+    alignItems: 'center',
+  },
+  headerUsername: {
+    fontSize: 22,
+    fontWeight: '800',
+    color: '#fff',
+    textAlign: 'center',
+    letterSpacing: -0.5,
+  },
   headerIconButton: {
     padding: 6,
     alignItems: 'center',
@@ -1429,6 +1442,15 @@ const styles = StyleSheet.create({
     zIndex: 2,
     lineHeight: 34,
     includeFontPadding: false,
+  },
+  profileUsername: {
+    fontSize: 22,
+    fontWeight: '700',
+    color: '#fff',
+    letterSpacing: -0.3,
+    textAlign: 'center',
+    marginTop: 8,
+    marginBottom: 2,
   },
   // Profile avatar - absolutely positioned bottom-right of cover photo, half overlapping
   profileAvatarButton: {
@@ -1676,13 +1698,13 @@ const styles = StyleSheet.create({
   horizontalClipsContainer: {
     paddingLeft: 16,
     paddingRight: 16,
-    gap: 12,
+    gap: 6,
   },
   horizontalClipItem: {
-    width: 200,
+    width: 120,
     height: 120,
-    backgroundColor: '#36393e',
-    borderRadius: 12,
+    backgroundColor: '#1a1a1a',
+    borderRadius: 4,
     overflow: 'hidden',
     position: 'relative',
   },
