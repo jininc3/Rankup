@@ -810,21 +810,13 @@ export default function DuoFinderScreen() {
   };
 
   const handleMatchViewProfile = () => {
-    if (!matchedUserCard || !searchGame) return;
+    if (!matchedUserCard) return;
     router.push({
-      pathname: '/profilePages/duoCardDetail',
+      pathname: '/profilePages/profileView',
       params: {
-        game: searchGame,
+        userId: matchedUserCard.userId,
         username: matchedUserCard.username,
         avatar: matchedUserCard.avatar || '',
-        inGameIcon: matchedUserCard.inGameIcon || '',
-        inGameName: matchedUserCard.inGameName || '',
-        currentRank: matchedUserCard.currentRank || '',
-        peakRank: '',
-        region: '',
-        mainRole: matchedUserCard.mainRole || '',
-        mainAgent: matchedUserCard.mainAgent || '',
-        userId: matchedUserCard.userId,
       },
     });
   };
@@ -1085,7 +1077,14 @@ export default function DuoFinderScreen() {
                       }}
                       onPress={() => handleFindDuoCardPress(card)}
                       onMessage={() => handleDuoCardMessage(card)}
-                      onViewProfile={() => handleFindDuoCardPress(card)}
+                      onViewProfile={() => router.push({
+                        pathname: '/profilePages/profileView',
+                        params: {
+                          userId: card.userId,
+                          username: card.username,
+                          avatar: card.avatar || '',
+                        },
+                      })}
                     />
                   ))}
                 </View>

@@ -226,6 +226,35 @@ service cloud.firestore {
                        request.auth.uid == resource.data.createdBy;
     }
 
+    // Duo Queue collection - for live matchmaking
+    match /duoQueue/{queueId} {
+      // Users can read their own queue entry (needed for onSnapshot listener)
+      allow read: if request.auth != null
+                  && resource.data.userId == request.auth.uid;
+
+      // Users can create their own queue entry
+      allow create: if request.auth != null
+                    && request.resource.data.userId == request.auth.uid
+                    && request.resource.data.game in ['valorant', 'league']
+                    && request.resource.data.status == 'searching';
+
+      // Users can update their own queue entry
+      allow update: if request.auth != null
+                    && resource.data.userId == request.auth.uid;
+
+      // Users can delete their own queue entry (leave queue)
+      allow delete: if request.auth != null
+                    && resource.data.userId == request.auth.uid;
+    }
+
+    // Duo Matches collection - matched duo pairs
+    match /duoMatches/{matchId} {
+      // Users can read matches they are part of
+      allow read: if request.auth != null
+                  && (resource.data.user1Id == request.auth.uid
+                      || resource.data.user2Id == request.auth.uid);
+    }
+
     // Duo Cards collection - for finding duo partners
     match /duoCards/{cardId} {
       // Anyone authenticated can read duo cards (to find partners)
