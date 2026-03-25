@@ -249,7 +249,7 @@ export default function CreateLeaderboardScreen() {
         duration: 30,
         startDate: null,
         endDate: null,
-        challengeStatus: 'pending',
+        challengeStatus: 'none',
         challengeType: 'climbing',
         inviteCode: inviteCode || '',
         invitePermission,
@@ -832,8 +832,8 @@ const styles = StyleSheet.create({
     borderColor: 'transparent',
   },
   gameChipSelected: {
-    borderColor: '#444',
-    backgroundColor: '#222',
+    borderColor: '#A08845',
+    backgroundColor: '#A08845',
   },
   gameChipLogo: {
     width: 16,
@@ -936,8 +936,8 @@ const styles = StyleSheet.create({
     borderColor: 'transparent',
   },
   permissionButtonActive: {
-    backgroundColor: '#222',
-    borderColor: '#444',
+    backgroundColor: '#A08845',
+    borderColor: '#A08845',
   },
   permissionButtonText: {
     fontSize: 12,
@@ -1056,7 +1056,7 @@ const styles = StyleSheet.create({
 
   // Badge
   selectedBadge: {
-    backgroundColor: '#c42743',
+    backgroundColor: '#A08845',
     borderRadius: 10,
     paddingHorizontal: 8,
     paddingVertical: 2,
@@ -1076,7 +1076,7 @@ const styles = StyleSheet.create({
     backgroundColor: '#0f0f0f',
   },
   createButton: {
-    backgroundColor: '#c42743',
+    backgroundColor: '#A08845',
     borderRadius: 14,
     padding: 16,
     alignItems: 'center',

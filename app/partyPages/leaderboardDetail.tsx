@@ -208,14 +208,25 @@ export default function LeaderboardDetail() {
   const [editChallengeType, setEditChallengeType] = useState<'climbing' | 'rank'>('climbing');
   const [savingDuration, setSavingDuration] = useState(false);
   const [savingChallengeType, setSavingChallengeType] = useState(false);
+  const [showCreateChallengeModal, setShowCreateChallengeModal] = useState(false);
+  const [showChallengeDetailsModal, setShowChallengeDetailsModal] = useState(false);
+  const [challengeTypeSelection, setChallengeTypeSelection] = useState<'climbing' | 'rank'>('climbing');
+  const [durationSelection, setDurationSelection] = useState<number>(30);
+  const [selectedChallengeMembers, setSelectedChallengeMembers] = useState<string[]>([]);
+  const [creatingChallenge, setCreatingChallenge] = useState(false);
+  const [spectators, setSpectators] = useState<any[]>([]);
 
   const isCreator = partyData?.createdBy === user?.id;
   const isMember = partyData?.members?.includes(user?.id);
   const invitePermission = partyData?.invitePermission || 'leader_only';
-  const challengeStatus = partyData?.challengeStatus || 'active';
+  const challengeStatus = partyData?.challengeStatus || 'none';
+  const isNone = challengeStatus === 'none';
   const isPending = challengeStatus === 'pending';
   const isActive = challengeStatus === 'active';
-  const canInvite = (isCreator || invitePermission === 'anyone') && isPending;
+  const canInvite = (isCreator || invitePermission === 'anyone') && (isPending || isNone);
+  const challengeParticipants: string[] = partyData?.challengeParticipants || [];
+  const challengeInvites: any[] = partyData?.challengeInvites || [];
+  const acceptedCount = challengeInvites.filter((inv: any) => inv.status === 'accepted').length + 1; // +1 for leader
 
   // Leave party function
   const handleLeaveParty = async () => {
@@ -277,6 +288,14 @@ export default function LeaderboardDetail() {
                 return;
               }
 
+              // Also clean up challenge data
+              const updatedChallengeInvites = (partyData?.challengeInvites || []).filter(
+                (inv: any) => inv.userId !== user.id
+              );
+              const updatedChallengeParticipants = (partyData?.challengeParticipants || []).filter(
+                (id: string) => id !== user.id
+              );
+
               if (isCreator) {
                 const newLeader = updatedMembers[0];
                 const newLeaderDetails = updatedMemberDetails[0];
@@ -285,6 +304,8 @@ export default function LeaderboardDetail() {
                   members: updatedMembers,
                   memberDetails: updatedMemberDetails,
                   createdBy: newLeader,
+                  challengeInvites: updatedChallengeInvites,
+                  challengeParticipants: updatedChallengeParticipants,
                 });
 
                 Alert.alert(
@@ -295,6 +316,8 @@ export default function LeaderboardDetail() {
                 await updateDoc(partyRef, {
                   members: updatedMembers,
                   memberDetails: updatedMemberDetails,
+                  challengeInvites: updatedChallengeInvites,
+                  challengeParticipants: updatedChallengeParticipants,
                 });
 
                 Alert.alert('Success', 'You have left the leaderboard.');
@@ -519,9 +542,74 @@ export default function LeaderboardDetail() {
     }
   };
 
+  // Handle creating a challenge
+  const handleCreateChallenge = async () => {
+    if (!partyDocId || !user?.id || !isCreator) return;
+    if (selectedChallengeMembers.length === 0) {
+      Alert.alert('Select Members', 'Select at least one member to challenge.');
+      return;
+    }
+
+    setCreatingChallenge(true);
+    try {
+      const partyRef = doc(db, 'parties', partyDocId);
+      const memberDetails = partyData?.memberDetails || [];
+
+      // Build challenge invites from selected members
+      const invites = selectedChallengeMembers.map((memberId: string) => {
+        const member = memberDetails.find((m: any) => m.userId === memberId);
+        return {
+          userId: memberId,
+          username: member?.username || 'Unknown',
+          avatar: member?.avatar || '',
+          status: 'pending',
+          invitedAt: new Date().toISOString(),
+        };
+      });
+
+      // Update party with challenge data (leader auto-participates)
+      await updateDoc(partyRef, {
+        challengeStatus: 'pending',
+        challengeType: challengeTypeSelection,
+        duration: durationSelection,
+        challengeInvites: invites,
+        challengeParticipants: [user.id],
+      });
+
+      // Send notifications to each invited member
+      for (const memberId of selectedChallengeMembers) {
+        const notifRef = collection(db, 'users', memberId, 'notifications');
+        await addDoc(notifRef, {
+          type: 'challenge_invite',
+          fromUserId: user.id,
+          fromUsername: user.username || '',
+          fromAvatar: user.avatar || '',
+          partyId: partyDocId,
+          partyName: partyData?.partyName || '',
+          game: partyData?.game || '',
+          read: false,
+          createdAt: serverTimestamp(),
+        });
+      }
+
+      setShowCreateChallengeModal(false);
+      setSelectedChallengeMembers([]);
+    } catch (error) {
+      console.error('Error creating challenge:', error);
+      Alert.alert('Error', 'Failed to create challenge. Please try again.');
+    } finally {
+      setCreatingChallenge(false);
+    }
+  };
+
   // Handle starting the challenge
   const handleStartChallenge = async () => {
     if (!partyDocId || !isCreator) return;
+
+    if (challengeParticipants.length < 2) {
+      Alert.alert('Not Enough Participants', 'At least 2 people must accept the challenge before you can start.');
+      return;
+    }
 
     const startChallenge = async () => {
       setStartingChallenge(true);
@@ -540,11 +628,32 @@ export default function LeaderboardDetail() {
           return `${month}/${day}/${year}`;
         };
 
+        // Snapshot starting stats for climbing challenges
+        let startingStats: any[] = [];
+        if ((partyData?.challengeType || 'climbing') === 'climbing') {
+          const gameStatsPath = isLeague ? 'league' : 'valorant';
+          const statsPromises = challengeParticipants.map(async (userId: string) => {
+            try {
+              const statsDoc = await getDoc(doc(db, 'users', userId, 'gameStats', gameStatsPath));
+              const stats = statsDoc.data();
+              return {
+                userId,
+                lp: isLeague ? (stats?.lp || 0) : 0,
+                rr: !isLeague ? (stats?.rr || 0) : 0,
+              };
+            } catch {
+              return { userId, lp: 0, rr: 0 };
+            }
+          });
+          startingStats = await Promise.all(statsPromises);
+        }
+
         await updateDoc(partyRef, {
           challengeStatus: 'active',
           startDate: formatDateStr(now),
           endDate: formatDateStr(end),
           pendingInvites: [],
+          startingStats,
         });
       } catch (error) {
         console.error('Error starting challenge:', error);
@@ -554,34 +663,14 @@ export default function LeaderboardDetail() {
       }
     };
 
-    const pendingCount = partyData?.pendingInvites?.length || 0;
-
-    if (pendingCount > 0) {
-      Alert.alert(
-        'Pending Invites',
-        `You have ${pendingCount} pending invite${pendingCount > 1 ? 's' : ''}. Starting the challenge will cancel all pending invites and no new members can join. Are you sure you want to start?`,
-        [
-          { text: 'Cancel', style: 'cancel' },
-          {
-            text: 'Start Anyway',
-            style: 'destructive',
-            onPress: startChallenge,
-          },
-        ]
-      );
-    } else {
-      Alert.alert(
-        'Start Challenge',
-        'Are you sure you want to start the challenge? The timer will begin and no new members can join.',
-        [
-          { text: 'Cancel', style: 'cancel' },
-          {
-            text: 'Start',
-            onPress: startChallenge,
-          },
-        ]
-      );
-    }
+    Alert.alert(
+      'Start Challenge',
+      `Start the challenge with ${challengeParticipants.length} participants? The timer will begin.`,
+      [
+        { text: 'Cancel', style: 'cancel' },
+        { text: 'Start', onPress: startChallenge },
+      ]
+    );
   };
 
   // Handle updating invite permission
@@ -620,9 +709,18 @@ export default function LeaderboardDetail() {
                 (m: any) => m.userId !== player.userId
               );
 
+              const updatedChallengeInvites = (partyData?.challengeInvites || []).filter(
+                (inv: any) => inv.userId !== player.userId
+              );
+              const updatedChallengeParticipants = (partyData?.challengeParticipants || []).filter(
+                (id: string) => id !== player.userId
+              );
+
               await updateDoc(partyRef, {
                 members: updatedMembers,
                 memberDetails: updatedMemberDetails,
+                challengeInvites: updatedChallengeInvites,
+                challengeParticipants: updatedChallengeParticipants,
               });
             } catch (error) {
               console.error('Error kicking member:', error);
@@ -724,11 +822,25 @@ export default function LeaderboardDetail() {
             }
           });
 
-          fetchedPlayers.forEach((player, index) => {
-            player.rank = index + 1;
-          });
+          // Split into participants and spectators when challenge is active
+          const activeParticipants = partyDoc.challengeParticipants || [];
+          const isActiveChallenge = partyDoc.challengeStatus === 'active' && activeParticipants.length > 0;
 
-          setPlayers(fetchedPlayers);
+          if (isActiveChallenge) {
+            const participants = fetchedPlayers.filter(p => activeParticipants.includes(p.userId));
+            const spectatorPlayers = fetchedPlayers.filter(p => !activeParticipants.includes(p.userId));
+            participants.forEach((player, index) => {
+              player.rank = index + 1;
+            });
+            setPlayers(participants);
+            setSpectators(spectatorPlayers);
+          } else {
+            fetchedPlayers.forEach((player, index) => {
+              player.rank = index + 1;
+            });
+            setPlayers(fetchedPlayers);
+            setSpectators([]);
+          }
           setRefreshing(false);
         }, (error) => {
           console.error('Error in real-time listener:', error);
@@ -797,7 +909,11 @@ export default function LeaderboardDetail() {
     const totalDays = Math.ceil((end.getTime() - start.getTime()) / (1000 * 60 * 60 * 24));
     const currentDay = Math.ceil((today.getTime() - start.getTime()) / (1000 * 60 * 60 * 24));
 
-    return { currentDay: Math.max(1, Math.min(currentDay, totalDays)), totalDays };
+    const msLeft = Math.max(0, end.getTime() - today.getTime());
+    const hoursLeft = Math.floor(msLeft / (1000 * 60 * 60));
+    const daysLeft = Math.ceil(msLeft / (1000 * 60 * 60 * 24));
+
+    return { currentDay: Math.max(1, Math.min(currentDay, totalDays)), totalDays, daysLeft, hoursLeft };
   };
 
   const daysInfo = calculateDaysRemaining();
@@ -839,13 +955,18 @@ export default function LeaderboardDetail() {
               <IconSymbol size={14} name="chevron.left" color="#fff" />
             </TouchableOpacity>
             <View style={styles.headerRightButtons}>
-              {isCreator && (
-                <TouchableOpacity style={styles.editButton} onPress={() => setShowEditModal(true)}>
-                  <IconSymbol size={16} name="pencil" color="#fff" />
+              {(isPending || isActive) && (isCreator || challengeParticipants.includes(user?.id || '')) && (
+                <TouchableOpacity style={styles.challengeDetailButton} onPress={() => setShowChallengeDetailsModal(true)}>
+                  <IconSymbol size={14} name="trophy.fill" color="#a08845" />
                 </TouchableOpacity>
               )}
-              <TouchableOpacity style={styles.leaveButton} onPress={handleLeaveParty}>
-                <IconSymbol size={16} name="rectangle.portrait.and.arrow.right" color="#ff6b6b" />
+              {isCreator && (
+                <TouchableOpacity style={styles.headerPillButton} onPress={() => setShowEditModal(true)}>
+                  <ThemedText style={styles.headerPillButtonText}>Edit</ThemedText>
+                </TouchableOpacity>
+              )}
+              <TouchableOpacity style={styles.headerPillButton} onPress={handleLeaveParty}>
+                <ThemedText style={[styles.headerPillButtonText, { color: '#ff6b6b' }]}>Leave</ThemedText>
               </TouchableOpacity>
             </View>
           </View>
@@ -879,8 +1000,8 @@ export default function LeaderboardDetail() {
 
         {/* Leaderboard Info Section */}
         <View style={styles.leaderboardInfoSection}>
+          {/* Icon + Name Row */}
           <View style={styles.infoRow}>
-            {/* Leaderboard Icon */}
             <View style={styles.leaderboardIconWrapper}>
               {leaderboardIcon ? (
                 <Image source={{ uri: leaderboardIcon }} style={styles.leaderboardIcon} />
@@ -895,7 +1016,6 @@ export default function LeaderboardDetail() {
               )}
             </View>
 
-            {/* Name & Meta */}
             <View style={styles.infoDetails}>
               <ThemedText style={styles.leaderboardName} numberOfLines={1}>{leaderboardName}</ThemedText>
               <View style={styles.leaderboardMeta}>
@@ -909,63 +1029,57 @@ export default function LeaderboardDetail() {
             </View>
           </View>
 
-          {/* Challenge Status */}
-          {isPending ? (
-            <View style={styles.pendingSection}>
-              {isCreator ? (
-                <TouchableOpacity
-                  style={styles.startChallengeButton}
-                  onPress={handleStartChallenge}
-                  disabled={startingChallenge}
-                >
-                  {startingChallenge ? (
-                    <ActivityIndicator size="small" color="#fff" />
-                  ) : (
-                    <>
-                      <IconSymbol size={16} name="play.fill" color="#fff" />
-                      <ThemedText style={styles.startChallengeButtonText}>Start Challenge</ThemedText>
-                    </>
-                  )}
-                </TouchableOpacity>
-              ) : (
-                <View style={styles.waitingBadge}>
-                  <IconSymbol size={14} name="clock" color="#888" />
-                  <ThemedText style={styles.waitingText}>Waiting for leader to start</ThemedText>
+          {/* Challenge Status / Progress */}
+          {isActive && daysInfo ? (
+            <View style={styles.activeProgressSection}>
+              <View style={styles.activeProgressHeader}>
+                <View style={styles.activeProgressLabel}>
+                  <View style={styles.activeDotSmall} />
+                  <ThemedText style={styles.activeProgressText}>Challenge Active</ThemedText>
                 </View>
-              )}
-              <ThemedText style={styles.durationPreview}>
-                {partyData?.duration || 30} day challenge
-              </ThemedText>
-            </View>
-          ) : daysInfo && (
-            <View style={styles.durationSection}>
-              <View style={styles.durationHeader}>
-                <ThemedText style={styles.durationLabel}>
-                  Day {daysInfo.currentDay} of {daysInfo.totalDays}
+                <ThemedText style={styles.activeProgressDays}>
+                  {daysInfo.daysLeft <= 1 ? `${daysInfo.hoursLeft}h left` : `${daysInfo.daysLeft}d left`}
                 </ThemedText>
               </View>
               <View style={styles.progressBarBackground}>
                 <View style={[styles.progressBarFill, { width: `${progress}%` }]} />
               </View>
             </View>
-          )}
+          ) : isNone && isCreator ? (
+            <TouchableOpacity
+              style={styles.createChallengeInlineBtn}
+              onPress={() => {
+                setSelectedChallengeMembers([]);
+                setChallengeTypeSelection('climbing');
+                setDurationSelection(30);
+                setShowCreateChallengeModal(true);
+              }}
+              activeOpacity={0.7}
+            >
+              <IconSymbol size={14} name="trophy.fill" color="#a08845" />
+              <ThemedText style={styles.createChallengeInlineBtnText}>Create Challenge</ThemedText>
+            </TouchableOpacity>
+          ) : null}
 
           {/* Action Buttons */}
-          <View style={styles.actionButtons}>
-            {canInvite && (
+          {canInvite && (
+            <View style={styles.actionButtons}>
               <TouchableOpacity style={styles.inviteButton} onPress={handleOpenInviteModal}>
-                <IconSymbol size={14} name="person.badge.plus" color="#666" />
+                <IconSymbol size={14} name="person.badge.plus" color="#888" />
                 <ThemedText style={styles.inviteButtonText}>Invite</ThemedText>
               </TouchableOpacity>
-            )}
-            {inviteCode && isPending && (
-              <TouchableOpacity style={styles.codeButton} onPress={handleCopyInviteCode}>
-                <ThemedText style={styles.codeButtonText}>{inviteCode}</ThemedText>
-                <IconSymbol size={12} name="doc.on.doc" color="#444" />
-              </TouchableOpacity>
-            )}
-          </View>
+              {inviteCode && (isNone || isPending) && (
+                <TouchableOpacity style={styles.codeButton} onPress={handleCopyInviteCode}>
+                  <ThemedText style={styles.codeButtonText}>{inviteCode}</ThemedText>
+                  <IconSymbol size={12} name="doc.on.doc" color="#555" />
+                </TouchableOpacity>
+              )}
+            </View>
+          )}
         </View>
+
+        {/* Divider */}
+        <View style={styles.sectionDivider} />
 
         {/* Column Headers */}
         <View style={styles.columnHeaders}>
@@ -1047,8 +1161,217 @@ export default function LeaderboardDetail() {
           })}
         </View>
 
+        {/* Spectators Section */}
+        {spectators.length > 0 && isActive && (
+          <View style={styles.spectatorsSection}>
+            <View style={styles.spectatorsHeaderRow}>
+              <IconSymbol size={14} name="eye.fill" color="#555" />
+              <ThemedText style={styles.spectatorsHeaderText}>Spectators</ThemedText>
+            </View>
+            {spectators.map((spectator, index) => {
+              const rankIcon = isLeague
+                ? getLeagueRankIcon(spectator.currentRank)
+                : getValorantRankIcon(spectator.currentRank);
+
+              return (
+                <View
+                  key={spectator.userId}
+                  style={[
+                    styles.playerRow,
+                    index % 2 === 0 ? styles.evenRow : styles.oddRow,
+                    spectator.isCurrentUser && styles.currentUserRow,
+                    { borderLeftWidth: 4, borderLeftColor: '#333' },
+                  ]}
+                >
+                  <View style={styles.rankContainer}>
+                    <ThemedText style={[styles.rankText, { color: '#444' }]}>—</ThemedText>
+                  </View>
+
+                  <View style={styles.playerInfo}>
+                    <TouchableOpacity
+                      style={styles.playerAvatar}
+                      onPress={() => handlePlayerPress(spectator)}
+                      activeOpacity={0.7}
+                    >
+                      {spectator.avatar && spectator.avatar.startsWith('http') ? (
+                        <Image source={{ uri: spectator.avatar }} style={styles.playerAvatarImage} />
+                      ) : (
+                        <ThemedText style={styles.avatarText}>
+                          {spectator.username?.[0]?.toUpperCase()}
+                        </ThemedText>
+                      )}
+                    </TouchableOpacity>
+                    <ThemedText style={[styles.playerName, { color: '#666' }]} numberOfLines={1}>
+                      {spectator.username}
+                    </ThemedText>
+                  </View>
+
+                  <View style={styles.rankInfoContainer}>
+                    <Image source={rankIcon} style={[styles.rankIconSmall, { opacity: 0.5 }]} resizeMode="contain" />
+                    <View style={styles.rankTextContainer}>
+                      <ThemedText style={[styles.currentRankText, { color: '#555' }]}>
+                        {spectator.currentRank}
+                      </ThemedText>
+                    </View>
+                  </View>
+                </View>
+              );
+            })}
+          </View>
+        )}
+
         <View style={styles.bottomSpacer} />
       </ScrollView>
+
+      {/* Create Challenge Modal */}
+      <Modal
+        visible={showCreateChallengeModal}
+        transparent
+        animationType="slide"
+        onRequestClose={() => setShowCreateChallengeModal(false)}
+      >
+        <TouchableOpacity
+          style={styles.modalOverlay}
+          activeOpacity={1}
+          onPress={() => setShowCreateChallengeModal(false)}
+        >
+          <View style={styles.createChallengeModal} onStartShouldSetResponder={() => true}>
+            {/* Header */}
+            <View style={styles.createChallengeHeader}>
+              <TouchableOpacity onPress={() => setShowCreateChallengeModal(false)}>
+                <ThemedText style={{ fontSize: 15, color: '#666' }}>Cancel</ThemedText>
+              </TouchableOpacity>
+              <ThemedText style={styles.createChallengeTitle}>New Challenge</ThemedText>
+              <View style={{ width: 50 }} />
+            </View>
+
+            {/* Challenge Type */}
+            <ThemedText style={styles.createChallengeLabel}>TYPE</ThemedText>
+            <View style={styles.createChallengeTypeRow}>
+              <TouchableOpacity
+                style={[
+                  styles.createChallengeTypeBtn,
+                  challengeTypeSelection === 'climbing' && styles.createChallengeTypeBtnActive
+                ]}
+                onPress={() => setChallengeTypeSelection('climbing')}
+              >
+                <IconSymbol
+                  size={20}
+                  name="chart.line.uptrend.xyaxis"
+                  color={challengeTypeSelection === 'climbing' ? '#a08845' : '#555'}
+                />
+                <ThemedText style={[
+                  styles.createChallengeTypeBtnTitle,
+                  challengeTypeSelection === 'climbing' && styles.createChallengeTypeBtnTitleActive
+                ]}>Climbing</ThemedText>
+                <ThemedText style={[
+                  styles.createChallengeTypeBtnDesc,
+                  challengeTypeSelection === 'climbing' && styles.createChallengeTypeBtnDescActive
+                ]}>Most LP/RR gained</ThemedText>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                style={[
+                  styles.createChallengeTypeBtn,
+                  challengeTypeSelection === 'rank' && styles.createChallengeTypeBtnActive
+                ]}
+                onPress={() => setChallengeTypeSelection('rank')}
+              >
+                <IconSymbol
+                  size={20}
+                  name="trophy.fill"
+                  color={challengeTypeSelection === 'rank' ? '#a08845' : '#555'}
+                />
+                <ThemedText style={[
+                  styles.createChallengeTypeBtnTitle,
+                  challengeTypeSelection === 'rank' && styles.createChallengeTypeBtnTitleActive
+                ]}>Rank</ThemedText>
+                <ThemedText style={[
+                  styles.createChallengeTypeBtnDesc,
+                  challengeTypeSelection === 'rank' && styles.createChallengeTypeBtnDescActive
+                ]}>Highest rank wins</ThemedText>
+              </TouchableOpacity>
+            </View>
+
+            {/* Duration */}
+            <ThemedText style={styles.createChallengeLabel}>DURATION</ThemedText>
+            <View style={styles.createChallengeDurationRow}>
+              {[7, 14, 30, 60, 90].map((days) => (
+                <TouchableOpacity
+                  key={days}
+                  style={[
+                    styles.createChallengeDurationChip,
+                    durationSelection === days && styles.createChallengeDurationChipActive
+                  ]}
+                  onPress={() => setDurationSelection(days)}
+                >
+                  <ThemedText style={[
+                    styles.createChallengeDurationText,
+                    durationSelection === days && styles.createChallengeDurationTextActive
+                  ]}>{days}d</ThemedText>
+                </TouchableOpacity>
+              ))}
+            </View>
+
+            {/* Member Selection */}
+            <ThemedText style={styles.createChallengeLabel}>
+              INVITE MEMBERS ({selectedChallengeMembers.length} selected)
+            </ThemedText>
+            <ScrollView style={styles.challengeMemberList} nestedScrollEnabled>
+              {(partyData?.memberDetails || [])
+                .filter((member: any) => member.userId !== user?.id)
+                .map((member: any) => {
+                  const isSelected = selectedChallengeMembers.includes(member.userId);
+                  return (
+                    <TouchableOpacity
+                      key={member.userId}
+                      style={[styles.createChallengeMemberRow, isSelected && styles.createChallengeMemberRowSelected]}
+                      onPress={() => {
+                        setSelectedChallengeMembers(prev =>
+                          isSelected
+                            ? prev.filter(id => id !== member.userId)
+                            : [...prev, member.userId]
+                        );
+                      }}
+                      activeOpacity={0.7}
+                    >
+                      <View style={styles.challengeMemberInfo}>
+                        {member.avatar && member.avatar.startsWith('http') ? (
+                          <Image source={{ uri: member.avatar }} style={styles.challengeMemberAvatar} />
+                        ) : (
+                          <View style={styles.challengeMemberAvatarPlaceholder}>
+                            <ThemedText style={styles.challengeMemberAvatarText}>
+                              {member.username?.[0]?.toUpperCase()}
+                            </ThemedText>
+                          </View>
+                        )}
+                        <ThemedText style={styles.challengeMemberName}>{member.username}</ThemedText>
+                      </View>
+                      <View style={[styles.createChallengeCheckbox, isSelected && styles.createChallengeCheckboxActive]}>
+                        {isSelected && <IconSymbol size={12} name="checkmark" color="#fff" />}
+                      </View>
+                    </TouchableOpacity>
+                  );
+                })}
+            </ScrollView>
+
+            {/* Create Button */}
+            <TouchableOpacity
+              style={[styles.createChallengeBtn, (creatingChallenge || selectedChallengeMembers.length === 0) && { opacity: 0.4 }]}
+              disabled={creatingChallenge || selectedChallengeMembers.length === 0}
+              onPress={handleCreateChallenge}
+            >
+              {creatingChallenge ? (
+                <ActivityIndicator size="small" color="#fff" />
+              ) : (
+                <ThemedText style={styles.createChallengeBtnText}>
+                  Create Challenge
+                </ThemedText>
+              )}
+            </TouchableOpacity>
+          </View>
+        </TouchableOpacity>
+      </Modal>
 
       {/* Edit Modal */}
       <Modal
@@ -1614,6 +1937,131 @@ export default function LeaderboardDetail() {
         </TouchableOpacity>
       </Modal>
 
+      {/* Challenge Details Modal */}
+      <Modal
+        visible={showChallengeDetailsModal}
+        transparent
+        animationType="slide"
+        onRequestClose={() => setShowChallengeDetailsModal(false)}
+      >
+        <TouchableOpacity
+          style={styles.modalOverlay}
+          activeOpacity={1}
+          onPress={() => setShowChallengeDetailsModal(false)}
+        >
+          <View style={styles.cdModal} onStartShouldSetResponder={() => true}>
+            {/* Header */}
+            <View style={styles.cdHeader}>
+              <View style={styles.cdHeaderLeft}>
+                <View style={styles.pcTrophyCircle}>
+                  <IconSymbol size={16} name="trophy.fill" color="#a08845" />
+                </View>
+                <ThemedText style={styles.cdTitle}>Challenge Details</ThemedText>
+              </View>
+              <TouchableOpacity onPress={() => setShowChallengeDetailsModal(false)}>
+                <IconSymbol size={20} name="xmark" color="#666" />
+              </TouchableOpacity>
+            </View>
+
+            {/* Info Grid */}
+            <View style={styles.cdGrid}>
+              <View style={styles.cdGridItem}>
+                <ThemedText style={styles.cdGridLabel}>TYPE</ThemedText>
+                <View style={styles.cdGridValueRow}>
+                  <IconSymbol size={14} name={partyData?.challengeType === 'rank' ? 'trophy.fill' : 'chart.line.uptrend.xyaxis'} color="#a08845" />
+                  <ThemedText style={styles.cdGridValue}>
+                    {partyData?.challengeType === 'rank' ? 'Highest Rank' : 'LP/RR Climbing'}
+                  </ThemedText>
+                </View>
+              </View>
+              <View style={styles.cdGridItem}>
+                <ThemedText style={styles.cdGridLabel}>DURATION</ThemedText>
+                <ThemedText style={styles.cdGridValue}>{partyData?.duration || 30} days</ThemedText>
+              </View>
+              <View style={styles.cdGridItem}>
+                <ThemedText style={styles.cdGridLabel}>STATUS</ThemedText>
+                <View style={styles.cdGridValueRow}>
+                  <View style={[styles.pcStatusDot, isActive && { backgroundColor: '#4ade80' }]} />
+                  <ThemedText style={styles.cdGridValue}>
+                    {isActive ? 'Active' : 'Pending'}
+                  </ThemedText>
+                </View>
+              </View>
+              <View style={styles.cdGridItem}>
+                <ThemedText style={styles.cdGridLabel}>PARTICIPANTS</ThemedText>
+                <ThemedText style={styles.cdGridValue}>{challengeParticipants.length}</ThemedText>
+              </View>
+            </View>
+
+            {isActive && partyData?.startDate && partyData?.endDate && (
+              <View style={styles.cdDatesRow}>
+                <View style={styles.cdDateItem}>
+                  <ThemedText style={styles.cdGridLabel}>STARTED</ThemedText>
+                  <ThemedText style={styles.cdDateText}>{partyData.startDate}</ThemedText>
+                </View>
+                <View style={styles.cdDateDivider} />
+                <View style={styles.cdDateItem}>
+                  <ThemedText style={styles.cdGridLabel}>ENDS</ThemedText>
+                  <ThemedText style={styles.cdDateText}>{partyData.endDate}</ThemedText>
+                </View>
+              </View>
+            )}
+
+            {/* Participants List */}
+            <ThemedText style={styles.cdSectionLabel}>PARTICIPANTS</ThemedText>
+            <ScrollView style={styles.cdParticipantsList} nestedScrollEnabled>
+              {(partyData?.memberDetails || [])
+                .filter((m: any) => challengeParticipants.includes(m.userId))
+                .map((m: any) => (
+                  <View key={m.userId} style={styles.cdParticipantRow}>
+                    <View style={styles.cdParticipantInfo}>
+                      {m.avatar && m.avatar.startsWith('http') ? (
+                        <Image source={{ uri: m.avatar }} style={styles.cdParticipantAvatar} />
+                      ) : (
+                        <View style={styles.cdParticipantAvatarPlaceholder}>
+                          <ThemedText style={styles.cdParticipantAvatarText}>{m.username?.[0]?.toUpperCase()}</ThemedText>
+                        </View>
+                      )}
+                      <ThemedText style={styles.cdParticipantName}>{m.username}</ThemedText>
+                    </View>
+                    {m.userId === partyData?.createdBy && (
+                      <View style={styles.cdLeaderBadge}>
+                        <ThemedText style={styles.cdLeaderBadgeText}>Leader</ThemedText>
+                      </View>
+                    )}
+                  </View>
+                ))}
+            </ScrollView>
+
+            {/* Invited (pending/declined) */}
+            {challengeInvites.filter((inv: any) => inv.status !== 'accepted').length > 0 && (
+              <>
+                <ThemedText style={styles.cdSectionLabel}>INVITED</ThemedText>
+                {challengeInvites
+                  .filter((inv: any) => inv.status !== 'accepted')
+                  .map((inv: any) => (
+                    <View key={inv.userId} style={styles.cdParticipantRow}>
+                      <View style={styles.cdParticipantInfo}>
+                        {inv.avatar && inv.avatar.startsWith('http') ? (
+                          <Image source={{ uri: inv.avatar }} style={styles.cdParticipantAvatar} />
+                        ) : (
+                          <View style={styles.cdParticipantAvatarPlaceholder}>
+                            <ThemedText style={styles.cdParticipantAvatarText}>{inv.username?.[0]?.toUpperCase()}</ThemedText>
+                          </View>
+                        )}
+                        <ThemedText style={[styles.cdParticipantName, { color: '#555' }]}>{inv.username}</ThemedText>
+                      </View>
+                      <ThemedText style={[styles.cdInviteStatus, inv.status === 'rejected' && { color: '#666' }]}>
+                        {inv.status === 'pending' ? 'Pending' : 'Declined'}
+                      </ThemedText>
+                    </View>
+                  ))}
+              </>
+            )}
+          </View>
+        </TouchableOpacity>
+      </Modal>
+
       {uploading && (
         <View style={styles.uploadingOverlay}>
           <View style={styles.uploadingContent}>
@@ -1662,21 +2110,28 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: 8,
   },
-  editButton: {
-    width: 30,
-    height: 30,
-    borderRadius: 15,
-    backgroundColor: 'rgba(0,0,0,0.5)',
+  challengeDetailButton: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    backgroundColor: 'transparent',
+    borderWidth: 1,
+    borderColor: 'rgba(160, 136, 69, 0.3)',
     alignItems: 'center',
     justifyContent: 'center',
   },
-  leaveButton: {
-    width: 30,
-    height: 30,
-    borderRadius: 15,
-    backgroundColor: 'rgba(0,0,0,0.5)',
+  headerPillButton: {
+    paddingHorizontal: 14,
+    paddingVertical: 8,
+    borderRadius: 10,
+    backgroundColor: '#1a1a1a',
     alignItems: 'center',
     justifyContent: 'center',
+  },
+  headerPillButtonText: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: '#888',
   },
   coverPhotoWrapper: {
     width: '100%',
@@ -1713,8 +2168,10 @@ const styles = StyleSheet.create({
   // Leaderboard Info Section
   leaderboardInfoSection: {
     marginTop: -34,
-    paddingHorizontal: 16,
+    paddingHorizontal: 20,
     zIndex: 2,
+    gap: 16,
+    paddingBottom: 16,
   },
   infoRow: {
     flexDirection: 'row',
@@ -1765,7 +2222,6 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 8,
-    marginBottom: 10,
   },
   gameLogoSmall: {
     width: 16,
@@ -1790,19 +2246,328 @@ const styles = StyleSheet.create({
     marginBottom: 14,
     gap: 8,
   },
-  startChallengeButton: {
+  pendingChallengeSection: {
+    width: '100%',
+    marginBottom: 14,
+  },
+  pendingChallengeCard: {
+    width: '100%',
+    backgroundColor: 'rgba(160, 136, 69, 0.05)',
+    borderWidth: 1,
+    borderColor: 'rgba(160, 136, 69, 0.2)',
+    borderRadius: 14,
+    padding: 16,
+    gap: 14,
+  },
+  pcCardHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
+  pcCardHeaderLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+  },
+  pcTrophyCircle: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: 'rgba(160, 136, 69, 0.12)',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  pcCardTitle: {
+    fontSize: 15,
+    fontWeight: '700',
+    color: '#ddd',
+  },
+  pcCardSubtitle: {
+    fontSize: 12,
+    color: '#777',
+    marginTop: 1,
+  },
+  pcStatusBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 5,
+    backgroundColor: 'rgba(160, 136, 69, 0.1)',
+    paddingVertical: 4,
+    paddingHorizontal: 10,
+    borderRadius: 8,
+  },
+  pcStatusDot: {
+    width: 6,
+    height: 6,
+    borderRadius: 3,
+    backgroundColor: '#a08845',
+  },
+  pcStatusText: {
+    fontSize: 11,
+    fontWeight: '600',
+    color: '#a08845',
+  },
+  pcParticipants: {
+    gap: 8,
+  },
+  pcParticipantsRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+  pcAvatarStack: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  pcAvatar: {
+    width: 28,
+    height: 28,
+    borderRadius: 14,
+    borderWidth: 2,
+    borderColor: '#151513',
+    backgroundColor: '#252525',
+    overflow: 'hidden',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  pcAvatarImage: {
+    width: '100%',
+    height: '100%',
+  },
+  pcAvatarText: {
+    fontSize: 10,
+    fontWeight: '600',
+    color: '#888',
+  },
+  pcParticipantsText: {
+    fontSize: 12,
+    color: '#777',
+  },
+  pcProgressBar: {
+    width: '100%',
+    height: 3,
+    backgroundColor: 'rgba(255, 255, 255, 0.06)',
+    borderRadius: 2,
+    overflow: 'hidden',
+  },
+  pcProgressFill: {
+    height: '100%',
+    backgroundColor: '#a08845',
+    borderRadius: 2,
+  },
+  pcStartBtn: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
     gap: 8,
-    backgroundColor: '#c42743',
     paddingVertical: 12,
-    paddingHorizontal: 24,
-    borderRadius: 12,
-    minWidth: 180,
+    borderRadius: 10,
+    borderWidth: 1,
+    borderColor: 'rgba(160, 136, 69, 0.3)',
+    backgroundColor: 'rgba(160, 136, 69, 0.08)',
+  },
+  pcStartBtnText: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#a08845',
+  },
+  pcActionRow: {
+    flexDirection: 'row',
+    gap: 8,
+  },
+  pcAcceptBtn: {
+    flex: 1,
+    alignItems: 'center',
+    paddingVertical: 11,
+    borderRadius: 10,
+    backgroundColor: 'rgba(160, 136, 69, 0.15)',
+    borderWidth: 1,
+    borderColor: 'rgba(160, 136, 69, 0.25)',
+  },
+  pcAcceptBtnText: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#a08845',
+  },
+  pcDeclineBtn: {
+    width: 44,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderRadius: 10,
+    backgroundColor: '#1a1a1a',
+  },
+  pcStatusRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
+  pcUserStatus: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+  },
+  pcUserStatusText: {
+    fontSize: 13,
+    fontWeight: '500',
+    color: '#666',
+  },
+  pcChangeText: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: '#a08845',
+  },
+  // Challenge Details Modal
+  cdModal: {
+    backgroundColor: '#111',
+    borderTopLeftRadius: 24,
+    borderTopRightRadius: 24,
+    paddingBottom: 40,
+    paddingHorizontal: 20,
+    maxHeight: '80%',
+  },
+  cdHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingTop: 20,
+    paddingBottom: 16,
+    borderBottomWidth: 1,
+    borderBottomColor: 'rgba(160, 136, 69, 0.1)',
+  },
+  cdHeaderLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+  },
+  cdTitle: {
+    fontSize: 17,
+    fontWeight: '700',
+    color: '#eee',
+  },
+  cdGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    marginTop: 16,
+    gap: 0,
+  },
+  cdGridItem: {
+    width: '50%',
+    paddingVertical: 12,
+    gap: 4,
+  },
+  cdGridLabel: {
+    fontSize: 10,
+    fontWeight: '700',
+    color: '#555',
+    letterSpacing: 0.5,
+  },
+  cdGridValue: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#ccc',
+  },
+  cdGridValueRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+  },
+  cdDatesRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: 'rgba(160, 136, 69, 0.06)',
+    borderRadius: 10,
+    padding: 14,
+    marginTop: 4,
+    marginBottom: 4,
+  },
+  cdDateItem: {
+    flex: 1,
+    alignItems: 'center',
+    gap: 4,
+  },
+  cdDateText: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#a08845',
+  },
+  cdDateDivider: {
+    width: 1,
+    height: 28,
+    backgroundColor: 'rgba(160, 136, 69, 0.2)',
+  },
+  cdSectionLabel: {
+    fontSize: 10,
+    fontWeight: '700',
+    color: '#555',
+    letterSpacing: 0.5,
+    marginTop: 18,
+    marginBottom: 10,
+  },
+  cdParticipantsList: {
+    maxHeight: 180,
+  },
+  cdParticipantRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingVertical: 8,
+  },
+  cdParticipantInfo: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+  },
+  cdParticipantAvatar: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+  },
+  cdParticipantAvatarPlaceholder: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    backgroundColor: '#222',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  cdParticipantAvatarText: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: '#666',
+  },
+  cdParticipantName: {
+    fontSize: 14,
+    fontWeight: '500',
+    color: '#ccc',
+  },
+  cdLeaderBadge: {
+    backgroundColor: 'rgba(160, 136, 69, 0.12)',
+    paddingVertical: 3,
+    paddingHorizontal: 8,
+    borderRadius: 6,
+  },
+  cdLeaderBadgeText: {
+    fontSize: 11,
+    fontWeight: '600',
+    color: '#a08845',
+  },
+  cdInviteStatus: {
+    fontSize: 12,
+    fontWeight: '500',
+    color: '#a08845',
+  },
+  startChallengeButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 6,
+    backgroundColor: '#A08845',
+    paddingVertical: 8,
+    paddingHorizontal: 16,
+    borderRadius: 8,
   },
   startChallengeButtonText: {
-    fontSize: 15,
+    fontSize: 13,
     fontWeight: '600',
     color: '#fff',
   },
@@ -1826,36 +2591,85 @@ const styles = StyleSheet.create({
   },
   // Duration Section
   durationSection: {
-    width: '100%',
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
     marginBottom: 14,
   },
-  durationHeader: {
-    marginBottom: 8,
-  },
-  durationLabel: {
-    fontSize: 12,
+  daysLeftText: {
+    fontSize: 11,
     fontWeight: '600',
-    color: '#555',
-    textAlign: 'center',
+    color: '#A08845',
   },
   progressBarBackground: {
-    width: '100%',
-    height: 4,
+    width: '50%',
+    height: 3,
     backgroundColor: 'rgba(255, 255, 255, 0.1)',
     borderRadius: 2,
     overflow: 'hidden',
   },
   progressBarFill: {
     height: '100%',
-    backgroundColor: '#c42743',
+    backgroundColor: '#A08845',
     borderRadius: 2,
   },
   // Action Buttons
+  activeProgressSection: {
+    gap: 8,
+  },
+  activeProgressHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
+  activeProgressLabel: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+  },
+  activeDotSmall: {
+    width: 6,
+    height: 6,
+    borderRadius: 3,
+    backgroundColor: '#a08845',
+  },
+  activeProgressText: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: '#a08845',
+  },
+  activeProgressDays: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: '#666',
+  },
+  createChallengeInlineBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    paddingVertical: 12,
+    borderRadius: 10,
+    borderWidth: 1,
+    borderColor: 'rgba(160, 136, 69, 0.25)',
+    backgroundColor: 'rgba(160, 136, 69, 0.06)',
+  },
+  createChallengeInlineBtnText: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#a08845',
+  },
+  sectionDivider: {
+    height: 1,
+    backgroundColor: '#1a1a1a',
+    marginHorizontal: 20,
+    marginBottom: 4,
+  },
   actionButtons: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 10,
-    marginBottom: 8,
   },
   inviteButton: {
     flexDirection: 'row',
@@ -2426,5 +3240,233 @@ const styles = StyleSheet.create({
   },
   challengeTypeDescActive: {
     color: '#888',
+  },
+  // Create Challenge Modal (white/black theme)
+  createChallengeModal: {
+    backgroundColor: '#111',
+    borderTopLeftRadius: 24,
+    borderTopRightRadius: 24,
+    paddingBottom: 40,
+    maxHeight: '85%',
+  },
+  createChallengeHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingHorizontal: 20,
+    paddingTop: 20,
+    paddingBottom: 16,
+    borderBottomWidth: 1,
+    borderBottomColor: '#222',
+  },
+  createChallengeTitle: {
+    fontSize: 17,
+    fontWeight: '700',
+    color: '#fff',
+  },
+  createChallengeLabel: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: '#555',
+    marginTop: 20,
+    marginBottom: 10,
+    paddingHorizontal: 20,
+    letterSpacing: 0.5,
+  },
+  createChallengeTypeRow: {
+    flexDirection: 'row',
+    gap: 10,
+    paddingHorizontal: 20,
+  },
+  createChallengeTypeBtn: {
+    flex: 1,
+    backgroundColor: '#1a1a1a',
+    borderRadius: 14,
+    padding: 16,
+    alignItems: 'center',
+    gap: 6,
+    borderWidth: 2,
+    borderColor: 'transparent',
+  },
+  createChallengeTypeBtnActive: {
+    backgroundColor: '#1a1a1a',
+    borderColor: 'rgba(160, 136, 69, 0.4)',
+  },
+  createChallengeTypeBtnTitle: {
+    fontSize: 15,
+    fontWeight: '700',
+    color: '#555',
+  },
+  createChallengeTypeBtnTitleActive: {
+    color: '#fff',
+  },
+  createChallengeTypeBtnDesc: {
+    fontSize: 11,
+    color: '#444',
+  },
+  createChallengeTypeBtnDescActive: {
+    color: '#888',
+  },
+  createChallengeDurationRow: {
+    flexDirection: 'row',
+    gap: 8,
+    paddingHorizontal: 20,
+  },
+  createChallengeDurationChip: {
+    flex: 1,
+    paddingVertical: 10,
+    backgroundColor: '#1a1a1a',
+    borderRadius: 10,
+    alignItems: 'center',
+    borderWidth: 2,
+    borderColor: 'transparent',
+  },
+  createChallengeDurationChipActive: {
+    backgroundColor: '#A08845',
+    borderColor: '#A08845',
+  },
+  createChallengeDurationText: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#555',
+  },
+  createChallengeDurationTextActive: {
+    color: '#fff',
+  },
+  challengeMemberList: {
+    maxHeight: 200,
+    marginBottom: 16,
+    paddingHorizontal: 20,
+  },
+  createChallengeMemberRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingVertical: 12,
+    paddingHorizontal: 14,
+    borderRadius: 12,
+    marginBottom: 6,
+    backgroundColor: '#1a1a1a',
+  },
+  createChallengeMemberRowSelected: {
+    backgroundColor: '#1a1a1a',
+    borderWidth: 1.5,
+    borderColor: 'rgba(196, 39, 67, 0.4)',
+  },
+  challengeMemberInfo: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    flex: 1,
+  },
+  challengeMemberAvatar: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+  },
+  challengeMemberAvatarPlaceholder: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: '#252525',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  challengeMemberAvatarText: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#666',
+  },
+  challengeMemberName: {
+    fontSize: 15,
+    fontWeight: '500',
+    color: '#ccc',
+  },
+  createChallengeCheckbox: {
+    width: 24,
+    height: 24,
+    borderRadius: 12,
+    borderWidth: 2,
+    borderColor: '#333',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  createChallengeCheckboxActive: {
+    backgroundColor: '#A08845',
+    borderColor: '#A08845',
+  },
+  createChallengeBtn: {
+    backgroundColor: '#111',
+    borderRadius: 14,
+    paddingVertical: 16,
+    marginHorizontal: 20,
+    alignItems: 'center',
+    borderWidth: 1.5,
+    borderColor: 'rgba(160, 136, 69, 0.4)',
+  },
+  createChallengeBtnText: {
+    fontSize: 16,
+    fontWeight: '700',
+    color: '#fff',
+  },
+  challengeAcceptedCount: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#888',
+    marginBottom: 8,
+  },
+  challengeInlineActions: {
+    alignItems: 'center',
+    gap: 10,
+  },
+  challengeInlineText: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#fff',
+  },
+  challengeInlineButtons: {
+    flexDirection: 'row',
+    gap: 10,
+  },
+  challengeAcceptBtn: {
+    backgroundColor: '#c42743',
+    paddingVertical: 10,
+    paddingHorizontal: 24,
+    borderRadius: 10,
+  },
+  challengeAcceptBtnText: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#fff',
+  },
+  challengeDeclineBtn: {
+    backgroundColor: '#252525',
+    paddingVertical: 10,
+    paddingHorizontal: 24,
+    borderRadius: 10,
+  },
+  challengeDeclineBtnText: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#888',
+  },
+  // Spectators
+  spectatorsSection: {
+    marginTop: 8,
+    paddingHorizontal: 16,
+  },
+  spectatorsHeaderRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    paddingVertical: 12,
+    paddingHorizontal: 4,
+  },
+  spectatorsHeaderText: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#555',
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
   },
 });

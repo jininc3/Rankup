@@ -198,8 +198,8 @@ export default function ValorantRankCard({ game, username, viewOnly = false, use
       Animated.sequence([
         Animated.timing(shimmerAnimation, {
           toValue: 1,
-          duration: 2500,
-          easing: Easing.linear,
+          duration: 3500,
+          easing: Easing.inOut(Easing.ease),
           useNativeDriver: true,
         }),
         Animated.timing(shimmerAnimation, {
@@ -665,47 +665,16 @@ export default function ValorantRankCard({ game, username, viewOnly = false, use
   // Render card content (shared between static card and modal card)
   const renderCardContent = () => (
     <LinearGradient
-      colors={showBack ? ['#5C141D', '#8B1E2B', '#DC3D4B'] : ['#DC3D4B', '#8B1E2B', '#5C141D']}
+      colors={showBack ? ['#B52D3A', '#D94452', '#EF5466'] : ['#EF5466', '#D94452', '#B52D3A']}
       start={{ x: 0, y: 0 }}
       end={{ x: 1, y: 1 }}
       style={styles.cardBackground}
     >
-      {/* Static shimmer/gloss effect - left */}
-      <LinearGradient
-        colors={[
-          'rgba(255,255,255,0.15)',
-          'rgba(255,255,255,0.05)',
-          'transparent',
-          'transparent',
-          'rgba(255,255,255,0.03)',
-        ]}
-        start={{ x: 0, y: 0 }}
-        end={{ x: 1, y: 1 }}
-        style={styles.staticShimmer}
-        pointerEvents="none"
-      />
-
-      {/* Static shimmer/gloss effect - right */}
-      <LinearGradient
-        colors={[
-          'rgba(255,255,255,0.12)',
-          'rgba(255,255,255,0.04)',
-          'transparent',
-          'transparent',
-        ]}
-        start={{ x: 1, y: 0 }}
-        end={{ x: 0, y: 1 }}
-        style={styles.staticShimmerRight}
-        pointerEvents="none"
-      />
-
-      {/* Animated shimmer effect overlay */}
+      {/* Animated metal sweep */}
       <Animated.View
         style={[
           styles.shimmerContainer,
-          {
-            transform: [{ translateX: shimmerTranslate }, { rotate: '25deg' }],
-          },
+          { transform: [{ translateX: shimmerTranslate }, { rotate: '20deg' }] },
         ]}
         pointerEvents="none"
       >
@@ -713,9 +682,9 @@ export default function ValorantRankCard({ game, username, viewOnly = false, use
           colors={[
             'transparent',
             'rgba(255,255,255,0.03)',
-            'rgba(255,255,255,0.08)',
-            'rgba(255,255,255,0.15)',
-            'rgba(255,255,255,0.08)',
+            'rgba(255,255,255,0.10)',
+            'rgba(255,255,255,0.20)',
+            'rgba(255,255,255,0.10)',
             'rgba(255,255,255,0.03)',
             'transparent',
           ]}
@@ -822,11 +791,6 @@ export default function ValorantRankCard({ game, username, viewOnly = false, use
           activeOpacity={isFocused ? 0.9 : 1}
           disabled={!isFocused && viewOnly}
         >
-          {/* 3D Shadow layers */}
-          <View style={styles.shadow3} />
-          <View style={styles.shadow2} />
-          <View style={styles.shadow1} />
-
         {/* Single animated card that swaps content at midpoint */}
         <Animated.View style={[styles.rankCard, animatedStyle]}>
           {renderCardContent()}
@@ -1109,6 +1073,8 @@ const styles = StyleSheet.create({
   rankCard: {
     borderRadius: 16,
     height: 220,
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.12)',
     overflow: 'hidden',
   },
   cardBackground: {
@@ -1141,7 +1107,7 @@ const styles = StyleSheet.create({
     zIndex: 10,
   },
   shimmerGradient: {
-    width: 120,
+    width: 200,
     height: '200%',
   },
   innerBorder: {
@@ -1151,8 +1117,8 @@ const styles = StyleSheet.create({
     right: 8,
     bottom: 8,
     borderRadius: 10,
-    borderWidth: 2,
-    borderColor: 'rgba(255,255,255,0.25)',
+    borderWidth: 1.5,
+    borderColor: 'rgba(255,255,255,0.15)',
   },
   cardFront: {
     flex: 1,
@@ -1219,7 +1185,7 @@ const styles = StyleSheet.create({
     left: '50%',
     marginTop: -125,
     marginLeft: -125,
-    opacity: 0.08,
+    opacity: 0.1,
   },
   // Back of card styles - Modern Techy
   cardBackContent: {

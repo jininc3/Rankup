@@ -39,9 +39,8 @@ export function getAllowedRanks(game: 'valorant' | 'league', currentRank: string
     return ranks;
   }
 
-  // ±1 division = ±3 ranks (e.g., Gold 1,2,3)
-  const DIVISION_SIZE = 3;
-  const RANGE = DIVISION_SIZE;
+  // ±1 tier: Valorant has 3 divisions per tier, League has 4
+  const RANGE = game === 'valorant' ? 3 : 4;
 
   const minIndex = Math.max(0, currentIndex - RANGE);
   const maxIndex = Math.min(ranks.length - 1, currentIndex + RANGE);

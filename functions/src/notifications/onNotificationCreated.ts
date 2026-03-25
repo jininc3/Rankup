@@ -70,6 +70,10 @@ export const onNotificationCreated = onDocumentCreated(
           body = `${notification.fromUsername} invited you to join "${notification.partyName}" for ${notification.game}!`;
           break;
 
+        case 'challenge_invite':
+          body = `${notification.fromUsername} challenged you in "${notification.partyName}"! Accept to compete.`;
+          break;
+
         case 'party_complete':
           if (notification.isWinner) {
             body = `🏆 Congratulations! You won "${notification.partyName}"! You ranked #${notification.finalRank}!`;

@@ -12,7 +12,7 @@ import PostViewerModal from '@/app/components/postViewerModal';
 
 interface Notification {
   id: string;
-  type: 'follow' | 'like' | 'comment' | 'tag' | 'party_invite' | 'party_complete' | 'party_ranking_change';
+  type: 'follow' | 'like' | 'comment' | 'tag' | 'party_invite' | 'party_complete' | 'party_ranking_change' | 'challenge_invite';
   fromUserId?: string; // Optional for system notifications like party_complete
   fromUsername?: string; // Optional for system notifications like party_complete
   fromUserAvatar?: string;
@@ -391,6 +391,87 @@ export default function NotificationsScreen() {
     }
   };
 
+  // Accept challenge invite
+  const handleAcceptChallenge = async (notification: Notification, event: any) => {
+    event.stopPropagation();
+    if (!currentUser?.id || !notification.partyId) return;
+
+    setAcceptingInvite(notification.id);
+    try {
+      const partyRef = doc(db, 'parties', notification.partyId);
+      const partySnapshot = await getDoc(partyRef);
+
+      if (!partySnapshot.exists()) {
+        Alert.alert('Error', 'This leaderboard no longer exists.');
+        await deleteNotification(notification.id);
+        setAcceptingInvite(null);
+        return;
+      }
+
+      const partyData = partySnapshot.data();
+
+      // Update challenge invite status to accepted
+      const updatedChallengeInvites = (partyData.challengeInvites || []).map((inv: any) =>
+        inv.userId === currentUser.id ? { ...inv, status: 'accepted' } : inv
+      );
+
+      // Add to challenge participants
+      const updatedParticipants = [...(partyData.challengeParticipants || [])];
+      if (!updatedParticipants.includes(currentUser.id)) {
+        updatedParticipants.push(currentUser.id);
+      }
+
+      await updateDoc(partyRef, {
+        challengeInvites: updatedChallengeInvites,
+        challengeParticipants: updatedParticipants,
+      });
+
+      await deleteNotification(notification.id);
+
+      // Navigate to leaderboard detail
+      router.push({
+        pathname: '/partyPages/leaderboardDetail',
+        params: {
+          name: notification.partyName,
+          id: notification.partyId,
+          game: notification.game,
+        },
+      });
+    } catch (error) {
+      console.error('Error accepting challenge:', error);
+      Alert.alert('Error', 'Failed to accept challenge.');
+    } finally {
+      setAcceptingInvite(null);
+    }
+  };
+
+  // Decline challenge invite
+  const handleDeclineChallenge = async (notification: Notification, event: any) => {
+    event.stopPropagation();
+    if (!currentUser?.id || !notification.partyId) return;
+
+    try {
+      const partyRef = doc(db, 'parties', notification.partyId);
+      const partySnapshot = await getDoc(partyRef);
+
+      if (partySnapshot.exists()) {
+        const partyData = partySnapshot.data();
+
+        const updatedChallengeInvites = (partyData.challengeInvites || []).map((inv: any) =>
+          inv.userId === currentUser.id ? { ...inv, status: 'rejected' } : inv
+        );
+
+        await updateDoc(partyRef, {
+          challengeInvites: updatedChallengeInvites,
+        });
+      }
+
+      await deleteNotification(notification.id);
+    } catch (error) {
+      console.error('Error declining challenge:', error);
+    }
+  };
+
   // Navigate to user profile
   const handleUserPress = (userId: string, event: any) => {
     event.stopPropagation();
@@ -405,7 +486,7 @@ export default function NotificationsScreen() {
     } else if ((notification.type === 'like' || notification.type === 'comment' || notification.type === 'tag') && notification.postId) {
       // Show post viewer for like/comment/tag notifications
       fetchAndShowPost(notification.postId);
-    } else if ((notification.type === 'party_invite' || notification.type === 'party_complete' || notification.type === 'party_ranking_change') && notification.partyId) {
+    } else if ((notification.type === 'party_invite' || notification.type === 'party_complete' || notification.type === 'party_ranking_change' || notification.type === 'challenge_invite') && notification.partyId) {
       // Fetch party to determine type, then navigate to appropriate page
       try {
         const partyRef = doc(db, 'parties', notification.partyId);
@@ -703,6 +784,7 @@ export default function NotificationsScreen() {
                               {notification.type === 'tag' && ' tagged you in a post'}
                               {notification.type === 'comment' && ' commented: '}
                               {notification.type === 'party_invite' && ` invited you to "${notification.partyName}"`}
+                              {notification.type === 'challenge_invite' && ` challenged you in "${notification.partyName}"`}
                               {notification.type === 'party_complete' && notification.isWinner && (
                                 <ThemedText style={styles.winnerText}>
                                   🏆 You won "{notification.partyName}"! Rank #{notification.finalRank}
@@ -739,8 +821,8 @@ export default function NotificationsScreen() {
                           </View>
                         </View>
 
-                        {/* Game tag for party invites */}
-                        {notification.type === 'party_invite' && notification.game && (
+                        {/* Game tag for party/challenge invites */}
+                        {(notification.type === 'party_invite' || notification.type === 'challenge_invite') && notification.game && (
                           <ThemedText style={styles.partyGameText}>{notification.game}</ThemedText>
                         )}
 
@@ -765,6 +847,30 @@ export default function NotificationsScreen() {
                               <TouchableOpacity
                                 style={styles.declineButton}
                                 onPress={(e) => handleDeclineInvite(notification, e)}
+                                activeOpacity={0.7}
+                                disabled={acceptingInvite === notification.id}
+                              >
+                                <IconSymbol size={20} name="xmark" color="#999" />
+                              </TouchableOpacity>
+                            </View>
+                          )}
+                          {notification.type === 'challenge_invite' && (
+                            <View style={styles.inviteActions}>
+                              <TouchableOpacity
+                                style={[styles.acceptButton, acceptingInvite === notification.id && styles.acceptButtonLoading]}
+                                onPress={(e) => handleAcceptChallenge(notification, e)}
+                                activeOpacity={0.7}
+                                disabled={acceptingInvite === notification.id}
+                              >
+                                {acceptingInvite === notification.id ? (
+                                  <ActivityIndicator size="small" color="#fff" />
+                                ) : (
+                                  <ThemedText style={styles.acceptButtonText}>Accept</ThemedText>
+                                )}
+                              </TouchableOpacity>
+                              <TouchableOpacity
+                                style={styles.declineButton}
+                                onPress={(e) => handleDeclineChallenge(notification, e)}
                                 activeOpacity={0.7}
                                 disabled={acceptingInvite === notification.id}
                               >

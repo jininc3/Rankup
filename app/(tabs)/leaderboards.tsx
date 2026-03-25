@@ -2,13 +2,13 @@ import LeaderboardCard from '@/app/components/leaderboardCard';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { IconSymbol } from '@/components/ui/icon-symbol';
-import { LeaderboardCardSkeleton } from '@/components/ui/Skeleton';
+import { LeaderboardCardSkeleton, LeaderboardsTabSkeleton } from '@/components/ui/Skeleton';
 import { db } from '@/config/firebase';
 import { useAuth } from '@/contexts/AuthContext';
 import { useRouter } from 'expo-router';
 import { collection, doc, getDoc, getDocs, onSnapshot, query, where } from 'firebase/firestore';
 import { useEffect, useState, useRef } from 'react';
-import { ActivityIndicator, Dimensions, Image, Modal, ScrollView, StyleSheet, TouchableOpacity, View } from 'react-native';
+import { Dimensions, Image, Modal, ScrollView, StyleSheet, TouchableOpacity, View } from 'react-native';
 
 // League of Legends rank icon mapping
 const LEAGUE_RANK_ICONS: { [key: string]: any } = {
@@ -187,6 +187,7 @@ export default function LeaderboardScreen() {
               partyIcon: data.partyIcon || null,
               partyId: data.partyId || docId,
               challengeStatus: data.challengeStatus || 'active',
+              challengeParticipants: data.challengeParticipants || [],
             };
           })
           .filter(Boolean);
@@ -253,7 +254,15 @@ export default function LeaderboardScreen() {
               };
             });
 
-            const memberStats = await Promise.all(memberStatsPromises);
+            const allMemberStats = await Promise.all(memberStatsPromises);
+
+            // When challenge is active, rank only among challenge participants
+            const challengeParticipants: string[] = partyData.challengeParticipants || [];
+            const isActiveChallenge = partyData.challengeStatus === 'active' && challengeParticipants.length > 0;
+
+            const memberStats = isActiveChallenge
+              ? allMemberStats.filter(m => challengeParticipants.includes(m.userId))
+              : allMemberStats;
 
             memberStats.sort((a, b) => {
               if (isLeague) {
@@ -585,48 +594,11 @@ export default function LeaderboardScreen() {
           showsVerticalScrollIndicator={false}
           contentContainerStyle={styles.pageContent}
         >
-          {/* Game Filters */}
-          <View style={styles.gameFilterContainer}>
-            <TouchableOpacity
-              style={[
-                styles.gameFilterButton,
-                selectedGames.league && styles.gameFilterButtonSelected,
-              ]}
-              onPress={() => toggleGameFilter('league')}
-              activeOpacity={0.7}
-            >
-              <Image
-                source={require('@/assets/images/lol.png')}
-                style={[
-                  styles.gameFilterLogo,
-                  !selectedGames.league && styles.gameFilterLogoInactive,
-                ]}
-                resizeMode="contain"
-              />
-            </TouchableOpacity>
-            <TouchableOpacity
-              style={[
-                styles.gameFilterButton,
-                selectedGames.valorant && styles.gameFilterButtonSelected,
-              ]}
-              onPress={() => toggleGameFilter('valorant')}
-              activeOpacity={0.7}
-            >
-              <Image
-                source={require('@/assets/images/valorant-red.png')}
-                style={[
-                  styles.gameFilterLogo,
-                  !selectedGames.valorant && styles.gameFilterLogoInactive,
-                ]}
-                resizeMode="contain"
-              />
-            </TouchableOpacity>
-          </View>
+          {/* Spacer where game filters used to be */}
+          <View style={{ height: 10 }} />
 
           {mutualLoading ? (
-            <View style={styles.mutualLoadingContainer}>
-              <ActivityIndicator size="large" color="#fff" />
-            </View>
+            <LeaderboardsTabSkeleton />
           ) : (selectedGames.league ? leaguePlayers.length : 0) + (selectedGames.valorant ? valorantPlayers.length : 0) === 0 ? (
             <View style={styles.emptyState}>
               <ThemedText style={styles.emptyStateText}>No friends to rank</ThemedText>
@@ -859,10 +831,6 @@ const styles = StyleSheet.create({
     opacity: 0.35,
   },
   // Mutual leaderboard styles
-  mutualLoadingContainer: {
-    paddingVertical: 60,
-    alignItems: 'center',
-  },
   mutualSection: {
     marginBottom: 20,
   },

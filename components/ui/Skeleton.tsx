@@ -386,6 +386,140 @@ export const LeaderboardCardSkeleton: React.FC = () => {
   );
 };
 
+// Mutual leaderboard skeleton - matches the leaderboards tab table structure
+// Renders a game section with header, column headers, and player rows with shimmer
+export const MutualLeaderboardSkeleton: React.FC<{ rowCount?: number }> = ({ rowCount = 4 }) => {
+  return (
+    <View style={mutualSkeletonStyles.section}>
+      {/* Game header: logo + title */}
+      <View style={mutualSkeletonStyles.sectionHeader}>
+        <Skeleton width={24} height={24} borderRadius={12} />
+        <Skeleton width={130} height={16} borderRadius={4} />
+      </View>
+
+      {/* Column headers */}
+      <View style={mutualSkeletonStyles.columnHeaders}>
+        <Skeleton width={30} height={10} borderRadius={3} />
+        <View style={{ flex: 1, paddingLeft: 40 }}>
+          <Skeleton width={50} height={10} borderRadius={3} />
+        </View>
+        <Skeleton width={80} height={10} borderRadius={3} />
+      </View>
+
+      {/* Player rows */}
+      <View style={mutualSkeletonStyles.playerList}>
+        {Array.from({ length: rowCount }).map((_, index) => (
+          <View
+            key={index}
+            style={[
+              mutualSkeletonStyles.playerRow,
+              index % 2 === 0
+                ? mutualSkeletonStyles.evenRow
+                : mutualSkeletonStyles.oddRow,
+              { borderLeftWidth: 4, borderLeftColor: index === 0 ? '#FFD700' : index === 1 ? '#C0C0C0' : index === 2 ? '#CD7F32' : '#333' },
+            ]}
+          >
+            {/* Rank number */}
+            <View style={mutualSkeletonStyles.rankContainer}>
+              <Skeleton width={16} height={14} borderRadius={3} />
+            </View>
+
+            {/* Player info: avatar + name */}
+            <View style={mutualSkeletonStyles.playerInfo}>
+              <Skeleton width={32} height={32} borderRadius={6} />
+              <Skeleton width={80 + Math.random() * 40} height={14} borderRadius={4} />
+            </View>
+
+            {/* Rank icon + text */}
+            <View style={mutualSkeletonStyles.rankInfoContainer}>
+              <Skeleton width={26} height={26} borderRadius={13} />
+              <View style={mutualSkeletonStyles.rankTextContainer}>
+                <Skeleton width={55} height={11} borderRadius={3} />
+                <Skeleton width={30} height={10} borderRadius={3} style={{ marginTop: 3 }} />
+              </View>
+            </View>
+          </View>
+        ))}
+      </View>
+    </View>
+  );
+};
+
+// Full leaderboards tab skeleton - two game sections
+export const LeaderboardsTabSkeleton: React.FC = () => {
+  return (
+    <View>
+      <MutualLeaderboardSkeleton rowCount={4} />
+      <MutualLeaderboardSkeleton rowCount={3} />
+    </View>
+  );
+};
+
+const mutualSkeletonStyles = StyleSheet.create({
+  section: {
+    marginBottom: 20,
+  },
+  sectionHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    marginBottom: 10,
+  },
+  columnHeaders: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+    backgroundColor: '#1a1a1a',
+    borderBottomWidth: 1,
+    borderBottomColor: '#252525',
+    borderTopLeftRadius: 12,
+    borderTopRightRadius: 12,
+  },
+  playerList: {
+    borderBottomLeftRadius: 12,
+    borderBottomRightRadius: 12,
+    overflow: 'hidden',
+  },
+  playerRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    paddingVertical: 10,
+    paddingLeft: 12,
+    paddingRight: 16,
+    borderBottomWidth: 1,
+    borderBottomColor: '#1a1a1a',
+  },
+  evenRow: {
+    backgroundColor: '#141414',
+  },
+  oddRow: {
+    backgroundColor: '#1a1a1a',
+  },
+  rankContainer: {
+    width: 40,
+    alignItems: 'flex-start',
+  },
+  playerInfo: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+  },
+  rankInfoContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    width: 120,
+    justifyContent: 'flex-end',
+  },
+  rankTextContainer: {
+    alignItems: 'flex-end',
+  },
+});
+
 // Party styles - EXACT copy from partyCards.tsx and leaderboardCard.tsx
 const partyStyles = StyleSheet.create({
   // Container - matches partyCards.tsx container

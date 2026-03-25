@@ -84,8 +84,8 @@ export default function LeagueRankCard({ game, username, viewOnly = false, userI
       Animated.sequence([
         Animated.timing(shimmerAnimation, {
           toValue: 1,
-          duration: 2500,
-          easing: Easing.linear,
+          duration: 3500,
+          easing: Easing.inOut(Easing.ease),
           useNativeDriver: true,
         }),
         Animated.timing(shimmerAnimation, {
@@ -484,29 +484,13 @@ export default function LeagueRankCard({ game, username, viewOnly = false, userI
       end={{ x: 1, y: 1 }}
       style={styles.cardBackground}
     >
-      {/* Static shimmer effects */}
-      <LinearGradient
-        colors={['rgba(255,255,255,0.15)', 'rgba(255,255,255,0.05)', 'transparent', 'transparent', 'rgba(255,255,255,0.03)']}
-        start={{ x: 0, y: 0 }}
-        end={{ x: 1, y: 1 }}
-        style={styles.staticShimmer}
-        pointerEvents="none"
-      />
-      <LinearGradient
-        colors={['rgba(255,255,255,0.12)', 'rgba(255,255,255,0.04)', 'transparent', 'transparent']}
-        start={{ x: 1, y: 0 }}
-        end={{ x: 0, y: 1 }}
-        style={styles.staticShimmerRight}
-        pointerEvents="none"
-      />
-
-      {/* Animated shimmer */}
+      {/* Animated metal sweep */}
       <Animated.View
-        style={[styles.shimmerContainer, { transform: [{ translateX: shimmerTranslate }, { rotate: '25deg' }] }]}
+        style={[styles.shimmerContainer, { transform: [{ translateX: shimmerTranslate }, { rotate: '20deg' }] }]}
         pointerEvents="none"
       >
         <LinearGradient
-          colors={['transparent', 'rgba(255,255,255,0.03)', 'rgba(255,255,255,0.08)', 'rgba(255,255,255,0.15)', 'rgba(255,255,255,0.08)', 'rgba(255,255,255,0.03)', 'transparent']}
+          colors={['transparent', 'rgba(255,255,255,0.03)', 'rgba(255,255,255,0.10)', 'rgba(255,255,255,0.20)', 'rgba(255,255,255,0.10)', 'rgba(255,255,255,0.03)', 'transparent']}
           start={{ x: 0, y: 0.5 }}
           end={{ x: 1, y: 0.5 }}
           style={styles.shimmerGradient}
@@ -593,9 +577,6 @@ export default function LeagueRankCard({ game, username, viewOnly = false, userI
           activeOpacity={isFocused ? 0.9 : 1}
           disabled={!isFocused && viewOnly}
         >
-          <View style={styles.shadow3} />
-          <View style={styles.shadow2} />
-          <View style={styles.shadow1} />
           <Animated.View style={[styles.rankCard, animatedStyle]}>
             {renderCardContent()}
           </Animated.View>
@@ -735,13 +716,13 @@ const styles = StyleSheet.create({
   shadow3: { position: 'absolute', top: 10, left: -10, right: 14, bottom: -10, backgroundColor: '#000', borderRadius: 18, opacity: 0.2 },
   shadow2: { position: 'absolute', top: 6, left: -6, right: 10, bottom: -6, backgroundColor: '#000', borderRadius: 17, opacity: 0.25 },
   shadow1: { position: 'absolute', top: 3, left: -3, right: 5, bottom: -3, backgroundColor: '#000', borderRadius: 16, opacity: 0.3 },
-  rankCard: { borderRadius: 16, height: 220, overflow: 'hidden' },
+  rankCard: { borderRadius: 16, height: 220, borderWidth: 1, borderColor: 'rgba(255,255,255,0.12)', overflow: 'hidden' },
   cardBackground: { flex: 1, borderRadius: 12, overflow: 'hidden' },
   staticShimmer: { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, zIndex: 5 },
   staticShimmerRight: { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, zIndex: 6 },
   shimmerContainer: { position: 'absolute', top: -100, left: -100, right: -100, bottom: -100, zIndex: 10 },
-  shimmerGradient: { width: 120, height: '200%' },
-  innerBorder: { position: 'absolute', top: 8, left: 8, right: 8, bottom: 8, borderRadius: 10, borderWidth: 2, borderColor: 'rgba(255,255,255,0.25)' },
+  shimmerGradient: { width: 200, height: '200%' },
+  innerBorder: { position: 'absolute', top: 8, left: 8, right: 8, bottom: 8, borderRadius: 10, borderWidth: 1.5, borderColor: 'rgba(255,255,255,0.15)' },
   cardFront: { flex: 1, justifyContent: 'center', alignItems: 'center' },
   glassOverlay: { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, zIndex: 1 },
   cornerAccentTL: { position: 'absolute', top: 16, left: 16, width: 24, height: 24, borderTopWidth: 2, borderLeftWidth: 2, borderColor: 'rgba(255,255,255,0.3)', borderTopLeftRadius: 4 },

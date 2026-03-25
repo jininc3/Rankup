@@ -1,6 +1,7 @@
 import { ThemedText } from '@/components/themed-text';
 import { IconSymbol } from '@/components/ui/icon-symbol';
 import { Image, StyleSheet, TouchableOpacity, View } from 'react-native';
+import { LinearGradient } from 'expo-linear-gradient';
 
 // Game logo mapping
 const GAME_LOGOS: { [key: string]: any } = {
@@ -26,7 +27,9 @@ interface Leaderboard {
   coverPhoto?: string;
   partyIcon?: string;
   challengeType?: 'climbing' | 'rank';
+  challengeStatus?: 'none' | 'pending' | 'active';
   memberDetails?: any[];
+  challengeParticipants?: string[];
 }
 
 interface LeaderboardCardProps {
@@ -101,6 +104,12 @@ export default function LeaderboardCard({ leaderboard, onPress }: LeaderboardCar
       onPress={() => onPress(leaderboard)}
       style={styles.container}
     >
+      <LinearGradient
+        colors={['transparent', 'transparent', 'transparent']}
+        start={{ x: 0, y: 0 }}
+        end={{ x: 1, y: 1 }}
+        style={styles.cardGradient}
+      >
       {/* Header Section */}
       <View style={styles.headerSection}>
         {leaderboard.partyIcon ? (
@@ -127,12 +136,15 @@ export default function LeaderboardCard({ leaderboard, onPress }: LeaderboardCar
             {leaderboard.name.toUpperCase()}
           </ThemedText>
           <View style={styles.metaRow}>
-            <ThemedText style={styles.metaText}>{getChallengeTypeText()}</ThemedText>
-            <View style={styles.metaDot} />
-            <ThemedText style={styles.metaText}>
-              {leaderboard.members}/{maxMembers}
-            </ThemedText>
-            {daysInfo && (
+            {leaderboard.challengeStatus === 'active' && (
+              <>
+                <View style={[styles.activeDot, { backgroundColor: '#FFD700' }]} />
+                <ThemedText style={[styles.activeText, { color: '#FFD700' }]}>CHALLENGE</ThemedText>
+                <View style={styles.metaDot} />
+              </>
+            )}
+            <ThemedText style={styles.metaText}>{leaderboard.game}</ThemedText>
+            {daysInfo && leaderboard.challengeStatus === 'active' && (
               <>
                 <View style={styles.metaDot} />
                 <ThemedText style={styles.metaText}>{daysInfo.daysLeft}d left</ThemedText>
@@ -176,12 +188,8 @@ export default function LeaderboardCard({ leaderboard, onPress }: LeaderboardCar
             {leaderboard.members} player{leaderboard.members !== 1 ? 's' : ''}
           </ThemedText>
         </View>
-        {leaderboard.userRank && (
-          <View style={styles.yourRankBadge}>
-            <ThemedText style={styles.yourRankText}>#{leaderboard.userRank}</ThemedText>
-          </View>
-        )}
       </View>
+      </LinearGradient>
     </TouchableOpacity>
   );
 }
@@ -189,9 +197,19 @@ export default function LeaderboardCard({ leaderboard, onPress }: LeaderboardCar
 const styles = StyleSheet.create({
   container: {
     marginBottom: 16,
-    backgroundColor: '#141414',
-    borderRadius: 12,
+    backgroundColor: '#151513',
+    borderRadius: 14,
+    borderWidth: 1,
+    borderColor: '#222',
     overflow: 'hidden',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.12,
+    shadowRadius: 8,
+    elevation: 6,
+  },
+  cardGradient: {
+    flex: 1,
   },
   // Header
   headerSection: {
@@ -201,33 +219,37 @@ const styles = StyleSheet.create({
     gap: 12,
   },
   leaderboardIcon: {
-    width: 44,
-    height: 44,
-    borderRadius: 10,
-    backgroundColor: '#2a2a2a',
+    width: 46,
+    height: 46,
+    borderRadius: 12,
+    backgroundColor: '#222',
+    borderWidth: 1,
+    borderColor: 'rgba(160, 136, 69, 0.2)',
   },
   iconPlaceholder: {
-    width: 44,
-    height: 44,
-    borderRadius: 10,
-    backgroundColor: '#2a2a2a',
+    width: 46,
+    height: 46,
+    borderRadius: 12,
+    backgroundColor: '#222',
+    borderWidth: 1,
+    borderColor: 'rgba(160, 136, 69, 0.2)',
     alignItems: 'center',
     justifyContent: 'center',
   },
   iconPlaceholderText: {
     fontSize: 18,
     fontWeight: '700',
-    color: '#666',
+    color: '#a08845',
   },
   headerInfo: {
     flex: 1,
   },
   name: {
-    fontSize: 15,
+    fontSize: 17,
     fontWeight: '700',
-    color: '#fff',
+    color: '#eee',
     letterSpacing: 0.3,
-    marginBottom: 3,
+    marginBottom: 4,
   },
   metaRow: {
     flexDirection: 'row',
@@ -235,8 +257,20 @@ const styles = StyleSheet.create({
     gap: 6,
   },
   metaText: {
-    fontSize: 12,
+    fontSize: 13,
     color: '#666',
+  },
+  activeDot: {
+    width: 6,
+    height: 6,
+    borderRadius: 3,
+    backgroundColor: '#4ade80',
+  },
+  activeText: {
+    fontSize: 13,
+    fontWeight: '700',
+    color: '#4ade80',
+    letterSpacing: 0.5,
   },
   metaDot: {
     width: 3,
@@ -250,7 +284,7 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     alignItems: 'center',
     paddingHorizontal: 14,
-    paddingVertical: 12,
+    paddingVertical: 16,
     backgroundColor: '#1a1a1a',
     borderTopWidth: 1,
     borderTopColor: '#222',
@@ -273,9 +307,9 @@ const styles = StyleSheet.create({
     zIndex: 10,
   },
   miniAvatar: {
-    width: 26,
-    height: 26,
-    borderRadius: 13,
+    width: 34,
+    height: 34,
+    borderRadius: 17,
     borderWidth: 2,
     borderColor: '#1a1a1a',
     overflow: 'hidden',
@@ -292,12 +326,13 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   miniAvatarText: {
-    fontSize: 10,
+    fontSize: 12,
     fontWeight: '600',
     color: '#888',
   },
   summaryText: {
-    fontSize: 12,
+    fontSize: 14,
+    fontWeight: '500',
     color: '#666',
   },
   yourRankBadge: {

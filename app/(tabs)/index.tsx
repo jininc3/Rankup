@@ -887,18 +887,36 @@ export default function HomeScreen() {
           />
         }
       >
-        {/* Game Filter Button */}
-        <TouchableOpacity
-          style={styles.filterButton}
-          onPress={() => setShowFilterModal(true)}
-          activeOpacity={0.7}
-        >
-          <IconSymbol size={16} name="line.3.horizontal.decrease" color={selectedGameFilter ? '#fff' : '#555'} />
-          <ThemedText style={[styles.gameFilterTabText, selectedGameFilter && styles.gameFilterTabTextActive]}>
-            {selectedGameFilter === 'valorant' ? 'VALORANT' : selectedGameFilter === 'league' ? 'LEAGUE' : 'ALL GAMES'}
-          </ThemedText>
-          <IconSymbol size={12} name="chevron.down" color={selectedGameFilter ? '#fff' : '#555'} />
-        </TouchableOpacity>
+        {/* Game Filter Buttons */}
+        <View style={styles.gameFilterRow}>
+          <TouchableOpacity
+            style={[styles.gameFilterBtn, selectedGameFilter === null && styles.gameFilterBtnActive]}
+            onPress={() => setSelectedGameFilter(null)}
+            activeOpacity={0.7}
+          >
+            <ThemedText style={[styles.gameFilterBtnText, selectedGameFilter === null && styles.gameFilterBtnTextActive]}>
+              ALL GAMES
+            </ThemedText>
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={[styles.gameFilterBtn, selectedGameFilter === 'valorant' && styles.gameFilterBtnActive]}
+            onPress={() => setSelectedGameFilter('valorant')}
+            activeOpacity={0.7}
+          >
+            <ThemedText style={[styles.gameFilterBtnText, selectedGameFilter === 'valorant' && styles.gameFilterBtnTextActive]}>
+              VALORANT
+            </ThemedText>
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={[styles.gameFilterBtn, selectedGameFilter === 'league' && styles.gameFilterBtnActive]}
+            onPress={() => setSelectedGameFilter('league')}
+            activeOpacity={0.7}
+          >
+            <ThemedText style={[styles.gameFilterBtnText, selectedGameFilter === 'league' && styles.gameFilterBtnTextActive]}>
+              LEAGUE
+            </ThemedText>
+          </TouchableOpacity>
+        </View>
 
         {loading ? (
           <FeedSkeleton count={3} />
@@ -1147,6 +1165,31 @@ const styles = StyleSheet.create({
     marginTop: 10,
     marginBottom: 6,
   },
+  gameFilterRow: {
+    flexDirection: 'row',
+    gap: 8,
+    marginHorizontal: 20,
+    marginTop: 10,
+    marginBottom: 6,
+  },
+  gameFilterBtn: {
+    paddingVertical: 5,
+    paddingHorizontal: 10,
+    borderRadius: 6,
+    backgroundColor: '#1a1a1a',
+  },
+  gameFilterBtnActive: {
+    backgroundColor: '#A08845',
+  },
+  gameFilterBtnText: {
+    fontSize: 10,
+    fontWeight: '600',
+    color: '#555',
+    letterSpacing: 0.5,
+  },
+  gameFilterBtnTextActive: {
+    color: '#fff',
+  },
   gameFilterTabText: {
     fontSize: 12,
     fontWeight: '600',
@@ -1392,8 +1435,8 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     borderRadius: 30,
-    backgroundColor: '#2c2f33',
-    borderWidth: 1,
-    borderColor: '#424549',
+    backgroundColor: '#A08845',
+    borderWidth: 0,
+    borderColor: 'transparent',
   },
 });

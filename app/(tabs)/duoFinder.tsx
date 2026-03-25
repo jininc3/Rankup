@@ -1005,7 +1005,7 @@ export default function DuoFinderScreen() {
                     activeOpacity={0.7}
                     disabled={loadingDuoCards}
                   >
-                    <IconSymbol size={14} name="arrow.clockwise" color={loadingDuoCards ? '#444' : '#888'} />
+                    <IconSymbol size={14} name="arrow.clockwise" color={loadingDuoCards ? '#444' : '#A08845'} />
                   </TouchableOpacity>
                 </View>
               </View>
@@ -1480,7 +1480,7 @@ const styles = StyleSheet.create({
   playerCount: {
     fontSize: 12,
     fontWeight: '500',
-    color: '#888',
+    color: '#A08845',
   },
   // My Card Content
   myCardContent: {
@@ -1587,24 +1587,21 @@ const styles = StyleSheet.create({
     overflow: 'hidden',
   },
   filterTextButton: {
-    paddingVertical: 5,
-    paddingHorizontal: 12,
-    borderRadius: 8,
-    backgroundColor: '#222',
-    borderWidth: 1,
-    borderColor: '#333',
+    paddingVertical: 3,
+    paddingHorizontal: 8,
+    borderRadius: 6,
+    backgroundColor: '#A08845',
   },
   filterTextButtonActive: {
-    backgroundColor: 'rgba(196, 39, 67, 0.15)',
-    borderColor: '#c42743',
+    backgroundColor: '#A08845',
   },
   filterTextLabel: {
-    fontSize: 12,
+    fontSize: 10,
     fontWeight: '600',
-    color: '#888',
+    color: '#fff',
   },
   filterTextLabelActive: {
-    color: '#c42743',
+    color: '#fff',
   },
   headerRightSection: {
     flexDirection: 'row',
@@ -1615,7 +1612,7 @@ const styles = StyleSheet.create({
     width: 28,
     height: 28,
     borderRadius: 14,
-    backgroundColor: '#1a1a1a',
+    backgroundColor: 'rgba(160, 136, 69, 0.1)',
     alignItems: 'center',
     justifyContent: 'center',
   },

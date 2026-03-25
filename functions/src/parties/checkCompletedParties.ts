@@ -59,10 +59,14 @@ export const checkCompletedPartiesScheduled = onSchedule(
           try {
             await notifyPartyCompletion(partyDoc.id, partyData);
 
-            // Mark that we sent the notification
+            // Mark that we sent the notification and reset challenge for reuse
             await partyDoc.ref.update({
               completionNotificationSent: true,
               completionNotificationSentAt: FieldValue.serverTimestamp(),
+              challengeStatus: 'none',
+              challengeInvites: [],
+              challengeParticipants: [],
+              startingStats: [],
             });
           } catch (error) {
             console.error(`Error processing party ${partyId}:`, error);

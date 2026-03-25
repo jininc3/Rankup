@@ -51,8 +51,8 @@ export default function TftRankCard({ game, username, viewOnly = false, userId }
       Animated.sequence([
         Animated.timing(shimmerAnimation, {
           toValue: 1,
-          duration: 2500,
-          easing: Easing.linear,
+          duration: 3500,
+          easing: Easing.inOut(Easing.ease),
           useNativeDriver: true,
         }),
         Animated.timing(shimmerAnimation, {
@@ -95,11 +95,6 @@ export default function TftRankCard({ game, username, viewOnly = false, userId }
 
   return (
     <View style={styles.cardOuter}>
-      {/* 3D Shadow layers - light from right side */}
-      <View style={styles.shadow3} />
-      <View style={styles.shadow2} />
-      <View style={styles.shadow1} />
-
       <CardWrapper
         style={styles.rankCard}
         {...(!viewOnly && { onPress: handlePress, activeOpacity: 0.9 })}
@@ -110,42 +105,11 @@ export default function TftRankCard({ game, username, viewOnly = false, userId }
           end={{ x: 1, y: 1 }}
           style={styles.cardBackground}
         >
-        {/* Static shimmer/gloss effect - left */}
-        <LinearGradient
-          colors={[
-            'rgba(255,255,255,0.15)',
-            'rgba(255,255,255,0.05)',
-            'transparent',
-            'transparent',
-            'rgba(255,255,255,0.03)',
-          ]}
-          start={{ x: 0, y: 0 }}
-          end={{ x: 1, y: 1 }}
-          style={styles.staticShimmer}
-          pointerEvents="none"
-        />
-
-        {/* Static shimmer/gloss effect - right */}
-        <LinearGradient
-          colors={[
-            'rgba(255,255,255,0.12)',
-            'rgba(255,255,255,0.04)',
-            'transparent',
-            'transparent',
-          ]}
-          start={{ x: 1, y: 0 }}
-          end={{ x: 0, y: 1 }}
-          style={styles.staticShimmerRight}
-          pointerEvents="none"
-        />
-
-        {/* Animated shimmer effect overlay */}
+        {/* Animated metal sweep */}
         <Animated.View
           style={[
             styles.shimmerContainer,
-            {
-              transform: [{ translateX: shimmerTranslate }, { rotate: '25deg' }],
-            },
+            { transform: [{ translateX: shimmerTranslate }, { rotate: '20deg' }] },
           ]}
           pointerEvents="none"
         >
@@ -153,9 +117,9 @@ export default function TftRankCard({ game, username, viewOnly = false, userId }
             colors={[
               'transparent',
               'rgba(255,255,255,0.03)',
-              'rgba(255,255,255,0.08)',
-              'rgba(255,255,255,0.15)',
-              'rgba(255,255,255,0.08)',
+              'rgba(255,255,255,0.10)',
+              'rgba(255,255,255,0.20)',
+              'rgba(255,255,255,0.10)',
               'rgba(255,255,255,0.03)',
               'transparent',
             ]}
@@ -286,7 +250,7 @@ const styles = StyleSheet.create({
     zIndex: 10,
   },
   shimmerGradient: {
-    width: 120,
+    width: 200,
     height: '200%',
   },
   innerBorder: {
@@ -296,8 +260,8 @@ const styles = StyleSheet.create({
     right: 4,
     bottom: 4,
     borderRadius: 21,
-    borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.08)',
+    borderWidth: 1.5,
+    borderColor: 'rgba(255,255,255,0.15)',
   },
   backgroundLogo: {
     position: 'absolute',

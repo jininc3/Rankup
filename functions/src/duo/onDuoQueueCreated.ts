@@ -7,6 +7,7 @@
 import * as admin from "firebase-admin";
 import {onDocumentCreated} from "firebase-functions/v2/firestore";
 import {logger} from "firebase-functions/v2";
+import {getRankDistance, getTierRange} from "../utils/rankMatcher";
 
 export const onDuoQueueCreated = onDocumentCreated(
   "duoQueue/{docId}",
@@ -35,10 +36,25 @@ export const onDuoQueueCreated = onDocumentCreated(
 
       const candidatesSnapshot = await candidatesQuery.get();
 
-      // Filter out the current user
-      const candidate = candidatesSnapshot.docs.find(
-        (doc) => doc.data().userId !== newUserId
-      );
+      // Filter out self, filter by rank proximity, sort by closest rank
+      const currentRank = newEntry.currentRank || null;
+      const tierRange = getTierRange(game);
+
+      const candidates = candidatesSnapshot.docs
+        .filter((doc) => doc.data().userId !== newUserId)
+        .filter((doc) => {
+          const candidateRank = doc.data().currentRank || null;
+          // If either user has no rank, allow the match
+          if (!currentRank || !candidateRank) return true;
+          return getRankDistance(game, currentRank, candidateRank) <= tierRange;
+        })
+        .sort((a, b) => {
+          const distA = getRankDistance(game, currentRank, a.data().currentRank);
+          const distB = getRankDistance(game, currentRank, b.data().currentRank);
+          return distA - distB;
+        });
+
+      const candidate = candidates[0] || null;
 
       if (!candidate) {
         logger.info(`No match found for ${newUserId}, staying in queue`);
