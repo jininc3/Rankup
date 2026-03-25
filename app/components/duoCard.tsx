@@ -110,12 +110,15 @@ interface Duo {
   gamesPlayed: number;
   game?: string;
   avatar?: string;
+  inGameIcon?: string;
+  inGameName?: string;
 }
 
 interface DuoCardProps {
   duo: Duo;
   onPress?: () => void;
   onMessage?: () => void;
+  onViewProfile?: () => void;
 }
 
 // Helper to get rank icon
@@ -135,7 +138,7 @@ const getRankIcon = (rank: string, game: string) => {
   return VALORANT_RANK_ICONS[tier] || VALORANT_RANK_ICONS.unranked;
 };
 
-export default function DuoCard({ duo, onPress, onMessage }: DuoCardProps) {
+export default function DuoCard({ duo, onPress, onMessage, onViewProfile }: DuoCardProps) {
   const game = duo.game || 'Valorant';
   const isLeague = game === 'League' || game === 'League of Legends';
   const gameLogo = GAME_LOGOS[game];
@@ -156,22 +159,22 @@ export default function DuoCard({ duo, onPress, onMessage }: DuoCardProps) {
       onPress={onPress}
       activeOpacity={0.7}
     >
-      {/* Header Row: Avatar + Username | Game Logo */}
+      {/* Header Row: In-Game Icon + In-Game Name | Game Logo */}
       <View style={styles.header}>
         <View style={styles.userSection}>
-          {/* Profile Icon */}
           <View style={styles.avatarContainer}>
-            {duo.avatar && duo.avatar.startsWith('http') ? (
+            {duo.inGameIcon ? (
+              <Image source={{ uri: duo.inGameIcon }} style={styles.avatar} />
+            ) : duo.avatar && duo.avatar.startsWith('http') ? (
               <Image source={{ uri: duo.avatar }} style={styles.avatar} />
             ) : (
               <ThemedText style={styles.avatarText}>
-                {duo.username[0].toUpperCase()}
+                {(duo.inGameName || duo.username)[0].toUpperCase()}
               </ThemedText>
             )}
           </View>
-          {/* Username */}
           <ThemedText style={styles.username} numberOfLines={1}>
-            {duo.username}
+            {duo.inGameName || duo.username}
           </ThemedText>
         </View>
 
@@ -236,12 +239,30 @@ export default function DuoCard({ duo, onPress, onMessage }: DuoCardProps) {
         </View>
       </View>
 
-      {/* Message Button */}
-      {onMessage && (
-        <TouchableOpacity style={styles.messageButton} onPress={onMessage} activeOpacity={0.7}>
-          <IconSymbol size={14} name="bubble.left.fill" color="#888" />
-          <ThemedText style={styles.messageButtonText}>Message</ThemedText>
-        </TouchableOpacity>
+      {/* Action Buttons */}
+      {(onMessage || onViewProfile) && (
+        <View style={styles.actionRow}>
+          {onViewProfile && (
+            <TouchableOpacity style={[styles.actionButton, onMessage && styles.actionButtonHalf]} onPress={onViewProfile} activeOpacity={0.7}>
+              <View style={styles.profileIconSmall}>
+                {duo.avatar && duo.avatar.startsWith('http') ? (
+                  <Image source={{ uri: duo.avatar }} style={styles.profileIconImage} />
+                ) : (
+                  <ThemedText style={styles.profileIconText}>
+                    {duo.username[0].toUpperCase()}
+                  </ThemedText>
+                )}
+              </View>
+              <ThemedText style={styles.actionButtonText}>View Profile</ThemedText>
+            </TouchableOpacity>
+          )}
+          {onMessage && (
+            <TouchableOpacity style={[styles.actionButton, onViewProfile && styles.actionButtonHalf]} onPress={onMessage} activeOpacity={0.7}>
+              <IconSymbol size={14} name="bubble.left.fill" color="#888" />
+              <ThemedText style={styles.actionButtonText}>Message</ThemedText>
+            </TouchableOpacity>
+          )}
+        </View>
       )}
     </TouchableOpacity>
   );
@@ -297,7 +318,12 @@ const styles = StyleSheet.create({
     color: '#fff',
     flex: 1,
   },
-  messageButton: {
+  actionRow: {
+    flexDirection: 'row',
+    gap: 8,
+    marginTop: 10,
+  },
+  actionButton: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
@@ -305,12 +331,33 @@ const styles = StyleSheet.create({
     paddingVertical: 10,
     backgroundColor: '#141414',
     borderRadius: 10,
-    marginTop: 10,
+    flex: 1,
   },
-  messageButtonText: {
+  actionButtonHalf: {
+    flex: 1,
+  },
+  actionButtonText: {
     fontSize: 12,
     fontWeight: '600',
     color: '#888',
+  },
+  profileIconSmall: {
+    width: 18,
+    height: 18,
+    borderRadius: 9,
+    backgroundColor: '#252525',
+    alignItems: 'center',
+    justifyContent: 'center',
+    overflow: 'hidden',
+  },
+  profileIconImage: {
+    width: '100%',
+    height: '100%',
+  },
+  profileIconText: {
+    fontSize: 9,
+    fontWeight: '600',
+    color: '#666',
   },
   gameLogo: {
     width: 24,

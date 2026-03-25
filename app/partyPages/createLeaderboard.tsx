@@ -2,7 +2,7 @@ import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { IconSymbol } from '@/components/ui/icon-symbol';
 import { useRouter } from 'expo-router';
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect } from 'react';
 import {
   ScrollView,
   StyleSheet,
@@ -12,22 +12,16 @@ import {
   Alert,
   ActivityIndicator,
   Image,
-  Dimensions,
   Platform,
   Modal,
-  NativeSyntheticEvent,
-  NativeScrollEvent,
   KeyboardAvoidingView,
 } from 'react-native';
-import DateTimePicker from '@react-native-community/datetimepicker';
 import * as Clipboard2 from 'expo-clipboard';
 import * as ImagePicker from 'expo-image-picker';
 import { useAuth } from '@/contexts/AuthContext';
 import { db } from '@/config/firebase';
 import { collection, getDocs, doc, getDoc, addDoc, serverTimestamp, updateDoc } from 'firebase/firestore';
 import { uploadPartyIcon, uploadPartyCoverPhoto } from '@/services/storageService';
-
-const { width: SCREEN_WIDTH } = Dimensions.get('window');
 
 // Available games
 const AVAILABLE_GAMES = [
@@ -53,24 +47,6 @@ export default function CreateLeaderboardScreen() {
   const router = useRouter();
   const { user } = useAuth();
 
-  const tabScrollRef = useRef<ScrollView>(null);
-
-  const formatDate = (date: Date) => {
-    const month = String(date.getMonth() + 1).padStart(2, '0');
-    const day = String(date.getDate()).padStart(2, '0');
-    const year = date.getFullYear();
-    return `${month}/${day}/${year}`;
-  };
-
-  const getDefaultDates = () => {
-    const today = new Date();
-    const thirtyDaysLater = new Date(today);
-    thirtyDaysLater.setDate(today.getDate() + 30);
-    return { start: today, end: thirtyDaysLater };
-  };
-
-  const defaultDates = getDefaultDates();
-
   const [selectedGame, setSelectedGame] = useState<typeof AVAILABLE_GAMES[0] | null>(null);
   const [leaderboardName, setLeaderboardName] = useState('');
   const [inviteCode, setInviteCode] = useState('');
@@ -78,46 +54,12 @@ export default function CreateLeaderboardScreen() {
   const [followers, setFollowers] = useState<Follower[]>([]);
   const [mutualFollowers, setMutualFollowers] = useState<Follower[]>([]);
   const [loadingFollowers, setLoadingFollowers] = useState(true);
-  const [activeTab, setActiveTab] = useState<'leaderboard' | 'invite'>('leaderboard');
   const [searchQuery, setSearchQuery] = useState('');
   const [leaderboardIcon, setLeaderboardIcon] = useState<string | null>(null);
   const [coverPhoto, setCoverPhoto] = useState<string | null>(null);
   const [uploading, setUploading] = useState(false);
-  const [startDate, setStartDate] = useState<Date>(defaultDates.start);
-  const [endDate, setEndDate] = useState<Date>(defaultDates.end);
-  const [showEndDatePicker, setShowEndDatePicker] = useState(false);
-  const [challengeType, setChallengeType] = useState<'climbing' | 'rank'>('climbing');
-  const [selectedDuration, setSelectedDuration] = useState<number>(30);
   const [inviteModalVisible, setInviteModalVisible] = useState(false);
   const [invitePermission, setInvitePermission] = useState<'leader_only' | 'anyone'>('leader_only');
-  const [maxMembers, setMaxMembers] = useState<number>(10);
-
-  const formatDateShort = (date: Date) => {
-    return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
-  };
-
-  const handleDurationSelect = (days: number) => {
-    setSelectedDuration(days);
-    setShowEndDatePicker(false);
-    const newEndDate = new Date(startDate);
-    newEndDate.setDate(startDate.getDate() + days);
-    setEndDate(newEndDate);
-  };
-
-  const handleCustomDuration = () => {
-    setSelectedDuration(0);
-    setShowEndDatePicker(!showEndDatePicker);
-  };
-
-  const handleEndDateChange = (event: any, selectedDate?: Date) => {
-    setShowEndDatePicker(Platform.OS === 'ios');
-    if (selectedDate) {
-      setEndDate(selectedDate);
-      const diffTime = selectedDate.getTime() - startDate.getTime();
-      const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-      setSelectedDuration(diffDays);
-    }
-  };
 
   useEffect(() => {
     const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
@@ -209,24 +151,6 @@ export default function CreateLeaderboardScreen() {
   };
 
   const filteredFollowers = getFilteredFollowers();
-
-  // Handle tab switching via tap
-  const handleTabPress = (tab: 'leaderboard' | 'invite') => {
-    setActiveTab(tab);
-    const pageIndex = tab === 'leaderboard' ? 0 : 1;
-    tabScrollRef.current?.scrollTo({ x: pageIndex * SCREEN_WIDTH, animated: true });
-  };
-
-  // Handle swipe between tabs (real-time sync)
-  const handleTabScroll = (event: NativeSyntheticEvent<NativeScrollEvent>) => {
-    const offsetX = event.nativeEvent.contentOffset.x;
-    // Update tab when past 50% of the page width
-    const pageIndex = Math.round(offsetX / SCREEN_WIDTH);
-    const newTab = pageIndex === 0 ? 'leaderboard' : 'invite';
-    if (newTab !== activeTab) {
-      setActiveTab(newTab);
-    }
-  };
 
   const handleCopyInviteCode = async () => {
     if (inviteCode) {
@@ -321,12 +245,12 @@ export default function CreateLeaderboardScreen() {
         game: selectedGame.name,
         gameId: selectedGame.id,
         type: 'leaderboard',
-        maxMembers,
-        duration: selectedDuration,
+        maxMembers: 20,
+        duration: 30,
         startDate: null,
         endDate: null,
         challengeStatus: 'pending',
-        challengeType,
+        challengeType: 'climbing',
         inviteCode: inviteCode || '',
         invitePermission,
         createdBy: user.id,
@@ -401,8 +325,6 @@ export default function CreateLeaderboardScreen() {
                 name: leaderboardName,
                 game: selectedGame.name,
                 members: '1',
-                startDate: formatDate(startDate),
-                endDate: formatDate(endDate),
               },
             });
           },
@@ -426,274 +348,111 @@ export default function CreateLeaderboardScreen() {
         <View style={styles.headerSpacer} />
       </View>
 
-      {/* Tabs */}
-      <View style={styles.tabsContainer}>
-        <TouchableOpacity
-          style={[styles.tab, activeTab === 'leaderboard' && styles.tabActive]}
-          onPress={() => handleTabPress('leaderboard')}
-        >
-          <IconSymbol size={16} name="gearshape.fill" color={activeTab === 'leaderboard' ? '#fff' : '#666'} />
-          <ThemedText style={[styles.tabText, activeTab === 'leaderboard' && styles.tabTextActive]}>
-            LEADERBOARD
-          </ThemedText>
-        </TouchableOpacity>
-        <TouchableOpacity
-          style={[styles.tab, activeTab === 'invite' && styles.tabActive]}
-          onPress={() => handleTabPress('invite')}
-        >
-          <IconSymbol size={16} name="person.badge.plus" color={activeTab === 'invite' ? '#fff' : '#666'} />
-          <ThemedText style={[styles.tabText, activeTab === 'invite' && styles.tabTextActive]}>
-            INVITE SETTINGS
-          </ThemedText>
-        </TouchableOpacity>
-      </View>
-
-      {/* Swipeable Tab Content */}
       <ScrollView
-        ref={tabScrollRef}
-        horizontal
-        pagingEnabled
-        showsHorizontalScrollIndicator={false}
-        onScroll={handleTabScroll}
-        scrollEventThrottle={16}
-        style={styles.tabContentScroll}
+        showsVerticalScrollIndicator={false}
+        keyboardShouldPersistTaps="handled"
+        style={styles.formScroll}
+        contentContainerStyle={styles.formScrollContent}
       >
-        {/* Leaderboard Settings Tab */}
-        <ScrollView
-          style={styles.tabPage}
-          showsVerticalScrollIndicator={false}
-          keyboardShouldPersistTaps="handled"
-          nestedScrollEnabled
+        {/* Cover Photo - full bleed at top */}
+        <TouchableOpacity
+          style={styles.coverPhotoPicker}
+          onPress={handlePickCoverPhoto}
+          activeOpacity={0.7}
         >
-          <View style={styles.formContent}>
-            {/* Name & Icon Row */}
-            <View style={styles.nameIconRow}>
-              {/* Leaderboard Icon */}
-              <TouchableOpacity
-                style={styles.leaderboardIconPicker}
-                onPress={handlePickLeaderboardIcon}
-                activeOpacity={0.7}
-              >
-                {leaderboardIcon ? (
-                  <Image source={{ uri: leaderboardIcon }} style={styles.leaderboardIconPreview} />
-                ) : (
-                  <View style={styles.leaderboardIconPlaceholder}>
-                    <IconSymbol size={24} name="camera.fill" color="#555" />
-                  </View>
-                )}
-              </TouchableOpacity>
-
-              {/* Leaderboard Name */}
-              <View style={styles.nameInputContainer}>
-                <ThemedText style={styles.label}>Leaderboard Name</ThemedText>
-                <TextInput
-                  style={[styles.input, styles.inputUppercase]}
-                  placeholder="Enter leaderboard name"
-                  placeholderTextColor="#444"
-                  value={leaderboardName}
-                  onChangeText={(text) => setLeaderboardName(text.toUpperCase())}
-                  maxLength={30}
-                  autoCapitalize="characters"
-                />
-              </View>
+          {coverPhoto ? (
+            <Image source={{ uri: coverPhoto }} style={styles.coverPhotoPreview} />
+          ) : (
+            <View style={styles.coverPhotoPlaceholder}>
+              <IconSymbol size={24} name="photo" color="#444" />
+              <ThemedText style={styles.coverPhotoPlaceholderText}>Tap to add cover photo</ThemedText>
             </View>
-
-            {/* Cover Photo */}
-            <View style={styles.inputGroup}>
-              <ThemedText style={styles.label}>Cover Photo</ThemedText>
-              <TouchableOpacity
-                style={styles.coverPhotoPicker}
-                onPress={handlePickCoverPhoto}
-                activeOpacity={0.7}
-              >
-                {coverPhoto ? (
-                  <Image source={{ uri: coverPhoto }} style={styles.coverPhotoPreview} />
-                ) : (
-                  <View style={styles.coverPhotoPlaceholderInline}>
-                    <IconSymbol size={28} name="photo" color="#555" />
-                    <ThemedText style={styles.placeholderText}>Add Cover Photo</ThemedText>
-                  </View>
-                )}
-              </TouchableOpacity>
-            </View>
-
-            {/* Game Selection */}
-            <View style={styles.inputGroup}>
-              <ThemedText style={styles.label}>Game</ThemedText>
-              <View style={styles.gameSelectionRow}>
-                {AVAILABLE_GAMES.map((game) => (
-                  <TouchableOpacity
-                    key={game.id}
-                    style={[
-                      styles.gameOptionCircle,
-                      selectedGame?.id === game.id && styles.gameOptionCircleSelected
-                    ]}
-                    onPress={() => setSelectedGame(game)}
-                  >
-                    <Image source={game.logo} style={styles.gameOptionLogoCircle} />
-                  </TouchableOpacity>
-                ))}
-              </View>
-            </View>
-
-            {/* Max Members */}
-            <View style={styles.inputGroup}>
-              <ThemedText style={styles.label}>Max Members</ThemedText>
-              <View style={styles.membersRow}>
-                {[5, 10, 20, 0].map((limit) => (
-                  <TouchableOpacity
-                    key={limit}
-                    style={[
-                      styles.membersChip,
-                      maxMembers === limit && styles.membersChipActive
-                    ]}
-                    onPress={() => setMaxMembers(limit)}
-                  >
-                    <ThemedText style={[
-                      styles.membersChipText,
-                      maxMembers === limit && styles.membersChipTextActive
-                    ]}>{limit === 0 ? 'NO LIMIT' : limit}</ThemedText>
-                  </TouchableOpacity>
-                ))}
-              </View>
-            </View>
-
-            {/* Duration */}
-            <View style={styles.inputGroup}>
-              <ThemedText style={styles.label}>Duration</ThemedText>
-              <View style={styles.durationRow}>
-                <TouchableOpacity
-                  style={[
-                    styles.durationButton,
-                    selectedDuration === 10 && styles.durationButtonActive
-                  ]}
-                  onPress={() => handleDurationSelect(10)}
-                >
-                  <ThemedText style={[
-                    styles.durationButtonText,
-                    selectedDuration === 10 && styles.durationButtonTextActive
-                  ]}>10 days</ThemedText>
-                </TouchableOpacity>
-                <TouchableOpacity
-                  style={[
-                    styles.durationButton,
-                    selectedDuration === 30 && styles.durationButtonActive
-                  ]}
-                  onPress={() => handleDurationSelect(30)}
-                >
-                  <ThemedText style={[
-                    styles.durationButtonText,
-                    selectedDuration === 30 && styles.durationButtonTextActive
-                  ]}>30 days</ThemedText>
-                </TouchableOpacity>
-                <TouchableOpacity
-                  style={[
-                    styles.durationButton,
-                    selectedDuration !== 10 && selectedDuration !== 30 && styles.durationButtonActive
-                  ]}
-                  onPress={handleCustomDuration}
-                >
-                  <ThemedText style={[
-                    styles.durationButtonText,
-                    selectedDuration !== 10 && selectedDuration !== 30 && styles.durationButtonTextActive
-                  ]}>Custom</ThemedText>
-                </TouchableOpacity>
-              </View>
-              <View style={styles.endDateRow}>
-                <ThemedText style={styles.endDateLabel}>Ends on</ThemedText>
-                <ThemedText style={styles.endDateValue}>{formatDateShort(endDate)}</ThemedText>
-              </View>
-              {showEndDatePicker && (
-                <DateTimePicker
-                  value={endDate}
-                  mode="date"
-                  display={Platform.OS === 'ios' ? 'spinner' : 'default'}
-                  onChange={handleEndDateChange}
-                  minimumDate={startDate}
-                  textColor="#fff"
-                  themeVariant="dark"
-                />
-              )}
-            </View>
-
-            {/* Challenge Type */}
-            <View style={styles.inputGroup}>
-              <ThemedText style={styles.label}>Challenge Type</ThemedText>
-              <View style={styles.challengeRow}>
-                <TouchableOpacity
-                  style={[
-                    styles.challengeButton,
-                    challengeType === 'climbing' && styles.challengeButtonActive
-                  ]}
-                  onPress={() => setChallengeType('climbing')}
-                >
-                  <IconSymbol
-                    size={18}
-                    name="chart.line.uptrend.xyaxis"
-                    color={challengeType === 'climbing' ? '#c42743' : '#666'}
-                  />
-                  <View style={styles.challengeInfo}>
-                    <ThemedText style={[
-                      styles.challengeTitle,
-                      challengeType === 'climbing' && styles.challengeTitleActive
-                    ]}>Climbing</ThemedText>
-                    <ThemedText style={[
-                      styles.challengeDesc,
-                      challengeType === 'climbing' && styles.challengeDescActive
-                    ]}>Most LP/RR gained</ThemedText>
-                  </View>
-                </TouchableOpacity>
-
-                <TouchableOpacity
-                  style={[
-                    styles.challengeButton,
-                    challengeType === 'rank' && styles.challengeButtonActive
-                  ]}
-                  onPress={() => setChallengeType('rank')}
-                >
-                  <IconSymbol
-                    size={18}
-                    name="trophy.fill"
-                    color={challengeType === 'rank' ? '#c42743' : '#666'}
-                  />
-                  <View style={styles.challengeInfo}>
-                    <ThemedText style={[
-                      styles.challengeTitle,
-                      challengeType === 'rank' && styles.challengeTitleActive
-                    ]}>Rank</ThemedText>
-                    <ThemedText style={[
-                      styles.challengeDesc,
-                      challengeType === 'rank' && styles.challengeDescActive
-                    ]}>Highest rank wins</ThemedText>
-                  </View>
-                </TouchableOpacity>
-              </View>
-            </View>
-
-            <View style={styles.bottomSpacer} />
+          )}
+          {/* Overlay icon badge */}
+          <View style={styles.coverPhotoEditBadge}>
+            <IconSymbol size={12} name="camera.fill" color="#fff" />
           </View>
-        </ScrollView>
+        </TouchableOpacity>
 
-        {/* Invite Settings Tab */}
-        <ScrollView
-          style={styles.tabPage}
-          showsVerticalScrollIndicator={false}
-          keyboardShouldPersistTaps="handled"
-          nestedScrollEnabled
-        >
-          <View style={styles.formContent}>
-            {/* Invite Code */}
-            <View style={styles.inputGroup}>
-              <ThemedText style={styles.label}>Invite Code</ThemedText>
-              <TouchableOpacity style={styles.codeButton} onPress={handleCopyInviteCode}>
-                <ThemedText style={styles.codeText}>{inviteCode}</ThemedText>
-                <IconSymbol size={16} name="doc.on.doc" color="#666" />
-              </TouchableOpacity>
+        {/* Icon + Game - overlapping the cover */}
+        <View style={styles.identitySection}>
+          <TouchableOpacity
+            style={styles.leaderboardIconPicker}
+            onPress={handlePickLeaderboardIcon}
+            activeOpacity={0.7}
+          >
+            {leaderboardIcon ? (
+              <Image source={{ uri: leaderboardIcon }} style={styles.leaderboardIconPreview} />
+            ) : (
+              <View style={styles.leaderboardIconPlaceholder}>
+                <IconSymbol size={28} name="camera.fill" color="#444" />
+              </View>
+            )}
+            <View style={styles.iconEditBadge}>
+              <IconSymbol size={8} name="pencil" color="#fff" />
             </View>
+          </TouchableOpacity>
 
-            {/* Invite Permission */}
-            <View style={styles.inputGroup}>
-              <ThemedText style={styles.label}>Who Can Invite</ThemedText>
+          <View style={styles.gameRow}>
+            {AVAILABLE_GAMES.map((game) => (
+              <TouchableOpacity
+                key={game.id}
+                style={[
+                  styles.gameChip,
+                  selectedGame?.id === game.id && styles.gameChipSelected
+                ]}
+                onPress={() => setSelectedGame(game)}
+              >
+                <Image source={game.logo} style={styles.gameChipLogo} />
+                <ThemedText style={[
+                  styles.gameChipText,
+                  selectedGame?.id === game.id && styles.gameChipTextSelected
+                ]}>{game.name}</ThemedText>
+              </TouchableOpacity>
+            ))}
+          </View>
+        </View>
+
+        {/* Leaderboard Name */}
+        <View style={styles.nameSection}>
+          <TextInput
+            style={styles.nameInput}
+            placeholder="Enter leaderboard name..."
+            placeholderTextColor="#333"
+            value={leaderboardName}
+            onChangeText={(text) => setLeaderboardName(text.toUpperCase())}
+            maxLength={30}
+            autoCapitalize="characters"
+          />
+          <ThemedText style={styles.nameCharCount}>{leaderboardName.length}/30</ThemedText>
+        </View>
+
+        {/* Settings Section */}
+        <View style={styles.section}>
+          <ThemedText style={styles.sectionTitle}>Settings</ThemedText>
+          <View style={styles.sectionCard}>
+            {/* Invite Code */}
+            <TouchableOpacity style={styles.settingRow} onPress={handleCopyInviteCode}>
+              <View style={styles.settingIconWrap}>
+                <IconSymbol size={16} name="link" color="#888" />
+              </View>
+              <View style={styles.settingInfo}>
+                <ThemedText style={styles.settingLabel}>Invite Code</ThemedText>
+                <ThemedText style={styles.settingValue}>{inviteCode}</ThemedText>
+              </View>
+              <IconSymbol size={14} name="doc.on.doc" color="#444" />
+            </TouchableOpacity>
+
+            <View style={styles.settingDivider} />
+
+            {/* Who Can Invite */}
+            <View style={styles.settingRowColumn}>
+              <View style={styles.settingRowHeader}>
+                <View style={styles.settingIconWrap}>
+                  <IconSymbol size={16} name="person.badge.plus" color="#888" />
+                </View>
+                <ThemedText style={styles.settingLabel}>Who Can Invite</ThemedText>
+              </View>
               <View style={styles.permissionRow}>
                 <TouchableOpacity
                   style={[
@@ -703,9 +462,9 @@ export default function CreateLeaderboardScreen() {
                   onPress={() => setInvitePermission('leader_only')}
                 >
                   <IconSymbol
-                    size={16}
+                    size={14}
                     name="crown.fill"
-                    color={invitePermission === 'leader_only' ? '#c42743' : '#666'}
+                    color={invitePermission === 'leader_only' ? '#fff' : '#555'}
                   />
                   <ThemedText style={[
                     styles.permissionButtonText,
@@ -720,9 +479,9 @@ export default function CreateLeaderboardScreen() {
                   onPress={() => setInvitePermission('anyone')}
                 >
                   <IconSymbol
-                    size={16}
+                    size={14}
                     name="person.2.fill"
-                    color={invitePermission === 'anyone' ? '#c42743' : '#666'}
+                    color={invitePermission === 'anyone' ? '#fff' : '#555'}
                   />
                   <ThemedText style={[
                     styles.permissionButtonText,
@@ -730,138 +489,139 @@ export default function CreateLeaderboardScreen() {
                   ]}>Anyone</ThemedText>
                 </TouchableOpacity>
               </View>
-              <ThemedText style={styles.permissionHint}>You can change this later in leaderboard settings</ThemedText>
             </View>
+          </View>
+        </View>
 
-            {/* Suggestions from Mutual Followers */}
-            {!loadingFollowers && mutualFollowers.length > 0 && (
-              <View style={styles.inputGroup}>
-                <ThemedText style={styles.label}>Suggestions</ThemedText>
-                <View style={styles.suggestionsContainer}>
-                  {mutualFollowers
-                    .filter((f) => !selectedFollowers.includes(f.id))
-                    .slice(0, 5)
-                    .map((follower) => (
-                      <TouchableOpacity
-                        key={follower.id}
-                        style={styles.suggestionItem}
-                        onPress={() => toggleFollower(follower.id)}
-                      >
-                        <View style={styles.suggestionAvatarWrapper}>
-                          <View style={styles.suggestionAvatar}>
-                            {follower.avatar && follower.avatar.startsWith('http') ? (
-                              <Image source={{ uri: follower.avatar }} style={styles.suggestionAvatarImage} />
-                            ) : (
-                              <ThemedText style={styles.suggestionAvatarText}>
-                                {follower.username[0].toUpperCase()}
-                              </ThemedText>
-                            )}
-                          </View>
-                          <View style={styles.suggestionAddButton}>
-                            <IconSymbol size={10} name="plus" color="#fff" />
-                          </View>
-                        </View>
-                        <ThemedText style={styles.suggestionName} numberOfLines={1}>
-                          {follower.username}
-                        </ThemedText>
+        {/* Invite Members Section */}
+        <View style={styles.section}>
+          <View style={styles.sectionTitleRow}>
+            <ThemedText style={styles.sectionTitle}>Invite Members</ThemedText>
+            {selectedFollowers.length > 0 && (
+              <View style={styles.selectedBadge}>
+                <ThemedText style={styles.selectedBadgeText}>{selectedFollowers.length}</ThemedText>
+              </View>
+            )}
+          </View>
+
+          <View style={styles.sectionCard}>
+            {/* Search button */}
+            <TouchableOpacity
+              style={styles.inviteSearchButton}
+              onPress={() => setInviteModalVisible(true)}
+            >
+              <IconSymbol size={15} name="magnifyingglass" color="#444" />
+              <ThemedText style={styles.inviteSearchPlaceholder}>
+                {loadingFollowers ? 'Loading...' : followers.length === 0 ? 'No followers to invite' : 'Search followers...'}
+              </ThemedText>
+            </TouchableOpacity>
+
+            {/* Selected chips */}
+            {selectedFollowers.length > 0 && (
+              <View style={styles.selectedChipsContainer}>
+                {followers
+                  .filter(f => selectedFollowers.includes(f.id))
+                  .map((follower) => (
+                    <View key={follower.id} style={styles.selectedChip}>
+                      <ThemedText style={styles.selectedChipText}>{follower.username}</ThemedText>
+                      <TouchableOpacity onPress={() => toggleFollower(follower.id)} hitSlop={8}>
+                        <IconSymbol size={12} name="xmark" color="#666" />
                       </TouchableOpacity>
-                    ))}
-                  {mutualFollowers.filter((f) => !selectedFollowers.includes(f.id)).length === 0 && (
-                    <ThemedText style={styles.noSuggestionsText}>All mutual followers selected</ThemedText>
-                  )}
-                </View>
+                    </View>
+                  ))}
               </View>
             )}
 
-            {/* Invite Members */}
-            <View style={styles.inputGroup}>
-              <View style={styles.labelRow}>
-                <ThemedText style={styles.label}>Invite Members</ThemedText>
-                {selectedFollowers.length > 0 && (
-                  <View style={styles.selectedBadge}>
-                    <ThemedText style={styles.selectedBadgeText}>{selectedFollowers.length}</ThemedText>
-                  </View>
-                )}
-              </View>
-
-              {/* Selected followers chips */}
-              {selectedFollowers.length > 0 && (
-                <View style={styles.selectedChipsContainer}>
-                  {followers
-                    .filter(f => selectedFollowers.includes(f.id))
-                    .map((follower) => (
-                      <View key={follower.id} style={styles.selectedChip}>
-                        <ThemedText style={styles.selectedChipText}>{follower.username}</ThemedText>
-                        <TouchableOpacity onPress={() => toggleFollower(follower.id)}>
-                          <IconSymbol size={14} name="xmark" color="#888" />
+            {/* Suggestions */}
+            {!loadingFollowers && mutualFollowers.length > 0 && (
+              <>
+                <View style={styles.settingDivider} />
+                <ThemedText style={styles.cardSubLabel}>Quick Add</ThemedText>
+                <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.suggestionsScroll}>
+                  <View style={styles.suggestionsRow}>
+                    {mutualFollowers
+                      .filter((f) => !selectedFollowers.includes(f.id))
+                      .slice(0, 8)
+                      .map((follower) => (
+                        <TouchableOpacity
+                          key={follower.id}
+                          style={styles.suggestionItem}
+                          onPress={() => toggleFollower(follower.id)}
+                        >
+                          <View style={styles.suggestionAvatarWrapper}>
+                            <View style={styles.suggestionAvatar}>
+                              {follower.avatar && follower.avatar.startsWith('http') ? (
+                                <Image source={{ uri: follower.avatar }} style={styles.suggestionAvatarImage} />
+                              ) : (
+                                <ThemedText style={styles.suggestionAvatarText}>
+                                  {follower.username[0].toUpperCase()}
+                                </ThemedText>
+                              )}
+                            </View>
+                            <View style={styles.suggestionAddBadge}>
+                              <IconSymbol size={8} name="plus" color="#fff" />
+                            </View>
+                          </View>
+                          <ThemedText style={styles.suggestionName} numberOfLines={1}>
+                            {follower.username}
+                          </ThemedText>
                         </TouchableOpacity>
-                      </View>
-                    ))}
-                </View>
-              )}
-
-              {/* Touchable to open modal */}
-              <TouchableOpacity
-                style={styles.inviteSearchButton}
-                onPress={() => setInviteModalVisible(true)}
-              >
-                <IconSymbol size={16} name="magnifyingglass" color="#444" />
-                <ThemedText style={styles.inviteSearchPlaceholder}>
-                  {loadingFollowers ? 'Loading...' : followers.length === 0 ? 'No followers to invite' : 'Search followers...'}
-                </ThemedText>
-              </TouchableOpacity>
-            </View>
-
-            {/* Create Button */}
-            <TouchableOpacity
-              style={[styles.createButton, uploading && styles.createButtonDisabled]}
-              onPress={handleCreateLeaderboard}
-              disabled={uploading}
-            >
-              {uploading ? (
-                <View style={styles.createButtonLoading}>
-                  <ActivityIndicator size="small" color="#fff" />
-                  <ThemedText style={styles.createButtonText}>Creating...</ThemedText>
-                </View>
-              ) : (
-                <ThemedText style={styles.createButtonText}>Create Leaderboard</ThemedText>
-              )}
-            </TouchableOpacity>
-
-            <View style={styles.bottomSpacer} />
+                      ))}
+                    {mutualFollowers.filter((f) => !selectedFollowers.includes(f.id)).length === 0 && (
+                      <ThemedText style={styles.allSelectedText}>All added</ThemedText>
+                    )}
+                  </View>
+                </ScrollView>
+              </>
+            )}
           </View>
-        </ScrollView>
+        </View>
+
+        <View style={styles.bottomSpacer} />
       </ScrollView>
+
+      {/* Fixed Create Button */}
+      <View style={styles.createButtonContainer}>
+        <TouchableOpacity
+          style={[styles.createButton, uploading && styles.createButtonDisabled]}
+          onPress={handleCreateLeaderboard}
+          disabled={uploading}
+          activeOpacity={0.8}
+        >
+          {uploading ? (
+            <View style={styles.createButtonLoading}>
+              <ActivityIndicator size="small" color="#fff" />
+              <ThemedText style={styles.createButtonText}>Creating...</ThemedText>
+            </View>
+          ) : (
+            <ThemedText style={styles.createButtonText}>Create Leaderboard</ThemedText>
+          )}
+        </TouchableOpacity>
+      </View>
 
       {/* Invite Members Modal */}
       <Modal
         visible={inviteModalVisible}
         animationType="slide"
-        transparent={true}
+        presentationStyle="pageSheet"
         onRequestClose={() => setInviteModalVisible(false)}
       >
-        <KeyboardAvoidingView
-          behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-          style={styles.modalOverlay}
-        >
-          <View style={styles.modalContainer}>
-            <View style={styles.modalHeader}>
-              <ThemedText style={styles.modalTitle}>Invite Members</ThemedText>
-              <TouchableOpacity onPress={() => setInviteModalVisible(false)}>
-                <IconSymbol size={24} name="xmark" color="#fff" />
-              </TouchableOpacity>
-            </View>
+        <View style={styles.modalSheet}>
+          <View style={styles.modalHandle} />
+          <View style={styles.modalHeader}>
+            <ThemedText style={styles.modalTitle}>Invite Members</ThemedText>
+          </View>
 
-            <TextInput
-              style={styles.modalSearchInput}
-              placeholder="Search followers..."
-              placeholderTextColor="#666"
-              value={searchQuery}
-              onChangeText={setSearchQuery}
-              autoFocus
-            />
+          <TextInput
+            style={styles.modalSearchInput}
+            placeholder="Search followers..."
+            placeholderTextColor="#555"
+            value={searchQuery}
+            onChangeText={setSearchQuery}
+            autoFocus
+          />
 
-            <ScrollView style={styles.modalFollowersList} showsVerticalScrollIndicator={false}>
+          <ScrollView style={styles.modalFollowersList} showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled">
               {loadingFollowers ? (
                 <View style={styles.loadingContainer}>
                   <ActivityIndicator size="small" color="#c42743" />
@@ -905,14 +665,18 @@ export default function CreateLeaderboardScreen() {
               )}
             </ScrollView>
 
+          <KeyboardAvoidingView
+            behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+            keyboardVerticalOffset={10}
+          >
             <TouchableOpacity
               style={styles.modalDoneButton}
               onPress={() => setInviteModalVisible(false)}
             >
               <ThemedText style={styles.modalDoneButtonText}>Done</ThemedText>
             </TouchableOpacity>
-          </View>
-        </KeyboardAvoidingView>
+          </KeyboardAvoidingView>
+        </View>
       </Modal>
     </ThemedView>
   );
@@ -943,60 +707,64 @@ const styles = StyleSheet.create({
   headerSpacer: {
     width: 28,
   },
-  // Tabs
-  tabsContainer: {
-    flexDirection: 'row',
-    paddingHorizontal: 20,
-    gap: 10,
-    marginBottom: 20,
-  },
-  tab: {
+  formScroll: {
     flex: 1,
-    flexDirection: 'row',
+  },
+  formScrollContent: {
+    paddingBottom: 20,
+  },
+
+  // Cover Photo
+  coverPhotoPicker: {
+    width: '100%',
+    height: 150,
+    backgroundColor: '#141414',
+    position: 'relative',
+  },
+  coverPhotoPreview: {
+    width: '100%',
+    height: '100%',
+  },
+  coverPhotoPlaceholder: {
+    flex: 1,
     alignItems: 'center',
     justifyContent: 'center',
-    gap: 8,
-    backgroundColor: '#1a1a1a',
-    borderRadius: 10,
-    paddingVertical: 12,
-    borderWidth: 1.5,
-    borderColor: 'transparent',
+    gap: 6,
   },
-  tabActive: {
-    backgroundColor: '#252525',
-    borderColor: '#444',
+  coverPhotoPlaceholderText: {
+    fontSize: 12,
+    color: '#333',
   },
-  tabText: {
-    fontSize: 11,
-    fontWeight: '600',
-    color: '#666',
+  coverPhotoEditBadge: {
+    position: 'absolute',
+    bottom: 10,
+    right: 14,
+    width: 28,
+    height: 28,
+    borderRadius: 14,
+    backgroundColor: 'rgba(0,0,0,0.6)',
+    alignItems: 'center',
+    justifyContent: 'center',
   },
-  tabTextActive: {
-    color: '#fff',
-  },
-  tabContentScroll: {
-    flex: 1,
-  },
-  tabPage: {
-    width: SCREEN_WIDTH,
-  },
-  // Name & Icon Row
-  nameIconRow: {
+
+  // Identity Section (icon + name + game)
+  identitySection: {
     flexDirection: 'row',
-    alignItems: 'flex-end',
+    alignItems: 'center',
     gap: 14,
+    paddingHorizontal: 20,
+    marginTop: -30,
     marginBottom: 24,
   },
-  nameInputContainer: {
-    flex: 1,
-  },
-  // Leaderboard Icon Picker
   leaderboardIconPicker: {
-    width: 72,
-    height: 72,
-    borderRadius: 18,
+    width: 68,
+    height: 68,
+    borderRadius: 16,
     overflow: 'hidden',
     backgroundColor: '#1a1a1a',
+    borderWidth: 3,
+    borderColor: '#0f0f0f',
+    position: 'relative',
   },
   leaderboardIconPreview: {
     width: '100%',
@@ -1006,282 +774,12 @@ const styles = StyleSheet.create({
     flex: 1,
     alignItems: 'center',
     justifyContent: 'center',
+    backgroundColor: '#181818',
   },
-  // Cover Photo Picker
-  coverPhotoPicker: {
-    width: '100%',
-    height: 120,
-    borderRadius: 12,
-    overflow: 'hidden',
-    backgroundColor: '#1a1a1a',
-  },
-  coverPhotoPreview: {
-    width: '100%',
-    height: '100%',
-  },
-  coverPhotoPlaceholderInline: {
-    flex: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 6,
-  },
-  placeholderText: {
-    fontSize: 13,
-    color: '#555',
-  },
-  // Form
-  formContent: {
-    paddingHorizontal: 20,
-  },
-  inputGroup: {
-    marginBottom: 24,
-  },
-  labelRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    marginBottom: 10,
-  },
-  label: {
-    fontSize: 13,
-    fontWeight: '600',
-    color: '#888',
-    marginBottom: 10,
-    textTransform: 'uppercase',
-    letterSpacing: 0.5,
-  },
-  input: {
-    backgroundColor: '#1a1a1a',
-    borderRadius: 12,
-    padding: 14,
-    fontSize: 16,
-    color: '#fff',
-  },
-  inputUppercase: {
-    textTransform: 'uppercase',
-    letterSpacing: 0.5,
-  },
-  // Game Selection
-  gameSelectionRow: {
-    flexDirection: 'row',
-    gap: 12,
-  },
-  gameOptionCircle: {
-    width: 52,
-    height: 52,
-    borderRadius: 26,
-    backgroundColor: '#1a1a1a',
-    alignItems: 'center',
-    justifyContent: 'center',
-    borderWidth: 2,
-    borderColor: 'transparent',
-  },
-  gameOptionCircleSelected: {
-    borderColor: '#c42743',
-    backgroundColor: '#1f1518',
-  },
-  gameOptionLogoCircle: {
-    width: 28,
-    height: 28,
-  },
-  // Max Members
-  membersRow: {
-    flexDirection: 'row',
-    gap: 10,
-  },
-  membersChip: {
-    paddingVertical: 10,
-    paddingHorizontal: 16,
-    backgroundColor: '#1a1a1a',
-    borderRadius: 20,
-    borderWidth: 1.5,
-    borderColor: 'transparent',
-  },
-  membersChipActive: {
-    backgroundColor: '#252525',
-    borderColor: '#c42743',
-  },
-  membersChipText: {
-    fontSize: 14,
-    fontWeight: '500',
-    color: '#666',
-  },
-  membersChipTextActive: {
-    color: '#c42743',
-  },
-  // Duration
-  durationRow: {
-    flexDirection: 'row',
-    gap: 10,
-    marginBottom: 12,
-  },
-  durationButton: {
-    flex: 1,
-    backgroundColor: '#1a1a1a',
-    borderRadius: 10,
-    paddingVertical: 12,
-    alignItems: 'center',
-    borderWidth: 1.5,
-    borderColor: 'transparent',
-  },
-  durationButtonActive: {
-    backgroundColor: '#252525',
-    borderColor: '#c42743',
-  },
-  durationButtonText: {
-    fontSize: 13,
-    fontWeight: '600',
-    color: '#666',
-  },
-  durationButtonTextActive: {
-    color: '#c42743',
-  },
-  endDateRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    backgroundColor: '#1a1a1a',
-    borderRadius: 10,
-    padding: 14,
-  },
-  endDateLabel: {
-    fontSize: 13,
-    color: '#666',
-  },
-  endDateValue: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: '#fff',
-  },
-  // Challenge Type
-  challengeRow: {
-    flexDirection: 'row',
-    gap: 10,
-  },
-  challengeButton: {
-    flex: 1,
-    backgroundColor: '#1a1a1a',
-    borderRadius: 12,
-    padding: 14,
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 10,
-    borderWidth: 1.5,
-    borderColor: 'transparent',
-  },
-  challengeButtonActive: {
-    backgroundColor: '#252525',
-    borderColor: '#c42743',
-  },
-  challengeInfo: {
-    flex: 1,
-  },
-  challengeTitle: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: '#888',
-  },
-  challengeTitleActive: {
-    color: '#c42743',
-  },
-  challengeDesc: {
-    fontSize: 11,
-    color: '#555',
-    marginTop: 2,
-  },
-  challengeDescActive: {
-    color: '#888',
-  },
-  // Invite Code
-  codeButton: {
-    backgroundColor: '#1a1a1a',
-    borderRadius: 12,
-    padding: 14,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-  },
-  codeText: {
-    fontSize: 18,
-    fontWeight: '700',
-    color: '#fff',
-    letterSpacing: 3,
-  },
-  // Permission
-  permissionRow: {
-    flexDirection: 'row',
-    gap: 10,
-  },
-  permissionButton: {
-    flex: 1,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 8,
-    backgroundColor: '#1a1a1a',
-    borderRadius: 12,
-    paddingVertical: 14,
-    borderWidth: 1.5,
-    borderColor: 'transparent',
-  },
-  permissionButtonActive: {
-    backgroundColor: '#252525',
-    borderColor: '#c42743',
-  },
-  permissionButtonText: {
-    fontSize: 13,
-    fontWeight: '600',
-    color: '#666',
-  },
-  permissionButtonTextActive: {
-    color: '#c42743',
-  },
-  permissionHint: {
-    fontSize: 12,
-    color: '#666',
-    marginTop: 8,
-  },
-  // Suggestions
-  suggestionsContainer: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 12,
-  },
-  suggestionItem: {
-    alignItems: 'center',
-    width: 56,
-  },
-  suggestionAvatarWrapper: {
-    position: 'relative',
-    marginBottom: 6,
-  },
-  suggestionAvatar: {
-    width: 44,
-    height: 44,
-    borderRadius: 22,
-    backgroundColor: '#252525',
-    alignItems: 'center',
-    justifyContent: 'center',
-    overflow: 'hidden',
-  },
-  suggestionAvatarImage: {
-    width: '100%',
-    height: '100%',
-  },
-  suggestionAvatarText: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: '#666',
-  },
-  suggestionName: {
-    fontSize: 11,
-    color: '#aaa',
-    textAlign: 'center',
-  },
-  suggestionAddButton: {
+  iconEditBadge: {
     position: 'absolute',
-    bottom: -2,
-    right: -2,
+    bottom: 2,
+    right: 2,
     width: 18,
     height: 18,
     borderRadius: 9,
@@ -1291,65 +789,336 @@ const styles = StyleSheet.create({
     borderWidth: 2,
     borderColor: '#0f0f0f',
   },
-  noSuggestionsText: {
-    fontSize: 13,
-    color: '#555',
-    fontStyle: 'italic',
+  gameRow: {
+    flex: 1,
+    flexDirection: 'row',
+    gap: 8,
+    paddingTop: 30,
   },
+
+  // Name Section
+  nameSection: {
+    paddingHorizontal: 20,
+    marginBottom: 16,
+  },
+  nameInput: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#fff',
+    letterSpacing: 0.3,
+    backgroundColor: '#151515',
+    borderRadius: 10,
+    paddingHorizontal: 12,
+    paddingVertical: 11,
+    borderWidth: 1.5,
+    borderColor: '#222',
+  },
+  nameCharCount: {
+    fontSize: 11,
+    color: '#333',
+    textAlign: 'right',
+    marginTop: 6,
+    marginRight: 4,
+  },
+  gameChip: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    backgroundColor: '#1a1a1a',
+    paddingVertical: 6,
+    paddingHorizontal: 10,
+    borderRadius: 8,
+    borderWidth: 1.5,
+    borderColor: 'transparent',
+  },
+  gameChipSelected: {
+    borderColor: '#444',
+    backgroundColor: '#222',
+  },
+  gameChipLogo: {
+    width: 16,
+    height: 16,
+  },
+  gameChipText: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: '#555',
+  },
+  gameChipTextSelected: {
+    color: '#fff',
+  },
+
+  // Sections
+  section: {
+    paddingHorizontal: 20,
+    marginBottom: 24,
+  },
+  sectionTitleRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: 10,
+  },
+  sectionTitle: {
+    fontSize: 13,
+    fontWeight: '700',
+    color: '#555',
+    textTransform: 'uppercase',
+    letterSpacing: 0.8,
+    marginBottom: 10,
+  },
+  sectionCard: {
+    backgroundColor: '#151515',
+    borderRadius: 14,
+    padding: 14,
+  },
+
+  // Setting rows
+  settingRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    paddingVertical: 4,
+  },
+  settingRowColumn: {
+    gap: 12,
+    paddingVertical: 4,
+  },
+  settingRowHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+  },
+  settingIconWrap: {
+    width: 32,
+    height: 32,
+    borderRadius: 8,
+    backgroundColor: 'rgba(255,255,255,0.05)',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  settingInfo: {
+    flex: 1,
+    gap: 2,
+  },
+  settingLabel: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#ccc',
+  },
+  settingValue: {
+    fontSize: 16,
+    fontWeight: '700',
+    color: '#fff',
+    letterSpacing: 2,
+  },
+  settingDivider: {
+    height: 1,
+    backgroundColor: '#1f1f1f',
+    marginVertical: 12,
+  },
+
+  // Permission
+  permissionRow: {
+    flexDirection: 'row',
+    gap: 8,
+  },
+  permissionButton: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 6,
+    backgroundColor: '#1a1a1a',
+    borderRadius: 10,
+    paddingVertical: 11,
+    borderWidth: 1.5,
+    borderColor: 'transparent',
+  },
+  permissionButtonActive: {
+    backgroundColor: '#222',
+    borderColor: '#444',
+  },
+  permissionButtonText: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: '#555',
+  },
+  permissionButtonTextActive: {
+    color: '#fff',
+  },
+
+  // Suggestions
+  cardSubLabel: {
+    fontSize: 11,
+    fontWeight: '600',
+    color: '#444',
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
+    marginBottom: 10,
+  },
+  suggestionsScroll: {
+    marginHorizontal: -4,
+  },
+  suggestionsRow: {
+    flexDirection: 'row',
+    gap: 14,
+    paddingHorizontal: 4,
+  },
+  suggestionItem: {
+    alignItems: 'center',
+    width: 52,
+  },
+  suggestionAvatarWrapper: {
+    position: 'relative',
+    marginBottom: 5,
+  },
+  suggestionAvatar: {
+    width: 42,
+    height: 42,
+    borderRadius: 21,
+    backgroundColor: '#222',
+    alignItems: 'center',
+    justifyContent: 'center',
+    overflow: 'hidden',
+  },
+  suggestionAvatarImage: {
+    width: '100%',
+    height: '100%',
+  },
+  suggestionAvatarText: {
+    fontSize: 15,
+    fontWeight: '600',
+    color: '#555',
+  },
+  suggestionName: {
+    fontSize: 10,
+    color: '#888',
+    textAlign: 'center',
+  },
+  suggestionAddBadge: {
+    position: 'absolute',
+    bottom: -1,
+    right: -1,
+    width: 16,
+    height: 16,
+    borderRadius: 8,
+    backgroundColor: '#c42743',
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 2,
+    borderColor: '#151515',
+  },
+  allSelectedText: {
+    fontSize: 12,
+    color: '#444',
+    fontStyle: 'italic',
+    alignSelf: 'center',
+    paddingVertical: 8,
+  },
+
+  // Selected chips
+  selectedChipsContainer: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 6,
+    marginTop: 10,
+  },
+  selectedChip: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#222',
+    borderRadius: 14,
+    paddingVertical: 5,
+    paddingLeft: 10,
+    paddingRight: 7,
+    gap: 5,
+  },
+  selectedChipText: {
+    fontSize: 12,
+    color: '#ddd',
+    fontWeight: '500',
+  },
+
   // Search
   inviteSearchButton: {
     flexDirection: 'row',
     alignItems: 'center',
     backgroundColor: '#1a1a1a',
-    borderRadius: 12,
-    padding: 14,
-    gap: 10,
+    borderRadius: 10,
+    padding: 12,
+    gap: 8,
   },
   inviteSearchPlaceholder: {
-    fontSize: 15,
-    color: '#444',
+    fontSize: 14,
+    color: '#333',
   },
-  selectedChipsContainer: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 8,
-    marginBottom: 12,
+
+  // Badge
+  selectedBadge: {
+    backgroundColor: '#c42743',
+    borderRadius: 10,
+    paddingHorizontal: 8,
+    paddingVertical: 2,
+    marginBottom: 10,
   },
-  selectedChip: {
+  selectedBadgeText: {
+    fontSize: 11,
+    fontWeight: '700',
+    color: '#fff',
+  },
+
+  // Create Button
+  createButtonContainer: {
+    paddingHorizontal: 20,
+    paddingTop: 10,
+    paddingBottom: 34,
+    backgroundColor: '#0f0f0f',
+  },
+  createButton: {
+    backgroundColor: '#c42743',
+    borderRadius: 14,
+    padding: 16,
+    alignItems: 'center',
+  },
+  createButtonText: {
+    fontSize: 16,
+    fontWeight: '700',
+    color: '#fff',
+  },
+  createButtonDisabled: {
+    opacity: 0.6,
+  },
+  createButtonLoading: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#252525',
-    borderRadius: 16,
-    paddingVertical: 6,
-    paddingLeft: 12,
-    paddingRight: 8,
-    gap: 6,
+    gap: 10,
   },
-  selectedChipText: {
-    fontSize: 13,
-    color: '#fff',
-    fontWeight: '500',
+  bottomSpacer: {
+    height: 10,
   },
+
   // Modal
-  modalOverlay: {
+  modalSheet: {
     flex: 1,
-    backgroundColor: 'rgba(0,0,0,0.7)',
-    justifyContent: 'flex-end',
-  },
-  modalContainer: {
-    backgroundColor: '#1a1a1a',
-    borderTopLeftRadius: 20,
-    borderTopRightRadius: 20,
-    paddingTop: 12,
+    backgroundColor: '#151515',
+    paddingTop: 8,
     paddingHorizontal: 16,
     paddingBottom: 30,
-    height: '80%',
+  },
+  modalHandle: {
+    width: 36,
+    height: 4,
+    borderRadius: 2,
+    backgroundColor: '#333',
+    alignSelf: 'center',
+    marginBottom: 12,
   },
   modalHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: 10,
+    marginBottom: 14,
   },
   modalTitle: {
     fontSize: 17,
@@ -1357,37 +1126,25 @@ const styles = StyleSheet.create({
     color: '#fff',
   },
   modalSearchInput: {
-    backgroundColor: '#252525',
+    backgroundColor: '#1a1a1a',
     borderRadius: 10,
-    padding: 10,
+    padding: 12,
     fontSize: 14,
     color: '#fff',
-    marginBottom: 10,
+    marginBottom: 12,
   },
   modalFollowersList: {
     flex: 1,
   },
   modalDoneButton: {
-    borderWidth: 1,
-    borderColor: '#c42743',
-    borderRadius: 10,
-    padding: 12,
+    backgroundColor: '#c42743',
+    borderRadius: 12,
+    padding: 14,
     alignItems: 'center',
     marginTop: 10,
   },
   modalDoneButtonText: {
-    fontSize: 14,
-    fontWeight: '500',
-    color: '#c42743',
-  },
-  selectedBadge: {
-    backgroundColor: '#c42743',
-    borderRadius: 10,
-    paddingHorizontal: 8,
-    paddingVertical: 2,
-  },
-  selectedBadgeText: {
-    fontSize: 12,
+    fontSize: 15,
     fontWeight: '600',
     color: '#fff',
   },
@@ -1398,28 +1155,30 @@ const styles = StyleSheet.create({
   emptyText: {
     fontSize: 14,
     color: '#444',
+    paddingVertical: 20,
+    textAlign: 'center',
   },
-  // Followers
+
+  // Followers list
   followersList: {
     gap: 2,
   },
   followerItem: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingVertical: 6,
+    paddingVertical: 8,
     paddingHorizontal: 10,
-    backgroundColor: '#1a1a1a',
-    borderRadius: 8,
+    borderRadius: 10,
     gap: 10,
   },
   followerItemSelected: {
-    backgroundColor: '#1f1518',
+    backgroundColor: 'rgba(196,39,67,0.08)',
   },
   followerAvatar: {
-    width: 32,
-    height: 32,
-    borderRadius: 16,
-    backgroundColor: '#252525',
+    width: 34,
+    height: 34,
+    borderRadius: 17,
+    backgroundColor: '#222',
     alignItems: 'center',
     justifyContent: 'center',
     overflow: 'hidden',
@@ -1431,7 +1190,7 @@ const styles = StyleSheet.create({
   followerAvatarText: {
     fontSize: 13,
     fontWeight: '600',
-    color: '#666',
+    color: '#555',
   },
   followerName: {
     flex: 1,
@@ -1440,42 +1199,16 @@ const styles = StyleSheet.create({
     color: '#fff',
   },
   checkCircle: {
-    width: 20,
-    height: 20,
-    borderRadius: 10,
+    width: 22,
+    height: 22,
+    borderRadius: 11,
     borderWidth: 2,
-    borderColor: '#333',
+    borderColor: '#2a2a2a',
     alignItems: 'center',
     justifyContent: 'center',
   },
   checkCircleSelected: {
     backgroundColor: '#c42743',
     borderColor: '#c42743',
-  },
-  // Create Button
-  createButton: {
-    backgroundColor: '#1a1a1a',
-    borderRadius: 14,
-    padding: 16,
-    alignItems: 'center',
-    marginTop: 8,
-    borderWidth: 1,
-    borderColor: '#c42743',
-  },
-  createButtonText: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: '#fff',
-  },
-  createButtonDisabled: {
-    opacity: 0.7,
-  },
-  createButtonLoading: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 10,
-  },
-  bottomSpacer: {
-    height: 40,
   },
 });

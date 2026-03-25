@@ -141,7 +141,8 @@ export default function DuoFinderScreen() {
           setValorantInGameIcon(userData.valorantStats.card.small);
         }
         if (userData.valorantStats?.gameName) {
-          setValorantInGameName(userData.valorantStats.gameName);
+          const tagLine = userData.valorantAccount?.tagLine || '';
+          setValorantInGameName(tagLine ? `${userData.valorantStats.gameName}#${tagLine}` : userData.valorantStats.gameName);
         }
         if (userData.valorantStats?.winRate !== undefined) {
           setValorantWinRate(userData.valorantStats.winRate);
@@ -480,7 +481,8 @@ export default function DuoFinderScreen() {
                       inGameIcon = userData.valorantStats.card.small;
                     }
                     if (userData?.valorantStats?.gameName) {
-                      inGameName = userData.valorantStats.gameName;
+                      const tagLine = userData?.valorantAccount?.tagLine || '';
+                      inGameName = tagLine ? `${userData.valorantStats.gameName}#${tagLine}` : userData.valorantStats.gameName;
                     }
                     // Get win rate and games played for Valorant
                     if (userData?.valorantStats?.winRate !== undefined) {
@@ -1078,9 +1080,12 @@ export default function DuoFinderScreen() {
                         gamesPlayed: card.gamesPlayed || 0,
                         game: card.game === 'valorant' ? 'Valorant' : 'League of Legends',
                         avatar: card.avatar,
+                        inGameIcon: card.inGameIcon,
+                        inGameName: card.inGameName,
                       }}
                       onPress={() => handleFindDuoCardPress(card)}
                       onMessage={() => handleDuoCardMessage(card)}
+                      onViewProfile={() => handleFindDuoCardPress(card)}
                     />
                   ))}
                 </View>
@@ -1175,6 +1180,8 @@ export default function DuoFinderScreen() {
                         gamesPlayed: valorantGamesPlayed || 0,
                         game: 'Valorant',
                         avatar: user?.avatar,
+                        inGameIcon: valorantInGameIcon,
+                        inGameName: valorantInGameName,
                       }}
                       onPress={() => {
                         setShowMyCards(false);
@@ -1197,6 +1204,8 @@ export default function DuoFinderScreen() {
                         gamesPlayed: leagueGamesPlayed || 0,
                         game: 'League of Legends',
                         avatar: user?.avatar,
+                        inGameIcon: leagueInGameIcon,
+                        inGameName: leagueInGameName,
                       }}
                       onPress={() => {
                         setShowMyCards(false);

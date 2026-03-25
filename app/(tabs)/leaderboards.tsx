@@ -532,8 +532,6 @@ export default function LeaderboardScreen() {
       <View style={styles.header}>
         <ThemedText style={styles.headerTitle}>Leaderboards</ThemedText>
         {selectedTab === 'leaderboards' ? (
-          <View style={styles.createButtonPlaceholder} />
-        ) : (
           <TouchableOpacity
             style={styles.createButton}
             onPress={() => setShowCreateModal(true)}
@@ -541,6 +539,8 @@ export default function LeaderboardScreen() {
           >
             <IconSymbol size={20} name="plus" color="#fff" />
           </TouchableOpacity>
+        ) : (
+          <View style={styles.createButtonPlaceholder} />
         )}
       </View>
       {/* Tabs */}

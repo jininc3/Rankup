@@ -202,6 +202,12 @@ export default function LeaderboardDetail() {
   const [showInvitePermissionModal, setShowInvitePermissionModal] = useState(false);
   const [updatingPermission, setUpdatingPermission] = useState(false);
   const [startingChallenge, setStartingChallenge] = useState(false);
+  const [showDurationModal, setShowDurationModal] = useState(false);
+  const [showChallengeTypeModal, setShowChallengeTypeModal] = useState(false);
+  const [editDuration, setEditDuration] = useState<number>(30);
+  const [editChallengeType, setEditChallengeType] = useState<'climbing' | 'rank'>('climbing');
+  const [savingDuration, setSavingDuration] = useState(false);
+  const [savingChallengeType, setSavingChallengeType] = useState(false);
 
   const isCreator = partyData?.createdBy === user?.id;
   const isMember = partyData?.members?.includes(user?.id);
@@ -650,6 +656,8 @@ export default function LeaderboardDetail() {
           setPartyData(partyDoc);
           setPartyDocId(id);
           setInviteCode(partyDoc.inviteCode || '');
+          setEditDuration(partyDoc.duration || 30);
+          setEditChallengeType(partyDoc.challengeType || 'climbing');
 
           if (!partyDoc.memberDetails || partyDoc.memberDetails.length === 0) {
             setPlayers([]);
@@ -1006,22 +1014,19 @@ export default function LeaderboardDetail() {
                     )}
                   </TouchableOpacity>
                   <View style={styles.playerNameContainer}>
-                    <TouchableOpacity onPress={() => handlePlayerPress(player)} activeOpacity={0.7}>
+                    <TouchableOpacity onPress={() => handlePlayerPress(player)} activeOpacity={0.7} style={styles.playerNameRow}>
                       <ThemedText style={styles.playerName} numberOfLines={1}>
                         {player.username}
                       </ThemedText>
-                    </TouchableOpacity>
-                    {player.rank === 1 && (
-                      <View style={styles.leaderBadge}>
+                      {player.rank === 1 && (
                         <IconSymbol size={10} name="crown.fill" color="#FFD700" />
-                        <ThemedText style={styles.leaderBadgeText}>1st Place</ThemedText>
-                      </View>
-                    )}
-                    {player.userId === partyData?.createdBy && (
-                      <View style={styles.leaderBadge}>
-                        <ThemedText style={styles.creatorBadgeText}>Leader</ThemedText>
-                      </View>
-                    )}
+                      )}
+                      {player.userId === partyData?.createdBy && (
+                        <View style={styles.leaderBadge}>
+                          <ThemedText style={styles.creatorBadgeText}>Leader</ThemedText>
+                        </View>
+                      )}
+                    </TouchableOpacity>
                   </View>
                 </View>
 
@@ -1105,6 +1110,46 @@ export default function LeaderboardDetail() {
               </View>
               <IconSymbol size={16} name="chevron.right" color="#444" />
             </TouchableOpacity>
+
+            {partyData?.challengeStatus === 'pending' && (
+              <TouchableOpacity
+                style={styles.editModalOption}
+                onPress={() => {
+                  setShowEditModal(false);
+                  setShowDurationModal(true);
+                }}
+              >
+                <View style={styles.editModalOptionIcon}>
+                  <IconSymbol size={18} name="clock.fill" color="#888" />
+                </View>
+                <View style={styles.editModalOptionText}>
+                  <ThemedText style={styles.editModalOptionTitle}>Challenge Duration</ThemedText>
+                  <ThemedText style={styles.editModalOptionSubtitle}>{partyData?.duration || 30} days</ThemedText>
+                </View>
+                <IconSymbol size={16} name="chevron.right" color="#444" />
+              </TouchableOpacity>
+            )}
+
+            {partyData?.challengeStatus === 'pending' && (
+              <TouchableOpacity
+                style={styles.editModalOption}
+                onPress={() => {
+                  setShowEditModal(false);
+                  setShowChallengeTypeModal(true);
+                }}
+              >
+                <View style={styles.editModalOptionIcon}>
+                  <IconSymbol size={18} name="trophy.fill" color="#888" />
+                </View>
+                <View style={styles.editModalOptionText}>
+                  <ThemedText style={styles.editModalOptionTitle}>Challenge Type</ThemedText>
+                  <ThemedText style={styles.editModalOptionSubtitle}>
+                    {(partyData?.challengeType || 'climbing') === 'climbing' ? 'LP/RR Climbing' : 'Highest Rank'}
+                  </ThemedText>
+                </View>
+                <IconSymbol size={16} name="chevron.right" color="#444" />
+              </TouchableOpacity>
+            )}
 
             {players.filter(p => p.userId !== user?.id).length > 0 && (
               <TouchableOpacity
@@ -1409,6 +1454,166 @@ export default function LeaderboardDetail() {
       </Modal>
 
       {/* Uploading Overlay */}
+      {/* Duration Modal */}
+      <Modal
+        visible={showDurationModal}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setShowDurationModal(false)}
+      >
+        <TouchableOpacity
+          style={styles.modalOverlay}
+          activeOpacity={1}
+          onPress={() => setShowDurationModal(false)}
+        >
+          <View style={styles.editModalContent} onStartShouldSetResponder={() => true}>
+            <View style={styles.editModalHeader}>
+              <ThemedText style={styles.editModalTitle}>Challenge Duration</ThemedText>
+              <TouchableOpacity onPress={() => setShowDurationModal(false)}>
+                <IconSymbol size={20} name="xmark" color="#888" />
+              </TouchableOpacity>
+            </View>
+
+            <View style={styles.durationOptionsRow}>
+              {[10, 30, 60, 90].map((days) => (
+                <TouchableOpacity
+                  key={days}
+                  style={[
+                    styles.durationChip,
+                    editDuration === days && styles.durationChipActive
+                  ]}
+                  onPress={() => setEditDuration(days)}
+                >
+                  <ThemedText style={[
+                    styles.durationChipText,
+                    editDuration === days && styles.durationChipTextActive
+                  ]}>{days} days</ThemedText>
+                </TouchableOpacity>
+              ))}
+            </View>
+
+            <TouchableOpacity
+              style={[styles.saveSettingButton, savingDuration && { opacity: 0.6 }]}
+              disabled={savingDuration}
+              onPress={async () => {
+                if (!partyDocId) return;
+                setSavingDuration(true);
+                try {
+                  await updateDoc(doc(db, 'parties', partyDocId), { duration: editDuration });
+                  setShowDurationModal(false);
+                } catch (e) {
+                  Alert.alert('Error', 'Failed to update duration.');
+                } finally {
+                  setSavingDuration(false);
+                }
+              }}
+            >
+              {savingDuration ? (
+                <ActivityIndicator size="small" color="#fff" />
+              ) : (
+                <ThemedText style={styles.saveSettingButtonText}>Save</ThemedText>
+              )}
+            </TouchableOpacity>
+          </View>
+        </TouchableOpacity>
+      </Modal>
+
+      {/* Challenge Type Modal */}
+      <Modal
+        visible={showChallengeTypeModal}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setShowChallengeTypeModal(false)}
+      >
+        <TouchableOpacity
+          style={styles.modalOverlay}
+          activeOpacity={1}
+          onPress={() => setShowChallengeTypeModal(false)}
+        >
+          <View style={styles.editModalContent} onStartShouldSetResponder={() => true}>
+            <View style={styles.editModalHeader}>
+              <ThemedText style={styles.editModalTitle}>Challenge Type</ThemedText>
+              <TouchableOpacity onPress={() => setShowChallengeTypeModal(false)}>
+                <IconSymbol size={20} name="xmark" color="#888" />
+              </TouchableOpacity>
+            </View>
+
+            <View style={styles.challengeTypeRow}>
+              <TouchableOpacity
+                style={[
+                  styles.challengeTypeButton,
+                  editChallengeType === 'climbing' && styles.challengeTypeButtonActive
+                ]}
+                onPress={() => setEditChallengeType('climbing')}
+              >
+                <IconSymbol
+                  size={18}
+                  name="chart.line.uptrend.xyaxis"
+                  color={editChallengeType === 'climbing' ? '#c42743' : '#666'}
+                />
+                <View style={{ flex: 1 }}>
+                  <ThemedText style={[
+                    styles.challengeTypeTitle,
+                    editChallengeType === 'climbing' && styles.challengeTypeTitleActive
+                  ]}>Climbing</ThemedText>
+                  <ThemedText style={[
+                    styles.challengeTypeDesc,
+                    editChallengeType === 'climbing' && styles.challengeTypeDescActive
+                  ]}>Most LP/RR gained</ThemedText>
+                </View>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                style={[
+                  styles.challengeTypeButton,
+                  editChallengeType === 'rank' && styles.challengeTypeButtonActive
+                ]}
+                onPress={() => setEditChallengeType('rank')}
+              >
+                <IconSymbol
+                  size={18}
+                  name="trophy.fill"
+                  color={editChallengeType === 'rank' ? '#c42743' : '#666'}
+                />
+                <View style={{ flex: 1 }}>
+                  <ThemedText style={[
+                    styles.challengeTypeTitle,
+                    editChallengeType === 'rank' && styles.challengeTypeTitleActive
+                  ]}>Rank</ThemedText>
+                  <ThemedText style={[
+                    styles.challengeTypeDesc,
+                    editChallengeType === 'rank' && styles.challengeTypeDescActive
+                  ]}>Highest rank wins</ThemedText>
+                </View>
+              </TouchableOpacity>
+            </View>
+
+            <TouchableOpacity
+              style={[styles.saveSettingButton, savingChallengeType && { opacity: 0.6 }]}
+              disabled={savingChallengeType}
+              onPress={async () => {
+                if (!partyDocId) return;
+                setSavingChallengeType(true);
+                try {
+                  await updateDoc(doc(db, 'parties', partyDocId), { challengeType: editChallengeType });
+                  setShowChallengeTypeModal(false);
+                } catch (e) {
+                  Alert.alert('Error', 'Failed to update challenge type.');
+                } finally {
+                  setSavingChallengeType(false);
+                }
+              }}
+            >
+              {savingChallengeType ? (
+                <ActivityIndicator size="small" color="#fff" />
+              ) : (
+                <ThemedText style={styles.saveSettingButtonText}>Save</ThemedText>
+              )}
+            </TouchableOpacity>
+          </View>
+        </TouchableOpacity>
+      </Modal>
+
       {uploading && (
         <View style={styles.uploadingOverlay}>
           <View style={styles.uploadingContent}>
@@ -1483,6 +1688,7 @@ const styles = StyleSheet.create({
     left: 0,
     width: '100%',
     height: '100%',
+    opacity: 0.5,
   },
   coverPhotoGradient: {
     width: '100%',
@@ -1760,20 +1966,24 @@ const styles = StyleSheet.create({
     color: '#888',
   },
   playerNameContainer: {
-    flexDirection: 'column',
     flex: 1,
+  },
+  playerNameRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
   },
   playerName: {
     fontSize: 14,
     fontWeight: '600',
     color: '#fff',
     letterSpacing: -0.2,
+    flexShrink: 1,
   },
   leaderBadge: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 3,
-    marginTop: 2,
   },
   leaderBadgeText: {
     fontSize: 10,
@@ -2143,5 +2353,78 @@ const styles = StyleSheet.create({
   permissionUpdating: {
     paddingVertical: 10,
     alignItems: 'center',
+  },
+  // Duration modal
+  durationOptionsRow: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 10,
+    marginBottom: 20,
+  },
+  durationChip: {
+    paddingVertical: 12,
+    paddingHorizontal: 18,
+    backgroundColor: '#1a1a1a',
+    borderRadius: 10,
+    borderWidth: 1.5,
+    borderColor: 'transparent',
+  },
+  durationChipActive: {
+    backgroundColor: '#252525',
+    borderColor: '#c42743',
+  },
+  durationChipText: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#666',
+  },
+  durationChipTextActive: {
+    color: '#c42743',
+  },
+  saveSettingButton: {
+    backgroundColor: '#c42743',
+    borderRadius: 10,
+    padding: 14,
+    alignItems: 'center',
+  },
+  saveSettingButtonText: {
+    fontSize: 15,
+    fontWeight: '600',
+    color: '#fff',
+  },
+  // Challenge Type modal
+  challengeTypeRow: {
+    gap: 10,
+    marginBottom: 20,
+  },
+  challengeTypeButton: {
+    backgroundColor: '#1a1a1a',
+    borderRadius: 12,
+    padding: 14,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    borderWidth: 1.5,
+    borderColor: 'transparent',
+  },
+  challengeTypeButtonActive: {
+    backgroundColor: '#252525',
+    borderColor: '#c42743',
+  },
+  challengeTypeTitle: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#888',
+  },
+  challengeTypeTitleActive: {
+    color: '#c42743',
+  },
+  challengeTypeDesc: {
+    fontSize: 11,
+    color: '#555',
+    marginTop: 2,
+  },
+  challengeTypeDescActive: {
+    color: '#888',
   },
 });
