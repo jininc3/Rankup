@@ -2,9 +2,9 @@ import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { IconSymbol } from '@/components/ui/icon-symbol';
 import { useLocalSearchParams, useRouter } from 'expo-router';
-import { ScrollView, StyleSheet, TouchableOpacity, View, Image, Alert, RefreshControl, Modal, ActivityIndicator, TextInput } from 'react-native';
+import { ScrollView, StyleSheet, TouchableOpacity, View, Image, Alert, RefreshControl, Modal, ActivityIndicator, TextInput, Animated, PanResponder, Dimensions } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { db } from '@/config/firebase';
 import { doc, getDoc, updateDoc, deleteDoc, onSnapshot, collection, getDocs, addDoc, serverTimestamp } from 'firebase/firestore';
 import * as Clipboard from 'expo-clipboard';
@@ -215,6 +215,37 @@ export default function LeaderboardDetail() {
   const [selectedChallengeMembers, setSelectedChallengeMembers] = useState<string[]>([]);
   const [creatingChallenge, setCreatingChallenge] = useState(false);
   const [spectators, setSpectators] = useState<any[]>([]);
+
+  // Swipe-to-dismiss for invite modal
+  const inviteModalTranslateY = useRef(new Animated.Value(0)).current;
+  const invitePanResponder = useRef(
+    PanResponder.create({
+      onStartShouldSetPanResponder: () => false,
+      onMoveShouldSetPanResponder: (_, gestureState) => gestureState.dy > 10,
+      onPanResponderMove: (_, gestureState) => {
+        if (gestureState.dy > 0) {
+          inviteModalTranslateY.setValue(gestureState.dy);
+        }
+      },
+      onPanResponderRelease: (_, gestureState) => {
+        if (gestureState.dy > 100) {
+          Animated.timing(inviteModalTranslateY, {
+            toValue: 600,
+            duration: 200,
+            useNativeDriver: true,
+          }).start(() => {
+            setShowInviteModal(false);
+            inviteModalTranslateY.setValue(0);
+          });
+        } else {
+          Animated.spring(inviteModalTranslateY, {
+            toValue: 0,
+            useNativeDriver: true,
+          }).start();
+        }
+      },
+    })
+  ).current;
 
   const isCreator = partyData?.createdBy === user?.id;
   const isMember = partyData?.members?.includes(user?.id);
@@ -1508,18 +1539,14 @@ export default function LeaderboardDetail() {
           activeOpacity={1}
           onPress={() => setShowInviteModal(false)}
         >
-          <TouchableOpacity
-            activeOpacity={1}
-            onPress={(e) => e.stopPropagation()}
-            style={styles.inviteModalContent}
+          <Animated.View
+            style={[styles.inviteModalContent, { transform: [{ translateY: inviteModalTranslateY }] }]}
+            {...invitePanResponder.panHandlers}
           >
             <View style={styles.inviteModalHandle} />
 
             <View style={styles.inviteModalHeader}>
               <ThemedText style={styles.inviteModalTitle}>Invite to Leaderboard</ThemedText>
-              <TouchableOpacity onPress={() => setShowInviteModal(false)}>
-                <IconSymbol size={20} name="xmark" color="#888" />
-              </TouchableOpacity>
             </View>
 
             <View style={styles.inviteSearchContainer}>
@@ -1541,7 +1568,7 @@ export default function LeaderboardDetail() {
             <ScrollView style={styles.inviteUsersList} showsVerticalScrollIndicator={false}>
               {loadingMutuals || searchingUsers ? (
                 <View style={styles.inviteLoadingContainer}>
-                  <ActivityIndicator size="small" color="#c42743" />
+                  <ActivityIndicator size="small" color="#A08845" />
                 </View>
               ) : (
                 <>
@@ -1619,7 +1646,7 @@ export default function LeaderboardDetail() {
                 </>
               )}
             </ScrollView>
-          </TouchableOpacity>
+          </Animated.View>
         </TouchableOpacity>
       </Modal>
 
@@ -2993,7 +3020,7 @@ const styles = StyleSheet.create({
     color: '#fff',
   },
   inviteSendButton: {
-    backgroundColor: '#c42743',
+    backgroundColor: '#A08845',
     paddingHorizontal: 16,
     paddingVertical: 8,
     borderRadius: 8,

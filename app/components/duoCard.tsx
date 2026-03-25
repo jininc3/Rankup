@@ -257,9 +257,9 @@ export default function DuoCard({ duo, onPress, onMessage, onViewProfile }: DuoC
             </TouchableOpacity>
           )}
           {onMessage && (
-            <TouchableOpacity style={[styles.actionButton, onViewProfile && styles.actionButtonHalf]} onPress={onMessage} activeOpacity={0.7}>
-              <IconSymbol size={14} name="bubble.left.fill" color="#888" />
-              <ThemedText style={styles.actionButtonText}>Message</ThemedText>
+            <TouchableOpacity style={[styles.actionButton, onViewProfile && styles.actionButtonHalf, styles.messageButton]} onPress={onMessage} activeOpacity={0.7}>
+              <IconSymbol size={14} name="bubble.left.fill" color="#a08845" />
+              <ThemedText style={styles.messageButtonText}>Message</ThemedText>
             </TouchableOpacity>
           )}
         </View>
@@ -340,6 +340,14 @@ const styles = StyleSheet.create({
     fontSize: 12,
     fontWeight: '600',
     color: '#888',
+  },
+  messageButton: {
+    backgroundColor: 'rgba(160, 136, 69, 0.15)',
+  },
+  messageButtonText: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: '#a08845',
   },
   profileIconSmall: {
     width: 18,
