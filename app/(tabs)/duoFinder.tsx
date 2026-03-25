@@ -62,6 +62,7 @@ export default function DuoFinderScreen() {
   // Live search state
   const [matchState, setMatchState] = useState<'idle' | 'searching' | 'matched'>('idle');
   const [searchGame, setSearchGame] = useState<'valorant' | 'league' | null>(null);
+  const [searchGamePick, setSearchGamePick] = useState<'valorant' | 'league' | null>(null);
   const [matchedUserCard, setMatchedUserCard] = useState<DuoMatchCardData | null>(null);
   const [matchedUserId, setMatchedUserId] = useState<string | null>(null);
   const unsubscribeQueueRef = useRef<(() => void) | null>(null);
@@ -576,6 +577,13 @@ export default function DuoFinderScreen() {
 
   const hasCards = valorantCard !== null || leagueCard !== null;
 
+  // Auto-select game if user only has one card
+  useEffect(() => {
+    if (valorantCard && !leagueCard) setSearchGamePick('valorant');
+    else if (!valorantCard && leagueCard) setSearchGamePick('league');
+    else if (!valorantCard && !leagueCard) setSearchGamePick(null);
+  }, [valorantCard, leagueCard]);
+
   const handleCardPress = (game: 'valorant' | 'league') => {
     // Navigate to detail page with edit capability for own card
     const cardData = game === 'valorant' ? valorantCard : leagueCard;
@@ -944,25 +952,67 @@ export default function DuoFinderScreen() {
               <View style={styles.liveSearchIdleContainer}>
                 <View style={styles.liveSearchIconContainer}>
                   <View style={styles.liveSearchIconRing}>
-                    <IconSymbol size={40} name="person.2.fill" color="#c42743" />
+                    <IconSymbol size={36} name="person.2.fill" color="#a08845" />
                   </View>
                 </View>
-                <ThemedText style={styles.liveSearchTitle}>Find a Duo Now</ThemedText>
+                <ThemedText style={styles.liveSearchTitle}>Find Your Duo</ThemedText>
                 <ThemedText style={styles.liveSearchSubtitle}>
-                  Get matched instantly with another player who is searching right now
+                  Get matched with a player searching right now{'\n'}within your rank range
                 </ThemedText>
+
+                {/* Game Selection */}
+                {hasCards && (
+                  <View style={styles.liveSearchGamePicker}>
+                    {valorantCard && (
+                      <TouchableOpacity
+                        style={[
+                          styles.liveSearchGameBtn,
+                          searchGamePick === 'valorant' && styles.liveSearchGameBtnActive,
+                          !leagueCard && styles.liveSearchGameBtnOnly,
+                        ]}
+                        onPress={() => setSearchGamePick('valorant')}
+                        activeOpacity={0.7}
+                      >
+                        <Image source={require('@/assets/images/valorant-red.png')} style={styles.liveSearchGameIcon} resizeMode="contain" />
+                        <ThemedText style={[
+                          styles.liveSearchGameBtnText,
+                          searchGamePick === 'valorant' && styles.liveSearchGameBtnTextActive,
+                        ]}>Valorant</ThemedText>
+                      </TouchableOpacity>
+                    )}
+                    {leagueCard && (
+                      <TouchableOpacity
+                        style={[
+                          styles.liveSearchGameBtn,
+                          searchGamePick === 'league' && styles.liveSearchGameBtnActive,
+                          !valorantCard && styles.liveSearchGameBtnOnly,
+                        ]}
+                        onPress={() => setSearchGamePick('league')}
+                        activeOpacity={0.7}
+                      >
+                        <Image source={require('@/assets/images/lol-icon.png')} style={styles.liveSearchGameIcon} resizeMode="contain" />
+                        <ThemedText style={[
+                          styles.liveSearchGameBtnText,
+                          searchGamePick === 'league' && styles.liveSearchGameBtnTextActive,
+                        ]}>League</ThemedText>
+                      </TouchableOpacity>
+                    )}
+                  </View>
+                )}
+
                 <TouchableOpacity
-                  style={styles.liveSearchButton}
-                  onPress={handleLiveSearchPress}
+                  style={[styles.liveSearchButton, !searchGamePick && { opacity: 0.4 }]}
+                  onPress={() => searchGamePick && startLiveSearch(searchGamePick)}
                   activeOpacity={0.8}
+                  disabled={!searchGamePick}
                 >
                   <View style={styles.liveSearchDot} />
-                  <ThemedText style={styles.liveSearchText}>Search for a live player now</ThemedText>
-                  <IconSymbol size={18} name="chevron.right" color="#fff" />
+                  <ThemedText style={styles.liveSearchText}>Search Now</ThemedText>
+                  <IconSymbol size={16} name="chevron.right" color="#fff" />
                 </TouchableOpacity>
                 {!hasCards && (
                   <ThemedText style={styles.liveSearchHint}>
-                    You need a duo card to start searching
+                    Create a duo card to start searching
                   </ThemedText>
                 )}
               </View>
@@ -1400,28 +1450,67 @@ const styles = StyleSheet.create({
     marginBottom: 24,
   },
   liveSearchIconRing: {
-    width: 100,
-    height: 100,
-    borderRadius: 50,
-    backgroundColor: 'rgba(196, 39, 67, 0.1)',
-    borderWidth: 2,
-    borderColor: 'rgba(196, 39, 67, 0.3)',
+    width: 88,
+    height: 88,
+    borderRadius: 44,
+    backgroundColor: 'rgba(160, 136, 69, 0.1)',
+    borderWidth: 1.5,
+    borderColor: 'rgba(160, 136, 69, 0.25)',
     alignItems: 'center',
     justifyContent: 'center',
   },
   liveSearchTitle: {
-    fontSize: 22,
+    fontSize: 24,
     fontWeight: '700',
     color: '#fff',
     marginBottom: 8,
+    letterSpacing: -0.3,
   },
   liveSearchSubtitle: {
     fontSize: 14,
-    color: '#888',
+    color: '#666',
     textAlign: 'center',
-    lineHeight: 20,
+    lineHeight: 21,
+    maxWidth: 260,
+    marginBottom: 24,
+  },
+  liveSearchGamePicker: {
+    flexDirection: 'row',
+    gap: 10,
+    marginBottom: 20,
+    width: '100%',
     maxWidth: 280,
-    marginBottom: 28,
+  },
+  liveSearchGameBtn: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    paddingVertical: 12,
+    borderRadius: 12,
+    backgroundColor: '#1a1a1a',
+    borderWidth: 1.5,
+    borderColor: 'transparent',
+  },
+  liveSearchGameBtnActive: {
+    borderColor: 'rgba(160, 136, 69, 0.4)',
+    backgroundColor: 'rgba(160, 136, 69, 0.08)',
+  },
+  liveSearchGameBtnOnly: {
+    maxWidth: 160,
+  },
+  liveSearchGameIcon: {
+    width: 20,
+    height: 20,
+  },
+  liveSearchGameBtnText: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#555',
+  },
+  liveSearchGameBtnTextActive: {
+    color: '#ccc',
   },
   liveSearchHint: {
     fontSize: 13,
@@ -1433,11 +1522,11 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 10,
-    marginHorizontal: 12,
-    marginTop: 14,
+    width: '100%',
+    maxWidth: 280,
     paddingVertical: 14,
-    paddingHorizontal: 18,
-    backgroundColor: '#c42743',
+    paddingHorizontal: 20,
+    backgroundColor: '#a08845',
     borderRadius: 14,
     shadowColor: '#c42743',
     shadowOffset: { width: 0, height: 4 },

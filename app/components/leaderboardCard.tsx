@@ -1,7 +1,6 @@
 import { ThemedText } from '@/components/themed-text';
 import { IconSymbol } from '@/components/ui/icon-symbol';
 import { Image, StyleSheet, TouchableOpacity, View } from 'react-native';
-import { LinearGradient } from 'expo-linear-gradient';
 
 // Game logo mapping
 const GAME_LOGOS: { [key: string]: any } = {
@@ -85,13 +84,7 @@ const calculateDaysInfo = (startDate: any, endDate: any): { currentDay: number; 
 export default function LeaderboardCard({ leaderboard, onPress }: LeaderboardCardProps) {
   const daysInfo = calculateDaysInfo(leaderboard.startDate, leaderboard.endDate);
   const gameLogo = GAME_LOGOS[leaderboard.game];
-  const maxMembers = leaderboard.maxMembers ?? 10;
-
-  // Get challenge type display text
-  const getChallengeTypeText = (): string => {
-    if (leaderboard.challengeType === 'rank') return 'Highest Rank';
-    return 'LP Climbing';
-  };
+  const isActive = leaderboard.challengeStatus === 'active';
 
   // Get top 3 players for ranking rows
   const topPlayers = (leaderboard.players || []).filter(
@@ -100,16 +93,10 @@ export default function LeaderboardCard({ leaderboard, onPress }: LeaderboardCar
 
   return (
     <TouchableOpacity
-      activeOpacity={0.8}
+      activeOpacity={0.85}
       onPress={() => onPress(leaderboard)}
       style={styles.container}
     >
-      <LinearGradient
-        colors={['transparent', 'transparent', 'transparent']}
-        start={{ x: 0, y: 0 }}
-        end={{ x: 1, y: 1 }}
-        style={styles.cardGradient}
-      >
       {/* Header Section */}
       <View style={styles.headerSection}>
         {leaderboard.partyIcon ? (
@@ -131,42 +118,45 @@ export default function LeaderboardCard({ leaderboard, onPress }: LeaderboardCar
             </ThemedText>
           </View>
         )}
+
         <View style={styles.headerInfo}>
           <ThemedText style={styles.name} numberOfLines={1}>
             {leaderboard.name.toUpperCase()}
           </ThemedText>
           <View style={styles.metaRow}>
-            {leaderboard.challengeStatus === 'active' && (
+            <ThemedText style={styles.gameText}>{leaderboard.game}</ThemedText>
+            {isActive && (
               <>
-                <View style={[styles.activeDot, { backgroundColor: '#FFD700' }]} />
-                <ThemedText style={[styles.activeText, { color: '#FFD700' }]}>CHALLENGE</ThemedText>
                 <View style={styles.metaDot} />
+                <View style={styles.challengeBadge}>
+                  <View style={styles.challengeDot} />
+                  <ThemedText style={styles.challengeText}>CHALLENGE</ThemedText>
+                </View>
               </>
             )}
-            <ThemedText style={styles.metaText}>{leaderboard.game}</ThemedText>
-            {daysInfo && leaderboard.challengeStatus === 'active' && (
+            {daysInfo && isActive && (
               <>
                 <View style={styles.metaDot} />
-                <ThemedText style={styles.metaText}>{daysInfo.daysLeft}d left</ThemedText>
+                <ThemedText style={styles.daysText}>{daysInfo.daysLeft}d left</ThemedText>
               </>
             )}
           </View>
         </View>
       </View>
 
-      {/* Summary Footer */}
-      <View style={styles.summaryFooter}>
-        <View style={styles.summaryLeft}>
+      {/* Footer */}
+      <View style={styles.footer}>
+        <View style={styles.footerLeft}>
           {topPlayers.length > 0 && (
             <View style={styles.stackedAvatars}>
               {topPlayers.map((player: any, index: number) => (
                 <View
                   key={player.odId || index}
-                  style={[styles.miniAvatarWrapper, { marginLeft: index === 0 ? 0 : -8, zIndex: 5 - index }]}
+                  style={[styles.miniAvatarWrapper, { marginLeft: index === 0 ? 0 : -10, zIndex: 5 - index }]}
                 >
                   {index === 0 && (
                     <View style={styles.crownContainer}>
-                      <IconSymbol size={9} name="crown.fill" color="#FFD700" />
+                      <IconSymbol size={9} name="crown.fill" color="#A08845" />
                     </View>
                   )}
                   <View style={styles.miniAvatar}>
@@ -184,32 +174,26 @@ export default function LeaderboardCard({ leaderboard, onPress }: LeaderboardCar
               ))}
             </View>
           )}
-          <ThemedText style={styles.summaryText}>
+          <ThemedText style={styles.playersText}>
             {leaderboard.members} player{leaderboard.members !== 1 ? 's' : ''}
           </ThemedText>
         </View>
+
+        {/* Gold accent line */}
+        <View style={styles.footerAccent} />
       </View>
-      </LinearGradient>
     </TouchableOpacity>
   );
 }
 
 const styles = StyleSheet.create({
   container: {
-    marginBottom: 16,
-    backgroundColor: '#151513',
+    marginBottom: 14,
     borderRadius: 14,
-    borderWidth: 1,
-    borderColor: '#222',
     overflow: 'hidden',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.12,
-    shadowRadius: 8,
-    elevation: 6,
-  },
-  cardGradient: {
-    flex: 1,
+    backgroundColor: '#141414',
+    borderWidth: 1,
+    borderColor: '#1e1e1e',
   },
   // Header
   headerSection: {
@@ -222,74 +206,79 @@ const styles = StyleSheet.create({
     width: 46,
     height: 46,
     borderRadius: 12,
-    backgroundColor: '#222',
-    borderWidth: 1,
-    borderColor: 'rgba(160, 136, 69, 0.2)',
+    backgroundColor: '#1e1e1e',
   },
   iconPlaceholder: {
     width: 46,
     height: 46,
     borderRadius: 12,
-    backgroundColor: '#222',
-    borderWidth: 1,
-    borderColor: 'rgba(160, 136, 69, 0.2)',
+    backgroundColor: '#1e1e1e',
     alignItems: 'center',
     justifyContent: 'center',
   },
   iconPlaceholderText: {
     fontSize: 18,
-    fontWeight: '700',
-    color: '#a08845',
+    fontWeight: '800',
+    color: '#555',
   },
   headerInfo: {
     flex: 1,
   },
   name: {
-    fontSize: 17,
+    fontSize: 16,
     fontWeight: '700',
-    color: '#eee',
-    letterSpacing: 0.3,
-    marginBottom: 4,
+    color: '#fff',
+    letterSpacing: 0.4,
+    marginBottom: 5,
   },
   metaRow: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 6,
   },
-  metaText: {
-    fontSize: 13,
-    color: '#666',
-  },
-  activeDot: {
-    width: 6,
-    height: 6,
-    borderRadius: 3,
-    backgroundColor: '#4ade80',
-  },
-  activeText: {
-    fontSize: 13,
-    fontWeight: '700',
-    color: '#4ade80',
-    letterSpacing: 0.5,
+  gameText: {
+    fontSize: 12,
+    color: '#555',
+    fontWeight: '500',
   },
   metaDot: {
     width: 3,
     height: 3,
     borderRadius: 1.5,
-    backgroundColor: '#444',
+    backgroundColor: '#333',
   },
-  // Summary Footer
-  summaryFooter: {
+  challengeBadge: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
     alignItems: 'center',
-    paddingHorizontal: 14,
-    paddingVertical: 16,
-    backgroundColor: '#1a1a1a',
-    borderTopWidth: 1,
-    borderTopColor: '#222',
+    gap: 4,
   },
-  summaryLeft: {
+  challengeDot: {
+    width: 5,
+    height: 5,
+    borderRadius: 2.5,
+    backgroundColor: '#A08845',
+  },
+  challengeText: {
+    fontSize: 10,
+    fontWeight: '700',
+    color: '#A08845',
+    letterSpacing: 0.5,
+  },
+  daysText: {
+    fontSize: 12,
+    fontWeight: '500',
+    color: '#555',
+  },
+  // Footer
+  footer: {
+    paddingHorizontal: 14,
+    paddingTop: 12,
+    paddingBottom: 14,
+    backgroundColor: '#111111',
+    borderTopWidth: 1,
+    borderTopColor: '#1e1e1e',
+  },
+  footerLeft: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 10,
@@ -311,7 +300,7 @@ const styles = StyleSheet.create({
     height: 34,
     borderRadius: 17,
     borderWidth: 2,
-    borderColor: '#1a1a1a',
+    borderColor: '#141414',
     overflow: 'hidden',
   },
   miniAvatarImage: {
@@ -321,29 +310,25 @@ const styles = StyleSheet.create({
   miniAvatarPlaceholder: {
     width: '100%',
     height: '100%',
-    backgroundColor: '#333',
+    backgroundColor: '#252525',
     alignItems: 'center',
     justifyContent: 'center',
   },
   miniAvatarText: {
     fontSize: 12,
     fontWeight: '600',
-    color: '#888',
-  },
-  summaryText: {
-    fontSize: 14,
-    fontWeight: '500',
     color: '#666',
   },
-  yourRankBadge: {
-    backgroundColor: '#252525',
-    paddingHorizontal: 10,
-    paddingVertical: 4,
-    borderRadius: 8,
+  playersText: {
+    fontSize: 14,
+    fontWeight: '500',
+    color: '#555',
   },
-  yourRankText: {
-    fontSize: 13,
-    fontWeight: '700',
-    color: '#fff',
+  // Thin gold line at bottom of footer
+  footerAccent: {
+    height: 2,
+    backgroundColor: '#A08845',
+    borderRadius: 1,
+    marginTop: 12,
   },
 });

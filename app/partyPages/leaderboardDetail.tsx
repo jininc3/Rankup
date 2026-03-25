@@ -1087,7 +1087,7 @@ export default function LeaderboardDetail() {
               }}
               activeOpacity={0.7}
             >
-              <IconSymbol size={14} name="trophy.fill" color="#a08845" />
+              <IconSymbol size={14} name="trophy.fill" color="#fff" />
               <ThemedText style={styles.createChallengeInlineBtnText}>Create Challenge</ThemedText>
             </TouchableOpacity>
           ) : null}
@@ -2630,7 +2630,7 @@ const styles = StyleSheet.create({
     color: '#A08845',
   },
   progressBarBackground: {
-    width: '50%',
+    width: '100%',
     height: 3,
     backgroundColor: 'rgba(255, 255, 255, 0.1)',
     borderRadius: 2,
@@ -2643,7 +2643,8 @@ const styles = StyleSheet.create({
   },
   // Action Buttons
   activeProgressSection: {
-    gap: 8,
+    gap: 6,
+    width: '100%',
   },
   activeProgressHeader: {
     flexDirection: 'row',
@@ -2678,14 +2679,12 @@ const styles = StyleSheet.create({
     gap: 8,
     paddingVertical: 12,
     borderRadius: 10,
-    borderWidth: 1,
-    borderColor: 'rgba(160, 136, 69, 0.25)',
-    backgroundColor: 'rgba(160, 136, 69, 0.06)',
+    backgroundColor: '#a08845',
   },
   createChallengeInlineBtnText: {
     fontSize: 14,
     fontWeight: '600',
-    color: '#a08845',
+    color: '#fff',
   },
   sectionDivider: {
     height: 1,
