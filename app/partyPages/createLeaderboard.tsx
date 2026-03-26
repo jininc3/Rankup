@@ -433,6 +433,7 @@ export default function CreateLeaderboardScreen() {
                 </TouchableOpacity>
               ))}
             </View>
+            <ThemedText style={styles.formHint}>Choose which game you want to create a leaderboard for</ThemedText>
           </View>
         </View>
 
@@ -456,6 +457,7 @@ export default function CreateLeaderboardScreen() {
               <IconSymbol size={12} name="camera.fill" color="#fff" />
             </View>
           </TouchableOpacity>
+          <ThemedText style={styles.formHint}>Optional - displayed at the top of your leaderboard</ThemedText>
         </View>
 
         {/* Settings Grid */}
@@ -467,6 +469,7 @@ export default function CreateLeaderboardScreen() {
               <ThemedText style={styles.settingValue}>{inviteCode}</ThemedText>
               <IconSymbol size={14} name="doc.on.doc" color="#555" />
             </TouchableOpacity>
+            <ThemedText style={styles.formHint}>Tap to copy and share</ThemedText>
           </View>
           <View style={styles.formGridItemFlex}>
             <ThemedText style={styles.formLabel}>WHO CAN INVITE</ThemedText>
@@ -513,7 +516,10 @@ export default function CreateLeaderboardScreen() {
         <View style={styles.formDivider} />
         <View style={styles.formSection}>
           <View style={styles.sectionTitleRow}>
-            <ThemedText style={styles.formLabel}>INVITE MEMBERS</ThemedText>
+            <View>
+              <ThemedText style={styles.formLabel}>INVITE MEMBERS</ThemedText>
+              <ThemedText style={styles.formHint}>You can add more members later</ThemedText>
+            </View>
             {selectedFollowers.length > 0 && (
               <View style={styles.selectedBadge}>
                 <ThemedText style={styles.selectedBadgeText}>{selectedFollowers.length}</ThemedText>
@@ -890,6 +896,11 @@ const styles = StyleSheet.create({
     letterSpacing: 0.5,
     marginBottom: 8,
   },
+  formHint: {
+    fontSize: 11,
+    color: '#444',
+    marginTop: 6,
+  },
   formGrid: {
     flexDirection: 'row',
     flexWrap: 'wrap',
@@ -1137,6 +1148,8 @@ const styles = StyleSheet.create({
     paddingLeft: 4,
     paddingRight: 8,
     gap: 6,
+    borderWidth: 1,
+    borderColor: '#a08845',
   },
   selectedChipAvatar: {
     width: 22,

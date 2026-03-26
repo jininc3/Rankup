@@ -199,7 +199,6 @@ export default function LeaderboardDetail() {
   const [showManageMembersModal, setShowManageMembersModal] = useState(false);
   const [kickingMember, setKickingMember] = useState<string | null>(null);
   const [pendingInvites, setPendingInvites] = useState<{ id: string; username: string; avatar: string }[]>([]);
-  const [showInvitePermissionModal, setShowInvitePermissionModal] = useState(false);
   const [updatingPermission, setUpdatingPermission] = useState(false);
   const [startingChallenge, setStartingChallenge] = useState(false);
   const [showDurationModal, setShowDurationModal] = useState(false);
@@ -212,6 +211,8 @@ export default function LeaderboardDetail() {
   const [showChallengeDetailsModal, setShowChallengeDetailsModal] = useState(false);
   const [challengeTypeSelection, setChallengeTypeSelection] = useState<'climbing' | 'rank'>('climbing');
   const [durationSelection, setDurationSelection] = useState<number>(30);
+  const [showCustomDuration, setShowCustomDuration] = useState(false);
+  const [customDurationText, setCustomDurationText] = useState('');
   const [selectedChallengeMembers, setSelectedChallengeMembers] = useState<string[]>([]);
   const [creatingChallenge, setCreatingChallenge] = useState(false);
   const [spectators, setSpectators] = useState<any[]>([]);
@@ -249,12 +250,12 @@ export default function LeaderboardDetail() {
 
   const isCreator = partyData?.createdBy === user?.id;
   const isMember = partyData?.members?.includes(user?.id);
-  const invitePermission = partyData?.invitePermission || 'leader_only';
+  const allowedInviters: string[] = partyData?.allowedInviters || [];
   const challengeStatus = partyData?.challengeStatus || 'none';
   const isNone = challengeStatus === 'none';
   const isPending = challengeStatus === 'pending';
   const isActive = challengeStatus === 'active';
-  const canInvite = (isCreator || invitePermission === 'anyone') && (isPending || isNone);
+  const canInvite = (isCreator || allowedInviters.includes(user?.id || '')) && (isPending || isNone);
   const challengeParticipants: string[] = partyData?.challengeParticipants || [];
   const challengeInvites: any[] = partyData?.challengeInvites || [];
   const acceptedCount = challengeInvites.filter((inv: any) => inv.status === 'accepted').length + 1; // +1 for leader
@@ -705,14 +706,17 @@ export default function LeaderboardDetail() {
   };
 
   // Handle updating invite permission
-  const handleUpdateInvitePermission = async (newPermission: 'leader_only' | 'anyone') => {
+  const handleToggleInvitePermission = async (memberId: string) => {
     if (!partyDocId) return;
 
     setUpdatingPermission(true);
     try {
       const partyRef = doc(db, 'parties', partyDocId);
-      await updateDoc(partyRef, { invitePermission: newPermission });
-      setShowInvitePermissionModal(false);
+      const currentAllowed = partyData?.allowedInviters || [];
+      const newAllowed = currentAllowed.includes(memberId)
+        ? currentAllowed.filter((id: string) => id !== memberId)
+        : [...currentAllowed, memberId];
+      await updateDoc(partyRef, { allowedInviters: newAllowed });
     } catch (error) {
       console.error('Error updating invite permission:', error);
       Alert.alert('Error', 'Failed to update invite permission');
@@ -997,14 +1001,9 @@ export default function LeaderboardDetail() {
               <IconSymbol size={14} name="chevron.left" color="#fff" />
             </TouchableOpacity>
             <View style={styles.headerRightButtons}>
-              {(isPending || isActive) && (isCreator || challengeParticipants.includes(user?.id || '')) && (
-                <TouchableOpacity style={styles.challengeDetailButton} onPress={() => setShowChallengeDetailsModal(true)}>
-                  <IconSymbol size={14} name="trophy.fill" color="#a08845" />
-                </TouchableOpacity>
-              )}
               {isCreator && (
                 <TouchableOpacity style={styles.headerPillButton} onPress={() => setShowEditModal(true)}>
-                  <ThemedText style={styles.headerPillButtonText}>Edit</ThemedText>
+                  <IconSymbol size={16} name="gearshape.fill" color="#ccc" />
                 </TouchableOpacity>
               )}
               <TouchableOpacity style={styles.headerPillButton} onPress={handleLeaveParty}>
@@ -1087,6 +1086,15 @@ export default function LeaderboardDetail() {
                 <View style={[styles.progressBarFill, { width: `${progress}%` }]} />
               </View>
             </View>
+          ) : isPending ? (
+            <TouchableOpacity
+              style={styles.pendingChallengeBtn}
+              onPress={() => setShowChallengeDetailsModal(true)}
+              activeOpacity={0.7}
+            >
+              <IconSymbol size={14} name="trophy.fill" color="#a08845" />
+              <ThemedText style={styles.pendingChallengeBtnText}>Pending Challenge</ThemedText>
+            </TouchableOpacity>
           ) : isNone && isCreator ? (
             <TouchableOpacity
               style={styles.createChallengeInlineBtn}
@@ -1094,6 +1102,8 @@ export default function LeaderboardDetail() {
                 setSelectedChallengeMembers([]);
                 setChallengeTypeSelection('climbing');
                 setDurationSelection(30);
+                setShowCustomDuration(false);
+                setCustomDurationText('');
                 setShowCreateChallengeModal(true);
               }}
               activeOpacity={0.7}
@@ -1104,20 +1114,26 @@ export default function LeaderboardDetail() {
           ) : null}
 
           {/* Action Buttons */}
-          {canInvite && (
-            <View style={styles.actionButtons}>
+          <View style={styles.actionButtons}>
+            {canInvite && (
               <TouchableOpacity style={styles.inviteButton} onPress={handleOpenInviteModal}>
-                <IconSymbol size={14} name="person.badge.plus" color="#888" />
+                <IconSymbol size={14} name="person.badge.plus" color="#fff" />
                 <ThemedText style={styles.inviteButtonText}>Invite</ThemedText>
               </TouchableOpacity>
-              {inviteCode && (isNone || isPending) && (
-                <TouchableOpacity style={styles.codeButton} onPress={handleCopyInviteCode}>
-                  <ThemedText style={styles.codeButtonText}>{inviteCode}</ThemedText>
-                  <IconSymbol size={12} name="doc.on.doc" color="#555" />
-                </TouchableOpacity>
-              )}
-            </View>
-          )}
+            )}
+            {inviteCode && (isNone || isPending) && (
+              <TouchableOpacity style={styles.codeButton} onPress={handleCopyInviteCode}>
+                <ThemedText style={styles.codeButtonText}>{inviteCode}</ThemedText>
+                <IconSymbol size={12} name="doc.on.doc" color="#555" />
+              </TouchableOpacity>
+            )}
+            {(isPending || isActive) && (isCreator || challengeParticipants.includes(user?.id || '')) && (
+              <TouchableOpacity style={styles.codeButton} onPress={() => setShowChallengeDetailsModal(true)}>
+                <IconSymbol size={14} name="trophy.fill" color="#a08845" />
+                <ThemedText style={styles.inviteButtonText}>Challenge</ThemedText>
+              </TouchableOpacity>
+            )}
+          </View>
         </View>
 
         {/* Divider */}
@@ -1127,7 +1143,7 @@ export default function LeaderboardDetail() {
         <View style={styles.columnHeaders}>
           <ThemedText style={[styles.columnHeaderText, { width: 40 }]}>RANK</ThemedText>
           <ThemedText style={[styles.columnHeaderText, { flex: 1, paddingLeft: 40 }]}>PLAYER</ThemedText>
-          <ThemedText style={[styles.columnHeaderText, styles.alignRight, { width: 120 }]}>
+          <ThemedText style={[styles.columnHeaderText, { width: 130, marginLeft: 'auto', textAlign: 'center' }]}>
             CURRENT RANK
           </ThemedText>
         </View>
@@ -1338,22 +1354,58 @@ export default function LeaderboardDetail() {
             {/* Duration */}
             <ThemedText style={styles.createChallengeLabel}>DURATION</ThemedText>
             <View style={styles.createChallengeDurationRow}>
-              {[7, 14, 30, 60, 90].map((days) => (
+              {[7, 14, 30].map((days) => (
                 <TouchableOpacity
                   key={days}
                   style={[
                     styles.createChallengeDurationChip,
-                    durationSelection === days && styles.createChallengeDurationChipActive
+                    !showCustomDuration && durationSelection === days && styles.createChallengeDurationChipActive
                   ]}
-                  onPress={() => setDurationSelection(days)}
+                  onPress={() => {
+                    setDurationSelection(days);
+                    setShowCustomDuration(false);
+                    setCustomDurationText('');
+                  }}
                 >
                   <ThemedText style={[
                     styles.createChallengeDurationText,
-                    durationSelection === days && styles.createChallengeDurationTextActive
+                    !showCustomDuration && durationSelection === days && styles.createChallengeDurationTextActive
                   ]}>{days}d</ThemedText>
                 </TouchableOpacity>
               ))}
+              <TouchableOpacity
+                style={[
+                  styles.createChallengeDurationChip,
+                  showCustomDuration && styles.createChallengeDurationChipActive
+                ]}
+                onPress={() => setShowCustomDuration(true)}
+              >
+                <ThemedText style={[
+                  styles.createChallengeDurationText,
+                  showCustomDuration && styles.createChallengeDurationTextActive
+                ]}>Custom</ThemedText>
+              </TouchableOpacity>
             </View>
+            {showCustomDuration && (
+              <View style={styles.customDurationRow}>
+                <TextInput
+                  style={styles.customDurationInput}
+                  placeholder="Enter days"
+                  placeholderTextColor="#555"
+                  keyboardType="number-pad"
+                  value={customDurationText}
+                  onChangeText={(text) => {
+                    const num = text.replace(/[^0-9]/g, '');
+                    setCustomDurationText(num);
+                    const parsed = parseInt(num, 10);
+                    if (parsed > 0) setDurationSelection(parsed);
+                  }}
+                  maxLength={3}
+                  autoFocus
+                />
+                <ThemedText style={styles.customDurationLabel}>days</ThemedText>
+              </View>
+            )}
 
             {/* Member Selection */}
             <ThemedText style={styles.createChallengeLabel}>
@@ -1457,25 +1509,6 @@ export default function LeaderboardDetail() {
               <IconSymbol size={16} name="chevron.right" color="#444" />
             </TouchableOpacity>
 
-            <TouchableOpacity
-              style={styles.editModalOption}
-              onPress={() => {
-                setShowEditModal(false);
-                setShowInvitePermissionModal(true);
-              }}
-            >
-              <View style={styles.editModalOptionIcon}>
-                <IconSymbol size={18} name="person.badge.plus" color="#888" />
-              </View>
-              <View style={styles.editModalOptionText}>
-                <ThemedText style={styles.editModalOptionTitle}>Invite Permissions</ThemedText>
-                <ThemedText style={styles.editModalOptionSubtitle}>
-                  {invitePermission === 'anyone' ? 'Anyone can invite' : 'Only leader can invite'}
-                </ThemedText>
-              </View>
-              <IconSymbol size={16} name="chevron.right" color="#444" />
-            </TouchableOpacity>
-
             {partyData?.challengeStatus === 'pending' && (
               <TouchableOpacity
                 style={styles.editModalOption}
@@ -1516,24 +1549,22 @@ export default function LeaderboardDetail() {
               </TouchableOpacity>
             )}
 
-            {players.filter(p => p.userId !== user?.id).length > 0 && (
-              <TouchableOpacity
-                style={styles.editModalOption}
-                onPress={() => {
-                  setShowEditModal(false);
-                  setShowManageMembersModal(true);
-                }}
-              >
-                <View style={[styles.editModalOptionIcon, { backgroundColor: 'rgba(255,100,100,0.1)' }]}>
-                  <IconSymbol size={18} name="person.badge.minus" color="#ff6b6b" />
-                </View>
-                <View style={styles.editModalOptionText}>
-                  <ThemedText style={styles.editModalOptionTitle}>Manage Members</ThemedText>
-                  <ThemedText style={styles.editModalOptionSubtitle}>Remove members from the leaderboard</ThemedText>
-                </View>
-                <IconSymbol size={16} name="chevron.right" color="#444" />
-              </TouchableOpacity>
-            )}
+            <TouchableOpacity
+              style={styles.editModalOption}
+              onPress={() => {
+                setShowEditModal(false);
+                setShowManageMembersModal(true);
+              }}
+            >
+              <View style={styles.editModalOptionIcon}>
+                <IconSymbol size={18} name="person.2.fill" color="#888" />
+              </View>
+              <View style={styles.editModalOptionText}>
+                <ThemedText style={styles.editModalOptionTitle}>Manage Members</ThemedText>
+                <ThemedText style={styles.editModalOptionSubtitle}>Permissions & remove members</ThemedText>
+              </View>
+              <IconSymbol size={16} name="chevron.right" color="#444" />
+            </TouchableOpacity>
           </View>
         </TouchableOpacity>
       </Modal>
@@ -1688,6 +1719,10 @@ export default function LeaderboardDetail() {
             </View>
 
             <ScrollView style={styles.manageMembersList} showsVerticalScrollIndicator={false}>
+              {/* Members List */}
+              <ThemedText style={styles.manageSectionLabel}>
+                MEMBERS ({players.filter(p => p.userId !== user?.id).length})
+              </ThemedText>
               {players
                 .filter(player => player.userId !== user?.id)
                 .map((player) => (
@@ -1707,17 +1742,33 @@ export default function LeaderboardDetail() {
                         Rank #{player.rank} • {player.currentRank}
                       </ThemedText>
                     </View>
-                    <TouchableOpacity
-                      style={styles.removeButton}
-                      onPress={() => handleKickMember(player)}
-                      disabled={kickingMember === player.userId}
-                    >
-                      {kickingMember === player.userId ? (
-                        <ActivityIndicator size="small" color="#ff6b6b" />
-                      ) : (
-                        <ThemedText style={styles.removeButtonText}>Remove</ThemedText>
-                      )}
-                    </TouchableOpacity>
+                    <View style={styles.manageMemberActions}>
+                      <TouchableOpacity
+                        style={[
+                          styles.canInviteToggle,
+                          allowedInviters.includes(player.userId) && styles.canInviteToggleActive
+                        ]}
+                        onPress={() => handleToggleInvitePermission(player.userId)}
+                        disabled={updatingPermission}
+                      >
+                        <IconSymbol size={10} name="person.badge.plus" color={allowedInviters.includes(player.userId) ? '#fff' : '#555'} />
+                        <ThemedText style={[
+                          styles.canInviteToggleText,
+                          allowedInviters.includes(player.userId) && styles.canInviteToggleTextActive
+                        ]}>{allowedInviters.includes(player.userId) ? 'Can invite' : 'No invite'}</ThemedText>
+                      </TouchableOpacity>
+                      <TouchableOpacity
+                        style={styles.removeButton}
+                        onPress={() => handleKickMember(player)}
+                        disabled={kickingMember === player.userId}
+                      >
+                        {kickingMember === player.userId ? (
+                          <ActivityIndicator size="small" color="#ff6b6b" />
+                        ) : (
+                          <ThemedText style={styles.removeButtonText}>Remove</ThemedText>
+                        )}
+                      </TouchableOpacity>
+                    </View>
                   </View>
                 ))}
 
@@ -1728,89 +1779,6 @@ export default function LeaderboardDetail() {
               )}
             </ScrollView>
           </TouchableOpacity>
-        </TouchableOpacity>
-      </Modal>
-
-      {/* Invite Permission Modal */}
-      <Modal
-        visible={showInvitePermissionModal}
-        transparent
-        animationType="fade"
-        onRequestClose={() => setShowInvitePermissionModal(false)}
-      >
-        <TouchableOpacity
-          style={styles.modalOverlay}
-          activeOpacity={1}
-          onPress={() => setShowInvitePermissionModal(false)}
-        >
-          <View style={styles.permissionModalContent}>
-            <View style={styles.editModalHeader}>
-              <ThemedText style={styles.editModalTitle}>Invite Permissions</ThemedText>
-              <TouchableOpacity onPress={() => setShowInvitePermissionModal(false)}>
-                <IconSymbol size={20} name="xmark" color="#888" />
-              </TouchableOpacity>
-            </View>
-
-            <ThemedText style={styles.permissionDescription}>
-              Choose who can invite new members to this leaderboard
-            </ThemedText>
-
-            <TouchableOpacity
-              style={[
-                styles.permissionOption,
-                invitePermission === 'leader_only' && styles.permissionOptionActive
-              ]}
-              onPress={() => handleUpdateInvitePermission('leader_only')}
-              disabled={updatingPermission}
-            >
-              <View style={styles.permissionOptionLeft}>
-                <View style={[
-                  styles.permissionOptionIcon,
-                  invitePermission === 'leader_only' && styles.permissionOptionIconActive
-                ]}>
-                  <IconSymbol size={12} name="crown.fill" color={invitePermission === 'leader_only' ? '#fff' : '#666'} />
-                </View>
-                <ThemedText style={[
-                  styles.permissionOptionTitle,
-                  invitePermission === 'leader_only' && styles.permissionOptionTitleActive
-                ]}>Leader Only</ThemedText>
-              </View>
-              {invitePermission === 'leader_only' && (
-                <IconSymbol size={14} name="checkmark.circle.fill" color="#c42743" />
-              )}
-            </TouchableOpacity>
-
-            <TouchableOpacity
-              style={[
-                styles.permissionOption,
-                invitePermission === 'anyone' && styles.permissionOptionActive
-              ]}
-              onPress={() => handleUpdateInvitePermission('anyone')}
-              disabled={updatingPermission}
-            >
-              <View style={styles.permissionOptionLeft}>
-                <View style={[
-                  styles.permissionOptionIcon,
-                  invitePermission === 'anyone' && styles.permissionOptionIconActive
-                ]}>
-                  <IconSymbol size={12} name="person.2.fill" color={invitePermission === 'anyone' ? '#fff' : '#666'} />
-                </View>
-                <ThemedText style={[
-                  styles.permissionOptionTitle,
-                  invitePermission === 'anyone' && styles.permissionOptionTitleActive
-                ]}>Anyone</ThemedText>
-              </View>
-              {invitePermission === 'anyone' && (
-                <IconSymbol size={14} name="checkmark.circle.fill" color="#c42743" />
-              )}
-            </TouchableOpacity>
-
-            {updatingPermission && (
-              <View style={styles.permissionUpdating}>
-                <ActivityIndicator size="small" color="#c42743" />
-              </View>
-            )}
-          </View>
         </TouchableOpacity>
       </Modal>
 
@@ -2169,7 +2137,7 @@ const styles = StyleSheet.create({
   headerPillButtonText: {
     fontSize: 13,
     fontWeight: '600',
-    color: '#888',
+    color: '#fff',
   },
   coverPhotoWrapper: {
     width: '100%',
@@ -2682,6 +2650,22 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     color: '#666',
   },
+  pendingChallengeBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    paddingVertical: 12,
+    borderRadius: 10,
+    backgroundColor: '#1a1a1a',
+    borderWidth: 1,
+    borderColor: 'rgba(160, 136, 69, 0.3)',
+  },
+  pendingChallengeBtnText: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#a08845',
+  },
   createChallengeInlineBtn: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -2719,7 +2703,7 @@ const styles = StyleSheet.create({
   inviteButtonText: {
     fontSize: 13,
     fontWeight: '600',
-    color: '#888',
+    color: '#fff',
   },
   codeButton: {
     flexDirection: 'row',
@@ -2733,7 +2717,7 @@ const styles = StyleSheet.create({
   codeButtonText: {
     fontSize: 13,
     fontWeight: '600',
-    color: '#555',
+    color: '#fff',
     letterSpacing: 1.5,
   },
   columnHeaders: {
@@ -2849,15 +2833,16 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 8,
-    width: 120,
-    justifyContent: 'flex-end',
+    width: 130,
+    marginLeft: 'auto',
   },
   rankIconSmall: {
     width: 26,
     height: 26,
   },
   rankTextContainer: {
-    alignItems: 'flex-end',
+    flex: 1,
+    alignItems: 'flex-start',
   },
   currentRankText: {
     fontSize: 11,
@@ -3088,6 +3073,37 @@ const styles = StyleSheet.create({
   },
   manageMembersList: {
     paddingHorizontal: 20,
+  },
+  manageSectionLabel: {
+    fontSize: 10,
+    fontWeight: '700',
+    color: '#555',
+    letterSpacing: 0.5,
+    marginBottom: 10,
+  },
+  manageMemberActions: {
+    alignItems: 'flex-end',
+    gap: 6,
+  },
+  canInviteToggle: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    backgroundColor: '#1a1a1a',
+    borderRadius: 6,
+    paddingVertical: 4,
+    paddingHorizontal: 8,
+  },
+  canInviteToggleActive: {
+    backgroundColor: '#a08845',
+  },
+  canInviteToggleText: {
+    fontSize: 10,
+    fontWeight: '600',
+    color: '#555',
+  },
+  canInviteToggleTextActive: {
+    color: '#fff',
   },
   manageMemberItem: {
     flexDirection: 'row',
@@ -3368,6 +3384,28 @@ const styles = StyleSheet.create({
   },
   createChallengeDurationTextActive: {
     color: '#fff',
+  },
+  customDurationRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    marginTop: 10,
+  },
+  customDurationInput: {
+    backgroundColor: '#1a1a1a',
+    borderRadius: 10,
+    paddingHorizontal: 14,
+    paddingVertical: 10,
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#fff',
+    width: 100,
+    textAlign: 'center',
+  },
+  customDurationLabel: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#888',
   },
   challengeMemberList: {
     maxHeight: 200,

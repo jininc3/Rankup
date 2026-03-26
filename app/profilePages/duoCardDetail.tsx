@@ -75,6 +75,45 @@ const LEAGUE_CHAMPIONS: { [key: string]: string[] } = {
   'Support': ['Thresh', 'Leona', 'Lulu', 'Nami', 'Braum', 'Nautilus', 'Soraka'],
 };
 
+// Valorant agent icon mapping
+const AGENT_ICONS: { [key: string]: any } = {
+  'jett': require('@/assets/images/valorantagents/jett.png'),
+  'reyna': require('@/assets/images/valorantagents/reyna.png'),
+  'raze': require('@/assets/images/valorantagents/raze.png'),
+  'phoenix': require('@/assets/images/valorantagents/phoenix.png'),
+  'yoru': require('@/assets/images/valorantagents/yoru.png'),
+  'neon': require('@/assets/images/valorantagents/neon.png'),
+  'iso': require('@/assets/images/valorantagents/iso.png'),
+  'sova': require('@/assets/images/valorantagents/sova.png'),
+  'breach': require('@/assets/images/valorantagents/breach.png'),
+  'skye': require('@/assets/images/valorantagents/skye.png'),
+  'kay/o': require('@/assets/images/valorantagents/kayo.png'),
+  'kayo': require('@/assets/images/valorantagents/kayo.png'),
+  'fade': require('@/assets/images/valorantagents/fade.png'),
+  'gekko': require('@/assets/images/valorantagents/gekko.png'),
+  'brimstone': require('@/assets/images/valorantagents/brimstone.png'),
+  'omen': require('@/assets/images/valorantagents/omen.png'),
+  'viper': require('@/assets/images/valorantagents/viper.png'),
+  'astra': require('@/assets/images/valorantagents/astra.png'),
+  'harbor': require('@/assets/images/valorantagents/harbor.png'),
+  'clove': require('@/assets/images/valorantagents/clove.png'),
+  'sage': require('@/assets/images/valorantagents/sage.png'),
+  'cypher': require('@/assets/images/valorantagents/cypher.png'),
+  'killjoy': require('@/assets/images/valorantagents/killjoy.png'),
+  'chamber': require('@/assets/images/valorantagents/chamber.png'),
+  'deadlock': require('@/assets/images/valorantagents/deadlock.png'),
+  'vyse': require('@/assets/images/valorantagents/vyse.png'),
+  'tejo': require('@/assets/images/valorantagents/tejo.png'),
+  'waylay': require('@/assets/images/valorantagents/waylay.png'),
+  'miks': require('@/assets/images/valorantagents/miks.png'),
+  'veto': require('@/assets/images/valorantagents/veto.png'),
+};
+
+const getAgentIcon = (agentName: string) => {
+  if (!agentName) return null;
+  return AGENT_ICONS[agentName.toLowerCase()] || null;
+};
+
 // Helper function to format relative time
 const formatTimeAgo = (timestamp: number): string => {
   const now = Date.now();
@@ -425,11 +464,17 @@ export default function DuoCardDetailScreen() {
                         <View style={[styles.matchResultBadge, match.won ? styles.matchResultWin : styles.matchResultLoss]}>
                           <ThemedText style={styles.matchResultText}>{match.won ? 'W' : 'L'}</ThemedText>
                         </View>
-                        {/* Agent & KDA */}
+                        {/* Agent Icon & KDA */}
+                        {game === 'valorant' && getAgentIcon(match.agent) ? (
+                          <Image source={getAgentIcon(match.agent)} style={styles.matchAgentIcon} />
+                        ) : (
+                          <View style={styles.matchAgentPlaceholder}>
+                            <ThemedText style={styles.matchAgentPlaceholderText}>
+                              {(match.agent || '?')[0].toUpperCase()}
+                            </ThemedText>
+                          </View>
+                        )}
                         <View style={styles.matchInfo}>
-                          <ThemedText style={styles.matchAgent} numberOfLines={1}>
-                            {match.agent || 'Unknown'}
-                          </ThemedText>
                           <ThemedText style={styles.matchKda}>
                             {match.kills ?? 0}/{match.deaths ?? 0}/{match.assists ?? 0}
                           </ThemedText>
@@ -1076,10 +1121,23 @@ const styles = StyleSheet.create({
     flex: 1,
     gap: 2,
   },
-  matchAgent: {
-    fontSize: 13,
+  matchAgentIcon: {
+    width: 28,
+    height: 28,
+    borderRadius: 6,
+  },
+  matchAgentPlaceholder: {
+    width: 28,
+    height: 28,
+    borderRadius: 6,
+    backgroundColor: '#222',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  matchAgentPlaceholderText: {
+    fontSize: 12,
     fontWeight: '600',
-    color: '#e5e5e5',
+    color: '#555',
   },
   matchKda: {
     fontSize: 11,
