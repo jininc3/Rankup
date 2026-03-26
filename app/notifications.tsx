@@ -2,7 +2,8 @@ import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { IconSymbol } from '@/components/ui/icon-symbol';
 import { useState, useEffect, useCallback, useRef } from 'react';
-import { FlatList, StyleSheet, TouchableOpacity, View, Image, ActivityIndicator, Animated, PanResponder, Alert } from 'react-native';
+import { SectionList, StyleSheet, TouchableOpacity, View, Image, ActivityIndicator, Animated, Alert } from 'react-native';
+import { GestureHandlerRootView, Swipeable } from 'react-native-gesture-handler';
 import { useRouter } from 'expo-router';
 import { collection, query, orderBy, limit, onSnapshot, doc, updateDoc, deleteDoc, where, Timestamp, getDocs, writeBatch, getDoc, startAfter, QueryDocumentSnapshot, DocumentData } from 'firebase/firestore';
 import { db } from '@/config/firebase';
@@ -56,7 +57,7 @@ export default function NotificationsScreen() {
   const [selectedPost, setSelectedPost] = useState<Post | null>(null);
   const [showPostViewer, setShowPostViewer] = useState(false);
   const [loadingPost, setLoadingPost] = useState(false);
-  const swipeAnimations = useRef<{ [key: string]: Animated.Value }>({});
+  const swipeableRefs = useRef<{ [key: string]: Swipeable | null }>({});
 
   // Pagination state
   const [hasMore, setHasMore] = useState(true);
@@ -525,19 +526,42 @@ export default function NotificationsScreen() {
     const notificationDate = timestamp.toDate();
     const diffInSeconds = Math.floor((now.getTime() - notificationDate.getTime()) / 1000);
 
+    const THIRTY_DAYS = 30 * 86400;
     if (diffInSeconds < 60) return 'just now';
     if (diffInSeconds < 3600) return `${Math.floor(diffInSeconds / 60)}m ago`;
     if (diffInSeconds < 86400) return `${Math.floor(diffInSeconds / 3600)}h ago`;
-    if (diffInSeconds < 604800) return `${Math.floor(diffInSeconds / 86400)}d ago`;
-    return notificationDate.toLocaleDateString();
+    if (diffInSeconds < THIRTY_DAYS) return `${Math.floor(diffInSeconds / 86400)}d ago`;
+    const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+    const day = notificationDate.getDate();
+    const month = months[notificationDate.getMonth()];
+    const year = String(notificationDate.getFullYear()).slice(-2);
+    return `${day}${month}${year}`;
   };
 
-  // Get or create animated value for notification
-  const getSwipeAnimation = (notificationId: string): Animated.Value => {
-    if (!swipeAnimations.current[notificationId]) {
-      swipeAnimations.current[notificationId] = new Animated.Value(0);
+  // Close any previously open swipeable when a new one opens
+  const previousOpenSwipe = useRef<string | null>(null);
+
+  const onSwipeableOpen = (notificationId: string) => {
+    if (previousOpenSwipe.current && previousOpenSwipe.current !== notificationId) {
+      swipeableRefs.current[previousOpenSwipe.current]?.close();
     }
-    return swipeAnimations.current[notificationId];
+    previousOpenSwipe.current = notificationId;
+  };
+
+  // Render the delete action behind the swipeable
+  const renderRightActions = (notificationId: string) => {
+    return (
+      <TouchableOpacity
+        style={styles.swipeDeleteAction}
+        onPress={() => {
+          swipeableRefs.current[notificationId]?.close();
+          deleteNotification(notificationId);
+        }}
+      >
+        <IconSymbol size={20} name="trash" color="#fff" />
+        <ThemedText style={styles.deleteButtonText}>Delete</ThemedText>
+      </TouchableOpacity>
+    );
   };
 
   // Load older notifications when scrolling
@@ -620,46 +644,45 @@ export default function NotificationsScreen() {
     }
   }, [hasMore, loadingMore, lastDoc, currentUser?.id]);
 
-  // Create pan responder for swipe left
-  const createPanResponder = (notificationId: string) => {
-    const translateX = getSwipeAnimation(notificationId);
 
-    return PanResponder.create({
-      onStartShouldSetPanResponder: () => false,
-      onMoveShouldSetPanResponder: (_, gestureState) => {
-        return Math.abs(gestureState.dx) > 5;
-      },
-      onPanResponderGrant: () => {
-        // Start gesture
-      },
-      onPanResponderMove: (_, gestureState) => {
-        // Only allow left swipe (negative dx)
-        if (gestureState.dx < 0) {
-          translateX.setValue(gestureState.dx);
-        }
-      },
-      onPanResponderRelease: (_, gestureState) => {
-        // If swiped more than 60px to the left, open delete button
-        const shouldOpen = gestureState.dx < -60 || gestureState.vx < -0.3;
+  // Group notifications into sections by time period
+  const getNotificationSections = () => {
+    const now = new Date();
+    const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    const weekStart = new Date(todayStart);
+    weekStart.setDate(weekStart.getDate() - weekStart.getDay()); // Start of this week (Sunday)
+    const lastWeekStart = new Date(weekStart);
+    lastWeekStart.setDate(lastWeekStart.getDate() - 7);
 
-        if (shouldOpen) {
-          Animated.spring(translateX, {
-            toValue: -80,
-            useNativeDriver: true,
-            friction: 8,
-          }).start();
-        } else {
-          Animated.spring(translateX, {
-            toValue: 0,
-            useNativeDriver: true,
-            friction: 8,
-          }).start();
-        }
-      },
+    const today: Notification[] = [];
+    const thisWeek: Notification[] = [];
+    const lastWeek: Notification[] = [];
+    const earlier: Notification[] = [];
+
+    notifications.forEach((notif) => {
+      const notifDate = notif.createdAt.toDate();
+      if (notifDate >= todayStart) {
+        today.push(notif);
+      } else if (notifDate >= weekStart) {
+        thisWeek.push(notif);
+      } else if (notifDate >= lastWeekStart) {
+        lastWeek.push(notif);
+      } else {
+        earlier.push(notif);
+      }
     });
+
+    const sections: { title: string; data: Notification[] }[] = [];
+    if (today.length > 0) sections.push({ title: 'Today', data: today });
+    if (thisWeek.length > 0) sections.push({ title: 'This Week', data: thisWeek });
+    if (lastWeek.length > 0) sections.push({ title: 'Last Week', data: lastWeek });
+    if (earlier.length > 0) sections.push({ title: 'Earlier', data: earlier });
+
+    return sections;
   };
 
   return (
+    <GestureHandlerRootView style={{ flex: 1 }}>
     <ThemedView style={styles.container}>
       {/* Header */}
       <View style={styles.header}>
@@ -678,12 +701,13 @@ export default function NotificationsScreen() {
         {notifications.length === 0 && <View style={styles.headerSpacer} />}
       </View>
 
-      <FlatList
-        data={notifications}
+      <SectionList
+        sections={getNotificationSections()}
         keyExtractor={(item) => item.id}
         showsVerticalScrollIndicator={false}
         onEndReached={loadOlderNotifications}
         onEndReachedThreshold={0.5}
+        stickySectionHeadersEnabled={false}
         ListHeaderComponent={loading ? (
           <View style={styles.loadingContainer}>
             <ActivityIndicator size="large" color="#c42743" />
@@ -705,195 +729,183 @@ export default function NotificationsScreen() {
             </ThemedText>
           </View>
         ) : null}
-        renderItem={({ item: notification }) => {
-            const translateX = getSwipeAnimation(notification.id);
-            const panResponder = createPanResponder(notification.id);
-
-            return (
-              <View key={notification.id} style={styles.notificationWrapper}>
-                {/* Delete button (behind the card) */}
-                <View style={styles.deleteButtonBehind}>
-                  <TouchableOpacity
-                    onPress={() => {
-                      // Animate back first, then delete
-                      Animated.timing(translateX, {
-                        toValue: 0,
-                        duration: 200,
-                        useNativeDriver: true,
-                      }).start(() => {
-                        deleteNotification(notification.id);
-                      });
-                    }}
-                    style={styles.deleteButtonTouchable}
-                  >
-                    <IconSymbol size={24} name="trash" color="#fff" />
-                  </TouchableOpacity>
-                </View>
-
-                {/* Swipeable notification card */}
-                <Animated.View
-                  style={[
-                    styles.notificationAnimatedWrapper,
-                    { transform: [{ translateX }] }
-                  ]}
-                  {...panResponder.panHandlers}
+        renderSectionHeader={({ section: { title } }) => (
+          <View style={styles.sectionHeader}>
+            <ThemedText style={styles.sectionHeaderText}>{title}</ThemedText>
+          </View>
+        )}
+        renderItem={({ item: notification }) => (
+              <Swipeable
+                ref={(ref) => { swipeableRefs.current[notification.id] = ref; }}
+                renderRightActions={() => renderRightActions(notification.id)}
+                rightThreshold={40}
+                overshootRight={false}
+                friction={2}
+                onSwipeableWillOpen={() => onSwipeableOpen(notification.id)}
+              >
+                <TouchableOpacity
+                  style={[styles.notificationCard, !notification.read && styles.unreadNotification]}
+                  onPress={() => handleNotificationPress(notification)}
+                  activeOpacity={0.7}
                 >
-                  <TouchableOpacity
-                    style={[styles.notificationCard, !notification.read && styles.unreadNotification]}
-                    onPress={() => handleNotificationPress(notification)}
-                    activeOpacity={0.7}
-                  >
-                    <View style={styles.notificationLeft}>
-                      {/* Avatar */}
-                      {notification.fromUserId ? (
-                        <TouchableOpacity
-                          style={styles.avatar}
-                          onPress={(e) => handleUserPress(notification.fromUserId, e)}
-                          activeOpacity={0.7}
-                        >
-                          {notification.fromUserAvatar && notification.fromUserAvatar.startsWith('http') ? (
-                            <Image source={{ uri: notification.fromUserAvatar }} style={styles.avatarImage} />
-                          ) : (
-                            <ThemedText style={styles.avatarInitial}>
-                              {notification.fromUsername?.[0]?.toUpperCase() || '?'}
-                            </ThemedText>
-                          )}
-                        </TouchableOpacity>
-                      ) : (
-                        // System notification avatar (e.g., party complete)
-                        <View style={styles.avatar}>
-                          <ThemedText style={styles.avatarInitial}>🏆</ThemedText>
-                        </View>
-                      )}
-
-                      {/* Notification content */}
-                      <View style={styles.notificationContent}>
-                        <View style={styles.notificationTextRow}>
-                          <View style={{ flex: 1 }}>
-                            <ThemedText style={styles.notificationText}>
-                              {notification.fromUsername && notification.fromUserId ? (
-                                <ThemedText
-                                  style={styles.usernameText}
-                                  onPress={(e) => handleUserPress(notification.fromUserId, e)}
-                                >
-                                  {notification.fromUsername}
-                                </ThemedText>
-                              ) : null}
-                              {notification.type === 'follow' && ' started following you'}
-                              {notification.type === 'like' && ' liked your post'}
-                              {notification.type === 'tag' && ' tagged you in a post'}
-                              {notification.type === 'comment' && ' commented: '}
-                              {notification.type === 'party_invite' && ` invited you to "${notification.partyName}"`}
-                              {notification.type === 'challenge_invite' && ` challenged you in "${notification.partyName}"`}
-                              {notification.type === 'party_complete' && notification.isWinner && (
-                                <ThemedText style={styles.winnerText}>
-                                  🏆 You won "{notification.partyName}"! Rank #{notification.finalRank}
-                                </ThemedText>
-                              )}
-                              {notification.type === 'party_complete' && !notification.isWinner && (
-                                <ThemedText style={{ color: '#fff' }}>
-                                  "{notification.partyName}" ended. You ranked #{notification.finalRank}
-                                </ThemedText>
-                              )}
-                              {notification.type === 'party_ranking_change' && notification.fromUsername && (
-                                <ThemedText style={styles.rankingChangeText}>
-                                  {` just moved `}
-                                  {notification.newRank ? (
-                                    <>
-                                      <ThemedText style={styles.rankText}>
-                                        {`to ${notification.newRank === 1 ? '🥇 #1' : notification.newRank === 2 ? '🥈 #2' : notification.newRank === 3 ? '🥉 #3' : `#${notification.newRank}`}`}
-                                      </ThemedText>
-                                      {` in "${notification.partyName}"!`}
-                                    </>
-                                  ) : (
-                                    `in "${notification.partyName}" rankings!`
-                                  )}
-                                </ThemedText>
-                              )}
-                              {notification.type === 'comment' && notification.commentText && (
-                                <ThemedText style={styles.commentPreview}>
-                                  "{notification.commentText.length > 30
-                                    ? notification.commentText.substring(0, 30) + '...'
-                                    : notification.commentText}"
-                                </ThemedText>
-                              )}
-                            </ThemedText>
-                          </View>
-                        </View>
-
-                        {/* Game tag for party/challenge invites */}
-                        {(notification.type === 'party_invite' || notification.type === 'challenge_invite') && notification.game && (
-                          <ThemedText style={styles.partyGameText}>{notification.game}</ThemedText>
+                  <View style={styles.notificationLeft}>
+                    {/* Avatar */}
+                    {notification.fromUserId ? (
+                      <TouchableOpacity
+                        style={styles.avatar}
+                        onPress={(e) => handleUserPress(notification.fromUserId, e)}
+                        activeOpacity={0.7}
+                      >
+                        {notification.fromUserAvatar && notification.fromUserAvatar.startsWith('http') ? (
+                          <Image source={{ uri: notification.fromUserAvatar }} style={styles.avatarImage} />
+                        ) : (
+                          <ThemedText style={styles.avatarInitial}>
+                            {notification.fromUsername?.[0]?.toUpperCase() || '?'}
+                          </ThemedText>
                         )}
+                      </TouchableOpacity>
+                    ) : (
+                      <View style={styles.avatar}>
+                        <IconSymbol size={18} name="trophy.fill" color="#A08845" />
+                      </View>
+                    )}
 
-                        <View style={styles.bottomRow}>
-                          <ThemedText style={styles.timeText}>{getTimeAgo(notification.createdAt)}</ThemedText>
-
-                          {/* Accept/Decline buttons for party invites - bottom right */}
-                          {notification.type === 'party_invite' && (
-                            <View style={styles.inviteActions}>
-                              <TouchableOpacity
-                                style={[styles.acceptButton, acceptingInvite === notification.id && styles.acceptButtonLoading]}
-                                onPress={(e) => handleAcceptInvite(notification, e)}
-                                activeOpacity={0.7}
-                                disabled={acceptingInvite === notification.id}
+                    {/* Notification content */}
+                    <View style={styles.notificationContent}>
+                      <View style={styles.notificationTextRow}>
+                        <View style={{ flex: 1 }}>
+                          <ThemedText style={styles.notificationText}>
+                            {notification.fromUsername && notification.fromUserId ? (
+                              <ThemedText
+                                style={styles.usernameText}
+                                onPress={(e) => handleUserPress(notification.fromUserId, e)}
                               >
-                                {acceptingInvite === notification.id ? (
-                                  <ActivityIndicator size="small" color="#fff" />
-                                ) : (
-                                  <ThemedText style={styles.acceptButtonText}>Accept</ThemedText>
-                                )}
-                              </TouchableOpacity>
-                              <TouchableOpacity
-                                style={styles.declineButton}
-                                onPress={(e) => handleDeclineInvite(notification, e)}
-                                activeOpacity={0.7}
-                                disabled={acceptingInvite === notification.id}
-                              >
-                                <IconSymbol size={20} name="xmark" color="#999" />
-                              </TouchableOpacity>
-                            </View>
-                          )}
-                          {notification.type === 'challenge_invite' && (
-                            <View style={styles.inviteActions}>
-                              <TouchableOpacity
-                                style={[styles.acceptButton, acceptingInvite === notification.id && styles.acceptButtonLoading]}
-                                onPress={(e) => handleAcceptChallenge(notification, e)}
-                                activeOpacity={0.7}
-                                disabled={acceptingInvite === notification.id}
-                              >
-                                {acceptingInvite === notification.id ? (
-                                  <ActivityIndicator size="small" color="#fff" />
-                                ) : (
-                                  <ThemedText style={styles.acceptButtonText}>Accept</ThemedText>
-                                )}
-                              </TouchableOpacity>
-                              <TouchableOpacity
-                                style={styles.declineButton}
-                                onPress={(e) => handleDeclineChallenge(notification, e)}
-                                activeOpacity={0.7}
-                                disabled={acceptingInvite === notification.id}
-                              >
-                                <IconSymbol size={20} name="xmark" color="#999" />
-                              </TouchableOpacity>
-                            </View>
-                          )}
+                                {notification.fromUsername}
+                              </ThemedText>
+                            ) : null}
+                            {notification.type === 'follow' && ' started following you'}
+                            {notification.type === 'like' && ' liked your post'}
+                            {notification.type === 'tag' && ' tagged you in a post'}
+                            {notification.type === 'comment' && ' commented: '}
+                            {notification.type === 'party_invite' && (
+                              <>
+                                {' invited you to '}
+                                <ThemedText style={styles.leaderboardNameText}>
+                                  {(notification.partyName || '').toUpperCase()}
+                                </ThemedText>
+                              </>
+                            )}
+                            {notification.type === 'challenge_invite' && (
+                              <>
+                                {' challenged you in '}
+                                <ThemedText style={styles.leaderboardNameText}>
+                                  {(notification.partyName || '').toUpperCase()}
+                                </ThemedText>
+                              </>
+                            )}
+                            {notification.type === 'party_complete' && (
+                              <>
+                                <ThemedText style={styles.leaderboardNameText}>
+                                  {(notification.partyName || '').toUpperCase()}
+                                </ThemedText>
+                                {notification.isWinner
+                                  ? ` ended. You won! Finished #${notification.finalRank}`
+                                  : ` ended. You finished #${notification.finalRank}`}
+                              </>
+                            )}
+                            {notification.type === 'party_ranking_change' && notification.fromUsername && (
+                              <>
+                                {' moved to '}
+                                <ThemedText style={styles.rankText}>
+                                  #{notification.newRank}
+                                </ThemedText>
+                                {' in '}
+                                <ThemedText style={styles.leaderboardNameText}>
+                                  {(notification.partyName || '').toUpperCase()}
+                                </ThemedText>
+                              </>
+                            )}
+                            {notification.type === 'comment' && notification.commentText && (
+                              <ThemedText style={styles.commentPreview}>
+                                "{notification.commentText.length > 30
+                                  ? notification.commentText.substring(0, 30) + '...'
+                                  : notification.commentText}"
+                              </ThemedText>
+                            )}
+                          </ThemedText>
                         </View>
                       </View>
 
-                      {/* Post thumbnail for like/comment/tag notifications */}
-                      {(notification.type === 'like' || notification.type === 'comment' || notification.type === 'tag') && notification.postThumbnail && (
-                        <Image source={{ uri: notification.postThumbnail }} style={styles.postThumbnail} />
+                      {/* Game tag for party/challenge invites */}
+                      {(notification.type === 'party_invite' || notification.type === 'challenge_invite') && notification.game && (
+                        <ThemedText style={styles.partyGameText}>{notification.game}</ThemedText>
                       )}
+
+                      <View style={styles.bottomRow}>
+                        <ThemedText style={styles.timeText}>{getTimeAgo(notification.createdAt)}</ThemedText>
+
+                        {notification.type === 'party_invite' && (
+                          <View style={styles.inviteActions}>
+                            <TouchableOpacity
+                              style={[styles.acceptButton, acceptingInvite === notification.id && styles.acceptButtonLoading]}
+                              onPress={(e) => handleAcceptInvite(notification, e)}
+                              activeOpacity={0.7}
+                              disabled={acceptingInvite === notification.id}
+                            >
+                              {acceptingInvite === notification.id ? (
+                                <ActivityIndicator size="small" color="#fff" />
+                              ) : (
+                                <ThemedText style={styles.acceptButtonText}>Accept</ThemedText>
+                              )}
+                            </TouchableOpacity>
+                            <TouchableOpacity
+                              style={styles.declineButton}
+                              onPress={(e) => handleDeclineInvite(notification, e)}
+                              activeOpacity={0.7}
+                              disabled={acceptingInvite === notification.id}
+                            >
+                              <IconSymbol size={20} name="xmark" color="#999" />
+                            </TouchableOpacity>
+                          </View>
+                        )}
+                        {notification.type === 'challenge_invite' && (
+                          <View style={styles.inviteActions}>
+                            <TouchableOpacity
+                              style={[styles.acceptButton, acceptingInvite === notification.id && styles.acceptButtonLoading]}
+                              onPress={(e) => handleAcceptChallenge(notification, e)}
+                              activeOpacity={0.7}
+                              disabled={acceptingInvite === notification.id}
+                            >
+                              {acceptingInvite === notification.id ? (
+                                <ActivityIndicator size="small" color="#fff" />
+                              ) : (
+                                <ThemedText style={styles.acceptButtonText}>Accept</ThemedText>
+                              )}
+                            </TouchableOpacity>
+                            <TouchableOpacity
+                              style={styles.declineButton}
+                              onPress={(e) => handleDeclineChallenge(notification, e)}
+                              activeOpacity={0.7}
+                              disabled={acceptingInvite === notification.id}
+                            >
+                              <IconSymbol size={20} name="xmark" color="#999" />
+                            </TouchableOpacity>
+                          </View>
+                        )}
+                      </View>
                     </View>
 
-                    {/* Unread indicator */}
-                    {!notification.read && <View style={styles.unreadDot} />}
-                  </TouchableOpacity>
-                </Animated.View>
-              </View>
-            );
-        }}
+                    {/* Post thumbnail for like/comment/tag notifications */}
+                    {(notification.type === 'like' || notification.type === 'comment' || notification.type === 'tag') && notification.postThumbnail && (
+                      <Image source={{ uri: notification.postThumbnail }} style={styles.postThumbnail} />
+                    )}
+                  </View>
+
+                  {/* Unread indicator */}
+                  {!notification.read && <View style={styles.unreadDot} />}
+                </TouchableOpacity>
+              </Swipeable>
+        )}
       />
 
       {/* Post Viewer Modal */}
@@ -914,6 +926,7 @@ export default function NotificationsScreen() {
         />
       )}
     </ThemedView>
+    </GestureHandlerRootView>
   );
 }
 
@@ -930,8 +943,6 @@ const styles = StyleSheet.create({
     paddingTop: 60,
     paddingBottom: 16,
     backgroundColor: '#0f0f0f',
-    borderBottomWidth: 1,
-    borderBottomColor: '#2c2f33',
   },
   backButton: {
     padding: 4,
@@ -945,9 +956,9 @@ const styles = StyleSheet.create({
     width: 60,
   },
   clearAllButton: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: '#ef4444',
+    fontSize: 13,
+    fontWeight: '500',
+    color: '#555',
   },
   loadingContainer: {
     alignItems: 'center',
@@ -959,28 +970,19 @@ const styles = StyleSheet.create({
     fontSize: 16,
     color: '#b9bbbe',
   },
-  notificationWrapper: {
-    position: 'relative',
-    overflow: 'hidden',
-  },
-  deleteButtonBehind: {
-    position: 'absolute',
-    right: 0,
-    top: 0,
-    bottom: 0,
-    width: 80,
+  swipeDeleteAction: {
     backgroundColor: '#ef4444',
     justifyContent: 'center',
     alignItems: 'center',
+    width: 80,
+    gap: 4,
+    borderTopRightRadius: 12,
+    borderBottomRightRadius: 12,
   },
-  deleteButtonTouchable: {
-    width: '100%',
-    height: '100%',
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  notificationAnimatedWrapper: {
-    backgroundColor: '#0f0f0f',
+  deleteButtonText: {
+    fontSize: 11,
+    fontWeight: '600',
+    color: '#fff',
   },
   notificationCard: {
     flexDirection: 'row',
@@ -988,9 +990,8 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     paddingVertical: 10,
     paddingHorizontal: 16,
-    borderBottomWidth: 1,
-    borderBottomColor: '#2c2f33',
     backgroundColor: '#0f0f0f',
+    borderRadius: 12,
     position: 'relative',
   },
   unreadNotification: {
@@ -1025,13 +1026,14 @@ const styles = StyleSheet.create({
   },
   notificationText: {
     fontSize: 13,
-    color: '#fff',
+    color: '#b9bbbe',
     lineHeight: 18,
     marginBottom: 2,
   },
   usernameText: {
-    fontWeight: '600',
+    fontWeight: '700',
     color: '#fff',
+    fontSize: 13,
   },
   timeText: {
     fontSize: 11,
@@ -1079,11 +1081,14 @@ const styles = StyleSheet.create({
   winnerText: {
     color: '#FFD700',
     fontWeight: '700',
+    fontSize: 13,
+    lineHeight: 18,
   },
   rankText: {
     color: '#FFD700',
     fontWeight: '700',
     fontSize: 13,
+    lineHeight: 18,
   },
   notificationTextRow: {
     flexDirection: 'row',
@@ -1115,7 +1120,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   acceptButton: {
-    backgroundColor: '#22c55e',
+    backgroundColor: '#A08845',
     paddingHorizontal: 16,
     paddingVertical: 6,
     borderRadius: 6,
@@ -1131,10 +1136,27 @@ const styles = StyleSheet.create({
     fontSize: 13,
     fontWeight: '600',
   },
-  rankingChangeText: {
+  leaderboardNameText: {
+    fontWeight: '700',
     color: '#fff',
     fontSize: 13,
     lineHeight: 18,
+  },
+  rankingChangeText: {
+    color: '#b9bbbe',
+    fontSize: 13,
+    lineHeight: 18,
+  },
+  sectionHeader: {
+    paddingHorizontal: 16,
+    paddingTop: 20,
+    paddingBottom: 8,
+    backgroundColor: '#0f0f0f',
+  },
+  sectionHeaderText: {
+    fontSize: 16,
+    fontWeight: '700',
+    color: '#fff',
   },
   loadingMoreContainer: {
     paddingVertical: 20,

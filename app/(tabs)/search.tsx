@@ -144,7 +144,7 @@ const SkeletonLoader = () => {
         <View style={{ width: 50, height: 12, borderRadius: 6, backgroundColor: '#1a1a1a' }} />
         <View style={{ width: 50, height: 12, borderRadius: 6, backgroundColor: '#1a1a1a' }} />
       </View>
-      {[0, 1, 2, 3, 4].map((index) => (
+      {[0, 1, 2].map((index) => (
         <SkeletonItem key={index} index={index} />
       ))}
     </View>

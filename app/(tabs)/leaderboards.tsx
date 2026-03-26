@@ -117,17 +117,8 @@ export default function LeaderboardScreen() {
   const [leaguePlayers, setLeaguePlayers] = useState<MutualPlayer[]>([]);
   const [valorantPlayers, setValorantPlayers] = useState<MutualPlayer[]>([]);
   const [mutualLoading, setMutualLoading] = useState(true);
-  const [selectedGames, setSelectedGames] = useState<{ valorant: boolean; league: boolean }>({
-    valorant: true,
-    league: true,
-  });
-
-  const toggleGameFilter = (game: 'valorant' | 'league') => {
-    setSelectedGames(prev => ({
-      ...prev,
-      [game]: !prev[game],
-    }));
-  };
+  const [selectedMutualGame, setSelectedMutualGame] = useState<'league' | 'valorant'>('league');
+  const [showGameDropdown, setShowGameDropdown] = useState(false);
 
   // Handle tab press - scroll to page
   const handleTabPress = (tab: 'myLeaderboards' | 'leaderboards') => {
@@ -406,6 +397,8 @@ export default function LeaderboardScreen() {
 
         setLeaguePlayers(leagueResults);
         setValorantPlayers(valorantResults);
+        // Default to whichever game has more players
+        setSelectedMutualGame(valorantResults.length > leagueResults.length ? 'valorant' : 'league');
         setMutualLoading(false);
       } catch (error) {
         console.error('Error fetching mutual stats:', error);
@@ -454,17 +447,42 @@ export default function LeaderboardScreen() {
     return '#333';
   };
 
-  const renderMutualLeaderboard = (title: string, players: MutualPlayer[], game: 'league' | 'valorant', gameLogo: any) => {
+  const renderMutualLeaderboard = (players: MutualPlayer[], game: 'league' | 'valorant') => {
     if (players.length === 0) return null;
 
     const isLeague = game === 'league';
+    const title = isLeague ? 'League of Legends' : 'Valorant';
+    const gameLogo = isLeague ? GAME_LOGOS['League of Legends'] : GAME_LOGOS['Valorant'];
+    const otherGame = isLeague ? 'valorant' : 'league';
+    const otherTitle = isLeague ? 'Valorant' : 'League of Legends';
+    const otherLogo = isLeague ? GAME_LOGOS['Valorant'] : GAME_LOGOS['League of Legends'];
+    const otherPlayers = isLeague ? valorantPlayers : leaguePlayers;
 
     return (
       <View style={styles.mutualSection}>
-        <View style={styles.mutualSectionHeader}>
+        <TouchableOpacity
+          style={styles.mutualSectionHeader}
+          onPress={() => setShowGameDropdown(!showGameDropdown)}
+          activeOpacity={0.7}
+        >
           <Image source={gameLogo} style={styles.gameLogoSmall} resizeMode="contain" />
           <ThemedText style={styles.mutualSectionTitle}>{title}</ThemedText>
-        </View>
+          <IconSymbol size={14} name={showGameDropdown ? 'chevron.up' : 'chevron.down'} color="#888" />
+        </TouchableOpacity>
+
+        {showGameDropdown && otherPlayers.length > 0 && (
+          <TouchableOpacity
+            style={styles.dropdownOption}
+            onPress={() => {
+              setSelectedMutualGame(otherGame);
+              setShowGameDropdown(false);
+            }}
+            activeOpacity={0.7}
+          >
+            <Image source={otherLogo} style={styles.gameLogoSmall} resizeMode="contain" />
+            <ThemedText style={styles.dropdownOptionText}>{otherTitle}</ThemedText>
+          </TouchableOpacity>
+        )}
 
         {/* Column Headers */}
         <View style={styles.columnHeaders}>
@@ -599,7 +617,7 @@ export default function LeaderboardScreen() {
 
           {mutualLoading ? (
             <LeaderboardsTabSkeleton />
-          ) : (selectedGames.league ? leaguePlayers.length : 0) + (selectedGames.valorant ? valorantPlayers.length : 0) === 0 ? (
+          ) : leaguePlayers.length + valorantPlayers.length === 0 ? (
             <View style={styles.emptyState}>
               <ThemedText style={styles.emptyStateText}>No friends to rank</ThemedText>
               <ThemedText style={styles.emptyStateSubtext}>
@@ -608,8 +626,15 @@ export default function LeaderboardScreen() {
             </View>
           ) : (
             <View>
-              {selectedGames.league && renderMutualLeaderboard('League of Legends', leaguePlayers, 'league', GAME_LOGOS['League of Legends'])}
-              {selectedGames.valorant && renderMutualLeaderboard('Valorant', valorantPlayers, 'valorant', GAME_LOGOS['Valorant'])}
+              {(() => {
+                const activePlayers = selectedMutualGame === 'league' ? leaguePlayers : valorantPlayers;
+                const fallbackGame = selectedMutualGame === 'league' ? 'valorant' : 'league';
+                const fallbackPlayers = selectedMutualGame === 'league' ? valorantPlayers : leaguePlayers;
+                if (activePlayers.length > 0) {
+                  return renderMutualLeaderboard(activePlayers, selectedMutualGame);
+                }
+                return renderMutualLeaderboard(fallbackPlayers, fallbackGame);
+              })()}
             </View>
           )}
           <View style={styles.bottomSpacer} />
@@ -796,40 +821,6 @@ const styles = StyleSheet.create({
   bottomSpacer: {
     height: 40,
   },
-  // Game filter styles
-  gameFilterContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'flex-start',
-    gap: 10,
-    paddingBottom: 14,
-  },
-  gameFilterButton: {
-    width: 44,
-    height: 44,
-    borderRadius: 22,
-    backgroundColor: '#1a1a1a',
-    alignItems: 'center',
-    justifyContent: 'center',
-    borderWidth: 1.5,
-    borderColor: '#2a2a2a',
-    shadowColor: '#000',
-    shadowOffset: { width: -3, height: 4 },
-    shadowOpacity: 0.5,
-    shadowRadius: 5,
-    elevation: 8,
-  },
-  gameFilterButtonSelected: {
-    borderColor: '#444',
-    backgroundColor: '#252525',
-  },
-  gameFilterLogo: {
-    width: 24,
-    height: 24,
-  },
-  gameFilterLogoInactive: {
-    opacity: 0.35,
-  },
   // Mutual leaderboard styles
   mutualSection: {
     marginBottom: 20,
@@ -849,6 +840,22 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     color: '#fff',
     letterSpacing: 0.3,
+    flex: 1,
+  },
+  dropdownOption: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    backgroundColor: '#1a1a1a',
+    paddingVertical: 10,
+    paddingHorizontal: 12,
+    borderRadius: 8,
+    marginBottom: 10,
+  },
+  dropdownOptionText: {
+    fontSize: 14,
+    fontWeight: '500',
+    color: '#ccc',
   },
   columnHeaders: {
     flexDirection: 'row',

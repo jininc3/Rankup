@@ -388,13 +388,14 @@ export const LeaderboardCardSkeleton: React.FC = () => {
 
 // Mutual leaderboard skeleton - matches the leaderboards tab table structure
 // Renders a game section with header, column headers, and player rows with shimmer
-export const MutualLeaderboardSkeleton: React.FC<{ rowCount?: number }> = ({ rowCount = 4 }) => {
+export const MutualLeaderboardSkeleton: React.FC<{ rowCount?: number; showDropdownChevron?: boolean }> = ({ rowCount = 4, showDropdownChevron = false }) => {
   return (
     <View style={mutualSkeletonStyles.section}>
-      {/* Game header: logo + title */}
+      {/* Game header: logo + title + optional chevron */}
       <View style={mutualSkeletonStyles.sectionHeader}>
         <Skeleton width={24} height={24} borderRadius={12} />
         <Skeleton width={130} height={16} borderRadius={4} />
+        {showDropdownChevron && <Skeleton width={12} height={12} borderRadius={3} />}
       </View>
 
       {/* Column headers */}
@@ -445,12 +446,11 @@ export const MutualLeaderboardSkeleton: React.FC<{ rowCount?: number }> = ({ row
   );
 };
 
-// Full leaderboards tab skeleton - two game sections
+// Full leaderboards tab skeleton - single game section with dropdown indicator
 export const LeaderboardsTabSkeleton: React.FC = () => {
   return (
     <View>
-      <MutualLeaderboardSkeleton rowCount={4} />
-      <MutualLeaderboardSkeleton rowCount={3} />
+      <MutualLeaderboardSkeleton rowCount={5} showDropdownChevron />
     </View>
   );
 };

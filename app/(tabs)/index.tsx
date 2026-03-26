@@ -890,31 +890,49 @@ export default function HomeScreen() {
         {/* Game Filter Buttons */}
         <View style={styles.gameFilterRow}>
           <TouchableOpacity
-            style={[styles.gameFilterBtn, selectedGameFilter === null && styles.gameFilterBtnActive]}
             onPress={() => setSelectedGameFilter(null)}
             activeOpacity={0.7}
           >
-            <ThemedText style={[styles.gameFilterBtnText, selectedGameFilter === null && styles.gameFilterBtnTextActive]}>
-              ALL GAMES
-            </ThemedText>
+            <LinearGradient
+              colors={selectedGameFilter === null ? ['#C4A44E', '#8B6F2F'] : ['#222222', '#1a1a1a']}
+              start={{ x: 0, y: 0 }}
+              end={{ x: 1, y: 1 }}
+              style={styles.gameFilterBtn}
+            >
+              <ThemedText style={[styles.gameFilterBtnText, selectedGameFilter === null && styles.gameFilterBtnTextActive]}>
+                ALL GAMES
+              </ThemedText>
+            </LinearGradient>
           </TouchableOpacity>
           <TouchableOpacity
-            style={[styles.gameFilterBtn, selectedGameFilter === 'valorant' && styles.gameFilterBtnActive]}
             onPress={() => setSelectedGameFilter('valorant')}
             activeOpacity={0.7}
           >
-            <ThemedText style={[styles.gameFilterBtnText, selectedGameFilter === 'valorant' && styles.gameFilterBtnTextActive]}>
-              VALORANT
-            </ThemedText>
+            <LinearGradient
+              colors={selectedGameFilter === 'valorant' ? ['#C4A44E', '#8B6F2F'] : ['#222222', '#1a1a1a']}
+              start={{ x: 0, y: 0 }}
+              end={{ x: 1, y: 1 }}
+              style={styles.gameFilterBtn}
+            >
+              <ThemedText style={[styles.gameFilterBtnText, selectedGameFilter === 'valorant' && styles.gameFilterBtnTextActive]}>
+                VALORANT
+              </ThemedText>
+            </LinearGradient>
           </TouchableOpacity>
           <TouchableOpacity
-            style={[styles.gameFilterBtn, selectedGameFilter === 'league' && styles.gameFilterBtnActive]}
             onPress={() => setSelectedGameFilter('league')}
             activeOpacity={0.7}
           >
-            <ThemedText style={[styles.gameFilterBtnText, selectedGameFilter === 'league' && styles.gameFilterBtnTextActive]}>
-              LEAGUE
-            </ThemedText>
+            <LinearGradient
+              colors={selectedGameFilter === 'league' ? ['#C4A44E', '#8B6F2F'] : ['#222222', '#1a1a1a']}
+              start={{ x: 0, y: 0 }}
+              end={{ x: 1, y: 1 }}
+              style={styles.gameFilterBtn}
+            >
+              <ThemedText style={[styles.gameFilterBtnText, selectedGameFilter === 'league' && styles.gameFilterBtnTextActive]}>
+                LEAGUE
+              </ThemedText>
+            </LinearGradient>
           </TouchableOpacity>
         </View>
 
@@ -1013,9 +1031,14 @@ export default function HomeScreen() {
         onPress={handleAddPost}
         activeOpacity={0.8}
       >
-        <View style={styles.fabInner}>
+        <LinearGradient
+          colors={['#C4A44E', '#8B6F2F']}
+          start={{ x: 0, y: 0 }}
+          end={{ x: 1, y: 1 }}
+          style={styles.fabInner}
+        >
           <IconSymbol size={28} name="plus" color="#fff" />
-        </View>
+        </LinearGradient>
       </TouchableOpacity>
 
       {/* New Post Modal */}
@@ -1176,10 +1199,7 @@ const styles = StyleSheet.create({
     paddingVertical: 5,
     paddingHorizontal: 10,
     borderRadius: 6,
-    backgroundColor: '#1a1a1a',
-  },
-  gameFilterBtnActive: {
-    backgroundColor: '#A08845',
+    overflow: 'hidden' as const,
   },
   gameFilterBtnText: {
     fontSize: 10,
@@ -1435,8 +1455,5 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     borderRadius: 30,
-    backgroundColor: '#A08845',
-    borderWidth: 0,
-    borderColor: 'transparent',
   },
 });
