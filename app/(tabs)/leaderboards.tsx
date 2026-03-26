@@ -28,13 +28,37 @@ const LEAGUE_RANK_ICONS: { [key: string]: any } = {
 // Valorant rank icon mapping
 const VALORANT_RANK_ICONS: { [key: string]: any } = {
   iron: require('@/assets/images/valorantranks/iron.png'),
+  iron1: require('@/assets/images/valorantranks/iron1.png'),
+  iron2: require('@/assets/images/valorantranks/iron2.png'),
+  iron3: require('@/assets/images/valorantranks/iron3.png'),
   bronze: require('@/assets/images/valorantranks/bronze.png'),
+  bronze1: require('@/assets/images/valorantranks/bronze1.png'),
+  bronze2: require('@/assets/images/valorantranks/bronze2.png'),
+  bronze3: require('@/assets/images/valorantranks/bronze3.png'),
   silver: require('@/assets/images/valorantranks/silver.png'),
+  silver1: require('@/assets/images/valorantranks/silver1.png'),
+  silver2: require('@/assets/images/valorantranks/silver2.png'),
+  silver3: require('@/assets/images/valorantranks/silver3.png'),
   gold: require('@/assets/images/valorantranks/gold.png'),
+  gold1: require('@/assets/images/valorantranks/gold1.png'),
+  gold2: require('@/assets/images/valorantranks/gold2.png'),
+  gold3: require('@/assets/images/valorantranks/gold3.png'),
   platinum: require('@/assets/images/valorantranks/platinum.png'),
+  platinum1: require('@/assets/images/valorantranks/platinum1.png'),
+  platinum2: require('@/assets/images/valorantranks/platinum2.png'),
+  platinum3: require('@/assets/images/valorantranks/platinum3.png'),
   diamond: require('@/assets/images/valorantranks/diamond.png'),
+  diamond1: require('@/assets/images/valorantranks/diamond1.png'),
+  diamond2: require('@/assets/images/valorantranks/diamond2.png'),
+  diamond3: require('@/assets/images/valorantranks/diamond3.png'),
   ascendant: require('@/assets/images/valorantranks/ascendant.png'),
+  ascendant1: require('@/assets/images/valorantranks/ascendant1.png'),
+  ascendant2: require('@/assets/images/valorantranks/ascendant2.png'),
+  ascendant3: require('@/assets/images/valorantranks/ascendant3.png'),
   immortal: require('@/assets/images/valorantranks/immortal.png'),
+  immortal1: require('@/assets/images/valorantranks/immortal1.png'),
+  immortal2: require('@/assets/images/valorantranks/immortal2.png'),
+  immortal3: require('@/assets/images/valorantranks/immortal3.png'),
   radiant: require('@/assets/images/valorantranks/radiant.png'),
   unranked: require('@/assets/images/valorantranks/unranked.png'),
 };
@@ -49,7 +73,10 @@ const getValorantRankIcon = (rank: string) => {
   if (!rank || rank === 'Unranked') return VALORANT_RANK_ICONS.unranked;
   const parts = rank.split(' ');
   const tier = parts[0].toLowerCase();
-  return VALORANT_RANK_ICONS[tier] || VALORANT_RANK_ICONS.unranked;
+  const division = parts[1];
+  // Try exact match first (e.g. "platinum1"), then fall back to tier only
+  const exactKey = division ? `${tier}${division}` : tier;
+  return VALORANT_RANK_ICONS[exactKey] || VALORANT_RANK_ICONS[tier] || VALORANT_RANK_ICONS.unranked;
 };
 
 // Game logo mapping
@@ -462,33 +489,21 @@ export default function LeaderboardScreen() {
       <View style={styles.mutualSection}>
         <TouchableOpacity
           style={styles.mutualSectionHeader}
-          onPress={() => setShowGameDropdown(!showGameDropdown)}
+          onPress={() => otherPlayers.length > 0 && setShowGameDropdown(true)}
           activeOpacity={0.7}
         >
           <Image source={gameLogo} style={styles.gameLogoSmall} resizeMode="contain" />
           <ThemedText style={styles.mutualSectionTitle}>{title}</ThemedText>
-          <IconSymbol size={14} name={showGameDropdown ? 'chevron.up' : 'chevron.down'} color="#888" />
+          {otherPlayers.length > 0 && (
+            <IconSymbol size={18} name="chevron.down" color="#888" style={{ marginRight: 10 }} />
+          )}
         </TouchableOpacity>
-
-        {showGameDropdown && otherPlayers.length > 0 && (
-          <TouchableOpacity
-            style={styles.dropdownOption}
-            onPress={() => {
-              setSelectedMutualGame(otherGame);
-              setShowGameDropdown(false);
-            }}
-            activeOpacity={0.7}
-          >
-            <Image source={otherLogo} style={styles.gameLogoSmall} resizeMode="contain" />
-            <ThemedText style={styles.dropdownOptionText}>{otherTitle}</ThemedText>
-          </TouchableOpacity>
-        )}
 
         {/* Column Headers */}
         <View style={styles.columnHeaders}>
           <ThemedText style={[styles.columnHeaderText, { width: 40 }]}>RANK</ThemedText>
           <ThemedText style={[styles.columnHeaderText, { flex: 1, paddingLeft: 40 }]}>PLAYER</ThemedText>
-          <ThemedText style={[styles.columnHeaderText, styles.alignRight, { width: 120 }]}>
+          <ThemedText style={[styles.columnHeaderText, { width: 130, marginLeft: 'auto', textAlign: 'center' }]}>
             CURRENT RANK
           </ThemedText>
         </View>
@@ -712,6 +727,54 @@ export default function LeaderboardScreen() {
           </View>
         </TouchableOpacity>
       </Modal>
+
+      {/* Game Switcher Modal */}
+      <Modal
+        visible={showGameDropdown}
+        transparent
+        animationType="slide"
+        onRequestClose={() => setShowGameDropdown(false)}
+      >
+        <TouchableOpacity
+          style={styles.modalOverlay}
+          activeOpacity={1}
+          onPress={() => setShowGameDropdown(false)}
+        >
+          <View style={styles.modalContent}>
+            <View style={styles.modalHandle} />
+            <ThemedText style={styles.modalTitle}>SWITCH GAME</ThemedText>
+            <View style={styles.modalDivider} />
+
+            <TouchableOpacity
+              style={styles.gameSwitchOption}
+              onPress={() => {
+                setSelectedMutualGame('league');
+                setShowGameDropdown(false);
+              }}
+              activeOpacity={0.7}
+            >
+              <Image source={GAME_LOGOS['League of Legends']} style={styles.gameSwitchLogo} resizeMode="contain" />
+              <ThemedText style={[styles.gameSwitchText, selectedMutualGame === 'league' && styles.gameSwitchTextActive]}>
+                League of Legends
+              </ThemedText>
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={styles.gameSwitchOption}
+              onPress={() => {
+                setSelectedMutualGame('valorant');
+                setShowGameDropdown(false);
+              }}
+              activeOpacity={0.7}
+            >
+              <Image source={GAME_LOGOS['Valorant']} style={styles.gameSwitchLogo} resizeMode="contain" />
+              <ThemedText style={[styles.gameSwitchText, selectedMutualGame === 'valorant' && styles.gameSwitchTextActive]}>
+                Valorant
+              </ThemedText>
+            </TouchableOpacity>
+          </View>
+        </TouchableOpacity>
+      </Modal>
     </ThemedView>
   );
 }
@@ -842,20 +905,25 @@ const styles = StyleSheet.create({
     letterSpacing: 0.3,
     flex: 1,
   },
-  dropdownOption: {
+  gameSwitchOption: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 8,
-    backgroundColor: '#1a1a1a',
-    paddingVertical: 10,
-    paddingHorizontal: 12,
-    borderRadius: 8,
-    marginBottom: 10,
+    gap: 12,
+    paddingVertical: 14,
+    paddingHorizontal: 4,
   },
-  dropdownOptionText: {
-    fontSize: 14,
-    fontWeight: '500',
-    color: '#ccc',
+  gameSwitchLogo: {
+    width: 28,
+    height: 28,
+  },
+  gameSwitchText: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#888',
+    flex: 1,
+  },
+  gameSwitchTextActive: {
+    color: '#fff',
   },
   columnHeaders: {
     flexDirection: 'row',
@@ -955,15 +1023,16 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 8,
-    width: 120,
-    justifyContent: 'flex-end',
+    width: 130,
+    marginLeft: 'auto',
   },
   rankIconSmall: {
     width: 26,
     height: 26,
   },
   rankTextContainer: {
-    alignItems: 'flex-end',
+    flex: 1,
+    alignItems: 'flex-start',
   },
   currentRankText: {
     fontSize: 11,

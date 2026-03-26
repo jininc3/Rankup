@@ -394,8 +394,14 @@ export const MutualLeaderboardSkeleton: React.FC<{ rowCount?: number; showDropdo
       {/* Game header: logo + title + optional chevron */}
       <View style={mutualSkeletonStyles.sectionHeader}>
         <Skeleton width={24} height={24} borderRadius={12} />
-        <Skeleton width={130} height={16} borderRadius={4} />
-        {showDropdownChevron && <Skeleton width={12} height={12} borderRadius={3} />}
+        {showDropdownChevron ? (
+          <View style={{ flex: 1 }}>
+            <Skeleton width={130} height={16} borderRadius={4} />
+          </View>
+        ) : (
+          <Skeleton width={130} height={16} borderRadius={4} />
+        )}
+        {showDropdownChevron && <Skeleton width={18} height={18} borderRadius={4} style={{ marginRight: 10 }} />}
       </View>
 
       {/* Column headers */}
