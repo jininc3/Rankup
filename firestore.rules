@@ -256,6 +256,26 @@ service cloud.firestore {
                       || resource.data.user2Id == request.auth.uid);
     }
 
+    // Duo Posts collection - time-limited duo card posts in the feed
+    match /duoPosts/{postId} {
+      // Any authenticated user can read duo posts
+      allow read: if request.auth != null;
+
+      // Only the post owner can create (postId must match userId_game pattern)
+      allow create: if request.auth != null
+                    && request.resource.data.userId == request.auth.uid
+                    && request.resource.data.game in ['valorant', 'league']
+                    && request.resource.data.status == 'active';
+
+      // Owner can update (re-post resets timer)
+      allow update: if request.auth != null
+                    && resource.data.userId == request.auth.uid;
+
+      // Owner can delete their post
+      allow delete: if request.auth != null
+                    && resource.data.userId == request.auth.uid;
+    }
+
     // Duo Cards collection - for finding duo partners
     match /duoCards/{cardId} {
       // Anyone authenticated can read duo cards (to find partners)

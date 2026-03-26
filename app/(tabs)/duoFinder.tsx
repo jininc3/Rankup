@@ -5,15 +5,16 @@ import DuoFilterModal, { DuoFilterOptions } from '@/app/profilePages/duoFilterMo
 import DuoSearchingAnimation from '@/app/components/duoSearchingAnimation';
 import DuoMatchResult from '@/app/components/duoMatchResult';
 import DuoCardDetailModal from '@/app/components/duoCardDetailModal';
+import PostDuoCard from '@/app/components/postDuoCard';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { IconSymbol } from '@/components/ui/icon-symbol';
 import { DuoCardSkeleton } from '@/components/ui/Skeleton';
 import { useAuth } from '@/contexts/AuthContext';
 import { useState, useEffect, useCallback, useRef } from 'react';
-import { Alert, ScrollView, StyleSheet, TouchableOpacity, View, RefreshControl, Dimensions, Image, AppState, Modal, ImageBackground } from 'react-native';
+import { Alert, ScrollView, FlatList, ActivityIndicator, StyleSheet, TouchableOpacity, View, RefreshControl, Dimensions, Image, AppState, Modal, ImageBackground } from 'react-native';
 import { BlurView } from 'expo-blur';
-import { doc, getDoc, setDoc, deleteDoc, serverTimestamp, collection, query, where, getDocs, orderBy, limit } from 'firebase/firestore';
+import { doc, getDoc, setDoc, deleteDoc, serverTimestamp, collection, query, where, getDocs, orderBy, limit, Timestamp } from 'firebase/firestore';
 import { db } from '@/config/firebase';
 import { useRouter } from 'expo-router';
 import { joinDuoQueue, leaveDuoQueue, subscribeToDuoQueue, getDuoMatch, DuoMatchCardData } from '@/services/duoMatchService';
@@ -28,6 +29,27 @@ interface DuoCardWithId extends DuoCardData {
   inGameName?: string;
   winRate?: number;
   gamesPlayed?: number;
+}
+
+interface DuoPostWithId {
+  id: string;
+  userId: string;
+  username: string;
+  game: 'valorant' | 'league';
+  currentRank: string;
+  peakRank: string;
+  mainRole: string;
+  mainAgent: string;
+  region: string;
+  lookingFor: string;
+  avatar?: string;
+  inGameIcon?: string;
+  inGameName?: string;
+  winRate?: number;
+  gamesPlayed?: number;
+  message: string;
+  createdAt: any;
+  expiresAt: any;
 }
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
@@ -45,9 +67,14 @@ export default function DuoFinderScreen() {
   const [hasLeagueAccount, setHasLeagueAccount] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
 
-  // Find Duo state
+  // Find Duo state (legacy cards still used for live search)
   const [duoCards, setDuoCards] = useState<DuoCardWithId[]>([]);
   const [loadingDuoCards, setLoadingDuoCards] = useState(false);
+
+  // Duo Posts feed state
+  const [duoPosts, setDuoPosts] = useState<DuoPostWithId[]>([]);
+  const [loadingDuoPosts, setLoadingDuoPosts] = useState(false);
+  const [showPostDuoCard, setShowPostDuoCard] = useState(false);
 
   // Filter state
   const [showFilterModal, setShowFilterModal] = useState(false);
@@ -575,6 +602,110 @@ export default function DuoFinderScreen() {
     fetchDuoCards();
   };
 
+  // Fetch duo posts for the feed
+  const fetchDuoPosts = async () => {
+    if (!user?.id) return;
+
+    if (duoPosts.length === 0) setLoadingDuoPosts(true);
+    try {
+      const postsRef = collection(db, 'duoPosts');
+      const now = Timestamp.now();
+
+      // Determine which games to fetch
+      const gamesToFetch: string[] = [];
+      if (selectedGames.valorant) gamesToFetch.push('valorant');
+      if (selectedGames.league) gamesToFetch.push('league');
+
+      if (gamesToFetch.length === 0) {
+        setDuoPosts([]);
+        setLoadingDuoPosts(false);
+        return;
+      }
+
+      let allPosts: DuoPostWithId[] = [];
+
+      for (const game of gamesToFetch) {
+        const q = query(
+          postsRef,
+          where('status', '==', 'active'),
+          where('game', '==', game),
+          orderBy('createdAt', 'desc'),
+          limit(20)
+        );
+
+        const snapshot = await getDocs(q);
+        const posts = snapshot.docs
+          .map(docSnap => ({ id: docSnap.id, ...docSnap.data() } as DuoPostWithId))
+          .filter(post => {
+            // Filter out expired posts client-side
+            if (post.expiresAt && post.expiresAt.toDate() < new Date()) return false;
+            return true;
+          });
+
+        allPosts = [...allPosts, ...posts];
+      }
+
+      // Sort all posts by createdAt desc
+      allPosts.sort((a, b) => {
+        const aTime = a.createdAt?.toDate?.()?.getTime() || 0;
+        const bTime = b.createdAt?.toDate?.()?.getTime() || 0;
+        return bTime - aTime;
+      });
+
+      // Apply client-side filters
+      const filtered = allPosts.filter(post => {
+        if (filters.role && post.mainRole !== filters.role) return false;
+        if (!isRankInRange(post.currentRank, post.game, filters.minRank, filters.maxRank)) return false;
+        return true;
+      });
+
+      setDuoPosts(filtered);
+    } catch (error) {
+      console.error('Error fetching duo posts:', error);
+    } finally {
+      setLoadingDuoPosts(false);
+    }
+  };
+
+  // Fetch duo posts when filters or games change
+  useEffect(() => {
+    fetchDuoPosts();
+  }, [filters, selectedGames, user?.id]);
+
+  // Delete a duo post
+  const handleDeletePost = (post: DuoPostWithId) => {
+    Alert.alert('Remove Post', 'Remove your duo post from the feed?', [
+      { text: 'Cancel', style: 'cancel' },
+      {
+        text: 'Remove',
+        style: 'destructive',
+        onPress: async () => {
+          try {
+            await deleteDoc(doc(db, 'duoPosts', post.id));
+            setDuoPosts(prev => prev.filter(p => p.id !== post.id));
+          } catch (error) {
+            console.error('Error deleting post:', error);
+          }
+        },
+      },
+    ]);
+  };
+
+  // Message a duo post user
+  const handleDuoPostMessage = async (post: DuoPostWithId) => {
+    if (!user?.id) return;
+    try {
+      const chatId = await createOrGetChat(user.id, post.userId);
+      router.push({
+        pathname: '/chatPages/chatScreen',
+        params: { chatId, otherUserId: post.userId, otherUsername: post.username },
+      });
+    } catch (error) {
+      console.error('Error starting chat:', error);
+      Alert.alert('Error', 'Failed to start chat');
+    }
+  };
+
   const hasCards = valorantCard !== null || leagueCard !== null;
 
   // Auto-select game if user only has one card
@@ -1023,20 +1154,19 @@ export default function DuoFinderScreen() {
         </ImageBackground>
 
         {/* Find Duo Page */}
-        <ScrollView
-          style={[styles.pageContainer, { width: SCREEN_WIDTH }]}
-          showsVerticalScrollIndicator={false}
-          contentContainerStyle={styles.pageContent}
-        >
-          <View style={styles.findDuoContent}>
-            {/* Find Duo Cards Container */}
-            <View style={styles.findDuoContainer}>
-              {/* Players Section Header */}
+        <View style={[styles.pageContainer, { width: SCREEN_WIDTH }]}>
+          <FlatList
+            data={duoPosts}
+            keyExtractor={(item) => item.id}
+            showsVerticalScrollIndicator={false}
+            contentContainerStyle={styles.feedContent}
+            nestedScrollEnabled
+            ListHeaderComponent={
               <View style={styles.sectionHeader}>
                 <View style={styles.sectionHeaderLeft}>
-                  <ThemedText style={styles.sectionHeaderTitle}>AVAILABLE PLAYERS</ThemedText>
+                  <ThemedText style={styles.sectionHeaderTitle}>FEED</ThemedText>
                   <ThemedText style={styles.playerCount}>
-                    {duoCards.length}
+                    {duoPosts.length}
                   </ThemedText>
                 </View>
                 <View style={styles.headerRightSection}>
@@ -1051,22 +1181,22 @@ export default function DuoFinderScreen() {
                   </TouchableOpacity>
                   <TouchableOpacity
                     style={styles.refreshButton}
-                    onPress={handleRefreshDuoCards}
+                    onPress={fetchDuoPosts}
                     activeOpacity={0.7}
-                    disabled={loadingDuoCards}
+                    disabled={loadingDuoPosts}
                   >
-                    <IconSymbol size={14} name="arrow.clockwise" color={loadingDuoCards ? '#444' : '#A08845'} />
+                    <IconSymbol size={14} name="arrow.clockwise" color={loadingDuoPosts ? '#444' : '#A08845'} />
                   </TouchableOpacity>
                 </View>
               </View>
-
-              {/* Content Area */}
-              {loadingDuoCards ? (
+            }
+            ListEmptyComponent={
+              loadingDuoPosts ? (
                 <View style={styles.cardsList}>
                   <DuoCardSkeleton />
                   <DuoCardSkeleton />
                 </View>
-              ) : duoCards.length === 0 ? (
+              ) : (
                 <View style={styles.emptyState}>
                   <View style={styles.emptyIconsRow}>
                     <View style={styles.emptyIconCircle}>
@@ -1087,11 +1217,11 @@ export default function DuoFinderScreen() {
                       />
                     </View>
                   </View>
-                  <ThemedText style={styles.emptyTitle}>No players found</ThemedText>
+                  <ThemedText style={styles.emptyTitle}>No posts yet</ThemedText>
                   <ThemedText style={styles.emptySubtitle}>
                     {hasCards
-                      ? 'No other players are looking for a duo right now. Check back later!'
-                      : 'Create your duo card to start matching with other players'}
+                      ? 'Be the first to post your duo card to the feed!'
+                      : 'Create your duo card to start posting and matching'}
                   </ThemedText>
                   {!hasCards && (
                     <TouchableOpacity
@@ -1104,45 +1234,60 @@ export default function DuoFinderScreen() {
                     </TouchableOpacity>
                   )}
                 </View>
-              ) : (
-                <View style={styles.cardsList}>
-                  {duoCards.map((card) => (
-                    <DuoCard
-                      key={card.id}
-                      duo={{
-                        id: 0,
-                        username: card.username,
-                        status: 'active',
-                        matchPercentage: 0,
-                        currentRank: card.currentRank,
-                        peakRank: card.peakRank,
-                        favoriteAgent: card.mainAgent || '',
-                        favoriteRole: card.mainRole || '',
-                        winRate: card.winRate || 0,
-                        gamesPlayed: card.gamesPlayed || 0,
-                        game: card.game === 'valorant' ? 'Valorant' : 'League of Legends',
-                        avatar: card.avatar,
-                        inGameIcon: card.inGameIcon,
-                        inGameName: card.inGameName,
-                      }}
-                      onPress={() => handleFindDuoCardPress(card)}
-                      onMessage={() => handleDuoCardMessage(card)}
-                      onViewProfile={() => router.push({
-                        pathname: '/profilePages/profileView',
-                        params: {
-                          userId: card.userId,
-                          username: card.username,
-                          avatar: card.avatar || '',
-                        },
-                      })}
-                    />
-                  ))}
+              )
+            }
+            renderItem={({ item: post }) => {
+              const isOwn = post.userId === user?.id;
+              return (
+                <View style={styles.feedCardWrapper}>
+                  <DuoCard
+                    duo={{
+                      id: 0,
+                      username: post.username,
+                      status: 'active',
+                      matchPercentage: 0,
+                      currentRank: post.currentRank,
+                      peakRank: post.peakRank,
+                      favoriteAgent: post.mainAgent || '',
+                      favoriteRole: post.mainRole || '',
+                      winRate: post.winRate || 0,
+                      gamesPlayed: post.gamesPlayed || 0,
+                      game: post.game === 'valorant' ? 'Valorant' : 'League of Legends',
+                      avatar: post.avatar,
+                      inGameIcon: post.inGameIcon,
+                      inGameName: post.inGameName,
+                      message: post.message || undefined,
+                      isOwnPost: isOwn,
+                    }}
+                    onPress={() => !isOwn ? handleFindDuoCardPress({
+                      ...post,
+                      mainAgent: post.mainAgent,
+                      lookingFor: post.lookingFor,
+                    } as DuoCardWithId) : undefined}
+                    onMessage={!isOwn ? () => handleDuoPostMessage(post) : undefined}
+                    onViewProfile={!isOwn ? () => router.push({
+                      pathname: '/profilePages/profileView',
+                      params: { userId: post.userId, username: post.username, avatar: post.avatar || '' },
+                    }) : undefined}
+                    onDelete={isOwn ? () => handleDeletePost(post) : undefined}
+                  />
                 </View>
-              )}
-            </View>
-          </View>
-          <View style={styles.bottomSpacer} />
-        </ScrollView>
+              );
+            }}
+            ListFooterComponent={<View style={styles.bottomSpacer} />}
+          />
+
+          {/* FAB - Post Duo Card */}
+          {hasCards && (
+            <TouchableOpacity
+              style={styles.fab}
+              onPress={() => setShowPostDuoCard(true)}
+              activeOpacity={0.8}
+            >
+              <IconSymbol size={22} name="plus" color="#fff" />
+            </TouchableOpacity>
+          )}
+        </View>
       </ScrollView>
 
       {/* My Cards Modal */}
@@ -1343,6 +1488,22 @@ export default function DuoFinderScreen() {
           userId: selectedDuoCard.userId,
         } : null}
       />
+
+      {/* Post Duo Card Modal */}
+      <PostDuoCard
+        visible={showPostDuoCard}
+        onClose={() => setShowPostDuoCard(false)}
+        onPostCreated={fetchDuoPosts}
+        valorantCard={valorantCard}
+        leagueCard={leagueCard}
+        userAvatar={user?.avatar}
+        valorantInGameIcon={valorantInGameIcon}
+        valorantInGameName={valorantInGameName}
+        valorantWinRate={valorantWinRate}
+        leagueInGameIcon={leagueInGameIcon}
+        leagueInGameName={leagueInGameName}
+        leagueWinRate={leagueWinRate}
+      />
     </ThemedView>
   );
 }
@@ -1437,6 +1598,29 @@ const styles = StyleSheet.create({
   },
   bottomSpacer: {
     height: 40,
+  },
+  feedContent: {
+    paddingHorizontal: 16,
+    paddingTop: 16,
+  },
+  feedCardWrapper: {
+    marginBottom: 4,
+  },
+  fab: {
+    position: 'absolute',
+    bottom: 24,
+    right: 20,
+    width: 56,
+    height: 56,
+    borderRadius: 28,
+    backgroundColor: '#a08845',
+    alignItems: 'center',
+    justifyContent: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 6,
+    elevation: 8,
   },
   // Live Search Idle Page
   liveSearchIdleContainer: {

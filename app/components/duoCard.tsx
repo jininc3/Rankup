@@ -112,6 +112,8 @@ interface Duo {
   avatar?: string;
   inGameIcon?: string;
   inGameName?: string;
+  message?: string;
+  isOwnPost?: boolean;
 }
 
 interface DuoCardProps {
@@ -119,6 +121,7 @@ interface DuoCardProps {
   onPress?: () => void;
   onMessage?: () => void;
   onViewProfile?: () => void;
+  onDelete?: () => void;
 }
 
 // Helper to get rank icon
@@ -138,7 +141,7 @@ const getRankIcon = (rank: string, game: string) => {
   return VALORANT_RANK_ICONS[tier] || VALORANT_RANK_ICONS.unranked;
 };
 
-export default function DuoCard({ duo, onPress, onMessage, onViewProfile }: DuoCardProps) {
+export default function DuoCard({ duo, onPress, onMessage, onViewProfile, onDelete }: DuoCardProps) {
   const game = duo.game || 'Valorant';
   const isLeague = game === 'League' || game === 'League of Legends';
   const gameLogo = GAME_LOGOS[game];
@@ -239,6 +242,23 @@ export default function DuoCard({ duo, onPress, onMessage, onViewProfile }: DuoC
         </View>
       </View>
 
+      {/* Message */}
+      {duo.message ? (
+        <View style={styles.messageSection}>
+          <ThemedText style={styles.messageText} numberOfLines={2}>
+            "{duo.message}"
+          </ThemedText>
+        </View>
+      ) : null}
+
+      {/* Delete button for own posts */}
+      {duo.isOwnPost && onDelete && (
+        <TouchableOpacity style={styles.deletePostButton} onPress={onDelete} activeOpacity={0.7}>
+          <IconSymbol size={12} name="trash" color="#ff6b6b" />
+          <ThemedText style={styles.deletePostText}>Remove Post</ThemedText>
+        </TouchableOpacity>
+      )}
+
       {/* Action Buttons */}
       {(onMessage || onViewProfile) && (
         <View style={styles.actionRow}>
@@ -273,7 +293,7 @@ const styles = StyleSheet.create({
     backgroundColor: '#222',
     borderRadius: 12,
     padding: 14,
-    height: cardHeight,
+    minHeight: cardHeight,
     marginBottom: 10,
     justifyContent: 'space-between',
     shadowColor: '#000',
@@ -433,5 +453,30 @@ const styles = StyleSheet.create({
     width: 1,
     height: 30,
     backgroundColor: '#252525',
+  },
+  messageSection: {
+    marginTop: 8,
+    paddingHorizontal: 4,
+  },
+  messageText: {
+    fontSize: 12,
+    fontStyle: 'italic',
+    color: '#999',
+    lineHeight: 17,
+  },
+  deletePostButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 6,
+    marginTop: 8,
+    paddingVertical: 8,
+    backgroundColor: 'rgba(255,107,107,0.08)',
+    borderRadius: 8,
+  },
+  deletePostText: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: '#ff6b6b',
   },
 });
