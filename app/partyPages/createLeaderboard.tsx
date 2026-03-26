@@ -1,6 +1,7 @@
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { IconSymbol } from '@/components/ui/icon-symbol';
+import { LinearGradient } from 'expo-linear-gradient';
 import { useRouter } from 'expo-router';
 import { useState, useEffect } from 'react';
 import {
@@ -14,7 +15,7 @@ import {
   Image,
   Platform,
   Modal,
-  KeyboardAvoidingView,
+  Keyboard,
 } from 'react-native';
 import * as Clipboard2 from 'expo-clipboard';
 import * as ImagePicker from 'expo-image-picker';
@@ -36,6 +37,11 @@ const AVAILABLE_GAMES = [
     logo: require('@/assets/images/lol-icon.png'),
   },
 ];
+
+const GAME_LOGOS: { [key: string]: any } = {
+  'Valorant': require('@/assets/images/valorant-red.png'),
+  'League': require('@/assets/images/lol-icon.png'),
+};
 
 interface Follower {
   id: string;
@@ -60,6 +66,20 @@ export default function CreateLeaderboardScreen() {
   const [uploading, setUploading] = useState(false);
   const [inviteModalVisible, setInviteModalVisible] = useState(false);
   const [invitePermission, setInvitePermission] = useState<'leader_only' | 'anyone'>('leader_only');
+  const [showPreview, setShowPreview] = useState(false);
+  const [keyboardHeight, setKeyboardHeight] = useState(0);
+
+  useEffect(() => {
+    const showSub = Keyboard.addListener(
+      Platform.OS === 'ios' ? 'keyboardWillShow' : 'keyboardDidShow',
+      (e) => setKeyboardHeight(e.endCoordinates.height)
+    );
+    const hideSub = Keyboard.addListener(
+      Platform.OS === 'ios' ? 'keyboardWillHide' : 'keyboardDidHide',
+      () => setKeyboardHeight(0)
+    );
+    return () => { showSub.remove(); hideSub.remove(); };
+  }, []);
 
   useEffect(() => {
     const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
@@ -342,9 +362,14 @@ export default function CreateLeaderboardScreen() {
       {/* Header */}
       <View style={styles.header}>
         <TouchableOpacity style={styles.backButton} onPress={() => router.back()}>
-          <IconSymbol size={20} name="chevron.left" color="#fff" />
+          <IconSymbol size={20} name="chevron.left" color="#888" />
         </TouchableOpacity>
-        <ThemedText style={styles.headerTitle}>Create Leaderboard</ThemedText>
+        <View style={styles.headerCenter}>
+          <View style={styles.headerTrophyCircle}>
+            <IconSymbol size={14} name="trophy.fill" color="#a08845" />
+          </View>
+          <ThemedText style={styles.headerTitle}>Create Leaderboard</ThemedText>
+        </View>
         <View style={styles.headerSpacer} />
       </View>
 
@@ -354,71 +379,13 @@ export default function CreateLeaderboardScreen() {
         style={styles.formScroll}
         contentContainerStyle={styles.formScrollContent}
       >
-        {/* Cover Photo - full bleed at top */}
-        <TouchableOpacity
-          style={styles.coverPhotoPicker}
-          onPress={handlePickCoverPhoto}
-          activeOpacity={0.7}
-        >
-          {coverPhoto ? (
-            <Image source={{ uri: coverPhoto }} style={styles.coverPhotoPreview} />
-          ) : (
-            <View style={styles.coverPhotoPlaceholder}>
-              <IconSymbol size={24} name="photo" color="#444" />
-              <ThemedText style={styles.coverPhotoPlaceholderText}>Tap to add cover photo</ThemedText>
-            </View>
-          )}
-          {/* Overlay icon badge */}
-          <View style={styles.coverPhotoEditBadge}>
-            <IconSymbol size={12} name="camera.fill" color="#fff" />
-          </View>
-        </TouchableOpacity>
-
-        {/* Icon + Game - overlapping the cover */}
-        <View style={styles.identitySection}>
-          <TouchableOpacity
-            style={styles.leaderboardIconPicker}
-            onPress={handlePickLeaderboardIcon}
-            activeOpacity={0.7}
-          >
-            {leaderboardIcon ? (
-              <Image source={{ uri: leaderboardIcon }} style={styles.leaderboardIconPreview} />
-            ) : (
-              <View style={styles.leaderboardIconPlaceholder}>
-                <IconSymbol size={28} name="camera.fill" color="#444" />
-              </View>
-            )}
-            <View style={styles.iconEditBadge}>
-              <IconSymbol size={8} name="pencil" color="#fff" />
-            </View>
-          </TouchableOpacity>
-
-          <View style={styles.gameRow}>
-            {AVAILABLE_GAMES.map((game) => (
-              <TouchableOpacity
-                key={game.id}
-                style={[
-                  styles.gameChip,
-                  selectedGame?.id === game.id && styles.gameChipSelected
-                ]}
-                onPress={() => setSelectedGame(game)}
-              >
-                <Image source={game.logo} style={styles.gameChipLogo} />
-                <ThemedText style={[
-                  styles.gameChipText,
-                  selectedGame?.id === game.id && styles.gameChipTextSelected
-                ]}>{game.name}</ThemedText>
-              </TouchableOpacity>
-            ))}
-          </View>
-        </View>
-
         {/* Leaderboard Name */}
-        <View style={styles.nameSection}>
+        <View style={styles.formSection}>
+          <ThemedText style={styles.formLabel}>NAME</ThemedText>
           <TextInput
             style={styles.nameInput}
             placeholder="Enter leaderboard name..."
-            placeholderTextColor="#333"
+            placeholderTextColor="#555"
             value={leaderboardName}
             onChangeText={(text) => setLeaderboardName(text.toUpperCase())}
             maxLength={30}
@@ -427,76 +394,126 @@ export default function CreateLeaderboardScreen() {
           <ThemedText style={styles.nameCharCount}>{leaderboardName.length}/30</ThemedText>
         </View>
 
-        {/* Settings Section */}
-        <View style={styles.section}>
-          <ThemedText style={styles.sectionTitle}>Settings</ThemedText>
-          <View style={styles.sectionCard}>
-            {/* Invite Code */}
-            <TouchableOpacity style={styles.settingRow} onPress={handleCopyInviteCode}>
-              <View style={styles.settingIconWrap}>
-                <IconSymbol size={16} name="link" color="#888" />
-              </View>
-              <View style={styles.settingInfo}>
-                <ThemedText style={styles.settingLabel}>Invite Code</ThemedText>
-                <ThemedText style={styles.settingValue}>{inviteCode}</ThemedText>
-              </View>
-              <IconSymbol size={14} name="doc.on.doc" color="#444" />
-            </TouchableOpacity>
-
-            <View style={styles.settingDivider} />
-
-            {/* Who Can Invite */}
-            <View style={styles.settingRowColumn}>
-              <View style={styles.settingRowHeader}>
-                <View style={styles.settingIconWrap}>
-                  <IconSymbol size={16} name="person.badge.plus" color="#888" />
+        {/* Icon + Game Selection - grid layout */}
+        <View style={styles.formGrid}>
+          <View style={styles.formGridItem}>
+            <ThemedText style={styles.formLabel}>ICON</ThemedText>
+            <TouchableOpacity
+              style={styles.leaderboardIconPicker}
+              onPress={handlePickLeaderboardIcon}
+              activeOpacity={0.7}
+            >
+              {leaderboardIcon ? (
+                <Image source={{ uri: leaderboardIcon }} style={styles.leaderboardIconPreview} />
+              ) : (
+                <View style={styles.leaderboardIconPlaceholder}>
+                  <IconSymbol size={24} name="camera.fill" color="#555" />
                 </View>
-                <ThemedText style={styles.settingLabel}>Who Can Invite</ThemedText>
-              </View>
-              <View style={styles.permissionRow}>
+              )}
+            </TouchableOpacity>
+          </View>
+
+          <View style={styles.formGridItemFlex}>
+            <ThemedText style={styles.formLabel}>GAME</ThemedText>
+            <View style={styles.gameRow}>
+              {AVAILABLE_GAMES.map((game) => (
                 <TouchableOpacity
+                  key={game.id}
                   style={[
-                    styles.permissionButton,
-                    invitePermission === 'leader_only' && styles.permissionButtonActive
+                    styles.gameChip,
+                    selectedGame?.id === game.id && styles.gameChipSelected
                   ]}
-                  onPress={() => setInvitePermission('leader_only')}
+                  onPress={() => setSelectedGame(game)}
                 >
-                  <IconSymbol
-                    size={14}
-                    name="crown.fill"
-                    color={invitePermission === 'leader_only' ? '#fff' : '#555'}
-                  />
+                  <Image source={game.logo} style={styles.gameChipLogo} />
                   <ThemedText style={[
-                    styles.permissionButtonText,
-                    invitePermission === 'leader_only' && styles.permissionButtonTextActive
-                  ]}>Leader Only</ThemedText>
+                    styles.gameChipText,
+                    selectedGame?.id === game.id && styles.gameChipTextSelected
+                  ]}>{game.name}</ThemedText>
                 </TouchableOpacity>
-                <TouchableOpacity
-                  style={[
-                    styles.permissionButton,
-                    invitePermission === 'anyone' && styles.permissionButtonActive
-                  ]}
-                  onPress={() => setInvitePermission('anyone')}
-                >
-                  <IconSymbol
-                    size={14}
-                    name="person.2.fill"
-                    color={invitePermission === 'anyone' ? '#fff' : '#555'}
-                  />
-                  <ThemedText style={[
-                    styles.permissionButtonText,
-                    invitePermission === 'anyone' && styles.permissionButtonTextActive
-                  ]}>Anyone</ThemedText>
-                </TouchableOpacity>
+              ))}
+            </View>
+          </View>
+        </View>
+
+        {/* Cover Photo */}
+        <View style={styles.formSection}>
+          <ThemedText style={styles.formLabel}>COVER PHOTO</ThemedText>
+          <TouchableOpacity
+            style={styles.coverPhotoPicker}
+            onPress={handlePickCoverPhoto}
+            activeOpacity={0.7}
+          >
+            {coverPhoto ? (
+              <Image source={{ uri: coverPhoto }} style={styles.coverPhotoPreview} />
+            ) : (
+              <View style={styles.coverPhotoPlaceholder}>
+                <IconSymbol size={22} name="photo" color="#555" />
+                <ThemedText style={styles.coverPhotoPlaceholderText}>Tap to add</ThemedText>
               </View>
+            )}
+            <View style={styles.coverPhotoEditBadge}>
+              <IconSymbol size={12} name="camera.fill" color="#fff" />
+            </View>
+          </TouchableOpacity>
+        </View>
+
+        {/* Settings Grid */}
+        <View style={styles.formDivider} />
+        <View style={styles.formGrid}>
+          <View style={styles.formGridItem}>
+            <ThemedText style={styles.formLabel}>INVITE CODE</ThemedText>
+            <TouchableOpacity style={styles.settingValueRow} onPress={handleCopyInviteCode}>
+              <ThemedText style={styles.settingValue}>{inviteCode}</ThemedText>
+              <IconSymbol size={14} name="doc.on.doc" color="#555" />
+            </TouchableOpacity>
+          </View>
+          <View style={styles.formGridItemFlex}>
+            <ThemedText style={styles.formLabel}>WHO CAN INVITE</ThemedText>
+            <View style={styles.permissionRow}>
+              <TouchableOpacity
+                style={[
+                  styles.permissionButton,
+                  invitePermission === 'leader_only' && styles.permissionButtonActive
+                ]}
+                onPress={() => setInvitePermission('leader_only')}
+              >
+                <IconSymbol
+                  size={12}
+                  name="crown.fill"
+                  color={invitePermission === 'leader_only' ? '#fff' : '#555'}
+                />
+                <ThemedText style={[
+                  styles.permissionButtonText,
+                  invitePermission === 'leader_only' && styles.permissionButtonTextActive
+                ]}>Leader</ThemedText>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={[
+                  styles.permissionButton,
+                  invitePermission === 'anyone' && styles.permissionButtonActive
+                ]}
+                onPress={() => setInvitePermission('anyone')}
+              >
+                <IconSymbol
+                  size={12}
+                  name="person.2.fill"
+                  color={invitePermission === 'anyone' ? '#fff' : '#555'}
+                />
+                <ThemedText style={[
+                  styles.permissionButtonText,
+                  invitePermission === 'anyone' && styles.permissionButtonTextActive
+                ]}>Anyone</ThemedText>
+              </TouchableOpacity>
             </View>
           </View>
         </View>
 
         {/* Invite Members Section */}
-        <View style={styles.section}>
+        <View style={styles.formDivider} />
+        <View style={styles.formSection}>
           <View style={styles.sectionTitleRow}>
-            <ThemedText style={styles.sectionTitle}>Invite Members</ThemedText>
+            <ThemedText style={styles.formLabel}>INVITE MEMBERS</ThemedText>
             {selectedFollowers.length > 0 && (
               <View style={styles.selectedBadge}>
                 <ThemedText style={styles.selectedBadgeText}>{selectedFollowers.length}</ThemedText>
@@ -504,84 +521,98 @@ export default function CreateLeaderboardScreen() {
             )}
           </View>
 
-          <View style={styles.sectionCard}>
-            {/* Search button */}
-            <TouchableOpacity
-              style={styles.inviteSearchButton}
-              onPress={() => setInviteModalVisible(true)}
-            >
-              <IconSymbol size={15} name="magnifyingglass" color="#444" />
-              <ThemedText style={styles.inviteSearchPlaceholder}>
-                {loadingFollowers ? 'Loading...' : followers.length === 0 ? 'No followers to invite' : 'Search followers...'}
-              </ThemedText>
-            </TouchableOpacity>
+          {/* Search button */}
+          <TouchableOpacity
+            style={styles.inviteSearchButton}
+            onPress={() => setInviteModalVisible(true)}
+          >
+            <IconSymbol size={15} name="magnifyingglass" color="#555" />
+            <ThemedText style={styles.inviteSearchPlaceholder}>
+              {loadingFollowers ? 'Loading...' : followers.length === 0 ? 'No followers to invite' : 'Search followers...'}
+            </ThemedText>
+          </TouchableOpacity>
 
-            {/* Selected chips */}
-            {selectedFollowers.length > 0 && (
-              <View style={styles.selectedChipsContainer}>
-                {followers
-                  .filter(f => selectedFollowers.includes(f.id))
-                  .map((follower) => (
-                    <View key={follower.id} style={styles.selectedChip}>
-                      <ThemedText style={styles.selectedChipText}>{follower.username}</ThemedText>
-                      <TouchableOpacity onPress={() => toggleFollower(follower.id)} hitSlop={8}>
-                        <IconSymbol size={12} name="xmark" color="#666" />
-                      </TouchableOpacity>
+          {/* Selected chips */}
+          {selectedFollowers.length > 0 && (
+            <View style={styles.selectedChipsContainer}>
+              {followers
+                .filter(f => selectedFollowers.includes(f.id))
+                .map((follower) => (
+                  <View key={follower.id} style={styles.selectedChip}>
+                    <View style={styles.selectedChipAvatar}>
+                      {follower.avatar && follower.avatar.startsWith('http') ? (
+                        <Image source={{ uri: follower.avatar }} style={styles.selectedChipAvatarImage} />
+                      ) : (
+                        <ThemedText style={styles.selectedChipAvatarText}>
+                          {follower.username[0].toUpperCase()}
+                        </ThemedText>
+                      )}
                     </View>
-                  ))}
-              </View>
-            )}
-
-            {/* Suggestions */}
-            {!loadingFollowers && mutualFollowers.length > 0 && (
-              <>
-                <View style={styles.settingDivider} />
-                <ThemedText style={styles.cardSubLabel}>Quick Add</ThemedText>
-                <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.suggestionsScroll}>
-                  <View style={styles.suggestionsRow}>
-                    {mutualFollowers
-                      .filter((f) => !selectedFollowers.includes(f.id))
-                      .slice(0, 8)
-                      .map((follower) => (
-                        <TouchableOpacity
-                          key={follower.id}
-                          style={styles.suggestionItem}
-                          onPress={() => toggleFollower(follower.id)}
-                        >
-                          <View style={styles.suggestionAvatarWrapper}>
-                            <View style={styles.suggestionAvatar}>
-                              {follower.avatar && follower.avatar.startsWith('http') ? (
-                                <Image source={{ uri: follower.avatar }} style={styles.suggestionAvatarImage} />
-                              ) : (
-                                <ThemedText style={styles.suggestionAvatarText}>
-                                  {follower.username[0].toUpperCase()}
-                                </ThemedText>
-                              )}
-                            </View>
-                            <View style={styles.suggestionAddBadge}>
-                              <IconSymbol size={8} name="plus" color="#fff" />
-                            </View>
-                          </View>
-                          <ThemedText style={styles.suggestionName} numberOfLines={1}>
-                            {follower.username}
-                          </ThemedText>
-                        </TouchableOpacity>
-                      ))}
-                    {mutualFollowers.filter((f) => !selectedFollowers.includes(f.id)).length === 0 && (
-                      <ThemedText style={styles.allSelectedText}>All added</ThemedText>
-                    )}
+                    <ThemedText style={styles.selectedChipText}>{follower.username}</ThemedText>
+                    <TouchableOpacity onPress={() => toggleFollower(follower.id)} hitSlop={8}>
+                      <IconSymbol size={12} name="xmark" color="#666" />
+                    </TouchableOpacity>
                   </View>
-                </ScrollView>
-              </>
-            )}
-          </View>
+                ))}
+            </View>
+          )}
+
+          {/* Suggestions */}
+          {!loadingFollowers && mutualFollowers.length > 0 && (
+            <>
+              <ThemedText style={[styles.formLabel, { marginTop: 16 }]}>QUICK ADD</ThemedText>
+              <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.suggestionsScroll}>
+                <View style={styles.suggestionsRow}>
+                  {mutualFollowers
+                    .filter((f) => !selectedFollowers.includes(f.id))
+                    .slice(0, 8)
+                    .map((follower) => (
+                      <TouchableOpacity
+                        key={follower.id}
+                        style={styles.suggestionItem}
+                        onPress={() => toggleFollower(follower.id)}
+                      >
+                        <View style={styles.suggestionAvatarWrapper}>
+                          <View style={styles.suggestionAvatar}>
+                            {follower.avatar && follower.avatar.startsWith('http') ? (
+                              <Image source={{ uri: follower.avatar }} style={styles.suggestionAvatarImage} />
+                            ) : (
+                              <ThemedText style={styles.suggestionAvatarText}>
+                                {follower.username[0].toUpperCase()}
+                              </ThemedText>
+                            )}
+                          </View>
+                          <View style={styles.suggestionAddBadge}>
+                            <IconSymbol size={8} name="plus" color="#fff" />
+                          </View>
+                        </View>
+                        <ThemedText style={styles.suggestionName} numberOfLines={1}>
+                          {follower.username}
+                        </ThemedText>
+                      </TouchableOpacity>
+                    ))}
+                  {mutualFollowers.filter((f) => !selectedFollowers.includes(f.id)).length === 0 && (
+                    <ThemedText style={styles.allSelectedText}>All added</ThemedText>
+                  )}
+                </View>
+              </ScrollView>
+            </>
+          )}
         </View>
 
         <View style={styles.bottomSpacer} />
       </ScrollView>
 
-      {/* Fixed Create Button */}
+      {/* Fixed Buttons */}
       <View style={styles.createButtonContainer}>
+        <TouchableOpacity
+          style={styles.previewButton}
+          onPress={() => setShowPreview(true)}
+          activeOpacity={0.7}
+        >
+          <IconSymbol size={16} name="eye.fill" color="#a08845" />
+          <ThemedText style={styles.previewButtonText}>Preview</ThemedText>
+        </TouchableOpacity>
         <TouchableOpacity
           style={[styles.createButton, uploading && styles.createButtonDisabled]}
           onPress={handleCreateLeaderboard}
@@ -598,6 +629,105 @@ export default function CreateLeaderboardScreen() {
           )}
         </TouchableOpacity>
       </View>
+
+      {/* Preview Modal */}
+      <Modal
+        visible={showPreview}
+        animationType="slide"
+        presentationStyle="pageSheet"
+        onRequestClose={() => setShowPreview(false)}
+      >
+        <View style={pvStyles.container}>
+          {/* Cover Photo */}
+          <View style={pvStyles.coverSection}>
+            {coverPhoto ? (
+              <Image source={{ uri: coverPhoto }} style={pvStyles.coverImage} />
+            ) : (
+              <LinearGradient
+                colors={['#252525', '#1a1a1a', '#0f0f0f']}
+                start={{ x: 0, y: 0 }}
+                end={{ x: 0, y: 1 }}
+                style={pvStyles.coverImage}
+              />
+            )}
+            <LinearGradient
+              colors={['transparent', '#0f0f0f']}
+              start={{ x: 0, y: 0 }}
+              end={{ x: 0, y: 1 }}
+              style={pvStyles.coverFade}
+            />
+            <TouchableOpacity style={pvStyles.closeButton} onPress={() => setShowPreview(false)}>
+              <IconSymbol size={14} name="xmark" color="#fff" />
+            </TouchableOpacity>
+            <View style={pvStyles.previewBadge}>
+              <ThemedText style={pvStyles.previewBadgeText}>PREVIEW</ThemedText>
+            </View>
+          </View>
+
+          {/* Leaderboard Info */}
+          <View style={pvStyles.infoSection}>
+            <View style={pvStyles.infoRow}>
+              <View style={pvStyles.iconWrapper}>
+                {leaderboardIcon ? (
+                  <Image source={{ uri: leaderboardIcon }} style={pvStyles.icon} />
+                ) : selectedGame ? (
+                  <View style={pvStyles.iconPlaceholder}>
+                    <Image source={GAME_LOGOS[selectedGame.name]} style={pvStyles.iconGameLogo} resizeMode="contain" />
+                  </View>
+                ) : (
+                  <View style={pvStyles.iconPlaceholder}>
+                    <ThemedText style={pvStyles.iconInitial}>{leaderboardName?.[0] || '?'}</ThemedText>
+                  </View>
+                )}
+              </View>
+              <View style={pvStyles.infoDetails}>
+                <ThemedText style={pvStyles.name} numberOfLines={1}>
+                  {leaderboardName || 'LEADERBOARD NAME'}
+                </ThemedText>
+                <View style={pvStyles.meta}>
+                  {selectedGame && GAME_LOGOS[selectedGame.name] && (
+                    <Image source={GAME_LOGOS[selectedGame.name]} style={pvStyles.metaLogo} resizeMode="contain" />
+                  )}
+                  <ThemedText style={pvStyles.metaText}>{selectedGame?.name || 'No game selected'}</ThemedText>
+                  <View style={pvStyles.metaDot} />
+                  <ThemedText style={pvStyles.metaText}>1 Player</ThemedText>
+                </View>
+              </View>
+            </View>
+          </View>
+
+          {/* Column Headers */}
+          <View style={pvStyles.columnHeaders}>
+            <ThemedText style={[pvStyles.columnText, { width: 40 }]}>RANK</ThemedText>
+            <ThemedText style={[pvStyles.columnText, { flex: 1, paddingLeft: 40 }]}>PLAYER</ThemedText>
+            <ThemedText style={[pvStyles.columnText, { width: 130, textAlign: 'center', marginLeft: 'auto' }]}>CURRENT RANK</ThemedText>
+          </View>
+
+          {/* Current user as only player */}
+          <View style={[pvStyles.playerRow, { borderLeftWidth: 4, borderLeftColor: '#FFD700' }]}>
+            <View style={pvStyles.rankContainer}>
+              <ThemedText style={pvStyles.rankNumber}>1</ThemedText>
+            </View>
+            <View style={pvStyles.playerInfo}>
+              <View style={pvStyles.playerAvatar}>
+                {user?.avatar ? (
+                  <Image source={{ uri: user.avatar }} style={pvStyles.playerAvatarImage} />
+                ) : (
+                  <ThemedText style={pvStyles.playerAvatarText}>
+                    {(user?.username || 'U')[0].toUpperCase()}
+                  </ThemedText>
+                )}
+              </View>
+              <ThemedText style={pvStyles.playerName} numberOfLines={1}>
+                {user?.username || 'You'} (You)
+              </ThemedText>
+            </View>
+            <View style={pvStyles.rankInfo}>
+              <ThemedText style={pvStyles.currentRank}>-</ThemedText>
+            </View>
+          </View>
+        </View>
+      </Modal>
 
       {/* Invite Members Modal */}
       <Modal
@@ -622,23 +752,54 @@ export default function CreateLeaderboardScreen() {
           />
 
           <ScrollView style={styles.modalFollowersList} showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled">
+              {/* Invited members section */}
+              {selectedFollowers.length > 0 && (
+                <View style={styles.invitedSection}>
+                  <ThemedText style={styles.invitedSectionTitle}>INVITED</ThemedText>
+                  {followers
+                    .filter(f => selectedFollowers.includes(f.id))
+                    .map((follower) => (
+                      <TouchableOpacity
+                        key={follower.id}
+                        style={[styles.followerItem, styles.followerItemSelected]}
+                        onPress={() => toggleFollower(follower.id)}
+                      >
+                        <View style={styles.followerAvatar}>
+                          {follower.avatar && follower.avatar.startsWith('http') ? (
+                            <Image source={{ uri: follower.avatar }} style={styles.followerAvatarImage} />
+                          ) : (
+                            <ThemedText style={styles.followerAvatarText}>
+                              {follower.username[0].toUpperCase()}
+                            </ThemedText>
+                          )}
+                        </View>
+                        <ThemedText style={styles.followerName}>{follower.username}</ThemedText>
+                        <ThemedText style={styles.invitedBadgeText}>Invited</ThemedText>
+                        <TouchableOpacity onPress={() => toggleFollower(follower.id)} hitSlop={8}>
+                          <IconSymbol size={14} name="xmark" color="#666" />
+                        </TouchableOpacity>
+                      </TouchableOpacity>
+                    ))}
+                </View>
+              )}
+
+              {/* All followers */}
               {loadingFollowers ? (
                 <View style={styles.loadingContainer}>
                   <ActivityIndicator size="small" color="#c42743" />
                 </View>
               ) : followers.length === 0 ? (
                 <ThemedText style={styles.emptyText}>No followers to invite</ThemedText>
-              ) : filteredFollowers.length === 0 ? (
+              ) : filteredFollowers.filter(f => !selectedFollowers.includes(f.id)).length === 0 && searchQuery ? (
                 <ThemedText style={styles.emptyText}>No results</ThemedText>
               ) : (
                 <View style={styles.followersList}>
-                  {filteredFollowers.map((follower) => (
+                  {filteredFollowers
+                    .filter(f => !selectedFollowers.includes(f.id))
+                    .map((follower) => (
                     <TouchableOpacity
                       key={follower.id}
-                      style={[
-                        styles.followerItem,
-                        selectedFollowers.includes(follower.id) && styles.followerItemSelected
-                      ]}
+                      style={styles.followerItem}
                       onPress={() => toggleFollower(follower.id)}
                     >
                       <View style={styles.followerAvatar}>
@@ -651,31 +812,19 @@ export default function CreateLeaderboardScreen() {
                         )}
                       </View>
                       <ThemedText style={styles.followerName}>{follower.username}</ThemedText>
-                      <View style={[
-                        styles.checkCircle,
-                        selectedFollowers.includes(follower.id) && styles.checkCircleSelected
-                      ]}>
-                        {selectedFollowers.includes(follower.id) && (
-                          <IconSymbol size={12} name="checkmark" color="#fff" />
-                        )}
-                      </View>
+                      <View style={styles.checkCircle} />
                     </TouchableOpacity>
                   ))}
                 </View>
               )}
             </ScrollView>
 
-          <KeyboardAvoidingView
-            behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-            keyboardVerticalOffset={10}
+          <TouchableOpacity
+            style={[styles.modalDoneButton, keyboardHeight > 0 && { marginBottom: keyboardHeight - 10 }]}
+            onPress={() => setInviteModalVisible(false)}
           >
-            <TouchableOpacity
-              style={styles.modalDoneButton}
-              onPress={() => setInviteModalVisible(false)}
-            >
-              <ThemedText style={styles.modalDoneButtonText}>Done</ThemedText>
-            </TouchableOpacity>
-          </KeyboardAvoidingView>
+            <ThemedText style={styles.modalDoneButtonText}>Done</ThemedText>
+          </TouchableOpacity>
         </View>
       </Modal>
     </ThemedView>
@@ -685,7 +834,7 @@ export default function CreateLeaderboardScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#0f0f0f',
+    backgroundColor: '#111',
   },
   header: {
     flexDirection: 'row',
@@ -693,16 +842,31 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     paddingHorizontal: 20,
     paddingTop: 55,
-    paddingBottom: 12,
-    backgroundColor: '#0f0f0f',
+    paddingBottom: 16,
+    borderBottomWidth: 1,
+    borderBottomColor: 'rgba(160, 136, 69, 0.1)',
   },
   backButton: {
     padding: 4,
+    width: 28,
+  },
+  headerCenter: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+  },
+  headerTrophyCircle: {
+    width: 28,
+    height: 28,
+    borderRadius: 14,
+    backgroundColor: 'rgba(160, 136, 69, 0.12)',
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   headerTitle: {
-    fontSize: 18,
+    fontSize: 17,
     fontWeight: '700',
-    color: '#fff',
+    color: '#eee',
   },
   headerSpacer: {
     width: 28,
@@ -712,13 +876,47 @@ const styles = StyleSheet.create({
   },
   formScrollContent: {
     paddingBottom: 20,
+    paddingHorizontal: 20,
+  },
+
+  // Form layout
+  formSection: {
+    marginTop: 16,
+  },
+  formLabel: {
+    fontSize: 10,
+    fontWeight: '700',
+    color: '#fff',
+    letterSpacing: 0.5,
+    marginBottom: 8,
+  },
+  formGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    marginTop: 8,
+    gap: 0,
+  },
+  formGridItem: {
+    paddingRight: 16,
+    marginBottom: 4,
+  },
+  formGridItemFlex: {
+    flex: 1,
+    marginBottom: 4,
+  },
+  formDivider: {
+    height: 1,
+    backgroundColor: 'rgba(160, 136, 69, 0.1)',
+    marginTop: 16,
   },
 
   // Cover Photo
   coverPhotoPicker: {
     width: '100%',
-    height: 150,
-    backgroundColor: '#141414',
+    height: 120,
+    backgroundColor: '#1a1a1a',
+    borderRadius: 10,
+    overflow: 'hidden',
     position: 'relative',
   },
   coverPhotoPreview: {
@@ -733,38 +931,27 @@ const styles = StyleSheet.create({
   },
   coverPhotoPlaceholderText: {
     fontSize: 12,
-    color: '#333',
+    color: '#444',
   },
   coverPhotoEditBadge: {
     position: 'absolute',
-    bottom: 10,
-    right: 14,
-    width: 28,
-    height: 28,
-    borderRadius: 14,
+    bottom: 8,
+    right: 8,
+    width: 26,
+    height: 26,
+    borderRadius: 13,
     backgroundColor: 'rgba(0,0,0,0.6)',
     alignItems: 'center',
     justifyContent: 'center',
   },
 
-  // Identity Section (icon + name + game)
-  identitySection: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 14,
-    paddingHorizontal: 20,
-    marginTop: -30,
-    marginBottom: 24,
-  },
+  // Icon
   leaderboardIconPicker: {
-    width: 68,
-    height: 68,
-    borderRadius: 16,
+    width: 56,
+    height: 56,
+    borderRadius: 14,
     overflow: 'hidden',
     backgroundColor: '#1a1a1a',
-    borderWidth: 3,
-    borderColor: '#0f0f0f',
-    position: 'relative',
   },
   leaderboardIconPreview: {
     width: '100%',
@@ -774,66 +961,24 @@ const styles = StyleSheet.create({
     flex: 1,
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: '#181818',
-  },
-  iconEditBadge: {
-    position: 'absolute',
-    bottom: 2,
-    right: 2,
-    width: 18,
-    height: 18,
-    borderRadius: 9,
-    backgroundColor: '#c42743',
-    alignItems: 'center',
-    justifyContent: 'center',
-    borderWidth: 2,
-    borderColor: '#0f0f0f',
-  },
-  gameRow: {
-    flex: 1,
-    flexDirection: 'row',
-    gap: 8,
-    paddingTop: 30,
   },
 
-  // Name Section
-  nameSection: {
-    paddingHorizontal: 20,
-    marginBottom: 16,
-  },
-  nameInput: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: '#fff',
-    letterSpacing: 0.3,
-    backgroundColor: '#151515',
-    borderRadius: 10,
-    paddingHorizontal: 12,
-    paddingVertical: 11,
-    borderWidth: 1.5,
-    borderColor: '#222',
-  },
-  nameCharCount: {
-    fontSize: 11,
-    color: '#333',
-    textAlign: 'right',
-    marginTop: 6,
-    marginRight: 4,
+  // Game chips
+  gameRow: {
+    flexDirection: 'row',
+    gap: 8,
   },
   gameChip: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 6,
     backgroundColor: '#1a1a1a',
-    paddingVertical: 6,
-    paddingHorizontal: 10,
-    borderRadius: 8,
-    borderWidth: 1.5,
-    borderColor: 'transparent',
+    paddingVertical: 8,
+    paddingHorizontal: 12,
+    borderRadius: 10,
   },
   gameChipSelected: {
-    borderColor: '#A08845',
-    backgroundColor: '#A08845',
+    backgroundColor: '#a08845',
   },
   gameChipLogo: {
     width: 16,
@@ -848,99 +993,60 @@ const styles = StyleSheet.create({
     color: '#fff',
   },
 
-  // Sections
-  section: {
-    paddingHorizontal: 20,
-    marginBottom: 24,
-  },
-  sectionTitleRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    marginBottom: 10,
-  },
-  sectionTitle: {
-    fontSize: 13,
-    fontWeight: '700',
-    color: '#555',
-    textTransform: 'uppercase',
-    letterSpacing: 0.8,
-    marginBottom: 10,
-  },
-  sectionCard: {
-    backgroundColor: '#151515',
-    borderRadius: 14,
-    padding: 14,
-  },
-
-  // Setting rows
-  settingRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 12,
-    paddingVertical: 4,
-  },
-  settingRowColumn: {
-    gap: 12,
-    paddingVertical: 4,
-  },
-  settingRowHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 12,
-  },
-  settingIconWrap: {
-    width: 32,
-    height: 32,
-    borderRadius: 8,
-    backgroundColor: 'rgba(255,255,255,0.05)',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  settingInfo: {
-    flex: 1,
-    gap: 2,
-  },
-  settingLabel: {
+  // Name input
+  nameInput: {
     fontSize: 14,
     fontWeight: '600',
-    color: '#ccc',
+    color: '#fff',
+    letterSpacing: 0.3,
+    backgroundColor: '#1a1a1a',
+    borderRadius: 10,
+    paddingHorizontal: 14,
+    paddingVertical: 12,
+  },
+  nameCharCount: {
+    fontSize: 10,
+    color: '#333',
+    textAlign: 'right',
+    marginTop: 6,
+  },
+
+  // Settings
+  settingValueRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    backgroundColor: '#1a1a1a',
+    borderRadius: 10,
+    padding: 12,
   },
   settingValue: {
     fontSize: 16,
     fontWeight: '700',
-    color: '#fff',
+    color: '#a08845',
     letterSpacing: 2,
-  },
-  settingDivider: {
-    height: 1,
-    backgroundColor: '#1f1f1f',
-    marginVertical: 12,
   },
 
   // Permission
   permissionRow: {
     flexDirection: 'row',
-    gap: 8,
+    gap: 6,
   },
   permissionButton: {
     flex: 1,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    gap: 6,
+    gap: 5,
     backgroundColor: '#1a1a1a',
     borderRadius: 10,
-    paddingVertical: 11,
-    borderWidth: 1.5,
-    borderColor: 'transparent',
+    paddingVertical: 10,
   },
   permissionButtonActive: {
-    backgroundColor: '#A08845',
-    borderColor: '#A08845',
+    backgroundColor: '#a08845',
   },
   permissionButtonText: {
-    fontSize: 12,
+    fontSize: 11,
     fontWeight: '600',
     color: '#555',
   },
@@ -948,17 +1054,15 @@ const styles = StyleSheet.create({
     color: '#fff',
   },
 
-  // Suggestions
-  cardSubLabel: {
-    fontSize: 11,
-    fontWeight: '600',
-    color: '#444',
-    textTransform: 'uppercase',
-    letterSpacing: 0.5,
-    marginBottom: 10,
+  // Section title row
+  sectionTitleRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: 8,
   },
   suggestionsScroll: {
-    marginHorizontal: -4,
+    marginHorizontal: 0,
   },
   suggestionsRow: {
     flexDirection: 'row',
@@ -1003,11 +1107,11 @@ const styles = StyleSheet.create({
     width: 16,
     height: 16,
     borderRadius: 8,
-    backgroundColor: '#c42743',
+    backgroundColor: '#a08845',
     alignItems: 'center',
     justifyContent: 'center',
     borderWidth: 2,
-    borderColor: '#151515',
+    borderColor: '#111',
   },
   allSelectedText: {
     fontSize: 12,
@@ -1027,16 +1131,34 @@ const styles = StyleSheet.create({
   selectedChip: {
     flexDirection: 'row',
     alignItems: 'center',
+    backgroundColor: '#1a1a1a',
+    borderRadius: 20,
+    paddingVertical: 4,
+    paddingLeft: 4,
+    paddingRight: 8,
+    gap: 6,
+  },
+  selectedChipAvatar: {
+    width: 22,
+    height: 22,
+    borderRadius: 11,
     backgroundColor: '#222',
-    borderRadius: 14,
-    paddingVertical: 5,
-    paddingLeft: 10,
-    paddingRight: 7,
-    gap: 5,
+    alignItems: 'center',
+    justifyContent: 'center',
+    overflow: 'hidden',
+  },
+  selectedChipAvatarImage: {
+    width: '100%',
+    height: '100%',
+  },
+  selectedChipAvatarText: {
+    fontSize: 10,
+    fontWeight: '600',
+    color: '#555',
   },
   selectedChipText: {
     fontSize: 12,
-    color: '#ddd',
+    color: '#ccc',
     fontWeight: '500',
   },
 
@@ -1051,16 +1173,15 @@ const styles = StyleSheet.create({
   },
   inviteSearchPlaceholder: {
     fontSize: 14,
-    color: '#333',
+    color: '#444',
   },
 
   // Badge
   selectedBadge: {
-    backgroundColor: '#A08845',
+    backgroundColor: '#a08845',
     borderRadius: 10,
     paddingHorizontal: 8,
     paddingVertical: 2,
-    marginBottom: 10,
   },
   selectedBadgeText: {
     fontSize: 11,
@@ -1073,11 +1194,28 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20,
     paddingTop: 10,
     paddingBottom: 34,
-    backgroundColor: '#0f0f0f',
+    backgroundColor: '#111',
+    borderTopWidth: 1,
+    borderTopColor: 'rgba(160, 136, 69, 0.1)',
+  },
+  previewButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    backgroundColor: '#1a1a1a',
+    borderRadius: 12,
+    padding: 14,
+    marginBottom: 10,
+  },
+  previewButtonText: {
+    fontSize: 15,
+    fontWeight: '600',
+    color: '#a08845',
   },
   createButton: {
-    backgroundColor: '#A08845',
-    borderRadius: 14,
+    backgroundColor: '#a08845',
+    borderRadius: 12,
     padding: 16,
     alignItems: 'center',
   },
@@ -1101,7 +1239,7 @@ const styles = StyleSheet.create({
   // Modal
   modalSheet: {
     flex: 1,
-    backgroundColor: '#151515',
+    backgroundColor: '#111',
     paddingTop: 8,
     paddingHorizontal: 16,
     paddingBottom: 30,
@@ -1119,11 +1257,14 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     alignItems: 'center',
     marginBottom: 14,
+    paddingBottom: 14,
+    borderBottomWidth: 1,
+    borderBottomColor: 'rgba(160, 136, 69, 0.1)',
   },
   modalTitle: {
     fontSize: 17,
     fontWeight: '700',
-    color: '#fff',
+    color: '#eee',
   },
   modalSearchInput: {
     backgroundColor: '#1a1a1a',
@@ -1137,7 +1278,7 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   modalDoneButton: {
-    backgroundColor: '#c42743',
+    backgroundColor: '#a08845',
     borderRadius: 12,
     padding: 14,
     alignItems: 'center',
@@ -1160,6 +1301,25 @@ const styles = StyleSheet.create({
   },
 
   // Followers list
+  invitedSection: {
+    marginBottom: 12,
+    paddingBottom: 12,
+    borderBottomWidth: 1,
+    borderBottomColor: 'rgba(160, 136, 69, 0.1)',
+  },
+  invitedSectionTitle: {
+    fontSize: 10,
+    fontWeight: '700',
+    color: '#a08845',
+    letterSpacing: 0.5,
+    marginBottom: 6,
+    paddingHorizontal: 10,
+  },
+  invitedBadgeText: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: '#a08845',
+  },
   followersList: {
     gap: 2,
   },
@@ -1172,7 +1332,7 @@ const styles = StyleSheet.create({
     gap: 10,
   },
   followerItemSelected: {
-    backgroundColor: 'rgba(196,39,67,0.08)',
+    backgroundColor: '#1a1a1a',
   },
   followerAvatar: {
     width: 34,
@@ -1208,7 +1368,204 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   checkCircleSelected: {
-    backgroundColor: '#c42743',
-    borderColor: '#c42743',
+    backgroundColor: '#a08845',
+    borderColor: '#a08845',
+  },
+});
+
+const pvStyles = StyleSheet.create({
+  container: {
+    flex: 1,
+    backgroundColor: '#0f0f0f',
+  },
+  coverSection: {
+    height: 130,
+    position: 'relative',
+  },
+  coverImage: {
+    width: '100%',
+    height: '100%',
+  },
+  coverFade: {
+    position: 'absolute',
+    bottom: 0,
+    left: 0,
+    right: 0,
+    height: 60,
+  },
+  closeButton: {
+    position: 'absolute',
+    top: 16,
+    left: 16,
+    width: 30,
+    height: 30,
+    borderRadius: 15,
+    backgroundColor: 'rgba(0,0,0,0.5)',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  previewBadge: {
+    position: 'absolute',
+    top: 16,
+    right: 16,
+    backgroundColor: 'rgba(160, 136, 69, 0.8)',
+    borderRadius: 6,
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+  },
+  previewBadgeText: {
+    fontSize: 10,
+    fontWeight: '700',
+    color: '#fff',
+    letterSpacing: 0.5,
+  },
+  infoSection: {
+    marginTop: -34,
+    zIndex: 2,
+    paddingHorizontal: 20,
+    gap: 16,
+  },
+  infoRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 14,
+  },
+  iconWrapper: {
+    width: 68,
+    height: 68,
+    borderRadius: 16,
+    overflow: 'hidden',
+    borderWidth: 3,
+    borderColor: '#0f0f0f',
+  },
+  icon: {
+    width: '100%',
+    height: '100%',
+  },
+  iconPlaceholder: {
+    flex: 1,
+    backgroundColor: '#1a1a1a',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  iconGameLogo: {
+    width: 32,
+    height: 32,
+  },
+  iconInitial: {
+    fontSize: 24,
+    fontWeight: '700',
+    color: '#555',
+  },
+  infoDetails: {
+    flex: 1,
+    gap: 4,
+  },
+  name: {
+    fontSize: 18,
+    fontWeight: '700',
+    color: '#fff',
+  },
+  meta: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+  },
+  metaLogo: {
+    width: 14,
+    height: 14,
+  },
+  metaText: {
+    fontSize: 12,
+    color: '#555',
+    fontWeight: '500',
+  },
+  metaDot: {
+    width: 3,
+    height: 3,
+    borderRadius: 1.5,
+    backgroundColor: '#333',
+  },
+  columnHeaders: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+    marginTop: 20,
+    marginHorizontal: 16,
+    backgroundColor: '#1a1a1a',
+    borderBottomWidth: 1,
+    borderBottomColor: '#252525',
+    borderTopLeftRadius: 12,
+    borderTopRightRadius: 12,
+  },
+  columnText: {
+    fontSize: 10,
+    fontWeight: '600',
+    color: '#666',
+    letterSpacing: 0.5,
+    textTransform: 'uppercase',
+  },
+  playerRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    paddingVertical: 10,
+    paddingLeft: 12,
+    paddingRight: 16,
+    backgroundColor: '#141414',
+    marginHorizontal: 16,
+    borderBottomLeftRadius: 12,
+    borderBottomRightRadius: 12,
+  },
+  rankContainer: {
+    width: 40,
+    alignItems: 'flex-start',
+  },
+  rankNumber: {
+    fontSize: 14,
+    fontWeight: '700',
+    color: '#FFD700',
+  },
+  playerInfo: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+  },
+  playerAvatar: {
+    width: 32,
+    height: 32,
+    borderRadius: 6,
+    backgroundColor: '#222',
+    alignItems: 'center',
+    justifyContent: 'center',
+    overflow: 'hidden',
+  },
+  playerAvatarImage: {
+    width: '100%',
+    height: '100%',
+  },
+  playerAvatarText: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: '#555',
+  },
+  playerName: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: '#fff',
+    flex: 1,
+  },
+  rankInfo: {
+    width: 130,
+    marginLeft: 'auto',
+    alignItems: 'center',
+  },
+  currentRank: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: '#555',
   },
 });

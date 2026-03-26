@@ -927,6 +927,17 @@ export default function LeaderboardDetail() {
     return null;
   };
 
+  // Format date string for display (e.g. "25Mar26")
+  const formatDisplayDate = (dateValue: any): string => {
+    const months = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+    const d = convertToDate(dateValue);
+    if (!d) return String(dateValue);
+    const day = d.getDate();
+    const mon = months[d.getMonth()];
+    const yr = String(d.getFullYear()).slice(-2);
+    return `${day}${mon}${yr}`;
+  };
+
   const startDate = partyData?.startDate || params.startDate;
   const endDate = partyData?.endDate || params.endDate;
 
@@ -2024,12 +2035,12 @@ export default function LeaderboardDetail() {
               <View style={styles.cdDatesRow}>
                 <View style={styles.cdDateItem}>
                   <ThemedText style={styles.cdGridLabel}>STARTED</ThemedText>
-                  <ThemedText style={styles.cdDateText}>{partyData.startDate}</ThemedText>
+                  <ThemedText style={styles.cdDateText}>{formatDisplayDate(partyData.startDate)}</ThemedText>
                 </View>
                 <View style={styles.cdDateDivider} />
                 <View style={styles.cdDateItem}>
                   <ThemedText style={styles.cdGridLabel}>ENDS</ThemedText>
-                  <ThemedText style={styles.cdDateText}>{partyData.endDate}</ThemedText>
+                  <ThemedText style={styles.cdDateText}>{formatDisplayDate(partyData.endDate)}</ThemedText>
                 </View>
               </View>
             )}
@@ -2501,7 +2512,6 @@ const styles = StyleSheet.create({
   cdDatesRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: 'rgba(160, 136, 69, 0.06)',
     borderRadius: 10,
     padding: 14,
     marginTop: 4,
