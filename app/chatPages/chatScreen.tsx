@@ -444,7 +444,7 @@ const styles = StyleSheet.create({
     borderRadius: 18,
   },
   currentUserBubble: {
-    backgroundColor: '#8B2942',
+    backgroundColor: '#8B6914',
     alignSelf: 'flex-end',
   },
   otherUserBubble: {
@@ -505,7 +505,7 @@ const styles = StyleSheet.create({
     width: 40,
     height: 40,
     borderRadius: 20,
-    backgroundColor: '#c42743',
+    backgroundColor: '#C49B27',
     alignItems: 'center',
     justifyContent: 'center',
   },
