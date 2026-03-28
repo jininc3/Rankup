@@ -729,7 +729,7 @@ export const ProfileAchievementsSkeleton: React.FC = () => (
 );
 
 // Full profile page skeleton - shows shimmer for the entire profile page
-// Matches profile.tsx layout: cover photo, username+avatar, followers, socials, bio, clips, rank cards, achievements
+// Matches profile.tsx layout: cover photo, username+avatar, followers, socials, bio, tab bar, clips tab content
 export const ProfilePageSkeleton: React.FC = () => (
   <View style={profilePageStyles.container}>
     {/* Cover Photo Area with username overlay + avatar */}
@@ -762,38 +762,22 @@ export const ProfilePageSkeleton: React.FC = () => (
       <Skeleton width="70%" height={14} borderRadius={4} />
     </View>
 
-    {/* Clips Section Header */}
-    <View style={profilePageStyles.sectionHeader}>
-      <Skeleton width={50} height={18} borderRadius={4} />
+    {/* Tab Bar - CLIPS | RANKS | ACHIEVEMENTS */}
+    <View style={profilePageStyles.tabBar}>
+      <Skeleton width={50} height={20} borderRadius={4} />
+      <View style={profilePageStyles.tabDivider} />
+      <Skeleton width={52} height={20} borderRadius={4} />
+      <View style={profilePageStyles.tabDivider} />
+      <Skeleton width={110} height={20} borderRadius={4} />
     </View>
 
-    {/* Clips Skeleton */}
-    <View style={profileStyles.clipsRow}>
-      {[0, 1, 2].map(i => (
-        <Skeleton key={i} width={200} height={120} borderRadius={12} />
-      ))}
-    </View>
-
-    {/* Rank Cards Section Header */}
-    <View style={profilePageStyles.sectionHeader}>
-      <Skeleton width={100} height={18} borderRadius={4} />
-    </View>
-
-    {/* Rank Card Skeleton */}
-    <View style={profileStyles.rankCardWrapper}>
-      <Skeleton width={screenWidth - 12} height={240} borderRadius={24} />
-    </View>
-
-    {/* Achievements Section Header */}
-    <View style={profilePageStyles.sectionHeader}>
-      <Skeleton width={110} height={18} borderRadius={4} />
-    </View>
-
-    {/* Achievements Skeleton */}
-    <View style={profileStyles.achievementsRow}>
-      {[0, 1, 2].map(i => (
-        <Skeleton key={i} width={140} height={140} borderRadius={12} />
-      ))}
+    {/* Clips Tab Content (default active tab) */}
+    <View style={profilePageStyles.clipsTabContent}>
+      <View style={profileStyles.clipsRow}>
+        {[0, 1, 2].map(i => (
+          <Skeleton key={i} width={200} height={120} borderRadius={12} />
+        ))}
+      </View>
     </View>
   </View>
 );
@@ -843,10 +827,22 @@ const profilePageStyles = StyleSheet.create({
     paddingHorizontal: 20,
     marginBottom: 8,
   },
-  sectionHeader: {
-    paddingHorizontal: 16,
-    paddingTop: 16,
-    paddingBottom: 12,
+  tabBar: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: 20,
+    paddingTop: 12,
+    paddingBottom: 8,
+    gap: 16,
+  },
+  tabDivider: {
+    width: 1,
+    height: 16,
+    backgroundColor: '#333',
+  },
+  clipsTabContent: {
+    paddingTop: 12,
   },
 });
 

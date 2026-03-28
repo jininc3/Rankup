@@ -1,5 +1,6 @@
 import { ThemedText } from '@/components/themed-text';
 import { IconSymbol } from '@/components/ui/icon-symbol';
+import { LinearGradient } from 'expo-linear-gradient';
 import { Dimensions, Image, StyleSheet, TouchableOpacity, View } from 'react-native';
 
 const { width } = Dimensions.get('window');
@@ -179,37 +180,48 @@ export default function DuoCard({ duo, onPress, onMessage, onViewProfile, onDele
       onPress={onPress}
       activeOpacity={0.7}
     >
-      <View style={styles.innerBorder}>
-      {/* Header Row: In-Game Icon + In-Game Name | Game Logo */}
-      <View style={styles.header}>
-        <View style={styles.userSection}>
-          <View style={styles.avatarContainer}>
-            {duo.inGameIcon ? (
-              <Image source={{ uri: duo.inGameIcon }} style={styles.avatar} />
-            ) : duo.avatar && duo.avatar.startsWith('http') ? (
-              <Image source={{ uri: duo.avatar }} style={styles.avatar} />
-            ) : (
-              <ThemedText style={styles.avatarText}>
-                {(duo.inGameName || duo.username)[0].toUpperCase()}
-              </ThemedText>
+      <LinearGradient
+        colors={['#2a2a2a', '#1a1a1a']}
+        start={{ x: 0, y: 0 }}
+        end={{ x: 0, y: 1 }}
+        style={styles.innerBorder}
+      >
+      {/* Header Section: In-Game Icon + In-Game Name | Time Ago | Game Logo */}
+      <View style={styles.headerSection}>
+        <View style={styles.header}>
+          <View style={styles.userSection}>
+            <View style={styles.avatarContainer}>
+              {duo.inGameIcon ? (
+                <Image source={{ uri: duo.inGameIcon }} style={styles.avatar} />
+              ) : duo.avatar && duo.avatar.startsWith('http') ? (
+                <Image source={{ uri: duo.avatar }} style={styles.avatar} />
+              ) : (
+                <ThemedText style={styles.avatarText}>
+                  {(duo.inGameName || duo.username)[0].toUpperCase()}
+                </ThemedText>
+              )}
+            </View>
+            <ThemedText style={styles.username} numberOfLines={1}>
+              {duo.inGameName || duo.username}
+            </ThemedText>
+          </View>
+
+          <View style={styles.headerRight}>
+            {duo.createdAt && (
+              <ThemedText style={styles.timeAgo}>{formatTimeAgo(duo.createdAt)}</ThemedText>
+            )}
+            {gameLogo && (
+              <Image source={gameLogo} style={styles.gameLogo} resizeMode="contain" />
             )}
           </View>
-          <ThemedText style={styles.username} numberOfLines={1}>
-            {duo.inGameName || duo.username}
-          </ThemedText>
         </View>
 
-        <View style={styles.headerRight}>
-          {duo.createdAt && (
-            <ThemedText style={styles.timeAgo}>{formatTimeAgo(duo.createdAt)}</ThemedText>
-          )}
-          {gameLogo && (
-            <Image source={gameLogo} style={styles.gameLogo} resizeMode="contain" />
-          )}
-        </View>
       </View>
 
-      {/* Message - above stats */}
+      {/* Header Divider */}
+      <View style={styles.headerDivider} />
+
+      {/* Message */}
       {duo.message ? (
         <View style={styles.messageSection}>
           <ThemedText style={styles.messageText} numberOfLines={2}>
@@ -307,7 +319,7 @@ export default function DuoCard({ duo, onPress, onMessage, onViewProfile, onDele
           )}
         </View>
       )}
-      </View>
+      </LinearGradient>
     </TouchableOpacity>
   );
 }
@@ -331,11 +343,19 @@ const styles = StyleSheet.create({
     padding: 10,
     gap: 10,
   },
-  // Header
+  // Header Section
+  headerSection: {
+    gap: 10,
+  },
   header: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
+  },
+  headerDivider: {
+    height: 1,
+    backgroundColor: '#2a2a2a',
+    marginHorizontal: 2,
   },
   userSection: {
     flexDirection: 'row',
@@ -434,7 +454,7 @@ const styles = StyleSheet.create({
   statsRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#222',
+    backgroundColor: 'transparent',
     borderRadius: 10,
     padding: 12,
   },

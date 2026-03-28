@@ -1165,27 +1165,23 @@ export default function DuoFinderScreen() {
               <View style={styles.sectionHeader}>
                 <View style={styles.sectionHeaderLeft}>
                   <ThemedText style={styles.sectionHeaderTitle}>FEED</ThemedText>
-                  <ThemedText style={styles.playerCount}>
-                    {duoPosts.length}
-                  </ThemedText>
+                  <ThemedText style={styles.playerCount}>{duoPosts.length}</ThemedText>
                 </View>
                 <View style={styles.headerRightSection}>
                   <TouchableOpacity
-                    style={[styles.filterTextButton, activeFilterCount > 0 && styles.filterTextButtonActive]}
                     onPress={() => setShowFilterModal(true)}
                     activeOpacity={0.7}
+                    hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
                   >
-                    <ThemedText style={[styles.filterTextLabel, activeFilterCount > 0 && styles.filterTextLabelActive]}>
-                      {activeFilterCount > 0 ? `Filter (${activeFilterCount})` : 'Filter'}
-                    </ThemedText>
+                    <IconSymbol size={16} name="line.3.horizontal.decrease" color={activeFilterCount > 0 ? '#A08845' : '#555'} />
                   </TouchableOpacity>
                   <TouchableOpacity
-                    style={styles.refreshButton}
                     onPress={fetchDuoPosts}
                     activeOpacity={0.7}
                     disabled={loadingDuoPosts}
+                    hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
                   >
-                    <IconSymbol size={14} name="arrow.clockwise" color={loadingDuoPosts ? '#444' : '#A08845'} />
+                    <IconSymbol size={16} name="arrow.clockwise" color={loadingDuoPosts ? '#333' : '#555'} />
                   </TouchableOpacity>
                 </View>
               </View>
@@ -1602,7 +1598,7 @@ const styles = StyleSheet.create({
   },
   feedContent: {
     paddingHorizontal: 16,
-    paddingTop: 16,
+    paddingTop: 4,
   },
   feedCardWrapper: {
     marginBottom: 4,
@@ -1737,8 +1733,8 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     alignItems: 'center',
     paddingHorizontal: 16,
-    paddingTop: 14,
-    paddingBottom: 12,
+    paddingTop: 4,
+    paddingBottom: 10,
   },
   sectionHeaderLeft: {
     flexDirection: 'row',
@@ -1754,7 +1750,7 @@ const styles = StyleSheet.create({
   playerCount: {
     fontSize: 12,
     fontWeight: '500',
-    color: '#A08845',
+    color: '#555',
   },
   // My Card Content
   myCardContent: {
@@ -1860,35 +1856,10 @@ const styles = StyleSheet.create({
     borderColor: '#2a2a2a',
     overflow: 'hidden',
   },
-  filterTextButton: {
-    paddingVertical: 3,
-    paddingHorizontal: 8,
-    borderRadius: 6,
-    backgroundColor: '#A08845',
-  },
-  filterTextButtonActive: {
-    backgroundColor: '#A08845',
-  },
-  filterTextLabel: {
-    fontSize: 10,
-    fontWeight: '600',
-    color: '#fff',
-  },
-  filterTextLabelActive: {
-    color: '#fff',
-  },
   headerRightSection: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 10,
-  },
-  refreshButton: {
-    width: 28,
-    height: 28,
-    borderRadius: 14,
-    backgroundColor: 'rgba(160, 136, 69, 0.1)',
-    alignItems: 'center',
-    justifyContent: 'center',
+    gap: 16,
   },
   // Empty States - Profile style
   emptyState: {

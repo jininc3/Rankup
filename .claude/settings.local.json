@@ -30,7 +30,8 @@
       "Bash(find C:UsersjinhaDesktopRankUpassetsimages -iname *valorant* -o -iname *background*)",
       "Bash(xargs grep:*)",
       "Bash(find /c/Users/jinha/Desktop/RankUp/app -type f -name *.tsx -o -name *.ts)",
-      "Bash(grep -l \"post\\\\|Post\" /c/Users/jinha/Desktop/RankUp/services/*.ts)"
+      "Bash(grep -l \"post\\\\|Post\" /c/Users/jinha/Desktop/RankUp/services/*.ts)",
+      "Bash(wc -l app/profilePages/profileView.tsx app/\\\\\\(tabs\\\\\\)/profile.tsx)"
     ],
     "deny": [],
     "ask": []
