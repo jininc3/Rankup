@@ -116,10 +116,11 @@ export default function ProfileScreen() {
   const handleTabScroll = useCallback((event: any) => {
     const offsetX = event.nativeEvent.contentOffset.x;
     const index = Math.round(offsetX / screenWidth);
-    if (tabs[index] && tabs[index] !== activeTab) {
-      setActiveTab(tabs[index]);
+    const tab = tabs[index];
+    if (tab) {
+      setActiveTab(tab);
     }
-  }, [activeTab]);
+  }, []);
 
   const scrollToTab = useCallback((tab: 'clips' | 'rankCards' | 'achievements') => {
     const index = tabs.indexOf(tab);
@@ -1083,7 +1084,7 @@ export default function ProfileScreen() {
             horizontal
             pagingEnabled
             showsHorizontalScrollIndicator={false}
-            onMomentumScrollEnd={handleTabScroll}
+            onScroll={handleTabScroll}
             scrollEventThrottle={16}
             nestedScrollEnabled
           >
