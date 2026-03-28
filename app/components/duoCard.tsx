@@ -176,7 +176,7 @@ export default function DuoCard({ duo, onPress, onMessage, onViewProfile, onDele
 
   return (
     <TouchableOpacity
-      style={styles.container}
+      style={[styles.container, { borderColor: isLeague ? '#1a3a5c' : '#5c1a1a' }]}
       onPress={onPress}
       activeOpacity={0.7}
     >
@@ -184,7 +184,7 @@ export default function DuoCard({ duo, onPress, onMessage, onViewProfile, onDele
         colors={['#2a2a2a', '#1a1a1a']}
         start={{ x: 0, y: 0 }}
         end={{ x: 0, y: 1 }}
-        style={styles.innerBorder}
+        style={[styles.innerBorder, { borderColor: isLeague ? '#1a3a5c' : '#5c1a1a' }]}
       >
       {/* Header Section: In-Game Icon + In-Game Name | Time Ago | Game Logo */}
       <View style={styles.headerSection}>
@@ -328,6 +328,7 @@ const styles = StyleSheet.create({
   container: {
     backgroundColor: '#222',
     borderRadius: 12,
+    borderWidth: 1,
     padding: 6,
     marginBottom: 10,
     shadowColor: '#000',
@@ -341,7 +342,8 @@ const styles = StyleSheet.create({
     borderColor: '#333',
     borderRadius: 8,
     padding: 10,
-    gap: 10,
+    paddingBottom: 6,
+    gap: 8,
   },
   // Header Section
   headerSection: {
@@ -407,7 +409,7 @@ const styles = StyleSheet.create({
   actionButtonText: {
     fontSize: 12,
     fontWeight: '600',
-    color: '#888',
+    color: '#fff',
   },
   messageButton: {
     backgroundColor: 'rgba(160, 136, 69, 0.15)',
@@ -415,7 +417,7 @@ const styles = StyleSheet.create({
   messageButtonText: {
     fontSize: 12,
     fontWeight: '600',
-    color: '#a08845',
+    color: '#fff',
   },
   profileIconSmall: {
     width: 18,
@@ -456,7 +458,8 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     backgroundColor: 'transparent',
     borderRadius: 10,
-    padding: 12,
+    paddingHorizontal: 12,
+    paddingVertical: 6,
   },
   statItem: {
     flex: 1,

@@ -73,8 +73,11 @@ export default function DuoFinderScreen() {
 
   // Duo Posts feed state
   const [duoPosts, setDuoPosts] = useState<DuoPostWithId[]>([]);
+  const [displayedPosts, setDisplayedPosts] = useState<DuoPostWithId[]>([]);
   const [loadingDuoPosts, setLoadingDuoPosts] = useState(false);
+  const [loadingMore, setLoadingMore] = useState(false);
   const [showPostDuoCard, setShowPostDuoCard] = useState(false);
+  const POSTS_PER_PAGE = 10;
 
   // Filter state
   const [showFilterModal, setShowFilterModal] = useState(false);
@@ -660,11 +663,21 @@ export default function DuoFinderScreen() {
       });
 
       setDuoPosts(filtered);
+      setDisplayedPosts(filtered.slice(0, POSTS_PER_PAGE));
     } catch (error) {
       console.error('Error fetching duo posts:', error);
     } finally {
       setLoadingDuoPosts(false);
     }
+  };
+
+  // Load more posts when user scrolls to bottom
+  const loadMorePosts = () => {
+    if (loadingMore || displayedPosts.length >= duoPosts.length) return;
+    setLoadingMore(true);
+    const nextPosts = duoPosts.slice(0, displayedPosts.length + POSTS_PER_PAGE);
+    setDisplayedPosts(nextPosts);
+    setLoadingMore(false);
   };
 
   // Fetch duo posts when filters or games change
@@ -683,6 +696,7 @@ export default function DuoFinderScreen() {
           try {
             await deleteDoc(doc(db, 'duoPosts', post.id));
             setDuoPosts(prev => prev.filter(p => p.id !== post.id));
+            setDisplayedPosts(prev => prev.filter(p => p.id !== post.id));
           } catch (error) {
             console.error('Error deleting post:', error);
           }
@@ -1156,11 +1170,18 @@ export default function DuoFinderScreen() {
         {/* Find Duo Page */}
         <View style={[styles.pageContainer, { width: SCREEN_WIDTH }]}>
           <FlatList
-            data={duoPosts}
+            data={displayedPosts}
             keyExtractor={(item) => item.id}
             showsVerticalScrollIndicator={false}
             contentContainerStyle={styles.feedContent}
             nestedScrollEnabled
+            onEndReached={loadMorePosts}
+            onEndReachedThreshold={0.3}
+            ListFooterComponent={
+              loadingMore ? (
+                <ActivityIndicator size="small" color="#A08845" style={{ paddingVertical: 16 }} />
+              ) : null
+            }
             ListHeaderComponent={
               <View style={styles.sectionHeader}>
                 <View style={styles.sectionHeaderLeft}>
@@ -1266,7 +1287,7 @@ export default function DuoFinderScreen() {
                       pathname: '/profilePages/profileView',
                       params: { userId: post.userId, username: post.username, avatar: post.avatar || '' },
                     }) : undefined}
-                    onDelete={isOwn ? () => handleDeletePost(post) : undefined}
+                    onDelete={undefined}
                   />
                 </View>
               );
@@ -1373,10 +1394,29 @@ export default function DuoFinderScreen() {
                         avatar: user?.avatar,
                         inGameIcon: valorantInGameIcon,
                         inGameName: valorantInGameName,
+                        isOwnPost: true,
                       }}
                       onPress={() => {
                         setShowMyCards(false);
                         handleCardPress('valorant');
+                      }}
+                      onDelete={() => {
+                        Alert.alert('Remove Post', 'Remove your Valorant duo post from the feed?', [
+                          { text: 'Cancel', style: 'cancel' },
+                          {
+                            text: 'Remove',
+                            style: 'destructive',
+                            onPress: async () => {
+                              try {
+                                await deleteDoc(doc(db, 'duoPosts', `${user?.id}_valorant`));
+                                setDuoPosts(prev => prev.filter(p => p.id !== `${user?.id}_valorant`));
+                                setDisplayedPosts(prev => prev.filter(p => p.id !== `${user?.id}_valorant`));
+                              } catch (error) {
+                                console.error('Error deleting post:', error);
+                              }
+                            },
+                          },
+                        ]);
                       }}
                     />
                   )}
@@ -1397,10 +1437,29 @@ export default function DuoFinderScreen() {
                         avatar: user?.avatar,
                         inGameIcon: leagueInGameIcon,
                         inGameName: leagueInGameName,
+                        isOwnPost: true,
                       }}
                       onPress={() => {
                         setShowMyCards(false);
                         handleCardPress('league');
+                      }}
+                      onDelete={() => {
+                        Alert.alert('Remove Post', 'Remove your League duo post from the feed?', [
+                          { text: 'Cancel', style: 'cancel' },
+                          {
+                            text: 'Remove',
+                            style: 'destructive',
+                            onPress: async () => {
+                              try {
+                                await deleteDoc(doc(db, 'duoPosts', `${user?.id}_league`));
+                                setDuoPosts(prev => prev.filter(p => p.id !== `${user?.id}_league`));
+                                setDisplayedPosts(prev => prev.filter(p => p.id !== `${user?.id}_league`));
+                              } catch (error) {
+                                console.error('Error deleting post:', error);
+                              }
+                            },
+                          },
+                        ]);
                       }}
                     />
                   )}
@@ -1803,7 +1862,7 @@ const styles = StyleSheet.create({
   },
   compactCardsContainer: {
     gap: 10,
-    paddingHorizontal: 12,
+    paddingHorizontal: 0,
     paddingVertical: 16,
   },
   myCardsTitle: {

@@ -9,6 +9,7 @@ import { likePost, unlikePost, isPostLiked } from '@/services/likeService';
 import { createOrGetChat } from '@/services/chatService';
 import CommentModal from '@/app/components/commentModal';
 import PostContent from '@/app/components/postContent';
+import NewPost from '@/app/components/newPost';
 import PostDuoCard from '@/app/components/postDuoCard';
 import { DuoCardData } from '@/app/components/addDuoCard';
 import { collection, getDocs, orderBy, query, Timestamp, where, onSnapshot, limit, startAfter, QueryDocumentSnapshot, DocumentData, doc, getDoc } from 'firebase/firestore';
@@ -114,6 +115,7 @@ export default function HomeScreen() {
   const [refreshing, setRefreshing] = useState(false);
   const [hasConsumedPreload, setHasConsumedPreload] = useState(false);
   const [showNewPost, setShowNewPost] = useState(false);
+  const [showNewClip, setShowNewClip] = useState(false);
 
   // Duo card state for posting
   const [valorantCard, setValorantCard] = useState<DuoCardData | null>(null);
@@ -700,15 +702,10 @@ export default function HomeScreen() {
     fetchDuoCards();
   }, [currentUser?.id]);
 
-  // Handle add new post button
-  const handleAddPost = () => {
+  // Handle add new clip button
+  const handleAddClip = () => {
     if (!currentUser?.id) {
-      Alert.alert('Error', 'You must be logged in to create a post');
-      return;
-    }
-
-    if (!valorantCard && !leagueCard) {
-      Alert.alert('No Duo Card', 'Create a duo card in the Duo Finder tab first to post to the feed.');
+      Alert.alert('Error', 'You must be logged in to create a clip');
       return;
     }
 
@@ -729,7 +726,7 @@ export default function HomeScreen() {
       }
     });
 
-    setShowNewPost(true);
+    setShowNewClip(true);
   };
 
   // Handle when a new post is created
@@ -1115,10 +1112,10 @@ export default function HomeScreen() {
         />
       )}
 
-      {/* Floating Add Post Button */}
+      {/* Floating Add Clip Button */}
       <TouchableOpacity
         style={styles.fabButton}
-        onPress={handleAddPost}
+        onPress={handleAddClip}
         activeOpacity={0.8}
       >
         <LinearGradient
@@ -1130,6 +1127,19 @@ export default function HomeScreen() {
           <IconSymbol size={28} name="plus" color="#fff" />
         </LinearGradient>
       </TouchableOpacity>
+
+      {/* New Clip Modal */}
+      <NewPost
+        visible={showNewClip}
+        onClose={() => {
+          setShowNewClip(false);
+          setIsScreenFocused(true);
+        }}
+        onPostCreated={(newPost) => {
+          setShowNewClip(false);
+          handlePostCreated(newPost);
+        }}
+      />
 
       {/* Post Duo Card Modal */}
       <PostDuoCard
