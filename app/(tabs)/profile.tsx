@@ -3,6 +3,8 @@ import rankCard from '@/app/components/rankCard';
 // Alias for JSX usage (React components must start with uppercase)
 const RankCard = rankCard;
 import NewPost from '@/app/components/newPost';
+import PostDuoCard from '@/app/components/postDuoCard';
+import { DuoCardData } from '@/app/components/addDuoCard';
 import PostViewerModal from '@/app/components/postViewerModal';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
@@ -67,6 +69,16 @@ export default function ProfileScreen() {
   const [showPostViewer, setShowPostViewer] = useState(false);
   const [showNewPost, setShowNewPost] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
+
+  // Duo card state for posting
+  const [valorantCard, setValorantCard] = useState<DuoCardData | null>(null);
+  const [leagueCard, setLeagueCard] = useState<DuoCardData | null>(null);
+  const [valorantInGameIcon, setValorantInGameIcon] = useState<string | undefined>(undefined);
+  const [valorantInGameName, setValorantInGameName] = useState<string | undefined>(undefined);
+  const [valorantWinRate, setValorantWinRate] = useState<number | undefined>(undefined);
+  const [leagueInGameIcon, setLeagueInGameIcon] = useState<string | undefined>(undefined);
+  const [leagueInGameName, setLeagueInGameName] = useState<string | undefined>(undefined);
+  const [leagueWinRate, setLeagueWinRate] = useState<number | undefined>(undefined);
   const [achievements, setAchievements] = useState<{ partyName: string; game: string; placement: number; endDate: string }[]>([]);
   const [loadingAchievements, setLoadingAchievements] = useState(true);
   const [riotAccount, setRiotAccount] = useState<any>(null);
@@ -95,7 +107,24 @@ export default function ProfileScreen() {
 
   // Create modal state
   const [showCreateModal, setShowCreateModal] = useState(false);
+  const [showNewClip, setShowNewClip] = useState(false);
   const [showAvatarModal, setShowAvatarModal] = useState(false);
+  const [activeTab, setActiveTab] = useState<'clips' | 'rankCards' | 'achievements'>('clips');
+  const tabs: ('clips' | 'rankCards' | 'achievements')[] = ['clips', 'rankCards', 'achievements'];
+  const tabScrollRef = useRef<ScrollView>(null);
+
+  const handleTabScroll = useCallback((event: any) => {
+    const offsetX = event.nativeEvent.contentOffset.x;
+    const index = Math.round(offsetX / screenWidth);
+    if (tabs[index] && tabs[index] !== activeTab) {
+      setActiveTab(tabs[index]);
+    }
+  }, [activeTab]);
+
+  const scrollToTab = useCallback((tab: 'clips' | 'rankCards' | 'achievements') => {
+    const index = tabs.indexOf(tab);
+    tabScrollRef.current?.scrollTo({ x: index * screenWidth, animated: true });
+  }, []);
 
   // Enable LayoutAnimation on Android
   useEffect(() => {
@@ -528,9 +557,85 @@ export default function ProfileScreen() {
     setRefreshing(false);
   }, [user?.id]);
 
+  // Fetch user's duo cards and in-game stats for posting
+  useEffect(() => {
+    const fetchDuoCards = async () => {
+      if (!user?.id) return;
+
+      try {
+        const userDocRef = doc(db, 'users', user.id);
+        const userDoc = await getDoc(userDocRef);
+
+        if (userDoc.exists()) {
+          const userData = userDoc.data();
+
+          if (userData.valorantStats?.card?.small) {
+            setValorantInGameIcon(userData.valorantStats.card.small);
+          }
+          if (userData.valorantStats?.gameName) {
+            const tagLine = userData.valorantAccount?.tagLine || '';
+            setValorantInGameName(tagLine ? `${userData.valorantStats.gameName}#${tagLine}` : userData.valorantStats.gameName);
+          }
+          if (userData.valorantStats?.winRate !== undefined) {
+            setValorantWinRate(userData.valorantStats.winRate);
+          }
+          if (userData.riotStats?.profileIconId) {
+            setLeagueInGameIcon(`https://ddragon.leagueoflegends.com/cdn/14.24.1/img/profileicon/${userData.riotStats.profileIconId}.png`);
+          }
+          if (userData.riotAccount?.gameName) {
+            const tagLine = userData.riotAccount.tagLine || '';
+            setLeagueInGameName(`${userData.riotAccount.gameName}#${tagLine}`);
+          }
+          if (userData.riotStats?.rankedSolo?.winRate !== undefined) {
+            setLeagueWinRate(userData.riotStats.rankedSolo.winRate);
+          }
+        }
+
+        const valorantCardDoc = await getDoc(doc(db, 'duoCards', `${user.id}_valorant`));
+        if (valorantCardDoc.exists()) {
+          const cardData = valorantCardDoc.data();
+          setValorantCard({
+            game: 'valorant',
+            username: cardData.username,
+            currentRank: cardData.currentRank,
+            region: cardData.region,
+            mainRole: cardData.mainRole,
+            peakRank: cardData.peakRank,
+            mainAgent: cardData.mainAgent,
+            lookingFor: cardData.lookingFor || 'Any',
+          });
+        }
+
+        const leagueCardDoc = await getDoc(doc(db, 'duoCards', `${user.id}_league`));
+        if (leagueCardDoc.exists()) {
+          const cardData = leagueCardDoc.data();
+          setLeagueCard({
+            game: 'league',
+            username: cardData.username,
+            currentRank: cardData.currentRank,
+            region: cardData.region,
+            mainRole: cardData.mainRole,
+            peakRank: cardData.peakRank,
+            mainAgent: cardData.mainAgent,
+            lookingFor: cardData.lookingFor || 'Any',
+          });
+        }
+      } catch (error) {
+        console.error('Error fetching duo cards:', error);
+      }
+    };
+
+    fetchDuoCards();
+  }, [user?.id]);
+
   const handleAddPost = () => {
     if (!user?.id) {
       Alert.alert('Error', 'You must be logged in to create a post');
+      return;
+    }
+
+    if (!valorantCard && !leagueCard) {
+      Alert.alert('No Duo Card', 'Create a duo card in the Duo Finder tab first to post to the feed.');
       return;
     }
 
@@ -945,26 +1050,46 @@ export default function ProfileScreen() {
             </View>
           )}
 
-          {/* Content Section */}
-          <View>
-          {/* Clips Container */}
+          {/* Tab Bar */}
+          <View style={styles.tabBar}>
+            <TouchableOpacity
+              style={styles.tabItem}
+              onPress={() => scrollToTab('clips')}
+              activeOpacity={0.7}
+            >
+              <ThemedText style={[styles.tabText, activeTab === 'clips' && styles.tabTextActive]}>CLIPS</ThemedText>
+            </TouchableOpacity>
+            <View style={styles.tabDivider} />
+            <TouchableOpacity
+              style={styles.tabItem}
+              onPress={() => scrollToTab('rankCards')}
+              activeOpacity={0.7}
+            >
+              <ThemedText style={[styles.tabText, activeTab === 'rankCards' && styles.tabTextActive]}>RANKS</ThemedText>
+            </TouchableOpacity>
+            <View style={styles.tabDivider} />
+            <TouchableOpacity
+              style={styles.tabItem}
+              onPress={() => scrollToTab('achievements')}
+              activeOpacity={0.7}
+            >
+              <ThemedText style={[styles.tabText, activeTab === 'achievements' && styles.tabTextActive]}>ACHIEVEMENTS</ThemedText>
+            </TouchableOpacity>
+          </View>
+
+          {/* Tab Content */}
+          <ScrollView
+            ref={tabScrollRef}
+            horizontal
+            pagingEnabled
+            showsHorizontalScrollIndicator={false}
+            onMomentumScrollEnd={handleTabScroll}
+            scrollEventThrottle={16}
+            nestedScrollEnabled
+          >
+          {/* Clips Tab */}
+          <View style={{ width: screenWidth }}>
           <View style={styles.sectionContainer}>
-            {/* Clips Section Header */}
-            <View style={styles.sectionHeader}>
-              <View style={styles.sectionHeaderLeft}>
-                <ThemedText style={styles.sectionHeaderTitle}>Clips</ThemedText>
-              </View>
-              {posts.length > 0 && (
-                <TouchableOpacity
-                  style={styles.viewAllButton}
-                  onPress={() => router.push('/profilePages/clips')}
-                  activeOpacity={0.7}
-                >
-                  <ThemedText style={styles.viewAllButtonText}>View All</ThemedText>
-                  <IconSymbol size={14} name="chevron.right" color="#666" />
-                </TouchableOpacity>
-              )}
-            </View>
 
           {/* Clips Content */}
           <View style={styles.clipsSection}>
@@ -1020,7 +1145,7 @@ export default function ProfileScreen() {
               </ThemedText>
               <TouchableOpacity
                 style={styles.addClipButton}
-                onPress={() => setShowNewPost(true)}
+                onPress={() => setShowNewClip(true)}
                 activeOpacity={0.7}
               >
                 <IconSymbol size={10} name="plus" color="#666" />
@@ -1030,17 +1155,13 @@ export default function ProfileScreen() {
           )}
           </View>
           </View>
+          </View>
 
-          {/* Rank Cards Container */}
+          {/* Rank Cards Tab */}
+          <View style={{ width: screenWidth }}>
           <View style={[styles.sectionContainer, {
             paddingBottom: userGames.length > 2 ? 10 : userGames.length > 1 ? 8 : 4
           }]}>
-          {/* Rank Cards Section Header */}
-          <View style={styles.sectionHeader}>
-            <View style={styles.sectionHeaderLeft}>
-              <ThemedText style={styles.sectionHeaderTitle}>Rank Cards</ThemedText>
-            </View>
-          </View>
 
           {/* Rank Cards Content */}
           <View style={styles.rankCardsSection}>
@@ -1168,15 +1289,11 @@ export default function ProfileScreen() {
           )}
           </View>
           </View>
-
-          {/* Achievements Container */}
-          <View style={styles.sectionContainer}>
-          {/* Achievements Section Header */}
-          <View style={styles.sectionHeader}>
-            <View style={styles.sectionHeaderLeft}>
-              <ThemedText style={styles.sectionHeaderTitle}>Achievements</ThemedText>
-            </View>
           </View>
+
+          {/* Achievements Tab */}
+          <View style={{ width: screenWidth }}>
+          <View style={styles.sectionContainer}>
 
           {/* Achievements Content */}
           <View style={styles.achievementsSection}>
@@ -1214,8 +1331,9 @@ export default function ProfileScreen() {
             )}
           </View>
           </View>
-
           </View>
+
+          </ScrollView>
           </>
           )}
         </View>
@@ -1236,11 +1354,27 @@ export default function ProfileScreen() {
         onArchive={handleArchivePost}
       />
 
-      {/* New Post Modal */}
+      {/* New Clip Modal */}
       <NewPost
+        visible={showNewClip}
+        onClose={() => setShowNewClip(false)}
+        onPostCreated={handlePostCreated}
+      />
+
+      {/* Post Duo Card Modal */}
+      <PostDuoCard
         visible={showNewPost}
         onClose={() => setShowNewPost(false)}
-        onPostCreated={handlePostCreated}
+        onPostCreated={() => setShowNewPost(false)}
+        valorantCard={valorantCard}
+        leagueCard={leagueCard}
+        userAvatar={user?.avatar}
+        valorantInGameIcon={valorantInGameIcon}
+        valorantInGameName={valorantInGameName}
+        valorantWinRate={valorantWinRate}
+        leagueInGameIcon={leagueInGameIcon}
+        leagueInGameName={leagueInGameName}
+        leagueWinRate={leagueWinRate}
       />
 
       {/* Create Modal */}
@@ -1274,7 +1408,7 @@ export default function ProfileScreen() {
               style={styles.createModalOption}
               onPress={() => {
                 setShowCreateModal(false);
-                setShowNewPost(true);
+                setShowNewClip(true);
               }}
               activeOpacity={0.7}
             >
@@ -1363,6 +1497,32 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: '#0f0f0f',
+  },
+  tabBar: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: 20,
+    paddingTop: 12,
+    paddingBottom: 8,
+    gap: 16,
+  },
+  tabItem: {
+    paddingVertical: 6,
+  },
+  tabDivider: {
+    width: 1,
+    height: 16,
+    backgroundColor: '#333',
+  },
+  tabText: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#555',
+    letterSpacing: 0.5,
+  },
+  tabTextActive: {
+    color: '#fff',
   },
   headerSection: {
     backgroundColor: '#0f0f0f',
@@ -1728,17 +1888,17 @@ const styles = StyleSheet.create({
   },
   videoDuration: {
     position: 'absolute',
-    bottom: 6,
-    right: 6,
-    backgroundColor: 'rgba(0, 0, 0, 0.8)',
-    borderRadius: 4,
-    paddingHorizontal: 6,
-    paddingVertical: 2,
+    bottom: 4,
+    right: 4,
+    backgroundColor: 'rgba(0, 0, 0, 0.45)',
+    borderRadius: 3,
+    paddingHorizontal: 4,
+    paddingVertical: 1,
   },
   videoDurationText: {
-    fontSize: 10,
-    fontWeight: '700',
-    color: '#fff',
+    fontSize: 9,
+    fontWeight: '500',
+    color: 'rgba(255, 255, 255, 0.85)',
   },
   multipleIndicator: {
     position: 'absolute',

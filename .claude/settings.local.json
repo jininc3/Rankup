@@ -28,7 +28,9 @@
       "Bash(find /c/Users/jinha/Desktop/RankUp -name *duo* -o -name *party* -o -name *match*)",
       "Bash(grep -E \"\\\\.\\(ts|tsx\\)$\")",
       "Bash(find C:UsersjinhaDesktopRankUpassetsimages -iname *valorant* -o -iname *background*)",
-      "Bash(xargs grep:*)"
+      "Bash(xargs grep:*)",
+      "Bash(find /c/Users/jinha/Desktop/RankUp/app -type f -name *.tsx -o -name *.ts)",
+      "Bash(grep -l \"post\\\\|Post\" /c/Users/jinha/Desktop/RankUp/services/*.ts)"
     ],
     "deny": [],
     "ask": []

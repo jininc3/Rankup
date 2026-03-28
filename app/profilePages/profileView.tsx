@@ -94,6 +94,23 @@ export default function ProfileViewScreen() {
   const [achievements, setAchievements] = useState<{ partyName: string; game: string; placement: number; endDate: string }[]>([]);
   const [loadingAchievements, setLoadingAchievements] = useState(false);
   const [achievementsError, setAchievementsError] = useState(false);
+  const [activeTab, setActiveTab] = useState<'clips' | 'rankCards' | 'achievements'>('clips');
+
+  const tabs: ('clips' | 'rankCards' | 'achievements')[] = ['clips', 'rankCards', 'achievements'];
+  const tabScrollRef = useRef<ScrollView>(null);
+
+  const handleTabScroll = useCallback((event: any) => {
+    const offsetX = event.nativeEvent.contentOffset.x;
+    const index = Math.round(offsetX / screenWidth);
+    if (tabs[index] && tabs[index] !== activeTab) {
+      setActiveTab(tabs[index]);
+    }
+  }, [activeTab]);
+
+  const scrollToTab = useCallback((tab: 'clips' | 'rankCards' | 'achievements') => {
+    const index = tabs.indexOf(tab);
+    tabScrollRef.current?.scrollTo({ x: index * screenWidth, animated: true });
+  }, []);
 
   // Dynamic games array based on Riot data and enabled rank cards
   // Cards are ordered according to the enabledRankCards array
@@ -777,23 +794,45 @@ export default function ProfileViewScreen() {
           )}
         </View>
 
-        {/* Clips Section Header */}
-        <View style={styles.sectionHeader}>
-          <View style={styles.sectionHeaderLeft}>
-            <IconSymbol size={18} name="play.rectangle.fill" color="#fff" />
-            <ThemedText style={styles.sectionHeaderTitle}>Clips</ThemedText>
-          </View>
-          {posts.length > 0 && (
-            <TouchableOpacity
-              style={styles.viewAllButton}
-              onPress={() => router.push(`/profilePages/clips?userId=${userId}`)}
-              activeOpacity={0.7}
-            >
-              <ThemedText style={styles.viewAllButtonText}>View All</ThemedText>
-              <IconSymbol size={14} name="chevron.right" color="#666" />
-            </TouchableOpacity>
-          )}
+        {/* Tab Bar */}
+        <View style={styles.tabBar}>
+          <TouchableOpacity
+            style={styles.tabItem}
+            onPress={() => scrollToTab('clips')}
+            activeOpacity={0.7}
+          >
+            <ThemedText style={[styles.tabText, activeTab === 'clips' && styles.tabTextActive]}>CLIPS</ThemedText>
+          </TouchableOpacity>
+          <View style={styles.tabDivider} />
+          <TouchableOpacity
+            style={styles.tabItem}
+            onPress={() => scrollToTab('rankCards')}
+            activeOpacity={0.7}
+          >
+            <ThemedText style={[styles.tabText, activeTab === 'rankCards' && styles.tabTextActive]}>RANKS</ThemedText>
+          </TouchableOpacity>
+          <View style={styles.tabDivider} />
+          <TouchableOpacity
+            style={styles.tabItem}
+            onPress={() => scrollToTab('achievements')}
+            activeOpacity={0.7}
+          >
+            <ThemedText style={[styles.tabText, activeTab === 'achievements' && styles.tabTextActive]}>ACHIEVEMENTS</ThemedText>
+          </TouchableOpacity>
         </View>
+
+        {/* Tab Content */}
+        <ScrollView
+          ref={tabScrollRef}
+          horizontal
+          pagingEnabled
+          showsHorizontalScrollIndicator={false}
+          onMomentumScrollEnd={handleTabScroll}
+          scrollEventThrottle={16}
+          nestedScrollEnabled
+        >
+        {/* Clips Tab */}
+        <View style={{ width: screenWidth }}>
 
         {/* Clips Content */}
         <View style={styles.clipsSection}>
@@ -836,15 +875,10 @@ export default function ProfileViewScreen() {
             </View>
           )}
         </View>
-
-        {/* Rank Cards Section Header */}
-        <View style={styles.sectionHeader}>
-          <View style={styles.sectionHeaderLeft}>
-            <IconSymbol size={18} name="star.fill" color="#fff" />
-            <ThemedText style={styles.sectionHeaderTitle}>Rank Cards</ThemedText>
-          </View>
         </View>
 
+        {/* Rank Cards Tab */}
+        <View style={{ width: screenWidth }}>
         {/* Rank Cards Content */}
         <View style={[styles.rankCardsSection, {
           marginBottom: focusedCardIndex !== null
@@ -993,17 +1027,12 @@ export default function ProfileViewScreen() {
             })()
           )}
         </View>
+        </View>
 
-        {/* Achievements Section - Hide if permissions error */}
-        {!achievementsError && (
+        {/* Achievements Tab */}
+        <View style={{ width: screenWidth }}>
+          {!achievementsError && (
           <>
-            {/* Achievements Section Header */}
-            <View style={styles.sectionHeader}>
-              <View style={styles.sectionHeaderLeft}>
-                <IconSymbol size={18} name="trophy.fill" color="#fff" />
-                <ThemedText style={styles.sectionHeaderTitle}>Achievements</ThemedText>
-              </View>
-            </View>
 
             {/* Achievements Content */}
             <View style={styles.achievementsSection}>
@@ -1047,6 +1076,8 @@ export default function ProfileViewScreen() {
             </View>
           </>
         )}
+        </View>
+        </ScrollView>
       </ScrollView>
 
       {/* Post Viewer Modal */}
@@ -1184,6 +1215,32 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: '#0f0f0f',
+  },
+  tabBar: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: 20,
+    paddingTop: 12,
+    paddingBottom: 8,
+    gap: 16,
+  },
+  tabItem: {
+    paddingVertical: 6,
+  },
+  tabDivider: {
+    width: 1,
+    height: 16,
+    backgroundColor: '#333',
+  },
+  tabText: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#555',
+    letterSpacing: 0.5,
+  },
+  tabTextActive: {
+    color: '#fff',
   },
   headerSection: {
     backgroundColor: '#0f0f0f',

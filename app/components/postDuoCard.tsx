@@ -7,7 +7,6 @@ import { useState, useEffect } from 'react';
 import {
   ActivityIndicator,
   Alert,
-  Image,
   KeyboardAvoidingView,
   Modal,
   Platform,
@@ -19,11 +18,6 @@ import {
 } from 'react-native';
 import { DuoCardData } from './addDuoCard';
 import DuoCard from './duoCard';
-
-const GAME_LOGOS: { [key: string]: any } = {
-  'valorant': require('@/assets/images/valorant-red.png'),
-  'league': require('@/assets/images/lol-icon.png'),
-};
 
 interface PostDuoCardProps {
   visible: boolean;
@@ -59,13 +53,13 @@ export default function PostDuoCard({
   const [message, setMessage] = useState('');
   const [posting, setPosting] = useState(false);
 
-  // Auto-select game if user only has one card
+  // Reset state when modal opens
   useEffect(() => {
     if (visible) {
-      if (valorantCard && !leagueCard) setSelectedGame('valorant');
-      else if (!valorantCard && leagueCard) setSelectedGame('league');
+      setSelectedGame(null);
+      setMessage('');
     }
-  }, [visible, valorantCard, leagueCard]);
+  }, [visible]);
 
   const selectedCard = selectedGame === 'valorant' ? valorantCard : selectedGame === 'league' ? leagueCard : null;
 
@@ -80,9 +74,6 @@ export default function PostDuoCard({
     try {
       const userDoc = await getDoc(doc(db, 'users', user.id));
       const userData = userDoc.data();
-
-      const gameStatsDoc = await getDoc(doc(db, 'users', user.id, 'gameStats', selectedGame));
-      const gameStats = gameStatsDoc.data();
 
       const now = new Date();
       const expiresAt = new Date(now.getTime() + 24 * 60 * 60 * 1000);
@@ -99,13 +90,13 @@ export default function PostDuoCard({
         lookingFor: selectedCard.lookingFor || 'Any',
         avatar: userData?.avatar || '',
         inGameIcon: selectedGame === 'valorant'
-          ? userData?.valorantStats?.inGameIcon || ''
-          : userData?.riotStats?.profileIconUrl || '',
+          ? userData?.valorantStats?.card?.small || ''
+          : (userData?.riotStats?.profileIconId ? `https://ddragon.leagueoflegends.com/cdn/14.24.1/img/profileicon/${userData?.riotStats?.profileIconId}.png` : ''),
         inGameName: selectedGame === 'valorant'
-          ? userData?.valorantStats?.inGameName || ''
-          : userData?.riotStats?.gameName || '',
-        winRate: gameStats?.winRate || 0,
-        gamesPlayed: gameStats?.gamesPlayed || 0,
+          ? (userData?.valorantStats?.gameName ? `${userData.valorantStats.gameName}${userData?.valorantAccount?.tagLine ? '#' + userData.valorantAccount.tagLine : ''}` : '')
+          : (userData?.riotAccount?.gameName ? `${userData.riotAccount.gameName}${userData?.riotAccount?.tagLine ? '#' + userData.riotAccount.tagLine : ''}` : ''),
+        winRate: getWinRate(),
+        gamesPlayed: 0,
         message: message.trim(),
         createdAt: Timestamp.fromDate(now),
         expiresAt: Timestamp.fromDate(expiresAt),
@@ -156,72 +147,83 @@ export default function PostDuoCard({
         </View>
 
         <ScrollView showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled">
-          {/* Game Selection - only show if user has both cards */}
-          {!hasOnlyOneCard && (
-            <>
-              <ThemedText style={styles.label}>SELECT CARD</ThemedText>
-              <View style={styles.gameOptions}>
-                {valorantCard && (
-                  <TouchableOpacity
-                    style={[styles.gameOption, selectedGame === 'valorant' && styles.gameOptionActive]}
-                    onPress={() => setSelectedGame('valorant')}
-                    activeOpacity={0.7}
-                  >
-                    <Image source={GAME_LOGOS['valorant']} style={styles.gameOptionLogo} resizeMode="contain" />
-                    <View style={styles.gameOptionInfo}>
-                      <ThemedText style={styles.gameOptionTitle}>Valorant</ThemedText>
-                      <ThemedText style={styles.gameOptionSub}>{valorantCard.currentRank} · {valorantCard.mainRole}</ThemedText>
-                    </View>
-                    {selectedGame === 'valorant' && (
-                      <IconSymbol size={16} name="checkmark.circle.fill" color="#a08845" />
-                    )}
-                  </TouchableOpacity>
-                )}
-                {leagueCard && (
-                  <TouchableOpacity
-                    style={[styles.gameOption, selectedGame === 'league' && styles.gameOptionActive]}
-                    onPress={() => setSelectedGame('league')}
-                    activeOpacity={0.7}
-                  >
-                    <Image source={GAME_LOGOS['league']} style={styles.gameOptionLogo} resizeMode="contain" />
-                    <View style={styles.gameOptionInfo}>
-                      <ThemedText style={styles.gameOptionTitle}>League</ThemedText>
-                      <ThemedText style={styles.gameOptionSub}>{leagueCard.currentRank} · {leagueCard.mainRole}</ThemedText>
-                    </View>
-                    {selectedGame === 'league' && (
-                      <IconSymbol size={16} name="checkmark.circle.fill" color="#a08845" />
-                    )}
-                  </TouchableOpacity>
-                )}
-              </View>
-            </>
-          )}
+          {/* Card selection header */}
+          <View style={styles.cardSectionHeader}>
+            <ThemedText style={styles.label}>{selectedGame ? 'YOUR CARD' : 'SELECT CARD'}</ThemedText>
+            {selectedGame && !hasOnlyOneCard && (
+              <TouchableOpacity onPress={() => { setSelectedGame(null); setMessage(''); }}>
+                <ThemedText style={styles.changeCardText}>Change</ThemedText>
+              </TouchableOpacity>
+            )}
+          </View>
 
-          {/* Live DuoCard Preview */}
+          <View style={styles.cardOptions}>
+            {/* Valorant card - show if no selection yet, or if it's the selected one */}
+            {valorantCard && (!selectedGame || selectedGame === 'valorant') && (
+              <TouchableOpacity
+                style={[styles.cardOption, selectedGame === 'valorant' && styles.cardOptionSelected]}
+                onPress={() => !selectedGame && setSelectedGame('valorant')}
+                activeOpacity={selectedGame ? 1 : 0.7}
+              >
+                <View pointerEvents="none">
+                  <DuoCard
+                    duo={{
+                      id: 0,
+                      username: valorantCard.username,
+                      status: 'active',
+                      matchPercentage: 0,
+                      currentRank: valorantCard.currentRank,
+                      peakRank: valorantCard.peakRank,
+                      favoriteAgent: valorantCard.mainAgent || '',
+                      favoriteRole: valorantCard.mainRole || '',
+                      winRate: valorantWinRate || 0,
+                      gamesPlayed: 0,
+                      game: 'Valorant',
+                      avatar: userAvatar,
+                      inGameIcon: valorantInGameIcon,
+                      inGameName: valorantInGameName,
+                      message: selectedGame === 'valorant' && message.trim() ? message.trim() : undefined,
+                    }}
+                  />
+                </View>
+              </TouchableOpacity>
+            )}
+
+            {/* League card - show if no selection yet, or if it's the selected one */}
+            {leagueCard && (!selectedGame || selectedGame === 'league') && (
+              <TouchableOpacity
+                style={[styles.cardOption, selectedGame === 'league' && styles.cardOptionSelected]}
+                onPress={() => !selectedGame && setSelectedGame('league')}
+                activeOpacity={selectedGame ? 1 : 0.7}
+              >
+                <View pointerEvents="none">
+                  <DuoCard
+                    duo={{
+                      id: 1,
+                      username: leagueCard.username,
+                      status: 'active',
+                      matchPercentage: 0,
+                      currentRank: leagueCard.currentRank,
+                      peakRank: leagueCard.peakRank,
+                      favoriteAgent: leagueCard.mainAgent || '',
+                      favoriteRole: leagueCard.mainRole || '',
+                      winRate: leagueWinRate || 0,
+                      gamesPlayed: 0,
+                      game: 'League of Legends',
+                      avatar: userAvatar,
+                      inGameIcon: leagueInGameIcon,
+                      inGameName: leagueInGameName,
+                      message: selectedGame === 'league' && message.trim() ? message.trim() : undefined,
+                    }}
+                  />
+                </View>
+              </TouchableOpacity>
+            )}
+          </View>
+
+          {/* Message Input - shown after selecting a card */}
           {selectedCard && (
             <>
-              <ThemedText style={styles.label}>PREVIEW</ThemedText>
-              <DuoCard
-                duo={{
-                  id: 0,
-                  username: selectedCard.username,
-                  status: 'active',
-                  matchPercentage: 0,
-                  currentRank: selectedCard.currentRank,
-                  peakRank: selectedCard.peakRank,
-                  favoriteAgent: selectedCard.mainAgent || '',
-                  favoriteRole: selectedCard.mainRole || '',
-                  winRate: getWinRate(),
-                  gamesPlayed: 0,
-                  game: selectedGame === 'valorant' ? 'Valorant' : 'League of Legends',
-                  avatar: userAvatar,
-                  inGameIcon: getInGameIcon(),
-                  inGameName: getInGameName(),
-                  message: message.trim() || undefined,
-                }}
-              />
-
-              {/* Message Input */}
               <ThemedText style={styles.label}>MESSAGE (OPTIONAL)</ThemedText>
               <TextInput
                 style={styles.messageInput}
@@ -300,38 +302,27 @@ const styles = StyleSheet.create({
     marginTop: 20,
     marginBottom: 10,
   },
-  gameOptions: {
-    gap: 10,
-  },
-  gameOption: {
+  cardSectionHeader: {
     flexDirection: 'row',
+    justifyContent: 'space-between',
     alignItems: 'center',
+  },
+  cardOptions: {
     gap: 12,
-    backgroundColor: '#1a1a1a',
-    borderRadius: 12,
-    padding: 14,
   },
-  gameOptionActive: {
-    backgroundColor: 'rgba(160, 136, 69, 0.12)',
-    borderWidth: 1,
-    borderColor: 'rgba(160, 136, 69, 0.3)',
+  cardOption: {
+    borderRadius: 14,
+    borderWidth: 2,
+    borderColor: 'transparent',
   },
-  gameOptionLogo: {
-    width: 32,
-    height: 32,
+  cardOptionSelected: {
+    borderColor: '#a08845',
   },
-  gameOptionInfo: {
-    flex: 1,
-    gap: 2,
-  },
-  gameOptionTitle: {
-    fontSize: 15,
+  changeCardText: {
+    fontSize: 13,
     fontWeight: '600',
-    color: '#fff',
-  },
-  gameOptionSub: {
-    fontSize: 12,
-    color: '#888',
+    color: '#a08845',
+    marginTop: 20,
   },
   messageInput: {
     backgroundColor: '#1a1a1a',

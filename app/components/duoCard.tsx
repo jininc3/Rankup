@@ -114,7 +114,24 @@ interface Duo {
   inGameName?: string;
   message?: string;
   isOwnPost?: boolean;
+  createdAt?: any;
 }
+
+// Helper to format time ago
+const formatTimeAgo = (timestamp: any): string => {
+  if (!timestamp) return '';
+  const date = timestamp.toDate ? timestamp.toDate() : new Date(timestamp);
+  const now = new Date();
+  const diffInSeconds = Math.floor((now.getTime() - date.getTime()) / 1000);
+
+  if (diffInSeconds < 60) return 'now';
+  const diffInMinutes = Math.floor(diffInSeconds / 60);
+  if (diffInMinutes < 60) return `${diffInMinutes}m ago`;
+  const diffInHours = Math.floor(diffInMinutes / 60);
+  if (diffInHours < 24) return `${diffInHours}h ago`;
+  const diffInDays = Math.floor(diffInHours / 24);
+  return `${diffInDays}d ago`;
+};
 
 interface DuoCardProps {
   duo: Duo;
@@ -162,6 +179,7 @@ export default function DuoCard({ duo, onPress, onMessage, onViewProfile, onDele
       onPress={onPress}
       activeOpacity={0.7}
     >
+      <View style={styles.innerBorder}>
       {/* Header Row: In-Game Icon + In-Game Name | Game Logo */}
       <View style={styles.header}>
         <View style={styles.userSection}>
@@ -181,10 +199,24 @@ export default function DuoCard({ duo, onPress, onMessage, onViewProfile, onDele
           </ThemedText>
         </View>
 
-        {gameLogo && (
-          <Image source={gameLogo} style={styles.gameLogo} resizeMode="contain" />
-        )}
+        <View style={styles.headerRight}>
+          {duo.createdAt && (
+            <ThemedText style={styles.timeAgo}>{formatTimeAgo(duo.createdAt)}</ThemedText>
+          )}
+          {gameLogo && (
+            <Image source={gameLogo} style={styles.gameLogo} resizeMode="contain" />
+          )}
+        </View>
       </View>
+
+      {/* Message - above stats */}
+      {duo.message ? (
+        <View style={styles.messageSection}>
+          <ThemedText style={styles.messageText} numberOfLines={2}>
+            "{duo.message}"
+          </ThemedText>
+        </View>
+      ) : null}
 
       {/* Stats Row: Current Rank | Agent/Champion | Role | Win Rate */}
       <View style={styles.statsRow}>
@@ -242,15 +274,6 @@ export default function DuoCard({ duo, onPress, onMessage, onViewProfile, onDele
         </View>
       </View>
 
-      {/* Message */}
-      {duo.message ? (
-        <View style={styles.messageSection}>
-          <ThemedText style={styles.messageText} numberOfLines={2}>
-            "{duo.message}"
-          </ThemedText>
-        </View>
-      ) : null}
-
       {/* Delete button for own posts */}
       {duo.isOwnPost && onDelete && (
         <TouchableOpacity style={styles.deletePostButton} onPress={onDelete} activeOpacity={0.7}>
@@ -284,6 +307,7 @@ export default function DuoCard({ duo, onPress, onMessage, onViewProfile, onDele
           )}
         </View>
       )}
+      </View>
     </TouchableOpacity>
   );
 }
@@ -292,15 +316,20 @@ const styles = StyleSheet.create({
   container: {
     backgroundColor: '#222',
     borderRadius: 12,
-    padding: 14,
-    minHeight: cardHeight,
+    padding: 6,
     marginBottom: 10,
-    justifyContent: 'space-between',
     shadowColor: '#000',
     shadowOffset: { width: -3, height: 4 },
     shadowOpacity: 0.5,
     shadowRadius: 5,
     elevation: 8,
+  },
+  innerBorder: {
+    borderWidth: 1,
+    borderColor: '#333',
+    borderRadius: 8,
+    padding: 10,
+    gap: 10,
   },
   // Header
   header: {
@@ -341,7 +370,6 @@ const styles = StyleSheet.create({
   actionRow: {
     flexDirection: 'row',
     gap: 8,
-    marginTop: 10,
   },
   actionButton: {
     flexDirection: 'row',
@@ -387,6 +415,16 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     color: '#666',
   },
+  headerRight: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  timeAgo: {
+    fontSize: 11,
+    color: '#666',
+    fontWeight: '500',
+  },
   gameLogo: {
     width: 24,
     height: 24,
@@ -396,7 +434,7 @@ const styles = StyleSheet.create({
   statsRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#141414',
+    backgroundColor: '#222',
     borderRadius: 10,
     padding: 12,
   },
@@ -455,7 +493,6 @@ const styles = StyleSheet.create({
     backgroundColor: '#252525',
   },
   messageSection: {
-    marginTop: 8,
     paddingHorizontal: 4,
   },
   messageText: {
@@ -469,7 +506,6 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     gap: 6,
-    marginTop: 8,
     paddingVertical: 8,
     backgroundColor: 'rgba(255,107,107,0.08)',
     borderRadius: 8,

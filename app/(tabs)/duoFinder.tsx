@@ -1258,6 +1258,7 @@ export default function DuoFinderScreen() {
                       inGameName: post.inGameName,
                       message: post.message || undefined,
                       isOwnPost: isOwn,
+                      createdAt: post.createdAt,
                     }}
                     onPress={() => !isOwn ? handleFindDuoCardPress({
                       ...post,

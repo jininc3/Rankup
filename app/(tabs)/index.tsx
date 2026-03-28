@@ -9,8 +9,9 @@ import { likePost, unlikePost, isPostLiked } from '@/services/likeService';
 import { createOrGetChat } from '@/services/chatService';
 import CommentModal from '@/app/components/commentModal';
 import PostContent from '@/app/components/postContent';
-import NewPost from '@/app/components/newPost';
-import { collection, getDocs, orderBy, query, Timestamp, where, onSnapshot, limit, startAfter, QueryDocumentSnapshot, DocumentData } from 'firebase/firestore';
+import PostDuoCard from '@/app/components/postDuoCard';
+import { DuoCardData } from '@/app/components/addDuoCard';
+import { collection, getDocs, orderBy, query, Timestamp, where, onSnapshot, limit, startAfter, QueryDocumentSnapshot, DocumentData, doc, getDoc } from 'firebase/firestore';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { ActivityIndicator, Dimensions, Image, ScrollView, StyleSheet, TouchableOpacity, View, Alert, RefreshControl, Modal, Pressable } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -113,6 +114,16 @@ export default function HomeScreen() {
   const [refreshing, setRefreshing] = useState(false);
   const [hasConsumedPreload, setHasConsumedPreload] = useState(false);
   const [showNewPost, setShowNewPost] = useState(false);
+
+  // Duo card state for posting
+  const [valorantCard, setValorantCard] = useState<DuoCardData | null>(null);
+  const [leagueCard, setLeagueCard] = useState<DuoCardData | null>(null);
+  const [valorantInGameIcon, setValorantInGameIcon] = useState<string | undefined>(undefined);
+  const [valorantInGameName, setValorantInGameName] = useState<string | undefined>(undefined);
+  const [valorantWinRate, setValorantWinRate] = useState<number | undefined>(undefined);
+  const [leagueInGameIcon, setLeagueInGameIcon] = useState<string | undefined>(undefined);
+  const [leagueInGameName, setLeagueInGameName] = useState<string | undefined>(undefined);
+  const [leagueWinRate, setLeagueWinRate] = useState<number | undefined>(undefined);
 
   const currentPosts = activeTab === 'forYou' ? forYouPosts : followingPosts;
 
@@ -615,10 +626,89 @@ export default function HomeScreen() {
     }
   }, [commentingPost, activeTab, followingPosts, forYouPosts]);
 
+  // Fetch user's duo cards and in-game stats for posting
+  useEffect(() => {
+    const fetchDuoCards = async () => {
+      if (!currentUser?.id) return;
+
+      try {
+        const userDocRef = doc(db, 'users', currentUser.id);
+        const userDoc = await getDoc(userDocRef);
+
+        if (userDoc.exists()) {
+          const userData = userDoc.data();
+
+          // Extract in-game stats
+          if (userData.valorantStats?.card?.small) {
+            setValorantInGameIcon(userData.valorantStats.card.small);
+          }
+          if (userData.valorantStats?.gameName) {
+            const tagLine = userData.valorantAccount?.tagLine || '';
+            setValorantInGameName(tagLine ? `${userData.valorantStats.gameName}#${tagLine}` : userData.valorantStats.gameName);
+          }
+          if (userData.valorantStats?.winRate !== undefined) {
+            setValorantWinRate(userData.valorantStats.winRate);
+          }
+          if (userData.riotStats?.profileIconId) {
+            setLeagueInGameIcon(`https://ddragon.leagueoflegends.com/cdn/14.24.1/img/profileicon/${userData.riotStats.profileIconId}.png`);
+          }
+          if (userData.riotAccount?.gameName) {
+            const tagLine = userData.riotAccount.tagLine || '';
+            setLeagueInGameName(`${userData.riotAccount.gameName}#${tagLine}`);
+          }
+          if (userData.riotStats?.rankedSolo?.winRate !== undefined) {
+            setLeagueWinRate(userData.riotStats.rankedSolo.winRate);
+          }
+        }
+
+        // Load Valorant card
+        const valorantCardDoc = await getDoc(doc(db, 'duoCards', `${currentUser.id}_valorant`));
+        if (valorantCardDoc.exists()) {
+          const cardData = valorantCardDoc.data();
+          setValorantCard({
+            game: 'valorant',
+            username: cardData.username,
+            currentRank: cardData.currentRank,
+            region: cardData.region,
+            mainRole: cardData.mainRole,
+            peakRank: cardData.peakRank,
+            mainAgent: cardData.mainAgent,
+            lookingFor: cardData.lookingFor || 'Any',
+          });
+        }
+
+        // Load League card
+        const leagueCardDoc = await getDoc(doc(db, 'duoCards', `${currentUser.id}_league`));
+        if (leagueCardDoc.exists()) {
+          const cardData = leagueCardDoc.data();
+          setLeagueCard({
+            game: 'league',
+            username: cardData.username,
+            currentRank: cardData.currentRank,
+            region: cardData.region,
+            mainRole: cardData.mainRole,
+            peakRank: cardData.peakRank,
+            mainAgent: cardData.mainAgent,
+            lookingFor: cardData.lookingFor || 'Any',
+          });
+        }
+      } catch (error) {
+        console.error('Error fetching duo cards:', error);
+      }
+    };
+
+    fetchDuoCards();
+  }, [currentUser?.id]);
+
   // Handle add new post button
   const handleAddPost = () => {
     if (!currentUser?.id) {
       Alert.alert('Error', 'You must be logged in to create a post');
+      return;
+    }
+
+    if (!valorantCard && !leagueCard) {
+      Alert.alert('No Duo Card', 'Create a duo card in the Duo Finder tab first to post to the feed.');
       return;
     }
 
@@ -1041,15 +1131,26 @@ export default function HomeScreen() {
         </LinearGradient>
       </TouchableOpacity>
 
-      {/* New Post Modal */}
-      <NewPost
+      {/* Post Duo Card Modal */}
+      <PostDuoCard
         visible={showNewPost}
         onClose={() => {
           setShowNewPost(false);
-          // Restore screen focus when modal closes
           setIsScreenFocused(true);
         }}
-        onPostCreated={handlePostCreated}
+        onPostCreated={() => {
+          setShowNewPost(false);
+          setIsScreenFocused(true);
+        }}
+        valorantCard={valorantCard}
+        leagueCard={leagueCard}
+        userAvatar={currentUser?.avatar}
+        valorantInGameIcon={valorantInGameIcon}
+        valorantInGameName={valorantInGameName}
+        valorantWinRate={valorantWinRate}
+        leagueInGameIcon={leagueInGameIcon}
+        leagueInGameName={leagueInGameName}
+        leagueWinRate={leagueWinRate}
       />
 
       {/* Game Filter Bottom Sheet */}
