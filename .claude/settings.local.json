@@ -40,7 +40,8 @@
       "Bash(grep -r \"duoPost\\\\|expiresAt\\\\|24.*hour\" /c/Users/jinha/Desktop/RankUp/functions --include=*.ts --include=*.js)",
       "Bash(find /c/Users/jinha/Desktop/RankUp -type f \\\\\\(-name *duo* -o -name *Duo* \\\\\\))",
       "Bash(find /c/Users/jinha/Desktop/RankUp/app -maxdepth 3 -type f \\\\\\(-name *layout* -o -name *Layout* -o -name *tab* -o -name *Tab* \\\\\\))",
-      "Bash(find /c/Users/jinha/Desktop/RankUp -type f -path */duoFilter* -o -path */duoMatch* -o -path */duoCard*)"
+      "Bash(find /c/Users/jinha/Desktop/RankUp -type f -path */duoFilter* -o -path */duoMatch* -o -path */duoCard*)",
+      "Bash(find:*)"
     ],
     "deny": [],
     "ask": []

@@ -42,6 +42,7 @@ interface LeagueRankCardProps {
   viewOnly?: boolean;
   userId?: string;
   isFocused?: boolean;
+  isBackOfStack?: boolean;
 }
 
 // League of Legends rank icon mapping
@@ -59,7 +60,7 @@ const LEAGUE_RANK_ICONS: { [key: string]: any } = {
   unranked: require('@/assets/images/leagueranks/unranked.png'),
 };
 
-export default function LeagueRankCard({ game, username, viewOnly = false, userId, isFocused = false }: LeagueRankCardProps) {
+export default function LeagueRankCard({ game, username, viewOnly = false, userId, isFocused = false, isBackOfStack = false }: LeagueRankCardProps) {
   const [isFlipped, setIsFlipped] = useState(false);
   const [showBack, setShowBack] = useState(false);
   const [modalVisible, setModalVisible] = useState(false);
@@ -77,6 +78,7 @@ export default function LeagueRankCard({ game, username, viewOnly = false, userI
   const shimmerAnimation = useRef(new Animated.Value(0)).current;
   const stackCardOpacity = useRef(new Animated.Value(1)).current;
   const modalCardOpacity = useRef(new Animated.Value(1)).current;
+  const dragY = useRef(new Animated.Value(0)).current;
 
   // Shimmer animation loop
   useEffect(() => {
@@ -128,6 +130,7 @@ export default function LeagueRankCard({ game, username, viewOnly = false, userI
       // Open modal and animate
       setModalVisible(true);
       modalCardOpacity.setValue(1); // Reset modal card opacity
+      dragY.setValue(0); // Reset drag offset
       setShowMatchHistory(true);
       setMatchHistoryExpanded(false);
 
@@ -143,6 +146,7 @@ export default function LeagueRankCard({ game, username, viewOnly = false, userI
         }),
         // Brief pause for anticipation
         Animated.delay(100),
+        // Blur/overlay fades in, card slides up, cards container expands, and flip all together
         Animated.parallel([
           Animated.timing(overlayOpacity, {
             toValue: 1,
@@ -162,14 +166,17 @@ export default function LeagueRankCard({ game, username, viewOnly = false, userI
             easing: Easing.out(Easing.back(1.05)),
             useNativeDriver: false,
           }),
+          // Flip during slide-up so it shows back by the time it reaches the top
+          Animated.sequence([
+            Animated.delay(150),
+            Animated.timing(flipAnimation, {
+              toValue: 1,
+              duration: 600,
+              easing: Easing.inOut(Easing.ease),
+              useNativeDriver: false,
+            }),
+          ]),
         ]),
-        Animated.delay(50),
-        Animated.spring(flipAnimation, {
-          toValue: 1,
-          friction: 8,
-          tension: 10,
-          useNativeDriver: false,
-        }),
       ]).start();
 
       setIsFlipped(true);
@@ -271,59 +278,69 @@ export default function LeagueRankCard({ game, username, viewOnly = false, userI
 
   // Handle clicking on the rank card back - closes everything and flips card
   const handleCardBackPress = () => {
-    Animated.sequence([
-      // First: Collapse match history/statistics and flip card together
-      Animated.parallel([
-        Animated.timing(matchHistoryAnimation, {
-          toValue: 0,
-          duration: 300,
-          easing: Easing.out(Easing.cubic),
-          useNativeDriver: false,
-        }),
-        Animated.timing(matchHistoryExpandAnimation, {
-          toValue: 0,
-          duration: 300,
-          easing: Easing.out(Easing.cubic),
-          useNativeDriver: false,
-        }),
-        Animated.timing(flipAnimation, {
-          toValue: 0,
-          duration: 300,
-          easing: Easing.out(Easing.cubic),
-          useNativeDriver: false,
-        }),
-      ]),
-      // Then: Slide down, fade out overlay, crossfade modal card with stack card
-      Animated.parallel([
-        Animated.timing(slideAnimation, {
-          toValue: 0,
-          duration: 400,
-          easing: Easing.out(Easing.cubic),
-          useNativeDriver: false,
-        }),
-        Animated.timing(overlayOpacity, {
-          toValue: 0,
-          duration: 350,
-          easing: Easing.out(Easing.cubic),
-          useNativeDriver: true,
-        }),
-        // Fade out modal card
+    // Run flip + slide down + collapse all simultaneously
+    Animated.parallel([
+      // Flip back to front
+      Animated.timing(flipAnimation, {
+        toValue: 0,
+        duration: 400,
+        easing: Easing.out(Easing.cubic),
+        useNativeDriver: false,
+      }),
+      // Collapse match history and statistics
+      Animated.timing(matchHistoryAnimation, {
+        toValue: 0,
+        duration: 400,
+        easing: Easing.out(Easing.cubic),
+        useNativeDriver: false,
+      }),
+      Animated.timing(matchHistoryExpandAnimation, {
+        toValue: 0,
+        duration: 400,
+        easing: Easing.out(Easing.cubic),
+        useNativeDriver: false,
+      }),
+      // Slide down
+      Animated.timing(slideAnimation, {
+        toValue: 0,
+        duration: 400,
+        easing: Easing.out(Easing.cubic),
+        useNativeDriver: false,
+      }),
+      // Fade out overlay
+      Animated.timing(overlayOpacity, {
+        toValue: 0,
+        duration: 350,
+        easing: Easing.out(Easing.cubic),
+        useNativeDriver: true,
+      }),
+      // Crossfade modal card with stack card — earlier for back cards so they slot behind the front card
+      Animated.sequence([
+        Animated.delay(isBackOfStack ? 50 : 200),
         Animated.timing(modalCardOpacity, {
           toValue: 0,
-          duration: 400,
-          easing: Easing.out(Easing.cubic),
-          useNativeDriver: false,
-        }),
-        // Fade in stack card
-        Animated.timing(stackCardOpacity, {
-          toValue: 1,
-          duration: 400,
+          duration: isBackOfStack ? 150 : 200,
           easing: Easing.out(Easing.cubic),
           useNativeDriver: false,
         }),
       ]),
+      Animated.sequence([
+        Animated.delay(isBackOfStack ? 50 : 200),
+        Animated.timing(stackCardOpacity, {
+          toValue: 1,
+          duration: isBackOfStack ? 150 : 200,
+          easing: Easing.out(Easing.cubic),
+          useNativeDriver: false,
+        }),
+      ]),
+      // Reset drag offset
+      Animated.timing(dragY, {
+        toValue: 0,
+        duration: 400,
+        easing: Easing.out(Easing.cubic),
+        useNativeDriver: false,
+      }),
     ]).start(() => {
-      // Both cards have crossfaded - safe to close modal
       setModalVisible(false);
       setIsFlipped(false);
       setShowMatchHistory(false);
@@ -335,16 +352,39 @@ export default function LeagueRankCard({ game, username, viewOnly = false, userI
   const handleCardBackPressRef = useRef(handleCardBackPress);
   handleCardBackPressRef.current = handleCardBackPress;
 
+  const dragYRef = useRef(dragY);
+  const flipAnimationRef = useRef(flipAnimation);
+
   // Pan responder for swipe down to close modal (on statistics card)
   const statisticsSwipePanResponder = useRef(
     PanResponder.create({
       onStartShouldSetPanResponder: () => false,
       onMoveShouldSetPanResponder: (_, gestureState) => {
-        return gestureState.dy > 10 && Math.abs(gestureState.dy) > Math.abs(gestureState.dx);
+        return gestureState.dy > 30 && Math.abs(gestureState.dy) > Math.abs(gestureState.dx) * 2;
+      },
+      onPanResponderMove: (_, gestureState) => {
+        if (gestureState.dy > 0) {
+          dragYRef.current.setValue(gestureState.dy);
+          const flipProgress = Math.max(0, 1 - gestureState.dy / (SCREEN_HEIGHT / 4));
+          flipAnimationRef.current.setValue(flipProgress);
+        }
       },
       onPanResponderRelease: (_, gestureState) => {
-        if (gestureState.dy > 50) {
+        if (gestureState.dy > SCREEN_HEIGHT / 4) {
           handleCardBackPressRef.current();
+        } else {
+          Animated.spring(dragYRef.current, {
+            toValue: 0,
+            useNativeDriver: false,
+            tension: 200,
+            friction: 20,
+          }).start();
+          Animated.spring(flipAnimationRef.current, {
+            toValue: 1,
+            useNativeDriver: false,
+            tension: 200,
+            friction: 20,
+          }).start();
         }
       },
     })
@@ -355,11 +395,31 @@ export default function LeagueRankCard({ game, username, viewOnly = false, userI
     PanResponder.create({
       onStartShouldSetPanResponder: () => false,
       onMoveShouldSetPanResponder: (_, gestureState) => {
-        return gestureState.dy > 10 && Math.abs(gestureState.dy) > Math.abs(gestureState.dx);
+        return gestureState.dy > 30 && Math.abs(gestureState.dy) > Math.abs(gestureState.dx) * 2;
+      },
+      onPanResponderMove: (_, gestureState) => {
+        if (gestureState.dy > 0) {
+          dragYRef.current.setValue(gestureState.dy);
+          const flipProgress = Math.max(0, 1 - gestureState.dy / (SCREEN_HEIGHT / 4));
+          flipAnimationRef.current.setValue(flipProgress);
+        }
       },
       onPanResponderRelease: (_, gestureState) => {
-        if (gestureState.dy > 50) {
+        if (gestureState.dy > SCREEN_HEIGHT / 4) {
           handleCardBackPressRef.current();
+        } else {
+          Animated.spring(dragYRef.current, {
+            toValue: 0,
+            useNativeDriver: false,
+            tension: 200,
+            friction: 20,
+          }).start();
+          Animated.spring(flipAnimationRef.current, {
+            toValue: 1,
+            useNativeDriver: false,
+            tension: 200,
+            friction: 20,
+          }).start();
         }
       },
     })
@@ -441,7 +501,7 @@ export default function LeagueRankCard({ game, username, viewOnly = false, userI
   };
 
   const modalCardStyle = {
-    transform: [{ translateY }, { scaleY }],
+    transform: [{ translateY: Animated.add(translateY, dragY) }, { scaleY }],
   };
 
   // Statistics card animations
@@ -607,7 +667,7 @@ export default function LeagueRankCard({ game, username, viewOnly = false, userI
 
         {/* Statistics Card */}
         <Animated.View
-          style={[styles.statisticsCard, { top: statisticsTop, bottom: 0, opacity: cardsContentOpacity }]}
+          style={[styles.statisticsCard, { top: Animated.add(statisticsTop, dragY), bottom: 0, opacity: cardsContentOpacity }]}
           {...statisticsSwipePanResponder.panHandlers}
         >
           <Pressable

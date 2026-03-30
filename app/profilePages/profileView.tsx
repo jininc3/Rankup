@@ -964,7 +964,7 @@ export default function ProfileViewScreen() {
                           ]}
                         >
                           <View style={{ width: '100%' }}>
-                            <RankCard game={game} username={displayUsername} viewOnly={false} isFocused={true} userId={viewedUser?.id} />
+                            <RankCard game={game} username={displayUsername} viewOnly={false} isFocused={true} userId={viewedUser?.id} isBackOfStack={index < totalCards - 1} />
                           </View>
                         </View>
                       );

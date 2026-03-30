@@ -28,17 +28,18 @@ interface RankCardProps {
   viewOnly?: boolean;
   userId?: string; // ID of the user whose stats to view (for viewing other users)
   isFocused?: boolean; // If true, card is in focused/unstacked mode and can be flipped
+  isBackOfStack?: boolean; // If true, card is behind another card in the stack
 }
 
-export default function rankCard({ game, username, viewOnly = false, userId, isFocused = false }: RankCardProps) {
+export default function rankCard({ game, username, viewOnly = false, userId, isFocused = false, isBackOfStack = false }: RankCardProps) {
   // Route to the appropriate rank card based on game
   switch (game.name) {
     case 'Valorant':
-      return <ValorantRankCard game={game} username={username} viewOnly={viewOnly} userId={userId} isFocused={isFocused} />;
+      return <ValorantRankCard game={game} username={username} viewOnly={viewOnly} userId={userId} isFocused={isFocused} isBackOfStack={isBackOfStack} />;
     case 'TFT':
       return <TftRankCard game={game} username={username} viewOnly={viewOnly} userId={userId} />;
     case 'League of Legends':
     default:
-      return <LeagueRankCard game={game} username={username} viewOnly={viewOnly} userId={userId} />;
+      return <LeagueRankCard game={game} username={username} viewOnly={viewOnly} userId={userId} isBackOfStack={isBackOfStack} />;
   }
 }

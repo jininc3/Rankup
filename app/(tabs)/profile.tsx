@@ -112,6 +112,7 @@ export default function ProfileScreen() {
   const [activeTab, setActiveTab] = useState<'clips' | 'rankCards' | 'achievements'>('clips');
   const tabs: ('clips' | 'rankCards' | 'achievements')[] = ['clips', 'rankCards', 'achievements'];
   const tabScrollRef = useRef<ScrollView>(null);
+  const isRemovingPost = useRef(false);
 
   const handleTabScroll = useCallback((event: any) => {
     const offsetX = event.nativeEvent.contentOffset.x;
@@ -1289,7 +1290,7 @@ export default function ProfileScreen() {
                         >
                           {/* All cards can open modal directly from stacked position */}
                           <View style={{ width: '100%' }}>
-                            <RankCard game={game} username={displayUsername} viewOnly={false} isFocused={true} />
+                            <RankCard game={game} username={displayUsername} viewOnly={false} isFocused={true} isBackOfStack={index < totalCards - 1} />
                           </View>
                         </View>
                       );

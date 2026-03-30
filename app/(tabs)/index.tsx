@@ -360,6 +360,9 @@ export default function HomeScreen() {
       // Sort all posts by createdAt
       allBatchPosts.sort((a, b) => b.createdAt.toMillis() - a.createdAt.toMillis());
 
+      // Filter out archived posts
+      allBatchPosts = allBatchPosts.filter(post => !(post as any).archived);
+
       // Apply game filter if selected
       let filteredPosts = allBatchPosts;
       if (selectedGameFilter) {
