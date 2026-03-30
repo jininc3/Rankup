@@ -1,5 +1,6 @@
 import { ThemedText } from '@/components/themed-text';
 import { IconSymbol } from '@/components/ui/icon-symbol';
+import { LinearGradient } from 'expo-linear-gradient';
 import { StyleSheet, View, ScrollView, Image, TouchableOpacity, Modal, ActivityIndicator } from 'react-native';
 import { useState, useEffect } from 'react';
 import { doc, getDoc } from 'firebase/firestore';
@@ -254,109 +255,124 @@ export default function DuoCardDetailModal({ visible, onClose, card }: DuoCardDe
         </View>
 
         <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.scrollContent}>
-          {/* Profile Section */}
-          <View style={styles.profileSection}>
-            <View style={styles.profileRow}>
-              <View style={styles.avatarContainer}>
-                {card.avatar ? (
-                  <Image source={{ uri: card.avatar }} style={styles.avatar} />
-                ) : (
-                  <ThemedText style={styles.avatarFallback}>
-                    {card.username[0]?.toUpperCase()}
+          {/* Card Container - matches duoCard outer/inner border style */}
+          <View style={styles.cardContainer}>
+            <LinearGradient
+              colors={['#2a2a2a', '#1a1a1a']}
+              start={{ x: 0, y: 0 }}
+              end={{ x: 0, y: 1 }}
+              style={[styles.cardInner, { borderColor: isLeague ? '#1a3a5c' : '#5c1a1a' }]}
+            >
+              {/* Profile Header */}
+              <View style={styles.profileRow}>
+                <View style={styles.avatarContainer}>
+                  {card.avatar ? (
+                    <Image source={{ uri: card.avatar }} style={styles.avatar} />
+                  ) : (
+                    <ThemedText style={styles.avatarFallback}>
+                      {card.username[0]?.toUpperCase()}
+                    </ThemedText>
+                  )}
+                </View>
+                <View style={styles.profileInfo}>
+                  <ThemedText style={styles.username}>{card.username}</ThemedText>
+                  {card.inGameName && (
+                    <ThemedText style={styles.inGameName}>{card.inGameName}</ThemedText>
+                  )}
+                </View>
+                <Image
+                  source={isLeague
+                    ? require('@/assets/images/lol-icon.png')
+                    : require('@/assets/images/valorant-red.png')
+                  }
+                  style={styles.gameLogo}
+                  resizeMode="contain"
+                />
+              </View>
+
+              {/* Divider */}
+              <View style={styles.cardDivider} />
+
+              {/* Ranks */}
+              <View style={styles.ranksRow}>
+                <View style={styles.rankItem}>
+                  <ThemedText style={styles.rankLabel}>Current</ThemedText>
+                  <Image source={currentRankIcon} style={styles.rankIcon} resizeMode="contain" />
+                  <ThemedText style={styles.rankText}>{card.currentRank || 'Unranked'}</ThemedText>
+                </View>
+                <View style={styles.rankDivider} />
+                <View style={styles.rankItem}>
+                  <ThemedText style={styles.rankLabel}>Peak</ThemedText>
+                  <Image source={peakRankIcon} style={styles.rankIcon} resizeMode="contain" />
+                  <ThemedText style={styles.rankText}>{card.peakRank || 'Unranked'}</ThemedText>
+                </View>
+              </View>
+
+              {/* Divider */}
+              <View style={styles.cardDivider} />
+
+              {/* Player Info */}
+              <View style={styles.infoGrid}>
+                <View style={styles.infoItem}>
+                  <ThemedText style={styles.infoLabel}>{isLeague ? 'Main Champion' : 'Main Agent'}</ThemedText>
+                  {!isLeague && agentIcon ? (
+                    <View style={styles.infoIconRow}>
+                      <Image source={agentIcon} style={styles.infoIcon} resizeMode="contain" />
+                      <ThemedText style={styles.infoValue}>{card.mainAgent}</ThemedText>
+                    </View>
+                  ) : (
+                    <ThemedText style={styles.infoValue}>{card.mainAgent || 'Any'}</ThemedText>
+                  )}
+                </View>
+                <View style={styles.infoItem}>
+                  <ThemedText style={styles.infoLabel}>Main Role</ThemedText>
+                  {roleIcon || laneIcon ? (
+                    <View style={styles.infoIconRow}>
+                      <Image source={roleIcon || laneIcon} style={styles.infoIcon} resizeMode="contain" />
+                      <ThemedText style={styles.infoValue}>{card.mainRole}</ThemedText>
+                    </View>
+                  ) : (
+                    <ThemedText style={styles.infoValue}>{card.mainRole || 'Any'}</ThemedText>
+                  )}
+                </View>
+                <View style={styles.infoItem}>
+                  <ThemedText style={styles.infoLabel}>Looking For</ThemedText>
+                  <ThemedText style={styles.infoValue}>{card.lookingFor || 'Any'}</ThemedText>
+                </View>
+              </View>
+
+              {/* Divider */}
+              <View style={styles.cardDivider} />
+
+              {/* Stats */}
+              <View style={styles.statsRow}>
+                <View style={styles.statItem}>
+                  <ThemedText style={styles.statLabel}>Win Rate</ThemedText>
+                  <ThemedText style={[styles.statValue, card.winRate !== undefined && card.winRate >= 50 && styles.winRateGood]}>
+                    {card.winRate !== undefined ? `${card.winRate}%` : 'N/A'}
                   </ThemedText>
-                )}
+                </View>
+                <View style={styles.statDivider} />
+                <View style={styles.statItem}>
+                  <ThemedText style={styles.statLabel}>Games Played</ThemedText>
+                  <ThemedText style={styles.statValue}>
+                    {card.gamesPlayed !== undefined ? card.gamesPlayed : 'N/A'}
+                  </ThemedText>
+                </View>
               </View>
-              <View style={styles.profileInfo}>
-                <ThemedText style={styles.username}>{card.username}</ThemedText>
-                {card.inGameName && (
-                  <ThemedText style={styles.inGameName}>{card.inGameName}</ThemedText>
-                )}
-              </View>
-              <Image
-                source={isLeague
-                  ? require('@/assets/images/lol-icon.png')
-                  : require('@/assets/images/valorant-red.png')
-                }
-                style={styles.gameLogo}
-                resizeMode="contain"
-              />
-            </View>
+            </LinearGradient>
           </View>
 
-          {/* Ranks */}
-          <View style={styles.section}>
-            <ThemedText style={styles.sectionTitle}>RANKS</ThemedText>
-            <View style={styles.ranksRow}>
-              <View style={styles.rankItem}>
-                <ThemedText style={styles.rankLabel}>Current</ThemedText>
-                <Image source={currentRankIcon} style={styles.rankIcon} resizeMode="contain" />
-                <ThemedText style={styles.rankText}>{card.currentRank || 'Unranked'}</ThemedText>
-              </View>
-              <View style={styles.rankDivider} />
-              <View style={styles.rankItem}>
-                <ThemedText style={styles.rankLabel}>Peak</ThemedText>
-                <Image source={peakRankIcon} style={styles.rankIcon} resizeMode="contain" />
-                <ThemedText style={styles.rankText}>{card.peakRank || 'Unranked'}</ThemedText>
-              </View>
-            </View>
-          </View>
-
-          {/* Player Info */}
-          <View style={styles.section}>
-            <ThemedText style={styles.sectionTitle}>PLAYER INFO</ThemedText>
-            <View style={styles.infoGrid}>
-              <View style={styles.infoItem}>
-                <ThemedText style={styles.infoLabel}>{isLeague ? 'Main Champion' : 'Main Agent'}</ThemedText>
-                {!isLeague && agentIcon ? (
-                  <View style={styles.infoIconRow}>
-                    <Image source={agentIcon} style={styles.infoIcon} resizeMode="contain" />
-                    <ThemedText style={styles.infoValue}>{card.mainAgent}</ThemedText>
-                  </View>
-                ) : (
-                  <ThemedText style={styles.infoValue}>{card.mainAgent || 'Any'}</ThemedText>
-                )}
-              </View>
-              <View style={styles.infoItem}>
-                <ThemedText style={styles.infoLabel}>Main Role</ThemedText>
-                {roleIcon || laneIcon ? (
-                  <View style={styles.infoIconRow}>
-                    <Image source={roleIcon || laneIcon} style={styles.infoIcon} resizeMode="contain" />
-                    <ThemedText style={styles.infoValue}>{card.mainRole}</ThemedText>
-                  </View>
-                ) : (
-                  <ThemedText style={styles.infoValue}>{card.mainRole || 'Any'}</ThemedText>
-                )}
-              </View>
-              <View style={styles.infoItem}>
-                <ThemedText style={styles.infoLabel}>Looking For</ThemedText>
-                <ThemedText style={styles.infoValue}>{card.lookingFor || 'Any'}</ThemedText>
-              </View>
-            </View>
-          </View>
-
-          {/* Stats */}
-          <View style={styles.section}>
-            <ThemedText style={styles.sectionTitle}>STATS</ThemedText>
-            <View style={styles.statsRow}>
-              <View style={styles.statBox}>
-                <ThemedText style={styles.statValue}>
-                  {card.winRate !== undefined ? `${card.winRate}%` : 'N/A'}
-                </ThemedText>
-                <ThemedText style={styles.statLabel}>Win Rate</ThemedText>
-              </View>
-              <View style={styles.statBox}>
-                <ThemedText style={styles.statValue}>
-                  {card.gamesPlayed !== undefined ? card.gamesPlayed : 'N/A'}
-                </ThemedText>
-                <ThemedText style={styles.statLabel}>Games Played</ThemedText>
-              </View>
-            </View>
-          </View>
-
-          {/* Match History */}
-          <View style={styles.section}>
-            <ThemedText style={styles.sectionTitle}>MATCH HISTORY</ThemedText>
-            <View style={styles.matchHistoryContainer}>
+          {/* Match History - separate card */}
+          <View style={styles.cardContainer}>
+            <LinearGradient
+              colors={['#2a2a2a', '#1a1a1a']}
+              start={{ x: 0, y: 0 }}
+              end={{ x: 0, y: 1 }}
+              style={[styles.cardInner, { borderColor: isLeague ? '#1a3a5c' : '#5c1a1a' }]}
+            >
+              <ThemedText style={styles.sectionTitle}>MATCH HISTORY</ThemedText>
+              <View style={styles.matchHistoryContainer}>
               {loadingMatches ? (
                 <View style={styles.matchLoadingContainer}>
                   <ActivityIndicator color="#888" size="small" />
@@ -420,6 +436,7 @@ export default function DuoCardDetailModal({ visible, onClose, card }: DuoCardDe
                 </>
               )}
             </View>
+            </LinearGradient>
           </View>
 
           <View style={{ height: 40 }} />
@@ -460,19 +477,40 @@ const styles = StyleSheet.create({
   },
   scrollContent: {
     padding: 16,
+    gap: 12,
+  },
+  // Card container - matches duoCard outer style
+  cardContainer: {
+    backgroundColor: '#222',
+    borderRadius: 12,
+    padding: 6,
+    shadowColor: '#000',
+    shadowOffset: { width: -3, height: 4 },
+    shadowOpacity: 0.5,
+    shadowRadius: 5,
+    elevation: 8,
+  },
+  cardInner: {
+    borderWidth: 1,
+    borderColor: '#333',
+    borderRadius: 8,
+    padding: 12,
+    gap: 10,
+  },
+  cardDivider: {
+    height: 1,
+    backgroundColor: '#2a2a2a',
+    marginHorizontal: 2,
   },
   // Profile
-  profileSection: {
-    marginBottom: 20,
-  },
   profileRow: {
     flexDirection: 'row',
     alignItems: 'center',
   },
   avatarContainer: {
-    width: 52,
-    height: 52,
-    borderRadius: 14,
+    width: 42,
+    height: 42,
+    borderRadius: 10,
     backgroundColor: '#252525',
     alignItems: 'center',
     justifyContent: 'center',
@@ -483,47 +521,43 @@ const styles = StyleSheet.create({
     height: '100%',
   },
   avatarFallback: {
-    fontSize: 20,
+    fontSize: 16,
     fontWeight: '700',
     color: '#666',
   },
   profileInfo: {
     flex: 1,
-    marginLeft: 14,
+    marginLeft: 12,
   },
   username: {
-    fontSize: 18,
+    fontSize: 16,
     fontWeight: '700',
     color: '#fff',
   },
   inGameName: {
-    fontSize: 13,
+    fontSize: 12,
     color: '#888',
     marginTop: 2,
   },
   gameLogo: {
-    width: 28,
-    height: 28,
+    width: 24,
+    height: 24,
     opacity: 0.7,
   },
-  // Sections
-  section: {
-    marginBottom: 20,
-  },
+  // Section title
   sectionTitle: {
-    fontSize: 11,
-    fontWeight: '700',
+    fontSize: 10,
+    fontWeight: '600',
     color: '#555',
-    letterSpacing: 1,
-    marginBottom: 10,
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
+    marginBottom: 4,
   },
   // Ranks
   ranksRow: {
     flexDirection: 'row',
-    backgroundColor: '#1a1a1a',
-    borderRadius: 12,
-    padding: 16,
     alignItems: 'center',
+    paddingVertical: 6,
   },
   rankItem: {
     flex: 1,
@@ -553,10 +587,8 @@ const styles = StyleSheet.create({
   },
   // Player Info
   infoGrid: {
-    backgroundColor: '#1a1a1a',
-    borderRadius: 12,
-    padding: 14,
-    gap: 14,
+    gap: 12,
+    paddingVertical: 2,
   },
   infoItem: {
     flexDirection: 'row',
@@ -564,11 +596,11 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   infoLabel: {
-    fontSize: 13,
+    fontSize: 12,
     color: '#888',
   },
   infoValue: {
-    fontSize: 13,
+    fontSize: 12,
     fontWeight: '600',
     color: '#fff',
   },
@@ -585,30 +617,37 @@ const styles = StyleSheet.create({
   // Stats
   statsRow: {
     flexDirection: 'row',
-    gap: 10,
-  },
-  statBox: {
-    flex: 1,
-    backgroundColor: '#1a1a1a',
-    borderRadius: 12,
-    padding: 16,
     alignItems: 'center',
-    gap: 4,
+    paddingVertical: 4,
+  },
+  statItem: {
+    flex: 1,
+    alignItems: 'center',
+    gap: 6,
+  },
+  statDivider: {
+    width: 1,
+    height: 30,
+    backgroundColor: '#2a2a2a',
   },
   statValue: {
-    fontSize: 18,
+    fontSize: 14,
     fontWeight: '700',
     color: '#fff',
   },
   statLabel: {
-    fontSize: 11,
+    fontSize: 10,
     color: '#555',
     fontWeight: '600',
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
+  },
+  winRateGood: {
+    color: '#4ade80',
   },
   // Match History
   matchHistoryContainer: {
-    backgroundColor: '#1a1a1a',
-    borderRadius: 12,
+    borderRadius: 8,
     overflow: 'hidden',
   },
   matchLoadingContainer: {

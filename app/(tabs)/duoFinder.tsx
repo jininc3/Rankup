@@ -4,6 +4,7 @@ import EditDuoCard from '@/app/components/editDuoCard';
 import DuoFilterModal, { DuoFilterOptions } from '@/app/profilePages/duoFilterModal';
 import DuoSearchingAnimation from '@/app/components/duoSearchingAnimation';
 import DuoMatchResult from '@/app/components/duoMatchResult';
+import LiveSearchIdle from '@/app/components/liveSearchIdle';
 import DuoCardDetailModal from '@/app/components/duoCardDetailModal';
 import PostDuoCard from '@/app/components/postDuoCard';
 import { ThemedText } from '@/components/themed-text';
@@ -1028,7 +1029,6 @@ export default function DuoFinderScreen() {
           onPress={() => setShowMyCards(true)}
           activeOpacity={0.7}
         >
-          <IconSymbol size={18} name="person.crop.rectangle.stack" color="#fff" />
           <ThemedText style={styles.myCardsHeaderText}>My Cards</ThemedText>
         </TouchableOpacity>
       </View>
@@ -1094,73 +1094,15 @@ export default function DuoFinderScreen() {
                 onSearchAgain={handleSearchAgain}
               />
             ) : (
-              <View style={styles.liveSearchIdleContainer}>
-                <View style={styles.liveSearchIconContainer}>
-                  <View style={styles.liveSearchIconRing}>
-                    <IconSymbol size={36} name="person.2.fill" color="#a08845" />
-                  </View>
-                </View>
-                <ThemedText style={styles.liveSearchTitle}>Find Your Duo</ThemedText>
-                <ThemedText style={styles.liveSearchSubtitle}>
-                  Get matched with a player searching right now{'\n'}within your rank range
-                </ThemedText>
-
-                {/* Game Selection */}
-                {hasCards && (
-                  <View style={styles.liveSearchGamePicker}>
-                    {valorantCard && (
-                      <TouchableOpacity
-                        style={[
-                          styles.liveSearchGameBtn,
-                          searchGamePick === 'valorant' && styles.liveSearchGameBtnActive,
-                          !leagueCard && styles.liveSearchGameBtnOnly,
-                        ]}
-                        onPress={() => setSearchGamePick('valorant')}
-                        activeOpacity={0.7}
-                      >
-                        <Image source={require('@/assets/images/valorant-red.png')} style={styles.liveSearchGameIcon} resizeMode="contain" />
-                        <ThemedText style={[
-                          styles.liveSearchGameBtnText,
-                          searchGamePick === 'valorant' && styles.liveSearchGameBtnTextActive,
-                        ]}>Valorant</ThemedText>
-                      </TouchableOpacity>
-                    )}
-                    {leagueCard && (
-                      <TouchableOpacity
-                        style={[
-                          styles.liveSearchGameBtn,
-                          searchGamePick === 'league' && styles.liveSearchGameBtnActive,
-                          !valorantCard && styles.liveSearchGameBtnOnly,
-                        ]}
-                        onPress={() => setSearchGamePick('league')}
-                        activeOpacity={0.7}
-                      >
-                        <Image source={require('@/assets/images/lol-icon.png')} style={styles.liveSearchGameIcon} resizeMode="contain" />
-                        <ThemedText style={[
-                          styles.liveSearchGameBtnText,
-                          searchGamePick === 'league' && styles.liveSearchGameBtnTextActive,
-                        ]}>League</ThemedText>
-                      </TouchableOpacity>
-                    )}
-                  </View>
-                )}
-
-                <TouchableOpacity
-                  style={[styles.liveSearchButton, !searchGamePick && { opacity: 0.4 }]}
-                  onPress={() => searchGamePick && startLiveSearch(searchGamePick)}
-                  activeOpacity={0.8}
-                  disabled={!searchGamePick}
-                >
-                  <View style={styles.liveSearchDot} />
-                  <ThemedText style={styles.liveSearchText}>Search Now</ThemedText>
-                  <IconSymbol size={16} name="chevron.right" color="#fff" />
-                </TouchableOpacity>
-                {!hasCards && (
-                  <ThemedText style={styles.liveSearchHint}>
-                    Create a duo card to start searching
-                  </ThemedText>
-                )}
-              </View>
+              <LiveSearchIdle
+                hasCards={hasCards}
+                valorantCard={valorantCard}
+                leagueCard={leagueCard}
+                searchGamePick={searchGamePick}
+                onPickGame={(game) => setSearchGamePick(game)}
+                onSearch={() => searchGamePick && startLiveSearch(searchGamePick)}
+                onCreateCard={() => setShowAddCard(true)}
+              />
             )}
           </View>
           <View style={styles.bottomSpacer} />
@@ -1677,114 +1619,6 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.3,
     shadowRadius: 6,
     elevation: 8,
-  },
-  // Live Search Idle Page
-  liveSearchIdleContainer: {
-    flex: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingHorizontal: 24,
-    paddingVertical: 60,
-  },
-  liveSearchIconContainer: {
-    marginBottom: 24,
-  },
-  liveSearchIconRing: {
-    width: 88,
-    height: 88,
-    borderRadius: 44,
-    backgroundColor: 'rgba(160, 136, 69, 0.1)',
-    borderWidth: 1.5,
-    borderColor: 'rgba(160, 136, 69, 0.25)',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  liveSearchTitle: {
-    fontSize: 24,
-    fontWeight: '700',
-    color: '#fff',
-    marginBottom: 8,
-    letterSpacing: -0.3,
-  },
-  liveSearchSubtitle: {
-    fontSize: 14,
-    color: '#666',
-    textAlign: 'center',
-    lineHeight: 21,
-    maxWidth: 260,
-    marginBottom: 24,
-  },
-  liveSearchGamePicker: {
-    flexDirection: 'row',
-    gap: 10,
-    marginBottom: 20,
-    width: '100%',
-    maxWidth: 280,
-  },
-  liveSearchGameBtn: {
-    flex: 1,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 8,
-    paddingVertical: 12,
-    borderRadius: 12,
-    backgroundColor: '#1a1a1a',
-    borderWidth: 1.5,
-    borderColor: 'transparent',
-  },
-  liveSearchGameBtnActive: {
-    borderColor: 'rgba(160, 136, 69, 0.4)',
-    backgroundColor: 'rgba(160, 136, 69, 0.08)',
-  },
-  liveSearchGameBtnOnly: {
-    maxWidth: 160,
-  },
-  liveSearchGameIcon: {
-    width: 20,
-    height: 20,
-  },
-  liveSearchGameBtnText: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: '#555',
-  },
-  liveSearchGameBtnTextActive: {
-    color: '#ccc',
-  },
-  liveSearchHint: {
-    fontSize: 13,
-    color: '#555',
-    marginTop: 12,
-  },
-  // Live Search Button
-  liveSearchButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 10,
-    width: '100%',
-    maxWidth: 280,
-    paddingVertical: 14,
-    paddingHorizontal: 20,
-    backgroundColor: '#a08845',
-    borderRadius: 14,
-    shadowColor: '#c42743',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.3,
-    shadowRadius: 8,
-    elevation: 6,
-  },
-  liveSearchDot: {
-    width: 8,
-    height: 8,
-    borderRadius: 4,
-    backgroundColor: '#4ade80',
-  },
-  liveSearchText: {
-    flex: 1,
-    fontSize: 15,
-    fontWeight: '700',
-    color: '#fff',
   },
   // Section Headers - Parties style
   sectionHeader: {

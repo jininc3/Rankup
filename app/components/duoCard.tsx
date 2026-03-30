@@ -140,6 +140,7 @@ interface DuoCardProps {
   onMessage?: () => void;
   onViewProfile?: () => void;
   onDelete?: () => void;
+  noShadow?: boolean;
 }
 
 // Helper to get rank icon
@@ -159,7 +160,7 @@ const getRankIcon = (rank: string, game: string) => {
   return VALORANT_RANK_ICONS[tier] || VALORANT_RANK_ICONS.unranked;
 };
 
-export default function DuoCard({ duo, onPress, onMessage, onViewProfile, onDelete }: DuoCardProps) {
+export default function DuoCard({ duo, onPress, onMessage, onViewProfile, onDelete, noShadow }: DuoCardProps) {
   const game = duo.game || 'Valorant';
   const isLeague = game === 'League' || game === 'League of Legends';
   const gameLogo = GAME_LOGOS[game];
@@ -176,7 +177,7 @@ export default function DuoCard({ duo, onPress, onMessage, onViewProfile, onDele
 
   return (
     <TouchableOpacity
-      style={[styles.container, { borderColor: isLeague ? '#1a3a5c' : '#5c1a1a' }]}
+      style={[styles.container, noShadow && { shadowOpacity: 0, elevation: 0, marginBottom: 0 }]}
       onPress={onPress}
       activeOpacity={0.7}
     >
@@ -328,7 +329,6 @@ const styles = StyleSheet.create({
   container: {
     backgroundColor: '#222',
     borderRadius: 12,
-    borderWidth: 1,
     padding: 6,
     marginBottom: 10,
     shadowColor: '#000',

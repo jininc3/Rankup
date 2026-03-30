@@ -167,6 +167,7 @@ export default function PostDuoCard({
               >
                 <View pointerEvents="none">
                   <DuoCard
+                    noShadow
                     duo={{
                       id: 0,
                       username: valorantCard.username,
@@ -198,6 +199,7 @@ export default function PostDuoCard({
               >
                 <View pointerEvents="none">
                   <DuoCard
+                    noShadow
                     duo={{
                       id: 1,
                       username: leagueCard.username,

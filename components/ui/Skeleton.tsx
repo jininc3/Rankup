@@ -389,28 +389,30 @@ export const LeaderboardCardSkeleton: React.FC = () => {
 // Mutual leaderboard skeleton - matches the leaderboards tab table structure
 // Renders a game section with header, column headers, and player rows with shimmer
 export const MutualLeaderboardSkeleton: React.FC<{ rowCount?: number; showDropdownChevron?: boolean }> = ({ rowCount = 4, showDropdownChevron = false }) => {
+  // Pre-compute stable name widths so they don't change on re-render
+  const nameWidths = React.useMemo(
+    () => Array.from({ length: rowCount }, () => 70 + Math.floor(Math.random() * 50)),
+    [rowCount]
+  );
+
   return (
     <View style={mutualSkeletonStyles.section}>
       {/* Game header: logo + title + optional chevron */}
       <View style={mutualSkeletonStyles.sectionHeader}>
-        <Skeleton width={24} height={24} borderRadius={12} />
-        {showDropdownChevron ? (
-          <View style={{ flex: 1 }}>
-            <Skeleton width={130} height={16} borderRadius={4} />
-          </View>
-        ) : (
-          <Skeleton width={130} height={16} borderRadius={4} />
-        )}
+        <Skeleton width={24} height={24} borderRadius={4} />
+        <Skeleton width={130} height={20} borderRadius={4} style={{ flex: 1 }} />
         {showDropdownChevron && <Skeleton width={18} height={18} borderRadius={4} style={{ marginRight: 10 }} />}
       </View>
 
       {/* Column headers */}
       <View style={mutualSkeletonStyles.columnHeaders}>
-        <Skeleton width={30} height={10} borderRadius={3} />
+        <Skeleton width={30} height={10} borderRadius={3} style={{ width: 40 }} />
         <View style={{ flex: 1, paddingLeft: 40 }}>
           <Skeleton width={50} height={10} borderRadius={3} />
         </View>
-        <Skeleton width={80} height={10} borderRadius={3} />
+        <View style={{ width: 130, alignItems: 'center' }}>
+          <Skeleton width={85} height={10} borderRadius={3} />
+        </View>
       </View>
 
       {/* Player rows */}
@@ -423,7 +425,7 @@ export const MutualLeaderboardSkeleton: React.FC<{ rowCount?: number; showDropdo
               index % 2 === 0
                 ? mutualSkeletonStyles.evenRow
                 : mutualSkeletonStyles.oddRow,
-              { borderLeftWidth: 4, borderLeftColor: index === 0 ? '#FFD700' : index === 1 ? '#C0C0C0' : index === 2 ? '#CD7F32' : '#333' },
+              { borderLeftWidth: 3, borderLeftColor: index === 0 ? '#FFD700' : index === 1 ? '#C0C0C0' : index === 2 ? '#CD7F32' : '#333' },
             ]}
           >
             {/* Rank number */}
@@ -434,7 +436,7 @@ export const MutualLeaderboardSkeleton: React.FC<{ rowCount?: number; showDropdo
             {/* Player info: avatar + name */}
             <View style={mutualSkeletonStyles.playerInfo}>
               <Skeleton width={32} height={32} borderRadius={6} />
-              <Skeleton width={80 + Math.random() * 40} height={14} borderRadius={4} />
+              <Skeleton width={nameWidths[index]} height={14} borderRadius={4} />
             </View>
 
             {/* Rank icon + text */}
@@ -484,6 +486,7 @@ const mutualSkeletonStyles = StyleSheet.create({
     borderTopRightRadius: 12,
   },
   playerList: {
+    paddingHorizontal: 0,
     borderBottomLeftRadius: 12,
     borderBottomRightRadius: 12,
     overflow: 'hidden',
@@ -518,11 +521,12 @@ const mutualSkeletonStyles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 8,
-    width: 120,
-    justifyContent: 'flex-end',
+    width: 130,
+    marginLeft: 'auto',
   },
   rankTextContainer: {
-    alignItems: 'flex-end',
+    flex: 1,
+    alignItems: 'flex-start',
   },
 });
 
@@ -732,37 +736,49 @@ export const ProfileAchievementsSkeleton: React.FC = () => (
 // Matches profile.tsx layout: cover photo, username+avatar, followers, socials, bio, tab bar, clips tab content
 export const ProfilePageSkeleton: React.FC = () => (
   <View style={profilePageStyles.container}>
-    {/* Cover Photo Area with username overlay + avatar */}
+    {/* Cover Photo */}
     <View style={profilePageStyles.coverPhotoWrapper}>
-      <Skeleton width={screenWidth} height={200} borderRadius={0} />
-      <View style={profilePageStyles.coverPhotoUsernamePosition}>
-        <Skeleton width={160} height={28} borderRadius={6} />
+      <Skeleton width={screenWidth} height={180} borderRadius={0} />
+    </View>
+
+    {/* Profile Info Section - overlaps cover */}
+    <View style={profilePageStyles.profileInfoSection}>
+      {/* Avatar + Stats row */}
+      <View style={profilePageStyles.avatarStatsRow}>
+        {/* Avatar */}
+        <Skeleton width={76} height={76} borderRadius={38} style={profilePageStyles.avatar} />
+
+        {/* Stats columns */}
+        <View style={profilePageStyles.statsColumns}>
+          <View style={profilePageStyles.statColumn}>
+            <Skeleton width={28} height={17} borderRadius={4} />
+            <Skeleton width={48} height={11} borderRadius={3} style={profilePageStyles.statLabelSkeleton} />
+          </View>
+          <View style={profilePageStyles.statColumn}>
+            <Skeleton width={28} height={17} borderRadius={4} />
+            <Skeleton width={52} height={11} borderRadius={3} style={profilePageStyles.statLabelSkeleton} />
+          </View>
+          <View style={profilePageStyles.statColumn}>
+            <Skeleton width={20} height={17} borderRadius={4} />
+            <Skeleton width={32} height={11} borderRadius={3} style={profilePageStyles.statLabelSkeleton} />
+          </View>
+        </View>
       </View>
-      <View style={profilePageStyles.avatarPosition}>
-        <Skeleton width={56} height={56} borderRadius={28} />
+
+      {/* Bio placeholder */}
+      <View style={profilePageStyles.bioSection}>
+        <Skeleton width="65%" height={13} borderRadius={4} />
+      </View>
+
+      {/* Action row: Edit Profile + Social icons */}
+      <View style={profilePageStyles.actionRow}>
+        <Skeleton width={0} height={36} borderRadius={8} style={profilePageStyles.editButtonSkeleton} />
+        <Skeleton width={36} height={36} borderRadius={8} />
+        <Skeleton width={36} height={36} borderRadius={8} />
       </View>
     </View>
 
-    {/* Followers / Following Row */}
-    <View style={profilePageStyles.followStatsRow}>
-      <Skeleton width={80} height={14} borderRadius={4} />
-      <View style={profilePageStyles.followStatDivider} />
-      <Skeleton width={80} height={14} borderRadius={4} />
-    </View>
-
-    {/* Social Icons Row + Edit Profile */}
-    <View style={profilePageStyles.socialIconsRow}>
-      <Skeleton width={36} height={36} borderRadius={8} />
-      <Skeleton width={36} height={36} borderRadius={8} />
-      <Skeleton width={80} height={20} borderRadius={4} />
-    </View>
-
-    {/* Bio placeholder */}
-    <View style={profilePageStyles.bioSection}>
-      <Skeleton width="70%" height={14} borderRadius={4} />
-    </View>
-
-    {/* Tab Bar - CLIPS | RANKS | ACHIEVEMENTS */}
+    {/* Tab Bar */}
     <View style={profilePageStyles.tabBar}>
       <Skeleton width={50} height={20} borderRadius={4} />
       <View style={profilePageStyles.tabDivider} />
@@ -771,11 +787,11 @@ export const ProfilePageSkeleton: React.FC = () => (
       <Skeleton width={110} height={20} borderRadius={4} />
     </View>
 
-    {/* Clips Tab Content (default active tab) */}
+    {/* Clips Tab Content */}
     <View style={profilePageStyles.clipsTabContent}>
-      <View style={profileStyles.clipsRow}>
+      <View style={profilePageStyles.clipsRow}>
         {[0, 1, 2].map(i => (
-          <Skeleton key={i} width={200} height={120} borderRadius={12} />
+          <Skeleton key={i} width={120} height={120} borderRadius={4} />
         ))}
       </View>
     </View>
@@ -788,44 +804,46 @@ const profilePageStyles = StyleSheet.create({
   },
   coverPhotoWrapper: {
     width: '100%',
-    height: 200,
-    overflow: 'visible',
-    zIndex: 2,
+    height: 180,
+    overflow: 'hidden',
   },
-  coverPhotoUsernamePosition: {
-    position: 'absolute',
-    bottom: 10,
-    left: 20,
-    zIndex: 2,
-  },
-  avatarPosition: {
-    position: 'absolute',
-    bottom: -28,
-    right: 20,
-    zIndex: 4,
-  },
-  followStatsRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
+  profileInfoSection: {
+    marginTop: -32,
     paddingHorizontal: 20,
-    marginBottom: 4,
+    zIndex: 3,
   },
-  followStatDivider: {
-    width: 1,
-    height: 14,
-    backgroundColor: '#1a1a1a',
-    marginHorizontal: 12,
-  },
-  socialIconsRow: {
+  avatarStatsRow: {
     flexDirection: 'row',
+    alignItems: 'flex-end',
+    gap: 16,
+  },
+  avatar: {
+    borderWidth: 3,
+    borderColor: '#0f0f0f',
+  },
+  statsColumns: {
+    flexDirection: 'row',
+    flex: 1,
+    justifyContent: 'space-around',
+    paddingBottom: 6,
+  },
+  statColumn: {
     alignItems: 'center',
-    paddingHorizontal: 20,
-    marginBottom: 6,
-    gap: 12,
+  },
+  statLabelSkeleton: {
+    marginTop: 4,
   },
   bioSection: {
-    paddingHorizontal: 20,
-    marginBottom: 8,
+    marginTop: 10,
+  },
+  actionRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginTop: 12,
+    gap: 10,
+  },
+  editButtonSkeleton: {
+    flex: 1,
   },
   tabBar: {
     flexDirection: 'row',
@@ -839,18 +857,23 @@ const profilePageStyles = StyleSheet.create({
   tabDivider: {
     width: 1,
     height: 16,
-    backgroundColor: '#333',
+    backgroundColor: '#1e1e1e',
   },
   clipsTabContent: {
-    paddingTop: 12,
+    paddingTop: 4,
+  },
+  clipsRow: {
+    flexDirection: 'row',
+    paddingHorizontal: 20,
+    gap: 6,
   },
 });
 
 const profileStyles = StyleSheet.create({
   clipsRow: {
     flexDirection: 'row',
-    paddingHorizontal: 16,
-    gap: 12,
+    paddingHorizontal: 20,
+    gap: 6,
   },
   rankCardWrapper: {
     paddingHorizontal: 6,
@@ -860,8 +883,8 @@ const profileStyles = StyleSheet.create({
   },
   achievementsRow: {
     flexDirection: 'row',
-    paddingHorizontal: 16,
-    gap: 12,
+    paddingHorizontal: 20,
+    gap: 8,
   },
 });
 

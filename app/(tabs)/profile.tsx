@@ -888,33 +888,59 @@ export default function ProfileScreen() {
               />
             ) : (
               <LinearGradient
-                colors={['#2c2f33', '#0f0f0f']}
+                colors={['#2c2f33', '#1a1a1a', '#0f0f0f']}
                 start={{ x: 0, y: 0 }}
                 end={{ x: 0, y: 1 }}
                 style={styles.coverPhotoGradient}
               />
             )}
-            {/* Bottom fade - subtle blend into background */}
+            {/* Bottom fade */}
             <LinearGradient
-              colors={['transparent', 'rgba(15, 15, 15, 0.6)', '#0f0f0f']}
-              locations={[0, 0.6, 1]}
+              colors={['transparent', 'rgba(15, 15, 15, 0.4)', 'rgba(15, 15, 15, 0.85)', '#0f0f0f']}
+              locations={[0, 0.4, 0.75, 1]}
               start={{ x: 0, y: 0 }}
               end={{ x: 0, y: 1 }}
               style={styles.coverPhotoFadeBottom}
             />
-            {/* Profile Avatar - positioned bottom-right, half overlapping */}
-            <TouchableOpacity
-              style={styles.profileAvatarButton}
-              onPress={() => setShowAvatarModal(true)}
-              activeOpacity={0.7}
-            >
-              {tierBorderGradient ? (
-                <GradientBorder
-                  colors={tierBorderGradient}
-                  borderWidth={2}
-                  borderRadius={28}
-                >
-                  <View style={styles.profileAvatarCircleWithGradient}>
+          </View>
+
+          {/* Profile Info Section - overlaps cover photo */}
+          <View style={styles.profileInfoSection}>
+            {/* Row: Avatar + Stats */}
+            <View style={styles.avatarStatsRow}>
+              {/* Avatar */}
+              <TouchableOpacity
+                style={styles.profileAvatarButton}
+                onPress={() => setShowAvatarModal(true)}
+                activeOpacity={0.7}
+              >
+                {tierBorderGradient ? (
+                  <GradientBorder
+                    colors={tierBorderGradient}
+                    borderWidth={2.5}
+                    borderRadius={38}
+                  >
+                    <View style={styles.profileAvatarCircleWithGradient}>
+                      {user?.avatar && user.avatar.startsWith('http') && !avatarError ? (
+                        <Image
+                          key={`avatar-${avatarKey}`}
+                          source={{ uri: `${user.avatar}&t=${avatarKey}` }}
+                          style={styles.profileAvatarImage}
+                          onLoad={() => setAvatarLoaded(true)}
+                          onError={() => {
+                            setAvatarLoaded(true);
+                            setAvatarError(true);
+                          }}
+                        />
+                      ) : (
+                        <ThemedText style={styles.profileAvatarInitial}>
+                          {user?.username?.[0]?.toUpperCase() || 'U'}
+                        </ThemedText>
+                      )}
+                    </View>
+                  </GradientBorder>
+                ) : (
+                  <View style={styles.profileAvatarCircle}>
                     {user?.avatar && user.avatar.startsWith('http') && !avatarError ? (
                       <Image
                         key={`avatar-${avatarKey}`}
@@ -932,124 +958,109 @@ export default function ProfileScreen() {
                       </ThemedText>
                     )}
                   </View>
-                </GradientBorder>
-              ) : (
-                <View style={styles.profileAvatarCircle}>
-                  {user?.avatar && user.avatar.startsWith('http') && !avatarError ? (
-                    <Image
-                      key={`avatar-${avatarKey}`}
-                      source={{ uri: `${user.avatar}&t=${avatarKey}` }}
-                      style={styles.profileAvatarImage}
-                      onLoad={() => setAvatarLoaded(true)}
-                      onError={() => {
-                        setAvatarLoaded(true);
-                        setAvatarError(true);
-                      }}
-                    />
-                  ) : (
-                    <ThemedText style={styles.profileAvatarInitial}>
-                      {user?.username?.[0]?.toUpperCase() || 'U'}
-                    </ThemedText>
-                  )}
+                )}
+              </TouchableOpacity>
+
+              {/* Stats columns */}
+              <View style={styles.statsColumns}>
+                <TouchableOpacity
+                  style={styles.statColumn}
+                  onPress={() => router.push('/profilePages/followers')}
+                  activeOpacity={0.7}
+                >
+                  <ThemedText style={styles.statNumber}>{formatCount(user?.followersCount)}</ThemedText>
+                  <ThemedText style={styles.statLabel}>Followers</ThemedText>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  style={styles.statColumn}
+                  onPress={() => router.push('/profilePages/following')}
+                  activeOpacity={0.7}
+                >
+                  <ThemedText style={styles.statNumber}>{formatCount(user?.followingCount)}</ThemedText>
+                  <ThemedText style={styles.statLabel}>Following</ThemedText>
+                </TouchableOpacity>
+                <View style={styles.statColumn}>
+                  <ThemedText style={styles.statNumber}>{formatCount(posts.length)}</ThemedText>
+                  <ThemedText style={styles.statLabel}>Posts</ThemedText>
                 </View>
-              )}
-            </TouchableOpacity>
-          </View>
-
-          {/* Followers / Following Row */}
-          <View style={styles.followStatsRow}>
-            <TouchableOpacity
-              style={styles.followStatItem}
-              onPress={() => router.push('/profilePages/followers')}
-              activeOpacity={0.7}
-            >
-              <ThemedText style={styles.followStatNumber}>{formatCount(user?.followersCount)}</ThemedText>
-              <ThemedText style={styles.followStatLabel}> Followers</ThemedText>
-            </TouchableOpacity>
-            <View style={styles.followStatDivider} />
-            <TouchableOpacity
-              style={styles.followStatItem}
-              onPress={() => router.push('/profilePages/following')}
-              activeOpacity={0.7}
-            >
-              <ThemedText style={styles.followStatNumber}>{formatCount(user?.followingCount)}</ThemedText>
-              <ThemedText style={styles.followStatLabel}> Following</ThemedText>
-            </TouchableOpacity>
-          </View>
-
-          {/* Social Icons Row with Edit Profile */}
-          <View style={styles.socialIconsRow}>
-            {/* Instagram */}
-            <TouchableOpacity
-              style={[styles.socialIconButton, !user?.instagramLink && styles.socialIconInactive]}
-              onPress={async () => {
-                if (user?.instagramLink) {
-                  try {
-                    const username = user.instagramLink.replace(/^https?:\/\/(www\.)?instagram\.com\//, '').replace(/\/$/, '');
-                    const appUrl = `instagram://user?username=${username}`;
-                    const webUrl = `https://instagram.com/${username}`;
-                    const supported = await Linking.canOpenURL(appUrl);
-                    if (supported) {
-                      await Linking.openURL(appUrl);
-                    } else {
-                      await Linking.openURL(webUrl);
-                    }
-                  } catch (error) {
-                    Alert.alert('Error', 'Failed to open Instagram');
-                  }
-                } else {
-                  Alert.alert('Not Configured', 'Add your Instagram username in Edit Profile');
-                }
-              }}
-              activeOpacity={0.7}
-            >
-              <Image
-                source={require('@/assets/images/instagram.png')}
-                style={styles.socialIconImage}
-                resizeMode="contain"
-              />
-            </TouchableOpacity>
-
-            {/* Discord */}
-            <TouchableOpacity
-              style={[styles.socialIconButton, !user?.discordLink && styles.socialIconInactive]}
-              onPress={async () => {
-                if (user?.discordLink) {
-                  try {
-                    await Clipboard.setStringAsync(user.discordLink);
-                    Alert.alert('Copied!', `Discord username "${user.discordLink}" copied to clipboard`);
-                  } catch (error) {
-                    Alert.alert('Error', 'Failed to copy Discord username');
-                  }
-                } else {
-                  Alert.alert('Not Configured', 'Add your Discord username in Edit Profile');
-                }
-              }}
-              activeOpacity={0.7}
-            >
-              <Image
-                source={require('@/assets/images/discord.png')}
-                style={styles.socialIconImage}
-                resizeMode="contain"
-              />
-            </TouchableOpacity>
-
-            {/* Edit Profile */}
-            <TouchableOpacity
-              style={styles.editProfileButton}
-              onPress={() => router.push('/profilePages/editProfile')}
-              activeOpacity={0.7}
-            >
-              <ThemedText style={styles.editProfileButtonText}>Edit Profile</ThemedText>
-            </TouchableOpacity>
-          </View>
-
-          {/* Bio Section */}
-          {user?.bio && (
-            <View style={styles.bioSection}>
-              <ThemedText style={styles.bioText}>{user.bio}</ThemedText>
+              </View>
             </View>
-          )}
+
+            {/* Bio */}
+            {user?.bio && (
+              <View style={styles.bioSection}>
+                <ThemedText style={styles.bioText}>{user.bio}</ThemedText>
+              </View>
+            )}
+
+            {/* Action Row: Edit Profile + Social Icons */}
+            <View style={styles.actionRow}>
+              <TouchableOpacity
+                style={styles.editProfileButton}
+                onPress={() => router.push('/profilePages/editProfile')}
+                activeOpacity={0.7}
+              >
+                <ThemedText style={styles.editProfileButtonText}>Edit Profile</ThemedText>
+              </TouchableOpacity>
+
+              <View style={styles.socialIconsGroup}>
+                {/* Instagram */}
+                <TouchableOpacity
+                  style={[styles.socialIconButton, !user?.instagramLink && styles.socialIconInactive]}
+                  onPress={async () => {
+                    if (user?.instagramLink) {
+                      try {
+                        const username = user.instagramLink.replace(/^https?:\/\/(www\.)?instagram\.com\//, '').replace(/\/$/, '');
+                        const appUrl = `instagram://user?username=${username}`;
+                        const webUrl = `https://instagram.com/${username}`;
+                        const supported = await Linking.canOpenURL(appUrl);
+                        if (supported) {
+                          await Linking.openURL(appUrl);
+                        } else {
+                          await Linking.openURL(webUrl);
+                        }
+                      } catch (error) {
+                        Alert.alert('Error', 'Failed to open Instagram');
+                      }
+                    } else {
+                      Alert.alert('Not Configured', 'Add your Instagram username in Edit Profile');
+                    }
+                  }}
+                  activeOpacity={0.7}
+                >
+                  <Image
+                    source={require('@/assets/images/instagram.png')}
+                    style={styles.socialIconImage}
+                    resizeMode="contain"
+                  />
+                </TouchableOpacity>
+
+                {/* Discord */}
+                <TouchableOpacity
+                  style={[styles.socialIconButton, !user?.discordLink && styles.socialIconInactive]}
+                  onPress={async () => {
+                    if (user?.discordLink) {
+                      try {
+                        await Clipboard.setStringAsync(user.discordLink);
+                        Alert.alert('Copied!', `Discord username "${user.discordLink}" copied to clipboard`);
+                      } catch (error) {
+                        Alert.alert('Error', 'Failed to copy Discord username');
+                      }
+                    } else {
+                      Alert.alert('Not Configured', 'Add your Discord username in Edit Profile');
+                    }
+                  }}
+                  activeOpacity={0.7}
+                >
+                  <Image
+                    source={require('@/assets/images/discord.png')}
+                    style={styles.socialIconImage}
+                    resizeMode="contain"
+                  />
+                </TouchableOpacity>
+              </View>
+            </View>
+          </View>
 
           {/* Tab Bar */}
           <View style={styles.tabBar}>
@@ -1566,10 +1577,9 @@ const styles = StyleSheet.create({
   // Cover photo area
   coverPhotoWrapper: {
     width: '100%',
-    height: 200,
-    backgroundColor: '#2c2f33',
-    overflow: 'visible',
-    zIndex: 2,
+    height: 180,
+    backgroundColor: '#1a1a1a',
+    overflow: 'hidden',
   },
   coverPhotoImage: {
     position: 'absolute',
@@ -1588,52 +1598,36 @@ const styles = StyleSheet.create({
     bottom: 0,
     left: 0,
     right: 0,
-    height: 60,
+    height: 80,
     zIndex: 1,
   },
-  coverPhotoUsername: {
-    position: 'absolute',
-    bottom: 8,
-    left: 20,
-    fontSize: 28,
-    fontWeight: '800',
-    color: '#fff',
-    letterSpacing: -0.5,
-    opacity: 1,
-    zIndex: 2,
-    lineHeight: 34,
-    includeFontPadding: false,
+  // Profile info section below cover
+  profileInfoSection: {
+    marginTop: -32,
+    paddingHorizontal: 20,
+    zIndex: 3,
   },
-  profileUsername: {
-    fontSize: 22,
-    fontWeight: '700',
-    color: '#fff',
-    letterSpacing: -0.3,
-    textAlign: 'center',
-    marginTop: 8,
-    marginBottom: 2,
+  avatarStatsRow: {
+    flexDirection: 'row',
+    alignItems: 'flex-end',
+    gap: 16,
   },
-  // Profile avatar - absolutely positioned bottom-right of cover photo, half overlapping
   profileAvatarButton: {
-    position: 'absolute',
-    bottom: -28,
-    right: 20,
-    zIndex: 4,
   },
   profileAvatarCircle: {
-    width: 56,
-    height: 56,
-    borderRadius: 28,
+    width: 76,
+    height: 76,
+    borderRadius: 38,
     backgroundColor: '#36393e',
     alignItems: 'center',
     justifyContent: 'center',
-    borderWidth: 2,
-    borderColor: '#2c2f33',
+    borderWidth: 3,
+    borderColor: '#0f0f0f',
   },
   profileAvatarCircleWithGradient: {
-    width: 56,
-    height: 56,
-    borderRadius: 28,
+    width: 76,
+    height: 76,
+    borderRadius: 38,
     backgroundColor: '#36393e',
     alignItems: 'center',
     justifyContent: 'center',
@@ -1641,72 +1635,78 @@ const styles = StyleSheet.create({
   profileAvatarImage: {
     width: '100%',
     height: '100%',
-    borderRadius: 28,
+    borderRadius: 38,
   },
   profileAvatarInitial: {
-    fontSize: 22,
+    fontSize: 28,
     fontWeight: '700',
     color: '#fff',
   },
-  // Followers / Following row
-  followStatsRow: {
+  // Stats columns beside avatar
+  statsColumns: {
     flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: 20,
-    marginTop: 4,
-    marginBottom: 4,
+    flex: 1,
+    justifyContent: 'space-around',
+    paddingBottom: 6,
   },
-  followStatItem: {
-    flexDirection: 'row',
+  statColumn: {
     alignItems: 'center',
   },
-  followStatNumber: {
-    fontSize: 14,
+  statNumber: {
+    fontSize: 17,
     fontWeight: '700',
     color: '#fff',
+    letterSpacing: -0.3,
   },
-  followStatLabel: {
-    fontSize: 14,
-    fontWeight: '400',
+  statLabel: {
+    fontSize: 11,
+    fontWeight: '500',
     color: '#72767d',
+    marginTop: 1,
+    letterSpacing: 0.2,
   },
-  followStatDivider: {
-    width: 1,
-    height: 14,
-    backgroundColor: '#72767d',
-    marginHorizontal: 12,
-  },
-  // Social icons row
-  socialIconsRow: {
+  // Action row: Edit Profile + Social icons
+  actionRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingHorizontal: 20,
-    marginBottom: 6,
-    gap: 12,
+    marginTop: 12,
+    gap: 10,
+  },
+  editProfileButton: {
+    flex: 1,
+    paddingVertical: 8,
+    backgroundColor: '#1e1e1e',
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: '#2a2a2a',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  editProfileButtonText: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: '#e0e0e0',
+  },
+  socialIconsGroup: {
+    flexDirection: 'row',
+    gap: 8,
   },
   socialIconButton: {
     width: 36,
     height: 36,
     borderRadius: 8,
-    backgroundColor: '#2c2f33',
+    backgroundColor: '#1e1e1e',
+    borderWidth: 1,
+    borderColor: '#2a2a2a',
     alignItems: 'center',
     justifyContent: 'center',
   },
   socialIconInactive: {
-    opacity: 0.4,
+    opacity: 0.35,
   },
   socialIconImage: {
-    width: 20,
-    height: 20,
-  },
-  editProfileButton: {
-    paddingVertical: 4,
-    paddingHorizontal: 8,
-  },
-  editProfileButtonText: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: '#c42743',
+    width: 18,
+    height: 18,
   },
   // Small avatar on the right
   smallAvatarButton: {
@@ -1779,13 +1779,12 @@ const styles = StyleSheet.create({
   },
   // Bio section
   bioSection: {
-    paddingHorizontal: 20,
-    marginBottom: 8,
+    marginTop: 10,
   },
   bioText: {
-    fontSize: 14,
+    fontSize: 13,
     color: '#b9bbbe',
-    lineHeight: 20,
+    lineHeight: 19,
   },
   sectionHeader: {
     flexDirection: 'row',

@@ -608,7 +608,7 @@ export default function ProfileViewScreen() {
       <ScrollView showsVerticalScrollIndicator={false} decelerationRate="fast">
         {/* Header Section */}
         <View style={styles.headerSection}>
-          {/* Top Header Icon - Back Button */}
+          {/* Top Header Icons */}
           <View style={styles.headerIconsRow}>
             <TouchableOpacity
               style={styles.headerIconButton}
@@ -617,6 +617,10 @@ export default function ProfileViewScreen() {
             >
               <IconSymbol size={20} name="chevron.left" color="#fff" />
             </TouchableOpacity>
+            <View style={styles.headerUsernameOverlay} pointerEvents="none">
+              <ThemedText style={styles.headerUsername} numberOfLines={1}>{viewedUser?.username || 'User'}</ThemedText>
+            </View>
+            <View style={styles.headerIconsSpacer} />
           </View>
 
           {/* Cover Photo Area */}
@@ -625,173 +629,171 @@ export default function ProfileViewScreen() {
               <Image source={{ uri: viewedUser.coverPhoto }} style={styles.coverPhotoImage} />
             ) : (
               <LinearGradient
-                colors={['#2c2f33', '#0f0f0f']}
+                colors={['#2c2f33', '#1a1a1a', '#0f0f0f']}
                 start={{ x: 0, y: 0 }}
                 end={{ x: 0, y: 1 }}
                 style={styles.coverPhotoGradient}
               />
             )}
-            {/* Bottom fade - subtle blend into background */}
+            {/* Bottom fade */}
             <LinearGradient
-              colors={['transparent', 'rgba(15, 15, 15, 0.6)', '#0f0f0f']}
-              locations={[0, 0.6, 1]}
+              colors={['transparent', 'rgba(15, 15, 15, 0.4)', 'rgba(15, 15, 15, 0.85)', '#0f0f0f']}
+              locations={[0, 0.4, 0.75, 1]}
               start={{ x: 0, y: 0 }}
               end={{ x: 0, y: 1 }}
               style={styles.coverPhotoFadeBottom}
             />
-            {/* Username overlaid on cover photo */}
-            {loadingUser && !viewedUser ? (
-              <View style={[styles.coverPhotoUsername, styles.skeletonText, { width: 120, height: 28 }]} />
-            ) : (
-              <ThemedText style={styles.coverPhotoUsername}>{viewedUser?.username || 'User'}</ThemedText>
-            )}
+          </View>
 
-            {/* Profile Avatar - positioned bottom-right, half overlapping */}
-            {loadingUser && !viewedUser ? (
-              <View style={[styles.profileAvatarButton, styles.profileAvatarCircle, styles.skeletonAvatar]} />
-            ) : tierBorderGradient ? (
-              <View style={styles.profileAvatarButton}>
+          {/* Profile Info Section - overlaps cover photo */}
+          <View style={styles.profileInfoSection}>
+            {/* Row: Avatar + Stats */}
+            <View style={styles.avatarStatsRow}>
+              {/* Avatar */}
+              {tierBorderGradient ? (
                 <GradientBorder
                   colors={tierBorderGradient}
-                  borderWidth={2}
-                  borderRadius={28}
+                  borderWidth={2.5}
+                  borderRadius={38}
                 >
                   <View style={styles.profileAvatarCircleWithGradient}>
                     {viewedUser?.avatar && viewedUser.avatar.startsWith('http') ? (
                       <Image source={{ uri: viewedUser.avatar }} style={styles.profileAvatarImage} />
                     ) : (
                       <ThemedText style={styles.profileAvatarInitial}>
-                        {viewedUser?.avatar || viewedUser?.username?.[0]?.toUpperCase() || 'U'}
+                        {viewedUser?.username?.[0]?.toUpperCase() || 'U'}
                       </ThemedText>
                     )}
                   </View>
                 </GradientBorder>
-              </View>
-            ) : (
-              <View style={styles.profileAvatarButton}>
+              ) : (
                 <View style={styles.profileAvatarCircle}>
                   {viewedUser?.avatar && viewedUser.avatar.startsWith('http') ? (
                     <Image source={{ uri: viewedUser.avatar }} style={styles.profileAvatarImage} />
                   ) : (
                     <ThemedText style={styles.profileAvatarInitial}>
-                      {viewedUser?.avatar || viewedUser?.username?.[0]?.toUpperCase() || 'U'}
+                      {viewedUser?.username?.[0]?.toUpperCase() || 'U'}
                     </ThemedText>
                   )}
                 </View>
+              )}
+
+              {/* Stats columns */}
+              <View style={styles.statsColumns}>
+                <TouchableOpacity
+                  style={styles.statColumn}
+                  onPress={() => router.push({
+                    pathname: '/profilePages/followers',
+                    params: { userId: viewedUser?.id }
+                  })}
+                  activeOpacity={0.7}
+                >
+                  <ThemedText style={styles.statNumber}>{formatCount(viewedUser?.followersCount)}</ThemedText>
+                  <ThemedText style={styles.statLabel}>Followers</ThemedText>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  style={styles.statColumn}
+                  onPress={() => router.push({
+                    pathname: '/profilePages/following',
+                    params: { userId: viewedUser?.id }
+                  })}
+                  activeOpacity={0.7}
+                >
+                  <ThemedText style={styles.statNumber}>{formatCount(viewedUser?.followingCount)}</ThemedText>
+                  <ThemedText style={styles.statLabel}>Following</ThemedText>
+                </TouchableOpacity>
+                <View style={styles.statColumn}>
+                  <ThemedText style={styles.statNumber}>{formatCount(posts.length)}</ThemedText>
+                  <ThemedText style={styles.statLabel}>Posts</ThemedText>
+                </View>
+              </View>
+            </View>
+
+            {/* Bio */}
+            {viewedUser?.bio && (
+              <View style={styles.bioSection}>
+                <ThemedText style={styles.bioText}>{viewedUser.bio}</ThemedText>
               </View>
             )}
-          </View>
 
-          {/* Followers / Following Row */}
-          <View style={styles.followStatsRow}>
-            <TouchableOpacity
-              style={styles.followStatItem}
-              onPress={() => router.push({
-                pathname: '/profilePages/followers',
-                params: { userId: viewedUser?.id }
-              })}
-              activeOpacity={0.7}
-            >
-              <ThemedText style={styles.followStatNumber}>{formatCount(viewedUser?.followersCount)}</ThemedText>
-              <ThemedText style={styles.followStatLabel}> Followers</ThemedText>
-            </TouchableOpacity>
-            <View style={styles.followStatDivider} />
-            <TouchableOpacity
-              style={styles.followStatItem}
-              onPress={() => router.push({
-                pathname: '/profilePages/following',
-                params: { userId: viewedUser?.id }
-              })}
-              activeOpacity={0.7}
-            >
-              <ThemedText style={styles.followStatNumber}>{formatCount(viewedUser?.followingCount)}</ThemedText>
-              <ThemedText style={styles.followStatLabel}> Following</ThemedText>
-            </TouchableOpacity>
-          </View>
+            {/* Action Row: Follow Button + Social Icons */}
+            <View style={styles.actionRow}>
+              <TouchableOpacity
+                style={[styles.followButton, isFollowing && styles.followButtonFollowing]}
+                onPress={handleFollowToggle}
+                disabled={followLoading}
+                activeOpacity={0.7}
+              >
+                <ThemedText style={styles.followButtonText}>
+                  {followLoading ? '...' : isFollowing ? 'Following' : 'Follow'}
+                </ThemedText>
+              </TouchableOpacity>
 
-          {/* Social Icons Row with Follow Button */}
-          <View style={styles.socialIconsRow}>
-            {/* Instagram */}
-            <TouchableOpacity
-              style={[styles.socialIconButton, !viewedUser?.instagramLink && styles.socialIconInactive]}
-              onPress={async () => {
-                if (viewedUser?.instagramLink) {
-                  try {
-                    const username = viewedUser.instagramLink.replace(/^https?:\/\/(www\.)?instagram\.com\//, '').replace(/\/$/, '');
-                    const appUrl = `instagram://user?username=${username}`;
-                    const webUrl = `https://instagram.com/${username}`;
-                    const supported = await Linking.canOpenURL(appUrl);
-                    if (supported) {
-                      await Linking.openURL(appUrl);
-                    } else {
-                      await Linking.openURL(webUrl);
+              <View style={styles.socialIconsGroup}>
+                {/* Instagram */}
+                <TouchableOpacity
+                  style={[styles.socialIconButton, !viewedUser?.instagramLink && styles.socialIconInactive]}
+                  onPress={async () => {
+                    if (viewedUser?.instagramLink) {
+                      try {
+                        const username = viewedUser.instagramLink.replace(/^https?:\/\/(www\.)?instagram\.com\//, '').replace(/\/$/, '');
+                        const appUrl = `instagram://user?username=${username}`;
+                        const webUrl = `https://instagram.com/${username}`;
+                        const supported = await Linking.canOpenURL(appUrl);
+                        if (supported) {
+                          await Linking.openURL(appUrl);
+                        } else {
+                          await Linking.openURL(webUrl);
+                        }
+                      } catch (error) {
+                        Alert.alert('Error', 'Failed to open Instagram');
+                      }
                     }
-                  } catch (error) {
-                    Alert.alert('Error', 'Failed to open Instagram');
-                  }
-                }
-              }}
-              activeOpacity={0.7}
-              disabled={!viewedUser?.instagramLink}
-            >
-              <Image
-                source={require('@/assets/images/instagram.png')}
-                style={styles.socialIconImage}
-                resizeMode="contain"
-              />
-            </TouchableOpacity>
+                  }}
+                  activeOpacity={0.7}
+                  disabled={!viewedUser?.instagramLink}
+                >
+                  <Image
+                    source={require('@/assets/images/instagram.png')}
+                    style={styles.socialIconImage}
+                    resizeMode="contain"
+                  />
+                </TouchableOpacity>
 
-            {/* Discord */}
-            <TouchableOpacity
-              style={[styles.socialIconButton, !viewedUser?.discordLink && styles.socialIconInactive]}
-              onPress={async () => {
-                if (viewedUser?.discordLink) {
-                  try {
-                    await Clipboard.setStringAsync(viewedUser.discordLink);
-                    Alert.alert('Copied!', `Discord username "${viewedUser.discordLink}" copied to clipboard`);
-                  } catch (error) {
-                    Alert.alert('Error', 'Failed to copy Discord username');
-                  }
-                }
-              }}
-              activeOpacity={0.7}
-              disabled={!viewedUser?.discordLink}
-            >
-              <Image
-                source={require('@/assets/images/discord.png')}
-                style={styles.socialIconImage}
-                resizeMode="contain"
-              />
-            </TouchableOpacity>
+                {/* Discord */}
+                <TouchableOpacity
+                  style={[styles.socialIconButton, !viewedUser?.discordLink && styles.socialIconInactive]}
+                  onPress={async () => {
+                    if (viewedUser?.discordLink) {
+                      try {
+                        await Clipboard.setStringAsync(viewedUser.discordLink);
+                        Alert.alert('Copied!', `Discord username "${viewedUser.discordLink}" copied to clipboard`);
+                      } catch (error) {
+                        Alert.alert('Error', 'Failed to copy Discord username');
+                      }
+                    }
+                  }}
+                  activeOpacity={0.7}
+                  disabled={!viewedUser?.discordLink}
+                >
+                  <Image
+                    source={require('@/assets/images/discord.png')}
+                    style={styles.socialIconImage}
+                    resizeMode="contain"
+                  />
+                </TouchableOpacity>
 
-            {/* Messages */}
-            <TouchableOpacity
-              style={styles.socialIconButton}
-              onPress={handleMessage}
-              activeOpacity={0.7}
-            >
-              <IconSymbol size={20} name="envelope.fill" color="#fff" />
-            </TouchableOpacity>
-
-            {/* Follow Button */}
-            <TouchableOpacity
-              style={[styles.followButton, isFollowing && styles.followButtonFollowing]}
-              onPress={handleFollowToggle}
-              disabled={followLoading}
-              activeOpacity={0.7}
-            >
-              <ThemedText style={styles.followButtonText}>
-                {followLoading ? '...' : isFollowing ? 'Following' : 'Follow'}
-              </ThemedText>
-            </TouchableOpacity>
-          </View>
-
-          {/* Bio Section */}
-          {viewedUser?.bio && (
-            <View style={styles.bioSection}>
-              <ThemedText style={styles.bioText}>{viewedUser.bio}</ThemedText>
+                {/* Messages */}
+                <TouchableOpacity
+                  style={styles.socialIconButton}
+                  onPress={handleMessage}
+                  activeOpacity={0.7}
+                >
+                  <IconSymbol size={18} name="envelope.fill" color="#fff" />
+                </TouchableOpacity>
+              </View>
             </View>
-          )}
+          </View>
         </View>
 
         {/* Tab Bar */}
@@ -833,15 +835,11 @@ export default function ProfileViewScreen() {
         >
         {/* Clips Tab */}
         <View style={{ width: screenWidth }}>
+        <View style={styles.sectionContainer}>
 
         {/* Clips Content */}
         <View style={styles.clipsSection}>
-          {loadingPosts ? (
-            <View style={styles.postsContainer}>
-              <ActivityIndicator size="large" color="#000" />
-              <ThemedText style={styles.loadingText}>Loading posts...</ThemedText>
-            </View>
-          ) : posts.length > 0 ? (
+          {posts.length > 0 ? (
             <ScrollView
               horizontal
               showsHorizontalScrollIndicator={false}
@@ -870,33 +868,40 @@ export default function ProfileViewScreen() {
               ))}
             </ScrollView>
           ) : (
-            <View style={styles.emptyStateSimple}>
-              <ThemedText style={styles.emptyStateSimpleText}>No clips yet</ThemedText>
+            <View style={styles.emptyState}>
+              <ThemedText style={styles.emptyStateTitle}>No clips yet</ThemedText>
+              <ThemedText style={styles.emptyStateSubtext}>
+                This user hasn't posted any clips
+              </ThemedText>
             </View>
           )}
+        </View>
         </View>
         </View>
 
         {/* Rank Cards Tab */}
         <View style={{ width: screenWidth }}>
-        {/* Rank Cards Content */}
-        <View style={[styles.rankCardsSection, {
-          marginBottom: focusedCardIndex !== null
-            ? (userGames.length > 2 ? -60 : userGames.length > 1 ? -50 : 0)
-            : (userGames.length > 2 ? 15 : userGames.length > 1 ? 20 : 25)
+        <View style={[styles.sectionContainer, {
+          paddingBottom: userGames.length > 2 ? 10 : userGames.length > 1 ? 8 : 4
         }]}>
+        {/* Rank Cards Content */}
+        <View style={styles.rankCardsSection}>
           {!riotAccount && !valorantAccount ? (
-            // Empty state when user has no gaming accounts linked
-            <View style={styles.emptyStateSimple}>
-              <ThemedText style={styles.emptyStateSimpleText}>No rank cards yet</ThemedText>
+            <View style={styles.emptyState}>
+              <ThemedText style={styles.emptyStateTitle}>No rank cards yet</ThemedText>
+              <ThemedText style={styles.emptyStateSubtext}>
+                This user hasn't linked any gaming accounts
+              </ThemedText>
             </View>
           ) : userGames.length === 0 ? (
-            // User has accounts but no enabled rank cards
-            <View style={styles.emptyStateSimple}>
-              <ThemedText style={styles.emptyStateSimpleText}>No rank cards yet</ThemedText>
+            <View style={styles.emptyState}>
+              <ThemedText style={styles.emptyStateTitle}>No rank cards yet</ThemedText>
+              <ThemedText style={styles.emptyStateSubtext}>
+                This user hasn't linked any gaming accounts
+              </ThemedText>
             </View>
           ) : userGames.length === 1 ? (
-            // Single Card View - clickable to open game stats
+            // Single Card View
             <View style={styles.verticalRankCardsContainer}>
               {(() => {
                 const game = userGames[0];
@@ -908,29 +913,13 @@ export default function ProfileViewScreen() {
                   displayUsername = `${riotAccount.gameName}#${riotAccount.tagLine}`;
                 }
 
-                const handleSingleCardPress = () => {
-                  if (game.name === 'Valorant') {
-                    router.push({
-                      pathname: '/components/valorantGameStats',
-                      params: { game: JSON.stringify(game) },
-                    });
-                  } else if (game.name === 'League of Legends' || game.name === 'TFT') {
-                    router.push({
-                      pathname: '/components/leagueGameStats',
-                      params: { game: JSON.stringify(game) },
-                    });
-                  }
-                };
-
                 return (
-                  <TouchableOpacity
+                  <View
                     key={game.id}
                     style={styles.verticalCardWrapper}
-                    onPress={handleSingleCardPress}
-                    activeOpacity={0.9}
                   >
-                    <RankCard game={game} username={displayUsername} viewOnly={true} userId={viewedUser?.id} />
-                  </TouchableOpacity>
+                    <RankCard game={game} username={displayUsername} viewOnly={false} isFocused={true} userId={viewedUser?.id} />
+                  </View>
                 );
               })()}
             </View>
@@ -938,35 +927,16 @@ export default function ProfileViewScreen() {
             // Multiple Cards View - Apple Wallet style stacked cards
             (() => {
               const totalCards = userGames.length;
-              const CARD_HEIGHT = 220;
-              const STACK_OFFSET = 50; // How much each card peeks from behind
-              const GAP = 20; // Gap between focused card and pushed cards
+              const CARD_HEIGHT = 240;
+              const STACK_OFFSET = 50;
 
-              // Calculate dynamic height based on focus state
-              // When collapsed: just the front card height (back cards peek above with negative offset)
-              // When focused: focused card + gap + pushed cards stacked below
-              let containerHeight = CARD_HEIGHT; // Just the front card height when collapsed
-              if (focusedCardIndex !== null) {
-                // Focused card at top + gap + pushed cards (maintaining their stack peek)
-                const pushedCardsCount = totalCards - 1;
-                // Pushed cards: one full card height + peeking offsets for others
-                const pushedStackHeight = pushedCardsCount > 0
-                  ? CARD_HEIGHT + ((pushedCardsCount - 1) * STACK_OFFSET)
-                  : 0;
-
-                // Total: focused card + gap + pushed stack
-                containerHeight = CARD_HEIGHT + GAP + pushedStackHeight;
-              }
-
-              // Calculate top margin to prevent cards from overlapping the title
-              // Back cards have negative offsets, so we need margin to compensate
+              const containerHeight = CARD_HEIGHT;
               const stackMarginTop = (totalCards - 1) * STACK_OFFSET;
 
               return (
                 <View style={[styles.verticalRankCardsContainer, { paddingBottom: 0 }]}>
                   <View style={[styles.stackedCardsWrapper, { height: containerHeight, marginTop: stackMarginTop }]}>
                     {userGames.map((game, index) => {
-                      // Use appropriate account username based on game
                       let displayUsername = viewedUser?.username || 'User';
 
                       if (game.name === 'Valorant' && valorantAccount) {
@@ -975,50 +945,28 @@ export default function ProfileViewScreen() {
                         displayUsername = `${riotAccount.gameName}#${riotAccount.tagLine}`;
                       }
 
-                      // Calculate stacking offset - cards behind peek from above
                       const reverseIndex = totalCards - 1 - index;
                       const topOffset = reverseIndex * -STACK_OFFSET;
                       const scale = 1 - (reverseIndex * 0.02);
-
-                      // Get animation value for this card (or create a default)
-                      const animatedTranslateY = cardAnimations[index] || new Animated.Value(0);
-
-                      // Calculate z-index: when focused, pushed cards need higher z-index to be tappable
-                      let cardZIndex = index + 1;
-                      if (focusedCardIndex !== null) {
-                        if (index === focusedCardIndex) {
-                          // Focused card gets lowest z-index (it's at top, doesn't need to be above others)
-                          cardZIndex = 1;
-                        } else {
-                          // Pushed cards get higher z-index to ensure they're tappable
-                          cardZIndex = totalCards + 1;
-                        }
-                      }
+                      const cardZIndex = index + 1;
 
                       return (
-                        <Animated.View
+                        <View
                           key={game.id}
                           style={[
                             styles.stackedCardItem,
                             {
                               bottom: 0,
                               top: topOffset,
-                              transform: [
-                                { scale },
-                                { translateY: animatedTranslateY }
-                              ],
+                              transform: [{ scale }],
                               zIndex: cardZIndex,
                             }
                           ]}
                         >
-                          <TouchableOpacity
-                            onPress={() => handleCardPress(index)}
-                            activeOpacity={0.9}
-                            style={{ width: '100%' }}
-                          >
-                            <RankCard game={game} username={displayUsername} viewOnly={true} userId={viewedUser?.id} />
-                          </TouchableOpacity>
-                        </Animated.View>
+                          <View style={{ width: '100%' }}>
+                            <RankCard game={game} username={displayUsername} viewOnly={false} isFocused={true} userId={viewedUser?.id} />
+                          </View>
+                        </View>
                       );
                     })}
                   </View>
@@ -1026,6 +974,7 @@ export default function ProfileViewScreen() {
               );
             })()
           )}
+        </View>
         </View>
         </View>
 
@@ -1244,28 +1193,43 @@ const styles = StyleSheet.create({
   },
   headerSection: {
     backgroundColor: '#0f0f0f',
+    paddingTop: 50,
   },
   // Header icons row
   headerIconsRow: {
     flexDirection: 'row',
-    justifyContent: 'flex-start',
+    justifyContent: 'space-between',
     alignItems: 'center',
     paddingHorizontal: 16,
-    paddingTop: 50,
     paddingBottom: 12,
   },
+  headerIconsSpacer: {
+    flex: 1,
+  },
+  headerUsernameOverlay: {
+    position: 'absolute',
+    left: 0,
+    right: 0,
+    alignItems: 'center',
+  },
+  headerUsername: {
+    fontSize: 22,
+    fontWeight: '800',
+    color: '#fff',
+    textAlign: 'center',
+    letterSpacing: -0.5,
+  },
   headerIconButton: {
-    padding: 8,
+    padding: 6,
     alignItems: 'center',
     justifyContent: 'center',
   },
   // Cover photo area
   coverPhotoWrapper: {
     width: '100%',
-    height: 200,
-    backgroundColor: '#2c2f33',
-    overflow: 'visible',
-    zIndex: 2,
+    height: 180,
+    backgroundColor: '#1a1a1a',
+    overflow: 'hidden',
   },
   coverPhotoImage: {
     position: 'absolute',
@@ -1284,43 +1248,34 @@ const styles = StyleSheet.create({
     bottom: 0,
     left: 0,
     right: 0,
-    height: 60,
+    height: 80,
     zIndex: 1,
   },
-  coverPhotoUsername: {
-    position: 'absolute',
-    bottom: 8,
-    left: 20,
-    fontSize: 28,
-    fontWeight: '800',
-    color: '#fff',
-    letterSpacing: -0.5,
-    opacity: 1,
-    zIndex: 2,
-    lineHeight: 34,
-    includeFontPadding: false,
+  // Profile info section below cover
+  profileInfoSection: {
+    marginTop: -32,
+    paddingHorizontal: 20,
+    zIndex: 3,
   },
-  // Profile avatar - absolutely positioned bottom-right of cover photo, half overlapping
-  profileAvatarButton: {
-    position: 'absolute',
-    bottom: -28,
-    right: 20,
-    zIndex: 4,
+  avatarStatsRow: {
+    flexDirection: 'row',
+    alignItems: 'flex-end',
+    gap: 16,
   },
   profileAvatarCircle: {
-    width: 56,
-    height: 56,
-    borderRadius: 28,
+    width: 76,
+    height: 76,
+    borderRadius: 38,
     backgroundColor: '#36393e',
     alignItems: 'center',
     justifyContent: 'center',
-    borderWidth: 2,
-    borderColor: '#2c2f33',
+    borderWidth: 3,
+    borderColor: '#0f0f0f',
   },
   profileAvatarCircleWithGradient: {
-    width: 56,
-    height: 56,
-    borderRadius: 28,
+    width: 76,
+    height: 76,
+    borderRadius: 38,
     backgroundColor: '#36393e',
     alignItems: 'center',
     justifyContent: 'center',
@@ -1328,91 +1283,90 @@ const styles = StyleSheet.create({
   profileAvatarImage: {
     width: '100%',
     height: '100%',
-    borderRadius: 28,
+    borderRadius: 38,
   },
   profileAvatarInitial: {
-    fontSize: 22,
+    fontSize: 28,
     fontWeight: '700',
     color: '#fff',
   },
-  // Followers / Following row
-  followStatsRow: {
+  // Stats columns beside avatar
+  statsColumns: {
     flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: 20,
-    marginTop: 4,
-    marginBottom: 4,
+    flex: 1,
+    justifyContent: 'space-around',
+    paddingBottom: 6,
   },
-  followStatItem: {
-    flexDirection: 'row',
+  statColumn: {
     alignItems: 'center',
   },
-  followStatNumber: {
-    fontSize: 14,
+  statNumber: {
+    fontSize: 17,
     fontWeight: '700',
     color: '#fff',
+    letterSpacing: -0.3,
   },
-  followStatLabel: {
-    fontSize: 14,
-    fontWeight: '400',
+  statLabel: {
+    fontSize: 11,
+    fontWeight: '500',
     color: '#72767d',
+    marginTop: 1,
+    letterSpacing: 0.2,
   },
-  followStatDivider: {
-    width: 1,
-    height: 14,
-    backgroundColor: '#72767d',
-    marginHorizontal: 12,
-  },
-  // Social icons row
-  socialIconsRow: {
+  // Action row: Follow Button + Social icons
+  actionRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingHorizontal: 20,
-    marginBottom: 6,
-    gap: 12,
-  },
-  socialIconButton: {
-    width: 36,
-    height: 36,
-    borderRadius: 8,
-    backgroundColor: '#2c2f33',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  socialIconInactive: {
-    opacity: 0.4,
-  },
-  socialIconImage: {
-    width: 20,
-    height: 20,
+    marginTop: 12,
+    gap: 10,
   },
   followButton: {
-    height: 36,
-    paddingHorizontal: 16,
+    flex: 1,
+    paddingVertical: 8,
     backgroundColor: '#c42743',
     borderRadius: 8,
     alignItems: 'center',
     justifyContent: 'center',
   },
   followButtonFollowing: {
-    backgroundColor: '#2c2f33',
+    backgroundColor: '#1e1e1e',
     borderWidth: 1,
-    borderColor: '#36393e',
+    borderColor: '#2a2a2a',
   },
   followButtonText: {
     fontSize: 13,
     fontWeight: '600',
     color: '#fff',
   },
+  socialIconsGroup: {
+    flexDirection: 'row',
+    gap: 8,
+  },
+  socialIconButton: {
+    width: 36,
+    height: 36,
+    borderRadius: 8,
+    backgroundColor: '#1e1e1e',
+    borderWidth: 1,
+    borderColor: '#2a2a2a',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  socialIconInactive: {
+    opacity: 0.35,
+  },
+  socialIconImage: {
+    width: 18,
+    height: 18,
+  },
   // Bio section
   bioSection: {
-    paddingHorizontal: 20,
-    marginBottom: 8,
+    marginTop: 10,
   },
   bioText: {
-    fontSize: 14,
+    fontSize: 13,
     color: '#b9bbbe',
-    lineHeight: 20,
+    lineHeight: 19,
   },
   modalOverlay: {
     flex: 1,
@@ -1523,9 +1477,9 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    paddingHorizontal: 16,
-    paddingTop: 16,
-    paddingBottom: 12,
+    paddingHorizontal: 20,
+    paddingTop: 20,
+    paddingBottom: 10,
   },
   sectionHeaderLeft: {
     flexDirection: 'row',
@@ -1533,10 +1487,11 @@ const styles = StyleSheet.create({
     gap: 8,
   },
   sectionHeaderTitle: {
-    fontSize: 18,
-    fontWeight: '700',
-    color: '#fff',
-    letterSpacing: -0.5,
+    fontSize: 12,
+    fontWeight: '600',
+    color: '#444',
+    letterSpacing: 1,
+    textTransform: 'uppercase',
   },
   viewAllButton: {
     flexDirection: 'row',
@@ -1558,21 +1513,26 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: '#424549',
   },
+  sectionContainer: {
+    marginHorizontal: 0,
+    marginBottom: 4,
+  },
   clipsSection: {
-    marginBottom: 20,
+    marginBottom: 8,
   },
   rankCardsSection: {
-    marginBottom: 20,
+    marginBottom: 8,
   },
   horizontalClipsContainer: {
-    paddingHorizontal: 16,
-    gap: 12,
+    paddingLeft: 20,
+    paddingRight: 20,
+    gap: 6,
   },
   horizontalClipItem: {
-    width: 200,
+    width: 120,
     height: 120,
-    backgroundColor: '#36393e',
-    borderRadius: 12,
+    backgroundColor: '#1a1a1a',
+    borderRadius: 4,
     overflow: 'hidden',
     position: 'relative',
   },
@@ -1581,7 +1541,7 @@ const styles = StyleSheet.create({
     height: '100%',
   },
   verticalRankCardsContainer: {
-    paddingHorizontal: 12,
+    paddingHorizontal: 6,
     paddingTop: 18,
     paddingBottom: 20,
     gap: 16,
@@ -1636,14 +1596,14 @@ const styles = StyleSheet.create({
   emptyState: {
     alignItems: 'center',
     justifyContent: 'center',
-    paddingVertical: 60,
-    paddingHorizontal: 32,
+    paddingVertical: 16,
+    paddingHorizontal: 24,
   },
   emptyStateTitle: {
-    fontSize: 22,
-    fontWeight: '700',
-    color: '#fff',
-    marginBottom: 10,
+    fontSize: 15,
+    fontWeight: '600',
+    color: '#72767d',
+    marginBottom: 6,
   },
   emptyStateText: {
     fontSize: 16,
@@ -1651,10 +1611,11 @@ const styles = StyleSheet.create({
     marginTop: 12,
   },
   emptyStateSubtext: {
-    fontSize: 14,
-    color: '#b9bbbe',
+    fontSize: 12,
+    color: '#555',
     textAlign: 'center',
-    marginTop: 8,
+    lineHeight: 17,
+    maxWidth: 240,
   },
   emptyRankCardsContainer: {
     alignItems: 'center',
@@ -1696,17 +1657,17 @@ const styles = StyleSheet.create({
   },
   videoDuration: {
     position: 'absolute',
-    bottom: 8,
-    right: 8,
-    backgroundColor: 'rgba(0, 0, 0, 0.7)',
-    borderRadius: 4,
-    paddingHorizontal: 6,
-    paddingVertical: 3,
+    bottom: 4,
+    right: 4,
+    backgroundColor: 'rgba(0, 0, 0, 0.45)',
+    borderRadius: 3,
+    paddingHorizontal: 4,
+    paddingVertical: 1,
   },
   videoDurationText: {
-    fontSize: 11,
-    fontWeight: '600',
-    color: '#fff',
+    fontSize: 9,
+    fontWeight: '500',
+    color: 'rgba(255, 255, 255, 0.85)',
   },
   skeletonAvatar: {
     backgroundColor: '#e5e5e5',
@@ -1716,11 +1677,11 @@ const styles = StyleSheet.create({
     borderRadius: 4,
   },
   achievementsSection: {
-    marginBottom: 20,
+    marginBottom: 8,
   },
   horizontalAchievementsContainer: {
-    paddingHorizontal: 16,
-    gap: 12,
+    paddingHorizontal: 20,
+    gap: 6,
   },
   achievementCard: {
     width: 140,
