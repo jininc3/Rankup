@@ -3,10 +3,11 @@ import { IconSymbol } from '@/components/ui/icon-symbol';
 import { db } from '@/config/firebase';
 import { useAuth } from '@/contexts/AuthContext';
 import { doc, getDoc, setDoc, Timestamp } from 'firebase/firestore';
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import {
   ActivityIndicator,
   Alert,
+  Keyboard,
   KeyboardAvoidingView,
   Modal,
   Platform,
@@ -52,16 +53,60 @@ export default function PostDuoCard({
   const [selectedGame, setSelectedGame] = useState<'valorant' | 'league' | null>(null);
   const [message, setMessage] = useState('');
   const [posting, setPosting] = useState(false);
+  const [activeValorantPost, setActiveValorantPost] = useState(false);
+  const [activeLeaguePost, setActiveLeaguePost] = useState(false);
+  const [checkingPosts, setCheckingPosts] = useState(false);
+  const scrollViewRef = useRef<ScrollView>(null);
 
-  // Reset state when modal opens
+  // Scroll to bottom when keyboard shows so the post button stays visible
+  useEffect(() => {
+    const event = Platform.OS === 'ios' ? 'keyboardWillShow' : 'keyboardDidShow';
+    const sub = Keyboard.addListener(event, () => {
+      setTimeout(() => scrollViewRef.current?.scrollToEnd({ animated: true }), 100);
+    });
+    return () => sub.remove();
+  }, []);
+
+  // Reset state and check for active posts when modal opens
   useEffect(() => {
     if (visible) {
       setSelectedGame(null);
       setMessage('');
+      checkActivePosts();
     }
   }, [visible]);
 
-  const selectedCard = selectedGame === 'valorant' ? valorantCard : selectedGame === 'league' ? leagueCard : null;
+  const checkActivePosts = async () => {
+    if (!user?.id) return;
+    setCheckingPosts(true);
+    try {
+      const now = new Date();
+      const [valDoc, leagueDoc] = await Promise.all([
+        valorantCard ? getDoc(doc(db, 'duoPosts', `${user.id}_valorant`)) : Promise.resolve(null),
+        leagueCard ? getDoc(doc(db, 'duoPosts', `${user.id}_league`)) : Promise.resolve(null),
+      ]);
+
+      const valData = valDoc?.exists() ? valDoc.data() : null;
+      setActiveValorantPost(
+        !!(valData && valData.expiresAt && valData.expiresAt.toDate() > now)
+      );
+
+      const leagueData = leagueDoc?.exists() ? leagueDoc.data() : null;
+      setActiveLeaguePost(
+        !!(leagueData && leagueData.expiresAt && leagueData.expiresAt.toDate() > now)
+      );
+    } catch (error) {
+      console.error('Error checking active posts:', error);
+    } finally {
+      setCheckingPosts(false);
+    }
+  };
+
+  // Cards available to post (not already active in feed)
+  const availableValorantCard = valorantCard && !activeValorantPost ? valorantCard : null;
+  const availableLeagueCard = leagueCard && !activeLeaguePost ? leagueCard : null;
+
+  const selectedCard = selectedGame === 'valorant' ? availableValorantCard : selectedGame === 'league' ? availableLeagueCard : null;
 
   const getInGameIcon = () => selectedGame === 'valorant' ? valorantInGameIcon : leagueInGameIcon;
   const getInGameName = () => selectedGame === 'valorant' ? valorantInGameName : leagueInGameName;
@@ -123,7 +168,8 @@ export default function PostDuoCard({
     onClose();
   };
 
-  const hasOnlyOneCard = (valorantCard ? 1 : 0) + (leagueCard ? 1 : 0) === 1;
+  const hasOnlyOneCard = (availableValorantCard ? 1 : 0) + (availableLeagueCard ? 1 : 0) === 1;
+  const hasNoCards = !availableValorantCard && !availableLeagueCard;
 
   return (
     <Modal
@@ -134,7 +180,8 @@ export default function PostDuoCard({
     >
       <KeyboardAvoidingView
         style={styles.container}
-        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+        keyboardVerticalOffset={Platform.OS === 'ios' ? 40 : 0}
       >
         <View style={styles.handle} />
 
@@ -146,7 +193,21 @@ export default function PostDuoCard({
           </TouchableOpacity>
         </View>
 
-        <ScrollView showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled">
+        <ScrollView ref={scrollViewRef} showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled" contentContainerStyle={styles.scrollContent}>
+          {checkingPosts ? (
+            <View style={styles.emptyState}>
+              <ActivityIndicator size="small" color="#a08845" />
+            </View>
+          ) : hasNoCards ? (
+            <View style={styles.emptyState}>
+              <ThemedText style={styles.emptyStateText}>
+                {!valorantCard && !leagueCard
+                  ? 'You need to create a duo card first'
+                  : 'Your cards are already posted in the feed. You can post again once they expire after 24 hours.'}
+              </ThemedText>
+            </View>
+          ) : (
+          <>
           {/* Card selection header */}
           <View style={styles.cardSectionHeader}>
             <ThemedText style={styles.label}>{selectedGame ? 'YOUR CARD' : 'SELECT CARD'}</ThemedText>
@@ -159,7 +220,7 @@ export default function PostDuoCard({
 
           <View style={styles.cardOptions}>
             {/* Valorant card - show if no selection yet, or if it's the selected one */}
-            {valorantCard && (!selectedGame || selectedGame === 'valorant') && (
+            {availableValorantCard && (!selectedGame || selectedGame === 'valorant') && (
               <TouchableOpacity
                 style={[styles.cardOption, selectedGame === 'valorant' && styles.cardOptionSelected]}
                 onPress={() => !selectedGame && setSelectedGame('valorant')}
@@ -191,7 +252,7 @@ export default function PostDuoCard({
             )}
 
             {/* League card - show if no selection yet, or if it's the selected one */}
-            {leagueCard && (!selectedGame || selectedGame === 'league') && (
+            {availableLeagueCard && (!selectedGame || selectedGame === 'league') && (
               <TouchableOpacity
                 style={[styles.cardOption, selectedGame === 'league' && styles.cardOptionSelected]}
                 onPress={() => !selectedGame && setSelectedGame('league')}
@@ -223,6 +284,10 @@ export default function PostDuoCard({
             )}
           </View>
 
+          {selectedCard && (
+            <ThemedText style={styles.hint}>Your card will be visible in the feed for 24 hours</ThemedText>
+          )}
+
           {/* Message Input - shown after selecting a card */}
           {selectedCard && (
             <>
@@ -238,30 +303,31 @@ export default function PostDuoCard({
                 numberOfLines={2}
               />
               <ThemedText style={styles.charCount}>{message.length}/140</ThemedText>
-
-              <ThemedText style={styles.hint}>Your card will be visible in the feed for 24 hours</ThemedText>
             </>
           )}
+          {/* Post Button */}
+          {selectedCard && (
+            <View style={styles.bottomSection}>
+              <TouchableOpacity
+                style={[styles.postButton, (!selectedCard || posting) && styles.postButtonDisabled]}
+                onPress={handlePost}
+                disabled={!selectedCard || posting}
+                activeOpacity={0.8}
+              >
+                {posting ? (
+                  <View style={styles.postingRow}>
+                    <ActivityIndicator size="small" color="#fff" />
+                    <ThemedText style={styles.postButtonText}>Posting...</ThemedText>
+                  </View>
+                ) : (
+                  <ThemedText style={styles.postButtonText}>Post to Feed</ThemedText>
+                )}
+              </TouchableOpacity>
+            </View>
+          )}
+          </>
+          )}
         </ScrollView>
-
-        {/* Post Button */}
-        <View style={styles.bottomSection}>
-          <TouchableOpacity
-            style={[styles.postButton, (!selectedCard || posting) && styles.postButtonDisabled]}
-            onPress={handlePost}
-            disabled={!selectedCard || posting}
-            activeOpacity={0.8}
-          >
-            {posting ? (
-              <View style={styles.postingRow}>
-                <ActivityIndicator size="small" color="#fff" />
-                <ThemedText style={styles.postButtonText}>Posting...</ThemedText>
-              </View>
-            ) : (
-              <ThemedText style={styles.postButtonText}>Post to Feed</ThemedText>
-            )}
-          </TouchableOpacity>
-        </View>
       </KeyboardAvoidingView>
     </Modal>
   );
@@ -272,6 +338,8 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: '#111',
     paddingHorizontal: 20,
+  },
+  scrollContent: {
     paddingBottom: 34,
   },
   handle: {
@@ -368,5 +436,17 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 10,
+  },
+  emptyState: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 60,
+  },
+  emptyStateText: {
+    fontSize: 14,
+    color: '#888',
+    textAlign: 'center',
+    lineHeight: 20,
+    paddingHorizontal: 20,
   },
 });

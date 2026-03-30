@@ -1024,13 +1024,24 @@ export default function DuoFinderScreen() {
       {/* Header */}
       <View style={styles.header}>
         <ThemedText style={styles.headerTitle}>DUO FINDER</ThemedText>
-        <TouchableOpacity
-          style={styles.myCardsHeaderButton}
-          onPress={() => setShowMyCards(true)}
-          activeOpacity={0.7}
-        >
-          <ThemedText style={styles.myCardsHeaderText}>My Cards</ThemedText>
-        </TouchableOpacity>
+        <View style={styles.headerButtons}>
+          {hasCards && selectedTab === 'findDuo' && (
+            <TouchableOpacity
+              style={styles.headerAddButton}
+              onPress={() => setShowPostDuoCard(true)}
+              activeOpacity={0.7}
+            >
+              <IconSymbol size={14} name="plus" color="#fff" />
+            </TouchableOpacity>
+          )}
+          <TouchableOpacity
+            style={styles.myCardsHeaderButton}
+            onPress={() => setShowMyCards(true)}
+            activeOpacity={0.7}
+          >
+            <ThemedText style={styles.myCardsHeaderText}>My Cards</ThemedText>
+          </TouchableOpacity>
+        </View>
       </View>
 
       {/* Tabs - Fixed at top */}
@@ -1237,16 +1248,6 @@ export default function DuoFinderScreen() {
             ListFooterComponent={<View style={styles.bottomSpacer} />}
           />
 
-          {/* FAB - Post Duo Card */}
-          {hasCards && (
-            <TouchableOpacity
-              style={styles.fab}
-              onPress={() => setShowPostDuoCard(true)}
-              activeOpacity={0.8}
-            >
-              <IconSymbol size={22} name="plus" color="#fff" />
-            </TouchableOpacity>
-          )}
         </View>
       </ScrollView>
 
@@ -1528,6 +1529,11 @@ const styles = StyleSheet.create({
     letterSpacing: 0.3,
     textTransform: 'uppercase',
   },
+  headerButtons: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
   myCardsHeaderButton: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -1604,21 +1610,13 @@ const styles = StyleSheet.create({
   feedCardWrapper: {
     marginBottom: 4,
   },
-  fab: {
-    position: 'absolute',
-    bottom: 24,
-    right: 20,
-    width: 56,
-    height: 56,
-    borderRadius: 28,
+  headerAddButton: {
+    width: 26,
+    height: 26,
+    borderRadius: 13,
     backgroundColor: '#a08845',
     alignItems: 'center',
     justifyContent: 'center',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.3,
-    shadowRadius: 6,
-    elevation: 8,
   },
   // Section Headers - Parties style
   sectionHeader: {

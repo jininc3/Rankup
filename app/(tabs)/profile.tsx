@@ -1577,7 +1577,7 @@ const styles = StyleSheet.create({
   // Cover photo area
   coverPhotoWrapper: {
     width: '100%',
-    height: 180,
+    height: 130,
     backgroundColor: '#1a1a1a',
     overflow: 'hidden',
   },

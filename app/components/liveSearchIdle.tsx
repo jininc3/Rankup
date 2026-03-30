@@ -336,12 +336,12 @@ export default function LiveSearchIdle({
       {/* No cards hint */}
       {!hasCards && (
         <TouchableOpacity
-          style={styles.createCardBtn}
+          style={[styles.createCardBtn, { borderColor: accentColorFaint, backgroundColor: accentColorFaint }]}
           onPress={onCreateCard}
           activeOpacity={0.7}
         >
-          <IconSymbol size={14} name="plus" color="#a08845" />
-          <ThemedText style={styles.createCardText}>Create a duo card to start</ThemedText>
+          <IconSymbol size={14} name="plus" color={accentColor} />
+          <ThemedText style={[styles.createCardText, { color: accentColor }]}>Create a duo card to start</ThemedText>
         </TouchableOpacity>
       )}
     </View>
@@ -565,12 +565,9 @@ const styles = StyleSheet.create({
     paddingHorizontal: 18,
     borderRadius: 10,
     borderWidth: 1,
-    borderColor: 'rgba(160, 136, 69, 0.2)',
-    backgroundColor: 'rgba(160, 136, 69, 0.06)',
   },
   createCardText: {
     fontSize: 13,
     fontWeight: '600',
-    color: '#a08845',
   },
 });
