@@ -182,9 +182,9 @@ export default function DuoCard({ duo, onPress, onMessage, onViewProfile, onDele
       activeOpacity={0.7}
     >
       <LinearGradient
-        colors={['#2a2a2a', '#1a1a1a']}
+        colors={isLeague ? ['#0f1a2e', '#0a1220', '#060d18'] : ['#2a1216', '#1a0c10', '#110810']}
         start={{ x: 0, y: 0 }}
-        end={{ x: 0, y: 1 }}
+        end={{ x: 0.3, y: 1 }}
         style={[styles.innerBorder, { borderColor: isLeague ? '#1a3a5c' : '#5c1a1a' }]}
       >
       {/* Header Section: In-Game Icon + In-Game Name | Time Ago | Game Logo */}
@@ -327,14 +327,14 @@ export default function DuoCard({ duo, onPress, onMessage, onViewProfile, onDele
 
 const styles = StyleSheet.create({
   container: {
-    backgroundColor: '#222',
+    backgroundColor: '#0d0d12',
     borderRadius: 12,
     padding: 6,
     marginBottom: 10,
     shadowColor: '#000',
     shadowOffset: { width: -3, height: 4 },
-    shadowOpacity: 0.5,
-    shadowRadius: 5,
+    shadowOpacity: 0.6,
+    shadowRadius: 6,
     elevation: 8,
   },
   innerBorder: {
@@ -356,7 +356,7 @@ const styles = StyleSheet.create({
   },
   headerDivider: {
     height: 1,
-    backgroundColor: '#2a2a2a',
+    backgroundColor: 'rgba(255,255,255,0.06)',
     marginHorizontal: 2,
   },
   userSection: {
@@ -369,7 +369,7 @@ const styles = StyleSheet.create({
     width: 36,
     height: 36,
     borderRadius: 8,
-    backgroundColor: '#252525',
+    backgroundColor: 'rgba(255,255,255,0.06)',
     alignItems: 'center',
     justifyContent: 'center',
     overflow: 'hidden',
@@ -399,7 +399,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     gap: 6,
     paddingVertical: 10,
-    backgroundColor: '#141414',
+    backgroundColor: 'rgba(0,0,0,0.3)',
     borderRadius: 10,
     flex: 1,
   },
@@ -423,7 +423,7 @@ const styles = StyleSheet.create({
     width: 18,
     height: 18,
     borderRadius: 9,
-    backgroundColor: '#252525',
+    backgroundColor: 'rgba(255,255,255,0.08)',
     alignItems: 'center',
     justifyContent: 'center',
     overflow: 'hidden',
@@ -513,7 +513,7 @@ const styles = StyleSheet.create({
   divider: {
     width: 1,
     height: 30,
-    backgroundColor: '#252525',
+    backgroundColor: 'rgba(255,255,255,0.06)',
   },
   messageSection: {
     paddingHorizontal: 4,
