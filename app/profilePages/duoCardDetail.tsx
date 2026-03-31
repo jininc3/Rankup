@@ -2,10 +2,9 @@ import { ThemedText } from '@/components/themed-text';
 import { IconSymbol } from '@/components/ui/icon-symbol';
 import { Image, StyleSheet, TouchableOpacity, View, ScrollView, Alert } from 'react-native';
 import { useRouter, useLocalSearchParams } from 'expo-router';
-import { LinearGradient } from 'expo-linear-gradient';
 import { useState, useEffect } from 'react';
 import { getRecentMatches, RecentMatchResult } from '@/services/riotService';
-import { doc, setDoc, serverTimestamp } from 'firebase/firestore';
+import { doc, setDoc, getDoc, serverTimestamp } from 'firebase/firestore';
 import { db } from '@/config/firebase';
 
 // League rank icon mapping
@@ -187,7 +186,6 @@ export default function DuoCardDetailScreen() {
 
   const [recentMatches, setRecentMatches] = useState<RecentMatchResult[]>([]);
   const [loadingMatches, setLoadingMatches] = useState(true);
-  const [avatarError, setAvatarError] = useState(false);
 
   // Editable state for own card
   const [mainRole, setMainRole] = useState(initialMainRole);
@@ -203,9 +201,7 @@ export default function DuoCardDetailScreen() {
                      mainAgent !== initialMainAgent ||
                      lookingFor !== initialLookingFor;
 
-  // Theme colors based on game
   const gameAccentColor = game === 'valorant' ? '#8b3d47' : '#3d6a70';
-  const gameAccentLight = game === 'valorant' ? '#a85561' : '#4d8a92';
 
   const roles = game === 'valorant' ? VALORANT_ROLES : LEAGUE_ROLES;
   const agents = mainRole
@@ -244,8 +240,41 @@ export default function DuoCardDetailScreen() {
         return;
       }
       setLoadingMatches(true);
-      const result = await getRecentMatches(userId, game);
-      setRecentMatches(result.matches);
+
+      if (game === 'valorant') {
+        // Read from Firestore cache instead of calling Cloud Function
+        try {
+          const userDoc = await getDoc(doc(db, 'users', userId));
+          if (userDoc.exists()) {
+            const matchHistory = userDoc.data().valorantStats?.matchHistory;
+            if (matchHistory && Array.isArray(matchHistory) && matchHistory.length > 0) {
+              const mapped: RecentMatchResult[] = matchHistory.map((m: any) => ({
+                won: m.won,
+                agent: m.agent,
+                kills: m.kills,
+                deaths: m.deaths,
+                assists: m.assists,
+                map: m.map,
+                score: m.score,
+                playedAt: m.playedAt || (m.gameStart ? m.gameStart * 1000 : undefined),
+              }));
+              setRecentMatches(mapped);
+            } else {
+              setRecentMatches([]);
+            }
+          } else {
+            setRecentMatches([]);
+          }
+        } catch (error) {
+          console.error('Error fetching Valorant matches from Firestore:', error);
+          setRecentMatches([]);
+        }
+      } else {
+        // League: use Cloud Function
+        const result = await getRecentMatches(userId, game);
+        setRecentMatches(result.matches);
+      }
+
       setLoadingMatches(false);
     };
 
@@ -278,442 +307,324 @@ export default function DuoCardDetailScreen() {
 
   return (
     <View style={styles.container}>
+      {/* Close Button */}
+      <TouchableOpacity style={styles.closeButton} onPress={() => router.back()}>
+        <IconSymbol size={24} name="xmark" color="#fff" />
+      </TouchableOpacity>
+
       <ScrollView
-        style={styles.scrollView}
+        style={styles.scrollContent}
         showsVerticalScrollIndicator={false}
-        contentContainerStyle={styles.scrollContent}
+        contentContainerStyle={styles.scrollContentContainer}
       >
-        {/* Header */}
-        <View style={styles.header}>
-          <TouchableOpacity
-            style={styles.backButton}
-            onPress={() => router.back()}
-          >
-            <IconSymbol size={20} name="chevron.left" color="#888" />
-          </TouchableOpacity>
-          <ThemedText style={styles.headerTitle}>
-            {isOwnCard ? 'EDIT CARD' : 'DUO PROFILE'}
-          </ThemedText>
-          <View style={styles.headerSpacer} />
+        {/* Profile Section */}
+        <TouchableOpacity
+          style={styles.profileSection}
+          onPress={!isOwnCard ? handleUserPress : undefined}
+          activeOpacity={!isOwnCard ? 0.7 : 1}
+          disabled={isOwnCard}
+        >
+          <View style={styles.avatarContainer}>
+            {inGameIcon && inGameIcon.startsWith('http') ? (
+              <Image source={{ uri: inGameIcon }} style={styles.avatar} />
+            ) : avatar && avatar.startsWith('http') ? (
+              <Image source={{ uri: avatar }} style={styles.avatar} />
+            ) : (
+              <View style={styles.avatarPlaceholder}>
+                <IconSymbol size={40} name="person.fill" color="#fff" />
+              </View>
+            )}
+          </View>
+          <ThemedText style={styles.username}>{inGameName || username}</ThemedText>
+          {inGameName && inGameName !== username && (
+            <ThemedText style={styles.inGameName}>{username}</ThemedText>
+          )}
+        </TouchableOpacity>
+
+        {/* Ranks Section */}
+        <View style={styles.ranksSection}>
+          <View style={styles.rankBox}>
+            <Image
+              source={getRankIcon(peakRank)}
+              style={styles.rankIcon}
+              resizeMode="contain"
+            />
+            <ThemedText style={styles.rankLabel}>Peak Rank</ThemedText>
+            <ThemedText style={styles.rankValue}>{peakRank}</ThemedText>
+          </View>
+
+          <View style={styles.rankBox}>
+            <Image
+              source={getRankIcon(currentRank)}
+              style={styles.rankIcon}
+              resizeMode="contain"
+            />
+            <ThemedText style={styles.rankLabel}>Current Rank</ThemedText>
+            <ThemedText style={styles.rankValue}>{currentRank}</ThemedText>
+          </View>
         </View>
 
-        {/* Main Card Container */}
-        <View style={styles.cardOuter}>
-          {/* 3D Shadow layers */}
-          <View style={styles.shadow3} />
-          <View style={styles.shadow2} />
-          <View style={styles.shadow1} />
-
-          {/* Main Card */}
-          <View style={styles.card}>
-            <LinearGradient
-              colors={['#1a1d21', '#0f1114']}
-              start={{ x: 0, y: 0 }}
-              end={{ x: 0, y: 1 }}
-              style={styles.cardBackground}
-            />
-
-            {/* Card Header Bar */}
-            <View style={styles.cardHeaderBar}>
-              <ThemedText style={styles.cardHeaderTitle}>
-                {game === 'valorant' ? 'VALORANT' : 'LEAGUE'}
-              </ThemedText>
-              <ThemedText style={styles.cardHeaderSubtitle}>DUO CARD</ThemedText>
-              <View style={styles.cardHeaderAccent}>
-                <ThemedText style={[styles.cardHeaderAccentText, { color: gameAccentLight }]}>&gt;&gt;&gt;</ThemedText>
+        {/* Stats Section */}
+        {(winRate !== undefined || gamesPlayed !== undefined) && (
+          <View style={styles.statsSection}>
+            {winRate !== undefined && (
+              <View style={styles.statBox}>
+                <IconSymbol size={20} name="chart.bar.fill" color="#4ade80" />
+                <ThemedText style={styles.statValue}>
+                  {winRate.toFixed(1)}%
+                </ThemedText>
+                <ThemedText style={styles.statLabel}>Win Rate</ThemedText>
               </View>
-            </View>
+            )}
+            {gamesPlayed !== undefined && (
+              <View style={styles.statBox}>
+                <IconSymbol size={20} name="gamecontroller.fill" color="#60a5fa" />
+                <ThemedText style={styles.statValue}>{gamesPlayed}</ThemedText>
+                <ThemedText style={styles.statLabel}>Games</ThemedText>
+              </View>
+            )}
+          </View>
+        )}
 
-            {/* Profile Section */}
-            <View style={styles.profileSection}>
-              <View style={styles.profileRow}>
-                {/* Avatar */}
-                <View style={styles.avatarSection}>
-                  <View style={[styles.avatarFrame, { borderColor: gameAccentColor }]}>
-                    {inGameIcon && inGameIcon.startsWith('http') && !avatarError ? (
-                      <Image
-                        source={{ uri: inGameIcon }}
-                        style={styles.avatar}
-                        onError={() => setAvatarError(true)}
-                      />
-                    ) : avatar && avatar.startsWith('http') && !avatarError ? (
-                      <Image
-                        source={{ uri: avatar }}
-                        style={styles.avatar}
-                        onError={() => setAvatarError(true)}
-                      />
-                    ) : (
-                      <View style={styles.avatarPlaceholder}>
-                        <ThemedText style={styles.avatarInitial}>
-                          {username?.[0]?.toUpperCase() || '?'}
-                        </ThemedText>
-                      </View>
-                    )}
+        {/* Recent Matches Section */}
+        {!loadingMatches && isMatchesRecent(recentMatches) && (
+          <View style={styles.matchesSection}>
+            <ThemedText style={styles.matchesSectionLabel}>RECENT MATCHES</ThemedText>
+            <View style={styles.matchList}>
+              {recentMatches.slice(0, 5).map((match, i) => (
+                <View key={i} style={[styles.matchRow, match.won ? styles.matchRowWin : styles.matchRowLoss]}>
+                  <View style={[styles.matchResultBadge, match.won ? styles.matchResultWin : styles.matchResultLoss]}>
+                    <ThemedText style={styles.matchResultText}>{match.won ? 'W' : 'L'}</ThemedText>
                   </View>
-                  <View style={styles.onlineBadge}>
-                    <View style={styles.onlineDot} />
-                  </View>
-                </View>
-
-                {/* User Info */}
-                <View style={styles.userInfo}>
-                  <ThemedText style={styles.username} numberOfLines={1}>{username}</ThemedText>
-                  {inGameName && inGameName !== username && (
-                    <ThemedText style={styles.inGameNameText} numberOfLines={1}>{inGameName}</ThemedText>
+                  {getAgentIcon(match.agent || '') ? (
+                    <Image source={getAgentIcon(match.agent || '')} style={styles.matchAgentIcon} />
+                  ) : (
+                    <View style={styles.matchAgentPlaceholder}>
+                      <ThemedText style={styles.matchAgentPlaceholderText}>
+                        {(match.agent || '?')[0].toUpperCase()}
+                      </ThemedText>
+                    </View>
                   )}
-                  <View style={styles.regionBadge}>
-                    <ThemedText style={styles.regionText}>{region?.toUpperCase()}</ThemedText>
+                  <View style={styles.matchInfo}>
+                    <ThemedText style={styles.matchKda}>
+                      {match.kills ?? 0}/{match.deaths ?? 0}/{match.assists ?? 0}
+                    </ThemedText>
                   </View>
+                  <View style={styles.matchMeta}>
+                    {match.map && (
+                      <ThemedText style={styles.matchMap} numberOfLines={1}>{match.map}</ThemedText>
+                    )}
+                    {match.playedAt && (
+                      <ThemedText style={styles.matchTime}>{formatTimeAgo(match.playedAt)}</ThemedText>
+                    )}
+                  </View>
+                </View>
+              ))}
+            </View>
+          </View>
+        )}
+
+        {/* Details / Edit Section */}
+        <View style={styles.detailsSection}>
+          {isOwnCard ? (
+            <>
+              {/* Edit Mode: Main Role & Main Agent in same row */}
+              <View style={styles.editRow}>
+                {/* Main Role */}
+                <View style={styles.editFieldHalf}>
+                  <ThemedText style={styles.fieldLabel}>Role</ThemedText>
+                  <TouchableOpacity
+                    style={styles.dropdownCompact}
+                    onPress={() => {
+                      setShowRoleDropdown(!showRoleDropdown);
+                      setShowAgentDropdown(false);
+                      setShowLookingForDropdown(false);
+                    }}
+                  >
+                    <Image
+                      source={getRoleIcon(mainRole)}
+                      style={styles.dropdownIconSmall}
+                      resizeMode="contain"
+                    />
+                    <ThemedText style={styles.dropdownTextCompact} numberOfLines={1}>{mainRole}</ThemedText>
+                    <IconSymbol size={14} name="chevron.down" color="#94a3b8" />
+                  </TouchableOpacity>
+                  {showRoleDropdown && (
+                    <View style={styles.dropdownListAbsolute}>
+                      {roles.map((role) => (
+                        <TouchableOpacity
+                          key={role}
+                          style={styles.dropdownOptionCompact}
+                          onPress={() => {
+                            setMainRole(role);
+                            setMainAgent('');
+                            setShowRoleDropdown(false);
+                          }}
+                        >
+                          <Image
+                            source={getRoleIcon(role)}
+                            style={styles.dropdownOptionIconSmall}
+                            resizeMode="contain"
+                          />
+                          <ThemedText style={styles.dropdownOptionTextCompact}>{role}</ThemedText>
+                        </TouchableOpacity>
+                      ))}
+                    </View>
+                  )}
+                </View>
+
+                {/* Main Agent */}
+                <View style={styles.editFieldHalf}>
+                  <ThemedText style={styles.fieldLabel}>
+                    {game === 'valorant' ? 'Agent' : 'Champion'}
+                  </ThemedText>
+                  <TouchableOpacity
+                    style={[styles.dropdownCompact, !mainRole && styles.dropdownDisabled]}
+                    onPress={() => {
+                      if (mainRole) {
+                        setShowAgentDropdown(!showAgentDropdown);
+                        setShowRoleDropdown(false);
+                        setShowLookingForDropdown(false);
+                      }
+                    }}
+                    disabled={!mainRole}
+                  >
+                    <ThemedText
+                      style={mainAgent ? styles.dropdownTextCompact : styles.dropdownPlaceholderCompact}
+                      numberOfLines={1}
+                    >
+                      {mainAgent || 'Select'}
+                    </ThemedText>
+                    {mainRole && <IconSymbol size={14} name="chevron.down" color="#94a3b8" />}
+                  </TouchableOpacity>
+                  {showAgentDropdown && mainRole && (
+                    <View style={styles.dropdownListAbsolute}>
+                      <ScrollView style={styles.dropdownScrollCompact} nestedScrollEnabled={true}>
+                        {agents.map((agent) => (
+                          <TouchableOpacity
+                            key={agent}
+                            style={styles.dropdownOptionCompact}
+                            onPress={() => {
+                              setMainAgent(agent);
+                              setShowAgentDropdown(false);
+                            }}
+                          >
+                            <ThemedText style={styles.dropdownOptionTextCompact}>{agent}</ThemedText>
+                          </TouchableOpacity>
+                        ))}
+                      </ScrollView>
+                    </View>
+                  )}
                 </View>
               </View>
 
-              {/* View Profile Button - Only for other users */}
-              {userId && !isOwnCard && (
+              {/* Looking For - Full width below */}
+              <View style={styles.editFieldFull}>
+                <ThemedText style={styles.fieldLabel}>Looking For</ThemedText>
                 <TouchableOpacity
-                  style={[styles.viewProfileButton, { backgroundColor: gameAccentColor }]}
-                  onPress={handleUserPress}
+                  style={styles.dropdownCompact}
+                  onPress={() => {
+                    setShowLookingForDropdown(!showLookingForDropdown);
+                    setShowRoleDropdown(false);
+                    setShowAgentDropdown(false);
+                  }}
                 >
-                  <IconSymbol size={12} name="person.fill" color="#fff" />
-                  <ThemedText style={styles.viewProfileText}>View Full Profile</ThemedText>
-                  <IconSymbol size={12} name="chevron.right" color="#fff" />
+                  <View style={styles.dropdownContent}>
+                    {lookingFor !== 'Any' && (
+                      <Image
+                        source={getRoleIcon(lookingFor)}
+                        style={styles.dropdownIconSmall}
+                        resizeMode="contain"
+                      />
+                    )}
+                    <ThemedText style={styles.dropdownTextCompact}>{lookingFor}</ThemedText>
+                  </View>
+                  <IconSymbol size={14} name="chevron.down" color="#94a3b8" />
                 </TouchableOpacity>
-              )}
-            </View>
-
-            {/* Divider */}
-            <View style={styles.divider} />
-
-            {/* Ranks Section */}
-            <View style={styles.ranksSection}>
-              <ThemedText style={styles.sectionLabel}>RANKS</ThemedText>
-              <View style={styles.ranksRow}>
-                {/* Peak Rank */}
-                <View style={styles.rankBox}>
-                  <ThemedText style={styles.rankLabel}>PEAK</ThemedText>
-                  <View style={styles.rankIconContainer}>
-                    <View style={[styles.rankGlow, { backgroundColor: gameAccentColor }]} />
-                    <View style={[styles.rankBadge, { borderColor: gameAccentColor }]}>
-                      <Image
-                        source={getRankIcon(peakRank)}
-                        style={styles.rankIcon}
-                        resizeMode="contain"
-                      />
-                    </View>
-                  </View>
-                  <ThemedText style={styles.rankValue}>{peakRank}</ThemedText>
-                </View>
-
-                {/* Current Rank */}
-                <View style={styles.rankBox}>
-                  <ThemedText style={styles.rankLabel}>CURRENT</ThemedText>
-                  <View style={styles.rankIconContainer}>
-                    <View style={[styles.rankGlow, { backgroundColor: gameAccentColor }]} />
-                    <View style={[styles.rankBadge, { borderColor: gameAccentColor }]}>
-                      <Image
-                        source={getRankIcon(currentRank)}
-                        style={styles.rankIcon}
-                        resizeMode="contain"
-                      />
-                    </View>
-                  </View>
-                  <ThemedText style={styles.rankValue}>{currentRank}</ThemedText>
-                </View>
-              </View>
-            </View>
-
-            {/* Stats Section */}
-            {(winRate !== undefined || gamesPlayed !== undefined) && (
-              <>
-                <View style={styles.divider} />
-                <View style={styles.statsSection}>
-                  <ThemedText style={styles.sectionLabel}>STATS</ThemedText>
-                  <View style={styles.statsRow}>
-                    {winRate !== undefined && (
-                      <View style={styles.statBox}>
-                        <ThemedText style={styles.statLabel}>WIN RATE</ThemedText>
-                        <ThemedText style={[styles.statValue, { color: '#4ade80' }]}>
-                          {winRate.toFixed(1)}%
-                        </ThemedText>
-                      </View>
-                    )}
-                    {gamesPlayed !== undefined && (
-                      <View style={styles.statBox}>
-                        <ThemedText style={styles.statLabel}>GAMES</ThemedText>
-                        <ThemedText style={[styles.statValue, { color: '#60a5fa' }]}>
-                          {gamesPlayed}
-                        </ThemedText>
-                      </View>
-                    )}
-                  </View>
-                </View>
-              </>
-            )}
-
-            {/* Divider */}
-            <View style={styles.divider} />
-
-            {/* Recent Games - Only show if played within last 3 months */}
-            {!loadingMatches && isMatchesRecent(recentMatches) && (
-              <>
-                <View style={styles.recentGamesSection}>
-                  <ThemedText style={styles.sectionLabel}>RECENT MATCHES</ThemedText>
-                  <View style={styles.matchList}>
-                    {recentMatches.slice(0, 5).map((match, i) => (
-                      <View key={i} style={[styles.matchRow, match.won ? styles.matchRowWin : styles.matchRowLoss]}>
-                        {/* Result indicator */}
-                        <View style={[styles.matchResultBadge, match.won ? styles.matchResultWin : styles.matchResultLoss]}>
-                          <ThemedText style={styles.matchResultText}>{match.won ? 'W' : 'L'}</ThemedText>
-                        </View>
-                        {/* Agent Icon & KDA */}
-                        {game === 'valorant' && getAgentIcon(match.agent) ? (
-                          <Image source={getAgentIcon(match.agent)} style={styles.matchAgentIcon} />
-                        ) : (
-                          <View style={styles.matchAgentPlaceholder}>
-                            <ThemedText style={styles.matchAgentPlaceholderText}>
-                              {(match.agent || '?')[0].toUpperCase()}
-                            </ThemedText>
-                          </View>
-                        )}
-                        <View style={styles.matchInfo}>
-                          <ThemedText style={styles.matchKda}>
-                            {match.kills ?? 0}/{match.deaths ?? 0}/{match.assists ?? 0}
-                          </ThemedText>
-                        </View>
-                        {/* Map & Time */}
-                        <View style={styles.matchMeta}>
-                          {match.map && (
-                            <ThemedText style={styles.matchMap} numberOfLines={1}>{match.map}</ThemedText>
-                          )}
-                          {match.playedAt && (
-                            <ThemedText style={styles.matchTime}>
-                              {formatTimeAgo(match.playedAt)}
-                            </ThemedText>
-                          )}
-                        </View>
-                      </View>
-                    ))}
-                  </View>
-                </View>
-
-                {/* Divider */}
-                <View style={styles.divider} />
-              </>
-            )}
-
-            {/* Player Info / Edit Section */}
-            <View style={styles.playerInfoSection}>
-              <ThemedText style={styles.sectionLabel}>
-                {isOwnCard ? 'EDIT DETAILS' : 'PLAYER INFO'}
-              </ThemedText>
-
-              {isOwnCard ? (
-                <>
-                  {/* Edit Mode: Main Role & Main Agent in same row */}
-                  <View style={styles.editRow}>
-                    {/* Main Role */}
-                    <View style={styles.editFieldHalf}>
-                      <ThemedText style={styles.fieldLabel}>Role</ThemedText>
+                {showLookingForDropdown && (
+                  <View style={styles.dropdownList}>
+                    <TouchableOpacity
+                      style={styles.dropdownOptionCompact}
+                      onPress={() => {
+                        setLookingFor('Any');
+                        setShowLookingForDropdown(false);
+                      }}
+                    >
+                      <ThemedText style={styles.dropdownOptionTextCompact}>Any</ThemedText>
+                    </TouchableOpacity>
+                    {roles.map((role) => (
                       <TouchableOpacity
-                        style={styles.dropdownCompact}
+                        key={role}
+                        style={styles.dropdownOptionCompact}
                         onPress={() => {
-                          setShowRoleDropdown(!showRoleDropdown);
-                          setShowAgentDropdown(false);
+                          setLookingFor(role);
                           setShowLookingForDropdown(false);
                         }}
                       >
                         <Image
-                          source={getRoleIcon(mainRole)}
-                          style={styles.dropdownIconSmall}
+                          source={getRoleIcon(role)}
+                          style={styles.dropdownOptionIconSmall}
                           resizeMode="contain"
                         />
-                        <ThemedText style={styles.dropdownTextCompact} numberOfLines={1}>{mainRole}</ThemedText>
-                        <IconSymbol size={14} name="chevron.down" color="#4a4d52" />
+                        <ThemedText style={styles.dropdownOptionTextCompact}>{role}</ThemedText>
                       </TouchableOpacity>
-                      {showRoleDropdown && (
-                        <View style={styles.dropdownListAbsolute}>
-                          {roles.map((role) => (
-                            <TouchableOpacity
-                              key={role}
-                              style={styles.dropdownOptionCompact}
-                              onPress={() => {
-                                setMainRole(role);
-                                setMainAgent('');
-                                setShowRoleDropdown(false);
-                              }}
-                            >
-                              <Image
-                                source={getRoleIcon(role)}
-                                style={styles.dropdownOptionIconSmall}
-                                resizeMode="contain"
-                              />
-                              <ThemedText style={styles.dropdownOptionTextCompact}>{role}</ThemedText>
-                            </TouchableOpacity>
-                          ))}
-                        </View>
-                      )}
-                    </View>
-
-                    {/* Main Agent */}
-                    <View style={styles.editFieldHalf}>
-                      <ThemedText style={styles.fieldLabel}>
-                        {game === 'valorant' ? 'Agent' : 'Champion'}
-                      </ThemedText>
-                      <TouchableOpacity
-                        style={[styles.dropdownCompact, !mainRole && styles.dropdownDisabled]}
-                        onPress={() => {
-                          if (mainRole) {
-                            setShowAgentDropdown(!showAgentDropdown);
-                            setShowRoleDropdown(false);
-                            setShowLookingForDropdown(false);
-                          }
-                        }}
-                        disabled={!mainRole}
-                      >
-                        <ThemedText
-                          style={mainAgent ? styles.dropdownTextCompact : styles.dropdownPlaceholderCompact}
-                          numberOfLines={1}
-                        >
-                          {mainAgent || 'Select'}
-                        </ThemedText>
-                        {mainRole && <IconSymbol size={14} name="chevron.down" color="#4a4d52" />}
-                      </TouchableOpacity>
-                      {showAgentDropdown && mainRole && (
-                        <View style={styles.dropdownListAbsolute}>
-                          <ScrollView style={styles.dropdownScrollCompact} nestedScrollEnabled={true}>
-                            {agents.map((agent) => (
-                              <TouchableOpacity
-                                key={agent}
-                                style={styles.dropdownOptionCompact}
-                                onPress={() => {
-                                  setMainAgent(agent);
-                                  setShowAgentDropdown(false);
-                                }}
-                              >
-                                <ThemedText style={styles.dropdownOptionTextCompact}>{agent}</ThemedText>
-                              </TouchableOpacity>
-                            ))}
-                          </ScrollView>
-                        </View>
-                      )}
-                    </View>
+                    ))}
                   </View>
+                )}
+              </View>
 
-                  {/* Looking For - Full width below */}
-                  <View style={styles.editFieldFull}>
-                    <ThemedText style={styles.fieldLabel}>Looking For</ThemedText>
-                    <TouchableOpacity
-                      style={styles.dropdownCompact}
-                      onPress={() => {
-                        setShowLookingForDropdown(!showLookingForDropdown);
-                        setShowRoleDropdown(false);
-                        setShowAgentDropdown(false);
-                      }}
-                    >
-                      <View style={styles.dropdownContent}>
-                        {lookingFor !== 'Any' && (
-                          <Image
-                            source={getRoleIcon(lookingFor)}
-                            style={styles.dropdownIconSmall}
-                            resizeMode="contain"
-                          />
-                        )}
-                        <ThemedText style={styles.dropdownTextCompact}>{lookingFor}</ThemedText>
-                      </View>
-                      <IconSymbol size={14} name="chevron.down" color="#4a4d52" />
-                    </TouchableOpacity>
-                    {showLookingForDropdown && (
-                      <View style={styles.dropdownList}>
-                        <TouchableOpacity
-                          style={styles.dropdownOptionCompact}
-                          onPress={() => {
-                            setLookingFor('Any');
-                            setShowLookingForDropdown(false);
-                          }}
-                        >
-                          <ThemedText style={styles.dropdownOptionTextCompact}>Any</ThemedText>
-                        </TouchableOpacity>
-                        {roles.map((role) => (
-                          <TouchableOpacity
-                            key={role}
-                            style={styles.dropdownOptionCompact}
-                            onPress={() => {
-                              setLookingFor(role);
-                              setShowLookingForDropdown(false);
-                            }}
-                          >
-                            <Image
-                              source={getRoleIcon(role)}
-                              style={styles.dropdownOptionIconSmall}
-                              resizeMode="contain"
-                            />
-                            <ThemedText style={styles.dropdownOptionTextCompact}>{role}</ThemedText>
-                          </TouchableOpacity>
-                        ))}
-                      </View>
-                    )}
+              {/* Save Button */}
+              <TouchableOpacity
+                style={[
+                  styles.saveButton,
+                  hasChanges ? { backgroundColor: gameAccentColor } : styles.saveButtonInactive,
+                  isSaving && styles.saveButtonDisabled
+                ]}
+                onPress={handleSaveChanges}
+                disabled={isSaving || !hasChanges}
+              >
+                <ThemedText style={[styles.saveButtonText, !hasChanges && styles.saveButtonTextInactive]}>
+                  {isSaving ? 'Saving...' : 'Save Changes'}
+                </ThemedText>
+              </TouchableOpacity>
+            </>
+          ) : (
+            <>
+              {/* View Mode: Region and Main Role - Split Row */}
+              <View style={styles.splitRow}>
+                <View style={styles.detailRowHalf}>
+                  <IconSymbol size={20} name="globe" color="#94a3b8" />
+                  <View style={styles.detailTextContainer}>
+                    <ThemedText style={styles.detailLabel}>Region</ThemedText>
+                    <ThemedText style={styles.detailValue}>{region}</ThemedText>
                   </View>
-                </>
-              ) : (
-                <>
-                  {/* View Mode: Main Role */}
-                  <View style={styles.infoRow}>
-                    <View style={styles.infoItem}>
-                      <Image
-                        source={getRoleIcon(mainRole)}
-                        style={styles.infoIcon}
-                        resizeMode="contain"
-                      />
-                      <View style={styles.infoText}>
-                        <ThemedText style={styles.infoLabel}>MAIN ROLE</ThemedText>
-                        <ThemedText style={styles.infoValue}>{mainRole}</ThemedText>
-                      </View>
-                    </View>
+                </View>
+
+                <View style={styles.detailRowHalf}>
+                  <Image
+                    source={getRoleIcon(mainRole)}
+                    style={styles.roleIcon}
+                    resizeMode="contain"
+                  />
+                  <View style={styles.detailTextContainer}>
+                    <ThemedText style={styles.detailLabel}>Main Role</ThemedText>
+                    <ThemedText style={styles.detailValue}>{mainRole}</ThemedText>
                   </View>
-
-                  {/* View Mode: Main Agent/Champion */}
-                  <View style={styles.infoRow}>
-                    <View style={styles.infoItem}>
-                      <IconSymbol size={18} name="star.fill" color="#4a4d52" />
-                      <View style={styles.infoText}>
-                        <ThemedText style={styles.infoLabel}>
-                          {game === 'valorant' ? 'MAIN AGENT' : 'MAIN CHAMPION'}
-                        </ThemedText>
-                        <ThemedText style={styles.infoValue}>{mainAgent}</ThemedText>
-                      </View>
-                    </View>
-                  </View>
-                </>
-              )}
-
-              {/* Save Button - Only for own card */}
-              {isOwnCard && (
-                <TouchableOpacity
-                  style={[
-                    styles.saveButton,
-                    hasChanges ? { backgroundColor: gameAccentColor } : styles.saveButtonInactive,
-                    isSaving && styles.saveButtonDisabled
-                  ]}
-                  onPress={handleSaveChanges}
-                  disabled={isSaving || !hasChanges}
-                >
-                  <ThemedText style={[styles.saveButtonText, !hasChanges && styles.saveButtonTextInactive]}>
-                    {isSaving ? 'Saving...' : 'Save Changes'}
-                  </ThemedText>
-                </TouchableOpacity>
-              )}
-            </View>
-
-            {/* Footer Bar */}
-            <View style={styles.footerBar}>
-              <View style={[styles.footerAccent, { backgroundColor: gameAccentColor }]} />
-              <View style={styles.footerContent}>
-                <ThemedText style={styles.footerText}>RANKUP</ThemedText>
-                <View style={styles.footerArrow}>
-                  <ThemedText style={[styles.footerArrowText, { color: gameAccentLight }]}>&gt;&gt;&gt;</ThemedText>
                 </View>
               </View>
-            </View>
-          </View>
+
+              {/* Main Agent - Full Width */}
+              <View style={styles.detailRow}>
+                <IconSymbol size={20} name="star.fill" color="#94a3b8" />
+                <View style={styles.detailTextContainer}>
+                  <ThemedText style={styles.detailLabel}>
+                    {game === 'valorant' ? 'Main Agent' : 'Main Champion'}
+                  </ThemedText>
+                  <ThemedText style={styles.detailValue}>{mainAgent}</ThemedText>
+                </View>
+              </View>
+            </>
+          )}
         </View>
       </ScrollView>
     </View>
@@ -723,360 +634,126 @@ export default function DuoCardDetailScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#0a0b0d',
+    backgroundColor: '#0f0f0f',
+    paddingTop: 60,
+    paddingHorizontal: 24,
   },
-  scrollView: {
-    flex: 1,
+  closeButton: {
+    position: 'absolute',
+    top: 60,
+    right: 24,
+    zIndex: 10,
+    padding: 8,
   },
   scrollContent: {
+    flexGrow: 0,
+  },
+  scrollContentContainer: {
     paddingBottom: 40,
-  },
-  // Header
-  header: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingHorizontal: 16,
-    paddingTop: 60,
-    paddingBottom: 16,
-  },
-  backButton: {
-    paddingVertical: 4,
-    paddingRight: 8,
-  },
-  headerTitle: {
-    fontSize: 12,
-    fontWeight: '700',
-    color: '#888',
-    letterSpacing: 1.5,
-  },
-  headerSpacer: {
-    width: 36,
-  },
-  // Card Container with 3D shadows
-  cardOuter: {
-    position: 'relative',
-    marginHorizontal: 16,
-    marginTop: 8,
-  },
-  // 3D Shadow layers - light from right side
-  shadow3: {
-    position: 'absolute',
-    top: 8,
-    left: -8,
-    right: 12,
-    bottom: -8,
-    backgroundColor: '#000',
-    borderRadius: 14,
-    opacity: 0.2,
-  },
-  shadow2: {
-    position: 'absolute',
-    top: 5,
-    left: -5,
-    right: 8,
-    bottom: -5,
-    backgroundColor: '#000',
-    borderRadius: 13,
-    opacity: 0.25,
-  },
-  shadow1: {
-    position: 'absolute',
-    top: 2,
-    left: -2,
-    right: 4,
-    bottom: -2,
-    backgroundColor: '#000',
-    borderRadius: 12,
-    opacity: 0.3,
-  },
-  card: {
-    borderRadius: 12,
-    overflow: 'hidden',
-    borderWidth: 1,
-    borderColor: '#232528',
-  },
-  cardBackground: {
-    ...StyleSheet.absoluteFillObject,
-  },
-  // Card Header Bar
-  cardHeaderBar: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: 16,
-    paddingVertical: 12,
-    borderBottomWidth: 1,
-    borderBottomColor: '#1e2023',
-    gap: 8,
-  },
-  cardHeaderTitle: {
-    fontSize: 12,
-    fontWeight: '700',
-    color: '#888',
-    letterSpacing: 1.5,
-  },
-  cardHeaderSubtitle: {
-    fontSize: 12,
-    fontWeight: '600',
-    color: '#555',
-    letterSpacing: 0.5,
-  },
-  cardHeaderAccent: {
-    marginLeft: 'auto',
-  },
-  cardHeaderAccentText: {
-    fontSize: 12,
-    fontWeight: '800',
-    letterSpacing: 1,
   },
   // Profile Section
   profileSection: {
-    padding: 16,
-    gap: 12,
-  },
-  profileRow: {
-    flexDirection: 'row',
     alignItems: 'center',
-    gap: 14,
+    marginBottom: 24,
   },
-  avatarSection: {
-    position: 'relative',
-  },
-  avatarFrame: {
-    width: 64,
-    height: 64,
-    borderRadius: 8,
+  avatarContainer: {
+    width: 80,
+    height: 80,
+    borderRadius: 40,
     overflow: 'hidden',
-    backgroundColor: '#151719',
-    borderWidth: 2,
+    marginBottom: 12,
   },
   avatar: {
     width: '100%',
     height: '100%',
   },
   avatarPlaceholder: {
-    flex: 1,
+    width: '100%',
+    height: '100%',
+    backgroundColor: '#3a3a3a',
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: '#151719',
-  },
-  avatarInitial: {
-    fontSize: 26,
-    fontWeight: '700',
-    color: '#2a2d32',
-  },
-  onlineBadge: {
-    position: 'absolute',
-    bottom: -3,
-    right: -3,
-    width: 16,
-    height: 16,
-    borderRadius: 8,
-    backgroundColor: '#0f1114',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  onlineDot: {
-    width: 10,
-    height: 10,
-    borderRadius: 5,
-    backgroundColor: '#3d7a4a',
-  },
-  userInfo: {
-    flex: 1,
-    gap: 4,
   },
   username: {
-    fontSize: 18,
+    fontSize: 20,
     fontWeight: '700',
-    color: '#e5e5e5',
-    letterSpacing: -0.3,
-  },
-  inGameNameText: {
-    fontSize: 12,
-    fontWeight: '500',
-    color: '#6a6d72',
-    marginTop: 2,
-  },
-  regionBadge: {
-    alignSelf: 'flex-start',
-    backgroundColor: '#1a1c1e',
-    paddingHorizontal: 8,
-    paddingVertical: 3,
-    borderRadius: 4,
-    borderWidth: 1,
-    borderColor: '#2a2d30',
-  },
-  regionText: {
-    fontSize: 10,
-    fontWeight: '600',
-    color: '#6a6d72',
-    letterSpacing: 0.5,
-  },
-  viewProfileButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 6,
-    paddingVertical: 10,
-    paddingHorizontal: 16,
-    borderRadius: 8,
-  },
-  viewProfileText: {
-    fontSize: 12,
-    fontWeight: '600',
     color: '#fff',
+    letterSpacing: -0.5,
   },
-  // Divider
-  divider: {
-    height: 1,
-    backgroundColor: '#1e2023',
-    marginHorizontal: 16,
+  inGameName: {
+    fontSize: 14,
+    fontWeight: '500',
+    color: '#94a3b8',
+    marginTop: 4,
   },
   // Ranks Section
   ranksSection: {
-    padding: 16,
-    gap: 12,
-  },
-  sectionLabel: {
-    fontSize: 9,
-    fontWeight: '700',
-    color: '#4a4d52',
-    letterSpacing: 1,
-  },
-  ranksRow: {
     flexDirection: 'row',
     gap: 12,
+    marginBottom: 24,
   },
   rankBox: {
     flex: 1,
     alignItems: 'center',
-    backgroundColor: '#13151a',
-    borderRadius: 10,
-    padding: 14,
+    backgroundColor: 'rgba(255,255,255,0.05)',
+    padding: 16,
+    borderRadius: 16,
     gap: 8,
-    borderWidth: 1,
-    borderColor: '#1e2023',
-  },
-  rankLabel: {
-    fontSize: 8,
-    fontWeight: '700',
-    color: '#4a4d52',
-    letterSpacing: 0.8,
-  },
-  rankIconContainer: {
-    position: 'relative',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  rankGlow: {
-    position: 'absolute',
-    width: 60,
-    height: 60,
-    borderRadius: 30,
-    opacity: 0.2,
-  },
-  rankBadge: {
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: '#0f1114',
-    borderRadius: 8,
-    padding: 6,
-    borderWidth: 2,
   },
   rankIcon: {
-    width: 48,
-    height: 48,
+    width: 60,
+    height: 60,
+  },
+  rankLabel: {
+    fontSize: 11,
+    color: '#94a3b8',
+    fontWeight: '600',
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
   },
   rankValue: {
-    fontSize: 11,
+    fontSize: 14,
+    color: '#fff',
     fontWeight: '700',
-    color: '#9a9da2',
     textAlign: 'center',
-    letterSpacing: -0.2,
   },
   // Stats Section
   statsSection: {
-    padding: 16,
-    gap: 12,
-  },
-  statsRow: {
     flexDirection: 'row',
     gap: 12,
+    marginBottom: 24,
   },
   statBox: {
     flex: 1,
     alignItems: 'center',
-    backgroundColor: '#13151a',
-    borderRadius: 10,
+    backgroundColor: 'rgba(255,255,255,0.05)',
     padding: 14,
+    borderRadius: 12,
     gap: 6,
-    borderWidth: 1,
-    borderColor: '#1e2023',
-  },
-  statLabel: {
-    fontSize: 8,
-    fontWeight: '700',
-    color: '#4a4d52',
-    letterSpacing: 0.8,
   },
   statValue: {
-    fontSize: 18,
-    fontWeight: '700',
-  },
-  // Recent Games
-  recentGamesSection: {
-    padding: 16,
-    gap: 10,
-  },
-  recentGamesRow: {
-    flexDirection: 'row',
-    gap: 8,
-    justifyContent: 'space-between',
-  },
-  gameCircle: {
-    width: 40,
-    height: 40,
-    borderRadius: 8,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  gameCircleWin: {
-    backgroundColor: '#1a4a2e',
-    borderWidth: 1,
-    borderColor: '#2d6b42',
-  },
-  gameCircleLoss: {
-    backgroundColor: '#4a1a1a',
-    borderWidth: 1,
-    borderColor: '#6b2d2d',
-  },
-  gameCirclePlaceholder: {
-    width: 40,
-    height: 40,
-    borderRadius: 8,
-    backgroundColor: '#13151a',
-    borderWidth: 1,
-    borderColor: '#1e2023',
-  },
-  gameCircleText: {
-    fontSize: 14,
-    fontWeight: '700',
+    fontSize: 20,
     color: '#fff',
+    fontWeight: '700',
   },
-  noGamesText: {
+  statLabel: {
     fontSize: 11,
-    color: '#4a4d52',
+    color: '#94a3b8',
+    fontWeight: '600',
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
   },
   // Match List Styles
-  matchLoadingContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 10,
+  matchesSection: {
+    marginBottom: 24,
   },
-  matchLoadingText: {
+  matchesSectionLabel: {
     fontSize: 11,
-    color: '#4a4d52',
+    color: '#94a3b8',
+    fontWeight: '600',
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
+    marginBottom: 12,
   },
   matchList: {
     gap: 8,
@@ -1084,36 +761,33 @@ const styles = StyleSheet.create({
   matchRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#13151a',
-    borderRadius: 8,
+    backgroundColor: 'rgba(255,255,255,0.05)',
+    borderRadius: 10,
     padding: 10,
     gap: 10,
-    borderWidth: 1,
     borderLeftWidth: 3,
   },
   matchRowWin: {
-    borderColor: '#1e2023',
     borderLeftColor: '#4ade80',
   },
   matchRowLoss: {
-    borderColor: '#1e2023',
     borderLeftColor: '#ef4444',
   },
   matchResultBadge: {
-    width: 28,
-    height: 28,
+    width: 26,
+    height: 26,
     borderRadius: 6,
     alignItems: 'center',
     justifyContent: 'center',
   },
   matchResultWin: {
-    backgroundColor: '#1a4a2e',
+    backgroundColor: 'rgba(74, 222, 128, 0.2)',
   },
   matchResultLoss: {
-    backgroundColor: '#4a1a1a',
+    backgroundColor: 'rgba(239, 68, 68, 0.2)',
   },
   matchResultText: {
-    fontSize: 12,
+    fontSize: 11,
     fontWeight: '700',
     color: '#fff',
   },
@@ -1142,75 +816,79 @@ const styles = StyleSheet.create({
   matchKda: {
     fontSize: 11,
     fontWeight: '500',
-    color: '#6a6d72',
+    color: '#94a3b8',
   },
   matchMeta: {
     alignItems: 'flex-end',
     gap: 2,
   },
   matchMap: {
-    fontSize: 11,
+    fontSize: 10,
     fontWeight: '500',
-    color: '#6a6d72',
-    maxWidth: 70,
+    color: '#94a3b8',
+    maxWidth: 60,
   },
   matchTime: {
-    fontSize: 10,
-    color: '#4a4d52',
+    fontSize: 9,
+    color: '#64748b',
   },
-  // Player Info Section
-  playerInfoSection: {
-    padding: 16,
+  // Details Section
+  detailsSection: {
     gap: 12,
   },
-  infoRow: {
-    marginBottom: 4,
+  splitRow: {
+    flexDirection: 'row',
+    gap: 12,
   },
-  infoItem: {
+  detailRow: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 12,
-    backgroundColor: '#13151a',
-    padding: 12,
-    borderRadius: 8,
-    borderWidth: 1,
-    borderColor: '#1e2023',
+    backgroundColor: 'rgba(255,255,255,0.05)',
+    padding: 14,
+    borderRadius: 12,
   },
-  infoIcon: {
-    width: 22,
-    height: 22,
-    opacity: 0.85,
+  detailRowHalf: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    backgroundColor: 'rgba(255,255,255,0.05)',
+    padding: 14,
+    borderRadius: 12,
   },
-  infoText: {
+  roleIcon: {
+    width: 20,
+    height: 20,
+  },
+  detailTextContainer: {
+    flex: 1,
     gap: 2,
   },
-  infoLabel: {
-    fontSize: 8,
+  detailLabel: {
+    fontSize: 11,
+    color: '#94a3b8',
     fontWeight: '600',
-    color: '#4a4d52',
+    textTransform: 'uppercase',
     letterSpacing: 0.5,
   },
-  infoValue: {
-    fontSize: 13,
+  detailValue: {
+    fontSize: 15,
+    color: '#fff',
     fontWeight: '600',
-    color: '#9a9da2',
   },
   // Edit Fields
-  editField: {
-    gap: 8,
-  },
   fieldLabel: {
-    fontSize: 9,
+    fontSize: 11,
     fontWeight: '600',
-    color: '#6a6d72',
-    letterSpacing: 0.3,
+    color: '#94a3b8',
+    letterSpacing: 0.5,
     textTransform: 'uppercase',
-    marginBottom: 4,
+    marginBottom: 6,
   },
-  // Compact Edit Layout
   editRow: {
     flexDirection: 'row',
-    gap: 10,
+    gap: 12,
     marginBottom: 8,
   },
   editFieldHalf: {
@@ -1224,12 +902,10 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    backgroundColor: '#13151a',
-    borderRadius: 6,
-    paddingVertical: 8,
-    paddingHorizontal: 10,
-    borderWidth: 1,
-    borderColor: '#1e2023',
+    backgroundColor: 'rgba(255,255,255,0.05)',
+    borderRadius: 12,
+    paddingVertical: 10,
+    paddingHorizontal: 12,
     gap: 6,
   },
   dropdownDisabled: {
@@ -1242,19 +918,18 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   dropdownIconSmall: {
-    width: 16,
-    height: 16,
-    opacity: 0.85,
+    width: 18,
+    height: 18,
   },
   dropdownTextCompact: {
-    fontSize: 12,
-    color: '#9a9da2',
+    fontSize: 14,
+    color: '#fff',
     fontWeight: '600',
     flex: 1,
   },
   dropdownPlaceholderCompact: {
-    fontSize: 12,
-    color: '#4a4d52',
+    fontSize: 14,
+    color: '#64748b',
     flex: 1,
   },
   dropdownListAbsolute: {
@@ -1262,20 +937,20 @@ const styles = StyleSheet.create({
     top: '100%',
     left: 0,
     right: 0,
-    backgroundColor: '#1a1d21',
-    borderRadius: 6,
+    backgroundColor: '#1a1a1a',
+    borderRadius: 12,
     marginTop: 4,
     borderWidth: 1,
-    borderColor: '#232528',
+    borderColor: 'rgba(255,255,255,0.1)',
     overflow: 'hidden',
     zIndex: 100,
   },
   dropdownList: {
-    backgroundColor: '#1a1d21',
-    borderRadius: 6,
+    backgroundColor: '#1a1a1a',
+    borderRadius: 12,
     marginTop: 6,
     borderWidth: 1,
-    borderColor: '#232528',
+    borderColor: 'rgba(255,255,255,0.1)',
     overflow: 'hidden',
   },
   dropdownScrollCompact: {
@@ -1284,30 +959,29 @@ const styles = StyleSheet.create({
   dropdownOptionCompact: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingVertical: 8,
-    paddingHorizontal: 10,
+    paddingVertical: 10,
+    paddingHorizontal: 12,
     gap: 8,
     borderBottomWidth: 1,
-    borderBottomColor: '#1e2023',
+    borderBottomColor: 'rgba(255,255,255,0.05)',
   },
   dropdownOptionIconSmall: {
-    width: 16,
-    height: 16,
-    opacity: 0.85,
+    width: 18,
+    height: 18,
   },
   dropdownOptionTextCompact: {
-    fontSize: 12,
-    color: '#9a9da2',
+    fontSize: 14,
+    color: '#94a3b8',
   },
   // Save Button
   saveButton: {
-    borderRadius: 8,
+    borderRadius: 12,
     padding: 14,
     alignItems: 'center',
     marginTop: 8,
   },
   saveButtonInactive: {
-    backgroundColor: '#2a2d32',
+    backgroundColor: 'rgba(255,255,255,0.05)',
   },
   saveButtonDisabled: {
     opacity: 0.6,
@@ -1319,38 +993,6 @@ const styles = StyleSheet.create({
     letterSpacing: -0.2,
   },
   saveButtonTextInactive: {
-    color: '#4a4d52',
-  },
-  // Footer Bar
-  footerBar: {
-    borderTopWidth: 1,
-    borderTopColor: '#1a1c1e',
-    backgroundColor: '#0c0d0f',
-  },
-  footerAccent: {
-    height: 2,
-    width: '100%',
-    opacity: 0.6,
-  },
-  footerContent: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingHorizontal: 16,
-    paddingVertical: 10,
-  },
-  footerText: {
-    fontSize: 10,
-    fontWeight: '600',
-    color: '#3a3d42',
-    letterSpacing: 2,
-  },
-  footerArrow: {
-    marginLeft: 'auto',
-  },
-  footerArrowText: {
-    fontSize: 11,
-    fontWeight: '800',
-    letterSpacing: 1,
+    color: '#64748b',
   },
 });

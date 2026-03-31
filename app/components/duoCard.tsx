@@ -327,7 +327,7 @@ export default function DuoCard({ duo, onPress, onMessage, onViewProfile, onDele
 
 const styles = StyleSheet.create({
   container: {
-    backgroundColor: '#0d0d12',
+    backgroundColor: '#1e1e24',
     borderRadius: 12,
     padding: 6,
     marginBottom: 10,
@@ -339,7 +339,7 @@ const styles = StyleSheet.create({
   },
   innerBorder: {
     borderWidth: 1,
-    borderColor: '#333',
+    borderColor: '#3d3d44',
     borderRadius: 8,
     padding: 10,
     paddingBottom: 6,
@@ -356,7 +356,7 @@ const styles = StyleSheet.create({
   },
   headerDivider: {
     height: 1,
-    backgroundColor: 'rgba(255,255,255,0.06)',
+    backgroundColor: 'rgba(255,255,255,0.12)',
     marginHorizontal: 2,
   },
   userSection: {
@@ -369,7 +369,7 @@ const styles = StyleSheet.create({
     width: 36,
     height: 36,
     borderRadius: 8,
-    backgroundColor: 'rgba(255,255,255,0.06)',
+    backgroundColor: 'rgba(255,255,255,0.12)',
     alignItems: 'center',
     justifyContent: 'center',
     overflow: 'hidden',
@@ -423,7 +423,7 @@ const styles = StyleSheet.create({
     width: 18,
     height: 18,
     borderRadius: 9,
-    backgroundColor: 'rgba(255,255,255,0.08)',
+    backgroundColor: 'rgba(255,255,255,0.14)',
     alignItems: 'center',
     justifyContent: 'center',
     overflow: 'hidden',
@@ -513,7 +513,7 @@ const styles = StyleSheet.create({
   divider: {
     width: 1,
     height: 30,
-    backgroundColor: 'rgba(255,255,255,0.06)',
+    backgroundColor: 'rgba(255,255,255,0.12)',
   },
   messageSection: {
     paddingHorizontal: 4,

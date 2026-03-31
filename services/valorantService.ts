@@ -10,7 +10,8 @@ export interface MatchHistoryEntry {
   assists: number;
   won: boolean;
   map: string;
-  gameStart: number; // Unix timestamp
+  gameStart: number; // Unix timestamp in seconds
+  playedAt?: number; // Unix timestamp in milliseconds
   score: string; // e.g., "13-7"
 }
 
@@ -43,7 +44,8 @@ export interface ValorantStats {
   wins: number;
   losses: number;
   winRate: number;
-  matchHistory?: MatchHistoryEntry[]; // Last 5 matches
+  matchHistory?: MatchHistoryEntry[]; // Last 10 matches
+  mostPlayedAgent?: string;
   lastUpdated: any;
 }
 

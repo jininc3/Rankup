@@ -18,7 +18,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { Alert, Dimensions, Image, Linking, Modal, RefreshControl, ScrollView, StyleSheet, TouchableOpacity, View, LayoutAnimation, Platform, UIManager, Animated } from 'react-native';
 import * as Clipboard from 'expo-clipboard';
 import { getLeagueStats, getTftStats, formatRank } from '@/services/riotService';
-import { getValorantStats } from '@/services/valorantService';
+import { useValorantStats } from '@/contexts/ValorantStatsContext';
 import { deletePostMedia } from '@/services/storageService';
 import { deleteDoc } from 'firebase/firestore';
 import { calculateTierBorderColor, calculateTierBorderGradient } from '@/utils/tierBorderUtils';
@@ -62,6 +62,7 @@ export default function ProfileScreen() {
   const router = useRouter();
   const { refresh } = useLocalSearchParams<{ refresh?: string }>();
   const { user, refreshUser, preloadedProfilePosts, preloadedRiotStats, clearPreloadedProfileData } = useAuth();
+  const { valorantStats, fetchStats: fetchValorantStats } = useValorantStats();
   const [posts, setPosts] = useState<Post[]>([]);
   const [loadingPosts, setLoadingPosts] = useState(true);
   const [selectedPost, setSelectedPost] = useState<Post | null>(null);
@@ -85,7 +86,6 @@ export default function ProfileScreen() {
   const [valorantAccount, setValorantAccount] = useState<any>(null);
   const [riotStats, setRiotStats] = useState<any>(null);
   const [tftStats, setTftStats] = useState<any>(null);
-  const [valorantStats, setValorantStats] = useState<any>(null);
   const [enabledRankCards, setEnabledRankCards] = useState<string[]>([]);
   const [loadingRankCards, setLoadingRankCards] = useState(true);
   const [hasConsumedPreloadPosts, setHasConsumedPreloadPosts] = useState(false);
@@ -212,6 +212,7 @@ export default function ProfileScreen() {
             winRate: riotStats.rankedSolo?.winRate || 0,
             recentMatches: ['+15', '-18', '+20', '+17', '-14'],
             profileIconId: riotStats.profileIconId,
+            topChampions: riotStats.topChampions || [],
           };
         }
         // TFT (Placeholder - TODO: Implement TFT API)
@@ -319,37 +320,17 @@ export default function ProfileScreen() {
           console.log('TFT stats disabled - showing placeholder data');
         }
 
-        // Fetch Valorant stats if account is linked
+        // Valorant stats: set account and trigger context fetch if needed
         if (data.valorantAccount) {
           setValorantAccount(data.valorantAccount);
 
-          // Load cached Valorant stats from Firestore first
-          if (data.valorantStats) {
-            console.log('Loading cached valorant stats from Firestore');
-            setValorantStats(data.valorantStats);
-          }
+          // Check if matchHistory is missing — force refresh via context
+          const needsMatchHistoryRefresh = !valorantStats?.matchHistory ||
+            !Array.isArray(valorantStats.matchHistory) ||
+            valorantStats.matchHistory.length === 0;
 
-          // Check if matchHistory is missing or empty from cached data - if so, force refresh
-          const needsMatchHistoryRefresh = !data.valorantStats?.matchHistory ||
-            !Array.isArray(data.valorantStats.matchHistory) ||
-            data.valorantStats.matchHistory.length === 0;
-          console.log('needsMatchHistoryRefresh:', needsMatchHistoryRefresh, 'cached matchHistory:', data.valorantStats?.matchHistory);
-
-          try {
-            const shouldForceRefresh = forceRefresh || needsMatchHistoryRefresh;
-            console.log('Fetching fresh Valorant stats, forceRefresh:', shouldForceRefresh, 'needsMatchHistoryRefresh:', needsMatchHistoryRefresh);
-            const valorantResponse = await getValorantStats(shouldForceRefresh);
-            console.log('Valorant response:', valorantResponse);
-            console.log('Match History from API:', valorantResponse.stats?.matchHistory);
-            if (valorantResponse.success && valorantResponse.stats) {
-              console.log('Setting fresh valorant stats:', valorantResponse.stats);
-              console.log('Match History length:', valorantResponse.stats.matchHistory?.length);
-              setValorantStats(valorantResponse.stats);
-            } else {
-              console.log('Valorant stats not successful, using cached data');
-            }
-          } catch (error) {
-            console.error('Error fetching Valorant stats:', error);
+          if (forceRefresh || needsMatchHistoryRefresh) {
+            fetchValorantStats(forceRefresh || needsMatchHistoryRefresh);
           }
         }
       }
@@ -423,13 +404,9 @@ export default function ProfileScreen() {
             }
             setEnabledRankCards(data.enabledRankCards || []);
 
-            // Load cached Valorant stats directly from Firestore (instant, no API call)
+            // Valorant account status (stats come from ValorantStatsContext)
             if (data.valorantAccount) {
               setValorantAccount(data.valorantAccount);
-              if (data.valorantStats) {
-                console.log('Loading cached Valorant stats from Firestore');
-                setValorantStats(data.valorantStats);
-              }
             }
           }
         } catch (error) {

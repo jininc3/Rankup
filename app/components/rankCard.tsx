@@ -13,6 +13,8 @@ interface Game {
   winRate: number;
   recentMatches: string[];
   profileIconId?: number;
+  // League-specific fields
+  topChampions?: { championId: number; championLevel: number; championPoints: number }[];
   // Valorant-specific fields
   valorantCard?: string;
   peakRank?: { tier: string; season: string };

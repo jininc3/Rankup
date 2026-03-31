@@ -370,14 +370,29 @@ export const getProfileIconUrl = (
  * @param championId - Champion ID
  * @param version - League of Legends version (default: latest)
  */
+/**
+ * Map from champion ID to Data Dragon key (used in icon URLs)
+ * Data Dragon keys remove spaces, apostrophes, dots and special chars
+ */
+const CHAMPION_DDRAGON_KEYS: { [key: number]: string } = {
+  4: 'TwistedFate', 5: 'XinZhao', 7: 'Leblanc', 9: 'FiddleSticks',
+  11: 'MasterYi', 20: 'Nunu', 21: 'MissFortune', 31: 'Chogath',
+  36: 'DrMundo', 59: 'JarvanIV', 62: 'MonkeyKing', 64: 'LeeSin',
+  69: 'Cassiopeia', 74: 'Heimerdinger', 76: 'Nidalee', 79: 'Gragas',
+  82: 'Mordekaiser', 85: 'Kennen', 96: 'KogMaw', 103: 'Ahri',
+  106: 'Volibear', 121: 'Khazix', 136: 'AurelionSol', 145: 'Kaisa',
+  161: 'Velkoz', 200: 'Belveth', 223: 'TahmKench', 421: 'RekSai',
+  497: 'Rakan', 498: 'Xayah', 518: 'Neeko', 526: 'Rell',
+  888: 'RenataGlasc', 897: 'KSante',
+};
+
 export const getChampionIconUrl = (
   championId: number,
   version: string = '14.24.1'
 ): string => {
-  // Note: Data Dragon uses champion keys/names, not IDs
-  // You'll need to map championId to champion key using the champion.json file
-  // For now, return a placeholder
-  return `https://ddragon.leagueoflegends.com/cdn/${version}/img/champion/${championId}.png`;
+  const ddKey = CHAMPION_DDRAGON_KEYS[championId]
+    || (CHAMPION_NAMES[championId] || `${championId}`).replace(/[\s'.]/g, '');
+  return `https://ddragon.leagueoflegends.com/cdn/${version}/img/champion/${ddKey}.png`;
 };
 
 /**

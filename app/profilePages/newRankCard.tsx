@@ -15,7 +15,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { useState, useCallback } from 'react';
 import { db } from '@/config/firebase';
 import { doc, getDoc, updateDoc, arrayUnion } from 'firebase/firestore';
-import { getValorantStats } from '@/services/valorantService';
+import { useValorantStats } from '@/contexts/ValorantStatsContext';
 import { unlinkRiotAccount } from '@/services/riotService';
 import { formatRank } from '@/services/riotService';
 
@@ -26,6 +26,7 @@ type GameType = 'league' | 'valorant' | 'tft';
 export default function NewRankCardScreen() {
   const router = useRouter();
   const { user } = useAuth();
+  const { fetchStats: fetchValorantStats } = useValorantStats();
   const [riotAccount, setRiotAccount] = useState<any>(null);
   const [valorantAccount, setValorantAccount] = useState<any>(null);
   const [riotStats, setRiotStats] = useState<any>(null);
@@ -77,7 +78,7 @@ export default function NewRankCardScreen() {
           setEnabledRankCards([...enabledRankCards, game]);
 
           try {
-            await getValorantStats(false);
+            await fetchValorantStats(false);
           } catch (statsError) {
             console.warn('Failed to fetch stats, but rank card added:', statsError);
           }

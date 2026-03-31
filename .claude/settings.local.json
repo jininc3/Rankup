@@ -41,7 +41,14 @@
       "Bash(find /c/Users/jinha/Desktop/RankUp -type f \\\\\\(-name *duo* -o -name *Duo* \\\\\\))",
       "Bash(find /c/Users/jinha/Desktop/RankUp/app -maxdepth 3 -type f \\\\\\(-name *layout* -o -name *Layout* -o -name *tab* -o -name *Tab* \\\\\\))",
       "Bash(find /c/Users/jinha/Desktop/RankUp -type f -path */duoFilter* -o -path */duoMatch* -o -path */duoCard*)",
-      "Bash(find:*)"
+      "Bash(find:*)",
+      "WebFetch(domain:app.swaggerhub.com)",
+      "WebFetch(domain:api.henrikdev.xyz)",
+      "Bash(python3 -c \":*)",
+      "WebFetch(domain:www.mingweisamuel.com)",
+      "WebFetch(domain:codepull.com)",
+      "WebFetch(domain:raw.githubusercontent.com)",
+      "Bash(ls -la /c/Users/jinha/Desktop/RankUp/app/\\\\\\(auth\\\\\\)/)"
     ],
     "deny": [],
     "ask": []

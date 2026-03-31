@@ -21,7 +21,8 @@ export interface MatchHistoryEntry {
   assists: number;
   won: boolean;
   map: string;
-  gameStart: number; // Unix timestamp
+  gameStart: number; // Unix timestamp in seconds
+  playedAt: number; // Unix timestamp in milliseconds (for match history consumers)
   score: string; // e.g., "13-7"
 }
 
@@ -223,6 +224,7 @@ export const getValorantStatsFunction = onCall(
           ? `${redRounds}-${blueRounds}`
           : `${blueRounds}-${redRounds}`;
 
+        const gameStart = match.metadata.game_start ?? Math.floor(Date.now() / 1000);
         return {
           matchId: match.metadata.matchid,
           agent: player.character,
@@ -231,7 +233,8 @@ export const getValorantStatsFunction = onCall(
           assists: player.stats.assists ?? 0,
           won,
           map: match.metadata.map ?? "Unknown",
-          gameStart: match.metadata.game_start ?? Date.now(),
+          gameStart,
+          playedAt: gameStart * 1000,
           score,
         };
       }).filter((entry): entry is MatchHistoryEntry => entry !== null);
@@ -256,8 +259,8 @@ export const getValorantStatsFunction = onCall(
 
       logger.info(`Most played agent: ${mostPlayedAgent} (${maxCount} games)`);
 
-      // Only keep the last 5 matches for display
-      const matchHistory = allMatches.slice(0, 5);
+      // Keep the last 10 matches for display (duo card detail shows up to 10)
+      const matchHistory = allMatches.slice(0, 10);
 
       logger.info(`Processed match history length: ${matchHistory.length}`);
       if (matchHistory.length > 0) {

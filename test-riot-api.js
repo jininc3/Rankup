@@ -14,9 +14,9 @@ const https = require('https');
 // ============================================
 // CONFIGURATION
 // ============================================
-const API_KEY = 'RGAPI-6dad6276-d8ec-417e-af80-8f7d87b98df1'; // Replace with your Riot API key
-const TEST_GAME_NAME = 'MasterPoe';
-const TEST_TAG_LINE = '007';
+const API_KEY = 'RGAPI-29749457-ad7c-4db0-a5ef-f0857ba0d677'; // Replace with your Riot API key
+const TEST_GAME_NAME = 'Aruarian Dance';
+const TEST_TAG_LINE = '1337';
 const REGION = 'euw1'; // EUW server
 const REGIONAL_ROUTING = 'europe'; // For account API
 
@@ -52,6 +52,10 @@ function makeRequest(url, apiKey) {
       reject(err);
     });
   });
+}
+
+function delay(ms) {
+  return new Promise(resolve => setTimeout(resolve, ms));
 }
 
 // ============================================
@@ -176,6 +180,101 @@ async function testGetTotalMasteryScore(puuid) {
   }
 }
 
+async function testGetRecentMatchIds(puuid) {
+  console.log('\n📝 Test 6: Getting recent ranked match IDs...');
+
+  const url = `https://${REGIONAL_ROUTING}.api.riotgames.com/lol/match/v5/matches/by-puuid/${puuid}?queue=420&type=ranked&count=8`;
+
+  try {
+    const data = await makeRequest(url, API_KEY);
+    console.log('   ✅ Success!');
+    console.log(`   Found ${data.length} ranked match IDs`);
+
+    data.forEach((id, index) => {
+      console.log(`   ${index + 1}. ${id}`);
+    });
+
+    return data;
+  } catch (error) {
+    console.log('   ❌ Failed!');
+    console.log('   Error:', error);
+    throw error;
+  }
+}
+
+async function testGetMatchDetails(matchIds, puuid) {
+  console.log('\n📝 Test 7: Getting match details (champion, KDA, CS/min, result, date)...');
+
+  if (!matchIds || matchIds.length === 0) {
+    console.log('   ⚠️  No match IDs to fetch details for');
+    return;
+  }
+
+  console.log(`   Fetching details for ${matchIds.length} matches...\n`);
+
+  for (let i = 0; i < matchIds.length; i++) {
+    const matchId = matchIds[i];
+    const url = `https://${REGIONAL_ROUTING}.api.riotgames.com/lol/match/v5/matches/${matchId}`;
+
+    try {
+      const matchData = await makeRequest(url, API_KEY);
+      const participant = matchData.info.participants.find(p => p.puuid === puuid);
+
+      if (!participant) {
+        console.log(`   Game ${i + 1}: ⚠️  Could not find player in match ${matchId}`);
+        continue;
+      }
+
+      const champion = participant.championName;
+      const kills = participant.kills;
+      const deaths = participant.deaths;
+      const assists = participant.assists;
+      const kda = `${kills}/${deaths}/${assists}`;
+
+      const totalCS = participant.totalMinionsKilled + participant.neutralMinionsKilled;
+      const gameDurationMin = matchData.info.gameDuration / 60;
+      const csPerMin = gameDurationMin > 0 ? (totalCS / gameDurationMin).toFixed(1) : 'N/A';
+
+      const result = participant.win ? 'Victory' : 'Defeat';
+      const date = new Date(matchData.info.gameCreation).toLocaleString();
+
+      console.log(`   Game ${i + 1}: ${champion.padEnd(15)} | ${kda.padEnd(10)} KDA | ${String(csPerMin).padEnd(4)} CS/min | ${result.padEnd(7)} | ${date}`);
+    } catch (error) {
+      if (error.statusCode === 429) {
+        console.log(`   Game ${i + 1}: ⚠️  Rate limited, waiting 10s and retrying...`);
+        await delay(10000);
+        try {
+          const matchData = await makeRequest(url, API_KEY);
+          const participant = matchData.info.participants.find(p => p.puuid === puuid);
+
+          if (participant) {
+            const champion = participant.championName;
+            const kda = `${participant.kills}/${participant.deaths}/${participant.assists}`;
+            const totalCS = participant.totalMinionsKilled + participant.neutralMinionsKilled;
+            const gameDurationMin = matchData.info.gameDuration / 60;
+            const csPerMin = gameDurationMin > 0 ? (totalCS / gameDurationMin).toFixed(1) : 'N/A';
+            const result = participant.win ? 'Victory' : 'Defeat';
+            const date = new Date(matchData.info.gameCreation).toLocaleString();
+
+            console.log(`   Game ${i + 1}: ${champion.padEnd(15)} | ${kda.padEnd(10)} KDA | ${String(csPerMin).padEnd(4)} CS/min | ${result.padEnd(7)} | ${date}`);
+          }
+        } catch (retryError) {
+          console.log(`   Game ${i + 1}: ⚠️  Retry failed, skipping match ${matchId}`);
+        }
+      } else {
+        console.log(`   Game ${i + 1}: ⚠️  Failed to fetch match ${matchId}:`, error.statusCode || error.message);
+      }
+    }
+
+    // Delay between requests to respect rate limits
+    if (i < matchIds.length - 1) {
+      await delay(1200);
+    }
+  }
+
+  console.log('\n   ✅ Match history fetch complete!');
+}
+
 // ============================================
 // RUN ALL TESTS
 // ============================================
@@ -201,6 +300,8 @@ async function runAllTests() {
     await testGetRankedStats(summonerData);
     await testGetChampionMastery(puuid);
     await testGetTotalMasteryScore(puuid);
+    const matchIds = await testGetRecentMatchIds(puuid);
+    await testGetMatchDetails(matchIds, puuid);
 
     // Success summary
     console.log('\n' + '='.repeat(60));

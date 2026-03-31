@@ -14,10 +14,10 @@ import {
   type TftStats
 } from '@/services/riotService';
 import {
-  getValorantStats,
   type ValorantStats,
 } from '@/services/valorantService';
 import { useAuth } from '@/contexts/AuthContext';
+import { useValorantStats } from '@/contexts/ValorantStatsContext';
 import { db } from '@/config/firebase';
 import { doc, getDoc } from 'firebase/firestore';
 
@@ -29,6 +29,12 @@ export default function GameStatsScreen() {
   const router = useRouter();
   const params = useLocalSearchParams();
   const { user } = useAuth();
+  const {
+    valorantStats: contextValorantStats,
+    isLoading: contextValorantLoading,
+    error: contextValorantError,
+    fetchStats: contextFetchValorantStats,
+  } = useValorantStats();
 
   // Parse the game data from params
   const game = params.game ? JSON.parse(params.game as string) : null;
@@ -37,8 +43,8 @@ export default function GameStatsScreen() {
   const [riotStats, setRiotStats] = useState<RiotStats | null>(null);
   // State for TFT data
   const [tftStats, setTftStats] = useState<TftStats | null>(null);
-  // State for Valorant data
-  const [valorantStats, setValorantStats] = useState<ValorantStats | null>(null);
+  // Valorant stats come from context
+  const valorantStats = contextValorantStats;
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [hasFetched, setHasFetched] = useState(false);
@@ -89,19 +95,10 @@ export default function GameStatsScreen() {
             console.log('League cache is still valid');
             setHasFetched(true);
           }
-        } else if (game.name === 'Valorant' && data.valorantStats) {
-          console.log('Loaded cached Valorant stats');
-          setValorantStats(data.valorantStats);
+        } else if (game.name === 'Valorant') {
+          // Valorant stats are managed by ValorantStatsContext — no local caching needed
           setCacheLoaded(true);
-
-          // Check if cache is expired and fetch if needed
-          if (isCacheExpired(data.valorantStats.lastUpdated)) {
-            console.log('Valorant cache expired, fetching fresh data...');
-            fetchValorantDataWithCache(data.valorantStats); // Pass cached data
-          } else {
-            console.log('Valorant cache is still valid');
-            setHasFetched(true);
-          }
+          setHasFetched(true);
         } else if (game.name === 'TFT' && data.tftStats) {
           console.log('Loaded cached TFT stats');
           setTftStats(data.tftStats);
@@ -145,11 +142,7 @@ export default function GameStatsScreen() {
           setError(null);
         }
       } else if (game.name === 'Valorant') {
-        const response = await getValorantStats(true); // Force refresh
-        if (response.success && response.stats) {
-          setValorantStats(response.stats);
-          setError(null);
-        }
+        await contextFetchValorantStats(true); // Force refresh via context
       } else if (game.name === 'TFT') {
         const response = await getTftStats(true); // Force refresh
         if (response.success && response.stats) {
@@ -242,26 +235,11 @@ export default function GameStatsScreen() {
   const fetchValorantDataWithCache = async (cachedData: any) => {
     if (loading || hasFetched) return;
 
-    setLoading(true);
-    setError(null);
     setHasFetched(true);
 
     try {
-      const response = await getValorantStats();
-      if (response.success && response.stats) {
-        console.log('Valorant stats loaded:', response.stats);
-        setValorantStats(response.stats);
-        setError(null); // Clear any previous errors on success
-      } else {
-        // API call succeeded but returned unsuccessful response
-        console.log('API returned unsuccessful response, using cached data');
-        if (!cachedData) {
-          setError(response.error || 'Failed to load stats');
-        } else {
-          setError('Using cached data - API unavailable');
-        }
-        setHasFetched(false);
-      }
+      // Valorant stats are fetched and managed by ValorantStatsContext
+      await contextFetchValorantStats();
     } catch (err: any) {
       console.error('Error fetching Valorant stats:', err);
       // Only show error if we don't have cached data

@@ -173,7 +173,7 @@ export default function DuoCardDetailModal({ visible, onClose, card }: DuoCardDe
 
       setLoadingMatches(!cached);
       try {
-        // First try cached match history from Firestore
+        // Read match history from Firestore cache
         const userDocRef = doc(db, 'users', card.userId);
         const userDoc = await getDoc(userDocRef);
         let matches: MatchEntry[] = [];
@@ -187,8 +187,8 @@ export default function DuoCardDetailModal({ visible, onClose, card }: DuoCardDe
           }
         }
 
-        // If no cached data, fall back to Cloud Function
-        if (matches.length === 0) {
+        // For League only: fall back to Cloud Function if no Firestore data
+        if (matches.length === 0 && card.game === 'league') {
           const result = await getRecentMatches(card.userId, card.game);
           if (result.matches?.length > 0) {
             matches = result.matches.map((m: any) => ({

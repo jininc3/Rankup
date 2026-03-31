@@ -11,7 +11,6 @@ import * as ImagePicker from 'expo-image-picker';
 import { db } from '@/config/firebase';
 import { doc, getDoc } from 'firebase/firestore';
 import { getLeagueStats, formatRank } from '@/services/riotService';
-import { getValorantStats } from '@/services/valorantService';
 import { LinearGradient } from 'expo-linear-gradient';
 import { formatCount } from '@/utils/formatCount';
 import DraggableFlatList, { ScaleDecorator, RenderItemParams } from 'react-native-draggable-flatlist';

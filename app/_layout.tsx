@@ -7,6 +7,7 @@ import * as Notifications from 'expo-notifications';
 
 import LoadingScreen from '@/app/components/loadingScreen';
 import { AuthProvider, useAuth } from '@/contexts/AuthContext';
+import { ValorantStatsProvider } from '@/contexts/ValorantStatsContext';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { addNotificationTapListener, addNotificationReceivedListener } from '@/services/notificationService';
 import { InAppNotificationProvider, useInAppNotification } from '@/contexts/InAppNotificationContext';
@@ -184,9 +185,11 @@ function RootLayoutNav() {
 export default function RootLayout() {
   return (
     <AuthProvider>
-      <InAppNotificationProvider>
-        <RootLayoutNav />
-      </InAppNotificationProvider>
+      <ValorantStatsProvider>
+        <InAppNotificationProvider>
+          <RootLayoutNav />
+        </InAppNotificationProvider>
+      </ValorantStatsProvider>
     </AuthProvider>
   );
 }

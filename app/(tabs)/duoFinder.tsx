@@ -13,8 +13,7 @@ import { IconSymbol } from '@/components/ui/icon-symbol';
 import { DuoCardSkeleton } from '@/components/ui/Skeleton';
 import { useAuth } from '@/contexts/AuthContext';
 import { useState, useEffect, useCallback, useRef } from 'react';
-import { Alert, ScrollView, FlatList, ActivityIndicator, StyleSheet, TouchableOpacity, View, RefreshControl, Dimensions, Image, AppState, Modal, ImageBackground } from 'react-native';
-import { BlurView } from 'expo-blur';
+import { Alert, ScrollView, FlatList, ActivityIndicator, StyleSheet, TouchableOpacity, View, RefreshControl, Dimensions, Image, AppState, Modal } from 'react-native';
 import { doc, getDoc, setDoc, deleteDoc, serverTimestamp, collection, query, where, getDocs, orderBy, limit, Timestamp } from 'firebase/firestore';
 import { db } from '@/config/firebase';
 import { useRouter } from 'expo-router';
@@ -1081,13 +1080,7 @@ export default function DuoFinderScreen() {
         style={styles.pagerContainer}
       >
         {/* Live Search Page */}
-        <ImageBackground
-          source={require('@/assets/images/valorant-background.png')}
-          style={[styles.pageContainer, { width: SCREEN_WIDTH }]}
-          imageStyle={{ opacity: 0.2 }}
-          resizeMode="cover"
-        >
-        <BlurView intensity={30} tint="dark" style={StyleSheet.absoluteFill} />
+        <View style={[styles.pageContainer, { width: SCREEN_WIDTH }]}>
         <ScrollView
           style={styles.pageContainer}
           showsVerticalScrollIndicator={false}
@@ -1118,7 +1111,7 @@ export default function DuoFinderScreen() {
           </View>
           <View style={styles.bottomSpacer} />
         </ScrollView>
-        </ImageBackground>
+        </View>
 
         {/* Find Duo Page */}
         <View style={[styles.pageContainer, { width: SCREEN_WIDTH }]}>

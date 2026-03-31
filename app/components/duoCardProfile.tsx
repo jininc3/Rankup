@@ -3,6 +3,8 @@ import { IconSymbol } from '@/components/ui/icon-symbol';
 import { Image, Modal, StyleSheet, TouchableOpacity, View, ScrollView, ActivityIndicator } from 'react-native';
 import { useState, useEffect } from 'react';
 import { getRecentMatches, RecentMatchResult } from '@/services/riotService';
+import { doc, getDoc } from 'firebase/firestore';
+import { db } from '@/config/firebase';
 
 const AGENT_ICONS: { [key: string]: any } = {
   'jett': require('@/assets/images/valorantagents/jett.png'),
@@ -160,7 +162,48 @@ export default function DuoCardProfile({
 
   // Fetch recent matches when modal opens
   useEffect(() => {
-    if (visible && userId && game === 'valorant') {
+    if (!visible || !userId) {
+      setRecentMatches([]);
+      return;
+    }
+
+    if (game === 'valorant') {
+      // Read from Firestore cache instead of calling Cloud Function
+      const fetchFromFirestore = async () => {
+        setLoadingMatches(true);
+        try {
+          const userDoc = await getDoc(doc(db, 'users', userId));
+          if (userDoc.exists()) {
+            const matchHistory = userDoc.data().valorantStats?.matchHistory;
+            if (matchHistory && Array.isArray(matchHistory) && matchHistory.length > 0) {
+              // Map MatchHistoryEntry → RecentMatchResult
+              const mapped: RecentMatchResult[] = matchHistory.map((m: any) => ({
+                won: m.won,
+                agent: m.agent,
+                kills: m.kills,
+                deaths: m.deaths,
+                assists: m.assists,
+                map: m.map,
+                score: m.score,
+                playedAt: m.playedAt || (m.gameStart ? m.gameStart * 1000 : undefined),
+              }));
+              setRecentMatches(mapped);
+            } else {
+              setRecentMatches([]);
+            }
+          } else {
+            setRecentMatches([]);
+          }
+        } catch (error) {
+          console.error('Error fetching matches from Firestore:', error);
+          setRecentMatches([]);
+        } finally {
+          setLoadingMatches(false);
+        }
+      };
+      fetchFromFirestore();
+    } else if (game === 'league') {
+      // League still uses the Cloud Function
       const fetchMatches = async () => {
         setLoadingMatches(true);
         try {
@@ -375,14 +418,14 @@ const styles = StyleSheet.create({
     padding: 20,
   },
   modalContent: {
-    backgroundColor: '#0f0f0f',
+    backgroundColor: '#242428',
     borderRadius: 24,
     padding: 24,
     width: '100%',
     maxWidth: 400,
     maxHeight: '90%',
     borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.1)',
+    borderColor: 'rgba(255,255,255,0.15)',
   },
   scrollContent: {
     flexGrow: 0,
@@ -439,7 +482,7 @@ const styles = StyleSheet.create({
   rankBox: {
     flex: 1,
     alignItems: 'center',
-    backgroundColor: 'rgba(255,255,255,0.05)',
+    backgroundColor: 'rgba(255,255,255,0.12)',
     padding: 16,
     borderRadius: 16,
     gap: 8,
@@ -469,7 +512,7 @@ const styles = StyleSheet.create({
   statBox: {
     flex: 1,
     alignItems: 'center',
-    backgroundColor: 'rgba(255,255,255,0.05)',
+    backgroundColor: 'rgba(255,255,255,0.12)',
     padding: 14,
     borderRadius: 12,
     gap: 6,
@@ -508,7 +551,7 @@ const styles = StyleSheet.create({
   matchRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: 'rgba(255,255,255,0.05)',
+    backgroundColor: 'rgba(255,255,255,0.12)',
     borderRadius: 10,
     padding: 10,
     gap: 10,
@@ -596,7 +639,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 12,
-    backgroundColor: 'rgba(255,255,255,0.05)',
+    backgroundColor: 'rgba(255,255,255,0.12)',
     padding: 14,
     borderRadius: 12,
   },
@@ -605,7 +648,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 12,
-    backgroundColor: 'rgba(255,255,255,0.05)',
+    backgroundColor: 'rgba(255,255,255,0.12)',
     padding: 14,
     borderRadius: 12,
   },

@@ -3,11 +3,9 @@ import { IconSymbol } from '@/components/ui/icon-symbol';
 import { StyleSheet, View, TouchableOpacity, ScrollView, Image, ActivityIndicator, RefreshControl } from 'react-native';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { useState, useEffect } from 'react';
-import {
-  getValorantStats,
-  type ValorantStats,
-} from '@/services/valorantService';
+import { type ValorantStats } from '@/services/valorantService';
 import { useAuth } from '@/contexts/AuthContext';
+import { useValorantStats } from '@/contexts/ValorantStatsContext';
 import { db } from '@/config/firebase';
 import { doc, getDoc } from 'firebase/firestore';
 
@@ -62,127 +60,66 @@ export default function ValorantGameStatsScreen() {
   const viewedUserId = params.userId as string | undefined; // If viewing another user's stats
   const isOwnProfile = !viewedUserId || viewedUserId === user?.id;
 
-  // State for Valorant data
-  const [valorantStats, setValorantStats] = useState<ValorantStats | null>(null);
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const [hasFetched, setHasFetched] = useState(false);
+  // For own profile: use ValorantStatsContext
+  const {
+    valorantStats: contextStats,
+    isLoading: contextLoading,
+    error: contextError,
+    fetchStats: contextFetchStats,
+  } = useValorantStats();
+
+  // For other users: local state from Firestore
+  const [otherUserStats, setOtherUserStats] = useState<ValorantStats | null>(null);
+  const [otherUserLoading, setOtherUserLoading] = useState(false);
+  const [otherUserError, setOtherUserError] = useState<string | null>(null);
   const [refreshing, setRefreshing] = useState(false);
-  const [cacheLoaded, setCacheLoaded] = useState(false);
 
-  // Load cached data from Firestore on mount
+  // Resolved values based on own vs other profile
+  const valorantStats = isOwnProfile ? contextStats : otherUserStats;
+  const loading = isOwnProfile ? contextLoading : otherUserLoading;
+  const error = isOwnProfile ? contextError : otherUserError;
+
+  // Load other user's cached stats from Firestore
   useEffect(() => {
-    const targetUserId = viewedUserId || user?.id;
-    if (game && targetUserId && !cacheLoaded) {
-      loadCachedData();
-    }
-  }, [game?.name, user?.id, viewedUserId]);
+    if (isOwnProfile || !viewedUserId || !game) return;
 
-  // Helper function to check if cache is expired (> 3 hours)
-  const isCacheExpired = (lastUpdated: any): boolean => {
-    if (!lastUpdated) return true;
+    const loadOtherUserData = async () => {
+      setOtherUserLoading(true);
+      try {
+        const userRef = doc(db, 'users', viewedUserId);
+        const userDoc = await getDoc(userRef);
 
-    const CACHE_TTL = 3 * 60 * 60 * 1000; // 3 hours in milliseconds
-    const lastUpdatedTime = lastUpdated.toMillis ? lastUpdated.toMillis() : lastUpdated;
-    const now = Date.now();
-    const cacheAge = now - lastUpdatedTime;
-
-    return cacheAge > CACHE_TTL;
-  };
-
-  // Load cached stats from Firestore
-  const loadCachedData = async () => {
-    const targetUserId = viewedUserId || user?.id;
-    if (!targetUserId) return;
-
-    try {
-      console.log(`Loading cached Valorant stats from Firestore for user: ${targetUserId}...`);
-      const userRef = doc(db, 'users', targetUserId);
-      const userDoc = await getDoc(userRef);
-
-      if (userDoc.exists()) {
-        const data = userDoc.data();
-
-        if (data.valorantStats) {
-          console.log('Loaded cached Valorant stats');
-          setValorantStats(data.valorantStats);
-          setCacheLoaded(true);
-
-          // Only auto-fetch if viewing own profile
-          if (isOwnProfile) {
-            // Check if cache is expired and fetch if needed
-            if (isCacheExpired(data.valorantStats.lastUpdated)) {
-              console.log('Valorant cache expired, fetching fresh data...');
-              fetchValorantData();
-            } else {
-              console.log('Valorant cache is still valid');
-              setHasFetched(true);
-            }
-          } else {
-            // Viewing another user - just show cached data
-            console.log('Viewing another user - showing cached data only');
-            setHasFetched(true);
-          }
+        if (userDoc.exists() && userDoc.data().valorantStats) {
+          setOtherUserStats(userDoc.data().valorantStats);
         } else {
-          // No cached data
-          if (isOwnProfile) {
-            // Fetch for own profile
-            console.log('No cached data found, fetching...');
-            setCacheLoaded(true);
-            fetchValorantData();
-          } else {
-            // No data for other user
-            console.log('No stats available for this user');
-            setError('This user has not linked their Valorant account or has no stats available.');
-            setCacheLoaded(true);
-            setHasFetched(true);
-          }
+          setOtherUserError('This user has not linked their Valorant account or has no stats available.');
         }
+      } catch (err) {
+        console.error('Error loading other user stats:', err);
+        setOtherUserError('Failed to load stats.');
+      } finally {
+        setOtherUserLoading(false);
       }
-    } catch (error) {
-      console.error('Error loading cached data:', error);
-      setCacheLoaded(true);
-      fetchValorantData();
-    }
-  };
+    };
 
-  // Handle pull-to-refresh
+    loadOtherUserData();
+  }, [isOwnProfile, viewedUserId, game?.name]);
+
+  // Handle pull-to-refresh (own profile only)
   const onRefresh = async () => {
     setRefreshing(true);
-    setError(null);
-
     try {
-      const response = await getValorantStats(true); // Force refresh
-      if (response.success && response.stats) {
-        setValorantStats(response.stats);
-      }
+      await contextFetchStats(true);
     } catch (err: any) {
       console.error('Error refreshing stats:', err);
-      setError(err.message);
     } finally {
       setRefreshing(false);
     }
   };
 
   const fetchValorantData = async () => {
-    if (loading || hasFetched) return;
-
-    setLoading(true);
-    setError(null);
-    setHasFetched(true);
-
-    try {
-      const response = await getValorantStats();
-      if (response.success && response.stats) {
-        console.log('Valorant stats loaded:', response.stats);
-        setValorantStats(response.stats);
-      }
-    } catch (err: any) {
-      console.error('Error fetching Valorant stats:', err);
-      setError(err.message);
-      setHasFetched(false);
-    } finally {
-      setLoading(false);
+    if (isOwnProfile) {
+      await contextFetchStats();
     }
   };
 

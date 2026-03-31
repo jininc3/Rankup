@@ -4,7 +4,7 @@ import { BlurView } from 'expo-blur';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useEffect, useRef, useState } from 'react';
 import { Animated, Dimensions, Easing, Image, Modal, PanResponder, Pressable, ScrollView, StyleSheet, TouchableOpacity, View } from 'react-native';
-import { getProfileIconUrl } from '@/services/riotService';
+import { getProfileIconUrl, getChampionName, getChampionIconUrl } from '@/services/riotService';
 
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
 
@@ -34,6 +34,7 @@ interface Game {
   matchHistory?: MatchHistoryEntry[];
   gamesPlayed?: number;
   peakRank?: { tier: string; season: string };
+  topChampions?: { championId: number; championLevel: number; championPoints: number }[];
 }
 
 interface LeagueRankCardProps {
@@ -707,8 +708,34 @@ export default function LeagueRankCard({ game, username, viewOnly = false, userI
                 </View>
               </View>
 
-              {/* Rank Icon */}
-              <Image source={getRankIcon(game.rank)} style={styles.recentlyPlayingImage} resizeMode="contain" />
+              {/* Top 3 Champions */}
+              {game.topChampions && game.topChampions.length > 0 && (
+                <View style={styles.topChampionsSection}>
+                  <ThemedText style={styles.topChampionsTitle}>MOST PLAYED</ThemedText>
+                  <View style={styles.topChampionsRow}>
+                    {game.topChampions.map((champ, index) => (
+                      <View key={champ.championId} style={styles.topChampionItem}>
+                        <View style={[styles.topChampionImageWrapper, index === 0 && styles.topChampionFirst]}>
+                          <Image
+                            source={{ uri: getChampionIconUrl(champ.championId) }}
+                            style={[styles.topChampionImage, index === 0 && styles.topChampionImageFirst]}
+                          />
+                        </View>
+                        <ThemedText style={styles.topChampionName} numberOfLines={1}>
+                          {getChampionName(champ.championId)}
+                        </ThemedText>
+                        <ThemedText style={styles.topChampionPoints}>
+                          {champ.championPoints >= 1000000
+                            ? `${(champ.championPoints / 1000000).toFixed(1)}M`
+                            : champ.championPoints >= 1000
+                              ? `${(champ.championPoints / 1000).toFixed(0)}K`
+                              : champ.championPoints}
+                        </ThemedText>
+                      </View>
+                    ))}
+                  </View>
+                </View>
+              )}
             </Animated.View>
           </Pressable>
         </Animated.View>
@@ -887,6 +914,16 @@ const styles = StyleSheet.create({
   statBoxValue: { fontSize: 24, fontWeight: '800', color: '#fff' },
   statBoxLabel: { fontSize: 11, fontWeight: '600', color: 'rgba(255,255,255,0.5)', marginTop: 4, textTransform: 'uppercase', letterSpacing: 0.5 },
   recentlyPlayingImage: { position: 'absolute', right: -30, top: -40, width: 200, height: 300, opacity: 0.15 },
+  topChampionsSection: { marginTop: 16, paddingTop: 16, borderTopWidth: 1, borderTopColor: 'rgba(255,255,255,0.08)' },
+  topChampionsTitle: { fontSize: 11, fontWeight: '800', color: 'rgba(255,255,255,0.5)', letterSpacing: 1, marginBottom: 12, textTransform: 'uppercase' },
+  topChampionsRow: { flexDirection: 'row', justifyContent: 'space-around', alignItems: 'center' },
+  topChampionItem: { alignItems: 'center', flex: 1 },
+  topChampionImageWrapper: { width: 48, height: 48, borderRadius: 24, overflow: 'hidden', borderWidth: 2, borderColor: 'rgba(255,255,255,0.15)', marginBottom: 6 },
+  topChampionFirst: { width: 56, height: 56, borderRadius: 28, borderColor: 'rgba(200,170,110,0.6)' },
+  topChampionImage: { width: '100%', height: '100%' },
+  topChampionImageFirst: {},
+  topChampionName: { fontSize: 11, fontWeight: '700', color: '#fff', textAlign: 'center' },
+  topChampionPoints: { fontSize: 10, fontWeight: '600', color: 'rgba(255,255,255,0.45)', marginTop: 2 },
   // Match History Card
   matchHistoryCard: {
     position: 'absolute',

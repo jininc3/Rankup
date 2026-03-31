@@ -13,6 +13,17 @@ import Animated, {
 } from 'react-native-reanimated';
 import { useEffect } from 'react';
 
+const ORBIT_RADIUS = 95;
+const ICON_SIZE = 38;
+const AGENT_ICONS = [
+  require('@/assets/images/valoranticons/jett.png'),
+  require('@/assets/images/valoranticons/reyna.png'),
+  require('@/assets/images/valoranticons/sage.png'),
+  require('@/assets/images/valoranticons/omen.png'),
+  require('@/assets/images/valoranticons/phoenix.png'),
+  require('@/assets/images/valoranticons/viper.png'),
+];
+
 interface LiveSearchIdleProps {
   hasCards: boolean;
   valorantCard: any;
@@ -40,6 +51,8 @@ export default function LiveSearchIdle({
   // Slow breathing ring
   const breathScale = useSharedValue(1);
   const breathOpacity = useSharedValue(0.3);
+  // Orbiting agent icons
+  const iconsRotation = useSharedValue(0);
   // Stagger fade-in for content
   const titleOpacity = useSharedValue(0);
   const titleTranslateY = useSharedValue(12);
@@ -95,6 +108,13 @@ export default function LiveSearchIdle({
       false
     );
 
+    // Orbiting icons - slow spin
+    iconsRotation.value = withRepeat(
+      withTiming(360, { duration: 15000, easing: Easing.linear }),
+      -1,
+      false
+    );
+
     // Staggered content reveal
     titleOpacity.value = withDelay(200, withTiming(1, { duration: 600 }));
     titleTranslateY.value = withDelay(200, withTiming(0, { duration: 600, easing: Easing.out(Easing.ease) }));
@@ -136,6 +156,14 @@ export default function LiveSearchIdle({
   const breathStyle = useAnimatedStyle(() => ({
     transform: [{ scale: breathScale.value }],
     opacity: breathOpacity.value,
+  }));
+
+  const iconsOrbitStyle = useAnimatedStyle(() => ({
+    transform: [{ rotate: `${iconsRotation.value}deg` }],
+  }));
+
+  const iconCounterStyle = useAnimatedStyle(() => ({
+    transform: [{ rotate: `${-iconsRotation.value}deg` }],
   }));
 
   const titleStyle = useAnimatedStyle(() => ({
@@ -189,37 +217,67 @@ export default function LiveSearchIdle({
           ))}
         </Animated.View>
 
+        {/* Orbiting agent icons */}
+        <Animated.View style={[styles.iconsOrbit, iconsOrbitStyle]}>
+          {AGENT_ICONS.map((icon, i) => (
+            <View
+              key={i}
+              style={[
+                styles.orbitIconAnchor,
+                {
+                  transform: [
+                    { rotate: `${i * 60}deg` },
+                    { translateY: -ORBIT_RADIUS },
+                  ],
+                },
+              ]}
+            >
+              <Animated.View style={iconCounterStyle}>
+                <View style={{ transform: [{ rotate: `${-i * 60}deg` }] }}>
+                  <View style={[styles.orbitIconCircle, { borderColor: accentColor }]}>
+                    <Image source={icon} style={styles.orbitIconImage} resizeMode="contain" />
+                  </View>
+                </View>
+              </Animated.View>
+            </View>
+          ))}
+        </Animated.View>
+
         {/* Glow behind orb */}
         <Animated.View style={[styles.orbGlow, orbGlowStyle, { backgroundColor: accentColor }]} />
 
-        {/* Center orb */}
+        {/* Center orb - Valorant logo */}
         <Animated.View style={[styles.orb, orbStyle]}>
           <LinearGradient
-            colors={['#252525', '#1a1a1a', '#111']}
+            colors={['#1e1e1e', '#141414', '#0a0a0a']}
             style={styles.orbGradient}
           >
-            <View style={[styles.orbInnerRing, { borderColor: accentColor }]}>
-              <IconSymbol size={32} name="person.2.fill" color={accentColor} />
-            </View>
+            <Image
+              source={searchGamePick === 'league'
+                ? require('@/assets/images/lol-icon.png')
+                : require('@/assets/images/valorant-red.png')}
+              style={styles.centerLogo}
+              resizeMode="contain"
+            />
           </LinearGradient>
         </Animated.View>
 
         {/* Status indicator */}
         <View style={styles.statusBadge}>
           <View style={styles.statusDot} />
-          <ThemedText style={styles.statusText}>LIVE</ThemedText>
+          <ThemedText style={styles.statusText}>SEARCH LIVE</ThemedText>
         </View>
       </View>
 
       {/* Title */}
       <Animated.View style={[styles.titleContainer, titleStyle]}>
-        <ThemedText style={styles.title}>Find Your Duo</ThemedText>
+        <ThemedText style={styles.title}>Ready Up</ThemedText>
       </Animated.View>
 
       {/* Subtitle */}
       <Animated.View style={subtitleStyle}>
         <ThemedText style={styles.subtitle}>
-          Get matched instantly with a player{'\n'}searching within your rank range
+          Queue up and get matched with a duo{'\n'}searching in your rank range
         </ThemedText>
       </Animated.View>
 
@@ -322,7 +380,7 @@ export default function LiveSearchIdle({
           >
             <View style={[styles.searchBtnDot, !searchGamePick && { backgroundColor: '#555' }]} />
             <ThemedText style={[styles.searchBtnText, !searchGamePick && { color: '#666' }]}>
-              Search Now
+              Search For Players
             </ThemedText>
             <IconSymbol
               size={16}
@@ -359,11 +417,11 @@ const styles = StyleSheet.create({
 
   // Orb / Radar
   orbSection: {
-    width: 180,
-    height: 180,
+    width: 250,
+    height: 250,
     alignItems: 'center',
     justifyContent: 'center',
-    marginBottom: 28,
+    marginBottom: 20,
   },
   breathRing: {
     position: 'absolute',
@@ -408,14 +466,40 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     borderRadius: 44,
   },
-  orbInnerRing: {
-    width: 68,
-    height: 68,
-    borderRadius: 34,
+  centerLogo: {
+    width: 44,
+    height: 44,
+  },
+  iconsOrbit: {
+    position: 'absolute',
+    width: 250,
+    height: 250,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  orbitIconAnchor: {
+    position: 'absolute',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  orbitIconCircle: {
+    width: ICON_SIZE,
+    height: ICON_SIZE,
+    borderRadius: ICON_SIZE / 2,
+    backgroundColor: 'rgba(18, 18, 18, 0.92)',
     borderWidth: 1.5,
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: 'rgba(0,0,0,0.2)',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.4,
+    shadowRadius: 6,
+    elevation: 6,
+  },
+  orbitIconImage: {
+    width: ICON_SIZE - 10,
+    height: ICON_SIZE - 10,
+    borderRadius: (ICON_SIZE - 10) / 2,
   },
   statusBadge: {
     position: 'absolute',
