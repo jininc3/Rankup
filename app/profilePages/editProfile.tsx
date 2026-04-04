@@ -485,14 +485,14 @@ export default function EditProfileScreen() {
 
     const logoSource = item.type === 'league'
       ? require('@/assets/images/lol-icon.png')
-      : require('@/assets/images/valorant.png');
+      : require('@/assets/images/valorant-red.png');
 
     const rankText = item.type === 'league'
       ? (riotStats?.rankedSolo ? formatRank(riotStats.rankedSolo.tier, riotStats.rankedSolo.rank) : 'Unranked')
       : (valorantStats?.currentRank || 'Unranked');
 
     return (
-      <ScaleDecorator>
+      <ScaleDecorator activeScale={1}>
         <TouchableOpacity
           activeOpacity={1}
           onLongPress={isEnabled && enabledRankCards.length > 1 ? drag : undefined}
@@ -506,28 +506,26 @@ export default function EditProfileScreen() {
           {/* Drag handle */}
           {isEnabled && enabledRankCards.length > 1 && (
             <View style={styles.dragHandle}>
-              <IconSymbol size={16} name="line.3.horizontal" color="#444" />
+              <IconSymbol size={14} name="line.3.horizontal" color={isActive ? 'rgba(201, 168, 76, 0.7)' : 'rgba(201, 168, 76, 0.4)'} />
             </View>
           )}
 
           {/* Logo */}
-          <View style={styles.rankCardLogo}>
-            <Image source={logoSource} style={styles.rankCardLogoImage} resizeMode="contain" />
-          </View>
+          <Image source={logoSource} style={[styles.rankCardLogoImage, !isEnabled && { opacity: 0.3 }]} resizeMode="contain" />
 
           {/* Info */}
           <View style={styles.rankCardInfo}>
-            <ThemedText style={[styles.rankCardName, !isEnabled && { opacity: 0.4 }]}>{item.name}</ThemedText>
-            <ThemedText style={[styles.rankCardRank, !isEnabled && { opacity: 0.3 }]}>{rankText}</ThemedText>
+            <ThemedText style={[styles.rankCardName, !isEnabled && { opacity: 0.35 }]}>{item.name}</ThemedText>
+            <ThemedText style={[styles.rankCardRank, !isEnabled && { opacity: 0.2 }]}>{rankText}</ThemedText>
           </View>
 
           {/* Toggle */}
           <Switch
             value={isEnabled}
             onValueChange={() => toggleRankCard(item.type)}
-            trackColor={{ false: '#252525', true: '#c42743' }}
-            thumbColor="#fff"
-            style={{ transform: [{ scale: 0.85 }] }}
+            trackColor={{ false: '#1a1a1a', true: 'rgba(201, 168, 76, 0.35)' }}
+            thumbColor={isEnabled ? '#C9A84C' : '#555'}
+            style={{ transform: [{ scale: 0.8 }] }}
           />
         </TouchableOpacity>
       </ScaleDecorator>
@@ -810,45 +808,41 @@ export default function EditProfileScreen() {
           {/* Rank Cards Section */}
           <View style={styles.rankCardsSectionOuter}>
             <View style={styles.rankCardsSectionHeader}>
-              <ThemedText style={styles.rankCardsSectionTitle}>Rank Cards</ThemedText>
+              <View style={styles.rankCardsTitleRow}>
+                <View style={styles.rankCardsTitleAccent} />
+                <ThemedText style={styles.rankCardsSectionTitle}>Rank Cards</ThemedText>
+              </View>
               <TouchableOpacity
                 style={styles.linkAccountButton}
                 onPress={() => router.push('/profilePages/newRankCard')}
                 activeOpacity={0.7}
               >
-                <IconSymbol size={12} name="plus" color="#c42743" />
                 <ThemedText style={styles.linkAccountText}>Manage</ThemedText>
+                <IconSymbol size={10} name="chevron.right" color="#C9A84C" />
               </TouchableOpacity>
             </View>
 
-            <View style={styles.rankCardsSectionCard}>
-              {loadingRankCards ? (
-                <View style={styles.rankCardsLoading}>
-                  <ActivityIndicator size="small" color="#c42743" />
-                </View>
-              ) : !riotAccount && !valorantAccount ? (
-                <View style={styles.noAccountsContainer}>
-                  <ThemedText style={styles.noAccountsText}>
-                    No accounts linked
-                  </ThemedText>
-                </View>
-              ) : (
-                <GestureHandlerRootView>
-                  <DraggableFlatList
-                    data={getAvailableCards()}
-                    onDragEnd={handleDragEnd}
-                    keyExtractor={(item) => item.type}
-                    renderItem={renderRankCardItem}
-                    scrollEnabled={false}
-                  />
-                  {enabledRankCards.length > 1 && (
-                    <ThemedText style={styles.dragHint}>
-                      Hold and drag to reorder
-                    </ThemedText>
-                  )}
-                </GestureHandlerRootView>
-              )}
-            </View>
+            {loadingRankCards ? (
+              <View style={styles.rankCardsLoading}>
+                <ActivityIndicator size="small" color="#C9A84C" />
+              </View>
+            ) : !riotAccount && !valorantAccount ? (
+              <View style={styles.noAccountsContainer}>
+                <ThemedText style={styles.noAccountsText}>
+                  No accounts linked
+                </ThemedText>
+              </View>
+            ) : (
+              <GestureHandlerRootView>
+                <DraggableFlatList
+                  data={getAvailableCards()}
+                  onDragEnd={handleDragEnd}
+                  keyExtractor={(item) => item.type}
+                  renderItem={renderRankCardItem}
+                  scrollEnabled={false}
+                />
+              </GestureHandlerRootView>
+            )}
           </View>
         </View>
       </ScrollView>
@@ -1195,7 +1189,7 @@ const styles = StyleSheet.create({
     borderTopColor: '#2c2f33',
   },
   saveButton: {
-    backgroundColor: '#c42743',
+    backgroundColor: '#C9A84C',
     paddingVertical: 16,
     borderRadius: 12,
     alignItems: 'center',
@@ -1211,20 +1205,32 @@ const styles = StyleSheet.create({
   },
   // Rank Cards Section Styles
   rankCardsSectionOuter: {
-    paddingHorizontal: 10,
+    paddingHorizontal: 20,
     marginBottom: 20,
   },
   rankCardsSectionHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    paddingHorizontal: 6,
-    marginBottom: 10,
+    marginBottom: 14,
+  },
+  rankCardsTitleRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  rankCardsTitleAccent: {
+    width: 2,
+    height: 14,
+    backgroundColor: '#C9A84C',
+    borderRadius: 1,
   },
   rankCardsSectionTitle: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: '#fff',
+    fontSize: 13,
+    fontWeight: '500',
+    color: 'rgba(255, 255, 255, 0.5)',
+    letterSpacing: 0.5,
+    textTransform: 'uppercase',
   },
   linkAccountButton: {
     flexDirection: 'row',
@@ -1232,77 +1238,63 @@ const styles = StyleSheet.create({
     gap: 4,
   },
   linkAccountText: {
-    fontSize: 13,
+    fontSize: 12,
     fontWeight: '500',
-    color: '#c42743',
-  },
-  rankCardsSectionCard: {
-    backgroundColor: 'rgba(255, 255, 255, 0.03)',
-    borderRadius: 16,
-    borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.06)',
-    padding: 8,
+    color: 'rgba(201, 168, 76, 0.6)',
   },
   rankCardsLoading: {
-    paddingVertical: 30,
+    paddingVertical: 24,
     alignItems: 'center',
   },
   noAccountsContainer: {
     alignItems: 'center',
-    paddingVertical: 24,
+    paddingVertical: 20,
   },
   noAccountsText: {
     fontSize: 13,
-    color: '#555',
+    color: '#444',
   },
   rankCardItem: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingVertical: 10,
-    paddingHorizontal: 8,
-    gap: 12,
+    paddingVertical: 12,
+    paddingHorizontal: 0,
+    gap: 10,
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    borderBottomColor: 'rgba(255, 255, 255, 0.04)',
   },
   rankCardItemDragging: {
-    backgroundColor: 'rgba(255, 255, 255, 0.04)',
-    borderRadius: 12,
+    backgroundColor: 'rgba(201, 168, 76, 0.08)',
+    borderRadius: 10,
+    borderBottomWidth: 0,
+    marginHorizontal: 20,
+    paddingHorizontal: 10,
+    borderWidth: 1,
+    borderColor: 'rgba(201, 168, 76, 0.15)',
   },
   dragHandle: {
-    width: 20,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  dragHint: {
-    fontSize: 11,
-    color: '#444',
-    textAlign: 'center',
-    marginTop: 4,
-    marginBottom: 4,
-  },
-  rankCardLogo: {
-    width: 40,
-    height: 40,
-    backgroundColor: 'rgba(255, 255, 255, 0.05)',
-    borderRadius: 10,
+    width: 18,
     alignItems: 'center',
     justifyContent: 'center',
   },
   rankCardLogoImage: {
-    width: 24,
-    height: 24,
+    width: 20,
+    height: 20,
+    opacity: 0.7,
   },
   rankCardInfo: {
     flex: 1,
     gap: 1,
   },
   rankCardName: {
-    fontSize: 15,
-    fontWeight: '600',
-    color: '#fff',
+    fontSize: 14,
+    fontWeight: '500',
+    color: 'rgba(255, 255, 255, 0.85)',
   },
   rankCardRank: {
-    fontSize: 12,
+    fontSize: 11,
     fontWeight: '400',
-    color: 'rgba(255, 255, 255, 0.4)',
+    color: 'rgba(201, 168, 76, 0.45)',
   },
   // Modal styles
   modalOverlay: {

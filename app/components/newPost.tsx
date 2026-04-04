@@ -6,9 +6,9 @@ import { useAuth } from '@/contexts/AuthContext';
 import { ResizeMode, Video } from 'expo-av';
 import * as ImagePicker from 'expo-image-picker';
 import * as VideoThumbnails from 'expo-video-thumbnails';
-import { addDoc, collection, doc, increment, setDoc, Timestamp, updateDoc } from 'firebase/firestore';
+import { addDoc, collection, doc, getDocs, increment, setDoc, Timestamp, updateDoc } from 'firebase/firestore';
 import { getDownloadURL, ref, uploadBytesResumable } from 'firebase/storage';
-import { useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { ActivityIndicator, Alert, Dimensions, Image, Keyboard, KeyboardAvoidingView, Modal, Platform, ScrollView, StyleSheet, TextInput, TouchableOpacity, View } from 'react-native';
 
 const { width: screenWidth } = Dimensions.get('window');
@@ -40,8 +40,8 @@ interface NewPostProps {
 }
 
 const availableGames = [
-  { id: 'valorant', name: 'Valorant', image: require('@/assets/images/valorantText.png') },
-  { id: 'league', name: 'League of Legends', image: require('@/assets/images/leagueoflegends.png') },
+  { id: 'valorant', name: 'Valorant', shortName: 'Valorant', icon: require('@/assets/images/valorant-red.png') },
+  { id: 'league', name: 'League of Legends', shortName: 'League', icon: require('@/assets/images/lol-icon.png') },
 ];
 
 export default function NewPost({ visible, onClose, onPostCreated }: NewPostProps) {
@@ -61,8 +61,38 @@ export default function NewPost({ visible, onClose, onPostCreated }: NewPostProp
   const [showThumbnailOptions, setShowThumbnailOptions] = useState(false);
   const [showFrameSelector, setShowFrameSelector] = useState(false);
   const [generatingFrames, setGeneratingFrames] = useState(false);
+  const [mutualFollowers, setMutualFollowers] = useState<TaggedUser[]>([]);
   const postPreviewScrollRef = useRef<ScrollView>(null);
   const captionInputRef = useRef<View>(null);
+
+  // Fetch mutual followers for suggestions
+  useEffect(() => {
+    const fetchMutualFollowers = async () => {
+      if (!user?.id) return;
+      try {
+        const followingSnap = await getDocs(collection(db, `users/${user.id}/following`));
+        const followingIds = new Set(followingSnap.docs.map(d => d.data().followingId));
+
+        const followersSnap = await getDocs(collection(db, `users/${user.id}/followers`));
+        const mutuals: TaggedUser[] = [];
+        for (const followerDoc of followersSnap.docs) {
+          const data = followerDoc.data();
+          if (followingIds.has(data.followerId)) {
+            mutuals.push({
+              userId: data.followerId,
+              username: data.followerUsername,
+              avatar: data.followerAvatar,
+            });
+            if (mutuals.length >= 3) break;
+          }
+        }
+        setMutualFollowers(mutuals);
+      } catch (error) {
+        console.error('Error fetching mutual followers:', error);
+      }
+    };
+    fetchMutualFollowers();
+  }, [user?.id]);
 
   const handleAddPhoto = async () => {
     const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
@@ -419,7 +449,7 @@ export default function NewPost({ visible, onClose, onPostCreated }: NewPostProp
       {uploading && (
         <View style={styles.uploadingOverlay}>
           <View style={styles.uploadingContainer}>
-            <ActivityIndicator size="small" color="#666" />
+            <ActivityIndicator size="small" color="#C9A84C" />
             <ThemedText style={styles.uploadingText}>Uploading...</ThemedText>
           </View>
         </View>
@@ -442,9 +472,12 @@ export default function NewPost({ visible, onClose, onPostCreated }: NewPostProp
               style={styles.backButton}
               onPress={handleClose}
             >
-              <IconSymbol size={24} name="xmark" color="#fff" />
+              <IconSymbol size={22} name="xmark" color="rgba(255,255,255,0.5)" />
             </TouchableOpacity>
-            <ThemedText style={styles.headerTitle}>New Post</ThemedText>
+            <View style={styles.headerTitleRow}>
+              <View style={styles.headerAccent} />
+              <ThemedText style={styles.headerTitle}>New Post</ThemedText>
+            </View>
             <TouchableOpacity
               style={[styles.shareButton, (!selectedMedia.length || !selectedPostGame) && styles.shareButtonDisabled]}
               onPress={handleSharePost}
@@ -466,7 +499,7 @@ export default function NewPost({ visible, onClose, onPostCreated }: NewPostProp
             {/* Media Selection Card */}
             <View style={styles.card}>
               <View style={styles.cardHeader}>
-                <IconSymbol size={18} name="video.fill" color="#72767d" />
+                <IconSymbol size={16} name="video.fill" color="rgba(201, 168, 76, 0.4)" />
                 <ThemedText style={styles.cardHeaderTitle}>Video</ThemedText>
               </View>
 
@@ -474,7 +507,7 @@ export default function NewPost({ visible, onClose, onPostCreated }: NewPostProp
                 <TouchableOpacity style={styles.addMediaButton} onPress={handleAddPhoto} activeOpacity={0.6}>
                   <View style={styles.addMediaContent}>
                     <View style={styles.addMediaIconWrapper}>
-                      <IconSymbol size={24} name="plus" color="#666" />
+                      <IconSymbol size={22} name="plus" color="rgba(201, 168, 76, 0.5)" />
                     </View>
                     <ThemedText style={styles.addMediaTitle}>Add Video</ThemedText>
                     <ThemedText style={styles.addMediaSubtext}>Tap to select · Max 20 MB</ThemedText>
@@ -545,7 +578,7 @@ export default function NewPost({ visible, onClose, onPostCreated }: NewPostProp
             {/* Caption Card */}
             <View style={styles.card} ref={captionInputRef}>
               <View style={styles.cardHeader}>
-                <IconSymbol size={18} name="text.alignleft" color="#72767d" />
+                <IconSymbol size={16} name="text.alignleft" color="rgba(201, 168, 76, 0.4)" />
                 <ThemedText style={styles.cardHeaderTitle}>Caption</ThemedText>
               </View>
 
@@ -576,63 +609,29 @@ export default function NewPost({ visible, onClose, onPostCreated }: NewPostProp
               </View>
             </View>
 
-            {/* Game Tag Card */}
-            <View style={styles.card}>
-              <TouchableOpacity
-                style={styles.cardHeaderTouchable}
-                onPress={() => setShowGameOptions(!showGameOptions)}
-                activeOpacity={0.7}
-              >
-                <View style={styles.cardHeaderLeft}>
-                  <IconSymbol size={18} name="gamecontroller.fill" color="#72767d" />
-                  <ThemedText style={styles.cardHeaderTitle}>Game Tag</ThemedText>
-                  {!selectedPostGame && (
-                    <View style={styles.requiredBadge}>
-                      <ThemedText style={styles.requiredText}>Required</ThemedText>
-                    </View>
-                  )}
-                </View>
-                <View style={styles.cardHeaderRight}>
-                  {selectedPostGame && (
-                    <View style={styles.selectedGameBadge}>
-                      <ThemedText style={styles.selectedGameText}>
-                        {availableGames.find(g => g.id === selectedPostGame)?.name}
-                      </ThemedText>
-                    </View>
-                  )}
-                  <IconSymbol
-                    size={16}
-                    name={showGameOptions ? "chevron.up" : "chevron.down"}
-                    color="#4a4d52"
-                  />
-                </View>
-              </TouchableOpacity>
-
-              {showGameOptions && (
-                <View style={styles.gameOptionsContainer}>
-                  {availableGames.map((game) => (
+            {/* Game Tag */}
+            <View style={styles.gameTagSection}>
+              <ThemedText style={styles.gameTagLabel}>
+                Game {!selectedPostGame && <ThemedText style={styles.gameTagRequired}>· required</ThemedText>}
+              </ThemedText>
+              <View style={styles.gameTagRow}>
+                {availableGames.map((game) => {
+                  const isSelected = selectedPostGame === game.id;
+                  return (
                     <TouchableOpacity
                       key={game.id}
-                      style={[
-                        styles.gameOption,
-                        selectedPostGame === game.id && styles.gameOptionSelected
-                      ]}
-                      onPress={() => setSelectedPostGame(selectedPostGame === game.id ? null : game.id)}
+                      style={[styles.gameTagChip, isSelected && styles.gameTagChipSelected]}
+                      onPress={() => setSelectedPostGame(isSelected ? null : game.id)}
                       activeOpacity={0.7}
                     >
-                      <ThemedText style={[
-                        styles.gameOptionText,
-                        selectedPostGame === game.id && styles.gameOptionTextSelected
-                      ]}>
-                        {game.name}
+                      <Image source={game.icon} style={[styles.gameTagIcon, !isSelected && { opacity: 0.35 }]} resizeMode="contain" />
+                      <ThemedText style={[styles.gameTagText, isSelected && styles.gameTagTextSelected]} numberOfLines={1}>
+                        {game.shortName}
                       </ThemedText>
-                      {selectedPostGame === game.id && (
-                        <IconSymbol size={16} name="checkmark" color="#fff" />
-                      )}
                     </TouchableOpacity>
-                  ))}
-                </View>
-              )}
+                  );
+                })}
+              </View>
             </View>
 
             {/* Thumbnail Card - Only show for videos */}
@@ -644,18 +643,18 @@ export default function NewPost({ visible, onClose, onPostCreated }: NewPostProp
                   activeOpacity={0.7}
                 >
                   <View style={styles.cardHeaderLeft}>
-                    <IconSymbol size={18} name="photo.fill" color="#72767d" />
+                    <IconSymbol size={16} name="photo.fill" color="rgba(201, 168, 76, 0.4)" />
                     <ThemedText style={styles.cardHeaderTitle}>Thumbnail</ThemedText>
                     {selectedThumbnailUri && thumbnailOption !== 'auto' && (
                       <View style={styles.customBadge}>
-                        <IconSymbol size={12} name="checkmark" color="#fff" />
+                        <IconSymbol size={10} name="checkmark" color="#C9A84C" />
                       </View>
                     )}
                   </View>
                   <IconSymbol
-                    size={16}
+                    size={14}
                     name={showThumbnailOptions ? "chevron.up" : "chevron.down"}
-                    color="#4a4d52"
+                    color="rgba(201, 168, 76, 0.3)"
                   />
                 </TouchableOpacity>
 
@@ -682,10 +681,10 @@ export default function NewPost({ visible, onClose, onPostCreated }: NewPostProp
                         activeOpacity={0.7}
                       >
                         {generatingFrames ? (
-                          <ActivityIndicator size="small" color="#fff" />
+                          <ActivityIndicator size="small" color="#C9A84C" />
                         ) : (
                           <>
-                            <IconSymbol size={18} name="film" color="#9a9da2" />
+                            <IconSymbol size={16} name="film" color="rgba(201, 168, 76, 0.4)" />
                             <ThemedText style={styles.thumbnailButtonText}>Video Frame</ThemedText>
                           </>
                         )}
@@ -696,7 +695,7 @@ export default function NewPost({ visible, onClose, onPostCreated }: NewPostProp
                         onPress={pickCustomThumbnail}
                         activeOpacity={0.7}
                       >
-                        <IconSymbol size={18} name="photo.on.rectangle" color="#9a9da2" />
+                        <IconSymbol size={16} name="photo.on.rectangle" color="rgba(201, 168, 76, 0.4)" />
                         <ThemedText style={styles.thumbnailButtonText}>Custom</ThemedText>
                       </TouchableOpacity>
 
@@ -711,7 +710,7 @@ export default function NewPost({ visible, onClose, onPostCreated }: NewPostProp
                         }}
                         activeOpacity={0.7}
                       >
-                        <IconSymbol size={18} name="wand.and.stars" color={thumbnailOption === 'auto' ? '#fff' : '#9a9da2'} />
+                        <IconSymbol size={16} name="wand.and.stars" color={thumbnailOption === 'auto' ? '#C9A84C' : 'rgba(201, 168, 76, 0.4)'} />
                         <ThemedText style={[styles.thumbnailButtonText, thumbnailOption === 'auto' && styles.thumbnailButtonTextSelected]}>Auto</ThemedText>
                       </TouchableOpacity>
                     </View>
@@ -720,29 +719,95 @@ export default function NewPost({ visible, onClose, onPostCreated }: NewPostProp
               </View>
             )}
 
-            {/* Tag People Card */}
-            <View style={styles.card}>
+            {/* Tag People */}
+            <View style={styles.tagPeopleSection}>
+              <View style={styles.tagPeopleTitleRow}>
+                <View>
+                  <ThemedText style={styles.tagPeopleLabel}>TAG PEOPLE</ThemedText>
+                  <ThemedText style={styles.tagPeopleHint}>Tag friends in your clip</ThemedText>
+                </View>
+                {taggedUsers.length > 0 && (
+                  <View style={styles.tagCountBadge}>
+                    <ThemedText style={styles.tagCountBadgeText}>{taggedUsers.length}</ThemedText>
+                  </View>
+                )}
+              </View>
+
+              {/* Search button */}
               <TouchableOpacity
-                style={styles.cardHeaderTouchable}
+                style={styles.tagSearchButton}
                 onPress={() => {
                   Keyboard.dismiss();
                   setShowTagUsersModal(true);
                 }}
-                activeOpacity={0.7}
               >
-                <View style={styles.cardHeaderLeft}>
-                  <IconSymbol size={18} name="person.2.fill" color="#72767d" />
-                  <ThemedText style={styles.cardHeaderTitle}>Tag People</ThemedText>
-                </View>
-                <View style={styles.cardHeaderRight}>
-                  {taggedUsers.length > 0 && (
-                    <View style={styles.taggedCountBadge}>
-                      <ThemedText style={styles.taggedCountText}>{taggedUsers.length}</ThemedText>
-                    </View>
-                  )}
-                  <IconSymbol size={16} name="chevron.right" color="#4a4d52" />
-                </View>
+                <IconSymbol size={15} name="magnifyingglass" color="#555" />
+                <ThemedText style={styles.tagSearchPlaceholder}>Search followers...</ThemedText>
               </TouchableOpacity>
+
+              {/* Selected chips */}
+              {taggedUsers.length > 0 && (
+                <View style={styles.tagSelectedChipsContainer}>
+                  {taggedUsers.map((u) => (
+                    <View key={u.userId} style={styles.tagSelectedChip}>
+                      <View style={styles.tagSelectedChipAvatar}>
+                        {u.avatar ? (
+                          <Image source={{ uri: u.avatar }} style={styles.tagSelectedChipAvatarImage} />
+                        ) : (
+                          <ThemedText style={styles.tagSelectedChipAvatarText}>
+                            {u.username?.[0]?.toUpperCase()}
+                          </ThemedText>
+                        )}
+                      </View>
+                      <ThemedText style={styles.tagSelectedChipText}>{u.username}</ThemedText>
+                      <TouchableOpacity
+                        onPress={() => setTaggedUsers(taggedUsers.filter(t => t.userId !== u.userId))}
+                        hitSlop={8}
+                      >
+                        <IconSymbol size={12} name="xmark" color="#666" />
+                      </TouchableOpacity>
+                    </View>
+                  ))}
+                </View>
+              )}
+
+              {/* Quick add suggestions */}
+              {mutualFollowers.filter(f => !taggedUsers.find(t => t.userId === f.userId)).length > 0 && (
+                <>
+                  <ThemedText style={[styles.tagPeopleLabel, { marginTop: 16 }]}>QUICK ADD</ThemedText>
+                  <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.tagSuggestionsScroll}>
+                    <View style={styles.tagSuggestionsRow}>
+                      {mutualFollowers
+                        .filter((f) => !taggedUsers.find(t => t.userId === f.userId))
+                        .map((u) => (
+                          <TouchableOpacity
+                            key={u.userId}
+                            style={styles.tagSuggestionItem}
+                            onPress={() => setTaggedUsers([...taggedUsers, u])}
+                          >
+                            <View style={styles.tagSuggestionAvatarWrapper}>
+                              <View style={styles.tagSuggestionAvatar}>
+                                {u.avatar ? (
+                                  <Image source={{ uri: u.avatar }} style={styles.tagSuggestionAvatarImage} />
+                                ) : (
+                                  <ThemedText style={styles.tagSuggestionAvatarText}>
+                                    {u.username?.[0]?.toUpperCase()}
+                                  </ThemedText>
+                                )}
+                              </View>
+                              <View style={styles.tagSuggestionAddBadge}>
+                                <IconSymbol size={8} name="plus" color="#fff" />
+                              </View>
+                            </View>
+                            <ThemedText style={styles.tagSuggestionName} numberOfLines={1}>
+                              {u.username}
+                            </ThemedText>
+                          </TouchableOpacity>
+                        ))}
+                    </View>
+                  </ScrollView>
+                </>
+              )}
             </View>
 
             <View style={styles.bottomSpacer} />
@@ -842,28 +907,39 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
+  headerTitleRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  headerAccent: {
+    width: 2,
+    height: 14,
+    backgroundColor: '#C9A84C',
+    borderRadius: 1,
+  },
   headerTitle: {
     fontSize: 16,
     fontWeight: '600',
-    color: '#999',
+    color: 'rgba(255, 255, 255, 0.7)',
     letterSpacing: 0,
   },
   shareButton: {
     paddingVertical: 6,
     paddingHorizontal: 14,
-    backgroundColor: '#2c2f33',
+    backgroundColor: '#C9A84C',
     borderRadius: 6,
   },
   shareButtonDisabled: {
     backgroundColor: 'transparent',
   },
   shareButtonText: {
-    fontSize: 14,
+    fontSize: 13,
     fontWeight: '600',
-    color: '#fff',
+    color: '#0f0f0f',
   },
   shareButtonTextDisabled: {
-    color: '#444',
+    color: '#333',
   },
   // Content
   scrollContent: {
@@ -871,11 +947,11 @@ const styles = StyleSheet.create({
   },
   scrollContentContainer: {
     padding: 16,
-    gap: 12,
+    gap: 10,
   },
   // Cards
   card: {
-    backgroundColor: '#151515',
+    backgroundColor: 'rgba(255, 255, 255, 0.03)',
     borderRadius: 12,
     overflow: 'hidden',
   },
@@ -904,9 +980,9 @@ const styles = StyleSheet.create({
     gap: 8,
   },
   cardHeaderTitle: {
-    fontSize: 13,
+    fontSize: 12,
     fontWeight: '500',
-    color: '#666',
+    color: 'rgba(255, 255, 255, 0.35)',
   },
   // Add Media
   addMediaButton: {
@@ -914,9 +990,9 @@ const styles = StyleSheet.create({
     marginTop: 0,
     borderRadius: 10,
     borderWidth: 1,
-    borderColor: '#333',
+    borderColor: 'rgba(201, 168, 76, 0.12)',
     borderStyle: 'dashed',
-    backgroundColor: '#1a1a1a',
+    backgroundColor: 'rgba(201, 168, 76, 0.03)',
   },
   addMediaContent: {
     paddingVertical: 28,
@@ -925,22 +1001,22 @@ const styles = StyleSheet.create({
     gap: 8,
   },
   addMediaIconWrapper: {
-    width: 44,
-    height: 44,
-    borderRadius: 22,
-    backgroundColor: '#252525',
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: 'rgba(201, 168, 76, 0.08)',
     alignItems: 'center',
     justifyContent: 'center',
     marginBottom: 4,
   },
   addMediaTitle: {
-    fontSize: 14,
+    fontSize: 13,
     fontWeight: '500',
-    color: '#888',
+    color: 'rgba(255, 255, 255, 0.4)',
   },
   addMediaSubtext: {
     fontSize: 11,
-    color: '#555',
+    color: 'rgba(255, 255, 255, 0.2)',
   },
   // Media Preview
   mediaPreviewContainer: {
@@ -998,31 +1074,31 @@ const styles = StyleSheet.create({
     gap: 10,
   },
   avatar: {
-    width: 32,
-    height: 32,
-    borderRadius: 16,
-    backgroundColor: '#252525',
+    width: 30,
+    height: 30,
+    borderRadius: 15,
+    backgroundColor: 'rgba(255, 255, 255, 0.05)',
     alignItems: 'center',
     justifyContent: 'center',
   },
   avatarImage: {
     width: '100%',
     height: '100%',
-    borderRadius: 16,
+    borderRadius: 15,
   },
   avatarInitial: {
-    fontSize: 13,
+    fontSize: 12,
     fontWeight: '600',
-    color: '#888',
+    color: 'rgba(255, 255, 255, 0.4)',
   },
   username: {
     fontSize: 13,
     fontWeight: '500',
-    color: '#888',
+    color: 'rgba(255, 255, 255, 0.4)',
   },
   captionInput: {
     fontSize: 14,
-    color: '#999',
+    color: 'rgba(255, 255, 255, 0.6)',
     minHeight: 60,
     textAlignVertical: 'top',
     padding: 10,
@@ -1030,63 +1106,59 @@ const styles = StyleSheet.create({
     borderRadius: 0,
   },
   // Game Tag
-  requiredBadge: {
-    backgroundColor: 'transparent',
-    borderWidth: 1,
-    borderColor: '#444',
-    paddingHorizontal: 6,
-    paddingVertical: 1,
-    borderRadius: 4,
-    marginLeft: 4,
+  gameTagSection: {
+    paddingHorizontal: 4,
   },
-  requiredText: {
-    fontSize: 9,
-    fontWeight: '500',
-    color: '#555',
-  },
-  selectedGameBadge: {
-    backgroundColor: 'transparent',
-  },
-  selectedGameText: {
+  gameTagLabel: {
     fontSize: 12,
     fontWeight: '500',
-    color: '#888',
+    color: 'rgba(255, 255, 255, 0.35)',
+    marginBottom: 10,
   },
-  gameOptionsContainer: {
+  gameTagRequired: {
+    fontSize: 11,
+    fontWeight: '400',
+    color: 'rgba(201, 168, 76, 0.4)',
+  },
+  gameTagRow: {
     flexDirection: 'row',
-    gap: 8,
-    padding: 14,
-    paddingTop: 0,
+    gap: 10,
   },
-  gameOption: {
+  gameTagChip: {
     flex: 1,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    gap: 6,
-    paddingVertical: 8,
-    borderRadius: 8,
-    backgroundColor: '#1a1a1a',
-  },
-  gameOptionSelected: {
-    backgroundColor: '#252525',
+    gap: 8,
+    paddingVertical: 12,
+    paddingHorizontal: 14,
+    borderRadius: 10,
+    backgroundColor: 'rgba(255, 255, 255, 0.03)',
     borderWidth: 1,
-    borderColor: '#444',
+    borderColor: 'rgba(255, 255, 255, 0.04)',
   },
-  gameOptionText: {
-    fontSize: 12,
+  gameTagChipSelected: {
+    backgroundColor: 'rgba(201, 168, 76, 0.06)',
+    borderColor: 'rgba(201, 168, 76, 0.2)',
+  },
+  gameTagIcon: {
+    width: 20,
+    height: 20,
+  },
+  gameTagText: {
+    fontSize: 13,
     fontWeight: '500',
-    color: '#555',
+    color: 'rgba(255, 255, 255, 0.3)',
   },
-  gameOptionTextSelected: {
-    color: '#999',
+  gameTagTextSelected: {
+    color: 'rgba(255, 255, 255, 0.8)',
   },
   // Thumbnail
   customBadge: {
     width: 16,
     height: 16,
     borderRadius: 8,
-    backgroundColor: '#333',
+    backgroundColor: 'rgba(201, 168, 76, 0.12)',
     alignItems: 'center',
     justifyContent: 'center',
     marginLeft: 4,
@@ -1104,11 +1176,11 @@ const styles = StyleSheet.create({
     width: 120,
     height: 68,
     borderRadius: 8,
-    backgroundColor: '#1a1a1a',
+    backgroundColor: 'rgba(255, 255, 255, 0.03)',
   },
   thumbnailPreviewLabel: {
     fontSize: 10,
-    color: '#555',
+    color: 'rgba(255, 255, 255, 0.2)',
   },
   thumbnailButtonsRow: {
     flexDirection: 'row',
@@ -1122,34 +1194,158 @@ const styles = StyleSheet.create({
     gap: 5,
     paddingVertical: 8,
     borderRadius: 8,
-    backgroundColor: '#1a1a1a',
+    backgroundColor: 'rgba(255, 255, 255, 0.03)',
   },
   thumbnailButtonSelected: {
-    backgroundColor: '#252525',
+    backgroundColor: 'rgba(201, 168, 76, 0.08)',
     borderWidth: 1,
-    borderColor: '#444',
+    borderColor: 'rgba(201, 168, 76, 0.15)',
   },
   thumbnailButtonText: {
     fontSize: 11,
     fontWeight: '500',
-    color: '#555',
+    color: 'rgba(255, 255, 255, 0.3)',
   },
   thumbnailButtonTextSelected: {
-    color: '#999',
+    color: 'rgba(201, 168, 76, 0.7)',
   },
   // Tag People
-  taggedCountBadge: {
-    width: 20,
-    height: 20,
+  tagPeopleSection: {
+    paddingHorizontal: 4,
+  },
+  tagPeopleTitleRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: 8,
+  },
+  tagPeopleLabel: {
+    fontSize: 10,
+    fontWeight: '700',
+    color: '#fff',
+    letterSpacing: 0.5,
+    marginBottom: 4,
+  },
+  tagPeopleHint: {
+    fontSize: 11,
+    color: '#444',
+    marginTop: 2,
+  },
+  tagCountBadge: {
+    backgroundColor: '#a08845',
     borderRadius: 10,
-    backgroundColor: '#333',
+    paddingHorizontal: 8,
+    paddingVertical: 2,
+  },
+  tagCountBadgeText: {
+    fontSize: 11,
+    fontWeight: '700',
+    color: '#fff',
+  },
+  tagSearchButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#1a1a1a',
+    borderRadius: 10,
+    padding: 12,
+    gap: 8,
+  },
+  tagSearchPlaceholder: {
+    fontSize: 14,
+    color: '#444',
+  },
+  tagSelectedChipsContainer: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 6,
+    marginTop: 10,
+  },
+  tagSelectedChip: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#1a1a1a',
+    borderRadius: 20,
+    paddingVertical: 4,
+    paddingLeft: 4,
+    paddingRight: 8,
+    gap: 6,
+    borderWidth: 1,
+    borderColor: '#a08845',
+  },
+  tagSelectedChipAvatar: {
+    width: 22,
+    height: 22,
+    borderRadius: 11,
+    backgroundColor: '#222',
     alignItems: 'center',
     justifyContent: 'center',
+    overflow: 'hidden',
   },
-  taggedCountText: {
-    fontSize: 11,
+  tagSelectedChipAvatarImage: {
+    width: '100%',
+    height: '100%',
+  },
+  tagSelectedChipAvatarText: {
+    fontSize: 10,
     fontWeight: '600',
+    color: '#555',
+  },
+  tagSelectedChipText: {
+    fontSize: 12,
+    color: '#ccc',
+    fontWeight: '500',
+  },
+  tagSuggestionsScroll: {
+    marginHorizontal: 0,
+  },
+  tagSuggestionsRow: {
+    flexDirection: 'row',
+    gap: 14,
+    paddingHorizontal: 4,
+  },
+  tagSuggestionItem: {
+    alignItems: 'center',
+    width: 52,
+  },
+  tagSuggestionAvatarWrapper: {
+    position: 'relative',
+    marginBottom: 5,
+  },
+  tagSuggestionAvatar: {
+    width: 42,
+    height: 42,
+    borderRadius: 21,
+    backgroundColor: '#222',
+    alignItems: 'center',
+    justifyContent: 'center',
+    overflow: 'hidden',
+  },
+  tagSuggestionAvatarImage: {
+    width: '100%',
+    height: '100%',
+  },
+  tagSuggestionAvatarText: {
+    fontSize: 15,
+    fontWeight: '600',
+    color: '#555',
+  },
+  tagSuggestionAddBadge: {
+    position: 'absolute',
+    bottom: -1,
+    right: -1,
+    width: 16,
+    height: 16,
+    borderRadius: 8,
+    backgroundColor: '#a08845',
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 2,
+    borderColor: '#0f0f0f',
+  },
+  tagSuggestionName: {
+    fontSize: 10,
     color: '#888',
+    textAlign: 'center',
   },
   // Bottom Spacer
   bottomSpacer: {
@@ -1168,20 +1364,22 @@ const styles = StyleSheet.create({
     zIndex: 1000,
   },
   uploadingContainer: {
-    backgroundColor: '#151515',
+    backgroundColor: 'rgba(255, 255, 255, 0.04)',
     borderRadius: 16,
     padding: 28,
     alignItems: 'center',
     gap: 10,
+    borderWidth: 1,
+    borderColor: 'rgba(201, 168, 76, 0.1)',
   },
   uploadingText: {
-    fontSize: 14,
+    fontSize: 13,
     fontWeight: '500',
-    color: '#888',
+    color: 'rgba(201, 168, 76, 0.6)',
   },
   uploadingSubtext: {
     fontSize: 12,
-    color: '#555',
+    color: 'rgba(255, 255, 255, 0.2)',
   },
   // Frame Selector Modal
   frameSelectorContainer: {
@@ -1208,7 +1406,7 @@ const styles = StyleSheet.create({
   frameSelectorTitle: {
     fontSize: 16,
     fontWeight: '600',
-    color: '#999',
+    color: 'rgba(255, 255, 255, 0.7)',
   },
   frameSelectorContent: {
     flex: 1,
@@ -1218,7 +1416,7 @@ const styles = StyleSheet.create({
   },
   frameSelectorSubtitle: {
     fontSize: 12,
-    color: '#555',
+    color: 'rgba(255, 255, 255, 0.25)',
     marginBottom: 16,
     textAlign: 'center',
   },
@@ -1233,12 +1431,12 @@ const styles = StyleSheet.create({
     aspectRatio: 16 / 9,
     borderRadius: 10,
     overflow: 'hidden',
-    backgroundColor: '#151515',
+    backgroundColor: 'rgba(255, 255, 255, 0.03)',
     borderWidth: 1,
     borderColor: 'transparent',
   },
   frameItemSelected: {
-    borderColor: '#444',
+    borderColor: 'rgba(201, 168, 76, 0.3)',
   },
   frameImage: {
     width: '100%',
@@ -1258,7 +1456,7 @@ const styles = StyleSheet.create({
     width: 28,
     height: 28,
     borderRadius: 14,
-    backgroundColor: '#333',
+    backgroundColor: 'rgba(201, 168, 76, 0.2)',
     alignItems: 'center',
     justifyContent: 'center',
   },

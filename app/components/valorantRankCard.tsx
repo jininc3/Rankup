@@ -724,7 +724,7 @@ export default function ValorantRankCard({ game, username, viewOnly = false, use
   // Render card content (shared between static card and modal card)
   const renderCardContent = () => (
     <LinearGradient
-      colors={showBack ? ['#B52D3A', '#D94452', '#EF5466'] : ['#EF5466', '#D94452', '#B52D3A']}
+      colors={['#1a1a1a', '#1e1e1e', '#222222']}
       start={{ x: 0, y: 0 }}
       end={{ x: 1, y: 1 }}
       style={styles.cardBackground}
@@ -808,29 +808,52 @@ export default function ValorantRankCard({ game, username, viewOnly = false, use
           </View>
         </View>
       ) : (
-        /* Front content - enticing card front */
+        /* Front content - Night Market Diamond */
         <View style={styles.cardFront}>
-          {/* Subtle glass overlay */}
+          {/* Dark glass overlay */}
           <LinearGradient
             colors={[
-              'rgba(255,255,255,0.12)',
-              'rgba(255,255,255,0.05)',
-              'rgba(255,255,255,0.02)',
-              'rgba(255,255,255,0.05)',
+              'rgba(239,84,102,0.06)',
+              'rgba(0,0,0,0.1)',
+              'rgba(239,84,102,0.03)',
+              'rgba(0,0,0,0.1)',
             ]}
             start={{ x: 0, y: 0 }}
             end={{ x: 1, y: 1 }}
             style={styles.glassOverlay}
           />
 
-          {/* Valorant logo - large centered background watermark */}
+          {/* Background triangle pattern */}
+          <View style={styles.trianglePattern}>
+            <View style={[styles.triangle, { top: 25, left: 30 }]} />
+            <View style={[styles.triangle, { top: 25, left: 70 }]} />
+            <View style={[styles.triangle, { top: 25, right: 70 }]} />
+            <View style={[styles.triangle, { top: 25, right: 30 }]} />
+            <View style={[styles.triangleInverted, { top: 55, left: 50 }]} />
+            <View style={[styles.triangleInverted, { top: 55, right: 50 }]} />
+            <View style={[styles.triangle, { bottom: 55, left: 30 }]} />
+            <View style={[styles.triangle, { bottom: 55, left: 70 }]} />
+            <View style={[styles.triangle, { bottom: 55, right: 70 }]} />
+            <View style={[styles.triangle, { bottom: 55, right: 30 }]} />
+            <View style={[styles.triangleInverted, { bottom: 25, left: 50 }]} />
+            <View style={[styles.triangleInverted, { bottom: 25, right: 50 }]} />
+          </View>
+
+          {/* Valorant logo watermark */}
           <Image
-            source={require('@/assets/images/valorant-black.png')}
+            source={require('@/assets/images/valorant-red.png')}
             style={styles.backgroundLogo}
             resizeMode="contain"
           />
 
-          {/* Corner accents for visual interest */}
+          {/* Center diamond */}
+          <View style={styles.diamondContainer}>
+            <View style={styles.diamond}>
+              <View style={styles.diamondDot} />
+            </View>
+          </View>
+
+          {/* Corner accents - red */}
           <View style={styles.cornerAccentTL} />
           <View style={styles.cornerAccentTR} />
           <View style={styles.cornerAccentBL} />
@@ -1132,8 +1155,8 @@ const styles = StyleSheet.create({
   rankCard: {
     borderRadius: 16,
     height: 220,
-    borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.12)',
+    borderWidth: 1.5,
+    borderColor: 'rgba(239, 84, 102, 0.5)',
     overflow: 'hidden',
   },
   cardBackground: {
@@ -1176,8 +1199,8 @@ const styles = StyleSheet.create({
     right: 8,
     bottom: 8,
     borderRadius: 10,
-    borderWidth: 1.5,
-    borderColor: 'rgba(255,255,255,0.15)',
+    borderWidth: 1,
+    borderColor: 'rgba(239, 84, 102, 0.18)',
   },
   cardFront: {
     flex: 1,
@@ -1196,55 +1219,117 @@ const styles = StyleSheet.create({
     position: 'absolute',
     top: 16,
     left: 16,
-    width: 24,
-    height: 24,
-    borderTopWidth: 2,
-    borderLeftWidth: 2,
-    borderColor: 'rgba(255,255,255,0.3)',
-    borderTopLeftRadius: 4,
+    width: 20,
+    height: 20,
+    borderTopWidth: 1.5,
+    borderLeftWidth: 1.5,
+    borderColor: 'rgba(239, 84, 102, 0.4)',
+    borderTopLeftRadius: 3,
+    zIndex: 2,
   },
   cornerAccentTR: {
     position: 'absolute',
     top: 16,
     right: 16,
-    width: 24,
-    height: 24,
-    borderTopWidth: 2,
-    borderRightWidth: 2,
-    borderColor: 'rgba(255,255,255,0.3)',
-    borderTopRightRadius: 4,
+    width: 20,
+    height: 20,
+    borderTopWidth: 1.5,
+    borderRightWidth: 1.5,
+    borderColor: 'rgba(239, 84, 102, 0.4)',
+    borderTopRightRadius: 3,
+    zIndex: 2,
   },
   cornerAccentBL: {
     position: 'absolute',
     bottom: 16,
     left: 16,
-    width: 24,
-    height: 24,
-    borderBottomWidth: 2,
-    borderLeftWidth: 2,
-    borderColor: 'rgba(255,255,255,0.3)',
-    borderBottomLeftRadius: 4,
+    width: 20,
+    height: 20,
+    borderBottomWidth: 1.5,
+    borderLeftWidth: 1.5,
+    borderColor: 'rgba(239, 84, 102, 0.4)',
+    borderBottomLeftRadius: 3,
+    zIndex: 2,
   },
   cornerAccentBR: {
     position: 'absolute',
     bottom: 16,
     right: 16,
-    width: 24,
-    height: 24,
-    borderBottomWidth: 2,
-    borderRightWidth: 2,
-    borderColor: 'rgba(255,255,255,0.3)',
-    borderBottomRightRadius: 4,
+    width: 20,
+    height: 20,
+    borderBottomWidth: 1.5,
+    borderRightWidth: 1.5,
+    borderColor: 'rgba(239, 84, 102, 0.4)',
+    borderBottomRightRadius: 3,
+    zIndex: 2,
   },
   backgroundLogo: {
     position: 'absolute',
-    width: 250,
-    height: 250,
+    width: 200,
+    height: 200,
     top: '50%',
     left: '50%',
-    marginTop: -125,
-    marginLeft: -125,
-    opacity: 0.1,
+    marginTop: -100,
+    marginLeft: -100,
+    opacity: 0.04,
+  },
+  // Night Market Diamond elements
+  trianglePattern: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    zIndex: 0,
+  },
+  triangle: {
+    position: 'absolute',
+    width: 0,
+    height: 0,
+    borderLeftWidth: 14,
+    borderRightWidth: 14,
+    borderBottomWidth: 24,
+    borderLeftColor: 'transparent',
+    borderRightColor: 'transparent',
+    borderBottomColor: 'rgba(239, 84, 102, 0.04)',
+  },
+  triangleInverted: {
+    position: 'absolute',
+    width: 0,
+    height: 0,
+    borderLeftWidth: 14,
+    borderRightWidth: 14,
+    borderTopWidth: 24,
+    borderLeftColor: 'transparent',
+    borderRightColor: 'transparent',
+    borderTopColor: 'rgba(239, 84, 102, 0.04)',
+  },
+  diamondContainer: {
+    position: 'absolute',
+    top: '50%',
+    left: '50%',
+    marginTop: -20,
+    marginLeft: -20,
+    width: 40,
+    height: 40,
+    alignItems: 'center',
+    justifyContent: 'center',
+    zIndex: 3,
+  },
+  diamond: {
+    width: 30,
+    height: 30,
+    borderWidth: 1.5,
+    borderColor: 'rgba(239, 84, 102, 0.6)',
+    transform: [{ rotate: '45deg' }],
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  diamondDot: {
+    width: 5,
+    height: 5,
+    borderRadius: 2.5,
+    backgroundColor: 'rgba(239, 84, 102, 0.7)',
   },
   // Back of card styles - Modern Techy
   cardBackContent: {
@@ -1258,23 +1343,23 @@ const styles = StyleSheet.create({
     position: 'absolute',
     top: 16,
     left: 16,
-    width: 24,
-    height: 24,
-    borderTopWidth: 2,
-    borderLeftWidth: 2,
-    borderColor: 'rgba(255,255,255,0.3)',
-    borderTopLeftRadius: 4,
+    width: 20,
+    height: 20,
+    borderTopWidth: 1.5,
+    borderLeftWidth: 1.5,
+    borderColor: 'rgba(239, 84, 102, 0.35)',
+    borderTopLeftRadius: 3,
   },
   techCornerBR: {
     position: 'absolute',
     bottom: 16,
     right: 16,
-    width: 24,
-    height: 24,
-    borderBottomWidth: 2,
-    borderRightWidth: 2,
-    borderColor: 'rgba(255,255,255,0.3)',
-    borderBottomRightRadius: 4,
+    width: 20,
+    height: 20,
+    borderBottomWidth: 1.5,
+    borderRightWidth: 1.5,
+    borderColor: 'rgba(239, 84, 102, 0.35)',
+    borderBottomRightRadius: 3,
   },
   // Hero Rank Layout - Header (centered)
   heroHeader: {

@@ -192,7 +192,7 @@ export default function FollowersScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#1e2124',
+    backgroundColor: '#0f0f0f',
   },
   header: {
     flexDirection: 'row',
@@ -201,9 +201,9 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20,
     paddingTop: 70,
     paddingBottom: 16,
-    backgroundColor: '#1e2124',
+    backgroundColor: '#0f0f0f',
     borderBottomWidth: 1,
-    borderBottomColor: '#2c2f33',
+    borderBottomColor: 'rgba(255, 255, 255, 0.06)',
   },
   backButton: {
     padding: 4,
@@ -224,7 +224,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     paddingHorizontal: 16,
     paddingVertical: 12,
-    backgroundColor: '#2c2f33',
+    backgroundColor: 'rgba(255, 255, 255, 0.06)',
     marginHorizontal: 16,
     marginVertical: 12,
     borderRadius: 10,
@@ -249,8 +249,8 @@ const styles = StyleSheet.create({
     marginVertical: 4,
     borderRadius: 8,
     borderWidth: 1,
-    borderColor: '#2c2f33',
-    backgroundColor: '#36393e',
+    borderColor: 'rgba(255, 255, 255, 0.06)',
+    backgroundColor: '#1a1a1a',
   },
   followerLeft: {
     flexDirection: 'row',
@@ -262,7 +262,7 @@ const styles = StyleSheet.create({
     width: 36,
     height: 36,
     borderRadius: 18,
-    backgroundColor: '#2c2f33',
+    backgroundColor: 'rgba(255, 255, 255, 0.06)',
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -292,9 +292,9 @@ const styles = StyleSheet.create({
     borderColor: '#c42743',
   },
   followingButton: {
-    backgroundColor: '#36393e',
+    backgroundColor: '#1a1a1a',
     borderWidth: 1,
-    borderColor: '#2c2f33',
+    borderColor: 'rgba(255, 255, 255, 0.06)',
   },
   followButtonText: {
     fontSize: 12,

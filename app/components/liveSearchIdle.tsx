@@ -13,17 +13,6 @@ import Animated, {
 } from 'react-native-reanimated';
 import { useEffect } from 'react';
 
-const ORBIT_RADIUS = 95;
-const ICON_SIZE = 38;
-const AGENT_ICONS = [
-  require('@/assets/images/valoranticons/jett.png'),
-  require('@/assets/images/valoranticons/reyna.png'),
-  require('@/assets/images/valoranticons/sage.png'),
-  require('@/assets/images/valoranticons/omen.png'),
-  require('@/assets/images/valoranticons/phoenix.png'),
-  require('@/assets/images/valoranticons/viper.png'),
-];
-
 interface LiveSearchIdleProps {
   hasCards: boolean;
   valorantCard: any;
@@ -46,13 +35,6 @@ export default function LiveSearchIdle({
   // Ambient pulse for center orb
   const orbPulse = useSharedValue(1);
   const orbGlow = useSharedValue(0.15);
-  // Outer ring rotation
-  const ringRotation = useSharedValue(0);
-  // Slow breathing ring
-  const breathScale = useSharedValue(1);
-  const breathOpacity = useSharedValue(0.3);
-  // Orbiting agent icons
-  const iconsRotation = useSharedValue(0);
   // Stagger fade-in for content
   const titleOpacity = useSharedValue(0);
   const titleTranslateY = useSharedValue(12);
@@ -79,38 +61,6 @@ export default function LiveSearchIdle({
         withTiming(0.35, { duration: 2200, easing: Easing.inOut(Easing.ease) }),
         withTiming(0.15, { duration: 2200, easing: Easing.inOut(Easing.ease) }),
       ),
-      -1,
-      false
-    );
-
-    // Ring rotation - slow constant spin
-    ringRotation.value = withRepeat(
-      withTiming(360, { duration: 20000, easing: Easing.linear }),
-      -1,
-      false
-    );
-
-    // Breathing ring
-    breathScale.value = withRepeat(
-      withSequence(
-        withTiming(1.4, { duration: 3000, easing: Easing.inOut(Easing.ease) }),
-        withTiming(1, { duration: 3000, easing: Easing.inOut(Easing.ease) }),
-      ),
-      -1,
-      false
-    );
-    breathOpacity.value = withRepeat(
-      withSequence(
-        withTiming(0.08, { duration: 3000, easing: Easing.inOut(Easing.ease) }),
-        withTiming(0.25, { duration: 3000, easing: Easing.inOut(Easing.ease) }),
-      ),
-      -1,
-      false
-    );
-
-    // Orbiting icons - slow spin
-    iconsRotation.value = withRepeat(
-      withTiming(360, { duration: 15000, easing: Easing.linear }),
       -1,
       false
     );
@@ -149,23 +99,6 @@ export default function LiveSearchIdle({
     opacity: orbGlow.value,
   }));
 
-  const ringStyle = useAnimatedStyle(() => ({
-    transform: [{ rotate: `${ringRotation.value}deg` }],
-  }));
-
-  const breathStyle = useAnimatedStyle(() => ({
-    transform: [{ scale: breathScale.value }],
-    opacity: breathOpacity.value,
-  }));
-
-  const iconsOrbitStyle = useAnimatedStyle(() => ({
-    transform: [{ rotate: `${iconsRotation.value}deg` }],
-  }));
-
-  const iconCounterStyle = useAnimatedStyle(() => ({
-    transform: [{ rotate: `${-iconsRotation.value}deg` }],
-  }));
-
   const titleStyle = useAnimatedStyle(() => ({
     opacity: titleOpacity.value,
     transform: [{ translateY: titleTranslateY.value }],
@@ -190,63 +123,12 @@ export default function LiveSearchIdle({
 
   return (
     <View style={styles.container}>
-      {/* Radar / Orb Section */}
+      {/* Orb Section */}
       <View style={styles.orbSection}>
-        {/* Breathing ring */}
-        <Animated.View style={[styles.breathRing, breathStyle, { borderColor: accentColor }]} />
-
-        {/* Rotating dashed ring */}
-        <Animated.View style={[styles.dashedRing, ringStyle]}>
-          {/* Create tick marks around the ring */}
-          {Array.from({ length: 24 }).map((_, i) => (
-            <View
-              key={i}
-              style={[
-                styles.tick,
-                {
-                  transform: [
-                    { rotate: `${i * 15}deg` },
-                    { translateY: -68 },
-                  ],
-                  opacity: i % 3 === 0 ? 0.5 : 0.15,
-                  backgroundColor: i % 6 === 0 ? accentColor : '#666',
-                  height: i % 6 === 0 ? 8 : 4,
-                },
-              ]}
-            />
-          ))}
-        </Animated.View>
-
-        {/* Orbiting agent icons */}
-        <Animated.View style={[styles.iconsOrbit, iconsOrbitStyle]}>
-          {AGENT_ICONS.map((icon, i) => (
-            <View
-              key={i}
-              style={[
-                styles.orbitIconAnchor,
-                {
-                  transform: [
-                    { rotate: `${i * 60}deg` },
-                    { translateY: -ORBIT_RADIUS },
-                  ],
-                },
-              ]}
-            >
-              <Animated.View style={iconCounterStyle}>
-                <View style={{ transform: [{ rotate: `${-i * 60}deg` }] }}>
-                  <View style={[styles.orbitIconCircle, { borderColor: accentColor }]}>
-                    <Image source={icon} style={styles.orbitIconImage} resizeMode="contain" />
-                  </View>
-                </View>
-              </Animated.View>
-            </View>
-          ))}
-        </Animated.View>
-
         {/* Glow behind orb */}
         <Animated.View style={[styles.orbGlow, orbGlowStyle, { backgroundColor: accentColor }]} />
 
-        {/* Center orb - Valorant logo */}
+        {/* Center orb */}
         <Animated.View style={[styles.orb, orbStyle]}>
           <LinearGradient
             colors={['#1e1e1e', '#141414', '#0a0a0a']}
@@ -261,12 +143,6 @@ export default function LiveSearchIdle({
             />
           </LinearGradient>
         </Animated.View>
-
-        {/* Status indicator */}
-        <View style={styles.statusBadge}>
-          <View style={styles.statusDot} />
-          <ThemedText style={styles.statusText}>SEARCH LIVE</ThemedText>
-        </View>
       </View>
 
       {/* Title */}
@@ -362,32 +238,25 @@ export default function LiveSearchIdle({
       {/* Search Button */}
       <Animated.View style={[styles.searchBtnWrapper, buttonStyle]}>
         <TouchableOpacity
-          style={[styles.searchBtn, !searchGamePick && styles.searchBtnDisabled]}
+          style={[
+            styles.searchBtn,
+            searchGamePick && {
+              borderColor: searchGamePick === 'league'
+                ? 'rgba(26, 107, 170, 0.5)'
+                : 'rgba(196, 39, 67, 0.5)',
+              shadowColor: accentColor,
+            },
+          ]}
           onPress={onSearch}
           activeOpacity={0.85}
           disabled={!searchGamePick}
         >
-          <LinearGradient
-            colors={searchGamePick
-              ? (searchGamePick === 'league'
-                ? ['#2480c4', '#1a6baa', '#0f4a7a']
-                : ['#e03058', '#c42743', '#8a1a2f'])
-              : ['#3a3a3a', '#2a2a2a', '#222']}
-            start={{ x: 0, y: 0 }}
-            end={{ x: 1, y: 1 }}
-            locations={[0, 0.5, 1]}
-            style={styles.searchBtnGradient}
-          >
-            <View style={[styles.searchBtnDot, !searchGamePick && { backgroundColor: '#555' }]} />
-            <ThemedText style={[styles.searchBtnText, !searchGamePick && { color: '#666' }]}>
-              Search For Players
-            </ThemedText>
-            <IconSymbol
-              size={16}
-              name="chevron.right"
-              color={searchGamePick ? '#fff' : '#555'}
-            />
-          </LinearGradient>
+          <ThemedText style={[
+            styles.searchBtnText,
+            searchGamePick && { color: accentColor },
+          ]}>
+            Search For Players
+          </ThemedText>
         </TouchableOpacity>
       </Animated.View>
 
@@ -415,39 +284,19 @@ const styles = StyleSheet.create({
     paddingVertical: 32,
   },
 
-  // Orb / Radar
+  // Orb
   orbSection: {
-    width: 250,
-    height: 250,
+    width: 180,
+    height: 180,
     alignItems: 'center',
     justifyContent: 'center',
     marginBottom: 20,
-  },
-  breathRing: {
-    position: 'absolute',
-    width: 160,
-    height: 160,
-    borderRadius: 80,
-    borderWidth: 1.5,
-  },
-  dashedRing: {
-    position: 'absolute',
-    width: 160,
-    height: 160,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  tick: {
-    position: 'absolute',
-    width: 1.5,
-    borderRadius: 1,
   },
   orbGlow: {
     position: 'absolute',
     width: 100,
     height: 100,
     borderRadius: 50,
-    // backgroundColor set dynamically
   },
   orb: {
     width: 88,
@@ -469,62 +318,6 @@ const styles = StyleSheet.create({
   centerLogo: {
     width: 44,
     height: 44,
-  },
-  iconsOrbit: {
-    position: 'absolute',
-    width: 250,
-    height: 250,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  orbitIconAnchor: {
-    position: 'absolute',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  orbitIconCircle: {
-    width: ICON_SIZE,
-    height: ICON_SIZE,
-    borderRadius: ICON_SIZE / 2,
-    backgroundColor: 'rgba(18, 18, 18, 0.92)',
-    borderWidth: 1.5,
-    alignItems: 'center',
-    justifyContent: 'center',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.4,
-    shadowRadius: 6,
-    elevation: 6,
-  },
-  orbitIconImage: {
-    width: ICON_SIZE - 10,
-    height: ICON_SIZE - 10,
-    borderRadius: (ICON_SIZE - 10) / 2,
-  },
-  statusBadge: {
-    position: 'absolute',
-    bottom: 12,
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 5,
-    backgroundColor: 'rgba(15, 15, 15, 0.85)',
-    paddingHorizontal: 10,
-    paddingVertical: 4,
-    borderRadius: 10,
-    borderWidth: 1,
-    borderColor: 'rgba(74, 222, 128, 0.25)',
-  },
-  statusDot: {
-    width: 6,
-    height: 6,
-    borderRadius: 3,
-    backgroundColor: '#4ade80',
-  },
-  statusText: {
-    fontSize: 10,
-    fontWeight: '800',
-    color: '#4ade80',
-    letterSpacing: 1.5,
   },
 
   // Title
@@ -608,35 +401,22 @@ const styles = StyleSheet.create({
   },
   searchBtn: {
     borderRadius: 14,
-    overflow: 'hidden',
-    shadowColor: '#c42743',
-    shadowOffset: { width: 0, height: 6 },
-    shadowOpacity: 0.35,
-    shadowRadius: 12,
-    elevation: 8,
-  },
-  searchBtnDisabled: {
-    shadowOpacity: 0,
-    elevation: 0,
-  },
-  searchBtnGradient: {
-    flexDirection: 'row',
+    borderWidth: 1.5,
+    borderColor: 'rgba(60, 60, 60, 0.4)',
+    backgroundColor: 'rgba(20, 20, 20, 0.6)',
     alignItems: 'center',
-    gap: 10,
+    justifyContent: 'center',
     paddingVertical: 16,
     paddingHorizontal: 22,
-  },
-  searchBtnDot: {
-    width: 8,
-    height: 8,
-    borderRadius: 4,
-    backgroundColor: '#4ade80',
+    shadowOffset: { width: 0, height: 0 },
+    shadowOpacity: 0.4,
+    shadowRadius: 16,
+    elevation: 8,
   },
   searchBtnText: {
-    flex: 1,
     fontSize: 16,
     fontWeight: '700',
-    color: '#fff',
+    color: '#555',
   },
 
   // Create card hint

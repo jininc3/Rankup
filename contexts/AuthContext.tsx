@@ -7,6 +7,7 @@ import { collection, query, where, getDocs, orderBy, limit, Timestamp } from 'fi
 import { getFollowing } from '@/services/followService';
 import { Image } from 'react-native';
 import { registerForPushNotificationsAsync } from '@/services/notificationService';
+import { clearLeagueStatsCache } from '@/services/riotService';
 
 interface User {
   id: string;
@@ -476,6 +477,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       // Tokens will be automatically cleaned up if they become invalid
 
       await authSignOut();
+      clearLeagueStatsCache();
       setUser(null);
       setPreloadedPosts(null);
       setPreloadedFollowingIds(null);

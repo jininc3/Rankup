@@ -48,7 +48,8 @@
       "WebFetch(domain:www.mingweisamuel.com)",
       "WebFetch(domain:codepull.com)",
       "WebFetch(domain:raw.githubusercontent.com)",
-      "Bash(ls -la /c/Users/jinha/Desktop/RankUp/app/\\\\\\(auth\\\\\\)/)"
+      "Bash(ls -la /c/Users/jinha/Desktop/RankUp/app/\\\\\\(auth\\\\\\)/)",
+      "Bash(cat /c/Users/jinha/Desktop/RankUp/app/\\\\\\(tabs\\\\\\)/duoFinder.tsx)"
     ],
     "deny": [],
     "ask": []

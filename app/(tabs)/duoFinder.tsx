@@ -75,6 +75,7 @@ export default function DuoFinderScreen() {
   const [duoPosts, setDuoPosts] = useState<DuoPostWithId[]>([]);
   const [displayedPosts, setDisplayedPosts] = useState<DuoPostWithId[]>([]);
   const [loadingDuoPosts, setLoadingDuoPosts] = useState(false);
+  const [refreshingPosts, setRefreshingPosts] = useState(false);
   const [loadingMore, setLoadingMore] = useState(false);
   const [showPostDuoCard, setShowPostDuoCard] = useState(false);
   const POSTS_PER_PAGE = 10;
@@ -606,10 +607,10 @@ export default function DuoFinderScreen() {
   };
 
   // Fetch duo posts for the feed
-  const fetchDuoPosts = async () => {
+  const fetchDuoPosts = async (showLoading: boolean = true) => {
     if (!user?.id) return;
 
-    if (duoPosts.length === 0) setLoadingDuoPosts(true);
+    if (showLoading) setLoadingDuoPosts(true);
     try {
       const postsRef = collection(db, 'duoPosts');
       const now = Timestamp.now();
@@ -669,6 +670,13 @@ export default function DuoFinderScreen() {
     } finally {
       setLoadingDuoPosts(false);
     }
+  };
+
+  // Refresh posts (for refresh button and pull-to-refresh)
+  const refreshPosts = async () => {
+    setRefreshingPosts(true);
+    await fetchDuoPosts(false);
+    setRefreshingPosts(false);
   };
 
   // Load more posts when user scrolls to bottom
@@ -1024,10 +1032,10 @@ export default function DuoFinderScreen() {
       <View style={styles.header}>
         <ThemedText style={styles.headerTitle}>DUO FINDER</ThemedText>
         <View style={styles.headerButtons}>
-          {hasCards && selectedTab === 'findDuo' && (
+          {selectedTab === 'findDuo' && (
             <TouchableOpacity
               style={styles.headerAddButton}
-              onPress={() => setShowPostDuoCard(true)}
+              onPress={() => hasCards ? setShowPostDuoCard(true) : setShowAddCard(true)}
               activeOpacity={0.7}
             >
               <IconSymbol size={14} name="plus" color="#fff" />
@@ -1143,12 +1151,16 @@ export default function DuoFinderScreen() {
                     <IconSymbol size={16} name="line.3.horizontal.decrease" color={activeFilterCount > 0 ? '#A08845' : '#555'} />
                   </TouchableOpacity>
                   <TouchableOpacity
-                    onPress={fetchDuoPosts}
+                    onPress={refreshPosts}
                     activeOpacity={0.7}
-                    disabled={loadingDuoPosts}
+                    disabled={refreshingPosts || loadingDuoPosts}
                     hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
                   >
-                    <IconSymbol size={16} name="arrow.clockwise" color={loadingDuoPosts ? '#333' : '#555'} />
+                    {refreshingPosts ? (
+                      <ActivityIndicator size="small" color="#A08845" style={{ width: 16, height: 16 }} />
+                    ) : (
+                      <IconSymbol size={16} name="arrow.clockwise" color={loadingDuoPosts ? '#333' : '#555'} />
+                    )}
                   </TouchableOpacity>
                 </View>
               </View>

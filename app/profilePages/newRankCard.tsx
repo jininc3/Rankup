@@ -237,13 +237,11 @@ export default function NewRankCardScreen() {
           activeOpacity={isLinked && isEnabled ? 1 : 0.7}
         >
           {/* Left: Logo */}
-          <View style={styles.logoContainer}>
-            <Image source={logo} style={styles.gameLogo} resizeMode="contain" />
-          </View>
+          <Image source={logo} style={[styles.gameLogo, !isLinked && { opacity: 0.35 }]} resizeMode="contain" />
 
           {/* Middle: Info */}
           <View style={styles.gameInfo}>
-            <ThemedText style={styles.gameName}>{name}</ThemedText>
+            <ThemedText style={[styles.gameName, !isLinked && { opacity: 0.4 }]}>{name}</ThemedText>
             {isLinked ? (
               <>
                 <ThemedText style={styles.accountName}>
@@ -265,12 +263,12 @@ export default function NewRankCardScreen() {
               </View>
             ) : isLinked ? (
               <View style={styles.addPill}>
-                <IconSymbol size={14} name="plus" color="#fff" />
+                <IconSymbol size={12} name="plus" color="#C9A84C" />
                 <ThemedText style={styles.addPillText}>Add</ThemedText>
               </View>
             ) : (
               <View style={styles.linkPill}>
-                <IconSymbol size={14} name="link" color="#fff" />
+                <IconSymbol size={12} name="link" color="#C9A84C" />
                 <ThemedText style={styles.linkPillText}>Link</ThemedText>
               </View>
             )}
@@ -294,47 +292,46 @@ export default function NewRankCardScreen() {
         <TouchableOpacity style={styles.backButton} onPress={() => router.back()}>
           <IconSymbol size={20} name="chevron.left" color="#fff" />
         </TouchableOpacity>
-        <ThemedText style={styles.headerTitle}>Rank Cards</ThemedText>
+        <View style={styles.headerTitleRow}>
+          <View style={styles.headerAccent} />
+          <ThemedText style={styles.headerTitle}>Rank Cards</ThemedText>
+        </View>
       </View>
 
       {/* Content */}
       <View style={styles.content}>
         {loading ? (
           <View style={styles.loadingContainer}>
-            <ActivityIndicator size="large" color="#c42743" />
+            <ActivityIndicator size="small" color="#C9A84C" />
           </View>
         ) : (
           <>
-            {/* Section Container */}
-            <View style={styles.sectionContainer}>
-              <ThemedText style={styles.sectionLabel}>Games</ThemedText>
+            <ThemedText style={styles.sectionLabel}>Games</ThemedText>
 
-              {renderGameRow(
-                'league',
-                'League of Legends',
-                require('@/assets/images/lol-icon.png'),
-                riotAccount,
-                getLeagueRank(),
-                handleUnlinkRiotAccount,
-              )}
+            {renderGameRow(
+              'league',
+              'League of Legends',
+              require('@/assets/images/lol-icon.png'),
+              riotAccount,
+              getLeagueRank(),
+              handleUnlinkRiotAccount,
+            )}
 
-              <View style={styles.divider} />
+            <View style={styles.divider} />
 
-              {renderGameRow(
-                'valorant',
-                'Valorant',
-                require('@/assets/images/valorant.png'),
-                valorantAccount,
-                getValorantRank(),
-                handleUnlinkValorantAccount,
-              )}
-            </View>
+            {renderGameRow(
+              'valorant',
+              'Valorant',
+              require('@/assets/images/valorant-red.png'),
+              valorantAccount,
+              getValorantRank(),
+              handleUnlinkValorantAccount,
+            )}
 
             {/* Info */}
             <View style={styles.infoContainer}>
-              <IconSymbol size={14} name="info.circle" color="#555" />
               <ThemedText style={styles.infoText}>
-                Linked accounts display your current rank on your profile. Manage visibility in Edit Profile.
+                Linked accounts display your current rank on your profile.
               </ThemedText>
             </View>
           </>
@@ -356,20 +353,31 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     paddingHorizontal: 16,
     paddingTop: 58,
-    paddingBottom: 16,
+    paddingBottom: 20,
   },
   backButton: {
     padding: 6,
     marginRight: 12,
   },
+  headerTitleRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  headerAccent: {
+    width: 2,
+    height: 16,
+    backgroundColor: '#C9A84C',
+    borderRadius: 1,
+  },
   headerTitle: {
-    fontSize: 20,
-    fontWeight: '700',
-    color: '#fff',
+    fontSize: 18,
+    fontWeight: '600',
+    color: 'rgba(255, 255, 255, 0.85)',
     letterSpacing: -0.3,
   },
   content: {
-    paddingHorizontal: 10,
+    paddingHorizontal: 20,
     paddingTop: 4,
   },
   loadingContainer: {
@@ -377,148 +385,130 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
-  sectionContainer: {
-    backgroundColor: 'rgba(255, 255, 255, 0.03)',
-    borderRadius: 16,
-    borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.06)',
-    padding: 16,
-  },
   sectionLabel: {
-    fontSize: 12,
-    fontWeight: '600',
-    color: '#666',
-    letterSpacing: 0.5,
+    fontSize: 11,
+    fontWeight: '500',
+    color: 'rgba(201, 168, 76, 0.5)',
+    letterSpacing: 0.8,
     textTransform: 'uppercase',
-    marginBottom: 14,
+    marginBottom: 16,
   },
   divider: {
-    height: 1,
+    height: StyleSheet.hairlineWidth,
     backgroundColor: 'rgba(255, 255, 255, 0.06)',
-    marginVertical: 4,
+    marginVertical: 2,
   },
   gameRow: {
-    marginVertical: 4,
+    marginVertical: 2,
   },
   gameCard: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingVertical: 12,
-    paddingHorizontal: 4,
-  },
-  logoContainer: {
-    width: 48,
-    height: 48,
-    backgroundColor: 'rgba(255, 255, 255, 0.05)',
-    borderRadius: 12,
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginRight: 14,
+    paddingVertical: 14,
+    paddingHorizontal: 0,
+    gap: 12,
   },
   gameLogo: {
-    width: 30,
-    height: 30,
+    width: 22,
+    height: 22,
+    opacity: 0.7,
   },
   gameInfo: {
     flex: 1,
-    gap: 2,
+    gap: 1,
   },
   gameName: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: '#fff',
+    fontSize: 15,
+    fontWeight: '500',
+    color: 'rgba(255, 255, 255, 0.85)',
   },
   accountName: {
-    fontSize: 13,
+    fontSize: 12,
     fontWeight: '400',
-    color: 'rgba(255, 255, 255, 0.5)',
+    color: 'rgba(255, 255, 255, 0.3)',
   },
   rankText: {
-    fontSize: 13,
+    fontSize: 12,
     fontWeight: '500',
-    color: 'rgba(255, 255, 255, 0.7)',
+    color: 'rgba(201, 168, 76, 0.5)',
   },
   notLinkedText: {
-    fontSize: 13,
+    fontSize: 12,
     fontWeight: '400',
-    color: '#555',
+    color: '#3a3a3a',
   },
   cardAction: {
-    marginLeft: 12,
+    marginLeft: 8,
   },
   activePill: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 6,
     paddingHorizontal: 10,
-    paddingVertical: 6,
+    paddingVertical: 5,
     borderRadius: 20,
   },
   activeDot: {
-    width: 7,
-    height: 7,
-    borderRadius: 4,
-    backgroundColor: '#4ade80',
+    width: 6,
+    height: 6,
+    borderRadius: 3,
+    backgroundColor: '#C9A84C',
   },
   activePillText: {
-    fontSize: 12,
+    fontSize: 11,
     fontWeight: '500',
-    color: 'rgba(255, 255, 255, 0.4)',
+    color: 'rgba(201, 168, 76, 0.6)',
   },
   addPill: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 4,
-    backgroundColor: 'rgba(255, 255, 255, 0.08)',
+    backgroundColor: 'rgba(201, 168, 76, 0.08)',
     paddingHorizontal: 12,
-    paddingVertical: 6,
+    paddingVertical: 5,
     borderRadius: 20,
     borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.1)',
+    borderColor: 'rgba(201, 168, 76, 0.15)',
   },
   addPillText: {
-    fontSize: 12,
+    fontSize: 11,
     fontWeight: '600',
-    color: '#fff',
+    color: 'rgba(201, 168, 76, 0.7)',
   },
   linkPill: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 4,
-    backgroundColor: 'rgba(196, 39, 67, 0.15)',
+    backgroundColor: 'rgba(201, 168, 76, 0.06)',
     paddingHorizontal: 12,
-    paddingVertical: 6,
+    paddingVertical: 5,
     borderRadius: 20,
     borderWidth: 1,
-    borderColor: 'rgba(196, 39, 67, 0.3)',
+    borderColor: 'rgba(201, 168, 76, 0.12)',
   },
   linkPillText: {
-    fontSize: 12,
+    fontSize: 11,
     fontWeight: '600',
-    color: '#c42743',
+    color: 'rgba(201, 168, 76, 0.5)',
   },
   unlinkButton: {
     alignSelf: 'flex-end',
     paddingVertical: 4,
-    paddingHorizontal: 4,
+    paddingHorizontal: 0,
   },
   unlinkText: {
-    fontSize: 12,
-    fontWeight: '500',
-    color: '#555',
+    fontSize: 11,
+    fontWeight: '400',
+    color: '#3a3a3a',
   },
   infoContainer: {
-    flexDirection: 'row',
-    alignItems: 'flex-start',
-    gap: 8,
-    marginTop: 16,
-    paddingHorizontal: 6,
+    marginTop: 24,
+    paddingHorizontal: 0,
   },
   infoText: {
-    flex: 1,
-    fontSize: 12,
-    color: '#555',
-    lineHeight: 17,
+    fontSize: 11,
+    color: '#3a3a3a',
+    lineHeight: 16,
   },
   bottomSpacer: {
     height: 60,

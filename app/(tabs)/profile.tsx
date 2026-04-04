@@ -439,14 +439,12 @@ export default function ProfileScreen() {
     }
   }, [user?.id, hasConsumedPreloadPosts, hasConsumedPreloadRiot, preloadedProfilePosts, preloadedRiotStats]);
 
-  // Refresh user data when profile page comes into focus
-  // This ensures following/followers counts and rank cards are always up-to-date
+  // Refresh lightweight user data (followers/following counts) on tab focus
+  // Stats are only fetched on app load and pull-to-refresh to avoid unnecessary API calls
   useFocusEffect(
     useCallback(() => {
       if (user?.id) {
         refreshUser();
-        // Fetch rank cards and stats from Firestore cache (no API calls when forceRefresh=false)
-        fetchRiotData(false);
       }
     }, [user?.id])
   );

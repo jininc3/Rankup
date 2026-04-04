@@ -136,6 +136,9 @@ export default function TagUsersModal({
     return selectedUsers.some(u => u.userId === userId);
   };
 
+  // Display list: search results or full following list
+  const displayList = searchQuery.trim() === '' ? followingList : searchResults;
+
   return (
     <Modal
       visible={visible}
@@ -147,21 +150,24 @@ export default function TagUsersModal({
         {/* Header */}
         <View style={styles.header}>
           <TouchableOpacity onPress={handleCancel} style={styles.headerButton}>
-            <ThemedText style={styles.headerButtonText}>Cancel</ThemedText>
+            <ThemedText style={styles.cancelText}>Cancel</ThemedText>
           </TouchableOpacity>
-          <ThemedText style={styles.headerTitle}>Tag Users</ThemedText>
-          <TouchableOpacity onPress={handleDone} style={styles.headerButton}>
-            <ThemedText style={[styles.headerButtonText, styles.doneButton]}>Done</ThemedText>
+          <View style={styles.headerTitleRow}>
+            <View style={styles.headerAccent} />
+            <ThemedText style={styles.headerTitle}>Tag People</ThemedText>
+          </View>
+          <TouchableOpacity onPress={handleDone} style={styles.doneBtn}>
+            <ThemedText style={styles.doneText}>Done</ThemedText>
           </TouchableOpacity>
         </View>
 
         {/* Search Bar */}
         <View style={styles.searchContainer}>
-          <IconSymbol size={20} name="magnifyingglass" color="#b9bbbe" />
+          <IconSymbol size={16} name="magnifyingglass" color="#555" />
           <TextInput
             style={styles.searchInput}
-            placeholder="Search people you follow..."
-            placeholderTextColor="#72767d"
+            placeholder="Search followers..."
+            placeholderTextColor="#444"
             value={searchQuery}
             onChangeText={handleSearch}
             autoCapitalize="none"
@@ -169,7 +175,7 @@ export default function TagUsersModal({
           />
           {searchQuery.length > 0 && (
             <TouchableOpacity onPress={() => handleSearch('')}>
-              <IconSymbol size={20} name="xmark.circle.fill" color="#b9bbbe" />
+              <IconSymbol size={16} name="xmark.circle.fill" color="#444" />
             </TouchableOpacity>
           )}
         </View>
@@ -177,18 +183,25 @@ export default function TagUsersModal({
         {/* Selected Users */}
         {selectedUsers.length > 0 && (
           <View style={styles.selectedSection}>
-            <ThemedText style={styles.selectedTitle}>
-              Selected ({selectedUsers.length}/20)
-            </ThemedText>
+            <View style={styles.selectedHeader}>
+              <ThemedText style={styles.selectedLabel}>SELECTED</ThemedText>
+              <View style={styles.selectedBadge}>
+                <ThemedText style={styles.selectedBadgeText}>{selectedUsers.length}</ThemedText>
+              </View>
+            </View>
             <ScrollView
               horizontal
               showsHorizontalScrollIndicator={false}
-              style={styles.selectedScroll}
               contentContainerStyle={styles.selectedScrollContent}
             >
               {selectedUsers.map((user) => (
-                <View key={user.userId} style={styles.selectedChip}>
-                  <View style={styles.chipAvatarContainer}>
+                <TouchableOpacity
+                  key={user.userId}
+                  style={styles.selectedChip}
+                  onPress={() => handleSelectUser(user)}
+                  activeOpacity={0.7}
+                >
+                  <View style={styles.chipAvatarWrapper}>
                     <View style={styles.chipAvatar}>
                       {user.avatar && user.avatar.startsWith('http') ? (
                         <Image source={{ uri: user.avatar }} style={styles.chipAvatarImage} />
@@ -198,39 +211,29 @@ export default function TagUsersModal({
                         </ThemedText>
                       )}
                     </View>
-                    <TouchableOpacity
-                      onPress={() => handleSelectUser(user)}
-                      style={styles.chipRemoveButton}
-                    >
-                      <IconSymbol size={12} name="xmark" color="#999" />
-                    </TouchableOpacity>
+                    <View style={styles.chipRemoveBadge}>
+                      <IconSymbol size={8} name="xmark" color="#fff" />
+                    </View>
                   </View>
                   <ThemedText style={styles.chipUsername} numberOfLines={1}>{user.username}</ThemedText>
-                </View>
+                </TouchableOpacity>
               ))}
             </ScrollView>
           </View>
         )}
 
-        {/* Search Results */}
+        {/* Divider */}
+        <View style={styles.divider} />
+
+        {/* Results */}
         <ScrollView style={styles.resultsContainer} showsVerticalScrollIndicator={false}>
           {loadingFollowing ? (
             <View style={styles.loadingContainer}>
-              <ActivityIndicator size="large" color="#fff" />
-              <ThemedText style={styles.loadingText}>Loading following list...</ThemedText>
+              <ActivityIndicator size="small" color="#C9A84C" />
+              <ThemedText style={styles.loadingText}>Loading...</ThemedText>
             </View>
-          ) : searchQuery.trim() === '' ? (
-            <View style={styles.emptyState}>
-              <IconSymbol size={64} name="person.2" color="#404249" />
-              <ThemedText style={styles.emptyText}>Search people you follow</ThemedText>
-              <ThemedText style={styles.emptySubtext}>
-                {followingList.length > 0
-                  ? `${followingList.length} people available to tag`
-                  : 'Follow people to tag them in posts'}
-              </ThemedText>
-            </View>
-          ) : searchResults.length > 0 ? (
-            searchResults.map((user) => {
+          ) : displayList.length > 0 ? (
+            displayList.map((user) => {
               const selected = isUserSelected(user.userId);
               return (
                 <TouchableOpacity
@@ -249,20 +252,26 @@ export default function TagUsersModal({
                         </ThemedText>
                       )}
                     </View>
-                    <ThemedText style={styles.username}>{user.username}</ThemedText>
+                    <ThemedText style={[styles.username, selected && styles.usernameSelected]}>{user.username}</ThemedText>
                   </View>
                   <View style={[styles.checkbox, selected && styles.checkboxSelected]}>
-                    {selected && <IconSymbol size={16} name="checkmark" color="#fff" />}
+                    {selected && <IconSymbol size={12} name="checkmark" color="#fff" />}
                   </View>
                 </TouchableOpacity>
               );
             })
-          ) : (
+          ) : searchQuery.trim() !== '' ? (
             <View style={styles.emptyState}>
-              <IconSymbol size={64} name="person.crop.circle.badge.xmark" color="#404249" />
-              <ThemedText style={styles.emptyText}>No matches found</ThemedText>
+              <ThemedText style={styles.emptyText}>No matches</ThemedText>
               <ThemedText style={styles.emptySubtext}>
                 No one you follow matches "{searchQuery}"
+              </ThemedText>
+            </View>
+          ) : (
+            <View style={styles.emptyState}>
+              <ThemedText style={styles.emptyText}>No followers</ThemedText>
+              <ThemedText style={styles.emptySubtext}>
+                Follow people to tag them in posts
               </ThemedText>
             </View>
           )}
@@ -275,192 +284,236 @@ export default function TagUsersModal({
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#1e2124',
+    backgroundColor: '#111',
   },
+  // Header
   header: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
     paddingHorizontal: 20,
     paddingTop: 16,
-    paddingBottom: 16,
-    borderBottomWidth: 1,
-    borderBottomColor: '#2c2f33',
+    paddingBottom: 14,
   },
   headerButton: {
     padding: 4,
   },
-  headerButtonText: {
-    fontSize: 16,
-    color: '#fff',
+  cancelText: {
+    fontSize: 14,
+    color: '#555',
   },
-  doneButton: {
-    fontWeight: '600',
-    color: '#c42743',
+  headerTitleRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  headerAccent: {
+    width: 2,
+    height: 14,
+    backgroundColor: '#C9A84C',
+    borderRadius: 1,
   },
   headerTitle: {
-    fontSize: 18,
+    fontSize: 16,
+    fontWeight: '600',
+    color: 'rgba(255, 255, 255, 0.85)',
+  },
+  doneBtn: {
+    backgroundColor: '#a08845',
+    paddingHorizontal: 14,
+    paddingVertical: 6,
+    borderRadius: 6,
+  },
+  doneText: {
+    fontSize: 13,
     fontWeight: '600',
     color: '#fff',
   },
+  // Search
   searchContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#36393e',
+    backgroundColor: '#1a1a1a',
     marginHorizontal: 20,
-    marginTop: 16,
-    marginBottom: 16,
-    paddingHorizontal: 16,
-    paddingVertical: 12,
-    borderRadius: 12,
-    gap: 10,
+    marginTop: 8,
+    marginBottom: 14,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    borderRadius: 10,
+    gap: 8,
   },
   searchInput: {
     flex: 1,
-    fontSize: 16,
+    fontSize: 14,
     color: '#fff',
     padding: 0,
   },
+  // Selected
   selectedSection: {
     paddingHorizontal: 20,
-    marginBottom: 16,
+    marginBottom: 14,
   },
-  selectedTitle: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: '#b9bbbe',
-    marginBottom: 12,
+  selectedHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    marginBottom: 10,
   },
-  selectedScroll: {
-    flexGrow: 0,
+  selectedLabel: {
+    fontSize: 10,
+    fontWeight: '700',
+    color: '#fff',
+    letterSpacing: 0.5,
+  },
+  selectedBadge: {
+    backgroundColor: '#a08845',
+    borderRadius: 10,
+    paddingHorizontal: 7,
+    paddingVertical: 1,
+  },
+  selectedBadgeText: {
+    fontSize: 10,
+    fontWeight: '700',
+    color: '#fff',
   },
   selectedScrollContent: {
-    gap: 8,
+    gap: 14,
   },
   selectedChip: {
-    flexDirection: 'column',
     alignItems: 'center',
-    gap: 4,
-    marginRight: 4,
+    width: 52,
   },
-  chipAvatarContainer: {
+  chipAvatarWrapper: {
     position: 'relative',
+    marginBottom: 5,
   },
   chipAvatar: {
-    width: 52,
-    height: 52,
-    borderRadius: 26,
-    backgroundColor: '#2c2f33',
+    width: 42,
+    height: 42,
+    borderRadius: 21,
+    backgroundColor: '#222',
     alignItems: 'center',
     justifyContent: 'center',
+    overflow: 'hidden',
   },
   chipAvatarImage: {
     width: '100%',
     height: '100%',
-    borderRadius: 26,
   },
   chipAvatarInitial: {
-    fontSize: 18,
+    fontSize: 15,
     fontWeight: '600',
-    color: '#888',
+    color: '#555',
   },
-  chipUsername: {
-    fontSize: 11,
-    fontWeight: '500',
-    color: '#888',
-    maxWidth: 60,
-    textAlign: 'center',
-  },
-  chipRemoveButton: {
+  chipRemoveBadge: {
     position: 'absolute',
-    top: -2,
-    right: -2,
-    width: 20,
-    height: 20,
-    borderRadius: 10,
-    backgroundColor: '#36393e',
+    bottom: -1,
+    right: -1,
+    width: 16,
+    height: 16,
+    borderRadius: 8,
+    backgroundColor: '#444',
     alignItems: 'center',
     justifyContent: 'center',
+    borderWidth: 2,
+    borderColor: '#111',
   },
+  chipUsername: {
+    fontSize: 10,
+    color: '#888',
+    textAlign: 'center',
+    maxWidth: 52,
+  },
+  // Divider
+  divider: {
+    height: 1,
+    backgroundColor: 'rgba(160, 136, 69, 0.1)',
+    marginHorizontal: 20,
+  },
+  // Results
   resultsContainer: {
     flex: 1,
     paddingHorizontal: 20,
+    paddingTop: 14,
   },
   loadingContainer: {
     alignItems: 'center',
     justifyContent: 'center',
-    paddingTop: 100,
-    gap: 12,
+    paddingTop: 80,
+    gap: 10,
   },
   loadingText: {
-    fontSize: 16,
-    color: '#b9bbbe',
+    fontSize: 13,
+    color: '#444',
   },
   emptyState: {
     alignItems: 'center',
     justifyContent: 'center',
-    paddingTop: 100,
+    paddingTop: 80,
   },
   emptyText: {
-    fontSize: 18,
+    fontSize: 15,
     fontWeight: '600',
-    color: '#b9bbbe',
-    marginTop: 16,
+    color: 'rgba(255, 255, 255, 0.3)',
   },
   emptySubtext: {
-    fontSize: 14,
-    color: '#72767d',
-    marginTop: 8,
+    fontSize: 12,
+    color: '#333',
+    marginTop: 6,
   },
   userItem: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
     paddingVertical: 10,
-    paddingHorizontal: 12,
-    marginBottom: 4,
-    borderRadius: 8,
-    backgroundColor: '#36393e',
+    paddingHorizontal: 0,
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    borderBottomColor: 'rgba(255, 255, 255, 0.04)',
   },
   userLeft: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 10,
+    gap: 12,
     flex: 1,
   },
   userAvatar: {
     width: 36,
     height: 36,
     borderRadius: 18,
-    backgroundColor: '#2c2f33',
+    backgroundColor: '#222',
     alignItems: 'center',
     justifyContent: 'center',
+    overflow: 'hidden',
   },
   userAvatarImage: {
     width: '100%',
     height: '100%',
-    borderRadius: 18,
   },
   userAvatarInitial: {
     fontSize: 14,
     fontWeight: '600',
+    color: '#555',
   },
   username: {
     fontSize: 14,
-    color: '#fff',
+    fontWeight: '500',
+    color: 'rgba(255, 255, 255, 0.6)',
     flex: 1,
   },
+  usernameSelected: {
+    color: 'rgba(255, 255, 255, 0.85)',
+  },
   checkbox: {
-    width: 24,
-    height: 24,
-    borderRadius: 12,
-    borderWidth: 2,
-    borderColor: '#2c2f33',
+    width: 22,
+    height: 22,
+    borderRadius: 11,
+    borderWidth: 1.5,
+    borderColor: '#333',
     alignItems: 'center',
     justifyContent: 'center',
   },
   checkboxSelected: {
-    backgroundColor: '#c42743',
-    borderColor: '#c42743',
+    backgroundColor: '#a08845',
+    borderColor: '#a08845',
   },
 });

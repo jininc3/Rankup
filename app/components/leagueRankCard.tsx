@@ -540,7 +540,7 @@ export default function LeagueRankCard({ game, username, viewOnly = false, userI
   // Render card content
   const renderCardContent = () => (
     <LinearGradient
-      colors={showBack ? ['#091428', '#0f1f3d', '#1a3a5c'] : ['#1a3a5c', '#0f1f3d', '#091428']}
+      colors={['#1a1a1a', '#1e1e1e', '#222222']}
       start={{ x: 0, y: 0 }}
       end={{ x: 1, y: 1 }}
       style={styles.cardBackground}
@@ -612,13 +612,32 @@ export default function LeagueRankCard({ game, username, viewOnly = false, userI
         </View>
       ) : (
         <View style={styles.cardFront}>
+          {/* Glass overlay */}
           <LinearGradient
-            colors={['rgba(255,255,255,0.12)', 'rgba(255,255,255,0.05)', 'rgba(255,255,255,0.02)', 'rgba(255,255,255,0.05)']}
+            colors={['rgba(30,100,200,0.06)', 'rgba(0,0,0,0.1)', 'rgba(201,168,76,0.03)', 'rgba(0,0,0,0.1)']}
             start={{ x: 0, y: 0 }}
             end={{ x: 1, y: 1 }}
             style={styles.glassOverlay}
           />
+
+          {/* Crosshatch pattern */}
+          <View style={styles.crosshatchPattern}>
+            {/* Diagonal lines going top-left to bottom-right */}
+            <View style={[styles.crossLine, { top: -20, left: 30 }]} />
+            <View style={[styles.crossLineGold, { top: -20, left: 60 }]} />
+            <View style={[styles.crossLineGold, { top: -20, right: 60 }]} />
+            <View style={[styles.crossLine, { top: -20, right: 30 }]} />
+            {/* Diagonal lines going top-right to bottom-left */}
+            <View style={[styles.crossLineReverse, { top: -20, left: 30 }]} />
+            <View style={[styles.crossLineReverseGold, { top: -20, left: 60 }]} />
+            <View style={[styles.crossLineReverseGold, { top: -20, right: 60 }]} />
+            <View style={[styles.crossLineReverse, { top: -20, right: 30 }]} />
+          </View>
+
+          {/* Logo watermark */}
           <Image source={require('@/assets/images/lol.png')} style={styles.backgroundLogo} resizeMode="contain" />
+
+          {/* Corner accents */}
           <View style={styles.cornerAccentTL} />
           <View style={styles.cornerAccentTR} />
           <View style={styles.cornerAccentBL} />
@@ -803,23 +822,28 @@ const styles = StyleSheet.create({
   shadow3: { position: 'absolute', top: 10, left: -10, right: 14, bottom: -10, backgroundColor: '#000', borderRadius: 18, opacity: 0.2 },
   shadow2: { position: 'absolute', top: 6, left: -6, right: 10, bottom: -6, backgroundColor: '#000', borderRadius: 17, opacity: 0.25 },
   shadow1: { position: 'absolute', top: 3, left: -3, right: 5, bottom: -3, backgroundColor: '#000', borderRadius: 16, opacity: 0.3 },
-  rankCard: { borderRadius: 16, height: 220, borderWidth: 1, borderColor: 'rgba(255,255,255,0.12)', overflow: 'hidden' },
+  rankCard: { borderRadius: 16, height: 220, borderWidth: 1.5, borderColor: 'rgba(30, 100, 200, 0.5)', overflow: 'hidden' },
   cardBackground: { flex: 1, borderRadius: 12, overflow: 'hidden' },
   staticShimmer: { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, zIndex: 5 },
   staticShimmerRight: { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, zIndex: 6 },
   shimmerContainer: { position: 'absolute', top: -100, left: -100, right: -100, bottom: -100, zIndex: 10 },
   shimmerGradient: { width: 200, height: '200%' },
-  innerBorder: { position: 'absolute', top: 8, left: 8, right: 8, bottom: 8, borderRadius: 10, borderWidth: 1.5, borderColor: 'rgba(255,255,255,0.15)' },
+  innerBorder: { position: 'absolute', top: 8, left: 8, right: 8, bottom: 8, borderRadius: 10, borderWidth: 1, borderColor: 'rgba(30, 100, 200, 0.18)' },
   cardFront: { flex: 1, justifyContent: 'center', alignItems: 'center' },
   glassOverlay: { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, zIndex: 1 },
-  cornerAccentTL: { position: 'absolute', top: 16, left: 16, width: 24, height: 24, borderTopWidth: 2, borderLeftWidth: 2, borderColor: 'rgba(255,255,255,0.3)', borderTopLeftRadius: 4 },
-  cornerAccentTR: { position: 'absolute', top: 16, right: 16, width: 24, height: 24, borderTopWidth: 2, borderRightWidth: 2, borderColor: 'rgba(255,255,255,0.3)', borderTopRightRadius: 4 },
-  cornerAccentBL: { position: 'absolute', bottom: 16, left: 16, width: 24, height: 24, borderBottomWidth: 2, borderLeftWidth: 2, borderColor: 'rgba(255,255,255,0.3)', borderBottomLeftRadius: 4 },
-  cornerAccentBR: { position: 'absolute', bottom: 16, right: 16, width: 24, height: 24, borderBottomWidth: 2, borderRightWidth: 2, borderColor: 'rgba(255,255,255,0.3)', borderBottomRightRadius: 4 },
-  backgroundLogo: { position: 'absolute', width: 250, height: 250, top: '50%', left: '50%', marginTop: -125, marginLeft: -125, opacity: 0.08 },
+  cornerAccentTL: { position: 'absolute', top: 16, left: 16, width: 20, height: 20, borderTopWidth: 1.5, borderLeftWidth: 1.5, borderColor: 'rgba(30, 100, 200, 0.4)', borderTopLeftRadius: 3, zIndex: 2 },
+  cornerAccentTR: { position: 'absolute', top: 16, right: 16, width: 20, height: 20, borderTopWidth: 1.5, borderRightWidth: 1.5, borderColor: 'rgba(30, 100, 200, 0.4)', borderTopRightRadius: 3, zIndex: 2 },
+  cornerAccentBL: { position: 'absolute', bottom: 16, left: 16, width: 20, height: 20, borderBottomWidth: 1.5, borderLeftWidth: 1.5, borderColor: 'rgba(30, 100, 200, 0.4)', borderBottomLeftRadius: 3, zIndex: 2 },
+  cornerAccentBR: { position: 'absolute', bottom: 16, right: 16, width: 20, height: 20, borderBottomWidth: 1.5, borderRightWidth: 1.5, borderColor: 'rgba(30, 100, 200, 0.4)', borderBottomRightRadius: 3, zIndex: 2 },
+  backgroundLogo: { position: 'absolute', width: 200, height: 200, top: '50%', left: '50%', marginTop: -100, marginLeft: -100, opacity: 0.05 },
+  crosshatchPattern: { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, zIndex: 0, overflow: 'hidden' },
+  crossLine: { position: 'absolute', width: 1, height: 300, backgroundColor: 'rgba(30, 100, 200, 0.06)', transform: [{ rotate: '45deg' }] },
+  crossLineGold: { position: 'absolute', width: 1, height: 300, backgroundColor: 'rgba(201, 168, 76, 0.04)', transform: [{ rotate: '45deg' }] },
+  crossLineReverse: { position: 'absolute', width: 1, height: 300, backgroundColor: 'rgba(30, 100, 200, 0.06)', transform: [{ rotate: '-45deg' }] },
+  crossLineReverseGold: { position: 'absolute', width: 1, height: 300, backgroundColor: 'rgba(201, 168, 76, 0.04)', transform: [{ rotate: '-45deg' }] },
   cardBackContent: { flex: 1, padding: 16 },
-  techCornerTL: { position: 'absolute', top: 16, left: 16, width: 24, height: 24, borderTopWidth: 2, borderLeftWidth: 2, borderColor: 'rgba(255,255,255,0.3)', borderTopLeftRadius: 4 },
-  techCornerBR: { position: 'absolute', bottom: 16, right: 16, width: 24, height: 24, borderBottomWidth: 2, borderRightWidth: 2, borderColor: 'rgba(255,255,255,0.3)', borderBottomRightRadius: 4 },
+  techCornerTL: { position: 'absolute', top: 16, left: 16, width: 20, height: 20, borderTopWidth: 1.5, borderLeftWidth: 1.5, borderColor: 'rgba(30, 100, 200, 0.3)', borderTopLeftRadius: 3 },
+  techCornerBR: { position: 'absolute', bottom: 16, right: 16, width: 20, height: 20, borderBottomWidth: 1.5, borderRightWidth: 1.5, borderColor: 'rgba(30, 100, 200, 0.3)', borderBottomRightRadius: 3 },
   heroHeader: {
     flexDirection: 'row',
     alignItems: 'center',

@@ -199,6 +199,17 @@ export const linkRiotAccount = async (
   }
 };
 
+// Client-side League stats cache (30 min TTL)
+const LEAGUE_STATS_CACHE_TTL = 30 * 60 * 1000;
+let leagueStatsCache: { data: GetStatsResponse; timestamp: number } | null = null;
+
+/**
+ * Clear the client-side League stats cache
+ */
+export const clearLeagueStatsCache = () => {
+  leagueStatsCache = null;
+};
+
 /**
  * Get League of Legends stats for the current user
  * @param forceRefresh - Force refresh data from Riot API (bypass cache)
@@ -207,6 +218,11 @@ export const getLeagueStats = async (
   forceRefresh: boolean = false
 ): Promise<GetStatsResponse> => {
   try {
+    // Return client cache if fresh and not forcing refresh
+    if (!forceRefresh && leagueStatsCache && Date.now() - leagueStatsCache.timestamp < LEAGUE_STATS_CACHE_TTL) {
+      return leagueStatsCache.data;
+    }
+
     // Check if user is authenticated
     const currentUser = auth.currentUser;
     if (!currentUser) {
@@ -223,8 +239,16 @@ export const getLeagueStats = async (
 
     const result = await getLeagueStatsFn({ forceRefresh });
 
+    // Update client cache
+    leagueStatsCache = { data: result.data, timestamp: Date.now() };
+
     return result.data;
   } catch (error: any) {
+    // Return stale cache on error if available
+    if (leagueStatsCache) {
+      return leagueStatsCache.data;
+    }
+
     // Provide more helpful error messages
     if (error.code === 'unauthenticated') {
       throw new Error('Authentication error. Please try logging out and back in.');
