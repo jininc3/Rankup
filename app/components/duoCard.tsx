@@ -262,7 +262,7 @@ export default function DuoCard({ duo, onPress, onMessage, onViewProfile, onDele
       </View>
 
       {/* Header Divider */}
-      <View style={styles.headerDivider} />
+      <View style={[styles.headerDivider, { backgroundColor: isLeague ? GAME_ACCENTS.league.divider : GAME_ACCENTS.valorant.divider }]} />
 
       {/* Message */}
       {duo.message ? (
@@ -286,7 +286,7 @@ export default function DuoCard({ duo, onPress, onMessage, onViewProfile, onDele
           </View>
         </View>
 
-        <View style={styles.divider} />
+        <View style={[styles.divider, { backgroundColor: isLeague ? GAME_ACCENTS.league.divider : GAME_ACCENTS.valorant.divider }]} />
 
         {/* Agent (Valorant) / Champion (League) */}
         <View style={styles.statItem}>
