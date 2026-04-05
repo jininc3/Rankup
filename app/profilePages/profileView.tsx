@@ -163,7 +163,7 @@ export default function ProfileViewScreen() {
             wins: valorantStats.wins || 0,
             losses: valorantStats.losses || 0,
             winRate: valorantStats.winRate || 0,
-            recentMatches: [],
+            matchHistory: valorantStats.matchHistory || [],
             valorantCard: valorantStats.card?.small,
             peakRank: valorantStats.peakRank ? { tier: valorantStats.peakRank.tier, season: valorantStats.peakRank.season } : undefined,
             accountLevel: valorantStats.accountLevel,

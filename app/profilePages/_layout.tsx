@@ -123,6 +123,12 @@ export default function ProfilePagesLayout() {
           headerShown: false,
         }}
       />
+      <Stack.Screen
+        name="achievementsView"
+        options={{
+          headerShown: false,
+        }}
+      />
     </Stack>
   );
 }

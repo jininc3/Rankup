@@ -80,7 +80,7 @@ export default function ProfileScreen() {
   const [leagueInGameIcon, setLeagueInGameIcon] = useState<string | undefined>(undefined);
   const [leagueInGameName, setLeagueInGameName] = useState<string | undefined>(undefined);
   const [leagueWinRate, setLeagueWinRate] = useState<number | undefined>(undefined);
-  const [achievements, setAchievements] = useState<{ partyName: string; game: string; placement: number; endDate: string }[]>([]);
+  const [achievements, setAchievements] = useState<{ partyId: string; partyName: string; game: string; placement: number; endDate: string }[]>([]);
   const [loadingAchievements, setLoadingAchievements] = useState(true);
   const [riotAccount, setRiotAccount] = useState<any>(null);
   const [valorantAccount, setValorantAccount] = useState<any>(null);
@@ -187,6 +187,7 @@ export default function ProfileScreen() {
     console.log('Profile - Valorant Account:', valorantAccount ? 'Set' : 'Not set');
     console.log('Profile - Riot Stats:', riotStats ? 'Set' : 'Not set');
     console.log('Profile - Valorant Stats:', valorantStats ? 'Set' : 'Not set');
+    console.log('Profile - Valorant matchHistory:', valorantStats?.matchHistory?.length ?? 'none', valorantStats?.matchHistory);
     console.log('Profile - Enabled Rank Cards:', enabledRankCards);
   }, [riotAccount, valorantAccount, riotStats, valorantStats, enabledRankCards]);
 
@@ -474,10 +475,10 @@ export default function ProfileScreen() {
       const today = new Date();
       today.setHours(0, 0, 0, 0);
 
-      const results: { partyName: string; game: string; placement: number; endDate: string }[] = [];
+      const results: { partyId: string; partyName: string; game: string; placement: number; endDate: string }[] = [];
 
-      snapshot.docs.forEach((doc) => {
-        const data = doc.data();
+      snapshot.docs.forEach((docSnap) => {
+        const data = docSnap.data();
         if (!data.endDate || !data.rankings) return;
 
         // Parse endDate (MM/DD/YYYY)
@@ -489,6 +490,7 @@ export default function ProfileScreen() {
         const userRanking = data.rankings.find((r: any) => r.userId === user.id);
         if (userRanking && userRanking.rank >= 1 && userRanking.rank <= 3) {
           results.push({
+            partyId: docSnap.id,
             partyName: data.partyName,
             game: data.game,
             placement: userRanking.rank,
@@ -1286,28 +1288,52 @@ export default function ProfileScreen() {
           {/* Achievements Content */}
           <View style={styles.achievementsSection}>
             {achievements.length > 0 ? (
-              <ScrollView
-                horizontal
-                showsHorizontalScrollIndicator={false}
-                contentContainerStyle={styles.horizontalAchievementsContainer}
-              >
-                {achievements.map((achievement, index) => (
-                  <View key={index} style={styles.achievementCard}>
-                    <ThemedText style={styles.achievementMedal}>
-                      {achievement.placement === 1 ? '\u{1F947}' : achievement.placement === 2 ? '\u{1F948}' : '\u{1F949}'}
-                    </ThemedText>
-                    <ThemedText style={styles.achievementPlacement}>
-                      {achievement.placement === 1 ? '1st Place' : achievement.placement === 2 ? '2nd Place' : '3rd Place'}
-                    </ThemedText>
-                    <ThemedText style={styles.achievementPartyName} numberOfLines={2}>
-                      {achievement.partyName}
-                    </ThemedText>
-                    <ThemedText style={styles.achievementGame}>
-                      {achievement.game}
-                    </ThemedText>
-                  </View>
-                ))}
-              </ScrollView>
+              <View style={styles.achievementsList}>
+                {achievements.map((achievement, index) => {
+                  const isGold = achievement.placement === 1;
+                  const isSilver = achievement.placement === 2;
+                  const accentColor = isGold ? '#FFD700' : isSilver ? '#C0C0C0' : '#CD7F32';
+
+                  return (
+                    <TouchableOpacity
+                      key={index}
+                      style={[styles.achievementCard, { borderLeftColor: accentColor }]}
+                      activeOpacity={0.7}
+                      onPress={() => router.push(`/profilePages/achievementsView?partyId=${achievement.partyId}&game=${achievement.game}`)}
+                    >
+                      {/* Left: Medal */}
+                      <ThemedText style={styles.achievementMedal}>
+                        {isGold ? '\u{1F947}' : isSilver ? '\u{1F948}' : '\u{1F949}'}
+                      </ThemedText>
+
+                      {/* Center: Info */}
+                      <View style={styles.achievementInfo}>
+                        <ThemedText style={styles.achievementPartyName} numberOfLines={1}>
+                          {achievement.partyName}
+                        </ThemedText>
+                        <View style={styles.achievementMeta}>
+                          <ThemedText style={styles.achievementGame}>{achievement.game}</ThemedText>
+                          {achievement.endDate && (
+                            <>
+                              <View style={styles.achievementMetaDot} />
+                              <ThemedText style={styles.achievementDate}>{achievement.endDate}</ThemedText>
+                            </>
+                          )}
+                        </View>
+                      </View>
+
+                      {/* Right: Placement */}
+                      <View style={styles.achievementPlacementContainer}>
+                        <ThemedText style={[styles.achievementPlacement, { color: accentColor }]}>
+                          {isGold ? '1st' : isSilver ? '2nd' : '3rd'}
+                        </ThemedText>
+                      </View>
+
+                      <IconSymbol size={14} name="chevron.right" color="#444" />
+                    </TouchableOpacity>
+                  );
+                })}
+              </View>
             ) : (
               <View style={styles.emptyState}>
                 <IconSymbol size={36} name="trophy" color="#72767d" />
@@ -2194,42 +2220,59 @@ const styles = StyleSheet.create({
   achievementsSection: {
     marginBottom: 8,
   },
-  horizontalAchievementsContainer: {
+  achievementsList: {
     paddingHorizontal: 20,
     gap: 8,
   },
   achievementCard: {
-    width: 120,
-    height: 120,
-    backgroundColor: '#141414',
-    borderRadius: 6,
+    flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'center',
-    padding: 10,
+    backgroundColor: '#141414',
+    borderRadius: 10,
+    padding: 14,
+    borderLeftWidth: 3,
+    gap: 12,
   },
   achievementMedal: {
-    fontSize: 32,
-    marginBottom: 6,
+    fontSize: 24,
   },
-  achievementPlacement: {
-    fontSize: 13,
-    fontWeight: '700',
-    color: '#fff',
-    letterSpacing: -0.3,
-    marginBottom: 4,
+  achievementInfo: {
+    flex: 1,
   },
   achievementPartyName: {
-    fontSize: 11,
+    fontSize: 14,
     fontWeight: '600',
-    color: '#b9bbbe',
-    textAlign: 'center',
-    lineHeight: 14,
+    color: '#e0e0e0',
+    marginBottom: 3,
+  },
+  achievementMeta: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  achievementMetaDot: {
+    width: 3,
+    height: 3,
+    borderRadius: 1.5,
+    backgroundColor: '#444',
+    marginHorizontal: 6,
   },
   achievementGame: {
-    fontSize: 10,
-    fontWeight: '600',
+    fontSize: 11,
+    fontWeight: '500',
     color: '#72767d',
-    marginTop: 4,
+  },
+  achievementDate: {
+    fontSize: 11,
+    fontWeight: '500',
+    color: '#4a4d52',
+  },
+  achievementPlacementContainer: {
+    marginRight: 4,
+  },
+  achievementPlacement: {
+    fontSize: 15,
+    fontWeight: '800',
+    letterSpacing: -0.3,
   },
   // Create Modal styles
   createModalOverlay: {
