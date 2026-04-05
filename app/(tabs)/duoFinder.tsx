@@ -160,6 +160,8 @@ export default function DuoFinderScreen() {
   const [leagueInGameName, setLeagueInGameName] = useState<string | undefined>(undefined);
   const [leagueWinRate, setLeagueWinRate] = useState<number | undefined>(undefined);
   const [leagueGamesPlayed, setLeagueGamesPlayed] = useState<number | undefined>(undefined);
+  const [hasActiveValorantPost, setHasActiveValorantPost] = useState(false);
+  const [hasActiveLeaguePost, setHasActiveLeaguePost] = useState(false);
 
   // Function to sync duo cards with rank stats
   const syncDuoCardsWithStats = async (isManualRefresh: boolean = false) => {
@@ -347,6 +349,16 @@ export default function DuoFinderScreen() {
             });
           }
         }
+
+        // Check if user has active duo posts in the feed
+        const valorantPostRef = doc(db, 'duoPosts', `${user.id}_valorant`);
+        const leaguePostRef = doc(db, 'duoPosts', `${user.id}_league`);
+        const [valorantPostDoc, leaguePostDoc] = await Promise.all([
+          getDoc(valorantPostRef),
+          getDoc(leaguePostRef),
+        ]);
+        setHasActiveValorantPost(valorantPostDoc.exists());
+        setHasActiveLeaguePost(leaguePostDoc.exists());
       }
     } catch (error) {
       console.error('Error syncing duo cards:', error);
@@ -713,6 +725,8 @@ export default function DuoFinderScreen() {
             await deleteDoc(doc(db, 'duoPosts', post.id));
             setDuoPosts(prev => prev.filter(p => p.id !== post.id));
             setDisplayedPosts(prev => prev.filter(p => p.id !== post.id));
+            if (post.id === `${user?.id}_valorant`) setHasActiveValorantPost(false);
+            if (post.id === `${user?.id}_league`) setHasActiveLeaguePost(false);
           } catch (error) {
             console.error('Error deleting post:', error);
           }
@@ -1356,7 +1370,7 @@ export default function DuoFinderScreen() {
                         setShowMyCards(false);
                         handleCardPress('valorant');
                       }}
-                      onDelete={() => {
+                      onDelete={hasActiveValorantPost ? () => {
                         Alert.alert('Remove Post', 'Remove your Valorant duo post from the feed?', [
                           { text: 'Cancel', style: 'cancel' },
                           {
@@ -1367,13 +1381,14 @@ export default function DuoFinderScreen() {
                                 await deleteDoc(doc(db, 'duoPosts', `${user?.id}_valorant`));
                                 setDuoPosts(prev => prev.filter(p => p.id !== `${user?.id}_valorant`));
                                 setDisplayedPosts(prev => prev.filter(p => p.id !== `${user?.id}_valorant`));
+                                setHasActiveValorantPost(false);
                               } catch (error) {
                                 console.error('Error deleting post:', error);
                               }
                             },
                           },
                         ]);
-                      }}
+                      } : undefined}
                     />
                   )}
                   {leagueCard && (
@@ -1399,7 +1414,7 @@ export default function DuoFinderScreen() {
                         setShowMyCards(false);
                         handleCardPress('league');
                       }}
-                      onDelete={() => {
+                      onDelete={hasActiveLeaguePost ? () => {
                         Alert.alert('Remove Post', 'Remove your League duo post from the feed?', [
                           { text: 'Cancel', style: 'cancel' },
                           {
@@ -1410,13 +1425,14 @@ export default function DuoFinderScreen() {
                                 await deleteDoc(doc(db, 'duoPosts', `${user?.id}_league`));
                                 setDuoPosts(prev => prev.filter(p => p.id !== `${user?.id}_league`));
                                 setDisplayedPosts(prev => prev.filter(p => p.id !== `${user?.id}_league`));
+                                setHasActiveLeaguePost(false);
                               } catch (error) {
                                 console.error('Error deleting post:', error);
                               }
                             },
                           },
                         ]);
-                      }}
+                      } : undefined}
                     />
                   )}
                 </View>
@@ -1505,7 +1521,11 @@ export default function DuoFinderScreen() {
       <PostDuoCard
         visible={showPostDuoCard}
         onClose={() => setShowPostDuoCard(false)}
-        onPostCreated={fetchDuoPosts}
+        onPostCreated={() => {
+          fetchDuoPosts();
+          // Refresh active post state
+          syncDuoCardsWithStats();
+        }}
         valorantCard={valorantCard}
         leagueCard={leagueCard}
         userAvatar={user?.avatar}

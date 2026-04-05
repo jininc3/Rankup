@@ -96,22 +96,13 @@ const LEAGUE_LANE_ICONS: { [key: string]: any } = {
   support: require('@/assets/images/leaguelanes/support.png'),
 };
 
-// Game-specific accent colors (matching rank card design language)
-const GAME_ACCENTS = {
-  valorant: {
-    border: 'rgba(239, 84, 102, 0.25)',
-    stripe: 'rgba(239, 84, 102, 0.5)',
-    overlayStart: 'rgba(239, 84, 102, 0.05)',
-    overlayEnd: 'rgba(239, 84, 102, 0.03)',
-    divider: 'rgba(239, 84, 102, 0.15)',
-  },
-  league: {
-    border: 'rgba(30, 100, 200, 0.25)',
-    stripe: 'rgba(30, 100, 200, 0.5)',
-    overlayStart: 'rgba(30, 100, 200, 0.05)',
-    overlayEnd: 'rgba(201, 168, 76, 0.03)',
-    divider: 'rgba(30, 100, 200, 0.15)',
-  },
+// Card accent colors — white, gold, black theme
+const CARD_COLORS = {
+  border: 'rgba(180, 155, 70, 0.4)',
+  stripe: 'rgba(180, 155, 70, 0.7)',
+  overlayStart: 'rgba(180, 155, 70, 0.06)',
+  overlayEnd: 'rgba(180, 155, 70, 0.03)',
+  divider: 'rgba(180, 155, 70, 0.3)',
 };
 
 interface Duo {
@@ -200,29 +191,26 @@ export default function DuoCard({ duo, onPress, onMessage, onViewProfile, onDele
       activeOpacity={0.7}
     >
       <LinearGradient
-        colors={['#1a1a1a', '#1e1e1e', '#222222']}
+        colors={['#111113', '#161618', '#1a1a1c']}
         start={{ x: 0, y: 0 }}
-        end={{ x: 1, y: 1 }}
-        style={[styles.innerBorder, { borderColor: isLeague ? GAME_ACCENTS.league.border : GAME_ACCENTS.valorant.border }]}
+        end={{ x: 0, y: 1 }}
+        style={[styles.innerBorder, { borderColor: CARD_COLORS.border }]}
       >
-      {/* Game accent stripe - left edge */}
+      {/* Gold accent stripe - left edge */}
       <View style={{
         position: 'absolute',
         left: 0,
         top: 0,
         bottom: 0,
         width: 2,
-        backgroundColor: isLeague ? GAME_ACCENTS.league.stripe : GAME_ACCENTS.valorant.stripe,
+        backgroundColor: CARD_COLORS.stripe,
         borderTopLeftRadius: 8,
         borderBottomLeftRadius: 8,
       }} />
 
-      {/* Subtle game-colored overlay */}
+      {/* Subtle gold overlay */}
       <LinearGradient
-        colors={isLeague
-          ? [GAME_ACCENTS.league.overlayStart, 'transparent', GAME_ACCENTS.league.overlayEnd]
-          : [GAME_ACCENTS.valorant.overlayStart, 'transparent', GAME_ACCENTS.valorant.overlayEnd]
-        }
+        colors={[CARD_COLORS.overlayStart, 'transparent', CARD_COLORS.overlayEnd]}
         start={{ x: 0, y: 0 }}
         end={{ x: 1, y: 1 }}
         style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, borderRadius: 8 }}
@@ -262,7 +250,7 @@ export default function DuoCard({ duo, onPress, onMessage, onViewProfile, onDele
       </View>
 
       {/* Header Divider */}
-      <View style={[styles.headerDivider, { backgroundColor: isLeague ? GAME_ACCENTS.league.divider : GAME_ACCENTS.valorant.divider }]} />
+      <View style={[styles.headerDivider, { backgroundColor: CARD_COLORS.divider }]} />
 
       {/* Message */}
       {duo.message ? (
@@ -286,7 +274,7 @@ export default function DuoCard({ duo, onPress, onMessage, onViewProfile, onDele
           </View>
         </View>
 
-        <View style={[styles.divider, { backgroundColor: isLeague ? GAME_ACCENTS.league.divider : GAME_ACCENTS.valorant.divider }]} />
+        <View style={[styles.divider, { backgroundColor: CARD_COLORS.divider }]} />
 
         {/* Agent (Valorant) / Champion (League) */}
         <View style={styles.statItem}>
@@ -302,7 +290,7 @@ export default function DuoCard({ duo, onPress, onMessage, onViewProfile, onDele
           )}
         </View>
 
-        <View style={styles.divider} />
+        <View style={[styles.divider, { backgroundColor: CARD_COLORS.divider }]} />
 
         {/* Role */}
         <View style={styles.statItem}>
@@ -318,7 +306,7 @@ export default function DuoCard({ duo, onPress, onMessage, onViewProfile, onDele
           )}
         </View>
 
-        <View style={styles.divider} />
+        <View style={[styles.divider, { backgroundColor: CARD_COLORS.divider }]} />
 
         {/* Win Rate */}
         <View style={styles.statItem}>
@@ -356,7 +344,7 @@ export default function DuoCard({ duo, onPress, onMessage, onViewProfile, onDele
           )}
           {onMessage && (
             <TouchableOpacity style={[styles.actionButton, onViewProfile && styles.actionButtonHalf, styles.messageButton]} onPress={onMessage} activeOpacity={0.7}>
-              <IconSymbol size={14} name="bubble.left.fill" color="#a08845" />
+              <IconSymbol size={14} name="bubble.left.fill" color="#c9a84c" />
               <ThemedText style={styles.messageButtonText}>Message</ThemedText>
             </TouchableOpacity>
           )}
@@ -369,15 +357,15 @@ export default function DuoCard({ duo, onPress, onMessage, onViewProfile, onDele
 
 const styles = StyleSheet.create({
   container: {
-    backgroundColor: '#1e1e24',
+    backgroundColor: '#141416',
     borderRadius: 12,
     padding: 6,
     marginBottom: 10,
     shadowColor: '#000',
     shadowOffset: { width: -3, height: 4 },
-    shadowOpacity: 0.6,
+    shadowOpacity: 0.4,
     shadowRadius: 6,
-    elevation: 8,
+    elevation: 6,
   },
   innerBorder: {
     borderWidth: 1,
@@ -411,7 +399,9 @@ const styles = StyleSheet.create({
     width: 36,
     height: 36,
     borderRadius: 8,
-    backgroundColor: 'rgba(255,255,255,0.12)',
+    backgroundColor: 'rgba(255,255,255,0.1)',
+    borderWidth: 1,
+    borderColor: 'rgba(180, 155, 70, 0.3)',
     alignItems: 'center',
     justifyContent: 'center',
     overflow: 'hidden',
@@ -423,11 +413,11 @@ const styles = StyleSheet.create({
   avatarText: {
     fontSize: 14,
     fontWeight: '600',
-    color: '#666',
+    color: '#999',
   },
   username: {
     fontSize: 15,
-    fontWeight: '600',
+    fontWeight: '700',
     color: '#fff',
     flex: 1,
   },
@@ -441,8 +431,10 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     gap: 6,
     paddingVertical: 10,
-    backgroundColor: 'rgba(0,0,0,0.3)',
+    backgroundColor: 'rgba(0,0,0,0.05)',
     borderRadius: 10,
+    borderWidth: 1,
+    borderColor: 'rgba(180, 155, 70, 0.25)',
     flex: 1,
   },
   actionButtonHalf: {
@@ -454,18 +446,19 @@ const styles = StyleSheet.create({
     color: '#fff',
   },
   messageButton: {
-    backgroundColor: 'rgba(160, 136, 69, 0.15)',
+    backgroundColor: 'rgba(180, 155, 70, 0.12)',
+    borderColor: 'rgba(180, 155, 70, 0.4)',
   },
   messageButtonText: {
     fontSize: 12,
     fontWeight: '600',
-    color: '#fff',
+    color: '#c9a84c',
   },
   profileIconSmall: {
     width: 18,
     height: 18,
     borderRadius: 9,
-    backgroundColor: 'rgba(255,255,255,0.14)',
+    backgroundColor: 'rgba(255,255,255,0.12)',
     alignItems: 'center',
     justifyContent: 'center',
     overflow: 'hidden',
@@ -477,7 +470,7 @@ const styles = StyleSheet.create({
   profileIconText: {
     fontSize: 9,
     fontWeight: '600',
-    color: '#666',
+    color: '#999',
   },
   headerRight: {
     flexDirection: 'row',
@@ -486,7 +479,7 @@ const styles = StyleSheet.create({
   },
   timeAgo: {
     fontSize: 11,
-    color: '#666',
+    color: 'rgba(255,255,255,0.5)',
     fontWeight: '500',
   },
   gameLogo: {
@@ -515,8 +508,8 @@ const styles = StyleSheet.create({
   },
   statLabel: {
     fontSize: 10,
-    fontWeight: '600',
-    color: '#555',
+    fontWeight: '700',
+    color: 'rgba(201, 168, 76, 0.7)',
     textTransform: 'uppercase',
     letterSpacing: 0.5,
   },
@@ -563,7 +556,7 @@ const styles = StyleSheet.create({
   messageText: {
     fontSize: 12,
     fontStyle: 'italic',
-    color: '#999',
+    color: 'rgba(255,255,255,0.6)',
     lineHeight: 17,
   },
   deletePostButton: {
@@ -572,7 +565,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     gap: 6,
     paddingVertical: 8,
-    backgroundColor: 'rgba(255,107,107,0.08)',
+    backgroundColor: 'rgba(220,60,75,0.08)',
     borderRadius: 8,
   },
   deletePostText: {

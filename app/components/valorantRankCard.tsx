@@ -221,18 +221,21 @@ export default function ValorantRankCard({ game, username, viewOnly = false, use
     outputRange: [-SCREEN_WIDTH * 1.5, SCREEN_WIDTH * 1.5],
   });
 
-  // Listen to animation value to swap content at midpoint
+  // Track showBack in a ref so the listener always reads the latest value
+  const showBackRef = useRef(showBack);
+  showBackRef.current = showBack;
+
+  // Listen to animation value to swap content at midpoint (registered once)
   useEffect(() => {
     const listenerId = flipAnimation.addListener(({ value }) => {
-      // Swap content when we cross the midpoint
-      if (value >= 0.5 && !showBack) {
+      if (value >= 0.5 && !showBackRef.current) {
         setShowBack(true);
-      } else if (value < 0.5 && showBack) {
+      } else if (value < 0.5 && showBackRef.current) {
         setShowBack(false);
       }
     });
     return () => flipAnimation.removeListener(listenerId);
-  }, [showBack]);
+  }, []);
 
   const handlePress = () => {
     if (viewOnly) return;
@@ -242,12 +245,18 @@ export default function ValorantRankCard({ game, username, viewOnly = false, use
       setCardPosition({ x, y, width });
       startY.setValue(y); // Set immediately for animation
 
-      // Open modal and animate
+      // Open modal and reset all state from previous dismiss
       setModalVisible(true);
-      modalCardOpacity.setValue(1); // Reset modal card opacity
-      dragY.setValue(0); // Reset drag offset
-      setShowMatchHistory(true); // Show cards container
-      setMatchHistoryExpanded(false); // Start with match history collapsed
+      setShowBack(false);
+      setIsFlipped(false);
+      modalCardOpacity.setValue(1);
+      dragY.setValue(0);
+      flipAnimation.setValue(0);
+      slideAnimation.setValue(0);
+      matchHistoryAnimation.setValue(0);
+      matchHistoryExpandAnimation.setValue(0);
+      setShowMatchHistory(true);
+      setMatchHistoryExpanded(false);
 
       // Animation: wait for modal to render, hide stack card, then slide up
       Animated.sequence([
@@ -281,18 +290,27 @@ export default function ValorantRankCard({ game, username, viewOnly = false, use
             easing: Easing.out(Easing.back(1.05)), // Match the card slide timing
             useNativeDriver: false,
           }),
-          // Flip during slide-up — slightly delayed start so user sees the flip
+          // Flip during slide-up — split into two halves to swap content at midpoint
           Animated.sequence([
             Animated.delay(150),
             Animated.timing(flipAnimation, {
-              toValue: 1,
-              duration: 600,
-              easing: Easing.inOut(Easing.ease),
+              toValue: 0.5,
+              duration: 300,
+              easing: Easing.in(Easing.ease),
               useNativeDriver: false,
             }),
           ]),
         ]),
-      ]).start();
+      ]).start(() => {
+        // At midpoint (scaleY=0), swap to back content then complete the flip
+        setShowBack(true);
+        Animated.timing(flipAnimation, {
+          toValue: 1,
+          duration: 300,
+          easing: Easing.out(Easing.ease),
+          useNativeDriver: false,
+        }).start();
+      });
 
       setIsFlipped(true);
     });
@@ -494,23 +512,13 @@ export default function ValorantRankCard({ game, username, viewOnly = false, use
         easing: Easing.out(Easing.cubic),
         useNativeDriver: true,
       }),
-      // Fade out modal card during slide so it's invisible before callback resets positions
-      Animated.timing(modalCardOpacityRef.current, {
-        toValue: 0,
-        duration: 300,
-        easing: Easing.in(Easing.cubic),
-        useNativeDriver: false,
-      }),
     ]).start(() => {
+      // Just close the modal — animated values are reset in handlePress on next open
       setModalVisible(false);
       setIsFlipped(false);
+      setShowBack(false);
       setShowMatchHistory(false);
       setMatchHistoryExpanded(false);
-      flipAnimationRef.current.setValue(0);
-      dragYRef.current.setValue(0);
-      slideAnimationRef.current.setValue(0);
-      matchHistoryAnimationRef.current.setValue(0);
-      matchHistoryExpandAnimationRef.current.setValue(0);
     });
   };
   const dismissCardRef = useRef(dismissCardOffScreen);

@@ -108,17 +108,21 @@ export default function LeagueRankCard({ game, username, viewOnly = false, userI
     outputRange: [-SCREEN_WIDTH * 1.5, SCREEN_WIDTH * 1.5],
   });
 
-  // Listen to animation value to swap content at midpoint
+  // Track showBack in a ref so the listener always reads the latest value
+  const showBackRef = useRef(showBack);
+  showBackRef.current = showBack;
+
+  // Listen to animation value to swap content at midpoint (registered once)
   useEffect(() => {
     const listenerId = flipAnimation.addListener(({ value }) => {
-      if (value >= 0.5 && !showBack) {
+      if (value >= 0.5 && !showBackRef.current) {
         setShowBack(true);
-      } else if (value < 0.5 && showBack) {
+      } else if (value < 0.5 && showBackRef.current) {
         setShowBack(false);
       }
     });
     return () => flipAnimation.removeListener(listenerId);
-  }, [showBack]);
+  }, []);
 
   const handlePress = () => {
     if (viewOnly) return;
@@ -128,10 +132,16 @@ export default function LeagueRankCard({ game, username, viewOnly = false, userI
       setCardPosition({ x, y, width });
       startY.setValue(y);
 
-      // Open modal and animate
+      // Open modal and reset all state from previous dismiss
       setModalVisible(true);
-      modalCardOpacity.setValue(1); // Reset modal card opacity
-      dragY.setValue(0); // Reset drag offset
+      setShowBack(false);
+      setIsFlipped(false);
+      modalCardOpacity.setValue(1);
+      dragY.setValue(0);
+      flipAnimation.setValue(0);
+      slideAnimation.setValue(0);
+      matchHistoryAnimation.setValue(0);
+      matchHistoryExpandAnimation.setValue(0);
       setShowMatchHistory(true);
       setMatchHistoryExpanded(false);
 
@@ -167,18 +177,27 @@ export default function LeagueRankCard({ game, username, viewOnly = false, userI
             easing: Easing.out(Easing.back(1.05)),
             useNativeDriver: false,
           }),
-          // Flip during slide-up so it shows back by the time it reaches the top
+          // Flip during slide-up — split into two halves to swap content at midpoint
           Animated.sequence([
             Animated.delay(150),
             Animated.timing(flipAnimation, {
-              toValue: 1,
-              duration: 600,
-              easing: Easing.inOut(Easing.ease),
+              toValue: 0.5,
+              duration: 300,
+              easing: Easing.in(Easing.ease),
               useNativeDriver: false,
             }),
           ]),
         ]),
-      ]).start();
+      ]).start(() => {
+        // At midpoint (scaleY=0), swap to back content then complete the flip
+        setShowBack(true);
+        Animated.timing(flipAnimation, {
+          toValue: 1,
+          duration: 300,
+          easing: Easing.out(Easing.ease),
+          useNativeDriver: false,
+        }).start();
+      });
 
       setIsFlipped(true);
     });
@@ -380,23 +399,13 @@ export default function LeagueRankCard({ game, username, viewOnly = false, userI
         easing: Easing.out(Easing.cubic),
         useNativeDriver: true,
       }),
-      // Fade out modal card during slide so it's invisible before callback resets positions
-      Animated.timing(modalCardOpacityRef.current, {
-        toValue: 0,
-        duration: 300,
-        easing: Easing.in(Easing.cubic),
-        useNativeDriver: false,
-      }),
     ]).start(() => {
+      // Just close the modal — animated values are reset in handlePress on next open
       setModalVisible(false);
       setIsFlipped(false);
+      setShowBack(false);
       setShowMatchHistory(false);
       setMatchHistoryExpanded(false);
-      flipAnimationRef.current.setValue(0);
-      dragYRef.current.setValue(0);
-      slideAnimationRef.current.setValue(0);
-      matchHistoryAnimationRef.current.setValue(0);
-      matchHistoryExpandAnimationRef.current.setValue(0);
     });
   };
   const dismissCardRef = useRef(dismissCardOffScreen);
