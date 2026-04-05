@@ -355,6 +355,52 @@ export default function LeagueRankCard({ game, username, viewOnly = false, userI
 
   const dragYRef = useRef(dragY);
   const flipAnimationRef = useRef(flipAnimation);
+  const overlayOpacityRef = useRef(overlayOpacity);
+  const slideAnimationRef = useRef(slideAnimation);
+  const modalCardOpacityRef = useRef(modalCardOpacity);
+  const stackCardOpacityRef = useRef(stackCardOpacity);
+  const matchHistoryAnimationRef = useRef(matchHistoryAnimation);
+  const matchHistoryExpandAnimationRef = useRef(matchHistoryExpandAnimation);
+
+  // Shared slide-off dismiss logic for pan responders
+  const dismissCardOffScreen = () => {
+    // Show the stack card immediately so it's visible behind
+    stackCardOpacityRef.current.setValue(1);
+
+    Animated.parallel([
+      Animated.timing(dragYRef.current, {
+        toValue: SCREEN_HEIGHT,
+        duration: 300,
+        easing: Easing.in(Easing.cubic),
+        useNativeDriver: false,
+      }),
+      Animated.timing(overlayOpacityRef.current, {
+        toValue: 0,
+        duration: 250,
+        easing: Easing.out(Easing.cubic),
+        useNativeDriver: true,
+      }),
+      // Fade out modal card during slide so it's invisible before callback resets positions
+      Animated.timing(modalCardOpacityRef.current, {
+        toValue: 0,
+        duration: 300,
+        easing: Easing.in(Easing.cubic),
+        useNativeDriver: false,
+      }),
+    ]).start(() => {
+      setModalVisible(false);
+      setIsFlipped(false);
+      setShowMatchHistory(false);
+      setMatchHistoryExpanded(false);
+      flipAnimationRef.current.setValue(0);
+      dragYRef.current.setValue(0);
+      slideAnimationRef.current.setValue(0);
+      matchHistoryAnimationRef.current.setValue(0);
+      matchHistoryExpandAnimationRef.current.setValue(0);
+    });
+  };
+  const dismissCardRef = useRef(dismissCardOffScreen);
+  dismissCardRef.current = dismissCardOffScreen;
 
   // Pan responder for swipe down to close modal (on statistics card)
   const statisticsSwipePanResponder = useRef(
@@ -363,16 +409,19 @@ export default function LeagueRankCard({ game, username, viewOnly = false, userI
       onMoveShouldSetPanResponder: (_, gestureState) => {
         return gestureState.dy > 30 && Math.abs(gestureState.dy) > Math.abs(gestureState.dx) * 2;
       },
+      onPanResponderGrant: () => {
+        stackCardOpacityRef.current.setValue(1);
+      },
       onPanResponderMove: (_, gestureState) => {
         if (gestureState.dy > 0) {
           dragYRef.current.setValue(gestureState.dy);
-          const flipProgress = Math.max(0, 1 - gestureState.dy / (SCREEN_HEIGHT / 4));
-          flipAnimationRef.current.setValue(flipProgress);
+          const progress = Math.min(1, gestureState.dy / (SCREEN_HEIGHT / 4));
+          overlayOpacityRef.current.setValue(1 - progress);
         }
       },
       onPanResponderRelease: (_, gestureState) => {
-        if (gestureState.dy > SCREEN_HEIGHT / 4) {
-          handleCardBackPressRef.current();
+        if (gestureState.dy > SCREEN_HEIGHT / 6) {
+          dismissCardRef.current();
         } else {
           Animated.spring(dragYRef.current, {
             toValue: 0,
@@ -380,12 +429,12 @@ export default function LeagueRankCard({ game, username, viewOnly = false, userI
             tension: 200,
             friction: 20,
           }).start();
-          Animated.spring(flipAnimationRef.current, {
+          Animated.timing(overlayOpacityRef.current, {
             toValue: 1,
-            useNativeDriver: false,
-            tension: 200,
-            friction: 20,
+            duration: 200,
+            useNativeDriver: true,
           }).start();
+          stackCardOpacityRef.current.setValue(0);
         }
       },
     })
@@ -398,16 +447,19 @@ export default function LeagueRankCard({ game, username, viewOnly = false, userI
       onMoveShouldSetPanResponder: (_, gestureState) => {
         return gestureState.dy > 30 && Math.abs(gestureState.dy) > Math.abs(gestureState.dx) * 2;
       },
+      onPanResponderGrant: () => {
+        stackCardOpacityRef.current.setValue(1);
+      },
       onPanResponderMove: (_, gestureState) => {
         if (gestureState.dy > 0) {
           dragYRef.current.setValue(gestureState.dy);
-          const flipProgress = Math.max(0, 1 - gestureState.dy / (SCREEN_HEIGHT / 4));
-          flipAnimationRef.current.setValue(flipProgress);
+          const progress = Math.min(1, gestureState.dy / (SCREEN_HEIGHT / 4));
+          overlayOpacityRef.current.setValue(1 - progress);
         }
       },
       onPanResponderRelease: (_, gestureState) => {
-        if (gestureState.dy > SCREEN_HEIGHT / 4) {
-          handleCardBackPressRef.current();
+        if (gestureState.dy > SCREEN_HEIGHT / 6) {
+          dismissCardRef.current();
         } else {
           Animated.spring(dragYRef.current, {
             toValue: 0,
@@ -415,12 +467,12 @@ export default function LeagueRankCard({ game, username, viewOnly = false, userI
             tension: 200,
             friction: 20,
           }).start();
-          Animated.spring(flipAnimationRef.current, {
+          Animated.timing(overlayOpacityRef.current, {
             toValue: 1,
-            useNativeDriver: false,
-            tension: 200,
-            friction: 20,
+            duration: 200,
+            useNativeDriver: true,
           }).start();
+          stackCardOpacityRef.current.setValue(0);
         }
       },
     })
@@ -538,7 +590,8 @@ export default function LeagueRankCard({ game, username, viewOnly = false, userI
   });
 
   // Render card content
-  const renderCardContent = () => (
+  // Pass forceShowFront=true for the stack card so it never shows the back
+  const renderCardContent = (forceShowFront = false) => (
     <LinearGradient
       colors={['#1a1a1a', '#1e1e1e', '#222222']}
       start={{ x: 0, y: 0 }}
@@ -560,7 +613,7 @@ export default function LeagueRankCard({ game, username, viewOnly = false, userI
 
       <View style={styles.innerBorder} />
 
-      {showBack ? (
+      {showBack && !forceShowFront ? (
         <View style={styles.cardBackContent}>
           <View style={styles.techCornerTL} />
           <View style={styles.techCornerBR} />
@@ -657,9 +710,10 @@ export default function LeagueRankCard({ game, username, viewOnly = false, userI
           activeOpacity={isFocused ? 0.9 : 1}
           disabled={!isFocused && viewOnly}
         >
-          <Animated.View style={[styles.rankCard, animatedStyle]}>
-            {renderCardContent()}
-          </Animated.View>
+          {/* Stack card always shows front — no flip animation */}
+          <View style={styles.rankCard}>
+            {renderCardContent(true)}
+          </View>
         </TouchableOpacity>
       </Animated.View>
 
@@ -911,6 +965,8 @@ const styles = StyleSheet.create({
     backgroundColor: '#1a1d21',
     borderTopLeftRadius: 24,
     borderTopRightRadius: 24,
+    borderTopWidth: 2,
+    borderTopColor: 'rgba(30, 100, 200, 0.4)',
     overflow: 'hidden',
     zIndex: 10,
     shadowColor: '#000',
@@ -927,14 +983,14 @@ const styles = StyleSheet.create({
     paddingTop: 18,
     paddingBottom: 14,
     borderBottomWidth: 1,
-    borderBottomColor: 'rgba(255, 255, 255, 0.08)',
+    borderBottomColor: 'rgba(30, 100, 200, 0.15)',
   },
   statisticsHeaderLeft: { flexDirection: 'row', alignItems: 'center' },
   statisticsTitle: { fontSize: 16, fontWeight: '800', color: '#fff', letterSpacing: -0.3 },
   statisticsContent: { paddingHorizontal: 20, paddingVertical: 20 },
   statsRow: { flexDirection: 'row', justifyContent: 'space-around', alignItems: 'center' },
   statBox: { alignItems: 'center', flex: 1 },
-  statBoxDivider: { width: 1, height: 40, backgroundColor: 'rgba(255,255,255,0.1)' },
+  statBoxDivider: { width: 1, height: 40, backgroundColor: 'rgba(30, 100, 200, 0.2)' },
   statBoxValue: { fontSize: 24, fontWeight: '800', color: '#fff' },
   statBoxLabel: { fontSize: 11, fontWeight: '600', color: 'rgba(255,255,255,0.5)', marginTop: 4, textTransform: 'uppercase', letterSpacing: 0.5 },
   recentlyPlayingImage: { position: 'absolute', right: -30, top: -40, width: 200, height: 300, opacity: 0.15 },
@@ -957,6 +1013,8 @@ const styles = StyleSheet.create({
     backgroundColor: '#22262b',
     borderTopLeftRadius: 20,
     borderTopRightRadius: 20,
+    borderTopWidth: 2,
+    borderTopColor: 'rgba(30, 100, 200, 0.3)',
     zIndex: 15,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: -4 },
@@ -964,7 +1022,7 @@ const styles = StyleSheet.create({
     shadowRadius: 12,
     elevation: 25,
   },
-  matchHistoryHeader: { borderBottomWidth: 1, borderBottomColor: 'rgba(255, 255, 255, 0.08)' },
+  matchHistoryHeader: { borderBottomWidth: 1, borderBottomColor: 'rgba(30, 100, 200, 0.12)' },
   matchHistoryHeaderContent: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 20, paddingTop: 18, paddingBottom: 16 },
   matchHistoryHeaderLeft: { flexDirection: 'row', alignItems: 'center' },
   matchHistoryTitle: { fontSize: 14, fontWeight: '800', color: '#fff', letterSpacing: -0.2 },

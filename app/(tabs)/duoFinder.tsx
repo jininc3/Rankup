@@ -13,7 +13,7 @@ import { IconSymbol } from '@/components/ui/icon-symbol';
 import { DuoCardSkeleton } from '@/components/ui/Skeleton';
 import { useAuth } from '@/contexts/AuthContext';
 import { useState, useEffect, useCallback, useRef } from 'react';
-import { Alert, ScrollView, FlatList, ActivityIndicator, StyleSheet, TouchableOpacity, View, RefreshControl, Dimensions, Image, AppState, Modal } from 'react-native';
+import { Alert, ScrollView, FlatList, ActivityIndicator, StyleSheet, TouchableOpacity, View, RefreshControl, Dimensions, Image, AppState, Modal, Animated } from 'react-native';
 import { doc, getDoc, setDoc, deleteDoc, serverTimestamp, collection, query, where, getDocs, orderBy, limit, Timestamp } from 'firebase/firestore';
 import { db } from '@/config/firebase';
 import { useRouter } from 'expo-router';
@@ -58,6 +58,7 @@ export default function DuoFinderScreen() {
   const { user } = useAuth();
   const router = useRouter();
   const pagerRef = useRef<ScrollView>(null);
+  const addButtonOpacity = useRef(new Animated.Value(0)).current;
   const [selectedTab, setSelectedTab] = useState<'liveSearch' | 'findDuo'>('liveSearch');
   const [showMyCards, setShowMyCards] = useState(false);
   const [showAddCard, setShowAddCard] = useState(false);
@@ -116,6 +117,11 @@ export default function DuoFinderScreen() {
   // Handle tab press - scroll to page
   const handleTabPress = (tab: 'liveSearch' | 'findDuo') => {
     setSelectedTab(tab);
+    Animated.timing(addButtonOpacity, {
+      toValue: tab === 'findDuo' ? 1 : 0,
+      duration: 200,
+      useNativeDriver: true,
+    }).start();
     const pageIndex = tab === 'liveSearch' ? 0 : 1;
     pagerRef.current?.scrollTo({ x: pageIndex * SCREEN_WIDTH, animated: true });
   };
@@ -124,6 +130,8 @@ export default function DuoFinderScreen() {
   const handlePageScroll = (event: any) => {
     const offsetX = event.nativeEvent.contentOffset.x;
     const progress = offsetX / SCREEN_WIDTH;
+    // Drive button opacity from scroll position (0 = liveSearch, 1 = findDuo)
+    addButtonOpacity.setValue(Math.min(1, Math.max(0, progress)));
     const newTab = progress >= 0.5 ? 'findDuo' : 'liveSearch';
     if (newTab !== selectedTab) {
       setSelectedTab(newTab);
@@ -1032,7 +1040,7 @@ export default function DuoFinderScreen() {
       <View style={styles.header}>
         <ThemedText style={styles.headerTitle}>DUO FINDER</ThemedText>
         <View style={styles.headerButtons}>
-          {selectedTab === 'findDuo' && (
+          <Animated.View style={{ opacity: addButtonOpacity }} pointerEvents={selectedTab === 'findDuo' ? 'auto' : 'none'}>
             <TouchableOpacity
               style={styles.headerAddButton}
               onPress={() => hasCards ? setShowPostDuoCard(true) : setShowAddCard(true)}
@@ -1040,7 +1048,7 @@ export default function DuoFinderScreen() {
             >
               <IconSymbol size={14} name="plus" color="#fff" />
             </TouchableOpacity>
-          )}
+          </Animated.View>
           <TouchableOpacity
             style={styles.myCardsHeaderButton}
             onPress={() => setShowMyCards(true)}

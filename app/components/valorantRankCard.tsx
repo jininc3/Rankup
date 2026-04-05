@@ -469,26 +469,73 @@ export default function ValorantRankCard({ game, username, viewOnly = false, use
 
   const dragYRef = useRef(dragY);
   const flipAnimationRef = useRef(flipAnimation);
+  const overlayOpacityRef = useRef(overlayOpacity);
+  const slideAnimationRef = useRef(slideAnimation);
+  const modalCardOpacityRef = useRef(modalCardOpacity);
+  const stackCardOpacityRef = useRef(stackCardOpacity);
+  const matchHistoryAnimationRef = useRef(matchHistoryAnimation);
+  const matchHistoryExpandAnimationRef = useRef(matchHistoryExpandAnimation);
+
+  // Shared slide-off dismiss logic for pan responders
+  const dismissCardOffScreen = () => {
+    // Show the stack card immediately so it's visible behind
+    stackCardOpacityRef.current.setValue(1);
+
+    Animated.parallel([
+      Animated.timing(dragYRef.current, {
+        toValue: SCREEN_HEIGHT,
+        duration: 300,
+        easing: Easing.in(Easing.cubic),
+        useNativeDriver: false,
+      }),
+      Animated.timing(overlayOpacityRef.current, {
+        toValue: 0,
+        duration: 250,
+        easing: Easing.out(Easing.cubic),
+        useNativeDriver: true,
+      }),
+      // Fade out modal card during slide so it's invisible before callback resets positions
+      Animated.timing(modalCardOpacityRef.current, {
+        toValue: 0,
+        duration: 300,
+        easing: Easing.in(Easing.cubic),
+        useNativeDriver: false,
+      }),
+    ]).start(() => {
+      setModalVisible(false);
+      setIsFlipped(false);
+      setShowMatchHistory(false);
+      setMatchHistoryExpanded(false);
+      flipAnimationRef.current.setValue(0);
+      dragYRef.current.setValue(0);
+      slideAnimationRef.current.setValue(0);
+      matchHistoryAnimationRef.current.setValue(0);
+      matchHistoryExpandAnimationRef.current.setValue(0);
+    });
+  };
+  const dismissCardRef = useRef(dismissCardOffScreen);
+  dismissCardRef.current = dismissCardOffScreen;
 
   // Pan responder for swipe down to close modal (on statistics card)
   const statisticsSwipePanResponder = useRef(
     PanResponder.create({
       onStartShouldSetPanResponder: () => false,
       onMoveShouldSetPanResponder: (_, gestureState) => {
-        // Only respond to vertical swipes (down) — require 30px to avoid accidental triggers
         return gestureState.dy > 30 && Math.abs(gestureState.dy) > Math.abs(gestureState.dx) * 2;
+      },
+      onPanResponderGrant: () => {
+        stackCardOpacityRef.current.setValue(1);
       },
       onPanResponderMove: (_, gestureState) => {
         if (gestureState.dy > 0) {
           dragYRef.current.setValue(gestureState.dy);
-          // Progressively flip from back (1) to front (0) as user drags down
-          const flipProgress = Math.max(0, 1 - gestureState.dy / (SCREEN_HEIGHT / 4));
-          flipAnimationRef.current.setValue(flipProgress);
+          const progress = Math.min(1, gestureState.dy / (SCREEN_HEIGHT / 4));
+          overlayOpacityRef.current.setValue(1 - progress);
         }
       },
       onPanResponderRelease: (_, gestureState) => {
-        if (gestureState.dy > SCREEN_HEIGHT / 4) {
-          handleCardBackPressRef.current();
+        if (gestureState.dy > SCREEN_HEIGHT / 6) {
+          dismissCardRef.current();
         } else {
           Animated.spring(dragYRef.current, {
             toValue: 0,
@@ -496,13 +543,12 @@ export default function ValorantRankCard({ game, username, viewOnly = false, use
             tension: 200,
             friction: 20,
           }).start();
-          // Flip back to back side
-          Animated.spring(flipAnimationRef.current, {
+          Animated.timing(overlayOpacityRef.current, {
             toValue: 1,
-            useNativeDriver: false,
-            tension: 200,
-            friction: 20,
+            duration: 200,
+            useNativeDriver: true,
           }).start();
+          stackCardOpacityRef.current.setValue(0);
         }
       },
     })
@@ -513,36 +559,34 @@ export default function ValorantRankCard({ game, username, viewOnly = false, use
     PanResponder.create({
       onStartShouldSetPanResponder: () => false,
       onMoveShouldSetPanResponder: (_, gestureState) => {
-        // Only respond to vertical swipes (down) — require 30px to avoid accidental triggers
         return gestureState.dy > 30 && Math.abs(gestureState.dy) > Math.abs(gestureState.dx) * 2;
+      },
+      onPanResponderGrant: () => {
+        stackCardOpacityRef.current.setValue(1);
       },
       onPanResponderMove: (_, gestureState) => {
         if (gestureState.dy > 0) {
           dragYRef.current.setValue(gestureState.dy);
-          // Progressively flip from back (1) to front (0) as user drags down
-          const flipProgress = Math.max(0, 1 - gestureState.dy / (SCREEN_HEIGHT / 4));
-          flipAnimationRef.current.setValue(flipProgress);
+          const progress = Math.min(1, gestureState.dy / (SCREEN_HEIGHT / 4));
+          overlayOpacityRef.current.setValue(1 - progress);
         }
       },
       onPanResponderRelease: (_, gestureState) => {
-        if (gestureState.dy > SCREEN_HEIGHT / 4) {
-          // Past halfway point — dismiss
-          handleCardBackPressRef.current();
+        if (gestureState.dy > SCREEN_HEIGHT / 6) {
+          dismissCardRef.current();
         } else {
-          // Snap back
           Animated.spring(dragYRef.current, {
             toValue: 0,
             useNativeDriver: false,
             tension: 200,
             friction: 20,
           }).start();
-          // Flip back to back side
-          Animated.spring(flipAnimationRef.current, {
+          Animated.timing(overlayOpacityRef.current, {
             toValue: 1,
-            useNativeDriver: false,
-            tension: 200,
-            friction: 20,
+            duration: 200,
+            useNativeDriver: true,
           }).start();
+          stackCardOpacityRef.current.setValue(0);
         }
       },
     })
@@ -722,7 +766,8 @@ export default function ValorantRankCard({ game, username, viewOnly = false, use
   };
 
   // Render card content (shared between static card and modal card)
-  const renderCardContent = () => (
+  // Pass forceShowFront=true for the stack card so it never shows the back
+  const renderCardContent = (forceShowFront = false) => (
     <LinearGradient
       colors={['#1a1a1a', '#1e1e1e', '#222222']}
       start={{ x: 0, y: 0 }}
@@ -756,7 +801,7 @@ export default function ValorantRankCard({ game, username, viewOnly = false, use
       {/* Inside border */}
       <View style={styles.innerBorder} />
 
-      {showBack ? (
+      {showBack && !forceShowFront ? (
         /* Back content - Hero Rank layout */
         <View style={styles.cardBackContent}>
           {/* Decorative corner accents */}
@@ -873,10 +918,10 @@ export default function ValorantRankCard({ game, username, viewOnly = false, use
           activeOpacity={isFocused ? 0.9 : 1}
           disabled={!isFocused && viewOnly}
         >
-        {/* Single animated card that swaps content at midpoint */}
-        <Animated.View style={[styles.rankCard, animatedStyle]}>
-          {renderCardContent()}
-        </Animated.View>
+        {/* Stack card always shows front — no flip animation */}
+        <View style={styles.rankCard}>
+          {renderCardContent(true)}
+        </View>
         </TouchableOpacity>
       </Animated.View>
 
@@ -1585,6 +1630,8 @@ const styles = StyleSheet.create({
     backgroundColor: '#1a1d21',
     borderTopLeftRadius: 24,
     borderTopRightRadius: 24,
+    borderTopWidth: 2,
+    borderTopColor: 'rgba(239, 84, 102, 0.4)',
     overflow: 'hidden',
     zIndex: 10,
     shadowColor: '#000',
@@ -1601,7 +1648,7 @@ const styles = StyleSheet.create({
     paddingTop: 20,
     paddingBottom: 16,
     borderBottomWidth: 1,
-    borderBottomColor: 'rgba(255, 255, 255, 0.08)',
+    borderBottomColor: 'rgba(239, 84, 102, 0.15)',
   },
   statisticsHeaderLeft: {
     flexDirection: 'row',
@@ -1642,7 +1689,7 @@ const styles = StyleSheet.create({
   statBoxDivider: {
     width: 1,
     height: 36,
-    backgroundColor: 'rgba(255,255,255,0.1)',
+    backgroundColor: 'rgba(239, 84, 102, 0.2)',
   },
   // Recently Playing styles
   recentlyPlayingSection: {
@@ -1693,6 +1740,8 @@ const styles = StyleSheet.create({
     backgroundColor: '#22262b',
     borderTopLeftRadius: 20,
     borderTopRightRadius: 20,
+    borderTopWidth: 2,
+    borderTopColor: 'rgba(239, 84, 102, 0.3)',
     zIndex: 15,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: -4 },
@@ -1702,7 +1751,7 @@ const styles = StyleSheet.create({
   },
   matchHistoryHeader: {
     borderBottomWidth: 1,
-    borderBottomColor: 'rgba(255, 255, 255, 0.08)',
+    borderBottomColor: 'rgba(239, 84, 102, 0.12)',
   },
   matchHistoryHeaderContent: {
     flexDirection: 'row',

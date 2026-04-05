@@ -96,6 +96,24 @@ const LEAGUE_LANE_ICONS: { [key: string]: any } = {
   support: require('@/assets/images/leaguelanes/support.png'),
 };
 
+// Game-specific accent colors (matching rank card design language)
+const GAME_ACCENTS = {
+  valorant: {
+    border: 'rgba(239, 84, 102, 0.25)',
+    stripe: 'rgba(239, 84, 102, 0.5)',
+    overlayStart: 'rgba(239, 84, 102, 0.05)',
+    overlayEnd: 'rgba(239, 84, 102, 0.03)',
+    divider: 'rgba(239, 84, 102, 0.15)',
+  },
+  league: {
+    border: 'rgba(30, 100, 200, 0.25)',
+    stripe: 'rgba(30, 100, 200, 0.5)',
+    overlayStart: 'rgba(30, 100, 200, 0.05)',
+    overlayEnd: 'rgba(201, 168, 76, 0.03)',
+    divider: 'rgba(30, 100, 200, 0.15)',
+  },
+};
+
 interface Duo {
   id: number;
   odId?: string;
@@ -182,11 +200,35 @@ export default function DuoCard({ duo, onPress, onMessage, onViewProfile, onDele
       activeOpacity={0.7}
     >
       <LinearGradient
-        colors={isLeague ? ['#0f1a2e', '#0a1220', '#060d18'] : ['#2a1216', '#1a0c10', '#110810']}
+        colors={['#1a1a1a', '#1e1e1e', '#222222']}
         start={{ x: 0, y: 0 }}
-        end={{ x: 0.3, y: 1 }}
-        style={[styles.innerBorder, { borderColor: isLeague ? '#1a3a5c' : '#5c1a1a' }]}
+        end={{ x: 1, y: 1 }}
+        style={[styles.innerBorder, { borderColor: isLeague ? GAME_ACCENTS.league.border : GAME_ACCENTS.valorant.border }]}
       >
+      {/* Game accent stripe - left edge */}
+      <View style={{
+        position: 'absolute',
+        left: 0,
+        top: 0,
+        bottom: 0,
+        width: 2,
+        backgroundColor: isLeague ? GAME_ACCENTS.league.stripe : GAME_ACCENTS.valorant.stripe,
+        borderTopLeftRadius: 8,
+        borderBottomLeftRadius: 8,
+      }} />
+
+      {/* Subtle game-colored overlay */}
+      <LinearGradient
+        colors={isLeague
+          ? [GAME_ACCENTS.league.overlayStart, 'transparent', GAME_ACCENTS.league.overlayEnd]
+          : [GAME_ACCENTS.valorant.overlayStart, 'transparent', GAME_ACCENTS.valorant.overlayEnd]
+        }
+        start={{ x: 0, y: 0 }}
+        end={{ x: 1, y: 1 }}
+        style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, borderRadius: 8 }}
+        pointerEvents="none"
+      />
+
       {/* Header Section: In-Game Icon + In-Game Name | Time Ago | Game Logo */}
       <View style={styles.headerSection}>
         <View style={styles.header}>
