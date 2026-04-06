@@ -1,4 +1,5 @@
 import LeaderboardCard from '@/app/components/leaderboardCard';
+import { LinearGradient } from 'expo-linear-gradient';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { IconSymbol } from '@/components/ui/icon-symbol';
@@ -576,9 +577,16 @@ export default function LeaderboardScreen() {
         <TouchableOpacity
           style={styles.createButton}
           onPress={() => setShowCreateModal(true)}
-          activeOpacity={0.7}
+          activeOpacity={0.85}
         >
-          <IconSymbol size={20} name="plus" color="#fff" />
+          <LinearGradient
+            colors={['#C4A44E', '#8B6F2F']}
+            start={{ x: 0, y: 0 }}
+            end={{ x: 1, y: 1 }}
+            style={styles.createButtonInner}
+          >
+            <IconSymbol size={20} name="plus" color="#fff" />
+          </LinearGradient>
         </TouchableOpacity>
       </View>
       {/* Tabs */}
@@ -799,10 +807,15 @@ const styles = StyleSheet.create({
   createButton: {
     width: 36,
     height: 36,
-    borderRadius: 18,
-    backgroundColor: '#1a1a1a',
+    borderRadius: 10,
+    overflow: 'hidden',
+  },
+  createButtonInner: {
+    width: '100%',
+    height: '100%',
     alignItems: 'center',
     justifyContent: 'center',
+    borderRadius: 10,
   },
   createButtonPlaceholder: {
     width: 36,

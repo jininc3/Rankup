@@ -1,4 +1,5 @@
 import DuoCard from '@/app/components/duoCard';
+import { LinearGradient } from 'expo-linear-gradient';
 import AddDuoCard, { DuoCardData } from '@/app/components/addDuoCard';
 import EditDuoCard from '@/app/components/editDuoCard';
 import DuoFilterModal, { DuoFilterOptions } from '@/app/profilePages/duoFilterModal';
@@ -1058,9 +1059,16 @@ export default function DuoFinderScreen() {
             <TouchableOpacity
               style={styles.headerAddButton}
               onPress={() => hasCards ? setShowPostDuoCard(true) : setShowAddCard(true)}
-              activeOpacity={0.7}
+              activeOpacity={0.85}
             >
-              <IconSymbol size={14} name="plus" color="#fff" />
+              <LinearGradient
+                colors={['#C4A44E', '#8B6F2F']}
+                start={{ x: 0, y: 0 }}
+                end={{ x: 1, y: 1 }}
+                style={styles.headerAddButtonInner}
+              >
+                <IconSymbol size={14} name="plus" color="#fff" />
+              </LinearGradient>
             </TouchableOpacity>
           </Animated.View>
           <TouchableOpacity
@@ -1646,10 +1654,15 @@ const styles = StyleSheet.create({
   headerAddButton: {
     width: 26,
     height: 26,
-    borderRadius: 13,
-    backgroundColor: '#a08845',
+    borderRadius: 8,
+    overflow: 'hidden',
+  },
+  headerAddButtonInner: {
+    width: '100%',
+    height: '100%',
     alignItems: 'center',
     justifyContent: 'center',
+    borderRadius: 8,
   },
   // Section Headers - Parties style
   sectionHeader: {

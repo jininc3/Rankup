@@ -819,42 +819,47 @@ export default function ProfileScreen() {
           />
         }
       >
-        {/* Header Section - New Design */}
+        {/* Header Section - Cover photo reaches top */}
         <View style={styles.headerSection}>
-          {/* Top Header Icons */}
-          <View style={styles.headerIconsRow}>
-            <View style={styles.headerUsernameOverlay} pointerEvents="none">
-              <ThemedText style={styles.headerUsername} numberOfLines={1}>{user?.username || 'User'}</ThemedText>
-            </View>
-            <TouchableOpacity
-              style={styles.headerIconButton}
-              onPress={() => setShowCreateModal(true)}
-              activeOpacity={0.7}
-            >
-              <IconSymbol size={26} name="plus" color="#fff" />
-            </TouchableOpacity>
-            <View style={styles.headerIconsSpacer} />
-            <TouchableOpacity
-              style={styles.headerIconButton}
-              onPress={() => router.push('/chatPages/chatList')}
-              activeOpacity={0.7}
-            >
-              <IconSymbol size={22} name="paperplane.fill" color="#fff" />
-            </TouchableOpacity>
-            <TouchableOpacity
-              style={styles.headerIconButton}
-              onPress={() => router.push('/profilePages/settings')}
-              activeOpacity={0.7}
-            >
-              <IconSymbol size={24} name="line.3.horizontal" color="#fff" />
-            </TouchableOpacity>
-          </View>
-
           {!allContentLoaded ? (
+            <>
+            {/* Cover photo placeholder with icons during loading */}
+            <View style={styles.coverPhotoWrapper}>
+              <LinearGradient
+                colors={['#2c2f33', '#1a1a1a', '#0f0f0f']}
+                start={{ x: 0, y: 0 }}
+                end={{ x: 0, y: 1 }}
+                style={styles.coverPhotoGradient}
+              />
+              <View style={styles.headerIconsRow}>
+                <TouchableOpacity
+                  style={styles.headerIconButton}
+                  onPress={() => setShowCreateModal(true)}
+                  activeOpacity={0.7}
+                >
+                  <IconSymbol size={27} name="plus.app" color="#fff" />
+                </TouchableOpacity>
+                <View style={styles.headerIconsSpacer} />
+                <TouchableOpacity
+                  style={styles.headerIconButton}
+                  onPress={() => router.push('/chatPages/chatList')}
+                  activeOpacity={0.7}
+                >
+                  <IconSymbol size={27} name="bubble.left" color="#fff" />
+                </TouchableOpacity>
+                <TouchableOpacity
+                  style={styles.headerIconButton}
+                  onPress={() => router.push('/profilePages/settings')}
+                  activeOpacity={0.7}
+                >
+                  <IconSymbol size={27} name="gearshape" color="#fff" />
+                </TouchableOpacity>
+              </View>
+            </View>
             <ProfilePageSkeleton />
-          ) : (
+          </>) : (
           <>
-          {/* Cover Photo Area */}
+          {/* Cover Photo Area - reaches top of screen */}
           <View style={styles.coverPhotoWrapper}>
             {user?.coverPhoto ? (
               <Image
@@ -872,14 +877,40 @@ export default function ProfileScreen() {
                 style={styles.coverPhotoGradient}
               />
             )}
-            {/* Bottom fade */}
+            {/* Bottom fade - gentle, natural fade out */}
             <LinearGradient
-              colors={['transparent', 'rgba(15, 15, 15, 0.4)', 'rgba(15, 15, 15, 0.85)', '#0f0f0f']}
-              locations={[0, 0.4, 0.75, 1]}
+              colors={['transparent', 'rgba(15, 15, 15, 0.15)', 'rgba(15, 15, 15, 0.45)', 'rgba(15, 15, 15, 0.75)', '#0f0f0f']}
+              locations={[0, 0.25, 0.5, 0.75, 1]}
               start={{ x: 0, y: 0 }}
               end={{ x: 0, y: 1 }}
               style={styles.coverPhotoFadeBottom}
             />
+
+            {/* Header Icons overlaid on cover photo */}
+            <View style={styles.headerIconsRow}>
+              <TouchableOpacity
+                style={styles.headerIconButton}
+                onPress={() => setShowCreateModal(true)}
+                activeOpacity={0.7}
+              >
+                <IconSymbol size={27} name="plus.app" color="#fff" />
+              </TouchableOpacity>
+              <View style={styles.headerIconsSpacer} />
+              <TouchableOpacity
+                style={styles.headerIconButton}
+                onPress={() => router.push('/chatPages/chatList')}
+                activeOpacity={0.7}
+              >
+                <IconSymbol size={27} name="bubble.left" color="#fff" />
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={styles.headerIconButton}
+                onPress={() => router.push('/profilePages/settings')}
+                activeOpacity={0.7}
+              >
+                <IconSymbol size={27} name="gearshape" color="#fff" />
+              </TouchableOpacity>
+            </View>
           </View>
 
           {/* Profile Info Section - overlaps cover photo */}
@@ -963,6 +994,9 @@ export default function ProfileScreen() {
                 </View>
               </View>
             </View>
+
+            {/* Username below avatar */}
+            <ThemedText style={styles.profileUsername} numberOfLines={1}>{user?.username || 'User'}</ThemedText>
 
             {/* Bio */}
             {user?.bio && (
@@ -1515,14 +1549,14 @@ const styles = StyleSheet.create({
   tabBar: {
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'center',
     paddingHorizontal: 20,
     paddingTop: 12,
     paddingBottom: 8,
-    gap: 16,
   },
   tabItem: {
-    paddingVertical: 6,
+    flex: 1,
+    alignItems: 'center',
+    paddingVertical: 8,
   },
   tabDivider: {
     width: 1,
@@ -1530,7 +1564,7 @@ const styles = StyleSheet.create({
     backgroundColor: '#333',
   },
   tabText: {
-    fontSize: 16,
+    fontSize: 13,
     fontWeight: '600',
     color: '#555',
     letterSpacing: 0.5,
@@ -1540,31 +1574,21 @@ const styles = StyleSheet.create({
   },
   headerSection: {
     backgroundColor: '#0f0f0f',
-    paddingTop: 50,
   },
-  // Header icons row
+  // Header icons row - overlaid on cover photo
   headerIconsRow: {
+    position: 'absolute',
+    top: 50,
+    left: 0,
+    right: 0,
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
     paddingHorizontal: 16,
-    paddingBottom: 12,
+    zIndex: 10,
   },
   headerIconsSpacer: {
     flex: 1,
-  },
-  headerUsernameOverlay: {
-    position: 'absolute',
-    left: 0,
-    right: 0,
-    alignItems: 'center',
-  },
-  headerUsername: {
-    fontSize: 22,
-    fontWeight: '800',
-    color: '#fff',
-    textAlign: 'center',
-    letterSpacing: -0.5,
   },
   headerIconButton: {
     padding: 6,
@@ -1576,10 +1600,10 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
-  // Cover photo area
+  // Cover photo area - reaches top of screen
   coverPhotoWrapper: {
     width: '100%',
-    height: 130,
+    height: 180,
     backgroundColor: '#1a1a1a',
     overflow: 'hidden',
   },
@@ -1589,7 +1613,7 @@ const styles = StyleSheet.create({
     left: 0,
     width: '100%',
     height: '100%',
-    opacity: 0.6,
+    opacity: 0.8,
   },
   coverPhotoGradient: {
     width: '100%',
@@ -1600,7 +1624,7 @@ const styles = StyleSheet.create({
     bottom: 0,
     left: 0,
     right: 0,
-    height: 80,
+    height: '60%',
     zIndex: 1,
   },
   // Profile info section below cover
@@ -1608,6 +1632,14 @@ const styles = StyleSheet.create({
     marginTop: -32,
     paddingHorizontal: 20,
     zIndex: 3,
+  },
+  profileUsername: {
+    fontSize: 26,
+    fontWeight: '800',
+    color: '#fff',
+    letterSpacing: -0.5,
+    marginTop: 10,
+    marginBottom: 2,
   },
   avatarStatsRow: {
     flexDirection: 'row',

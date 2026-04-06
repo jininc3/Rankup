@@ -937,14 +937,14 @@ export default function HomeScreen() {
             onPress={() => router.push('/chatPages/chatList')}
             activeOpacity={0.7}
           >
-            <IconSymbol size={22} name="paperplane.fill" color="#fff" />
+            <IconSymbol size={27} name="bubble.left" color="#fff" />
           </TouchableOpacity>
           <TouchableOpacity
             style={styles.headerIconButton}
             onPress={() => router.push('/notifications')}
             activeOpacity={0.7}
           >
-            <IconSymbol size={22} name="bell" color="#fff" />
+            <IconSymbol size={27} name="bell" color="#fff" />
             {unreadNotificationCount > 0 && (
               <View style={styles.notificationBadge}>
                 <ThemedText style={styles.notificationBadgeText}>
@@ -1119,7 +1119,7 @@ export default function HomeScreen() {
       <TouchableOpacity
         style={styles.fabButton}
         onPress={handleAddClip}
-        activeOpacity={0.8}
+        activeOpacity={0.85}
       >
         <LinearGradient
           colors={['#C4A44E', '#8B6F2F']}
@@ -1127,7 +1127,7 @@ export default function HomeScreen() {
           end={{ x: 1, y: 1 }}
           style={styles.fabInner}
         >
-          <IconSymbol size={28} name="plus" color="#fff" />
+          <IconSymbol size={26} name="plus" color="#fff" />
         </LinearGradient>
       </TouchableOpacity>
 
@@ -1259,7 +1259,7 @@ const styles = StyleSheet.create({
   headerActions: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 8,
+    gap: 2,
   },
   headerIconButton: {
     padding: 8,
@@ -1549,18 +1549,18 @@ const styles = StyleSheet.create({
   fabButton: {
     position: 'absolute',
     bottom: 24,
-    right: 24,
-    width: 60,
-    height: 60,
-    borderRadius: 30,
+    right: 20,
+    width: 56,
+    height: 56,
+    borderRadius: 16,
     overflow: 'hidden',
     shadowColor: '#000',
     shadowOffset: {
       width: 0,
       height: 4,
     },
-    shadowOpacity: 0.3,
-    shadowRadius: 6,
+    shadowOpacity: 0.4,
+    shadowRadius: 12,
     elevation: 8,
   },
   fabInner: {
@@ -1568,6 +1568,6 @@ const styles = StyleSheet.create({
     height: '100%',
     alignItems: 'center',
     justifyContent: 'center',
-    borderRadius: 30,
+    borderRadius: 16,
   },
 });
