@@ -1,5 +1,6 @@
 import DuoSearchingAnimation from '@/app/components/duoSearchingAnimation';
 import DuoMatchResult from '@/app/components/duoMatchResult';
+import DuoAcceptScreen from '@/app/components/duoAcceptScreen';
 import LiveSearchIdle from '@/app/components/liveSearchIdle';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
@@ -10,7 +11,7 @@ import { Alert, StyleSheet, TouchableOpacity, View, ScrollView, AppState } from 
 import { doc, getDoc } from 'firebase/firestore';
 import { db } from '@/config/firebase';
 import { useRouter } from 'expo-router';
-import { joinDuoQueue, leaveDuoQueue, subscribeToDuoQueue, getDuoMatch, DuoMatchCardData } from '@/services/duoMatchService';
+import { joinDuoQueue, leaveDuoQueue, subscribeToDuoQueue, getDuoMatch, acceptMatch, declineMatch, subscribeToMatch, DuoMatchCardData, DuoMatch } from '@/services/duoMatchService';
 import { createOrGetChat } from '@/services/chatService';
 import { DuoCardData } from '@/app/components/addDuoCard';
 import AddDuoCard from '@/app/components/addDuoCard';
@@ -30,13 +31,20 @@ export default function LiveSearchScreen() {
   const [leagueInGameName, setLeagueInGameName] = useState<string | undefined>(undefined);
 
   // Live search state
-  const [matchState, setMatchState] = useState<'idle' | 'searching' | 'matched'>('idle');
+  const [matchState, setMatchState] = useState<'idle' | 'searching' | 'accepting' | 'matched'>('idle');
   const [searchGame, setSearchGame] = useState<'valorant' | 'league' | null>(null);
   const [searchGamePick, setSearchGamePick] = useState<'valorant' | 'league' | null>(null);
   const [matchedUserCard, setMatchedUserCard] = useState<DuoMatchCardData | null>(null);
   const [matchedUserId, setMatchedUserId] = useState<string | null>(null);
+  const [currentMatchId, setCurrentMatchId] = useState<string | null>(null);
+  const [matchExpiresAt, setMatchExpiresAt] = useState<Date | null>(null);
+  const [hasAccepted, setHasAccepted] = useState(false);
+  const [otherAccepted, setOtherAccepted] = useState(false);
   const unsubscribeQueueRef = useRef<(() => void) | null>(null);
+  const unsubscribeMatchRef = useRef<(() => void) | null>(null);
   const searchTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  // Track card data for re-queue after other user declines
+  const lastCardDataRef = useRef<{ username: string; avatar?: string; inGameIcon?: string; inGameName?: string; currentRank?: string; mainRole?: string; mainAgent?: string } | null>(null);
 
   const hasCards = valorantCard !== null || leagueCard !== null;
 
@@ -93,6 +101,10 @@ export default function LiveSearchScreen() {
       unsubscribeQueueRef.current();
       unsubscribeQueueRef.current = null;
     }
+    if (unsubscribeMatchRef.current) {
+      unsubscribeMatchRef.current();
+      unsubscribeMatchRef.current = null;
+    }
     if (searchTimeoutRef.current) {
       clearTimeout(searchTimeoutRef.current);
       searchTimeoutRef.current = null;
@@ -109,30 +121,123 @@ export default function LiveSearchScreen() {
     setMatchState('searching');
     setMatchedUserCard(null);
     setMatchedUserId(null);
+    setCurrentMatchId(null);
+    setHasAccepted(false);
+    setOtherAccepted(false);
 
     const inGameIcon = game === 'valorant' ? valorantInGameIcon : leagueInGameIcon;
     const inGameName = game === 'valorant' ? valorantInGameName : leagueInGameName;
 
+    const queueCardData = {
+      username: cardData.username,
+      avatar: user.avatar || undefined,
+      inGameIcon,
+      inGameName,
+      currentRank: cardData.currentRank,
+      mainRole: cardData.mainRole,
+      mainAgent: cardData.mainAgent,
+    };
+    lastCardDataRef.current = queueCardData;
+
     try {
-      await joinDuoQueue(user.id, game, {
-        username: cardData.username,
-        avatar: user.avatar || undefined,
-        inGameIcon,
-        inGameName,
-        currentRank: cardData.currentRank,
-        mainRole: cardData.mainRole,
-        mainAgent: cardData.mainAgent,
-      });
+      await joinDuoQueue(user.id, game, queueCardData);
 
       const unsubscribe = subscribeToDuoQueue(user.id, game, async (data) => {
         if (data?.status === 'matched' && data.matchId) {
-          cleanupSearch();
+          // Stop the search timeout
+          if (searchTimeoutRef.current) {
+            clearTimeout(searchTimeoutRef.current);
+            searchTimeoutRef.current = null;
+          }
+          if (unsubscribeQueueRef.current) {
+            unsubscribeQueueRef.current();
+            unsubscribeQueueRef.current = null;
+          }
+
           const match = await getDuoMatch(data.matchId);
           if (match) {
             const otherCard = match.user1Id === user.id ? match.user2Card : match.user1Card;
             setMatchedUserCard(otherCard);
             setMatchedUserId(match.user1Id === user.id ? match.user2Id : match.user1Id);
-            setMatchState('matched');
+            setCurrentMatchId(data.matchId);
+            setMatchExpiresAt(match.expiresAt?.toDate ? match.expiresAt.toDate() : new Date(Date.now() + 60000));
+            setHasAccepted(false);
+            setOtherAccepted(false);
+            setMatchState('accepting');
+
+            // Subscribe to match document for accept/decline updates
+            const matchUnsub = subscribeToMatch(data.matchId, (updatedMatch) => {
+              if (!updatedMatch) return;
+
+              const isUser1 = updatedMatch.user1Id === user.id;
+              const myAccepted = isUser1 ? updatedMatch.user1Accepted : updatedMatch.user2Accepted;
+              const theirAccepted = isUser1 ? updatedMatch.user2Accepted : updatedMatch.user1Accepted;
+
+              setHasAccepted(myAccepted === true);
+              setOtherAccepted(theirAccepted === true);
+
+              if (updatedMatch.status === 'active') {
+                // Both accepted!
+                if (unsubscribeMatchRef.current) {
+                  unsubscribeMatchRef.current();
+                  unsubscribeMatchRef.current = null;
+                }
+                setMatchState('matched');
+              } else if (updatedMatch.status === 'declined' || updatedMatch.status === 'expired') {
+                if (unsubscribeMatchRef.current) {
+                  unsubscribeMatchRef.current();
+                  unsubscribeMatchRef.current = null;
+                }
+
+                // If the OTHER user declined/expired and I had accepted, I get re-queued by Cloud Function
+                // The queue listener will pick up the new searching status
+                if (theirAccepted === 'declined' && myAccepted !== 'declined') {
+                  // Re-queued by Cloud Function — go back to searching
+                  setMatchState('searching');
+                  setMatchedUserCard(null);
+                  setCurrentMatchId(null);
+
+                  // Re-subscribe to queue for new matches
+                  const requeueUnsub = subscribeToDuoQueue(user.id!, game, async (requeueData) => {
+                    if (requeueData?.status === 'matched' && requeueData.matchId) {
+                      // New match found after re-queue — handled recursively
+                      if (unsubscribeQueueRef.current) {
+                        unsubscribeQueueRef.current();
+                        unsubscribeQueueRef.current = null;
+                      }
+                      const newMatch = await getDuoMatch(requeueData.matchId);
+                      if (newMatch) {
+                        const newOtherCard = newMatch.user1Id === user.id ? newMatch.user2Card : newMatch.user1Card;
+                        setMatchedUserCard(newOtherCard);
+                        setMatchedUserId(newMatch.user1Id === user.id ? newMatch.user2Id : newMatch.user1Id);
+                        setCurrentMatchId(requeueData.matchId);
+                        setMatchExpiresAt(newMatch.expiresAt?.toDate ? newMatch.expiresAt.toDate() : new Date(Date.now() + 60000));
+                        setHasAccepted(false);
+                        setOtherAccepted(false);
+                        setMatchState('accepting');
+
+                        // Subscribe to the new match
+                        // (will be handled by the outer flow on next render)
+                      }
+                    }
+                  });
+                  unsubscribeQueueRef.current = requeueUnsub;
+
+                  // Set new timeout for re-queue
+                  searchTimeoutRef.current = setTimeout(() => {
+                    cancelSearch();
+                    Alert.alert('No Players Found', 'No one is searching right now. Try again later!');
+                  }, 60000);
+                } else {
+                  // I declined or timed out — go to idle
+                  setMatchState('idle');
+                  setSearchGame(null);
+                  setMatchedUserCard(null);
+                  setCurrentMatchId(null);
+                }
+              }
+            });
+            unsubscribeMatchRef.current = matchUnsub;
           }
         }
       });
@@ -159,11 +264,42 @@ export default function LiveSearchScreen() {
     setSearchGame(null);
   }, [user?.id, searchGame, cleanupSearch]);
 
+  const handleAccept = async () => {
+    if (!currentMatchId || !user?.id) return;
+    setHasAccepted(true);
+    try {
+      await acceptMatch(currentMatchId, user.id);
+    } catch (error) {
+      console.error('Error accepting match:', error);
+    }
+  };
+
+  const handleDecline = async () => {
+    if (!currentMatchId || !user?.id) return;
+    try {
+      await declineMatch(currentMatchId, user.id);
+    } catch (error) {
+      console.error('Error declining match:', error);
+    }
+    // Cloud Function handles cleanup; local state updated by match listener
+  };
+
+  const handleAcceptTimeout = async () => {
+    // Timer expired without accepting — treat as decline
+    if (!currentMatchId || !user?.id) return;
+    try {
+      await declineMatch(currentMatchId, user.id);
+    } catch (error) {
+      console.error('Error on timeout decline:', error);
+    }
+  };
+
   const handleSearchAgain = () => {
     if (searchGame) {
       setMatchState('idle');
       setMatchedUserCard(null);
       setMatchedUserId(null);
+      setCurrentMatchId(null);
       setTimeout(() => startLiveSearch(searchGame), 300);
     }
   };
@@ -206,6 +342,20 @@ export default function LiveSearchScreen() {
       Alert.alert('Error', 'Failed to start chat. Please try again.');
     }
   };
+
+  // Auto-decline when accept timer expires
+  useEffect(() => {
+    if (matchState !== 'accepting' || !matchExpiresAt || hasAccepted) return;
+
+    const checkExpiry = setInterval(() => {
+      if (new Date() >= matchExpiresAt) {
+        clearInterval(checkExpiry);
+        handleAcceptTimeout();
+      }
+    }, 500);
+
+    return () => clearInterval(checkExpiry);
+  }, [matchState, matchExpiresAt, hasAccepted]);
 
   // Cleanup on unmount or app background
   useEffect(() => {
@@ -255,6 +405,16 @@ export default function LiveSearchScreen() {
       >
         {matchState === 'searching' && searchGame ? (
           <DuoSearchingAnimation game={searchGame} onCancel={cancelSearch} />
+        ) : matchState === 'accepting' && matchedUserCard && searchGame && matchExpiresAt ? (
+          <DuoAcceptScreen
+            matchedUser={matchedUserCard}
+            game={searchGame}
+            expiresAt={matchExpiresAt}
+            hasAccepted={hasAccepted}
+            otherAccepted={otherAccepted}
+            onAccept={handleAccept}
+            onDecline={handleDecline}
+          />
         ) : matchState === 'matched' && matchedUserCard && searchGame ? (
           <DuoMatchResult
             game={searchGame}

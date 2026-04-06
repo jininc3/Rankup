@@ -45,4 +45,6 @@ export {checkCompletedPartiesScheduled} from "./parties/checkCompletedParties";
 
 // Export Duo Matching functions
 export {onDuoQueueCreated} from "./duo/onDuoQueueCreated";
+export {onDuoMatchUpdated} from "./duo/onMatchUpdated";
 export {cleanupDuoQueueScheduled} from "./duo/cleanupDuoQueue";
+export {cleanupExpiredMatchesScheduled} from "./duo/cleanupExpiredMatches";

@@ -90,6 +90,9 @@ export const onDuoQueueCreated = onDocumentCreated(
 
         // Create the match document
         const matchRef = db.collection("duoMatches").doc();
+        const now = new Date();
+        const expiresAt = new Date(now.getTime() + 60 * 1000); // 60 seconds
+
         const matchData = {
           game: game,
           user1Id: newUserId,
@@ -114,7 +117,10 @@ export const onDuoQueueCreated = onDocumentCreated(
             mainRole: candidateData.mainRole || null,
             mainAgent: candidateData.mainAgent || null,
           },
-          status: "active",
+          user1Accepted: false,
+          user2Accepted: false,
+          status: "pending",
+          expiresAt: admin.firestore.Timestamp.fromDate(expiresAt),
           createdAt: admin.firestore.FieldValue.serverTimestamp(),
         };
 

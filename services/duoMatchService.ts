@@ -5,6 +5,7 @@ import {
   deleteDoc,
   getDoc,
   onSnapshot,
+  updateDoc,
   serverTimestamp,
 } from 'firebase/firestore';
 
@@ -41,7 +42,10 @@ export interface DuoMatch {
   user2Id: string;
   user1Card: DuoMatchCardData;
   user2Card: DuoMatchCardData;
-  status: 'active' | 'dismissed';
+  user1Accepted: boolean | 'declined';
+  user2Accepted: boolean | 'declined';
+  status: 'pending' | 'active' | 'declined' | 'expired' | 'dismissed';
+  expiresAt: any;
   createdAt: any;
 }
 
@@ -122,4 +126,53 @@ export const getDuoMatch = async (matchId: string): Promise<DuoMatch | null> => 
     return matchDoc.data() as DuoMatch;
   }
   return null;
+};
+
+/**
+ * Accept a duo match
+ */
+export const acceptMatch = async (matchId: string, userId: string): Promise<void> => {
+  const matchDocRef = doc(db, 'duoMatches', matchId);
+  const matchDoc = await getDoc(matchDocRef);
+  if (!matchDoc.exists()) return;
+
+  const data = matchDoc.data();
+  if (data.user1Id === userId) {
+    await updateDoc(matchDocRef, { user1Accepted: true });
+  } else if (data.user2Id === userId) {
+    await updateDoc(matchDocRef, { user2Accepted: true });
+  }
+};
+
+/**
+ * Decline a duo match
+ */
+export const declineMatch = async (matchId: string, userId: string): Promise<void> => {
+  const matchDocRef = doc(db, 'duoMatches', matchId);
+  const matchDoc = await getDoc(matchDocRef);
+  if (!matchDoc.exists()) return;
+
+  const data = matchDoc.data();
+  if (data.user1Id === userId) {
+    await updateDoc(matchDocRef, { user1Accepted: 'declined' });
+  } else if (data.user2Id === userId) {
+    await updateDoc(matchDocRef, { user2Accepted: 'declined' });
+  }
+};
+
+/**
+ * Subscribe to match status changes (pending -> active/declined/expired)
+ */
+export const subscribeToMatch = (
+  matchId: string,
+  callback: (match: DuoMatch | null) => void
+): (() => void) => {
+  const matchDocRef = doc(db, 'duoMatches', matchId);
+  return onSnapshot(matchDocRef, (snapshot) => {
+    if (snapshot.exists()) {
+      callback(snapshot.data() as DuoMatch);
+    } else {
+      callback(null);
+    }
+  });
 };
