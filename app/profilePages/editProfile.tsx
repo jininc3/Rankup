@@ -3,7 +3,7 @@ import { ThemedView } from '@/components/themed-view';
 import { IconSymbol } from '@/components/ui/icon-symbol';
 import { useRouter, useNavigation } from 'expo-router';
 import { useState, useEffect, useCallback } from 'react';
-import { ScrollView, StyleSheet, TextInput, TouchableOpacity, View, Alert, ActivityIndicator, Image, Dimensions, Switch, Modal, KeyboardAvoidingView, Platform } from 'react-native';
+import { ScrollView, StyleSheet, TextInput, TouchableOpacity, View, Alert, ActivityIndicator, Image, Dimensions, Modal, KeyboardAvoidingView, Platform } from 'react-native';
 import { useAuth } from '@/contexts/AuthContext';
 import { updateUserProfile } from '@/services/authService';
 import { uploadProfilePicture, uploadCoverPhoto } from '@/services/storageService';
@@ -52,7 +52,7 @@ export default function EditProfileScreen() {
   const [pendingCoverPhotoUri, setPendingCoverPhotoUri] = useState<string | null>(null);
   const [pendingRemoveProfileImage, setPendingRemoveProfileImage] = useState(false);
   const [pendingRemoveCoverPhoto, setPendingRemoveCoverPhoto] = useState(false);
-  const [postsCount, setPostsCount] = useState(0);
+
 
   // Default avatar modal
   const [showAvatarModal, setShowAvatarModal] = useState(false);
@@ -97,15 +97,9 @@ export default function EditProfileScreen() {
         if (userDoc.exists()) {
           const data = userDoc.data();
 
-          // Set enabled rank cards
-          const cards = data.enabledRankCards || [];
-          setEnabledRankCards(cards);
-          setOriginalEnabledRankCards(cards);
-
           // Set Riot account info
           if (data.riotAccount) {
             setRiotAccount(data.riotAccount);
-            // Load cached stats
             if (data.riotStats) {
               setRiotStats(data.riotStats);
             }
@@ -114,11 +108,22 @@ export default function EditProfileScreen() {
           // Set Valorant account info
           if (data.valorantAccount) {
             setValorantAccount(data.valorantAccount);
-            // Load cached stats
             if (data.valorantStats) {
               setValorantStats(data.valorantStats);
             }
           }
+
+          // Ensure all linked accounts are in enabledRankCards
+          const cards = data.enabledRankCards || [];
+          const updatedCards = [...cards];
+          if (data.riotAccount && !updatedCards.includes('league')) {
+            updatedCards.push('league');
+          }
+          if (data.valorantAccount && !updatedCards.includes('valorant')) {
+            updatedCards.push('valorant');
+          }
+          setEnabledRankCards(updatedCards);
+          setOriginalEnabledRankCards(updatedCards);
         }
       } catch (error) {
         console.error('Error fetching rank cards data:', error);
@@ -426,22 +431,11 @@ export default function EditProfileScreen() {
     );
   };
 
-  // Toggle rank card visibility
-  const toggleRankCard = (cardType: string) => {
-    setEnabledRankCards(prev => {
-      if (prev.includes(cardType)) {
-        return prev.filter(c => c !== cardType);
-      } else {
-        return [...prev, cardType];
-      }
-    });
-  };
-
-  // Get all available cards (for reordering display)
+  // Get all available cards (linked accounts are always enabled)
   const getAvailableCards = useCallback((): RankCardData[] => {
     const cards: RankCardData[] = [];
 
-    // Add enabled cards first, in their current order
+    // Add cards in their current order from enabledRankCards
     enabledRankCards.forEach(cardType => {
       if (cardType === 'league' && riotAccount) {
         cards.push({ type: 'league', name: 'League of Legends', isEnabled: true });
@@ -450,12 +444,12 @@ export default function EditProfileScreen() {
       }
     });
 
-    // Add disabled cards
+    // Add any linked accounts not yet in enabledRankCards
     if (riotAccount && !enabledRankCards.includes('league')) {
-      cards.push({ type: 'league', name: 'League of Legends', isEnabled: false });
+      cards.push({ type: 'league', name: 'League of Legends', isEnabled: true });
     }
     if (valorantAccount && !enabledRankCards.includes('valorant')) {
-      cards.push({ type: 'valorant', name: 'Valorant', isEnabled: false });
+      cards.push({ type: 'valorant', name: 'Valorant', isEnabled: true });
     }
 
     return cards;
@@ -481,8 +475,6 @@ export default function EditProfileScreen() {
 
   // Render draggable rank card item
   const renderRankCardItem = useCallback(({ item, drag, isActive }: RenderItemParams<RankCardData>) => {
-    const isEnabled = item.isEnabled;
-
     const logoSource = item.type === 'league'
       ? require('@/assets/images/lol-icon.png')
       : require('@/assets/images/valorant-red.png');
@@ -491,11 +483,13 @@ export default function EditProfileScreen() {
       ? (riotStats?.rankedSolo ? formatRank(riotStats.rankedSolo.tier, riotStats.rankedSolo.rank) : 'Unranked')
       : (valorantStats?.currentRank || 'Unranked');
 
+    const availableCards = getAvailableCards();
+
     return (
       <ScaleDecorator activeScale={1}>
         <TouchableOpacity
           activeOpacity={1}
-          onLongPress={isEnabled && enabledRankCards.length > 1 ? drag : undefined}
+          onLongPress={availableCards.length > 1 ? drag : undefined}
           delayLongPress={150}
           disabled={isActive}
           style={[
@@ -504,33 +498,24 @@ export default function EditProfileScreen() {
           ]}
         >
           {/* Drag handle */}
-          {isEnabled && enabledRankCards.length > 1 && (
+          {availableCards.length > 1 && (
             <View style={styles.dragHandle}>
               <IconSymbol size={14} name="line.3.horizontal" color={isActive ? 'rgba(201, 168, 76, 0.7)' : 'rgba(201, 168, 76, 0.4)'} />
             </View>
           )}
 
           {/* Logo */}
-          <Image source={logoSource} style={[styles.rankCardLogoImage, !isEnabled && { opacity: 0.3 }]} resizeMode="contain" />
+          <Image source={logoSource} style={styles.rankCardLogoImage} resizeMode="contain" />
 
           {/* Info */}
           <View style={styles.rankCardInfo}>
-            <ThemedText style={[styles.rankCardName, !isEnabled && { opacity: 0.35 }]}>{item.name}</ThemedText>
-            <ThemedText style={[styles.rankCardRank, !isEnabled && { opacity: 0.2 }]}>{rankText}</ThemedText>
+            <ThemedText style={styles.rankCardName}>{item.name}</ThemedText>
+            <ThemedText style={styles.rankCardRank}>{rankText}</ThemedText>
           </View>
-
-          {/* Toggle */}
-          <Switch
-            value={isEnabled}
-            onValueChange={() => toggleRankCard(item.type)}
-            trackColor={{ false: '#1a1a1a', true: 'rgba(201, 168, 76, 0.35)' }}
-            thumbColor={isEnabled ? '#C9A84C' : '#555'}
-            style={{ transform: [{ scale: 0.8 }] }}
-          />
         </TouchableOpacity>
       </ScaleDecorator>
     );
-  }, [enabledRankCards, riotStats, valorantStats, toggleRankCard]);
+  }, [enabledRankCards, riotStats, valorantStats, getAvailableCards]);
 
   const hasChanges = () => {
     // Check if any field has changed from original user data
@@ -667,49 +652,107 @@ export default function EditProfileScreen() {
   return (
     <ThemedView style={styles.container}>
       <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.scrollContent}>
-        {/* Header Section - New Design */}
+        {/* Header Section - matches profile page layout */}
         <View style={styles.headerSection}>
-          {/* Top Header Icon - Back Button */}
-          <View style={styles.headerIconsRow}>
-            <TouchableOpacity
-              style={styles.headerIconButton}
-              onPress={handleBack}
-              activeOpacity={0.7}
-            >
-              <IconSymbol size={22} name="chevron.left" color="#fff" />
-            </TouchableOpacity>
-          </View>
-
           {/* Cover Photo Area */}
           <View style={styles.coverPhotoWrapper}>
             {pendingRemoveCoverPhoto ? (
-              <View style={styles.coverPhotoGradientPlaceholder} />
+              <LinearGradient
+                colors={['#2c2f33', '#1a1a1a', '#0f0f0f']}
+                start={{ x: 0, y: 0 }}
+                end={{ x: 0, y: 1 }}
+                style={styles.coverPhotoGradient}
+              />
             ) : pendingCoverPhotoUri ? (
               <Image source={{ uri: pendingCoverPhotoUri }} style={styles.coverPhotoImage} />
             ) : coverPhoto ? (
               <Image source={{ uri: coverPhoto }} style={styles.coverPhotoImage} />
             ) : (
-              <View style={styles.coverPhotoGradientPlaceholder} />
+              <LinearGradient
+                colors={['#2c2f33', '#1a1a1a', '#0f0f0f']}
+                start={{ x: 0, y: 0 }}
+                end={{ x: 0, y: 1 }}
+                style={styles.coverPhotoGradient}
+              />
             )}
-            {/* Bottom fade - subtle blend into background */}
+            {/* Bottom fade */}
             <LinearGradient
-              colors={['transparent', 'rgba(15, 15, 15, 0.6)', '#0f0f0f']}
-              locations={[0, 0.6, 1]}
+              colors={['transparent', 'rgba(15, 15, 15, 0.15)', 'rgba(15, 15, 15, 0.45)', 'rgba(15, 15, 15, 0.75)', '#0f0f0f']}
+              locations={[0, 0.25, 0.5, 0.75, 1]}
               start={{ x: 0, y: 0 }}
               end={{ x: 0, y: 1 }}
               style={styles.coverPhotoFadeBottom}
             />
-            <TouchableOpacity
-              style={styles.editCoverButton}
-              onPress={showCoverPhotoOptions}
-              disabled={isLoading}
-            >
-              <IconSymbol size={20} name="camera.fill" color="#fff" />
-            </TouchableOpacity>
 
-            {/* Username overlaid on cover photo */}
+            {/* Header Icons overlaid on cover photo */}
+            <View style={styles.headerIconsRow}>
+              <TouchableOpacity
+                style={styles.headerIconButton}
+                onPress={handleBack}
+                activeOpacity={0.7}
+              >
+                <IconSymbol size={22} name="chevron.left" color="#fff" />
+              </TouchableOpacity>
+              <View style={styles.headerIconsSpacer} />
+              <TouchableOpacity
+                style={styles.editCoverButton}
+                onPress={showCoverPhotoOptions}
+                disabled={isLoading}
+              >
+                <IconSymbol size={20} name="camera.fill" color="#fff" />
+              </TouchableOpacity>
+            </View>
+          </View>
+
+          {/* Profile Info Section - overlaps cover photo */}
+          <View style={styles.profileInfoSection}>
+            {/* Row: Avatar + Stats */}
+            <View style={styles.avatarStatsRow}>
+              {/* Avatar */}
+              <TouchableOpacity
+                style={styles.profileAvatarButton}
+                onPress={showImageOptions}
+                disabled={isLoading}
+                activeOpacity={0.7}
+              >
+                <View style={styles.profileAvatarCircle}>
+                  {pendingRemoveProfileImage ? (
+                    <ThemedText style={styles.profileAvatarInitial}>{user?.username?.[0]?.toUpperCase() || 'U'}</ThemedText>
+                  ) : pendingDefaultAvatarIndex !== null ? (
+                    <Image source={defaultAvatars[pendingDefaultAvatarIndex]} style={styles.profileAvatarImage} />
+                  ) : pendingProfileImageUri ? (
+                    <Image source={{ uri: pendingProfileImageUri }} style={styles.profileAvatarImage} />
+                  ) : profileImage ? (
+                    <Image source={{ uri: profileImage }} style={styles.profileAvatarImage} />
+                  ) : (
+                    <ThemedText style={styles.profileAvatarInitial}>{avatar}</ThemedText>
+                  )}
+                </View>
+                <View style={styles.editAvatarBadge}>
+                  <IconSymbol size={12} name="camera.fill" color="#fff" />
+                </View>
+              </TouchableOpacity>
+
+              {/* Stats columns */}
+              <View style={styles.statsColumns}>
+                <View style={styles.statColumn}>
+                  <ThemedText style={styles.statNumber}>{formatCount(user?.followersCount)}</ThemedText>
+                  <ThemedText style={styles.statLabel}>Followers</ThemedText>
+                </View>
+                <View style={styles.statColumn}>
+                  <ThemedText style={styles.statNumber}>{formatCount(user?.followingCount)}</ThemedText>
+                  <ThemedText style={styles.statLabel}>Following</ThemedText>
+                </View>
+                <View style={styles.statColumn}>
+                  <ThemedText style={styles.statNumber}>{formatCount(user?.postsCount)}</ThemedText>
+                  <ThemedText style={styles.statLabel}>Posts</ThemedText>
+                </View>
+              </View>
+            </View>
+
+            {/* Username input below avatar */}
             <TextInput
-              style={styles.coverPhotoUsernameInput}
+              style={styles.usernameInput}
               value={username}
               onChangeText={(text) => setUsername(text.toLowerCase())}
               placeholder="Username"
@@ -717,92 +760,54 @@ export default function EditProfileScreen() {
               autoCapitalize="none"
             />
 
-            {/* Profile Avatar - positioned bottom-right, half overlapping */}
-            <TouchableOpacity
-              style={styles.profileAvatarButton}
-              onPress={showImageOptions}
-              disabled={isLoading}
-              activeOpacity={0.7}
-            >
-              <View style={styles.profileAvatarCircle}>
-                {pendingRemoveProfileImage ? (
-                  <ThemedText style={styles.profileAvatarInitial}>{user?.username?.[0]?.toUpperCase() || 'U'}</ThemedText>
-                ) : pendingDefaultAvatarIndex !== null ? (
-                  <Image source={defaultAvatars[pendingDefaultAvatarIndex]} style={styles.profileAvatarImage} />
-                ) : pendingProfileImageUri ? (
-                  <Image source={{ uri: pendingProfileImageUri }} style={styles.profileAvatarImage} />
-                ) : profileImage ? (
-                  <Image source={{ uri: profileImage }} style={styles.profileAvatarImage} />
-                ) : (
-                  <ThemedText style={styles.profileAvatarInitial}>{avatar}</ThemedText>
-                )}
-              </View>
-              <View style={styles.editAvatarBadge}>
-                <IconSymbol size={12} name="camera.fill" color="#fff" />
-              </View>
-            </TouchableOpacity>
-          </View>
-
-          {/* Followers / Following Row */}
-          <View style={styles.followStatsRow}>
-            <View style={styles.followStatItem}>
-              <ThemedText style={styles.followStatNumber}>{formatCount(user?.followersCount)}</ThemedText>
-              <ThemedText style={styles.followStatLabel}> Followers</ThemedText>
-            </View>
-            <View style={styles.followStatDivider} />
-            <View style={styles.followStatItem}>
-              <ThemedText style={styles.followStatNumber}>{formatCount(user?.followingCount)}</ThemedText>
-              <ThemedText style={styles.followStatLabel}> Following</ThemedText>
-            </View>
-          </View>
-
-          {/* Social Icons Row */}
-          <View style={styles.socialIconsRow}>
-            <TouchableOpacity
-              style={[styles.socialIconButton, !instagram && styles.socialIconInactive]}
-              onPress={() => {
-                setEditingSocial('instagram');
-                setSocialInputValue(instagram);
-                setShowSocialModal(true);
-              }}
-              activeOpacity={0.7}
-            >
-              <Image
-                source={require('@/assets/images/instagram.png')}
-                style={styles.socialIconImage}
-                resizeMode="contain"
+            {/* Bio */}
+            <View style={styles.bioSection}>
+              <TextInput
+                style={styles.bioText}
+                value={bio}
+                onChangeText={setBio}
+                placeholder="Add a bio..."
+                placeholderTextColor="#72767d"
+                multiline
+                numberOfLines={3}
+                maxLength={150}
               />
-            </TouchableOpacity>
-            <TouchableOpacity
-              style={[styles.socialIconButton, !discord && styles.socialIconInactive]}
-              onPress={() => {
-                setEditingSocial('discord');
-                setSocialInputValue(discord);
-                setShowSocialModal(true);
-              }}
-              activeOpacity={0.7}
-            >
-              <Image
-                source={require('@/assets/images/discord.png')}
-                style={styles.socialIconImage}
-                resizeMode="contain"
-              />
-            </TouchableOpacity>
-          </View>
+              <ThemedText style={styles.characterCount}>{bio.length}/150</ThemedText>
+            </View>
 
-          {/* Bio Section */}
-          <View style={styles.bioSection}>
-            <TextInput
-              style={styles.bioText}
-              value={bio}
-              onChangeText={setBio}
-              placeholder="Add a bio..."
-              placeholderTextColor="#72767d"
-              multiline
-              numberOfLines={3}
-              maxLength={150}
-            />
-            <ThemedText style={styles.characterCount}>{bio.length}/150</ThemedText>
+            {/* Action Row: Social Icons */}
+            <View style={styles.socialIconsRow}>
+              <TouchableOpacity
+                style={[styles.socialIconButton, !instagram && styles.socialIconInactive]}
+                onPress={() => {
+                  setEditingSocial('instagram');
+                  setSocialInputValue(instagram);
+                  setShowSocialModal(true);
+                }}
+                activeOpacity={0.7}
+              >
+                <Image
+                  source={require('@/assets/images/instagram.png')}
+                  style={styles.socialIconImage}
+                  resizeMode="contain"
+                />
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={[styles.socialIconButton, !discord && styles.socialIconInactive]}
+                onPress={() => {
+                  setEditingSocial('discord');
+                  setSocialInputValue(discord);
+                  setShowSocialModal(true);
+                }}
+                activeOpacity={0.7}
+              >
+                <Image
+                  source={require('@/assets/images/discord.png')}
+                  style={styles.socialIconImage}
+                  resizeMode="contain"
+                />
+              </TouchableOpacity>
+            </View>
           </View>
 
           {/* Rank Cards Section */}
@@ -987,96 +992,87 @@ const styles = StyleSheet.create({
   headerSection: {
     backgroundColor: '#0f0f0f',
   },
-  // Header icons row
-  headerIconsRow: {
-    flexDirection: 'row',
-    justifyContent: 'flex-start',
-    alignItems: 'center',
-    paddingHorizontal: 16,
-    paddingTop: 50,
-    paddingBottom: 12,
-  },
-  headerIconButton: {
-    alignItems: 'center',
-    justifyContent: 'center',
-    padding: 4,
-  },
-  // Cover photo area
+  // Cover photo area - reaches top of screen
   coverPhotoWrapper: {
     width: '100%',
-    height: 200,
-    backgroundColor: '#2c2f33',
-    overflow: 'visible',
-    zIndex: 2,
+    height: 180,
+    backgroundColor: '#1a1a1a',
+    overflow: 'hidden',
   },
   coverPhotoImage: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
     width: '100%',
     height: '100%',
-    opacity: 0.6,
+    opacity: 0.8,
   },
-  coverPhotoGradientPlaceholder: {
+  coverPhotoGradient: {
     width: '100%',
     height: '100%',
-    backgroundColor: '#2c2f33',
   },
   coverPhotoFadeBottom: {
     position: 'absolute',
     bottom: 0,
     left: 0,
     right: 0,
-    height: 60,
+    height: '60%',
     zIndex: 1,
   },
-  editCoverButton: {
+  // Header icons overlaid on cover photo
+  headerIconsRow: {
     position: 'absolute',
-    top: 12,
-    right: 12,
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    backgroundColor: 'rgba(0, 0, 0, 0.6)',
+    top: 50,
+    left: 0,
+    right: 0,
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 16,
+    zIndex: 10,
+  },
+  headerIconButton: {
+    padding: 6,
     alignItems: 'center',
     justifyContent: 'center',
-    zIndex: 5,
   },
-  coverPhotoUsernameInput: {
-    position: 'absolute',
-    bottom: 8,
-    left: 20,
-    right: 80,
-    fontSize: 28,
-    fontWeight: '800',
-    color: '#fff',
-    letterSpacing: -0.5,
-    opacity: 1,
-    zIndex: 2,
-    lineHeight: 34,
-    padding: 0,
+  headerIconsSpacer: {
+    flex: 1,
   },
-  // Profile avatar - absolutely positioned bottom-right of cover photo, half overlapping
+  editCoverButton: {
+    padding: 6,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  // Profile info section below cover
+  profileInfoSection: {
+    marginTop: -32,
+    paddingHorizontal: 20,
+    zIndex: 3,
+  },
+  avatarStatsRow: {
+    flexDirection: 'row',
+    alignItems: 'flex-end',
+    gap: 16,
+  },
   profileAvatarButton: {
-    position: 'absolute',
-    bottom: -28,
-    right: 20,
-    zIndex: 4,
   },
   profileAvatarCircle: {
-    width: 56,
-    height: 56,
-    borderRadius: 28,
+    width: 76,
+    height: 76,
+    borderRadius: 38,
     backgroundColor: '#36393e',
     alignItems: 'center',
     justifyContent: 'center',
-    borderWidth: 2,
-    borderColor: '#2c2f33',
+    borderWidth: 3,
+    borderColor: '#0f0f0f',
   },
   profileAvatarImage: {
     width: '100%',
     height: '100%',
-    borderRadius: 28,
+    borderRadius: 38,
   },
   profileAvatarInitial: {
-    fontSize: 22,
+    fontSize: 28,
     fontWeight: '700',
     color: '#fff',
   },
@@ -1093,41 +1089,63 @@ const styles = StyleSheet.create({
     borderWidth: 2,
     borderColor: '#0f0f0f',
   },
-  // Followers / Following row
-  followStatsRow: {
+  // Stats columns beside avatar
+  statsColumns: {
     flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: 20,
-    marginTop: 4,
-    marginBottom: 4,
+    flex: 1,
+    justifyContent: 'space-evenly',
+    paddingBottom: 6,
   },
-  followStatItem: {
-    flexDirection: 'row',
+  statColumn: {
     alignItems: 'center',
   },
-  followStatNumber: {
-    fontSize: 14,
+  statNumber: {
+    fontSize: 17,
     fontWeight: '700',
     color: '#fff',
+    letterSpacing: -0.3,
   },
-  followStatLabel: {
-    fontSize: 14,
-    fontWeight: '400',
+  statLabel: {
+    fontSize: 11,
+    fontWeight: '500',
     color: '#72767d',
+    marginTop: 1,
+    letterSpacing: 0.2,
   },
-  followStatDivider: {
-    width: 1,
-    height: 14,
-    backgroundColor: '#72767d',
-    marginHorizontal: 12,
+  // Username input
+  usernameInput: {
+    fontSize: 26,
+    fontWeight: '800',
+    color: '#fff',
+    letterSpacing: -0.5,
+    marginTop: 10,
+    marginBottom: 2,
+    padding: 0,
+  },
+  // Bio section
+  bioSection: {
+    marginBottom: 12,
+  },
+  bioText: {
+    fontSize: 14,
+    color: '#b9bbbe',
+    lineHeight: 20,
+    padding: 0,
+    textAlignVertical: 'top',
+    minHeight: 40,
+  },
+  characterCount: {
+    fontSize: 11,
+    color: '#72767d',
+    marginTop: 8,
+    textAlign: 'right',
   },
   // Social icons row
   socialIconsRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingHorizontal: 20,
-    marginBottom: 6,
-    gap: 12,
+    marginBottom: 16,
+    gap: 10,
   },
   socialIconButton: {
     width: 36,
@@ -1143,25 +1161,6 @@ const styles = StyleSheet.create({
   socialIconImage: {
     width: 20,
     height: 20,
-  },
-  // Bio section
-  bioSection: {
-    paddingHorizontal: 20,
-    marginBottom: 20,
-  },
-  bioText: {
-    fontSize: 14,
-    color: '#b9bbbe',
-    lineHeight: 20,
-    padding: 0,
-    textAlignVertical: 'top',
-    minHeight: 40,
-  },
-  characterCount: {
-    fontSize: 11,
-    color: '#72767d',
-    marginTop: 8,
-    textAlign: 'right',
   },
   // Section container
   sectionContainer: {

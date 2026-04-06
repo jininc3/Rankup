@@ -319,6 +319,26 @@ export const subscribeToNewMessages = (
 };
 
 /**
+ * Subscribe to whether the other user has read messages (real-time)
+ * Watches the chat document's unreadCount for the other user
+ */
+export const subscribeToReadStatus = (
+  chatId: string,
+  otherUserId: string,
+  callback: (hasRead: boolean) => void
+) => {
+  const chatRef = doc(db, 'chats', chatId);
+
+  return onSnapshot(chatRef, (snapshot) => {
+    if (snapshot.exists()) {
+      const data = snapshot.data();
+      const otherUnread = data.unreadCount?.[otherUserId] || 0;
+      callback(otherUnread === 0);
+    }
+  });
+};
+
+/**
  * Get all chats for a user
  */
 export const getUserChats = async (userId: string): Promise<Chat[]> => {

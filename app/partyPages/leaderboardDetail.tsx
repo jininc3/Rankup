@@ -1207,10 +1207,10 @@ export default function LeaderboardDetail() {
                   <Image source={rankIcon} style={styles.rankIconSmall} resizeMode="contain" />
                   <View style={styles.rankTextContainer}>
                     <ThemedText style={styles.currentRankText}>
-                      {player.currentRank}
-                    </ThemedText>
-                    <ThemedText style={styles.rankPointsText}>
-                      {isLeague ? `${player.lp || 0} lp` : `${player.rr || 0} rr`}
+                      {player.currentRank}{' '}
+                      <ThemedText style={styles.rankPointsText}>
+                        {isLeague ? `(${player.lp || 0} LP)` : `(${player.rr || 0} RR)`}
+                      </ThemedText>
                     </ThemedText>
                   </View>
                 </View>
@@ -2833,7 +2833,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 8,
-    width: 130,
+    width: 145,
     marginLeft: 'auto',
   },
   rankIconSmall: {

@@ -257,6 +257,7 @@ export default function DuoCardDetailScreen() {
                 map: m.map,
                 score: m.score,
                 playedAt: m.playedAt || (m.gameStart ? m.gameStart * 1000 : undefined),
+                placement: m.placement,
               }));
               setRecentMatches(mapped);
             } else {
@@ -410,6 +411,23 @@ export default function DuoCardDetailScreen() {
                       {match.kills ?? 0}/{match.deaths ?? 0}/{match.assists ?? 0}
                     </ThemedText>
                   </View>
+                  {match.placement && (
+                    <View style={[
+                      styles.matchPlacementPill,
+                      match.placement === 1 && styles.matchPlacementPill1st,
+                      match.placement === 2 && styles.matchPlacementPill2nd,
+                      match.placement === 3 && styles.matchPlacementPill3rd,
+                    ]}>
+                      <ThemedText style={[
+                        styles.matchPlacement,
+                        match.placement === 1 && styles.matchPlacement1st,
+                        match.placement === 2 && styles.matchPlacement2nd,
+                        match.placement === 3 && styles.matchPlacement3rd,
+                      ]}>
+                        {match.placement === 1 ? 'MVP' : `${match.placement}${match.placement === 2 ? 'nd' : match.placement === 3 ? 'rd' : 'th'}`}
+                      </ThemedText>
+                    </View>
+                  )}
                   <View style={styles.matchMeta}>
                     {match.map && (
                       <ThemedText style={styles.matchMap} numberOfLines={1}>{match.map}</ThemedText>
@@ -790,6 +808,39 @@ const styles = StyleSheet.create({
     fontSize: 11,
     fontWeight: '700',
     color: '#fff',
+  },
+  matchPlacementPill: {
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 10,
+    backgroundColor: 'rgba(255, 255, 255, 0.08)',
+    marginRight: 4,
+  },
+  matchPlacementPill1st: {
+    backgroundColor: 'rgba(255, 215, 0, 0.15)',
+  },
+  matchPlacementPill2nd: {
+    backgroundColor: 'rgba(192, 192, 192, 0.15)',
+  },
+  matchPlacementPill3rd: {
+    backgroundColor: 'rgba(205, 127, 50, 0.15)',
+  },
+  matchPlacement: {
+    fontSize: 10,
+    fontWeight: '700',
+    color: '#999',
+  },
+  matchPlacement1st: {
+    color: '#FFD700',
+    fontWeight: '900',
+  },
+  matchPlacement2nd: {
+    color: '#C0C0C0',
+    fontWeight: '900',
+  },
+  matchPlacement3rd: {
+    color: '#CD7F32',
+    fontWeight: '900',
   },
   matchInfo: {
     flex: 1,

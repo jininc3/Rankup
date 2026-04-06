@@ -22,6 +22,7 @@ import {
   getInitialMessages,
   getOlderMessages,
   subscribeToNewMessages,
+  subscribeToReadStatus,
   ChatMessage,
   Chat,
 } from '@/services/chatService';
@@ -44,6 +45,8 @@ export default function ChatScreen() {
   const [loadingMore, setLoadingMore] = useState(false);
   const [lastDoc, setLastDoc] = useState<QueryDocumentSnapshot<DocumentData> | null>(null);
   const [lastTimestamp, setLastTimestamp] = useState<Timestamp | null>(null);
+
+  const [otherUserHasRead, setOtherUserHasRead] = useState(false);
 
   const chatId = params.chatId as string;
   const otherUserId = params.otherUserId as string;
@@ -116,12 +119,19 @@ export default function ChatScreen() {
           unsubscribe = subscribeToNewMessages(chatId, latestTimestamp, (newMessages) => {
             if (newMessages.length > 0) {
               // Prepend new messages (reversed) since we store newest first
-              // Filter out duplicates to prevent key conflicts
+              // Remove optimistic duplicates and filter real duplicates
               setMessages(prev => {
-                const existingIds = new Set(prev.map(m => m.id));
-                const uniqueNewMessages = newMessages.filter(m => !existingIds.has(m.id));
+                const existingRealIds = new Set(prev.filter(m => !m.id.startsWith('optimistic_')).map(m => m.id));
+                const uniqueNewMessages = newMessages.filter(m => !existingRealIds.has(m.id));
                 if (uniqueNewMessages.length === 0) return prev;
-                return [...uniqueNewMessages.reverse(), ...prev];
+
+                // Remove optimistic messages that match incoming real messages
+                const optimisticTexts = new Set(uniqueNewMessages.map(m => `${m.senderId}:${m.text}`));
+                const withoutOptimistic = prev.filter(m =>
+                  !m.id.startsWith('optimistic_') || !optimisticTexts.has(`${m.senderId}:${m.text}`)
+                );
+
+                return [...uniqueNewMessages.reverse(), ...withoutOptimistic];
               });
               setLastTimestamp(newMessages[newMessages.length - 1].timestamp);
 
@@ -152,6 +162,17 @@ export default function ChatScreen() {
     };
   }, [chatId, currentUser?.id]);
 
+  // Subscribe to read status — watch if other user has read messages
+  useEffect(() => {
+    if (!chatId || !otherUserId) return;
+
+    const unsubscribe = subscribeToReadStatus(chatId, otherUserId, (hasRead) => {
+      setOtherUserHasRead(hasRead);
+    });
+
+    return () => unsubscribe();
+  }, [chatId, otherUserId]);
+
   // Load older messages when scrolling up
   const loadOlderMessages = useCallback(async () => {
     if (!hasMore || loadingMore || !lastDoc || !chatId) return;
@@ -179,20 +200,34 @@ export default function ChatScreen() {
   const handleSend = useCallback(async () => {
     if (!messageText.trim() || !chatId || !currentUser?.id) return;
 
-    setSending(true);
+    const text = messageText.trim();
+    const optimisticId = `optimistic_${Date.now()}`;
+
+    // Optimistic update — show message instantly
+    const optimisticMessage: ChatMessage = {
+      id: optimisticId,
+      senderId: currentUser.id,
+      text,
+      timestamp: Timestamp.now(),
+      type: 'text',
+      read: false,
+    };
+    setMessages(prev => [optimisticMessage, ...prev]);
+    setMessageText('');
+
     try {
-      await sendMessage(chatId, currentUser.id, messageText.trim());
-      setMessageText('');
+      await sendMessage(chatId, currentUser.id, text);
+      // Real-time listener will add the real message;
+      // remove the optimistic one when that happens (handled in listener)
     } catch (error: any) {
       console.error('Error sending message:', error);
-      // Show user-friendly error for spam prevention
+      // Remove optimistic message on failure
+      setMessages(prev => prev.filter(msg => msg.id !== optimisticId));
       if (error.message?.includes('too quickly')) {
         Alert.alert('Slow Down', error.message);
       } else {
         Alert.alert('Error', 'Failed to send message. Please try again.');
       }
-    } finally {
-      setSending(false);
     }
   }, [messageText, chatId, currentUser?.id]);
 
@@ -223,6 +258,16 @@ export default function ChatScreen() {
     }
   }, []);
 
+  // Find the last message sent by current user (to show "Read" on it)
+  const lastSentMessageId = useMemo(() => {
+    for (const msg of messages) {
+      if (msg.senderId === currentUser?.id && !msg.id.startsWith('optimistic_')) {
+        return msg.id;
+      }
+    }
+    return null;
+  }, [messages, currentUser?.id]);
+
   const renderMessage = useCallback(({ item, index }: { item: ChatMessage; index: number }) => {
     const isCurrentUser = item.senderId === currentUser?.id;
 
@@ -234,6 +279,9 @@ export default function ChatScreen() {
       !previousMessage ||
       previousMessage.senderId !== item.senderId ||
       item.timestamp.toMillis() - previousMessage.timestamp.toMillis() > 300000; // 5 minutes
+
+    // Show "Read" on the last sent message if the other user has read it
+    const showReadReceipt = isCurrentUser && otherUserHasRead && item.id === lastSentMessageId;
 
     return (
       <View style={styles.messageContainer}>
@@ -256,9 +304,12 @@ export default function ChatScreen() {
             {item.text}
           </ThemedText>
         </View>
+        {showReadReceipt && (
+          <ThemedText style={styles.readReceipt}>Read</ThemedText>
+        )}
       </View>
     );
-  }, [currentUser?.id, messages, formatTime]);
+  }, [currentUser?.id, messages, formatTime, lastSentMessageId, otherUserHasRead]);
 
   return (
     <KeyboardAvoidingView
@@ -460,6 +511,13 @@ const styles = StyleSheet.create({
   },
   otherUserText: {
     color: '#fff',
+  },
+  readReceipt: {
+    fontSize: 11,
+    color: '#888',
+    alignSelf: 'flex-end',
+    marginTop: 2,
+    marginRight: 4,
   },
   emptyState: {
     flex: 1,

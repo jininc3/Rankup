@@ -6,7 +6,7 @@ import { db } from '@/config/firebase';
 import { useAuth } from '@/contexts/AuthContext';
 import { getFollowing } from '@/services/followService';
 import { likePost, unlikePost, isPostLiked } from '@/services/likeService';
-import { createOrGetChat } from '@/services/chatService';
+import { createOrGetChat, subscribeToUserChats } from '@/services/chatService';
 import CommentModal from '@/app/components/commentModal';
 import PostContent from '@/app/components/postContent';
 import NewPost from '@/app/components/newPost';
@@ -104,6 +104,7 @@ export default function HomeScreen() {
   const [selectedGameFilter, setSelectedGameFilter] = useState<string | null>(null);
   const [showFilterModal, setShowFilterModal] = useState(false);
   const [unreadNotificationCount, setUnreadNotificationCount] = useState(0);
+  const [unreadMessageCount, setUnreadMessageCount] = useState(0);
   const [likedPosts, setLikedPosts] = useState<Set<string>>(new Set());
   const [likingInProgress, setLikingInProgress] = useState<Set<string>>(new Set());
   const [commentingPost, setCommentingPost] = useState<Post | null>(null);
@@ -137,6 +138,23 @@ export default function HomeScreen() {
   }, []);
 
 
+  // Reset feed state when user changes (e.g. sign out → sign in with different account)
+  const prevUserIdRef = useRef<string | undefined>(currentUser?.id);
+  useEffect(() => {
+    if (currentUser?.id && currentUser.id !== prevUserIdRef.current) {
+      setFollowingPosts([]);
+      setForYouPosts([]);
+      setFollowingUserIds([]);
+      setLikedPosts(new Set());
+      setLastDoc(null);
+      setHasMore(true);
+      setHasConsumedPreload(false);
+      setLoading(true);
+      setSelectedGameFilter(null);
+    }
+    prevUserIdRef.current = currentUser?.id;
+  }, [currentUser?.id]);
+
   // Listen for unread notifications count in real-time
   useEffect(() => {
     if (!currentUser?.id) return;
@@ -146,6 +164,20 @@ export default function HomeScreen() {
 
     const unsubscribe = onSnapshot(q, (snapshot) => {
       setUnreadNotificationCount(snapshot.size);
+    });
+
+    return () => unsubscribe();
+  }, [currentUser?.id]);
+
+  // Listen for unread messages count in real-time
+  useEffect(() => {
+    if (!currentUser?.id) return;
+
+    const unsubscribe = subscribeToUserChats(currentUser.id, (chats) => {
+      const total = chats.reduce((sum, chat) => {
+        return sum + (chat.unreadCount?.[currentUser.id] || 0);
+      }, 0);
+      setUnreadMessageCount(total);
     });
 
     return () => unsubscribe();
@@ -648,7 +680,7 @@ export default function HomeScreen() {
             setValorantInGameIcon(userData.valorantStats.card.small);
           }
           if (userData.valorantStats?.gameName) {
-            const tagLine = userData.valorantAccount?.tagLine || '';
+            const tagLine = userData.valorantAccount?.tag || '';
             setValorantInGameName(tagLine ? `${userData.valorantStats.gameName}#${tagLine}` : userData.valorantStats.gameName);
           }
           if (userData.valorantStats?.winRate !== undefined) {
@@ -938,6 +970,13 @@ export default function HomeScreen() {
             activeOpacity={0.7}
           >
             <IconSymbol size={27} name="bubble.left" color="#fff" />
+            {unreadMessageCount > 0 && (
+              <View style={styles.notificationBadge}>
+                <ThemedText style={styles.notificationBadgeText}>
+                  {unreadMessageCount > 9 ? '9+' : unreadMessageCount}
+                </ThemedText>
+              </View>
+            )}
           </TouchableOpacity>
           <TouchableOpacity
             style={styles.headerIconButton}
@@ -1271,17 +1310,18 @@ const styles = StyleSheet.create({
     top: 2,
     right: 2,
     backgroundColor: '#ef4444',
-    borderRadius: 10,
-    minWidth: 20,
-    height: 20,
+    borderRadius: 8,
+    minWidth: 16,
+    height: 16,
     alignItems: 'center',
     justifyContent: 'center',
-    paddingHorizontal: 4,
+    paddingHorizontal: 2,
   },
   notificationBadgeText: {
-    fontSize: 11,
+    fontSize: 9,
     fontWeight: '700',
     color: '#fff',
+    lineHeight: 16,
   },
   tabScrollContainer: {
     backgroundColor: '#0f0f0f',

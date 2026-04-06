@@ -24,6 +24,7 @@ export interface MatchHistoryEntry {
   gameStart: number; // Unix timestamp in seconds
   playedAt: number; // Unix timestamp in milliseconds (for match history consumers)
   score: string; // e.g., "13-7"
+  placement?: number; // Player's rank out of 10 by combat score (1st = highest)
 }
 
 export interface ValorantStats {
@@ -192,7 +193,7 @@ export const getValorantStatsFunction = onCall(
 
       // Process match history
       logger.info(`Raw matches data length: ${matchesData?.length || 0}`);
-      const allMatches: MatchHistoryEntry[] = matchesData.map((match) => {
+      const allMatches = matchesData.map((match): MatchHistoryEntry | null => {
         // Validate match has required metadata
         // Note: API returns 'matchid' (no underscore), not 'match_id'
         if (!match?.metadata?.matchid || !match?.players?.all_players || !match?.teams) {
@@ -224,6 +225,13 @@ export const getValorantStatsFunction = onCall(
           ? `${redRounds}-${blueRounds}`
           : `${blueRounds}-${redRounds}`;
 
+        // Calculate player's placement (rank out of 10 by combat score)
+        const sortedPlayers = [...match.players.all_players]
+          .sort((a, b) => (b.stats?.score ?? 0) - (a.stats?.score ?? 0));
+        const placement = sortedPlayers.findIndex(
+          (p) => p.name?.toLowerCase() === gameName.toLowerCase() && String(p.tag).toLowerCase() === tag.toLowerCase()
+        ) + 1;
+
         const gameStart = match.metadata.game_start ?? Math.floor(Date.now() / 1000);
         return {
           matchId: match.metadata.matchid,
@@ -236,6 +244,7 @@ export const getValorantStatsFunction = onCall(
           gameStart,
           playedAt: gameStart * 1000,
           score,
+          placement: placement > 0 ? placement : undefined,
         };
       }).filter((entry): entry is MatchHistoryEntry => entry !== null);
 

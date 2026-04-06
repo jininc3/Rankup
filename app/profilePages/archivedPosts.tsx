@@ -293,10 +293,10 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   headerTitle: {
-    fontSize: 20,
+    fontSize: 18,
     fontWeight: '700',
     color: '#fff',
-    flex: 1,
+    flexShrink: 1,
     textAlign: 'center',
   },
   headerSpacer: {

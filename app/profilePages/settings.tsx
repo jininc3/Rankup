@@ -280,7 +280,7 @@ export default function SettingsScreen() {
                     {loadingAccounts
                       ? 'Checking...'
                       : valorantAccount
-                      ? `${valorantAccount.gameName}#${valorantAccount.tagLine}`
+                      ? `${valorantAccount.gameName}#${valorantAccount.tag}`
                       : 'Not connected'}
                   </ThemedText>
                 </View>

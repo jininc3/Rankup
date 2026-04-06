@@ -32,6 +32,7 @@ export default function LinkValorantAccountScreen() {
     { value: 'kr', label: 'KR' },
     { value: 'latam', label: 'LATAM' },
     { value: 'br', label: 'BR' },
+    { value: 'mn', label: 'MENA' },
   ];
 
   const handleLinkAccount = async () => {
@@ -92,7 +93,7 @@ export default function LinkValorantAccountScreen() {
           <View style={styles.heroSection}>
             <View style={styles.logoWrapper}>
               <Image
-                source={require('@/assets/images/valorant-logo.png')}
+                source={require('@/assets/images/valorantlogo.png')}
                 style={styles.logo}
                 resizeMode="contain"
               />
@@ -134,7 +135,7 @@ export default function LinkValorantAccountScreen() {
                   placeholderTextColor="#555"
                   value={tagLine}
                   onChangeText={setTagLine}
-                  autoCapitalize="characters"
+                  autoCapitalize="sentences"
                   autoCorrect={false}
                   maxLength={5}
                 />
@@ -211,7 +212,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     paddingHorizontal: 16,
-    paddingTop: 55,
+    paddingTop: 70,
     paddingBottom: 12,
   },
   backButton: {
@@ -222,6 +223,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20,
     paddingTop: 20,
     paddingBottom: 32,
+    overflow: 'visible',
   },
   logoWrapper: {
     width: 80,
@@ -241,7 +243,9 @@ const styles = StyleSheet.create({
     fontWeight: '800',
     color: '#fff',
     letterSpacing: -0.5,
+    lineHeight: 36,
     marginBottom: 8,
+    overflow: 'visible',
   },
   heroSubtitle: {
     fontSize: 14,
@@ -311,7 +315,7 @@ const styles = StyleSheet.create({
     backgroundColor: '#252525',
   },
   regionButtonActive: {
-    backgroundColor: '#c42743',
+    backgroundColor: '#D4A843',
   },
   regionButtonText: {
     fontSize: 13,
@@ -324,7 +328,7 @@ const styles = StyleSheet.create({
   linkButton: {
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: '#c42743',
+    backgroundColor: '#D4A843',
     paddingVertical: 16,
     borderRadius: 12,
     marginTop: 8,
@@ -362,7 +366,7 @@ const styles = StyleSheet.create({
   },
   exampleHighlight: {
     fontWeight: '700',
-    color: '#c42743',
+    color: '#D4A843',
   },
   exampleDivider: {
     height: 1,

@@ -27,6 +27,18 @@ export default function LeaderboardPagesLayout() {
           headerShown: false,
         }}
       />
+      <Stack.Screen
+        name="lobbies"
+        options={{
+          headerShown: false,
+        }}
+      />
+      <Stack.Screen
+        name="liveSearch"
+        options={{
+          headerShown: false,
+        }}
+      />
     </Stack>
   );
 }

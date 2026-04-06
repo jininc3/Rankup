@@ -3,9 +3,6 @@ import { LinearGradient } from 'expo-linear-gradient';
 import AddDuoCard, { DuoCardData } from '@/app/components/addDuoCard';
 import EditDuoCard from '@/app/components/editDuoCard';
 import DuoFilterModal, { DuoFilterOptions } from '@/app/profilePages/duoFilterModal';
-import DuoSearchingAnimation from '@/app/components/duoSearchingAnimation';
-import DuoMatchResult from '@/app/components/duoMatchResult';
-import LiveSearchIdle from '@/app/components/liveSearchIdle';
 import DuoCardDetailModal from '@/app/components/duoCardDetailModal';
 import PostDuoCard from '@/app/components/postDuoCard';
 import { ThemedText } from '@/components/themed-text';
@@ -14,11 +11,10 @@ import { IconSymbol } from '@/components/ui/icon-symbol';
 import { DuoCardSkeleton } from '@/components/ui/Skeleton';
 import { useAuth } from '@/contexts/AuthContext';
 import { useState, useEffect, useCallback, useRef } from 'react';
-import { Alert, ScrollView, FlatList, ActivityIndicator, StyleSheet, TouchableOpacity, View, RefreshControl, Dimensions, Image, AppState, Modal, Animated } from 'react-native';
+import { Alert, ScrollView, FlatList, ActivityIndicator, StyleSheet, TouchableOpacity, View, RefreshControl, Image, Modal, Animated, Easing } from 'react-native';
 import { doc, getDoc, setDoc, deleteDoc, serverTimestamp, collection, query, where, getDocs, orderBy, limit, Timestamp } from 'firebase/firestore';
 import { db } from '@/config/firebase';
 import { useRouter } from 'expo-router';
-import { joinDuoQueue, leaveDuoQueue, subscribeToDuoQueue, getDuoMatch, DuoMatchCardData } from '@/services/duoMatchService';
 import { createOrGetChat } from '@/services/chatService';
 
 interface DuoCardWithId extends DuoCardData {
@@ -53,14 +49,32 @@ interface DuoPostWithId {
   expiresAt: any;
 }
 
-const { width: SCREEN_WIDTH } = Dimensions.get('window');
 
 export default function DuoFinderScreen() {
   const { user } = useAuth();
   const router = useRouter();
-  const pagerRef = useRef<ScrollView>(null);
-  const addButtonOpacity = useRef(new Animated.Value(0)).current;
-  const [selectedTab, setSelectedTab] = useState<'liveSearch' | 'findDuo'>('liveSearch');
+
+  // Pulse animation for live search banner
+  const pulseAnim = useRef(new Animated.Value(0.4)).current;
+  useEffect(() => {
+    Animated.loop(
+      Animated.sequence([
+        Animated.timing(pulseAnim, {
+          toValue: 1,
+          duration: 1500,
+          easing: Easing.inOut(Easing.ease),
+          useNativeDriver: true,
+        }),
+        Animated.timing(pulseAnim, {
+          toValue: 0.4,
+          duration: 1500,
+          easing: Easing.inOut(Easing.ease),
+          useNativeDriver: true,
+        }),
+      ])
+    ).start();
+  }, []);
+
   const [showMyCards, setShowMyCards] = useState(false);
   const [showAddCard, setShowAddCard] = useState(false);
   const [valorantCard, setValorantCard] = useState<DuoCardData | null>(null);
@@ -92,15 +106,6 @@ export default function DuoFinderScreen() {
     language: null,
   });
 
-  // Live search state
-  const [matchState, setMatchState] = useState<'idle' | 'searching' | 'matched'>('idle');
-  const [searchGame, setSearchGame] = useState<'valorant' | 'league' | null>(null);
-  const [searchGamePick, setSearchGamePick] = useState<'valorant' | 'league' | null>(null);
-  const [matchedUserCard, setMatchedUserCard] = useState<DuoMatchCardData | null>(null);
-  const [matchedUserId, setMatchedUserId] = useState<string | null>(null);
-  const unsubscribeQueueRef = useRef<(() => void) | null>(null);
-  const searchTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-
   // Game filter state (both selected by default to show all)
   const [selectedGames, setSelectedGames] = useState<{ valorant: boolean; league: boolean }>({
     valorant: true,
@@ -113,30 +118,6 @@ export default function DuoFinderScreen() {
       ...prev,
       [game]: !prev[game],
     }));
-  };
-
-  // Handle tab press - scroll to page
-  const handleTabPress = (tab: 'liveSearch' | 'findDuo') => {
-    setSelectedTab(tab);
-    Animated.timing(addButtonOpacity, {
-      toValue: tab === 'findDuo' ? 1 : 0,
-      duration: 200,
-      useNativeDriver: true,
-    }).start();
-    const pageIndex = tab === 'liveSearch' ? 0 : 1;
-    pagerRef.current?.scrollTo({ x: pageIndex * SCREEN_WIDTH, animated: true });
-  };
-
-  // Handle swipe - update selected tab in real-time
-  const handlePageScroll = (event: any) => {
-    const offsetX = event.nativeEvent.contentOffset.x;
-    const progress = offsetX / SCREEN_WIDTH;
-    // Drive button opacity from scroll position (0 = liveSearch, 1 = findDuo)
-    addButtonOpacity.setValue(Math.min(1, Math.max(0, progress)));
-    const newTab = progress >= 0.5 ? 'findDuo' : 'liveSearch';
-    if (newTab !== selectedTab) {
-      setSelectedTab(newTab);
-    }
   };
 
   // Count active filters
@@ -753,13 +734,6 @@ export default function DuoFinderScreen() {
 
   const hasCards = valorantCard !== null || leagueCard !== null;
 
-  // Auto-select game if user only has one card
-  useEffect(() => {
-    if (valorantCard && !leagueCard) setSearchGamePick('valorant');
-    else if (!valorantCard && leagueCard) setSearchGamePick('league');
-    else if (!valorantCard && !leagueCard) setSearchGamePick(null);
-  }, [valorantCard, leagueCard]);
-
   const handleCardPress = (game: 'valorant' | 'league') => {
     // Navigate to detail page with edit capability for own card
     const cardData = game === 'valorant' ? valorantCard : leagueCard;
@@ -882,195 +856,26 @@ export default function DuoFinderScreen() {
   };
 
   // --- Live Search Functions ---
-  const cleanupSearch = useCallback(() => {
-    if (unsubscribeQueueRef.current) {
-      unsubscribeQueueRef.current();
-      unsubscribeQueueRef.current = null;
-    }
-    if (searchTimeoutRef.current) {
-      clearTimeout(searchTimeoutRef.current);
-      searchTimeoutRef.current = null;
-    }
-  }, []);
-
-  const startLiveSearch = async (game: 'valorant' | 'league') => {
-    if (!user?.id) return;
-
-    const cardData = game === 'valorant' ? valorantCard : leagueCard;
-    if (!cardData) return;
-
-    setSearchGame(game);
-    setMatchState('searching');
-    setMatchedUserCard(null);
-    setMatchedUserId(null);
-
-    // Build card data with in-game info
-    const inGameIcon = game === 'valorant' ? valorantInGameIcon : leagueInGameIcon;
-    const inGameName = game === 'valorant' ? valorantInGameName : leagueInGameName;
-
-    try {
-      await joinDuoQueue(user.id, game, {
-        username: cardData.username,
-        avatar: user.avatar || undefined,
-        inGameIcon,
-        inGameName,
-        currentRank: cardData.currentRank,
-        mainRole: cardData.mainRole,
-        mainAgent: cardData.mainAgent,
-      });
-
-      // Listen for match
-      const unsubscribe = subscribeToDuoQueue(user.id, game, async (data) => {
-        if (data?.status === 'matched' && data.matchId) {
-          cleanupSearch();
-          const match = await getDuoMatch(data.matchId);
-          if (match) {
-            // Get the other user's card
-            const otherCard = match.user1Id === user.id ? match.user2Card : match.user1Card;
-            const otherUserId = match.user1Id === user.id ? match.user2Id : match.user1Id;
-            setMatchedUserCard(otherCard);
-            setMatchedUserId(otherUserId);
-            setMatchState('matched');
-          }
-        }
-      });
-      unsubscribeQueueRef.current = unsubscribe;
-
-      // 60 second timeout
-      searchTimeoutRef.current = setTimeout(() => {
-        cancelSearch();
-        Alert.alert('No Players Found', 'No one is searching right now. Try again later!');
-      }, 60000);
-    } catch (error) {
-      console.error('Error starting live search:', error);
-      setMatchState('idle');
-      setSearchGame(null);
-      Alert.alert('Error', 'Failed to start searching. Please try again.');
-    }
-  };
-
-  const cancelSearch = useCallback(() => {
-    cleanupSearch();
-    if (user?.id && searchGame) {
-      leaveDuoQueue(user.id, searchGame);
-    }
-    setMatchState('idle');
-    setSearchGame(null);
-  }, [user?.id, searchGame, cleanupSearch]);
-
-  const handleSearchAgain = () => {
-    if (searchGame) {
-      setMatchState('idle');
-      setMatchedUserCard(null);
-      setMatchedUserId(null);
-      // Small delay before re-searching
-      setTimeout(() => startLiveSearch(searchGame), 300);
-    }
-  };
-
-  const handleLiveSearchPress = () => {
-    if (!hasCards) {
-      Alert.alert('No Duo Card', 'Create a duo card first to start searching!');
-      return;
-    }
-
-    // If user has only one game card, search with that
-    if (valorantCard && !leagueCard) {
-      startLiveSearch('valorant');
-    } else if (!valorantCard && leagueCard) {
-      startLiveSearch('league');
-    } else {
-      // User has both - show picker
-      Alert.alert(
-        'Select Game',
-        'Which game do you want to find a duo for?',
-        [
-          { text: 'Valorant', onPress: () => startLiveSearch('valorant') },
-          { text: 'League', onPress: () => startLiveSearch('league') },
-          { text: 'Cancel', style: 'cancel' },
-        ]
-      );
-    }
-  };
-
-  const handleMatchViewProfile = () => {
-    if (!matchedUserCard) return;
-    router.push({
-      pathname: '/profilePages/profileView',
-      params: {
-        userId: matchedUserCard.userId,
-        username: matchedUserCard.username,
-        avatar: matchedUserCard.avatar || '',
-      },
-    });
-  };
-
-  const handleMatchStartChat = async () => {
-    if (!user?.id || !matchedUserCard) return;
-
-    try {
-      const chatId = await createOrGetChat(
-        user.id,
-        user.username || '',
-        user.avatar,
-        matchedUserCard.userId,
-        matchedUserCard.username,
-        matchedUserCard.avatar || undefined,
-      );
-      router.push({
-        pathname: '/chatPages/chatScreen',
-        params: {
-          chatId,
-          otherUserId: matchedUserCard.userId,
-          otherUsername: matchedUserCard.username,
-          otherUserAvatar: matchedUserCard.avatar || '',
-        },
-      });
-    } catch (error) {
-      console.error('Error starting chat:', error);
-      Alert.alert('Error', 'Failed to start chat. Please try again.');
-    }
-  };
-
-  // Cleanup on unmount or app background
-  useEffect(() => {
-    const subscription = AppState.addEventListener('change', (nextAppState) => {
-      if (nextAppState !== 'active' && matchState === 'searching') {
-        cancelSearch();
-      }
-    });
-
-    return () => {
-      subscription.remove();
-      cleanupSearch();
-      if (user?.id && searchGame && matchState === 'searching') {
-        leaveDuoQueue(user.id, searchGame);
-      }
-    };
-  }, [matchState, searchGame, user?.id]);
-
   return (
     <ThemedView style={styles.container}>
       {/* Header */}
       <View style={styles.header}>
         <ThemedText style={styles.headerTitle}>DUO FINDER</ThemedText>
         <View style={styles.headerButtons}>
-          <Animated.View style={{ opacity: addButtonOpacity }} pointerEvents={selectedTab === 'findDuo' ? 'auto' : 'none'}>
-            <TouchableOpacity
-              style={styles.headerAddButton}
-              onPress={() => hasCards ? setShowPostDuoCard(true) : setShowAddCard(true)}
-              activeOpacity={0.85}
+          <TouchableOpacity
+            style={styles.headerAddButton}
+            onPress={() => hasCards ? setShowPostDuoCard(true) : setShowAddCard(true)}
+            activeOpacity={0.85}
+          >
+            <LinearGradient
+              colors={['#C4A44E', '#8B6F2F']}
+              start={{ x: 0, y: 0 }}
+              end={{ x: 1, y: 1 }}
+              style={styles.headerAddButtonInner}
             >
-              <LinearGradient
-                colors={['#C4A44E', '#8B6F2F']}
-                start={{ x: 0, y: 0 }}
-                end={{ x: 1, y: 1 }}
-                style={styles.headerAddButtonInner}
-              >
-                <IconSymbol size={14} name="plus" color="#fff" />
-              </LinearGradient>
-            </TouchableOpacity>
-          </Animated.View>
+              <IconSymbol size={14} name="plus" color="#fff" />
+            </LinearGradient>
+          </TouchableOpacity>
           <TouchableOpacity
             style={styles.myCardsHeaderButton}
             onPress={() => setShowMyCards(true)}
@@ -1081,79 +886,8 @@ export default function DuoFinderScreen() {
         </View>
       </View>
 
-      {/* Tabs - Fixed at top */}
-      <View style={styles.tabsContainer}>
-        <TouchableOpacity
-          style={styles.tab}
-          onPress={() => handleTabPress('liveSearch')}
-          activeOpacity={0.7}
-        >
-          <ThemedText style={[styles.tabText, selectedTab === 'liveSearch' && styles.tabTextActive]}>
-            LIVE SEARCH
-          </ThemedText>
-        </TouchableOpacity>
-        <View style={styles.tabDivider} />
-        <TouchableOpacity
-          style={styles.tab}
-          onPress={() => handleTabPress('findDuo')}
-          activeOpacity={0.7}
-        >
-          <ThemedText style={[styles.tabText, selectedTab === 'findDuo' && styles.tabTextActive]}>
-            FIND DUO
-          </ThemedText>
-          <ThemedText style={[styles.tabCount, selectedTab === 'findDuo' && styles.tabCountActive]}>
-            {duoCards.length}
-          </ThemedText>
-        </TouchableOpacity>
-      </View>
-
-      {/* Swipeable Pages */}
-      <ScrollView
-        ref={pagerRef}
-        horizontal
-        pagingEnabled
-        showsHorizontalScrollIndicator={false}
-        onScroll={handlePageScroll}
-        scrollEventThrottle={16}
-        style={styles.pagerContainer}
-      >
-        {/* Live Search Page */}
-        <View style={[styles.pageContainer, { width: SCREEN_WIDTH }]}>
-        <ScrollView
-          style={styles.pageContainer}
-          showsVerticalScrollIndicator={false}
-          contentContainerStyle={styles.pageContent}
-        >
-          <View style={styles.findDuoContent}>
-            {matchState === 'searching' && searchGame ? (
-              <DuoSearchingAnimation game={searchGame} onCancel={cancelSearch} />
-            ) : matchState === 'matched' && matchedUserCard && searchGame ? (
-              <DuoMatchResult
-                game={searchGame}
-                matchedUser={matchedUserCard}
-                onViewProfile={handleMatchViewProfile}
-                onStartChat={handleMatchStartChat}
-                onSearchAgain={handleSearchAgain}
-              />
-            ) : (
-              <LiveSearchIdle
-                hasCards={hasCards}
-                valorantCard={valorantCard}
-                leagueCard={leagueCard}
-                searchGamePick={searchGamePick}
-                onPickGame={(game) => setSearchGamePick(game)}
-                onSearch={() => searchGamePick && startLiveSearch(searchGamePick)}
-                onCreateCard={() => setShowAddCard(true)}
-              />
-            )}
-          </View>
-          <View style={styles.bottomSpacer} />
-        </ScrollView>
-        </View>
-
-        {/* Find Duo Page */}
-        <View style={[styles.pageContainer, { width: SCREEN_WIDTH }]}>
-          <FlatList
+      {/* Find Duo Feed */}
+      <FlatList
             data={displayedPosts}
             keyExtractor={(item) => item.id}
             showsVerticalScrollIndicator={false}
@@ -1167,9 +901,53 @@ export default function DuoFinderScreen() {
               ) : null
             }
             ListHeaderComponent={
-              <View style={styles.sectionHeader}>
-                <View style={styles.sectionHeaderLeft}>
-                  <ThemedText style={styles.sectionHeaderTitle}>FEED</ThemedText>
+              <View>
+                {/* Live Search Banner */}
+                <TouchableOpacity
+                  style={styles.liveSearchBanner}
+                  onPress={() => router.push('/partyPages/liveSearch')}
+                  activeOpacity={0.9}
+                >
+                  <LinearGradient
+                    colors={['#1c1708', '#12100a', '#0f0f0f']}
+                    start={{ x: 0, y: 0 }}
+                    end={{ x: 1, y: 1 }}
+                    style={styles.liveSearchBannerGradient}
+                  >
+                    {/* Ambient glow */}
+                    <Animated.View style={[styles.liveSearchGlow, { opacity: pulseAnim }]} />
+
+                    {/* Scan line accent */}
+                    <View style={styles.liveSearchScanLine} />
+
+                    <View style={styles.liveSearchBannerContent}>
+                      {/* Left: Radar icon */}
+                      <View style={styles.liveSearchRadar}>
+                        <Animated.View style={[styles.liveSearchRadarRing, { opacity: pulseAnim, transform: [{ scale: pulseAnim.interpolate({ inputRange: [0.4, 1], outputRange: [0.85, 1.15] }) }] }]} />
+                        <View style={styles.liveSearchRadarDot} />
+                      </View>
+
+                      {/* Center: Text */}
+                      <View style={styles.liveSearchBannerText}>
+                        <View style={styles.liveSearchBannerTitleRow}>
+                          <ThemedText style={styles.liveSearchBannerTitle}>LIVE SEARCH</ThemedText>
+                        </View>
+                        <ThemedText style={styles.liveSearchBannerSubtitle}>
+                          Find your duo in real-time
+                        </ThemedText>
+                      </View>
+
+                      {/* Right: Arrow */}
+                      <View style={styles.liveSearchArrow}>
+                        <IconSymbol size={16} name="arrow.right" color="#D4A843" />
+                      </View>
+                    </View>
+                  </LinearGradient>
+                </TouchableOpacity>
+
+                <View style={styles.sectionHeader}>
+                  <View style={styles.sectionHeaderLeft}>
+                    <ThemedText style={styles.sectionHeaderTitle}>FEED</ThemedText>
                   <ThemedText style={styles.playerCount}>{duoPosts.length}</ThemedText>
                 </View>
                 <View style={styles.headerRightSection}>
@@ -1193,6 +971,7 @@ export default function DuoFinderScreen() {
                     )}
                   </TouchableOpacity>
                 </View>
+              </View>
               </View>
             }
             ListEmptyComponent={
@@ -1282,9 +1061,6 @@ export default function DuoFinderScreen() {
             }}
             ListFooterComponent={<View style={styles.bottomSpacer} />}
           />
-
-        </View>
-      </ScrollView>
 
       {/* My Cards Modal */}
       <Modal
@@ -1646,7 +1422,96 @@ const styles = StyleSheet.create({
   },
   feedContent: {
     paddingHorizontal: 16,
-    paddingTop: 4,
+    paddingTop: 20,
+  },
+  liveSearchBanner: {
+    borderRadius: 16,
+    overflow: 'hidden',
+    marginBottom: 20,
+    borderWidth: 1,
+    borderColor: 'rgba(212, 168, 67, 0.2)',
+  },
+  liveSearchBannerGradient: {
+    borderRadius: 15,
+    position: 'relative',
+    overflow: 'hidden',
+  },
+  liveSearchGlow: {
+    position: 'absolute',
+    top: -20,
+    left: -20,
+    width: 100,
+    height: 100,
+    borderRadius: 50,
+    backgroundColor: 'rgba(212, 168, 67, 0.08)',
+  },
+  liveSearchScanLine: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    height: 1,
+    backgroundColor: 'rgba(212, 168, 67, 0.15)',
+  },
+  liveSearchBannerContent: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 20,
+    paddingHorizontal: 18,
+    gap: 14,
+  },
+  liveSearchRadar: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    backgroundColor: 'rgba(212, 168, 67, 0.06)',
+    borderWidth: 1,
+    borderColor: 'rgba(212, 168, 67, 0.15)',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  liveSearchRadarRing: {
+    position: 'absolute',
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    borderWidth: 1.5,
+    borderColor: 'rgba(212, 168, 67, 0.25)',
+  },
+  liveSearchRadarDot: {
+    width: 10,
+    height: 10,
+    borderRadius: 5,
+    backgroundColor: '#D4A843',
+  },
+  liveSearchBannerText: {
+    flex: 1,
+  },
+  liveSearchBannerTitleRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    marginBottom: 3,
+  },
+  liveSearchBannerTitle: {
+    fontSize: 14,
+    fontWeight: '800',
+    color: '#D4A843',
+    letterSpacing: 1.5,
+  },
+  liveSearchBannerSubtitle: {
+    fontSize: 13,
+    color: '#777',
+  },
+  liveSearchArrow: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: 'rgba(212, 168, 67, 0.08)',
+    borderWidth: 1,
+    borderColor: 'rgba(212, 168, 67, 0.15)',
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   feedCardWrapper: {
     marginBottom: 4,

@@ -948,9 +948,10 @@ const styles = StyleSheet.create({
     padding: 4,
   },
   headerTitle: {
-    fontSize: 20,
+    fontSize: 18,
     fontWeight: '700',
     color: '#fff',
+    flexShrink: 1,
   },
   headerSpacer: {
     width: 60,

@@ -22,6 +22,7 @@ export interface RecentMatchResult {
   map?: string;
   score?: string;
   playedAt?: number; // Unix timestamp in milliseconds
+  placement?: number; // Player's rank out of 10 by combat score
   // League-specific fields
   champion?: string;
   championId?: number;
@@ -188,6 +189,14 @@ async function getValorantRecentMatches(userData: any): Promise<GetRecentMatches
       ? `${redRounds}-${blueRounds}`
       : `${blueRounds}-${redRounds}`;
 
+    // Calculate player's placement (rank out of 10 by combat score)
+    const sortedPlayers = [...match.players.all_players]
+      .sort((a, b) => (b.stats?.score ?? 0) - (a.stats?.score ?? 0));
+    const placementIndex = sortedPlayers.findIndex(
+      (p) => p.name?.toLowerCase() === gameName.toLowerCase() && String(p.tag).toLowerCase() === tag.toLowerCase()
+    );
+    const placement = placementIndex >= 0 ? placementIndex + 1 : undefined;
+
     return {
       won,
       agent: player.character,
@@ -197,6 +206,7 @@ async function getValorantRecentMatches(userData: any): Promise<GetRecentMatches
       map: match.metadata?.map,
       score,
       playedAt: match.metadata?.game_start,
+      placement,
     };
   });
 

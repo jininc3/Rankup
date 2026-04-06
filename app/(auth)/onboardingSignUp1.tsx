@@ -283,7 +283,7 @@ export default function OnboardingSignUp1() {
               onPress={() => setShowPreview(true)}
               activeOpacity={0.7}
             >
-              <IconSymbol size={16} name="eye.fill" color="#c42743" />
+              <IconSymbol size={16} name="eye.fill" color="#D4A843" />
               <ThemedText style={styles.previewButtonText}>Preview Profile</ThemedText>
             </TouchableOpacity>
 
@@ -451,7 +451,7 @@ const styles = StyleSheet.create({
   skipText: {
     fontSize: 14,
     fontWeight: '600',
-    color: '#c42743',
+    color: '#D4A843',
   },
   progressContainer: {
     paddingHorizontal: 24,
@@ -564,17 +564,17 @@ const styles = StyleSheet.create({
     paddingVertical: 14,
     borderRadius: 12,
     borderWidth: 1,
-    borderColor: '#c42743',
+    borderColor: '#D4A843',
     marginBottom: 16,
   },
   previewButtonText: {
     fontSize: 14,
     fontWeight: '600',
-    color: '#c42743',
+    color: '#D4A843',
   },
   // Continue button
   continueButton: {
-    backgroundColor: '#c42743',
+    backgroundColor: '#D4A843',
     paddingVertical: 16,
     borderRadius: 24,
     alignItems: 'center',

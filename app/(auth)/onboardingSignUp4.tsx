@@ -13,6 +13,7 @@ import {
   Alert,
   ActivityIndicator,
   Dimensions,
+  Modal,
 } from 'react-native';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { useAuth } from '@/contexts/AuthContext';
@@ -50,6 +51,29 @@ export default function OnboardingSignUp4() {
   const [caption, setCaption] = useState('');
   const [selectedGame, setSelectedGame] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
+  const [showPreview, setShowPreview] = useState(false);
+
+  // Get profile data from params
+  const username = params.username as string;
+  const avatarType = params.avatarType as string;
+  const avatarValue = params.avatarValue as string;
+  const bio = params.bio as string;
+  const discordLink = params.discordLink as string;
+  const instagramLink = params.instagramLink as string;
+  const coverPhotoUri = params.coverPhotoUri as string;
+
+  const getAvatarSource = () => {
+    if (avatarType === 'custom' && avatarValue) {
+      return { uri: avatarValue };
+    }
+    if (avatarType === 'default' && avatarValue) {
+      const index = parseInt(avatarValue, 10);
+      if (!isNaN(index) && index >= 0 && index < defaultAvatarAssets.length) {
+        return defaultAvatarAssets[index];
+      }
+    }
+    return null;
+  };
 
   const handleSelectVideo = async () => {
     const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
@@ -440,6 +464,16 @@ export default function OnboardingSignUp4() {
             </View>
           </View>
 
+          {/* Preview Profile Button */}
+          <TouchableOpacity
+            style={styles.previewButton}
+            onPress={() => setShowPreview(true)}
+            activeOpacity={0.7}
+          >
+            <IconSymbol size={16} name="eye.fill" color="#D4A843" />
+            <ThemedText style={styles.previewButtonText}>Preview Profile</ThemedText>
+          </TouchableOpacity>
+
           {/* Finish Button */}
           <TouchableOpacity
             style={[
@@ -459,6 +493,133 @@ export default function OnboardingSignUp4() {
           </TouchableOpacity>
         </View>
       </ScrollView>
+
+      {/* Profile Preview Modal */}
+      <Modal
+        visible={showPreview}
+        animationType="slide"
+        presentationStyle="pageSheet"
+        onRequestClose={() => setShowPreview(false)}
+      >
+        <View style={styles.previewModal}>
+          <View style={styles.previewHeader}>
+            <ThemedText style={styles.previewTitle}>Profile Preview</ThemedText>
+            <TouchableOpacity
+              style={styles.previewCloseButton}
+              onPress={() => setShowPreview(false)}
+            >
+              <IconSymbol size={24} name="xmark" color="#fff" />
+            </TouchableOpacity>
+          </View>
+
+          <ScrollView style={styles.previewContent} showsVerticalScrollIndicator={false}>
+            {/* Cover Photo */}
+            <View style={styles.previewCoverContainer}>
+              {coverPhotoUri ? (
+                <Image source={{ uri: coverPhotoUri }} style={styles.previewCoverImage} />
+              ) : (
+                <View style={styles.previewCoverPlaceholder} />
+              )}
+            </View>
+
+            {/* Profile Info */}
+            <View style={styles.previewProfileSection}>
+              {/* Avatar and Username Row */}
+              <View style={styles.previewUsernameRow}>
+                <ThemedText style={styles.previewUsername}>{username || 'username'}</ThemedText>
+                <View style={styles.previewAvatarContainer}>
+                  {getAvatarSource() ? (
+                    <Image source={getAvatarSource()!} style={styles.previewAvatar} />
+                  ) : (
+                    <View style={styles.previewAvatarPlaceholder}>
+                      <ThemedText style={styles.previewAvatarInitial}>
+                        {username?.[0]?.toUpperCase() || 'U'}
+                      </ThemedText>
+                    </View>
+                  )}
+                </View>
+              </View>
+
+              {/* Stats Row */}
+              <View style={styles.previewStatsRow}>
+                <View style={styles.previewStatItem}>
+                  <ThemedText style={styles.previewStatNumber}>0</ThemedText>
+                  <ThemedText style={styles.previewStatLabel}> Followers</ThemedText>
+                </View>
+                <View style={styles.previewStatDivider} />
+                <View style={styles.previewStatItem}>
+                  <ThemedText style={styles.previewStatNumber}>0</ThemedText>
+                  <ThemedText style={styles.previewStatLabel}> Following</ThemedText>
+                </View>
+              </View>
+
+              {/* Social Icons */}
+              <View style={styles.previewSocialRow}>
+                <View style={[styles.previewSocialIcon, !instagramLink && styles.previewSocialIconInactive]}>
+                  <Image
+                    source={require('@/assets/images/instagram.png')}
+                    style={styles.previewSocialImage}
+                    resizeMode="contain"
+                  />
+                </View>
+                <View style={[styles.previewSocialIcon, !discordLink && styles.previewSocialIconInactive]}>
+                  <Image
+                    source={require('@/assets/images/discord.png')}
+                    style={styles.previewSocialImage}
+                    resizeMode="contain"
+                  />
+                </View>
+                <View style={styles.previewSocialIcon}>
+                  <IconSymbol size={18} name="envelope.fill" color="#fff" />
+                </View>
+              </View>
+
+              {/* Bio */}
+              <View style={styles.previewBioSection}>
+                <ThemedText style={styles.previewBio}>
+                  {bio || 'No bio yet...'}
+                </ThemedText>
+              </View>
+
+              {/* Clips Section */}
+              <View style={styles.previewSection}>
+                <View style={styles.previewSectionHeader}>
+                  <IconSymbol size={16} name="play.fill" color="#fff" />
+                  <ThemedText style={styles.previewSectionTitle}>Clips</ThemedText>
+                </View>
+                {selectedVideo ? (
+                  <View style={styles.previewClipContainer}>
+                    <Video
+                      source={{ uri: selectedVideo.uri }}
+                      style={styles.previewClipVideo}
+                      useNativeControls
+                      resizeMode={ResizeMode.COVER}
+                      shouldPlay={false}
+                    />
+                    {selectedGame && (
+                      <View style={styles.previewClipGameTag}>
+                        <ThemedText style={styles.previewClipGameTagText}>
+                          {availableGames.find(g => g.id === selectedGame)?.name}
+                        </ThemedText>
+                      </View>
+                    )}
+                  </View>
+                ) : (
+                  <View style={styles.previewEmptyState}>
+                    <ThemedText style={styles.previewEmptyText}>No clips yet</ThemedText>
+                  </View>
+                )}
+              </View>
+            </View>
+          </ScrollView>
+
+          <View style={styles.previewFooter}>
+            <ThemedText style={styles.previewFooterText}>
+              This is how your profile will appear to others
+            </ThemedText>
+          </View>
+        </View>
+      </Modal>
 
       {/* Loading Overlay */}
       {loading && (
@@ -506,7 +667,7 @@ const styles = StyleSheet.create({
   skipText: {
     fontSize: 14,
     fontWeight: '600',
-    color: '#c42743',
+    color: '#D4A843',
   },
   progressContainer: {
     paddingHorizontal: 24,
@@ -647,8 +808,212 @@ const styles = StyleSheet.create({
   gameOptionTextSelected: {
     color: '#999',
   },
+  previewButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    paddingVertical: 14,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: '#D4A843',
+    marginBottom: 12,
+  },
+  previewButtonText: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#D4A843',
+  },
+  // Preview Modal
+  previewModal: {
+    flex: 1,
+    backgroundColor: '#0f0f0f',
+  },
+  previewHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingTop: 60,
+    paddingBottom: 16,
+    paddingHorizontal: 20,
+    borderBottomWidth: 1,
+    borderBottomColor: '#1a1a1a',
+  },
+  previewTitle: {
+    fontSize: 18,
+    fontWeight: '700',
+    color: '#fff',
+  },
+  previewCloseButton: {
+    padding: 4,
+  },
+  previewContent: {
+    flex: 1,
+  },
+  previewCoverContainer: {
+    width: '100%',
+    height: 180,
+  },
+  previewCoverImage: {
+    width: '100%',
+    height: '100%',
+  },
+  previewCoverPlaceholder: {
+    flex: 1,
+    backgroundColor: '#2c2f33',
+  },
+  previewProfileSection: {
+    paddingHorizontal: 20,
+  },
+  previewUsernameRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginTop: 16,
+    marginBottom: 8,
+  },
+  previewUsername: {
+    fontSize: 26,
+    fontWeight: '800',
+    color: '#fff',
+    letterSpacing: -0.5,
+  },
+  previewAvatarContainer: {
+    width: 56,
+    height: 56,
+    borderRadius: 28,
+    overflow: 'hidden',
+    borderWidth: 2,
+    borderColor: '#2c2f33',
+  },
+  previewAvatar: {
+    width: '100%',
+    height: '100%',
+  },
+  previewAvatarPlaceholder: {
+    flex: 1,
+    backgroundColor: '#36393e',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  previewAvatarInitial: {
+    fontSize: 22,
+    fontWeight: '700',
+    color: '#fff',
+  },
+  previewStatsRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 16,
+  },
+  previewStatItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  previewStatNumber: {
+    fontSize: 14,
+    fontWeight: '700',
+    color: '#fff',
+  },
+  previewStatLabel: {
+    fontSize: 14,
+    color: '#72767d',
+  },
+  previewStatDivider: {
+    width: 1,
+    height: 14,
+    backgroundColor: '#72767d',
+    marginHorizontal: 12,
+  },
+  previewSocialRow: {
+    flexDirection: 'row',
+    gap: 10,
+    marginBottom: 16,
+  },
+  previewSocialIcon: {
+    width: 34,
+    height: 34,
+    borderRadius: 8,
+    backgroundColor: '#2c2f33',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  previewSocialIconInactive: {
+    opacity: 0.4,
+  },
+  previewSocialImage: {
+    width: 18,
+    height: 18,
+  },
+  previewBioSection: {
+    marginBottom: 24,
+  },
+  previewBio: {
+    fontSize: 14,
+    color: '#b9bbbe',
+    lineHeight: 20,
+  },
+  previewSection: {
+    marginBottom: 20,
+  },
+  previewSectionHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    marginBottom: 12,
+  },
+  previewSectionTitle: {
+    fontSize: 16,
+    fontWeight: '700',
+    color: '#fff',
+  },
+  previewClipContainer: {
+    borderRadius: 12,
+    overflow: 'hidden',
+    backgroundColor: '#1a1a1a',
+  },
+  previewClipVideo: {
+    width: '100%',
+    height: (screenWidth - 40) * 0.5625,
+  },
+  previewClipGameTag: {
+    position: 'absolute',
+    top: 8,
+    left: 8,
+    backgroundColor: 'rgba(0, 0, 0, 0.7)',
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 6,
+  },
+  previewClipGameTagText: {
+    fontSize: 11,
+    fontWeight: '600',
+    color: '#fff',
+  },
+  previewEmptyState: {
+    backgroundColor: '#1a1a1a',
+    borderRadius: 12,
+    paddingVertical: 32,
+    alignItems: 'center',
+  },
+  previewEmptyText: {
+    fontSize: 13,
+    color: '#666',
+  },
+  previewFooter: {
+    paddingVertical: 16,
+    paddingHorizontal: 20,
+    borderTopWidth: 1,
+    borderTopColor: '#1a1a1a',
+    paddingBottom: 36,
+  },
+  previewFooterText: {
+    fontSize: 12,
+    color: '#666',
+    textAlign: 'center',
+  },
   finishButton: {
-    backgroundColor: '#c42743',
+    backgroundColor: '#D4A843',
     paddingVertical: 16,
     borderRadius: 24,
     alignItems: 'center',

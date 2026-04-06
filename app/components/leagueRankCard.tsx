@@ -35,6 +35,7 @@ interface Game {
   gamesPlayed?: number;
   peakRank?: { tier: string; season: string };
   topChampions?: { championId: number; championLevel: number; championPoints: number }[];
+  summonerLevel?: number;
 }
 
 interface LeagueRankCardProps {
@@ -80,6 +81,13 @@ export default function LeagueRankCard({ game, username, viewOnly = false, userI
   const stackCardOpacity = useRef(new Animated.Value(1)).current;
   const modalCardOpacity = useRef(new Animated.Value(1)).current;
   const dragY = useRef(new Animated.Value(0)).current;
+
+  // Prefetch profile icon so it loads instantly when card is flipped
+  useEffect(() => {
+    if (game.profileIconId) {
+      Image.prefetch(getProfileIconUrl(game.profileIconId));
+    }
+  }, [game.profileIconId]);
 
   // Shimmer animation loop
   useEffect(() => {
@@ -638,6 +646,11 @@ export default function LeagueRankCard({ game, username, viewOnly = false, userI
                     style={styles.backPlayerCard}
                   />
                   <View style={styles.profileGlow} />
+                  {game.summonerLevel != null && (
+                    <View style={styles.levelBadge}>
+                      <ThemedText style={styles.levelBadgeText}>{game.summonerLevel}</ThemedText>
+                    </View>
+                  )}
                 </View>
               ) : null}
               <ThemedText style={styles.backUsername}>{username}</ThemedText>
@@ -904,63 +917,84 @@ const styles = StyleSheet.create({
   crossLineGold: { position: 'absolute', width: 1, height: 300, backgroundColor: 'rgba(201, 168, 76, 0.04)', transform: [{ rotate: '45deg' }] },
   crossLineReverse: { position: 'absolute', width: 1, height: 300, backgroundColor: 'rgba(30, 100, 200, 0.06)', transform: [{ rotate: '-45deg' }] },
   crossLineReverseGold: { position: 'absolute', width: 1, height: 300, backgroundColor: 'rgba(201, 168, 76, 0.04)', transform: [{ rotate: '-45deg' }] },
-  cardBackContent: { flex: 1, padding: 16 },
+  cardBackContent: { flex: 1, paddingHorizontal: 16, paddingTop: 14, paddingBottom: 12 },
   techCornerTL: { position: 'absolute', top: 16, left: 16, width: 20, height: 20, borderTopWidth: 1.5, borderLeftWidth: 1.5, borderColor: 'rgba(30, 100, 200, 0.3)', borderTopLeftRadius: 3 },
   techCornerBR: { position: 'absolute', bottom: 16, right: 16, width: 20, height: 20, borderBottomWidth: 1.5, borderRightWidth: 1.5, borderColor: 'rgba(30, 100, 200, 0.3)', borderBottomRightRadius: 3 },
   heroHeader: {
-    flexDirection: 'row',
     alignItems: 'center',
+    justifyContent: 'center',
+    flex: 1,
   },
   heroProfileSection: {
     flexDirection: 'row',
     alignItems: 'center',
   },
   profileImageWrapper: { position: 'relative' },
-  backPlayerCard: { width: 24, height: 24, borderRadius: 4, borderWidth: 1, borderColor: 'rgba(255,255,255,0.5)' },
-  profileGlow: { position: 'absolute', top: -2, left: -2, right: -2, bottom: -2, borderRadius: 6, borderWidth: 1, borderColor: 'rgba(100,150,255,0.3)' },
-  backUsername: { fontSize: 9, color: '#fff', fontWeight: '700', letterSpacing: 0.5, textTransform: 'uppercase', marginLeft: 6 },
+  backPlayerCard: { width: 36, height: 36, borderRadius: 6, borderWidth: 1, borderColor: 'rgba(255,255,255,0.5)' },
+  profileGlow: { position: 'absolute', top: -2, left: -2, right: -2, bottom: -2, borderRadius: 8, borderWidth: 1, borderColor: 'rgba(100,150,255,0.3)' },
+  levelBadge: {
+    position: 'absolute',
+    bottom: -4,
+    right: -6,
+    backgroundColor: '#000',
+    borderRadius: 6,
+    borderWidth: 1,
+    borderColor: '#fff',
+    paddingHorizontal: 3,
+    height: 10,
+    justifyContent: 'center' as const,
+    minWidth: 14,
+    alignItems: 'center' as const,
+  },
+  levelBadgeText: {
+    fontSize: 5,
+    lineHeight: 10,
+    fontWeight: '800' as const,
+    color: '#fff',
+  },
+  backUsername: { fontSize: 12, color: '#fff', fontWeight: '700', letterSpacing: 0.5, textTransform: 'uppercase', marginLeft: 8 },
   ranksRow: {
-    flex: 1,
     flexDirection: 'row',
-    alignItems: 'center',
     justifyContent: 'center',
-    paddingHorizontal: 20,
-    marginTop: 20,
+    alignItems: 'stretch',
+    paddingHorizontal: 8,
+    paddingBottom: 8,
+    gap: 10,
   },
   rankBox: {
     flex: 1,
     alignItems: 'center',
-    justifyContent: 'center',
+    justifyContent: 'flex-start',
   },
   rankBoxLabel: {
-    fontSize: 10,
+    fontSize: 8,
     fontWeight: '800',
     color: 'rgba(255,255,255,0.5)',
     letterSpacing: 1,
-    marginBottom: 6,
+    marginBottom: 4,
   },
   rankBoxIcon: {
-    width: 64,
-    height: 64,
-    marginBottom: 6,
+    width: 52,
+    height: 52,
+    marginBottom: 3,
   },
   rankBoxName: {
-    fontSize: 13,
+    fontSize: 9,
     fontWeight: '700',
     color: '#fff',
     textAlign: 'center',
   },
   rankBoxSub: {
-    fontSize: 10,
+    fontSize: 7,
     fontWeight: '600',
     color: 'rgba(255,255,255,0.5)',
-    marginTop: 2,
+    marginTop: 1,
   },
   ranksDivider: {
     width: 1,
-    height: 80,
+    height: 40,
     backgroundColor: 'rgba(255,255,255,0.15)',
-    marginHorizontal: 16,
+    marginTop: 40,
   },
   modalOverlay: { ...StyleSheet.absoluteFillObject, zIndex: 1 },
   overlayBackground: { ...StyleSheet.absoluteFillObject, overflow: 'hidden' },

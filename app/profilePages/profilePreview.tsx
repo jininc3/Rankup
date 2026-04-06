@@ -154,6 +154,7 @@ export default function ProfilePreviewScreen() {
             winRate: riotStats.rankedSolo?.winRate || 0,
             recentMatches: ['+15', '-18', '+20', '+17', '-14'],
             profileIconId: riotStats.profileIconId,
+            summonerLevel: riotStats.summonerLevel,
           };
         }
         if (gameType === 'tft' && riotStats) {
@@ -183,6 +184,7 @@ export default function ProfilePreviewScreen() {
             losses: valorantStats.losses || 0,
             winRate: valorantStats.winRate || 0,
             recentMatches: ['+18', '+22', '-16', '+20', '-15'],
+            matchHistory: valorantStats.matchHistory || [],
             valorantCard: valorantStats.card?.small,
             peakRank: valorantStats.peakRank ? { tier: valorantStats.peakRank.tier, season: valorantStats.peakRank.season } : undefined,
             accountLevel: valorantStats.accountLevel,
@@ -430,21 +432,6 @@ export default function ProfilePreviewScreen() {
       <ScrollView showsVerticalScrollIndicator={false}>
         {/* Header Section */}
         <View style={styles.headerSection}>
-          {/* Top Header Icons */}
-          <View style={styles.headerIconsRow}>
-            <TouchableOpacity
-              style={styles.headerIconButton}
-              onPress={() => router.back()}
-              activeOpacity={0.7}
-            >
-              <IconSymbol size={20} name="chevron.left" color="#fff" />
-            </TouchableOpacity>
-            <View style={styles.headerUsernameOverlay} pointerEvents="none">
-              <ThemedText style={styles.headerUsername} numberOfLines={1}>{viewedUser?.username || 'User'}</ThemedText>
-            </View>
-            <View style={styles.headerIconsSpacer} />
-          </View>
-
           {/* Cover Photo Area */}
           <View style={styles.coverPhotoWrapper}>
             {viewedUser?.coverPhoto ? (
@@ -462,12 +449,24 @@ export default function ProfilePreviewScreen() {
             )}
             {/* Bottom fade */}
             <LinearGradient
-              colors={['transparent', 'rgba(15, 15, 15, 0.4)', 'rgba(15, 15, 15, 0.85)', '#0f0f0f']}
-              locations={[0, 0.4, 0.75, 1]}
+              colors={['transparent', 'rgba(15, 15, 15, 0.15)', 'rgba(15, 15, 15, 0.45)', 'rgba(15, 15, 15, 0.75)', '#0f0f0f']}
+              locations={[0, 0.25, 0.5, 0.75, 1]}
               start={{ x: 0, y: 0 }}
               end={{ x: 0, y: 1 }}
               style={styles.coverPhotoFadeBottom}
             />
+
+            {/* Header Icons overlaid on cover photo */}
+            <View style={styles.headerIconsRow}>
+              <TouchableOpacity
+                style={styles.headerIconButton}
+                onPress={() => router.back()}
+                activeOpacity={0.7}
+              >
+                <IconSymbol size={20} name="chevron.left" color="#fff" />
+              </TouchableOpacity>
+              <View style={styles.headerIconsSpacer} />
+            </View>
           </View>
 
           {/* Profile Info Section - overlaps cover photo */}
@@ -519,6 +518,9 @@ export default function ProfilePreviewScreen() {
                 </View>
               </View>
             </View>
+
+            {/* Username below avatar */}
+            <ThemedText style={styles.profileUsername} numberOfLines={1}>{viewedUser?.username || 'User'}</ThemedText>
 
             {/* Bio */}
             {viewedUser?.bio && (
@@ -601,7 +603,6 @@ export default function ProfilePreviewScreen() {
             >
               <ThemedText style={[styles.tabText, activeTab === 'clips' && styles.tabTextActive]}>CLIPS</ThemedText>
             </TouchableOpacity>
-            <View style={styles.tabDivider} />
             <TouchableOpacity
               style={styles.tabItem}
               onPress={() => scrollToTab('rankCards')}
@@ -609,7 +610,6 @@ export default function ProfilePreviewScreen() {
             >
               <ThemedText style={[styles.tabText, activeTab === 'rankCards' && styles.tabTextActive]}>RANKS</ThemedText>
             </TouchableOpacity>
-            <View style={styles.tabDivider} />
             <TouchableOpacity
               style={styles.tabItem}
               onPress={() => scrollToTab('achievements')}
@@ -828,36 +828,28 @@ const styles = StyleSheet.create({
   },
   headerSection: {
     backgroundColor: '#0f0f0f',
-    paddingTop: 50,
   },
+  // Header icons row - overlaid on cover photo
   headerIconsRow: {
+    position: 'absolute',
+    top: 50,
+    left: 0,
+    right: 0,
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
     paddingHorizontal: 16,
-    paddingBottom: 12,
+    zIndex: 10,
   },
   headerIconsSpacer: {
     flex: 1,
-  },
-  headerUsernameOverlay: {
-    position: 'absolute',
-    left: 0,
-    right: 0,
-    alignItems: 'center',
-  },
-  headerUsername: {
-    fontSize: 22,
-    fontWeight: '800',
-    color: '#fff',
-    textAlign: 'center',
-    letterSpacing: -0.5,
   },
   headerIconButton: {
     padding: 6,
     alignItems: 'center',
     justifyContent: 'center',
   },
+  // Cover photo area - reaches top of screen
   coverPhotoWrapper: {
     width: '100%',
     height: 180,
@@ -870,7 +862,7 @@ const styles = StyleSheet.create({
     left: 0,
     width: '100%',
     height: '100%',
-    opacity: 0.6,
+    opacity: 0.8,
   },
   coverPhotoGradient: {
     width: '100%',
@@ -881,7 +873,7 @@ const styles = StyleSheet.create({
     bottom: 0,
     left: 0,
     right: 0,
-    height: 80,
+    height: '60%',
     zIndex: 1,
   },
   // Profile info section below cover
@@ -889,6 +881,14 @@ const styles = StyleSheet.create({
     marginTop: -32,
     paddingHorizontal: 20,
     zIndex: 3,
+  },
+  profileUsername: {
+    fontSize: 26,
+    fontWeight: '800',
+    color: '#fff',
+    letterSpacing: -0.5,
+    marginTop: 10,
+    marginBottom: 2,
   },
   avatarStatsRow: {
     flexDirection: 'row',
@@ -927,7 +927,7 @@ const styles = StyleSheet.create({
   statsColumns: {
     flexDirection: 'row',
     flex: 1,
-    justifyContent: 'space-around',
+    justifyContent: 'space-evenly',
     paddingBottom: 6,
   },
   statColumn: {
@@ -1005,25 +1005,21 @@ const styles = StyleSheet.create({
   tabBar: {
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'center',
-    paddingHorizontal: 20,
     paddingTop: 12,
     paddingBottom: 8,
-    gap: 16,
   },
   tabItem: {
-    paddingVertical: 6,
-  },
-  tabDivider: {
-    width: 1,
-    height: 16,
-    backgroundColor: '#333',
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 8,
   },
   tabText: {
-    fontSize: 16,
+    fontSize: 13,
     fontWeight: '600',
     color: '#555',
     letterSpacing: 0.5,
+    textAlign: 'center',
   },
   tabTextActive: {
     color: '#fff',

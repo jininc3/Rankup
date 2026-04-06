@@ -15,6 +15,7 @@ export interface UserProfile {
   id: string;
   email: string;
   username: string;
+  usernameLower?: string;
   avatar?: string;
   coverPhoto?: string;
   bio?: string;
@@ -38,23 +39,21 @@ export async function signUpWithEmail(
   username: string
 ): Promise<UserProfile> {
   try {
-    // Normalize username to lowercase
-    const normalizedUsername = username.toLowerCase();
-
     // Create user in Firebase Auth
     const userCredential = await createUserWithEmailAndPassword(auth, email, password);
     const user = userCredential.user;
 
     // Update display name
     await updateProfile(user, {
-      displayName: normalizedUsername,
+      displayName: username,
     });
 
     // Create user profile in Firestore
     const userProfile: UserProfile = {
       id: user.uid,
       email: user.email!,
-      username: normalizedUsername,
+      username: username,
+      usernameLower: username.toLowerCase(),
       bio: '',
       discordLink: '',
       instagramLink: '',
@@ -95,6 +94,7 @@ export async function signInWithEmail(
         id: user.uid,
         email: user.email!,
         username: user.displayName || user.email!.split('@')[0],
+        usernameLower: (user.displayName || user.email!.split('@')[0]).toLowerCase(),
         bio: '',
         discordLink: '',
         instagramLink: '',
@@ -138,6 +138,7 @@ export async function signInWithGoogleCredential(idToken: string): Promise<UserP
         id: user.uid,
         email: user.email!,
         username: user.displayName || user.email!.split('@')[0],
+        usernameLower: (user.displayName || user.email!.split('@')[0]).toLowerCase(),
         bio: '',
         discordLink: '',
         instagramLink: '',
@@ -240,10 +241,9 @@ export async function updateUserProfile(
   try {
     const userRef = doc(db, 'users', userId);
 
-    // Normalize username to lowercase if provided
-    const updateData = { ...data };
+    const updateData: Record<string, any> = { ...data };
     if (updateData.username) {
-      updateData.username = updateData.username.toLowerCase();
+      updateData.usernameLower = updateData.username.toLowerCase();
     }
 
     await updateDoc(userRef, {

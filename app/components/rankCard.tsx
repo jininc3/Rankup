@@ -16,11 +16,13 @@ interface Game {
   // League-specific fields
   topChampions?: { championId: number; championLevel: number; championPoints: number }[];
   // Valorant-specific fields
+  matchHistory?: { matchId: string; agent: string; kills: number; deaths: number; assists: number; won: boolean; map: string; gameStart: number; score: string; placement?: number }[];
   valorantCard?: string;
   peakRank?: { tier: string; season: string };
   gamesPlayed?: number;
   mmr?: number;
   accountLevel?: number;
+  summonerLevel?: number;
   mostPlayedAgent?: string;
 }
 

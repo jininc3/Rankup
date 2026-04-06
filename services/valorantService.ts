@@ -13,6 +13,7 @@ export interface MatchHistoryEntry {
   gameStart: number; // Unix timestamp in seconds
   playedAt?: number; // Unix timestamp in milliseconds
   score: string; // e.g., "13-7"
+  placement?: number; // Player's rank out of 10 by combat score
 }
 
 // Types for Valorant stats (Henrik's API)

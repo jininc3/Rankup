@@ -75,7 +75,7 @@ export default function EmailSignUpStep3() {
       const user = await signUpWithEmail(
         email.trim(),
         password,
-        (username as string).toLowerCase()
+        username as string
       );
 
       // Save date of birth and avatar to Firestore

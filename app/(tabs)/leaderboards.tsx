@@ -1,15 +1,13 @@
-import LeaderboardCard from '@/app/components/leaderboardCard';
-import { LinearGradient } from 'expo-linear-gradient';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { IconSymbol } from '@/components/ui/icon-symbol';
-import { LeaderboardCardSkeleton, LeaderboardsTabSkeleton } from '@/components/ui/Skeleton';
+import { LeaderboardsTabSkeleton } from '@/components/ui/Skeleton';
 import { db } from '@/config/firebase';
 import { useAuth } from '@/contexts/AuthContext';
 import { useRouter } from 'expo-router';
-import { collection, doc, getDoc, getDocs, onSnapshot, query, where } from 'firebase/firestore';
-import { useEffect, useState, useRef } from 'react';
-import { Dimensions, Image, Modal, ScrollView, StyleSheet, TouchableOpacity, View } from 'react-native';
+import { collection, doc, getDoc, getDocs, query } from 'firebase/firestore';
+import { useEffect, useState } from 'react';
+import { Image, Modal, ScrollView, StyleSheet, TouchableOpacity, View } from 'react-native';
 
 // League of Legends rank icon mapping
 const LEAGUE_RANK_ICONS: { [key: string]: any } = {
@@ -118,9 +116,6 @@ const getValorantRankValue = (currentRank: string, rr: number): number => {
   return tierValue * 1000 + divisionValue * 100 + rr;
 };
 
-const { width: SCREEN_WIDTH } = Dimensions.get('window');
-
-const MINIMUM_SKELETON_TIME = 800;
 
 interface MutualPlayer {
   userId: string;
@@ -135,203 +130,13 @@ interface MutualPlayer {
 export default function LeaderboardScreen() {
   const router = useRouter();
   const { user } = useAuth();
-  const [leaderboards, setLeaderboards] = useState<any[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [selectedTab, setSelectedTab] = useState<'myLeaderboards' | 'leaderboards'>('myLeaderboards');
-  const [showCreateModal, setShowCreateModal] = useState(false);
-  const pagerRef = useRef<ScrollView>(null);
   const [mutualIds, setMutualIds] = useState<Set<string>>(new Set());
-  const skeletonStartTime = useRef<number>(Date.now());
   const [leaguePlayers, setLeaguePlayers] = useState<MutualPlayer[]>([]);
   const [valorantPlayers, setValorantPlayers] = useState<MutualPlayer[]>([]);
   const [mutualLoading, setMutualLoading] = useState(true);
   const [selectedMutualGame, setSelectedMutualGame] = useState<'league' | 'valorant'>('league');
   const [showGameDropdown, setShowGameDropdown] = useState(false);
 
-  // Handle tab press - scroll to page
-  const handleTabPress = (tab: 'myLeaderboards' | 'leaderboards') => {
-    setSelectedTab(tab);
-    const pageIndex = tab === 'myLeaderboards' ? 0 : 1;
-    pagerRef.current?.scrollTo({ x: pageIndex * SCREEN_WIDTH, animated: true });
-  };
-
-  // Handle swipe - update selected tab in real-time
-  const handlePageScroll = (event: any) => {
-    const offsetX = event.nativeEvent.contentOffset.x;
-    const progress = offsetX / SCREEN_WIDTH;
-    const newTab = progress >= 0.5 ? 'leaderboards' : 'myLeaderboards';
-    if (newTab !== selectedTab) {
-      setSelectedTab(newTab);
-    }
-  };
-
-  // Fetch leaderboards from Firestore
-  useEffect(() => {
-    if (!user?.id) {
-      setLoading(false);
-      return;
-    }
-
-    const partiesRef = collection(db, 'parties');
-    const partiesQuery = query(partiesRef, where('members', 'array-contains', user.id));
-
-    const unsubscribe = onSnapshot(partiesQuery, (snapshot) => {
-      setLeaderboards((prev) => {
-        return snapshot.docs
-          .map((docSnapshot) => {
-            const data = docSnapshot.data();
-            const docId = docSnapshot.id;
-            // Only include leaderboard-type entries
-            if (data.type === 'party') return null;
-
-            const existing = prev.find(p => p.id === docId);
-
-            return {
-              id: docId,
-              name: data.partyName,
-              game: data.game,
-              members: data.members?.length || 0,
-              maxMembers: data.maxMembers || 10,
-              memberIds: data.members || [],
-              memberDetails: data.memberDetails || [],
-              description: `Created on ${data.startDate}`,
-              icon: data.game === 'Valorant' ? '🎯' : data.game === 'League of Legends' ? '💎' : '🎮',
-              userRank: existing?.userRank ?? null,
-              isJoined: true,
-              players: existing?.players || [],
-              startDate: data.startDate,
-              endDate: data.endDate,
-              type: data.type || 'leaderboard',
-              coverPhoto: data.coverPhoto || null,
-              partyIcon: data.partyIcon || null,
-              partyId: data.partyId || docId,
-              challengeStatus: data.challengeStatus || 'active',
-              challengeParticipants: data.challengeParticipants || [],
-            };
-          })
-          .filter(Boolean);
-      });
-
-      const elapsedTime = Date.now() - skeletonStartTime.current;
-      const remainingTime = Math.max(0, MINIMUM_SKELETON_TIME - elapsedTime);
-      setTimeout(() => {
-        setLoading(false);
-      }, remainingTime);
-    });
-
-    return () => unsubscribe();
-  }, [user?.id]);
-
-  // Calculate user's rank in each leaderboard
-  useEffect(() => {
-    if (!user?.id || leaderboards.length === 0) return;
-
-    const calculateRanks = async () => {
-      const updated = await Promise.all(
-        leaderboards.map(async (lb) => {
-          try {
-            if (!lb.id) return lb;
-
-            const partyDocRef = doc(db, 'parties', lb.id);
-            const partySnapshot = await getDoc(partyDocRef);
-
-            if (!partySnapshot.exists() || !partySnapshot.data().memberDetails) {
-              return lb;
-            }
-
-            const partyData = partySnapshot.data();
-            const memberDetails = partyData.memberDetails;
-            const isLeague = lb.game === 'League of Legends';
-            const gameStatsPath = isLeague ? 'league' : 'valorant';
-
-            const memberStatsPromises = memberDetails.map(async (member: any) => {
-              const gameStatsDoc = await getDoc(doc(db, 'users', member.userId, 'gameStats', gameStatsPath));
-              let stats = gameStatsDoc.data();
-
-              if (!stats || !stats.currentRank) {
-                const userDoc = await getDoc(doc(db, 'users', member.userId));
-                const userData = userDoc.data();
-
-                if (isLeague && userData?.riotStats?.rankedSolo) {
-                  stats = {
-                    currentRank: `${userData.riotStats.rankedSolo.tier} ${userData.riotStats.rankedSolo.rank}`,
-                    lp: userData.riotStats.rankedSolo.leaguePoints || 0,
-                  };
-                } else if (!isLeague && userData?.valorantStats) {
-                  stats = {
-                    currentRank: userData.valorantStats.currentRank || 'Unranked',
-                    rr: userData.valorantStats.rankRating || 0,
-                  };
-                }
-              }
-
-              return {
-                userId: member.userId,
-                currentRank: stats?.currentRank || 'Unranked',
-                lp: stats?.lp || 0,
-                rr: stats?.rr || 0,
-              };
-            });
-
-            const allMemberStats = await Promise.all(memberStatsPromises);
-
-            // When challenge is active, rank only among challenge participants
-            const challengeParticipants: string[] = partyData.challengeParticipants || [];
-            const isActiveChallenge = partyData.challengeStatus === 'active' && challengeParticipants.length > 0;
-
-            const memberStats = isActiveChallenge
-              ? allMemberStats.filter(m => challengeParticipants.includes(m.userId))
-              : allMemberStats;
-
-            memberStats.sort((a, b) => {
-              if (isLeague) {
-                return getLeagueRankValue(b.currentRank, b.lp) - getLeagueRankValue(a.currentRank, a.lp);
-              } else {
-                return getValorantRankValue(b.currentRank, b.rr) - getValorantRankValue(a.currentRank, a.rr);
-              }
-            });
-
-            const userRank = memberStats.findIndex(m => m.userId === user.id) + 1;
-
-            const topPlayers = await Promise.all(
-              memberStats.slice(0, 3).map(async (member) => {
-                try {
-                  const userDoc = await getDoc(doc(db, 'users', member.userId));
-                  const userData = userDoc.data();
-                  return {
-                    odId: member.userId,
-                    displayName: userData?.displayName || userData?.username || 'User',
-                    username: userData?.username || '',
-                    photoUrl: userData?.avatar || null,
-                  };
-                } catch {
-                  return {
-                    odId: member.userId,
-                    displayName: 'User',
-                    username: '',
-                    photoUrl: null,
-                  };
-                }
-              })
-            );
-
-            return {
-              ...lb,
-              userRank: userRank > 0 ? userRank : null,
-              players: topPlayers,
-            };
-          } catch (error) {
-            console.error(`Error calculating rank for leaderboard ${lb.partyId}:`, error);
-            return lb;
-          }
-        })
-      );
-
-      setLeaderboards(updated);
-    };
-
-    calculateRanks();
-  }, [leaderboards.length, user?.id]);
 
   // Fetch mutual follower IDs and their game stats
   useEffect(() => {
@@ -437,37 +242,6 @@ export default function LeaderboardScreen() {
     fetchMutualsAndStats();
   }, [user?.id]);
 
-  const handleLeaderboardPress = (leaderboard: any) => {
-    if (leaderboard.challengeStatus === 'completed') {
-      router.push({
-        pathname: '/partyPages/leaderboardResults',
-        params: {
-          name: leaderboard.name,
-          icon: leaderboard.icon,
-          game: leaderboard.game,
-          members: leaderboard.members.toString(),
-          id: leaderboard.id,
-          startDate: leaderboard.startDate,
-          endDate: leaderboard.endDate,
-        },
-      });
-    } else {
-      router.push({
-        pathname: '/partyPages/leaderboardDetail',
-        params: {
-          name: leaderboard.name,
-          icon: leaderboard.icon,
-          game: leaderboard.game,
-          members: leaderboard.members.toString(),
-          players: JSON.stringify(leaderboard.players),
-          id: leaderboard.id,
-          startDate: leaderboard.startDate,
-          endDate: leaderboard.endDate,
-        },
-      });
-    }
-  };
-
   const getBorderColor = (rank: number) => {
     if (rank === 1) return '#FFD700';
     if (rank === 2) return '#C0C0C0';
@@ -555,10 +329,10 @@ export default function LeaderboardScreen() {
                   <Image source={rankIcon} style={styles.rankIconSmall} resizeMode="contain" />
                   <View style={styles.rankTextContainer}>
                     <ThemedText style={styles.currentRankText}>
-                      {player.currentRank}
-                    </ThemedText>
-                    <ThemedText style={styles.rankPointsText}>
-                      {isLeague ? `${player.lp || 0} lp` : `${player.rr || 0} rr`}
+                      {player.currentRank}{' '}
+                      <ThemedText style={styles.rankPointsText}>
+                        {isLeague ? `(${player.lp || 0} LP)` : `(${player.rr || 0} RR)`}
+                      </ThemedText>
                     </ThemedText>
                   </View>
                 </View>
@@ -574,163 +348,55 @@ export default function LeaderboardScreen() {
     <ThemedView style={styles.container}>
       <View style={styles.header}>
         <ThemedText style={styles.headerTitle}>Leaderboards</ThemedText>
-        <TouchableOpacity
-          style={styles.createButton}
-          onPress={() => setShowCreateModal(true)}
-          activeOpacity={0.85}
-        >
-          <LinearGradient
-            colors={['#C4A44E', '#8B6F2F']}
-            start={{ x: 0, y: 0 }}
-            end={{ x: 1, y: 1 }}
-            style={styles.createButtonInner}
-          >
-            <IconSymbol size={20} name="plus" color="#fff" />
-          </LinearGradient>
-        </TouchableOpacity>
-      </View>
-      {/* Tabs */}
-      <View style={styles.tabsContainer}>
-        <TouchableOpacity
-          style={styles.tab}
-          onPress={() => handleTabPress('myLeaderboards')}
-          activeOpacity={0.7}
-        >
-          <ThemedText style={[styles.tabText, selectedTab === 'myLeaderboards' && styles.tabTextActive]}>
-            LEADERBOARDS
-          </ThemedText>
-        </TouchableOpacity>
-        <View style={styles.tabDivider} />
-        <TouchableOpacity
-          style={styles.tab}
-          onPress={() => handleTabPress('leaderboards')}
-          activeOpacity={0.7}
-        >
-          <ThemedText style={[styles.tabText, selectedTab === 'leaderboards' && styles.tabTextActive]}>
-            MY LEADERBOARDS
-          </ThemedText>
-          <ThemedText style={[styles.tabCount, selectedTab === 'leaderboards' && styles.tabCountActive]}>
-            {loading ? '-' : leaderboards.length}
-          </ThemedText>
-        </TouchableOpacity>
+        <View style={{ width: 36 }} />
       </View>
 
-      {/* Swipeable Pages */}
       <ScrollView
-        ref={pagerRef}
-        horizontal
-        pagingEnabled
-        showsHorizontalScrollIndicator={false}
-        onScroll={handlePageScroll}
-        scrollEventThrottle={16}
-        style={styles.pagerContainer}
+        showsVerticalScrollIndicator={false}
+        contentContainerStyle={styles.pageContent}
       >
-        {/* Leaderboards Page (mutual followers) */}
-        <ScrollView
-          style={[styles.pageContainer, { width: SCREEN_WIDTH }]}
-          showsVerticalScrollIndicator={false}
-          contentContainerStyle={styles.pageContent}
-        >
-          {/* Spacer where game filters used to be */}
-          <View style={{ height: 10 }} />
-
-          {mutualLoading ? (
-            <LeaderboardsTabSkeleton />
-          ) : leaguePlayers.length + valorantPlayers.length === 0 ? (
-            <View style={styles.emptyState}>
-              <ThemedText style={styles.emptyStateText}>No friends to rank</ThemedText>
-              <ThemedText style={styles.emptyStateSubtext}>
-                Follow users who follow you back to see mutual rankings
-              </ThemedText>
-            </View>
-          ) : (
-            <View>
-              {(() => {
-                const activePlayers = selectedMutualGame === 'league' ? leaguePlayers : valorantPlayers;
-                const fallbackGame = selectedMutualGame === 'league' ? 'valorant' : 'league';
-                const fallbackPlayers = selectedMutualGame === 'league' ? valorantPlayers : leaguePlayers;
-                if (activePlayers.length > 0) {
-                  return renderMutualLeaderboard(activePlayers, selectedMutualGame);
-                }
-                return renderMutualLeaderboard(fallbackPlayers, fallbackGame);
-              })()}
-            </View>
-          )}
-          <View style={styles.bottomSpacer} />
-        </ScrollView>
-
-        {/* My Leaderboards Page (competitive) */}
-        <ScrollView
-          style={[styles.pageContainer, { width: SCREEN_WIDTH }]}
-          showsVerticalScrollIndicator={false}
-          contentContainerStyle={styles.pageContent}
-        >
-          {loading ? (
-            <View>
-              {[1, 2, 3].map((i) => (
-                <LeaderboardCardSkeleton key={i} />
-              ))}
-            </View>
-          ) : leaderboards.length > 0 ? (
-            <View>
-              {leaderboards.map((leaderboard, index) => (
-                <LeaderboardCard
-                  key={leaderboard.id}
-                  leaderboard={leaderboard}
-                  onPress={handleLeaderboardPress}
-                  showDivider={index < leaderboards.length - 1}
-                />
-              ))}
-            </View>
-          ) : (
-            <View style={styles.emptyState}>
-              <ThemedText style={styles.emptyStateText}>No leaderboards yet</ThemedText>
-              <ThemedText style={styles.emptyStateSubtext}>
-                Create a leaderboard to compete with friends
-              </ThemedText>
-            </View>
-          )}
-          <View style={styles.bottomSpacer} />
-        </ScrollView>
-      </ScrollView>
-
-      {/* Create Modal */}
-      <Modal
-        visible={showCreateModal}
-        transparent
-        animationType="slide"
-        onRequestClose={() => setShowCreateModal(false)}
-      >
+        {/* Lobbies Banner */}
         <TouchableOpacity
-          style={styles.modalOverlay}
-          activeOpacity={1}
-          onPress={() => setShowCreateModal(false)}
+          style={styles.lobbiesBanner}
+          onPress={() => router.push('/partyPages/lobbies')}
+          activeOpacity={0.8}
         >
-          <View style={styles.modalContent}>
-            <View style={styles.modalHandle} />
-            <ThemedText style={styles.modalTitle}>CREATE</ThemedText>
-            <View style={styles.modalDivider} />
-
-            {/* Leaderboard Option */}
-            <TouchableOpacity
-              style={styles.modalOption}
-              onPress={() => {
-                setShowCreateModal(false);
-                router.push('/partyPages/createLeaderboard');
-              }}
-              activeOpacity={0.7}
-            >
-              <View style={styles.modalOptionIcon}>
-                <IconSymbol size={22} name="trophy.fill" color="#fff" />
-              </View>
-              <View style={styles.modalOptionText}>
-                <ThemedText style={styles.modalOptionTitle}>LEADERBOARD</ThemedText>
-                <ThemedText style={styles.modalOptionSubtitle}>Compete with friends for rankings</ThemedText>
-              </View>
-            </TouchableOpacity>
+          <View style={styles.lobbiesBannerContent}>
+            <View style={styles.lobbiesBannerIcon}>
+              <IconSymbol size={20} name="trophy.fill" color="#D4A843" />
+            </View>
+            <View style={styles.lobbiesBannerText}>
+              <ThemedText style={styles.lobbiesBannerTitle}>Lobbies</ThemedText>
+              <ThemedText style={styles.lobbiesBannerSubtitle}>Compete with friends in leaderboards</ThemedText>
+            </View>
+            <IconSymbol size={18} name="chevron.right" color="#555" />
           </View>
         </TouchableOpacity>
-      </Modal>
+
+        {mutualLoading ? (
+          <LeaderboardsTabSkeleton />
+        ) : leaguePlayers.length + valorantPlayers.length === 0 ? (
+          <View style={styles.emptyState}>
+            <ThemedText style={styles.emptyStateText}>No friends to rank</ThemedText>
+            <ThemedText style={styles.emptyStateSubtext}>
+              Follow users who follow you back to see mutual rankings
+            </ThemedText>
+          </View>
+        ) : (
+          <View>
+            {(() => {
+              const activePlayers = selectedMutualGame === 'league' ? leaguePlayers : valorantPlayers;
+              const fallbackGame = selectedMutualGame === 'league' ? 'valorant' : 'league';
+              const fallbackPlayers = selectedMutualGame === 'league' ? valorantPlayers : leaguePlayers;
+              if (activePlayers.length > 0) {
+                return renderMutualLeaderboard(activePlayers, selectedMutualGame);
+              }
+              return renderMutualLeaderboard(fallbackPlayers, fallbackGame);
+            })()}
+          </View>
+        )}
+        <View style={styles.bottomSpacer} />
+      </ScrollView>
 
       {/* Game Switcher Modal */}
       <Modal
@@ -829,12 +495,47 @@ const styles = StyleSheet.create({
   },
   pageContent: {
     paddingHorizontal: 16,
-    paddingTop: 16,
+    paddingTop: 20,
+  },
+  lobbiesBanner: {
+    backgroundColor: '#1a1a1a',
+    borderRadius: 14,
+    marginBottom: 16,
+    borderWidth: 1,
+    borderColor: '#2a2a2a',
+  },
+  lobbiesBannerContent: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 18,
+    paddingHorizontal: 16,
+    gap: 12,
+  },
+  lobbiesBannerIcon: {
+    width: 40,
+    height: 40,
+    borderRadius: 12,
+    backgroundColor: '#252525',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  lobbiesBannerText: {
+    flex: 1,
+  },
+  lobbiesBannerTitle: {
+    fontSize: 16,
+    fontWeight: '700',
+    color: '#bbb',
+  },
+  lobbiesBannerSubtitle: {
+    fontSize: 12,
+    color: '#666',
+    marginTop: 2,
   },
   cardsContainer: {
     backgroundColor: '#1a1a1a',
     borderRadius: 16,
-    paddingHorizontal: 16,
+    paddingHorizontal: 8,
     paddingVertical: 8,
     minHeight: '95%',
   },
@@ -1032,7 +733,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 8,
-    width: 130,
+    width: 145,
     marginLeft: 'auto',
   },
   rankIconSmall: {

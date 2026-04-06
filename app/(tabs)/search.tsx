@@ -1,7 +1,7 @@
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { IconSymbol } from '@/components/ui/icon-symbol';
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { ScrollView, StyleSheet, TextInput, TouchableOpacity, View, Image } from 'react-native';
 import { useRouter } from 'expo-router';
 import { collection, query, where, getDocs, orderBy, limit, doc, setDoc, deleteDoc, getDoc, Timestamp } from 'firebase/firestore';
@@ -439,6 +439,21 @@ export default function SearchScreen() {
       console.error('Error removing from history:', error);
     }
   };
+
+  // Reset search state when user changes (e.g. sign out → sign in with different account)
+  const prevUserIdRef = useRef<string | undefined>(currentUser?.id);
+  useEffect(() => {
+    if (currentUser?.id && currentUser.id !== prevUserIdRef.current) {
+      setSearchQuery('');
+      setSearchResults([]);
+      setSearchHistory([]);
+      setHasConsumedPreload(false);
+      setLoadingHistory(true);
+      setShowResults(false);
+      setShowHistory(false);
+    }
+    prevUserIdRef.current = currentUser?.id;
+  }, [currentUser?.id]);
 
   // Consume preloaded search history from AuthContext (loaded during loading screen)
   useEffect(() => {

@@ -214,6 +214,7 @@ export default function ProfileScreen() {
             recentMatches: ['+15', '-18', '+20', '+17', '-14'],
             profileIconId: riotStats.profileIconId,
             topChampions: riotStats.topChampions || [],
+            summonerLevel: riotStats.summonerLevel,
           };
         }
         // TFT (Placeholder - TODO: Implement TFT API)
@@ -269,7 +270,25 @@ export default function ProfileScreen() {
       const userDoc = await getDoc(doc(db, 'users', user.id));
       if (userDoc.exists()) {
         const data = userDoc.data();
-        setEnabledRankCards(data.enabledRankCards || []);
+        const cards = data.enabledRankCards || [];
+        let updatedCards = [...cards];
+        if (data.riotAccount && !updatedCards.includes('league')) {
+          updatedCards.push('league');
+        }
+        if (data.valorantAccount && !updatedCards.includes('valorant')) {
+          updatedCards.push('valorant');
+        }
+        // Remove cards for unlinked accounts
+        if (!data.riotAccount) {
+          updatedCards = updatedCards.filter(c => c !== 'league' && c !== 'tft');
+          setRiotAccount(null);
+          setRiotStats(null);
+        }
+        if (!data.valorantAccount) {
+          updatedCards = updatedCards.filter(c => c !== 'valorant');
+          setValorantAccount(null);
+        }
+        setEnabledRankCards(updatedCards);
       }
     } catch (error) {
       console.error('Error fetching enabled rank cards:', error);
@@ -289,8 +308,23 @@ export default function ProfileScreen() {
       if (userDoc.exists()) {
         const data = userDoc.data();
 
-        // Fetch enabled rank cards
-        setEnabledRankCards(data.enabledRankCards || []);
+        // Ensure enabledRankCards only includes linked accounts
+        const cards = data.enabledRankCards || [];
+        let updatedCards = [...cards];
+        if (data.riotAccount && !updatedCards.includes('league')) {
+          updatedCards.push('league');
+        }
+        if (data.valorantAccount && !updatedCards.includes('valorant')) {
+          updatedCards.push('valorant');
+        }
+        // Remove cards for unlinked accounts
+        if (!data.riotAccount) {
+          updatedCards = updatedCards.filter(c => c !== 'league' && c !== 'tft');
+        }
+        if (!data.valorantAccount) {
+          updatedCards = updatedCards.filter(c => c !== 'valorant');
+        }
+        setEnabledRankCards(updatedCards);
 
         if (data.riotAccount) {
           setRiotAccount(data.riotAccount);
@@ -319,6 +353,9 @@ export default function ProfileScreen() {
           // TFT stats temporarily disabled - using placeholder data
           // TODO: Re-enable when needed
           console.log('TFT stats disabled - showing placeholder data');
+        } else {
+          setRiotAccount(null);
+          setRiotStats(null);
         }
 
         // Valorant stats: set account and trigger context fetch if needed
@@ -333,6 +370,8 @@ export default function ProfileScreen() {
           if (forceRefresh || needsMatchHistoryRefresh) {
             fetchValorantStats(forceRefresh || needsMatchHistoryRefresh);
           }
+        } else {
+          setValorantAccount(null);
         }
       }
     } catch (error) {
@@ -402,13 +441,33 @@ export default function ProfileScreen() {
             const data = userDoc.data();
             if (data.riotAccount) {
               setRiotAccount(data.riotAccount);
+            } else {
+              setRiotAccount(null);
+              setRiotStats(null);
             }
-            setEnabledRankCards(data.enabledRankCards || []);
-
             // Valorant account status (stats come from ValorantStatsContext)
             if (data.valorantAccount) {
               setValorantAccount(data.valorantAccount);
+            } else {
+              setValorantAccount(null);
             }
+
+            // Ensure enabledRankCards only includes linked accounts
+            const cards = data.enabledRankCards || [];
+            let updatedCards = [...cards];
+            if (data.riotAccount && !updatedCards.includes('league')) {
+              updatedCards.push('league');
+            }
+            if (data.valorantAccount && !updatedCards.includes('valorant')) {
+              updatedCards.push('valorant');
+            }
+            if (!data.riotAccount) {
+              updatedCards = updatedCards.filter(c => c !== 'league' && c !== 'tft');
+            }
+            if (!data.valorantAccount) {
+              updatedCards = updatedCards.filter(c => c !== 'valorant');
+            }
+            setEnabledRankCards(updatedCards);
           }
         } catch (error) {
           console.error('Error fetching riotAccount:', error);
@@ -446,6 +505,8 @@ export default function ProfileScreen() {
     useCallback(() => {
       if (user?.id) {
         refreshUser();
+        fetchEnabledRankCards();
+        fetchPosts();
       }
     }, [user?.id])
   );
@@ -1083,7 +1144,6 @@ export default function ProfileScreen() {
             >
               <ThemedText style={[styles.tabText, activeTab === 'clips' && styles.tabTextActive]}>CLIPS</ThemedText>
             </TouchableOpacity>
-            <View style={styles.tabDivider} />
             <TouchableOpacity
               style={styles.tabItem}
               onPress={() => scrollToTab('rankCards')}
@@ -1091,7 +1151,6 @@ export default function ProfileScreen() {
             >
               <ThemedText style={[styles.tabText, activeTab === 'rankCards' && styles.tabTextActive]}>RANKS</ThemedText>
             </TouchableOpacity>
-            <View style={styles.tabDivider} />
             <TouchableOpacity
               style={styles.tabItem}
               onPress={() => scrollToTab('achievements')}
@@ -1549,25 +1608,21 @@ const styles = StyleSheet.create({
   tabBar: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingHorizontal: 20,
     paddingTop: 12,
     paddingBottom: 8,
   },
   tabItem: {
     flex: 1,
     alignItems: 'center',
+    justifyContent: 'center',
     paddingVertical: 8,
-  },
-  tabDivider: {
-    width: 1,
-    height: 16,
-    backgroundColor: '#333',
   },
   tabText: {
     fontSize: 13,
     fontWeight: '600',
     color: '#555',
     letterSpacing: 0.5,
+    textAlign: 'center',
   },
   tabTextActive: {
     color: '#fff',
@@ -1680,7 +1735,7 @@ const styles = StyleSheet.create({
   statsColumns: {
     flexDirection: 'row',
     flex: 1,
-    justifyContent: 'space-around',
+    justifyContent: 'space-evenly',
     paddingBottom: 6,
   },
   statColumn: {

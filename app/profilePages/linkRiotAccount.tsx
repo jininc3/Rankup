@@ -24,6 +24,7 @@ export default function LinkRiotAccountScreen() {
   const [tagLine, setTagLine] = useState('');
   const [region, setRegion] = useState('na1');
   const [loading, setLoading] = useState(false);
+  const [showAllRegions, setShowAllRegions] = useState(false);
 
   const regions = [
     { value: 'na1', label: 'NA' },
@@ -33,6 +34,16 @@ export default function LinkRiotAccountScreen() {
     { value: 'br1', label: 'BR' },
     { value: 'jp1', label: 'JP' },
     { value: 'oc1', label: 'OCE' },
+    { value: 'la1', label: 'LAN' },
+    { value: 'la2', label: 'LAS' },
+    { value: 'tr1', label: 'TR' },
+    { value: 'ru', label: 'RU' },
+    { value: 'ph2', label: 'PH' },
+    { value: 'sg2', label: 'SG' },
+    { value: 'th2', label: 'TH' },
+    { value: 'tw2', label: 'TW' },
+    { value: 'vn2', label: 'VN' },
+    { value: 'me1', label: 'ME' },
   ];
 
   const handleLinkAccount = async () => {
@@ -95,7 +106,7 @@ export default function LinkRiotAccountScreen() {
         <View style={styles.heroSection}>
           <View style={styles.logoWrapper}>
             <Image
-              source={require('@/assets/images/leagueoflegends.png')}
+              source={require('@/assets/images/lol.png')}
               style={styles.logo}
               resizeMode="contain"
             />
@@ -137,7 +148,7 @@ export default function LinkRiotAccountScreen() {
                 placeholderTextColor="#555"
                 value={tagLine}
                 onChangeText={setTagLine}
-                autoCapitalize="characters"
+                autoCapitalize="sentences"
                 autoCorrect={false}
                 maxLength={5}
               />
@@ -148,7 +159,7 @@ export default function LinkRiotAccountScreen() {
           <View style={styles.inputGroup}>
             <ThemedText style={styles.label}>Region</ThemedText>
             <View style={styles.regionContainer}>
-              {regions.map((r) => (
+              {(showAllRegions ? regions : regions.slice(0, 7)).map((r) => (
                 <TouchableOpacity
                   key={r.value}
                   style={[styles.regionButton, region === r.value && styles.regionButtonActive]}
@@ -161,6 +172,14 @@ export default function LinkRiotAccountScreen() {
                   </ThemedText>
                 </TouchableOpacity>
               ))}
+              <TouchableOpacity
+                style={styles.seeAllButton}
+                onPress={() => setShowAllRegions(!showAllRegions)}
+              >
+                <ThemedText style={styles.seeAllText}>
+                  {showAllRegions ? 'Show Less' : 'See All'}
+                </ThemedText>
+              </TouchableOpacity>
             </View>
           </View>
 
@@ -213,7 +232,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     paddingHorizontal: 16,
-    paddingTop: 55,
+    paddingTop: 70,
     paddingBottom: 12,
   },
   backButton: {
@@ -224,6 +243,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20,
     paddingTop: 20,
     paddingBottom: 32,
+    overflow: 'visible',
   },
   logoWrapper: {
     width: 80,
@@ -243,7 +263,9 @@ const styles = StyleSheet.create({
     fontWeight: '800',
     color: '#fff',
     letterSpacing: -0.5,
+    lineHeight: 36,
     marginBottom: 8,
+    overflow: 'visible',
   },
   heroSubtitle: {
     fontSize: 14,
@@ -313,7 +335,7 @@ const styles = StyleSheet.create({
     backgroundColor: '#252525',
   },
   regionButtonActive: {
-    backgroundColor: '#c42743',
+    backgroundColor: '#D4A843',
   },
   regionButtonText: {
     fontSize: 13,
@@ -323,10 +345,21 @@ const styles = StyleSheet.create({
   regionButtonTextActive: {
     color: '#fff',
   },
+  seeAllButton: {
+    paddingVertical: 10,
+    paddingHorizontal: 16,
+    borderRadius: 10,
+    backgroundColor: 'transparent',
+  },
+  seeAllText: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: '#D4A843',
+  },
   linkButton: {
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: '#c42743',
+    backgroundColor: '#D4A843',
     paddingVertical: 16,
     borderRadius: 12,
     marginTop: 8,
@@ -364,7 +397,7 @@ const styles = StyleSheet.create({
   },
   exampleHighlight: {
     fontWeight: '700',
-    color: '#c42743',
+    color: '#D4A843',
   },
   exampleDivider: {
     height: 1,

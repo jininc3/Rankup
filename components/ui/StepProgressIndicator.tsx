@@ -55,7 +55,7 @@ const styles = StyleSheet.create({
     borderBottomRightRadius: 2,
   },
   segmentActive: {
-    backgroundColor: '#c42743',
+    backgroundColor: '#D4A843',
   },
   segmentInactive: {
     backgroundColor: '#2c2f33',

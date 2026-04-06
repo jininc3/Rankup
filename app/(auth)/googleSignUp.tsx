@@ -124,7 +124,7 @@ export default function GoogleSignUpScreen() {
   const checkUsernameAvailability = async (username: string): Promise<boolean> => {
     try {
       const usersRef = collection(db, 'users');
-      const q = query(usersRef, where('username', '==', username.toLowerCase()));
+      const q = query(usersRef, where('usernameLower', '==', username.toLowerCase()));
       const querySnapshot = await getDocs(q);
       return querySnapshot.empty;
     } catch (error) {
@@ -338,10 +338,6 @@ export default function GoogleSignUpScreen() {
           </View>
 
           <View style={styles.content}>
-            <ThemedText style={styles.subtitle}>
-              Pick a unique username that represents you
-            </ThemedText>
-
             {/* Profile Icon Selection */}
             <View style={styles.avatarSection}>
               <TouchableOpacity
@@ -366,6 +362,10 @@ export default function GoogleSignUpScreen() {
               </TouchableOpacity>
             </View>
 
+            <ThemedText style={styles.subtitle}>
+              Pick a unique username that represents you
+            </ThemedText>
+
             <View style={styles.form}>
           <View style={styles.inputContainer} ref={usernameInputRef}>
             <ThemedText style={styles.label}>Username *</ThemedText>
@@ -376,7 +376,7 @@ export default function GoogleSignUpScreen() {
                 placeholder="Enter username"
                 placeholderTextColor="#999"
                 value={username}
-                onChangeText={(text) => setUsername(text.toLowerCase())}
+                onChangeText={setUsername}
                 autoCapitalize="none"
                 autoCorrect={false}
                 maxLength={20}
@@ -657,7 +657,7 @@ const styles = StyleSheet.create({
     marginTop: 2,
   },
   button: {
-    backgroundColor: '#a82239',
+    backgroundColor: '#D4A843',
     paddingVertical: 16,
     borderRadius: 24,
     alignItems: 'center',

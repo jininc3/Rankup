@@ -95,9 +95,12 @@ export default function EditUsernameScreen() {
   const checkUsernameAvailable = async (username: string): Promise<boolean> => {
     try {
       const usersRef = collection(db, 'users');
-      const q = query(usersRef, where('username', '==', username));
+      const q = query(usersRef, where('usernameLower', '==', username.toLowerCase()));
       const querySnapshot = await getDocs(q);
-      return querySnapshot.empty;
+      // Allow if no matches, or the only match is the current user (case change)
+      if (querySnapshot.empty) return true;
+      if (querySnapshot.size === 1 && querySnapshot.docs[0].id === user?.id) return true;
+      return false;
     } catch (error) {
       console.error('Error checking username availability:', error);
       return false;
@@ -153,6 +156,7 @@ export default function EditUsernameScreen() {
       const userRef = doc(db, 'users', user.id);
       await updateDoc(userRef, {
         username: newUsername,
+        usernameLower: newUsername.toLowerCase(),
       });
 
       // Refresh user data in context

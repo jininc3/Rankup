@@ -334,7 +334,6 @@ const styles = StyleSheet.create({
   },
   backButton: {
     padding: 4,
-    flex: 1,
   },
   headerTitle: {
     fontSize: 20,
@@ -344,7 +343,7 @@ const styles = StyleSheet.create({
     textAlign: 'center',
   },
   headerSpacer: {
-    flex: 1,
+    width: 32,
   },
   section: {
     marginBottom: 8,

@@ -117,6 +117,7 @@ export interface RecentMatchResult {
   map?: string;
   score?: string;
   playedAt?: number; // Unix timestamp in milliseconds
+  placement?: number; // Player's rank out of 10 by combat score
   // League-specific fields
   champion?: string;
   championId?: number;

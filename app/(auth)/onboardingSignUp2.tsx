@@ -401,7 +401,7 @@ const styles = StyleSheet.create({
   skipText: {
     fontSize: 14,
     fontWeight: '600',
-    color: '#c42743',
+    color: '#D4A843',
   },
   progressContainer: {
     paddingHorizontal: 24,
@@ -517,7 +517,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 6,
-    backgroundColor: '#c42743',
+    backgroundColor: '#D4A843',
     paddingHorizontal: 14,
     paddingVertical: 8,
     borderRadius: 20,
@@ -575,7 +575,7 @@ const styles = StyleSheet.create({
     lineHeight: 18,
   },
   continueButton: {
-    backgroundColor: '#c42743',
+    backgroundColor: '#D4A843',
     paddingVertical: 16,
     borderRadius: 24,
     alignItems: 'center',

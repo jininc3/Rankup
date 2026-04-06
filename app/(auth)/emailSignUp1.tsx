@@ -69,7 +69,7 @@ export default function EmailSignUpStep1() {
   const checkUsernameAvailability = async (usernameToCheck: string): Promise<boolean> => {
     try {
       const usersRef = collection(db, 'users');
-      const q = query(usersRef, where('username', '==', usernameToCheck.toLowerCase()));
+      const q = query(usersRef, where('usernameLower', '==', usernameToCheck.toLowerCase()));
       const querySnapshot = await getDocs(q);
       return querySnapshot.empty;
     } catch (error) {
@@ -276,7 +276,7 @@ export default function EmailSignUpStep1() {
                     placeholder="Enter your username"
                     placeholderTextColor="#999"
                     value={username}
-                    onChangeText={(text) => setUsername(text.toLowerCase())}
+                    onChangeText={setUsername}
                     autoCapitalize="none"
                     returnKeyType="done"
                     onSubmitEditing={handleContinue}

@@ -17,6 +17,7 @@ interface MatchHistoryEntry {
   map: string;
   gameStart: number; // Unix timestamp
   score: string; // e.g., "13-7"
+  placement?: number; // Player's rank out of 10 by combat score
 }
 
 interface Game {
@@ -193,6 +194,13 @@ export default function ValorantRankCard({ game, username, viewOnly = false, use
   const stackCardOpacity = useRef(new Animated.Value(1)).current;
   const modalCardOpacity = useRef(new Animated.Value(1)).current;
   const dragY = useRef(new Animated.Value(0)).current;
+
+  // Prefetch valorant player card so it loads instantly when card is flipped
+  useEffect(() => {
+    if (game.valorantCard) {
+      Image.prefetch(game.valorantCard);
+    }
+  }, [game.valorantCard]);
 
   // Shimmer animation loop
   useEffect(() => {
@@ -826,6 +834,11 @@ export default function ValorantRankCard({ game, username, viewOnly = false, use
                     style={styles.backPlayerCard}
                   />
                   <View style={styles.profileGlow} />
+                  {game.accountLevel != null && (
+                    <View style={styles.levelBadge}>
+                      <ThemedText style={styles.levelBadgeText}>{game.accountLevel}</ThemedText>
+                    </View>
+                  )}
                 </View>
               )}
               <ThemedText style={styles.backUsername}>{username}</ThemedText>
@@ -1087,6 +1100,7 @@ export default function ValorantRankCard({ game, username, viewOnly = false, use
               <View style={styles.matchTableHeader}>
                 <View style={styles.matchIndicatorSpacer} />
                 <ThemedText style={[styles.matchTableHeaderText, styles.matchColAgent]}>Agent</ThemedText>
+                <ThemedText style={[styles.matchTableHeaderText, styles.matchColRank]}>Rank</ThemedText>
                 <ThemedText style={[styles.matchTableHeaderText, styles.matchColKDA]}>KDA</ThemedText>
                 <ThemedText style={[styles.matchTableHeaderText, styles.matchColResult]}>Result</ThemedText>
                 <ThemedText style={[styles.matchTableHeaderText, styles.matchColScore]}>Score</ThemedText>
@@ -1135,6 +1149,23 @@ export default function ValorantRankCard({ game, username, viewOnly = false, use
                               {match.agent}
                             </ThemedText>
                           )}
+                        </View>
+                        <View style={styles.matchColRank}>
+                          <View style={[
+                            styles.matchRankPill,
+                            match.placement === 1 && styles.matchRankPill1st,
+                            match.placement === 2 && styles.matchRankPill2nd,
+                            match.placement === 3 && styles.matchRankPill3rd,
+                          ]}>
+                            <ThemedText style={[
+                              styles.matchRankText,
+                              match.placement === 1 && styles.matchRank1st,
+                              match.placement === 2 && styles.matchRank2nd,
+                              match.placement === 3 && styles.matchRank3rd,
+                            ]}>
+                              {match.placement ? (match.placement === 1 ? 'MVP' : `${match.placement}${match.placement === 2 ? 'nd' : match.placement === 3 ? 'rd' : 'th'}`) : '-'}
+                            </ThemedText>
+                          </View>
                         </View>
                         <ThemedText style={[styles.matchCellText, styles.matchColKDA]}>
                           {match.kills}/{match.deaths}/{match.assists}
@@ -1444,6 +1475,26 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: 'rgba(255,100,100,0.3)',
   },
+  levelBadge: {
+    position: 'absolute',
+    bottom: -4,
+    right: -6,
+    backgroundColor: '#000',
+    borderRadius: 6,
+    borderWidth: 1,
+    borderColor: '#fff',
+    paddingHorizontal: 3,
+    height: 10,
+    justifyContent: 'center' as const,
+    minWidth: 14,
+    alignItems: 'center' as const,
+  },
+  levelBadgeText: {
+    fontSize: 5,
+    lineHeight: 10,
+    fontWeight: '800' as const,
+    color: '#fff',
+  },
   backUsername: {
     fontSize: 12,
     color: '#fff',
@@ -1468,8 +1519,9 @@ const styles = StyleSheet.create({
   },
   ranksDivider: {
     width: 1,
-    height: 60,
+    height: 40,
     backgroundColor: 'rgba(255,255,255,0.15)',
+    marginTop: 40,
   },
   rankBoxLabel: {
     fontSize: 8,
@@ -1841,6 +1893,44 @@ const styles = StyleSheet.create({
     width: 36,
     height: 36,
     borderRadius: 6,
+  },
+  matchColRank: {
+    flex: 0.8,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  matchRankPill: {
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderRadius: 10,
+    backgroundColor: 'rgba(255, 255, 255, 0.08)',
+  },
+  matchRankPill1st: {
+    backgroundColor: 'rgba(255, 215, 0, 0.15)',
+  },
+  matchRankPill2nd: {
+    backgroundColor: 'rgba(192, 192, 192, 0.15)',
+  },
+  matchRankPill3rd: {
+    backgroundColor: 'rgba(205, 127, 50, 0.15)',
+  },
+  matchRankText: {
+    fontSize: 10,
+    fontWeight: '700',
+    color: '#999',
+    textAlign: 'center',
+  },
+  matchRank1st: {
+    color: '#FFD700',
+    fontWeight: '900',
+  },
+  matchRank2nd: {
+    color: '#C0C0C0',
+    fontWeight: '900',
+  },
+  matchRank3rd: {
+    color: '#CD7F32',
+    fontWeight: '900',
   },
   matchColKDA: {
     flex: 1.2,

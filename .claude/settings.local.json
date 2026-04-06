@@ -53,7 +53,9 @@
       "Bash(grep -r \"addPost\\\\|AddPost\" C:/Users/jinha/Desktop/RankUp/app --include=*.tsx --include=*.ts)",
       "Bash(grep -E \"\\\\.tsx$\")",
       "Bash(grep -r \"match.*history\\\\|history.*match\\\\|recent.*match\" /c/Users/jinha/Desktop/RankUp/app --include=*.tsx --include=*.ts -l)",
-      "Bash(grep:*)"
+      "Bash(grep:*)",
+      "Bash(find /c/Users/jinha/Desktop/RankUp -path */node_modules -prune -o -type f \\\\\\(-name *achievement* -o -name *leaderboard* -o -name *party* \\\\\\) -print)",
+      "Bash(npx firebase:*)"
     ],
     "deny": [],
     "ask": []
