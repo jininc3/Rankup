@@ -882,116 +882,185 @@ export default function ProfileScreen() {
         }
       >
         {/* Header Section - Cover photo reaches top */}
-        <View style={styles.headerSection}>
+        <LinearGradient
+          colors={['#24243e', '#181825', '#0f0f0f']}
+          locations={[0, 0.3, 0.6]}
+          start={{ x: 0, y: 0 }}
+          end={{ x: 0, y: 1 }}
+          style={styles.headerSection}
+        >
           {!allContentLoaded ? (
             <>
             {/* Cover photo placeholder with icons during loading */}
-            <View style={styles.coverPhotoWrapper}>
-              <LinearGradient
-                colors={['#2c2f33', '#1a1a1a', '#0f0f0f']}
-                start={{ x: 0, y: 0 }}
-                end={{ x: 0, y: 1 }}
-                style={styles.coverPhotoGradient}
-              />
-              <View style={styles.headerIconsRow}>
-                <TouchableOpacity
-                  style={styles.headerIconButton}
-                  onPress={() => setShowCreateModal(true)}
-                  activeOpacity={0.7}
-                >
-                  <IconSymbol size={27} name="plus.app" color="#fff" />
-                </TouchableOpacity>
-                <View style={styles.headerIconsSpacer} />
-                <TouchableOpacity
-                  style={styles.headerIconButton}
-                  onPress={() => router.push('/chatPages/chatList')}
-                  activeOpacity={0.7}
-                >
-                  <IconSymbol size={27} name="bubble.left" color="#fff" />
-                </TouchableOpacity>
-                <TouchableOpacity
-                  style={styles.headerIconButton}
-                  onPress={() => router.push('/profilePages/settings')}
-                  activeOpacity={0.7}
-                >
-                  <IconSymbol size={27} name="gearshape" color="#fff" />
-                </TouchableOpacity>
+            <View style={styles.coverPhotoCardContainer}>
+              <View style={[styles.coverPhotoInner, styles.coverPhotoFallbackBorder]}>
+                <LinearGradient
+                  colors={['#2c2f33', '#1a1a1a', '#0f0f0f']}
+                  start={{ x: 0, y: 0 }}
+                  end={{ x: 0, y: 1 }}
+                  style={styles.coverPhotoGradient}
+                />
+                <View style={styles.headerIconsRow}>
+                  <TouchableOpacity
+                    style={styles.headerIconButton}
+                    onPress={() => setShowCreateModal(true)}
+                    activeOpacity={0.7}
+                  >
+                    <IconSymbol size={27} name="plus.app" color="#fff" />
+                  </TouchableOpacity>
+                  <View style={styles.headerIconsSpacer} />
+                  <TouchableOpacity
+                    style={styles.headerIconButton}
+                    onPress={() => router.push('/chatPages/chatList')}
+                    activeOpacity={0.7}
+                  >
+                    <IconSymbol size={27} name="bubble.left" color="#fff" />
+                  </TouchableOpacity>
+                  <TouchableOpacity
+                    style={styles.headerIconButton}
+                    onPress={() => router.push('/profilePages/settings')}
+                    activeOpacity={0.7}
+                  >
+                    <IconSymbol size={27} name="gearshape" color="#fff" />
+                  </TouchableOpacity>
+                </View>
               </View>
             </View>
             <ProfilePageSkeleton />
           </>) : (
           <>
-          {/* Cover Photo Area - reaches top of screen */}
-          <View style={styles.coverPhotoWrapper}>
-            {user?.coverPhoto ? (
-              <Image
-                key={`cover-${coverPhotoKey}`}
-                source={{ uri: `${user.coverPhoto}&t=${coverPhotoKey}` }}
-                style={styles.coverPhotoImage}
-                onLoad={() => setCoverPhotoLoaded(true)}
-                onError={() => setCoverPhotoLoaded(true)}
-              />
+          {/* Cover Photo Area - inset card with tier border */}
+          <View style={styles.coverPhotoCardContainer}>
+            {tierBorderGradient ? (
+              <GradientBorder colors={tierBorderGradient} borderWidth={2.5} borderRadius={18}>
+                <View style={styles.coverPhotoInner}>
+                  {user?.coverPhoto ? (
+                    <Image
+                      key={`cover-${coverPhotoKey}`}
+                      source={{ uri: `${user.coverPhoto}&t=${coverPhotoKey}` }}
+                      style={styles.coverPhotoImage}
+                      onLoad={() => setCoverPhotoLoaded(true)}
+                      onError={() => setCoverPhotoLoaded(true)}
+                    />
+                  ) : (
+                    <LinearGradient
+                      colors={['#2c2f33', '#1a1a1a', '#0f0f0f']}
+                      start={{ x: 0, y: 0 }}
+                      end={{ x: 0, y: 1 }}
+                      style={styles.coverPhotoGradient}
+                    />
+                  )}
+                  {/* Header Icons overlaid on cover photo */}
+                  <View style={styles.headerIconsRow}>
+                    <TouchableOpacity
+                      style={styles.headerIconButton}
+                      onPress={() => setShowCreateModal(true)}
+                      activeOpacity={0.7}
+                    >
+                      <IconSymbol size={27} name="plus.app" color="#fff" />
+                    </TouchableOpacity>
+                    <View style={styles.headerIconsSpacer} />
+                    <TouchableOpacity
+                      style={styles.headerIconButton}
+                      onPress={() => router.push('/chatPages/chatList')}
+                      activeOpacity={0.7}
+                    >
+                      <IconSymbol size={27} name="bubble.left" color="#fff" />
+                    </TouchableOpacity>
+                    <TouchableOpacity
+                      style={styles.headerIconButton}
+                      onPress={() => router.push('/profilePages/settings')}
+                      activeOpacity={0.7}
+                    >
+                      <IconSymbol size={27} name="gearshape" color="#fff" />
+                    </TouchableOpacity>
+                  </View>
+                </View>
+              </GradientBorder>
             ) : (
-              <LinearGradient
-                colors={['#2c2f33', '#1a1a1a', '#0f0f0f']}
-                start={{ x: 0, y: 0 }}
-                end={{ x: 0, y: 1 }}
-                style={styles.coverPhotoGradient}
-              />
+              <View style={[styles.coverPhotoInner, styles.coverPhotoFallbackBorder]}>
+                {user?.coverPhoto ? (
+                  <Image
+                    key={`cover-${coverPhotoKey}`}
+                    source={{ uri: `${user.coverPhoto}&t=${coverPhotoKey}` }}
+                    style={styles.coverPhotoImage}
+                    onLoad={() => setCoverPhotoLoaded(true)}
+                    onError={() => setCoverPhotoLoaded(true)}
+                  />
+                ) : (
+                  <LinearGradient
+                    colors={['#2c2f33', '#1a1a1a', '#0f0f0f']}
+                    start={{ x: 0, y: 0 }}
+                    end={{ x: 0, y: 1 }}
+                    style={styles.coverPhotoGradient}
+                  />
+                )}
+                {/* Header Icons overlaid on cover photo */}
+                <View style={styles.headerIconsRow}>
+                  <TouchableOpacity
+                    style={styles.headerIconButton}
+                    onPress={() => setShowCreateModal(true)}
+                    activeOpacity={0.7}
+                  >
+                    <IconSymbol size={27} name="plus.app" color="#fff" />
+                  </TouchableOpacity>
+                  <View style={styles.headerIconsSpacer} />
+                  <TouchableOpacity
+                    style={styles.headerIconButton}
+                    onPress={() => router.push('/chatPages/chatList')}
+                    activeOpacity={0.7}
+                  >
+                    <IconSymbol size={27} name="bubble.left" color="#fff" />
+                  </TouchableOpacity>
+                  <TouchableOpacity
+                    style={styles.headerIconButton}
+                    onPress={() => router.push('/profilePages/settings')}
+                    activeOpacity={0.7}
+                  >
+                    <IconSymbol size={27} name="gearshape" color="#fff" />
+                  </TouchableOpacity>
+                </View>
+              </View>
             )}
-            {/* Bottom fade - gentle, natural fade out */}
-            <LinearGradient
-              colors={['transparent', 'rgba(15, 15, 15, 0.15)', 'rgba(15, 15, 15, 0.45)', 'rgba(15, 15, 15, 0.75)', '#0f0f0f']}
-              locations={[0, 0.25, 0.5, 0.75, 1]}
-              start={{ x: 0, y: 0 }}
-              end={{ x: 0, y: 1 }}
-              style={styles.coverPhotoFadeBottom}
-            />
-
-            {/* Header Icons overlaid on cover photo */}
-            <View style={styles.headerIconsRow}>
-              <TouchableOpacity
-                style={styles.headerIconButton}
-                onPress={() => setShowCreateModal(true)}
-                activeOpacity={0.7}
-              >
-                <IconSymbol size={27} name="plus.app" color="#fff" />
-              </TouchableOpacity>
-              <View style={styles.headerIconsSpacer} />
-              <TouchableOpacity
-                style={styles.headerIconButton}
-                onPress={() => router.push('/chatPages/chatList')}
-                activeOpacity={0.7}
-              >
-                <IconSymbol size={27} name="bubble.left" color="#fff" />
-              </TouchableOpacity>
-              <TouchableOpacity
-                style={styles.headerIconButton}
-                onPress={() => router.push('/profilePages/settings')}
-                activeOpacity={0.7}
-              >
-                <IconSymbol size={27} name="gearshape" color="#fff" />
-              </TouchableOpacity>
-            </View>
           </View>
 
-          {/* Profile Info Section - overlaps cover photo */}
+          {/* Profile Info Section - avatar overlaps cover photo, stats on right */}
           <View style={styles.profileInfoSection}>
-            {/* Row: Avatar + Stats */}
             <View style={styles.avatarStatsRow}>
-              {/* Avatar */}
-              <TouchableOpacity
-                style={styles.profileAvatarButton}
-                onPress={() => setShowAvatarModal(true)}
-                activeOpacity={0.7}
-              >
-                {tierBorderGradient ? (
-                  <GradientBorder
-                    colors={tierBorderGradient}
-                    borderWidth={2.5}
-                    borderRadius={38}
-                  >
-                    <View style={styles.profileAvatarCircleWithGradient}>
+              {/* Left side: Avatar stacked with Username below */}
+              <View style={styles.avatarUsernameGroup}>
+                <TouchableOpacity
+                  style={styles.profileAvatarButton}
+                  onPress={() => setShowAvatarModal(true)}
+                  activeOpacity={0.7}
+                >
+                  {tierBorderGradient ? (
+                    <GradientBorder
+                      colors={tierBorderGradient}
+                      borderWidth={2.5}
+                      borderRadius={38}
+                    >
+                      <View style={styles.profileAvatarCircleWithGradient}>
+                        {user?.avatar && user.avatar.startsWith('http') && !avatarError ? (
+                          <Image
+                            key={`avatar-${avatarKey}`}
+                            source={{ uri: `${user.avatar}&t=${avatarKey}` }}
+                            style={styles.profileAvatarImage}
+                            onLoad={() => setAvatarLoaded(true)}
+                            onError={() => {
+                              setAvatarLoaded(true);
+                              setAvatarError(true);
+                            }}
+                          />
+                        ) : (
+                          <ThemedText style={styles.profileAvatarInitial}>
+                            {user?.username?.[0]?.toUpperCase() || 'U'}
+                          </ThemedText>
+                        )}
+                      </View>
+                    </GradientBorder>
+                  ) : (
+                    <View style={styles.profileAvatarCircle}>
                       {user?.avatar && user.avatar.startsWith('http') && !avatarError ? (
                         <Image
                           key={`avatar-${avatarKey}`}
@@ -1009,30 +1078,12 @@ export default function ProfileScreen() {
                         </ThemedText>
                       )}
                     </View>
-                  </GradientBorder>
-                ) : (
-                  <View style={styles.profileAvatarCircle}>
-                    {user?.avatar && user.avatar.startsWith('http') && !avatarError ? (
-                      <Image
-                        key={`avatar-${avatarKey}`}
-                        source={{ uri: `${user.avatar}&t=${avatarKey}` }}
-                        style={styles.profileAvatarImage}
-                        onLoad={() => setAvatarLoaded(true)}
-                        onError={() => {
-                          setAvatarLoaded(true);
-                          setAvatarError(true);
-                        }}
-                      />
-                    ) : (
-                      <ThemedText style={styles.profileAvatarInitial}>
-                        {user?.username?.[0]?.toUpperCase() || 'U'}
-                      </ThemedText>
-                    )}
-                  </View>
-                )}
-              </TouchableOpacity>
+                  )}
+                </TouchableOpacity>
+                <ThemedText style={styles.profileUsername} numberOfLines={1}>{user?.username || 'User'}</ThemedText>
+              </View>
 
-              {/* Stats columns */}
+              {/* Right side: Stats */}
               <View style={styles.statsColumns}>
                 <TouchableOpacity
                   style={styles.statColumn}
@@ -1056,9 +1107,6 @@ export default function ProfileScreen() {
                 </View>
               </View>
             </View>
-
-            {/* Username below avatar */}
-            <ThemedText style={styles.profileUsername} numberOfLines={1}>{user?.username || 'User'}</ThemedText>
 
             {/* Bio */}
             {user?.bio && (
@@ -1438,7 +1486,7 @@ export default function ProfileScreen() {
           </ScrollView>
           </>
           )}
-        </View>
+        </LinearGradient>
       </Animated.ScrollView>
 
       {/* Post Viewer Modal */}
@@ -1628,13 +1676,13 @@ const styles = StyleSheet.create({
   // Header icons row - overlaid on cover photo
   headerIconsRow: {
     position: 'absolute',
-    top: 50,
+    top: 10,
     left: 0,
     right: 0,
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    paddingHorizontal: 16,
+    paddingHorizontal: 12,
     zIndex: 10,
   },
   headerIconsSpacer: {
@@ -1650,12 +1698,21 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
-  // Cover photo area - reaches top of screen
-  coverPhotoWrapper: {
-    width: '100%',
+  // Cover photo card container - inset with margins
+  coverPhotoCardContainer: {
+    marginHorizontal: 16,
+    marginTop: 10,
+  },
+  coverPhotoInner: {
     height: 180,
+    borderRadius: 16,
     backgroundColor: '#1a1a1a',
     overflow: 'hidden',
+  },
+  coverPhotoFallbackBorder: {
+    borderRadius: 18,
+    borderWidth: 2,
+    borderColor: '#2a2a2a',
   },
   coverPhotoImage: {
     position: 'absolute',
@@ -1663,38 +1720,32 @@ const styles = StyleSheet.create({
     left: 0,
     width: '100%',
     height: '100%',
-    opacity: 0.8,
+    opacity: 0.9,
   },
   coverPhotoGradient: {
     width: '100%',
     height: '100%',
   },
-  coverPhotoFadeBottom: {
-    position: 'absolute',
-    bottom: 0,
-    left: 0,
-    right: 0,
-    height: '60%',
-    zIndex: 1,
-  },
   // Profile info section below cover
   profileInfoSection: {
-    marginTop: -32,
+    marginTop: -38,
     paddingHorizontal: 20,
     zIndex: 3,
-  },
-  profileUsername: {
-    fontSize: 26,
-    fontWeight: '800',
-    color: '#fff',
-    letterSpacing: -0.5,
-    marginTop: 10,
-    marginBottom: 2,
   },
   avatarStatsRow: {
     flexDirection: 'row',
     alignItems: 'flex-end',
-    gap: 16,
+    justifyContent: 'space-between',
+  },
+  avatarUsernameGroup: {
+    alignItems: 'flex-start',
+  },
+  profileUsername: {
+    fontSize: 16,
+    fontWeight: '800',
+    color: '#fff',
+    letterSpacing: -0.3,
+    marginTop: 6,
   },
   profileAvatarButton: {
   },
@@ -1726,11 +1777,11 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     color: '#fff',
   },
-  // Stats columns beside avatar
+  // Stats columns on the right
   statsColumns: {
     flexDirection: 'row',
-    flex: 1,
     justifyContent: 'space-evenly',
+    flex: 1,
     paddingBottom: 6,
   },
   statColumn: {

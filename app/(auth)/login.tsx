@@ -236,7 +236,7 @@ export default function LoginScreen() {
               <ThemedText style={styles.footerText}>
                 Don't have an account?{' '}
               </ThemedText>
-              <TouchableOpacity onPress={() => router.push('/(auth)/emailSignUp1')}>
+              <TouchableOpacity onPress={() => router.push('/(auth)/signUp')}>
                 <ThemedText style={styles.footerLink}>Sign Up</ThemedText>
               </TouchableOpacity>
             </View>

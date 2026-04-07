@@ -8,10 +8,9 @@ import {
   TouchableOpacity,
   ActivityIndicator,
   Alert,
-  ScrollView,
   Image,
 } from 'react-native';
-import { useState } from 'react';
+import { useState, useRef } from 'react';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { linkRiotAccount } from '@/services/riotService';
 import { db, auth } from '@/config/firebase';
@@ -25,6 +24,7 @@ export default function LinkRiotAccountScreen() {
   const [region, setRegion] = useState('na1');
   const [loading, setLoading] = useState(false);
   const [showAllRegions, setShowAllRegions] = useState(false);
+  const tagLineRef = useRef<TextInput>(null);
 
   const regions = [
     { value: 'na1', label: 'NA' },
@@ -94,131 +94,104 @@ export default function LinkRiotAccountScreen() {
 
   return (
     <ThemedView style={styles.container}>
-      <ScrollView showsVerticalScrollIndicator={false}>
-        {/* Header */}
-        <View style={styles.header}>
-          <TouchableOpacity style={styles.backButton} onPress={() => router.back()}>
-            <IconSymbol size={24} name="chevron.left" color="#fff" />
-          </TouchableOpacity>
-        </View>
+      {/* Header */}
+      <View style={styles.header}>
+        <TouchableOpacity style={styles.backButton} onPress={() => router.back()}>
+          <IconSymbol size={24} name="chevron.left" color="#fff" />
+        </TouchableOpacity>
+      </View>
 
-        {/* Logo and Title Section */}
-        <View style={styles.heroSection}>
-          <View style={styles.logoWrapper}>
-            <Image
-              source={require('@/assets/images/lol.png')}
-              style={styles.logo}
-              resizeMode="contain"
+      {/* Logo and Title Section */}
+      <View style={styles.heroSection}>
+        <View style={styles.logoWrapper}>
+          <Image
+            source={require('@/assets/images/lol.png')}
+            style={styles.logo}
+            resizeMode="contain"
+          />
+        </View>
+        <ThemedText style={styles.heroTitle}>Link League</ThemedText>
+        <ThemedText style={styles.heroSubtitle}>
+          Connect your Riot ID to display your ranked stats and tier
+        </ThemedText>
+      </View>
+
+      {/* Form Card */}
+      <View style={styles.formCard}>
+        {/* Riot ID Input */}
+        <View style={styles.inputGroup}>
+          <ThemedText style={styles.label}>Riot ID</ThemedText>
+          <View style={styles.riotIdWrapper}>
+            <TextInput
+              style={styles.gameNameInput}
+              placeholder="HideOnBush"
+              placeholderTextColor="#555"
+              value={gameName}
+              onChangeText={setGameName}
+              autoCapitalize="none"
+              autoCorrect={false}
+              returnKeyType="next"
+              onSubmitEditing={() => tagLineRef.current?.focus()}
+            />
+            <View style={styles.hashContainer}>
+              <ThemedText style={styles.hashSymbol}>#</ThemedText>
+            </View>
+            <TextInput
+              ref={tagLineRef}
+              style={styles.tagLineInput}
+              placeholder="KR1"
+              placeholderTextColor="#555"
+              value={tagLine}
+              onChangeText={setTagLine}
+              autoCapitalize="sentences"
+              autoCorrect={false}
+              maxLength={5}
             />
           </View>
-          <ThemedText style={styles.heroTitle}>Link League</ThemedText>
-          <ThemedText style={styles.heroSubtitle}>
-            Connect your Riot ID to display your ranked stats and tier
-          </ThemedText>
+          <ThemedText style={styles.exampleHint}>e.g. HideOnBush#KR1</ThemedText>
         </View>
 
-        {/* Form Card */}
-        <View style={styles.formCard}>
-          {/* Game Name Input */}
-          <View style={styles.inputGroup}>
-            <ThemedText style={styles.label}>Game Name</ThemedText>
-            <View style={styles.inputWrapper}>
-              <TextInput
-                style={styles.input}
-                placeholder="HideOnBush"
-                placeholderTextColor="#555"
-                value={gameName}
-                onChangeText={setGameName}
-                autoCapitalize="none"
-                autoCorrect={false}
-              />
-            </View>
-          </View>
-
-          {/* Tag Line Input */}
-          <View style={styles.inputGroup}>
-            <ThemedText style={styles.label}>Tag Line</ThemedText>
-            <View style={styles.tagLineWrapper}>
-              <View style={styles.hashContainer}>
-                <ThemedText style={styles.hashSymbol}>#</ThemedText>
-              </View>
-              <TextInput
-                style={styles.tagLineInput}
-                placeholder="KR1"
-                placeholderTextColor="#555"
-                value={tagLine}
-                onChangeText={setTagLine}
-                autoCapitalize="sentences"
-                autoCorrect={false}
-                maxLength={5}
-              />
-            </View>
-          </View>
-
-          {/* Region Selector */}
-          <View style={styles.inputGroup}>
-            <ThemedText style={styles.label}>Region</ThemedText>
-            <View style={styles.regionContainer}>
-              {(showAllRegions ? regions : regions.slice(0, 7)).map((r) => (
-                <TouchableOpacity
-                  key={r.value}
-                  style={[styles.regionButton, region === r.value && styles.regionButtonActive]}
-                  onPress={() => setRegion(r.value)}
-                >
-                  <ThemedText
-                    style={[styles.regionButtonText, region === r.value && styles.regionButtonTextActive]}
-                  >
-                    {r.label}
-                  </ThemedText>
-                </TouchableOpacity>
-              ))}
+        {/* Region Selector */}
+        <View style={styles.inputGroup}>
+          <ThemedText style={styles.label}>Region</ThemedText>
+          <View style={styles.regionContainer}>
+            {(showAllRegions ? regions : regions.slice(0, 7)).map((r) => (
               <TouchableOpacity
-                style={styles.seeAllButton}
-                onPress={() => setShowAllRegions(!showAllRegions)}
+                key={r.value}
+                style={[styles.regionButton, region === r.value && styles.regionButtonActive]}
+                onPress={() => setRegion(r.value)}
               >
-                <ThemedText style={styles.seeAllText}>
-                  {showAllRegions ? 'Show Less' : 'See All'}
+                <ThemedText
+                  style={[styles.regionButtonText, region === r.value && styles.regionButtonTextActive]}
+                >
+                  {r.label}
                 </ThemedText>
               </TouchableOpacity>
-            </View>
-          </View>
-
-          {/* Link Button */}
-          <TouchableOpacity
-            style={[styles.linkButton, loading && styles.linkButtonDisabled]}
-            onPress={handleLinkAccount}
-            disabled={loading}
-          >
-            {loading ? (
-              <ActivityIndicator color="#fff" />
-            ) : (
-              <ThemedText style={styles.linkButtonText}>Link Account</ThemedText>
-            )}
-          </TouchableOpacity>
-        </View>
-
-        {/* Example Card */}
-        <View style={styles.exampleCard}>
-          <View style={styles.exampleHeader}>
-            <IconSymbol size={16} name="info.circle" color="#666" />
-            <ThemedText style={styles.exampleTitle}>Example</ThemedText>
-          </View>
-          <ThemedText style={styles.exampleText}>
-            If your Riot ID is <ThemedText style={styles.exampleHighlight}>HideOnBush#KR1</ThemedText>
-          </ThemedText>
-          <View style={styles.exampleDivider} />
-          <View style={styles.exampleRow}>
-            <ThemedText style={styles.exampleLabel}>Game Name</ThemedText>
-            <ThemedText style={styles.exampleValue}>HideOnBush</ThemedText>
-          </View>
-          <View style={styles.exampleRow}>
-            <ThemedText style={styles.exampleLabel}>Tag Line</ThemedText>
-            <ThemedText style={styles.exampleValue}>KR1</ThemedText>
+            ))}
+            <TouchableOpacity
+              style={styles.seeAllButton}
+              onPress={() => setShowAllRegions(!showAllRegions)}
+            >
+              <ThemedText style={styles.seeAllText}>
+                {showAllRegions ? 'Show Less' : 'See All'}
+              </ThemedText>
+            </TouchableOpacity>
           </View>
         </View>
 
-        <View style={styles.bottomSpacer} />
-      </ScrollView>
+        {/* Link Button */}
+        <TouchableOpacity
+          style={[styles.linkButton, loading && styles.linkButtonDisabled]}
+          onPress={handleLinkAccount}
+          disabled={loading}
+        >
+          {loading ? (
+            <ActivityIndicator color="#fff" />
+          ) : (
+            <ThemedText style={styles.linkButtonText}>Link Account</ThemedText>
+          )}
+        </TouchableOpacity>
+      </View>
     </ThemedView>
   );
 }
@@ -241,45 +214,45 @@ const styles = StyleSheet.create({
   heroSection: {
     alignItems: 'center',
     paddingHorizontal: 20,
-    paddingTop: 20,
-    paddingBottom: 32,
+    paddingTop: 10,
+    paddingBottom: 20,
     overflow: 'visible',
   },
   logoWrapper: {
-    width: 80,
-    height: 80,
-    borderRadius: 20,
+    width: 60,
+    height: 60,
+    borderRadius: 16,
     backgroundColor: '#1a1a1a',
     alignItems: 'center',
     justifyContent: 'center',
-    marginBottom: 20,
+    marginBottom: 12,
   },
   logo: {
-    width: 50,
-    height: 50,
+    width: 38,
+    height: 38,
   },
   heroTitle: {
-    fontSize: 28,
+    fontSize: 24,
     fontWeight: '800',
     color: '#fff',
     letterSpacing: -0.5,
-    lineHeight: 36,
-    marginBottom: 8,
+    lineHeight: 30,
+    marginBottom: 6,
     overflow: 'visible',
   },
   heroSubtitle: {
-    fontSize: 14,
+    fontSize: 13,
     color: '#666',
     textAlign: 'center',
-    lineHeight: 20,
+    lineHeight: 18,
     maxWidth: 280,
   },
   formCard: {
     marginHorizontal: 16,
     backgroundColor: '#1a1a1a',
     borderRadius: 16,
-    padding: 20,
-    gap: 20,
+    padding: 16,
+    gap: 16,
   },
   inputGroup: {
     gap: 8,
@@ -290,25 +263,21 @@ const styles = StyleSheet.create({
     color: '#888',
     letterSpacing: 0.3,
   },
-  inputWrapper: {
+  riotIdWrapper: {
+    flexDirection: 'row',
+    alignItems: 'center',
     backgroundColor: '#252525',
     borderRadius: 12,
     overflow: 'hidden',
   },
-  input: {
+  gameNameInput: {
+    flex: 1,
     paddingHorizontal: 16,
     paddingVertical: 14,
     fontSize: 16,
     color: '#fff',
   },
-  tagLineWrapper: {
-    flexDirection: 'row',
-    backgroundColor: '#252525',
-    borderRadius: 12,
-    overflow: 'hidden',
-  },
   hashContainer: {
-    paddingLeft: 16,
     justifyContent: 'center',
   },
   hashSymbol: {
@@ -317,8 +286,9 @@ const styles = StyleSheet.create({
     color: '#666',
   },
   tagLineInput: {
-    flex: 1,
-    paddingHorizontal: 8,
+    width: 90,
+    paddingLeft: 6,
+    paddingRight: 16,
     paddingVertical: 14,
     fontSize: 16,
     color: '#fff',
@@ -360,9 +330,9 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     backgroundColor: '#D4A843',
-    paddingVertical: 16,
+    paddingVertical: 14,
     borderRadius: 12,
-    marginTop: 8,
+    marginTop: 4,
   },
   linkButtonDisabled: {
     opacity: 0.6,
@@ -372,53 +342,9 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     color: '#fff',
   },
-  exampleCard: {
-    marginHorizontal: 16,
-    marginTop: 24,
-    backgroundColor: '#1a1a1a',
-    borderRadius: 16,
-    padding: 16,
-  },
-  exampleHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-    marginBottom: 12,
-  },
-  exampleTitle: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: '#666',
-  },
-  exampleText: {
-    fontSize: 14,
-    color: '#888',
-    marginBottom: 12,
-  },
-  exampleHighlight: {
-    fontWeight: '700',
-    color: '#D4A843',
-  },
-  exampleDivider: {
-    height: 1,
-    backgroundColor: '#252525',
-    marginBottom: 12,
-  },
-  exampleRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    marginBottom: 8,
-  },
-  exampleLabel: {
-    fontSize: 13,
-    color: '#666',
-  },
-  exampleValue: {
-    fontSize: 13,
-    fontWeight: '600',
-    color: '#fff',
-  },
-  bottomSpacer: {
-    height: 40,
+  exampleHint: {
+    fontSize: 12,
+    color: '#555',
+    marginTop: 4,
   },
 });

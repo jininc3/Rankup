@@ -5,13 +5,12 @@ import { useState, useRef, useEffect } from 'react';
 import { StyleSheet, TextInput, TouchableOpacity, View, Alert, ActivityIndicator, ScrollView, KeyboardAvoidingView, Platform, Keyboard, Animated, Easing, Image, Modal } from 'react-native';
 import { useRouter } from 'expo-router';
 import { query, collection, where, getDocs, doc, updateDoc } from 'firebase/firestore';
-import { db, auth } from '@/config/firebase';
+import { db } from '@/config/firebase';
 import { IconSymbol } from '@/components/ui/icon-symbol';
 import StepProgressIndicator from '@/components/ui/StepProgressIndicator';
 import DateTimePicker from '@react-native-community/datetimepicker';
-import { signUpWithEmail } from '@/services/authService';
+import { signUpWithPhone } from '@/services/authService';
 import { uploadProfilePicture } from '@/services/storageService';
-import { sendEmailVerification } from 'firebase/auth';
 import { Asset } from 'expo-asset';
 import * as ImagePicker from 'expo-image-picker';
 
@@ -24,7 +23,7 @@ const defaultAvatars = [
   require('@/assets/images/avatar5.png'),
 ];
 
-export default function EmailSignUpScreen() {
+export default function PhoneSignUpScreen() {
   const router = useRouter();
   const [username, setUsername] = useState('');
   const [dateOfBirth, setDateOfBirth] = useState<Date | null>(null);
@@ -42,9 +41,9 @@ export default function EmailSignUpScreen() {
   const [customAvatarUri, setCustomAvatarUri] = useState<string | null>(null);
   const [showAvatarModal, setShowAvatarModal] = useState(false);
 
-  // Email state
-  const [email, setEmail] = useState('');
-  const emailRef = useRef<TextInput>(null);
+  // Phone state
+  const [phoneNumber, setPhoneNumber] = useState('');
+  const phoneRef = useRef<TextInput>(null);
 
   // Randomly select a default avatar on mount
   useEffect(() => {
@@ -131,7 +130,7 @@ export default function EmailSignUpScreen() {
     }
   };
 
-  const hasEmail = email.trim().length > 0;
+  const hasPhone = phoneNumber.trim().length > 0;
 
   const onDateChange = (event: any, selectedDate?: Date) => {
     setShowDatePicker(Platform.OS === 'ios');
@@ -186,8 +185,8 @@ export default function EmailSignUpScreen() {
       return;
     }
 
-    if (!hasEmail) {
-      Alert.alert('Error', 'Please enter your email address');
+    if (!hasPhone) {
+      Alert.alert('Error', 'Please enter your phone number');
       return;
     }
 
@@ -205,7 +204,7 @@ export default function EmailSignUpScreen() {
       }
 
       // Create the account
-      const user = await signUpWithEmail(email.trim(), username.trim());
+      const user = await signUpWithPhone(phoneNumber.trim(), username.trim());
 
       // Upload avatar and save DOB
       if (user?.id) {
@@ -227,18 +226,14 @@ export default function EmailSignUpScreen() {
         });
       }
 
-      // Send email verification
-      if (auth.currentUser && !auth.currentUser.emailVerified) {
-        await sendEmailVerification(auth.currentUser);
-      }
-
       router.replace({
-        pathname: '/(auth)/verifyEmailSignUp',
+        pathname: '/(auth)/verifyPhoneSignUp',
         params: {
           username: username.trim(),
           dateOfBirth: dateOfBirth.toISOString(),
           avatarType: customAvatarUri ? 'custom' : (selectedAvatarIndex !== null ? 'default' : 'none'),
           avatarValue: customAvatarUri || (selectedAvatarIndex !== null ? selectedAvatarIndex.toString() : ''),
+          phoneNumber: phoneNumber.trim(),
         },
       });
     } catch (error: any) {
@@ -308,7 +303,7 @@ export default function EmailSignUpScreen() {
     router.back();
   };
 
-  const isFormValid = usernameAvailable && dateOfBirth && !isCheckingRealtime && hasEmail;
+  const isFormValid = usernameAvailable && dateOfBirth && !isCheckingRealtime && hasPhone;
 
   return (
     <ThemedView style={styles.container}>
@@ -385,7 +380,7 @@ export default function EmailSignUpScreen() {
                     maxLength={20}
                     onFocus={handleUsernameFocus}
                     returnKeyType="next"
-                    onSubmitEditing={() => emailRef.current?.focus()}
+                    onSubmitEditing={() => phoneRef.current?.focus()}
                     blurOnSubmit={false}
                   />
                   {isCheckingRealtime && username.trim().length >= 6 && (
@@ -461,25 +456,27 @@ export default function EmailSignUpScreen() {
                 </View>
               )}
 
-              {/* Email */}
+              {/* Phone Number */}
               <View style={styles.inputContainer}>
-                <ThemedText style={styles.label}>Email *</ThemedText>
+                <ThemedText style={styles.label}>Phone Number *</ThemedText>
                 <View style={styles.inputWrapper}>
-                  <MaterialIcons name="email" size={20} color="#999" style={styles.inputIcon} />
+                  <MaterialIcons name="phone" size={20} color="#999" style={styles.inputIcon} />
                   <TextInput
-                    ref={emailRef}
+                    ref={phoneRef}
                     style={styles.inputWithIcon}
-                    placeholder="Enter your email"
+                    placeholder="+1 234 567 8900"
                     placeholderTextColor="#999"
-                    value={email}
-                    onChangeText={setEmail}
-                    autoCapitalize="none"
-                    keyboardType="email-address"
+                    value={phoneNumber}
+                    onChangeText={setPhoneNumber}
+                    keyboardType="phone-pad"
                     editable={!loading}
                     returnKeyType="done"
                     onSubmitEditing={handleContinue}
                   />
                 </View>
+                <ThemedText style={styles.hint}>
+                  Include country code (e.g. +1 for US)
+                </ThemedText>
               </View>
 
               {/* Create Account Button */}
