@@ -13,7 +13,6 @@
       "bundleIdentifier": "com.jininc3.RankUp",
       "buildNumber": "16",
       "googleServicesFile": "./GoogleService-Info.plist",
-      "useFrameworks": "static",
       "infoPlist": {
         "ITSAppUsesNonExemptEncryption": false,
         "LSApplicationQueriesSchemes": [
@@ -72,7 +71,15 @@
         }
       ],
       "@react-native-firebase/app",
-      "@react-native-firebase/auth"
+      "@react-native-firebase/auth",
+      [
+        "expo-build-properties",
+        {
+          "ios": {
+            "useFrameworks": "static"
+          }
+        }
+      ]
     ],
     "experiments": {
       "typedRoutes": true,
