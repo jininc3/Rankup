@@ -3,10 +3,11 @@ import { ThemedView } from '@/components/themed-view';
 import MaterialIcons from '@expo/vector-icons/MaterialIcons';
 import { db } from '@/config/firebase';
 import { useGoogleAuth } from '@/hooks/useGoogleAuth';
-import { signInWithEmail, signInWithGoogleCredential } from '@/services/authService';
+import { signInWithGoogleCredential, sendEmailSignInLink } from '@/services/authService';
+import rnfbAuth from '@react-native-firebase/auth';
 import { useRouter } from 'expo-router';
 import { collection, getDocs, query, where } from 'firebase/firestore';
-import React, { useEffect, useState, useRef } from 'react';
+import React, { useEffect, useState } from 'react';
 import {
   Alert,
   Image,
@@ -22,13 +23,9 @@ import {
 export default function LoginScreen() {
   const router = useRouter();
   const [emailOrUsername, setEmailOrUsername] = useState('');
-  const [password, setPassword] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [showEmailForm, setShowEmailForm] = useState(false);
   const googleAuth = useGoogleAuth();
-
-  // Ref for password field
-  const passwordRef = useRef<TextInput>(null);
 
   useEffect(() => {
     if (googleAuth.response?.type === 'success') {
@@ -79,41 +76,65 @@ export default function LoginScreen() {
     }
   };
 
-  const handleEmailLogin = async () => {
-    if (!emailOrUsername || !password) {
-      Alert.alert('Error', 'Please enter both email/username and password');
+  const isPhone = (input: string): boolean => {
+    return /^\+?[0-9\s\-\(\)]{7,}$/.test(input);
+  };
+
+  const handleSignIn = async () => {
+    if (!emailOrUsername) {
+      Alert.alert('Error', 'Please enter your email, username, or phone number');
       return;
     }
 
     try {
       setIsLoading(true);
       const input = emailOrUsername.trim();
-      let email = input;
 
-      // If input is not an email, try to find user by username
-      if (!isEmail(input)) {
-        const userInfo = await getEmailFromUsername(input);
-        if (!userInfo) {
-          Alert.alert('Sign In Failed', 'No account found with this username');
-          setIsLoading(false);
-          return;
+      if (isPhone(input)) {
+        // Phone sign-in via OTP
+        let phoneNumber = input.replace(/[\s\-\(\)]/g, '');
+        if (!phoneNumber.startsWith('+')) {
+          phoneNumber = '+' + phoneNumber;
+        }
+        try {
+          const confirmation = await rnfbAuth().signInWithPhoneNumber(phoneNumber);
+          router.push({
+            pathname: '/(auth)/verifyPhoneLogin',
+            params: { phoneNumber, confirmationId: 'pending' },
+          });
+        } catch (error: any) {
+          Alert.alert('Error', 'Failed to send verification code. Check your phone number and try again.');
+          console.error(error);
+        }
+      } else {
+        // Email or username sign-in via magic link
+        let email = input;
+
+        if (!isEmail(input)) {
+          const userInfo = await getEmailFromUsername(input);
+          if (!userInfo) {
+            Alert.alert('Sign In Failed', 'No account found with this username');
+            setIsLoading(false);
+            return;
+          }
+          if (userInfo.provider === 'google') {
+            Alert.alert(
+              'Google Account',
+              'This account uses Google sign-in. Please use the "Continue with Google" button.'
+            );
+            setIsLoading(false);
+            return;
+          }
+          email = userInfo.email;
         }
 
-        // Check if user signed up with Google
-        if (userInfo.provider === 'google') {
-          Alert.alert(
-            'Google Account',
-            'This account uses Google sign-in. Please use the "Continue with Google" button below.'
-          );
-          setIsLoading(false);
-          return;
-        }
-
-        email = userInfo.email;
+        await sendEmailSignInLink(email);
+        Alert.alert(
+          'Check Your Email',
+          `We've sent a sign-in link to ${email}. Click the link to sign in.`,
+          [{ text: 'OK' }]
+        );
       }
-
-      await signInWithEmail(email, password);
-      // Router navigation is handled by AuthContext automatically
     } catch (error: any) {
       Alert.alert('Sign In Failed', error.message);
       console.error(error);
@@ -129,10 +150,6 @@ export default function LoginScreen() {
       Alert.alert('Google Sign In Failed', error.message);
       console.error(error);
     }
-  };
-
-  const handleForgotPassword = () => {
-    router.push('/(auth)/forgotPassword');
   };
 
   return (
@@ -185,59 +202,30 @@ export default function LoginScreen() {
                   </View>
 
                   <View style={styles.inputContainer}>
-                    <ThemedText style={styles.label}>Email or Username</ThemedText>
+                    <ThemedText style={styles.label}>Email, Username, or Phone</ThemedText>
                     <View style={styles.inputWrapper}>
                       <MaterialIcons name="person" size={20} color="#999" style={styles.inputIcon} />
                       <TextInput
                         style={styles.inputWithIcon}
-                        placeholder="Enter your email or username"
+                        placeholder="Enter email, username, or phone"
                         placeholderTextColor="#999"
                         value={emailOrUsername}
                         onChangeText={setEmailOrUsername}
                         autoCapitalize="none"
                         editable={!isLoading}
-                        returnKeyType="next"
-                        onSubmitEditing={() => passwordRef.current?.focus()}
-                        blurOnSubmit={false}
-                      />
-                    </View>
-                  </View>
-
-                  <View style={styles.inputContainer}>
-                    <ThemedText style={styles.label}>Password</ThemedText>
-                    <View style={styles.inputWrapper}>
-                      <MaterialIcons name="vpn-key" size={20} color="#999" style={styles.inputIcon} />
-                      <TextInput
-                        ref={passwordRef}
-                        style={styles.inputWithIcon}
-                        placeholder="Enter your password"
-                        placeholderTextColor="#999"
-                        value={password}
-                        onChangeText={setPassword}
-                        secureTextEntry
-                        editable={!isLoading}
                         returnKeyType="done"
-                        onSubmitEditing={handleEmailLogin}
+                        onSubmitEditing={handleSignIn}
                       />
                     </View>
-                    <TouchableOpacity
-                      style={styles.forgotPasswordButton}
-                      onPress={handleForgotPassword}
-                      disabled={isLoading}
-                    >
-                      <ThemedText style={styles.forgotPasswordText}>
-                        Forgot Password?
-                      </ThemedText>
-                    </TouchableOpacity>
                   </View>
 
                   <TouchableOpacity
                     style={[styles.loginButton, isLoading && styles.buttonDisabled]}
-                    onPress={handleEmailLogin}
+                    onPress={handleSignIn}
                     disabled={isLoading}
                   >
                     <ThemedText style={styles.loginButtonText}>
-                      {isLoading ? 'Signing in...' : 'Sign In'}
+                      {isLoading ? 'Sending...' : 'Continue'}
                     </ThemedText>
                   </TouchableOpacity>
                 </View>
@@ -404,14 +392,5 @@ const styles = StyleSheet.create({
     color: '#c42743',
     fontSize: 13,
     fontWeight: '600',
-  },
-  forgotPasswordButton: {
-    alignSelf: 'flex-end',
-    marginTop: 6,
-  },
-  forgotPasswordText: {
-    color: '#999',
-    fontSize: 13,
-    fontWeight: '500',
   },
 });

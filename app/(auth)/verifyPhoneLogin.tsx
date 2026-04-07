@@ -10,29 +10,13 @@ import {
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { IconSymbol } from '@/components/ui/icon-symbol';
-import { useAuth } from '@/contexts/AuthContext';
 import { useRouter, useLocalSearchParams } from 'expo-router';
-import { deleteIncompleteAccount } from '@/services/authService';
-import { doc, updateDoc } from 'firebase/firestore';
-import { db } from '@/config/firebase';
 import rnfbAuth, { FirebaseAuthTypes } from '@react-native-firebase/auth';
 
-export default function VerifyPhoneSignUp() {
-  const { user } = useAuth();
+export default function VerifyPhoneLogin() {
   const router = useRouter();
   const params = useLocalSearchParams();
-  const phoneNumberRaw = params.phoneNumber as string;
-
-  // Ensure E.164 format: strip spaces/dashes, add + if missing
-  const formatE164 = (phone: string): string => {
-    let cleaned = phone.replace(/[\s\-\(\)]/g, '');
-    if (!cleaned.startsWith('+')) {
-      cleaned = '+' + cleaned;
-    }
-    return cleaned;
-  };
-
-  const phoneNumber = formatE164(phoneNumberRaw);
+  const phoneNumber = params.phoneNumber as string;
 
   const [code, setCode] = useState(['', '', '', '', '', '']);
   const [isSending, setIsSending] = useState(false);
@@ -42,7 +26,6 @@ export default function VerifyPhoneSignUp() {
 
   const inputRefs = useRef<(TextInput | null)[]>([]);
 
-  // Send verification code on mount
   useEffect(() => {
     sendVerificationCode();
   }, []);
@@ -65,8 +48,6 @@ export default function VerifyPhoneSignUp() {
     const newCode = [...code];
     newCode[index] = text;
     setCode(newCode);
-
-    // Auto-focus next input
     if (text && index < 5) {
       inputRefs.current[index + 1]?.focus();
     }
@@ -92,36 +73,10 @@ export default function VerifyPhoneSignUp() {
 
     try {
       setIsVerifying(true);
-      console.log('Verifying code:', JSON.stringify(verificationCode), 'length:', verificationCode.length);
-
-      // Verify the code (this signs in with native Firebase SDK)
+      // This signs in the user with the native Firebase SDK
       await confirmation.confirm(verificationCode);
-
-      // Sign out from native Firebase SDK (we use JS SDK for auth state)
-      await rnfbAuth().signOut();
-
-      // Mark phone as verified in Firestore
-      if (user?.id) {
-        await updateDoc(doc(db, 'users', user.id), {
-          phoneVerified: true,
-        });
-      }
-
-      Alert.alert(
-        'Success!',
-        'Your phone number has been verified!',
-        [
-          {
-            text: 'OK',
-            onPress: () => {
-              router.replace({
-                pathname: '/(auth)/onboardingSignUp1',
-                params: { ...params },
-              });
-            },
-          },
-        ]
-      );
+      // AuthContext will detect the sign-in via onAuthStateChanged
+      // Navigation handled automatically
     } catch (error: any) {
       console.error('Verification error:', error);
       if (error.code === 'auth/invalid-verification-code') {
@@ -141,34 +96,10 @@ export default function VerifyPhoneSignUp() {
     Alert.alert('Code Sent', 'A new verification code has been sent to your phone.');
   };
 
-  const handleClose = async () => {
-    Alert.alert(
-      'Cancel Signup?',
-      'Are you sure you want to cancel? Your account will be deleted.',
-      [
-        { text: 'No, Stay', style: 'cancel' },
-        {
-          text: 'Yes, Cancel',
-          style: 'destructive',
-          onPress: async () => {
-            try {
-              await rnfbAuth().signOut();
-              await deleteIncompleteAccount();
-              router.replace('/(auth)/login');
-            } catch (error) {
-              console.error('Error cancelling:', error);
-              router.replace('/(auth)/login');
-            }
-          },
-        },
-      ]
-    );
-  };
-
   return (
     <ThemedView style={styles.container}>
-      <TouchableOpacity style={styles.closeButton} onPress={handleClose}>
-        <IconSymbol size={24} name="xmark" color="#fff" />
+      <TouchableOpacity style={styles.backButton} onPress={() => router.back()}>
+        <IconSymbol size={24} name="chevron.left" color="#fff" />
       </TouchableOpacity>
 
       <View style={styles.content}>
@@ -177,14 +108,11 @@ export default function VerifyPhoneSignUp() {
         </View>
 
         <View style={styles.textContainer}>
-          <ThemedText style={styles.title}>Verify Your Phone</ThemedText>
+          <ThemedText style={styles.title}>Enter Code</ThemedText>
           <ThemedText style={styles.subtitle}>
-            We've sent a verification code to
+            We sent a verification code to
           </ThemedText>
           <ThemedText style={styles.phone}>{phoneNumber}</ThemedText>
-          <ThemedText style={styles.description}>
-            Enter the 6-digit code below to verify your phone number.
-          </ThemedText>
         </View>
 
         {isSending && !codeSent ? (
@@ -194,7 +122,6 @@ export default function VerifyPhoneSignUp() {
           </View>
         ) : (
           <>
-            {/* OTP Input */}
             <View style={styles.otpContainer}>
               {code.map((digit, index) => (
                 <TextInput
@@ -221,7 +148,7 @@ export default function VerifyPhoneSignUp() {
                 {isVerifying ? (
                   <ActivityIndicator color="#fff" />
                 ) : (
-                  <ThemedText style={styles.verifyButtonText}>Verify Phone</ThemedText>
+                  <ThemedText style={styles.verifyButtonText}>Sign In</ThemedText>
                 )}
               </TouchableOpacity>
 
@@ -237,12 +164,6 @@ export default function VerifyPhoneSignUp() {
             </View>
           </>
         )}
-
-        <View style={styles.footer}>
-          <ThemedText style={styles.footerText}>
-            Standard messaging rates may apply.
-          </ThemedText>
-        </View>
       </View>
     </ThemedView>
   );
@@ -253,10 +174,10 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: '#0f0f0f',
   },
-  closeButton: {
+  backButton: {
     position: 'absolute',
     top: 60,
-    right: 24,
+    left: 24,
     zIndex: 10,
     padding: 8,
   },
@@ -276,8 +197,7 @@ const styles = StyleSheet.create({
   title: {
     fontSize: 28,
     fontWeight: 'bold',
-    marginBottom: 16,
-    textAlign: 'center',
+    marginBottom: 12,
     color: '#fff',
   },
   subtitle: {
@@ -290,15 +210,6 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: '600',
     color: '#fff',
-    marginBottom: 16,
-    textAlign: 'center',
-  },
-  description: {
-    fontSize: 14,
-    color: '#ccc',
-    textAlign: 'center',
-    lineHeight: 20,
-    paddingHorizontal: 16,
   },
   loadingContainer: {
     alignItems: 'center',
@@ -358,15 +269,5 @@ const styles = StyleSheet.create({
   },
   buttonDisabled: {
     opacity: 0.5,
-  },
-  footer: {
-    marginTop: 32,
-    paddingHorizontal: 16,
-  },
-  footerText: {
-    fontSize: 12,
-    color: '#999',
-    textAlign: 'center',
-    lineHeight: 18,
   },
 });

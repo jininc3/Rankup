@@ -428,7 +428,7 @@ export default function GoogleSignUpScreen() {
               style={styles.input}
               onPress={() => {
                 Keyboard.dismiss();
-                setShowDatePicker(true);
+                setShowDatePicker(!showDatePicker);
               }}
               disabled={loading}
             >

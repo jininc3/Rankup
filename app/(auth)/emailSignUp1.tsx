@@ -42,15 +42,11 @@ export default function EmailSignUpScreen() {
   const [customAvatarUri, setCustomAvatarUri] = useState<string | null>(null);
   const [showAvatarModal, setShowAvatarModal] = useState(false);
 
-  // Email, phone & password state
+  // Email & phone state
   const [email, setEmail] = useState('');
   const [phoneNumber, setPhoneNumber] = useState('');
-  const [password, setPassword] = useState('');
-  const [confirmPassword, setConfirmPassword] = useState('');
   const emailRef = useRef<TextInput>(null);
   const phoneRef = useRef<TextInput>(null);
-  const passwordRef = useRef<TextInput>(null);
-  const confirmPasswordRef = useRef<TextInput>(null);
 
   // Randomly select a default avatar on mount
   useEffect(() => {
@@ -137,20 +133,6 @@ export default function EmailSignUpScreen() {
     }
   };
 
-  const validatePassword = (pwd: string): { isValid: boolean; message?: string } => {
-    if (pwd.length < 8) {
-      return { isValid: false, message: 'Password must be at least 8 characters' };
-    }
-    if (!/[0-9]/.test(pwd)) {
-      return { isValid: false, message: 'Password must contain at least one number' };
-    }
-    if (!/[a-zA-Z]/.test(pwd)) {
-      return { isValid: false, message: 'Password must contain at least one letter' };
-    }
-    return { isValid: true };
-  };
-
-  const isPasswordValid = password.length >= 8 && /[0-9]/.test(password) && /[a-zA-Z]/.test(password);
   const hasEmail = email.trim().length > 0;
   const hasPhone = phoneNumber.trim().length > 0;
   const hasContactMethod = hasEmail || hasPhone;
@@ -213,17 +195,6 @@ export default function EmailSignUpScreen() {
       return;
     }
 
-    const passwordValidation = validatePassword(password);
-    if (!passwordValidation.isValid) {
-      Alert.alert('Weak Password', passwordValidation.message || 'Please choose a stronger password');
-      return;
-    }
-
-    if (password !== confirmPassword) {
-      Alert.alert('Error', 'Passwords do not match');
-      return;
-    }
-
     setLoading(true);
 
     try {
@@ -240,9 +211,9 @@ export default function EmailSignUpScreen() {
       // Create the account based on what contact info was provided
       let user;
       if (hasEmail) {
-        user = await signUpWithEmail(email.trim(), password, username.trim());
+        user = await signUpWithEmail(email.trim(), username.trim());
       } else {
-        user = await signUpWithPhone(phoneNumber.trim(), password, username.trim());
+        user = await signUpWithPhone(phoneNumber.trim(), username.trim());
       }
 
       // Upload avatar and save additional data
@@ -370,7 +341,7 @@ export default function EmailSignUpScreen() {
     router.back();
   };
 
-  const isFormValid = usernameAvailable && dateOfBirth && !isCheckingRealtime && hasContactMethod && isPasswordValid && password === confirmPassword;
+  const isFormValid = usernameAvailable && dateOfBirth && !isCheckingRealtime && hasContactMethod;
 
   return (
     <ThemedView style={styles.container}>
@@ -495,7 +466,7 @@ export default function EmailSignUpScreen() {
                   style={styles.input}
                   onPress={() => {
                     Keyboard.dismiss();
-                    setShowDatePicker(true);
+                    setShowDatePicker(!showDatePicker);
                   }}
                   disabled={loading}
                 >
@@ -553,121 +524,21 @@ export default function EmailSignUpScreen() {
                   <TextInput
                     ref={phoneRef}
                     style={styles.inputWithIcon}
-                    placeholder="Enter your phone number"
+                    placeholder="+1 234 567 8900"
                     placeholderTextColor="#999"
                     value={phoneNumber}
                     onChangeText={setPhoneNumber}
                     keyboardType="phone-pad"
                     editable={!loading}
-                    returnKeyType="next"
-                    onSubmitEditing={() => passwordRef.current?.focus()}
-                    blurOnSubmit={false}
-                  />
-                </View>
-                {!hasEmail && !hasPhone && (
-                  <ThemedText style={styles.hint}>
-                    Enter at least an email or phone number
-                  </ThemedText>
-                )}
-              </View>
-
-              {/* Password */}
-              <View style={styles.inputContainer}>
-                <ThemedText style={styles.label}>Password *</ThemedText>
-                <View style={styles.inputWrapper}>
-                  <MaterialIcons name="vpn-key" size={20} color="#999" style={styles.inputIcon} />
-                  <TextInput
-                    ref={passwordRef}
-                    style={styles.inputWithIcon}
-                    placeholder="Enter your password"
-                    placeholderTextColor="#999"
-                    value={password}
-                    onChangeText={setPassword}
-                    secureTextEntry
-                    editable={!loading}
-                    returnKeyType="next"
-                    onSubmitEditing={() => confirmPasswordRef.current?.focus()}
-                    blurOnSubmit={false}
-                  />
-                </View>
-                {password.length > 0 && (
-                  <View style={styles.requirementsCard}>
-                    <View style={styles.requirementItem}>
-                      <IconSymbol
-                        size={16}
-                        name={password.length >= 8 ? "checkmark.circle.fill" : "circle"}
-                        color={password.length >= 8 ? "#22c55e" : "#999"}
-                      />
-                      <ThemedText style={[
-                        styles.requirementText,
-                        password.length >= 8 && styles.requirementMet
-                      ]}>
-                        At least 8 characters
-                      </ThemedText>
-                    </View>
-                    <View style={styles.requirementItem}>
-                      <IconSymbol
-                        size={16}
-                        name={/[0-9]/.test(password) ? "checkmark.circle.fill" : "circle"}
-                        color={/[0-9]/.test(password) ? "#22c55e" : "#999"}
-                      />
-                      <ThemedText style={[
-                        styles.requirementText,
-                        /[0-9]/.test(password) && styles.requirementMet
-                      ]}>
-                        At least one number
-                      </ThemedText>
-                    </View>
-                    <View style={styles.requirementItem}>
-                      <IconSymbol
-                        size={16}
-                        name={/[a-zA-Z]/.test(password) ? "checkmark.circle.fill" : "circle"}
-                        color={/[a-zA-Z]/.test(password) ? "#22c55e" : "#999"}
-                      />
-                      <ThemedText style={[
-                        styles.requirementText,
-                        /[a-zA-Z]/.test(password) && styles.requirementMet
-                      ]}>
-                        At least one letter
-                      </ThemedText>
-                    </View>
-                  </View>
-                )}
-              </View>
-
-              {/* Confirm Password */}
-              <View style={styles.inputContainer}>
-                <ThemedText style={styles.label}>Confirm Password *</ThemedText>
-                <View style={styles.inputWrapper}>
-                  <MaterialIcons name="vpn-key" size={20} color="#999" style={styles.inputIcon} />
-                  <TextInput
-                    ref={confirmPasswordRef}
-                    style={styles.inputWithIcon}
-                    placeholder="Re-enter your password"
-                    placeholderTextColor="#999"
-                    value={confirmPassword}
-                    onChangeText={setConfirmPassword}
-                    secureTextEntry
-                    editable={!loading}
                     returnKeyType="done"
                     onSubmitEditing={handleContinue}
                   />
                 </View>
-                {confirmPassword.length > 0 && (
-                  <View style={styles.requirementItem}>
-                    <IconSymbol
-                      size={16}
-                      name={password === confirmPassword ? "checkmark.circle.fill" : "circle"}
-                      color={password === confirmPassword ? "#22c55e" : "#999"}
-                    />
-                    <ThemedText style={[
-                      styles.requirementText,
-                      password === confirmPassword && styles.requirementMet
-                    ]}>
-                      Passwords match
-                    </ThemedText>
-                  </View>
-                )}
+                <ThemedText style={styles.hint}>
+                  {!hasEmail && !hasPhone
+                    ? 'Enter at least an email or phone number'
+                    : 'Include country code (e.g. +1 for US)'}
+                </ThemedText>
               </View>
 
               {/* Create Account Button */}
@@ -918,30 +789,6 @@ const styles = StyleSheet.create({
     height: 200,
     width: '100%',
     backgroundColor: '#2c2f33',
-  },
-  // Password requirements
-  requirementsCard: {
-    marginTop: 12,
-    padding: 12,
-    backgroundColor: '#2c2f33',
-    borderRadius: 8,
-    borderWidth: 1,
-    borderColor: '#3a3f44',
-    gap: 8,
-  },
-  requirementItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-    marginTop: 4,
-  },
-  requirementText: {
-    fontSize: 14,
-    color: '#ccc',
-  },
-  requirementMet: {
-    color: '#22c55e',
-    fontWeight: '500',
   },
   // Footer
   footer: {

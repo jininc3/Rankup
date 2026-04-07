@@ -17,6 +17,7 @@ export default function AuthLayout() {
       <Stack.Screen name="emailSignUp1" />
       <Stack.Screen name="verifyEmailSignUp" />
       <Stack.Screen name="verifyPhoneSignUp" />
+      <Stack.Screen name="verifyPhoneLogin" />
       <Stack.Screen name="verifyChoiceSignUp" />
       <Stack.Screen name="googleSignUp" />
       <Stack.Screen name="onboardingSignUp1" />

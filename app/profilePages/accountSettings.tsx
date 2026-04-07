@@ -8,7 +8,7 @@ import { deleteUserAccount } from '@/services/deleteAccountService';
 import { useState, useEffect } from 'react';
 import { auth } from '@/config/firebase';
 import { useGoogleAuth } from '@/hooks/useGoogleAuth';
-import { EmailAuthProvider, reauthenticateWithCredential, GoogleAuthProvider } from 'firebase/auth';
+import { GoogleAuthProvider } from 'firebase/auth';
 
 const accountSettingsData = [
   {
@@ -34,19 +34,6 @@ const accountSettingsData = [
         icon: 'phone',
         title: 'Phone Number',
         subtitle: 'Add or change phone',
-        hasChevron: true,
-      },
-    ],
-  },
-  {
-    id: 'security',
-    title: 'Security',
-    items: [
-      {
-        id: 4,
-        icon: 'lock',
-        title: 'Change Password',
-        subtitle: 'Update your password',
         hasChevron: true,
       },
     ],
@@ -79,26 +66,19 @@ export default function AccountSettingsScreen() {
   const { user } = useAuth();
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [deleteConfirmText, setDeleteConfirmText] = useState('');
-  const [password, setPassword] = useState('');
   const [isDeleting, setIsDeleting] = useState(false);
-  const [authProvider, setAuthProvider] = useState<'password' | 'google.com' | null>(null);
+  const [authProvider, setAuthProvider] = useState<'password' | 'google.com' | 'phone' | null>(null);
   const googleAuth = useGoogleAuth();
 
-  // Edit Username states
-  const [showPasswordModal, setShowPasswordModal] = useState(false);
-  const [verifyPassword, setVerifyPassword] = useState('');
-  const [confirmPassword, setConfirmPassword] = useState('');
-  const [isVerifying, setIsVerifying] = useState(false);
+  // Edit flow states
   const [isEditUsernameFlow, setIsEditUsernameFlow] = useState(false);
-  const [isEditEmailFlow, setIsEditEmailFlow] = useState(false);
-  const [isChangePasswordFlow, setIsChangePasswordFlow] = useState(false);
 
   // Detect the authentication provider when component mounts
   useEffect(() => {
     const currentUser = auth.currentUser;
     if (currentUser && currentUser.providerData.length > 0) {
       const providerId = currentUser.providerData[0]?.providerId;
-      setAuthProvider(providerId as 'password' | 'google.com');
+      setAuthProvider(providerId as 'password' | 'google.com' | 'phone');
     }
   }, []);
 
@@ -115,16 +95,13 @@ export default function AccountSettingsScreen() {
 
   // Handle Edit Username
   const handleEditUsername = async () => {
-    // Handle Gmail/Google users - re-authenticate with Google
+    // Handle Google users - re-authenticate with Google
     if (user?.provider === 'google') {
       Alert.alert(
         'Verify Your Identity',
         'Please sign in with your Google account to verify your identity before editing your username.',
         [
-          {
-            text: 'Cancel',
-            style: 'cancel',
-          },
+          { text: 'Cancel', style: 'cancel' },
           {
             text: 'Sign In with Google',
             onPress: async () => {
@@ -143,18 +120,8 @@ export default function AccountSettingsScreen() {
       return;
     }
 
-    // Handle email/password users - show password verification modal
-    if (user?.provider === 'email') {
-      setShowPasswordModal(true);
-      return;
-    }
-
-    // For other providers (if any)
-    Alert.alert(
-      'Not Available',
-      'Username editing is not available for your account type.',
-      [{ text: 'OK' }]
-    );
+    // For email/phone passwordless users - navigate directly
+    router.push('/profilePages/editUsername');
   };
 
   const handleGoogleEditUsernameSuccess = async (response: any) => {
@@ -185,92 +152,23 @@ export default function AccountSettingsScreen() {
   };
 
   const handleEditEmail = async () => {
-    // Only available for email/password users
-    if (user?.provider !== 'email') {
+    if (user?.provider === 'google') {
       Alert.alert(
         'Not Available',
-        'Email editing is only available for email/password accounts.',
+        'Email editing is not available for Google accounts.',
         [{ text: 'OK' }]
       );
       return;
     }
 
-    setIsEditEmailFlow(true);
-    setShowPasswordModal(true);
-  };
-
-  const handleChangePassword = async () => {
-    // Only available for email/password users
-    if (user?.provider !== 'email') {
-      Alert.alert(
-        'Not Available',
-        'Password change is only available for email/password accounts.',
-        [{ text: 'OK' }]
-      );
-      return;
-    }
-
-    setIsChangePasswordFlow(true);
-    setShowPasswordModal(true);
-  };
-
-  const handleVerifyPassword = async () => {
-    // Validate passwords
-    if (!verifyPassword || !confirmPassword) {
-      Alert.alert('Error', 'Please enter your password in both fields');
-      return;
-    }
-
-    if (verifyPassword !== confirmPassword) {
-      Alert.alert('Error', 'Passwords do not match');
-      return;
-    }
-
-    setIsVerifying(true);
-
-    try {
-      // Re-authenticate user with their password
-      const currentUser = auth.currentUser;
-      if (!currentUser || !currentUser.email) {
-        Alert.alert('Error', 'User not found');
-        setIsVerifying(false);
-        return;
-      }
-
-      const credential = EmailAuthProvider.credential(currentUser.email, verifyPassword);
-      await reauthenticateWithCredential(currentUser, credential);
-
-      // Password is correct, navigate to appropriate page
-      setShowPasswordModal(false);
-      setVerifyPassword('');
-      setConfirmPassword('');
-
-      if (isEditEmailFlow) {
-        setIsEditEmailFlow(false);
-        router.push('/profilePages/editEmail');
-      } else if (isChangePasswordFlow) {
-        setIsChangePasswordFlow(false);
-        router.push('/profilePages/changePassword');
-      } else {
-        router.push('/profilePages/editUsername');
-      }
-    } catch (error: any) {
-      console.error('Re-authentication error:', error);
-      if (error.code === 'auth/wrong-password' || error.code === 'auth/invalid-credential') {
-        Alert.alert('Error', 'Incorrect password. Please try again.');
-      } else {
-        Alert.alert('Error', 'Failed to verify password. Please try again.');
-      }
-    } finally {
-      setIsVerifying(false);
-    }
+    router.push('/profilePages/editEmail');
   };
 
   const handleGoogleDeleteSuccess = async (response: any) => {
     try {
       const { id_token } = response.params;
       if (id_token && user?.id) {
-        await deleteUserAccount(user.id, undefined, id_token);
+        await deleteUserAccount(user.id, id_token);
         handleDeleteSuccess();
       }
     } catch (error: any) {
@@ -282,7 +180,6 @@ export default function AccountSettingsScreen() {
 
   const handleDeleteSuccess = () => {
     setShowDeleteModal(false);
-    setPassword('');
     setDeleteConfirmText('');
     Alert.alert(
       'Account Deleted',
@@ -326,18 +223,12 @@ export default function AccountSettingsScreen() {
       return;
     }
 
-    // Validate password for email/password users
-    if (authProvider === 'password' && !password.trim()) {
-      Alert.alert('Error', 'Please enter your password to confirm deletion');
-      return;
-    }
-
     setIsDeleting(true);
 
     try {
-      if (authProvider === 'password') {
-        // Email/password authentication - delete with password
-        await deleteUserAccount(user.id, password);
+      if (authProvider === 'password' || authProvider === 'phone') {
+        // Email/phone passwordless users - delete directly
+        await deleteUserAccount(user.id);
         handleDeleteSuccess();
       } else if (authProvider === 'google.com') {
         // Google authentication - prompt for Google sign-in
@@ -400,9 +291,6 @@ export default function AccountSettingsScreen() {
                     } else if (item.id === 2) {
                       // Edit Email
                       handleEditEmail();
-                    } else if (item.id === 4) {
-                      // Change Password
-                      handleChangePassword();
                     } else if (item.id === 8) {
                       // Delete Account
                       handleDeleteAccountPress();
@@ -489,25 +377,6 @@ export default function AccountSettingsScreen() {
               </View>
             </View>
 
-            {/* Password input for email/password users */}
-            {authProvider === 'password' && (
-              <View style={styles.confirmInputContainer}>
-                <ThemedText style={styles.confirmInputLabel}>
-                  Enter your password:
-                </ThemedText>
-                <TextInput
-                  style={styles.confirmInput}
-                  value={password}
-                  onChangeText={setPassword}
-                  placeholder="Your password"
-                  placeholderTextColor="#72767d"
-                  secureTextEntry
-                  autoCapitalize="none"
-                  editable={!isDeleting}
-                />
-              </View>
-            )}
-
             {/* Google re-authentication notice */}
             {authProvider === 'google.com' && (
               <View style={styles.confirmInputContainer}>
@@ -538,7 +407,6 @@ export default function AccountSettingsScreen() {
                 onPress={() => {
                   setShowDeleteModal(false);
                   setDeleteConfirmText('');
-                  setPassword('');
                   setIsDeleting(false);
                 }}
                 disabled={isDeleting}
@@ -564,75 +432,6 @@ export default function AccountSettingsScreen() {
         </KeyboardAvoidingView>
       </Modal>
 
-      {/* Password Verification Modal for Edit Username */}
-      <Modal
-        visible={showPasswordModal}
-        transparent={true}
-        animationType="fade"
-        onRequestClose={() => setShowPasswordModal(false)}
-      >
-        <View style={styles.modalOverlay}>
-          <View style={styles.modalContent}>
-            <ThemedText style={styles.modalTitle}>Verify Password</ThemedText>
-            <ThemedText style={styles.modalDescription}>
-              Please enter your password twice to verify your identity
-            </ThemedText>
-
-            <View style={styles.confirmInputContainer}>
-              <TextInput
-                style={styles.confirmInput}
-                placeholder="Enter password"
-                placeholderTextColor="#72767d"
-                secureTextEntry
-                value={verifyPassword}
-                onChangeText={setVerifyPassword}
-                autoCapitalize="none"
-                autoComplete="password"
-              />
-            </View>
-
-            <View style={styles.confirmInputContainer}>
-              <TextInput
-                style={styles.confirmInput}
-                placeholder="Confirm password"
-                placeholderTextColor="#72767d"
-                secureTextEntry
-                value={confirmPassword}
-                onChangeText={setConfirmPassword}
-                autoCapitalize="none"
-                autoComplete="password"
-              />
-            </View>
-
-            <View style={styles.modalButtons}>
-              <TouchableOpacity
-                style={styles.modalCancelButton}
-                onPress={() => {
-                  setShowPasswordModal(false);
-                  setVerifyPassword('');
-                  setConfirmPassword('');
-                }}
-                disabled={isVerifying}
-              >
-                <ThemedText style={styles.modalCancelText}>Cancel</ThemedText>
-              </TouchableOpacity>
-
-              <TouchableOpacity
-                style={[
-                  styles.verifyButton,
-                  isVerifying && styles.verifyButtonDisabled
-                ]}
-                onPress={handleVerifyPassword}
-                disabled={isVerifying}
-              >
-                <ThemedText style={styles.verifyButtonText}>
-                  {isVerifying ? 'Verifying...' : 'Verify'}
-                </ThemedText>
-              </TouchableOpacity>
-            </View>
-          </View>
-        </View>
-      </Modal>
     </ThemedView>
   );
 }
@@ -846,20 +645,5 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: '600',
     color: '#fff',
-  },
-  verifyButton: {
-    flex: 1,
-    paddingVertical: 12,
-    borderRadius: 8,
-    backgroundColor: '#c42743',
-    alignItems: 'center',
-  },
-  verifyButtonText: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: '#fff',
-  },
-  verifyButtonDisabled: {
-    opacity: 0.5,
   },
 });

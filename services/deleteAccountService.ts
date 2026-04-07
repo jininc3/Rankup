@@ -14,19 +14,17 @@ import { ref, deleteObject, listAll } from 'firebase/storage';
 import {
   deleteUser,
   reauthenticateWithCredential,
-  EmailAuthProvider,
   GoogleAuthProvider,
-  signInWithCredential
 } from 'firebase/auth';
 import { deleteProfilePicture, deleteCoverPhoto, deletePostMedia } from './storageService';
 
 /**
  * Re-authenticate the current user before performing sensitive operations
- * @param password - User's password (required for email/password auth)
+ * For passwordless auth: email/phone users skip re-auth (recently authenticated)
+ * For Google users: re-authenticate with Google credential
  * @param googleIdToken - Google ID token (required for Google auth)
  */
 export async function reauthenticateUser(
-  password?: string,
   googleIdToken?: string
 ): Promise<void> {
   const currentUser = auth.currentUser;
@@ -35,34 +33,24 @@ export async function reauthenticateUser(
   }
 
   try {
-    // Determine which auth provider the user is using
     const providerId = currentUser.providerData[0]?.providerId;
 
-    if (providerId === 'password' && password) {
-      // Email/password re-authentication
-      const email = currentUser.email;
-      if (!email) {
-        throw new Error('User email not found');
-      }
-      const credential = EmailAuthProvider.credential(email, password);
-      await reauthenticateWithCredential(currentUser, credential);
-      console.log('Re-authenticated with email/password');
-    } else if (providerId === 'google.com' && googleIdToken) {
+    if (providerId === 'google.com' && googleIdToken) {
       // Google re-authentication
       const credential = GoogleAuthProvider.credential(googleIdToken);
       await reauthenticateWithCredential(currentUser, credential);
       console.log('Re-authenticated with Google');
-    } else {
-      throw new Error('Invalid authentication method or missing credentials');
+    } else if (providerId === 'google.com') {
+      throw new Error('Google re-authentication required');
     }
+    // For email/phone passwordless users, no re-auth needed
+    // (Firebase will throw requires-recent-login if session is too old)
   } catch (error: any) {
     console.error('Re-authentication failed:', error);
-    if (error.code === 'auth/wrong-password') {
-      throw new Error('Incorrect password. Please try again.');
-    } else if (error.code === 'auth/too-many-requests') {
+    if (error.code === 'auth/too-many-requests') {
       throw new Error('Too many failed attempts. Please try again later.');
     } else {
-      throw new Error('Re-authentication failed. Please try again.');
+      throw error;
     }
   }
 }
@@ -86,19 +74,17 @@ export async function reauthenticateUser(
  * - Firebase Auth account
  *
  * @param userId - The ID of the user to delete
- * @param password - User's password (required for email/password auth)
  * @param googleIdToken - Google ID token (required for Google auth)
  */
 export async function deleteUserAccount(
   userId: string,
-  password?: string,
   googleIdToken?: string
 ): Promise<void> {
   try {
     console.log(`Starting account deletion for user: ${userId}`);
 
-    // 0. Re-authenticate user before deletion (required by Firebase for security)
-    await reauthenticateUser(password, googleIdToken);
+    // 0. Re-authenticate user before deletion (required by Firebase for Google users)
+    await reauthenticateUser(googleIdToken);
 
     // 1. Delete all user's posts (including their likes and comments subcollections) and media
     await deleteUserPosts(userId);

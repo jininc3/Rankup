@@ -9,12 +9,16 @@ import {
   View,
   ScrollView,
   Image,
+  Alert,
 } from 'react-native';
 import { useRouter, useLocalSearchParams } from 'expo-router';
+import { deleteIncompleteAccount } from '@/services/authService';
+import { useAuth } from '@/contexts/AuthContext';
 
 export default function OnboardingSignUp3() {
   const router = useRouter();
   const params = useLocalSearchParams();
+  const { signOut } = useAuth();
 
   // Placeholder for contacts with RankUp accounts
   const [suggestedUsers, setSuggestedUsers] = useState<any[]>([]);
@@ -40,7 +44,28 @@ export default function OnboardingSignUp3() {
   };
 
   const handleBack = () => {
-    router.back();
+    Alert.alert(
+      'Cancel Signup?',
+      'Are you sure you want to cancel? Your account will be deleted.',
+      [
+        { text: 'No, Stay', style: 'cancel' },
+        {
+          text: 'Yes, Cancel',
+          style: 'destructive',
+          onPress: async () => {
+            try {
+              await deleteIncompleteAccount();
+            } catch (error) {
+              console.log('Could not delete account, signing out instead:', error);
+            }
+            try {
+              await signOut();
+            } catch (e) {}
+            router.replace('/(auth)/login');
+          },
+        },
+      ]
+    );
   };
 
   const toggleFollow = (userId: string) => {

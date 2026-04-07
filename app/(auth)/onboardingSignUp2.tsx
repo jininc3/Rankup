@@ -12,10 +12,12 @@ import {
   ActivityIndicator,
   Dimensions,
   Switch,
+  Alert,
 } from 'react-native';
 import { useRouter, useLocalSearchParams, useFocusEffect } from 'expo-router';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useAuth } from '@/contexts/AuthContext';
+import { deleteIncompleteAccount } from '@/services/authService';
 import { db } from '@/config/firebase';
 import { doc, getDoc } from 'firebase/firestore';
 import { formatRank } from '@/services/riotService';
@@ -26,7 +28,7 @@ const CARD_WIDTH = screenWidth - 48;
 export default function OnboardingSignUp2() {
   const router = useRouter();
   const params = useLocalSearchParams();
-  const { user } = useAuth();
+  const { user, signOut } = useAuth();
 
   const [riotAccount, setRiotAccount] = useState<any>(null);
   const [valorantAccount, setValorantAccount] = useState<any>(null);
@@ -99,7 +101,28 @@ export default function OnboardingSignUp2() {
   };
 
   const handleBack = () => {
-    router.back();
+    Alert.alert(
+      'Cancel Signup?',
+      'Are you sure you want to cancel? Your account will be deleted.',
+      [
+        { text: 'No, Stay', style: 'cancel' },
+        {
+          text: 'Yes, Cancel',
+          style: 'destructive',
+          onPress: async () => {
+            try {
+              await deleteIncompleteAccount();
+            } catch (error) {
+              console.log('Could not delete account, signing out instead:', error);
+            }
+            try {
+              await signOut();
+            } catch (e) {}
+            router.replace('/(auth)/login');
+          },
+        },
+      ]
+    );
   };
 
   const handleLinkLeague = () => {

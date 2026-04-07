@@ -17,6 +17,7 @@ import {
 } from 'react-native';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { useAuth } from '@/contexts/AuthContext';
+import { deleteIncompleteAccount } from '@/services/authService';
 import { db, storage } from '@/config/firebase';
 import { doc, updateDoc, addDoc, collection, Timestamp, increment } from 'firebase/firestore';
 import { ref, uploadBytesResumable, getDownloadURL, uploadBytes } from 'firebase/storage';
@@ -45,7 +46,7 @@ const defaultAvatarAssets = [
 export default function OnboardingSignUp4() {
   const router = useRouter();
   const params = useLocalSearchParams();
-  const { user, refreshUser } = useAuth();
+  const { user, refreshUser, signOut } = useAuth();
 
   const [selectedVideo, setSelectedVideo] = useState<ImagePicker.ImagePickerAsset | null>(null);
   const [caption, setCaption] = useState('');
@@ -341,7 +342,28 @@ export default function OnboardingSignUp4() {
   };
 
   const handleBack = () => {
-    router.back();
+    Alert.alert(
+      'Cancel Signup?',
+      'Are you sure you want to cancel? Your account will be deleted.',
+      [
+        { text: 'No, Stay', style: 'cancel' },
+        {
+          text: 'Yes, Cancel',
+          style: 'destructive',
+          onPress: async () => {
+            try {
+              await deleteIncompleteAccount();
+            } catch (error) {
+              console.log('Could not delete account, signing out instead:', error);
+            }
+            try {
+              await signOut();
+            } catch (e) {}
+            router.replace('/(auth)/login');
+          },
+        },
+      ]
+    );
   };
 
   const canFinish = selectedVideo && selectedGame;

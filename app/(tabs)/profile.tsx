@@ -27,7 +27,8 @@ import { ProfilePageSkeleton } from '@/components/ui/Skeleton';
 import GradientBorder from '@/components/GradientBorder';
 import { LinearGradient } from 'expo-linear-gradient';
 
-const { width: screenWidth } = Dimensions.get('window');
+const { width: screenWidth, height: screenHeight } = Dimensions.get('window');
+const TAB_CONTENT_MIN_HEIGHT = screenHeight * 0.4;
 const CARD_PADDING = 20;
 const CARD_GAP = 16;
 const CARD_WIDTH = screenWidth - (CARD_PADDING * 2);
@@ -1171,7 +1172,7 @@ export default function ProfileScreen() {
             nestedScrollEnabled
           >
           {/* Clips Tab */}
-          <View style={{ width: screenWidth }}>
+          <View style={{ width: screenWidth, minHeight: TAB_CONTENT_MIN_HEIGHT }}>
           <View style={styles.sectionContainer}>
 
           {/* Clips Content */}
@@ -1210,38 +1211,35 @@ export default function ProfileScreen() {
               ))}
             </ScrollView>
           ) : (
-            <View style={styles.emptyState}>
-              <View style={styles.emptyClipsIcons}>
-                <View style={styles.emptyClipsIconCircle}>
-                  <IconSymbol size={18} name="photo.fill" color="#72767d" />
+            <TouchableOpacity
+              style={styles.emptyBanner}
+              onPress={() => setShowNewClip(true)}
+              activeOpacity={0.8}
+            >
+              <View style={styles.emptyBannerIconRow}>
+                <View style={styles.emptyBannerIconCircle}>
+                  <IconSymbol size={16} name="photo.fill" color="#72767d" />
                 </View>
-                <View style={[styles.emptyClipsIconCircle, styles.emptyClipsIconCircleCenter]}>
-                  <IconSymbol size={22} name="video.fill" color="#fff" />
+                <View style={[styles.emptyBannerIconCircle, styles.emptyBannerIconCircleCenter]}>
+                  <IconSymbol size={20} name="video.fill" color="#fff" />
                 </View>
-                <View style={styles.emptyClipsIconCircle}>
-                  <IconSymbol size={18} name="sparkles" color="#72767d" />
+                <View style={styles.emptyBannerIconCircle}>
+                  <IconSymbol size={16} name="sparkles" color="#72767d" />
                 </View>
               </View>
-              <ThemedText style={styles.emptyStateTitle}>Share your clips</ThemedText>
-              <ThemedText style={styles.emptyStateSubtext}>
-                Post your best gaming moments
-              </ThemedText>
-              <TouchableOpacity
-                style={styles.addClipButton}
-                onPress={() => setShowNewClip(true)}
-                activeOpacity={0.7}
-              >
-                <IconSymbol size={10} name="plus" color="#666" />
-                <ThemedText style={styles.addClipButtonText}>Add Clip</ThemedText>
-              </TouchableOpacity>
-            </View>
+              <View style={styles.emptyBannerTextContainer}>
+                <ThemedText style={styles.emptyBannerTitle}>Share your clips</ThemedText>
+                <ThemedText style={styles.emptyBannerSubtext}>Post your best gaming moments</ThemedText>
+              </View>
+              <IconSymbol size={16} name="chevron.right" color="#555" />
+            </TouchableOpacity>
           )}
           </View>
           </View>
           </View>
 
           {/* Rank Cards Tab */}
-          <View style={{ width: screenWidth }}>
+          <View style={{ width: screenWidth, minHeight: TAB_CONTENT_MIN_HEIGHT }}>
           <View style={[styles.sectionContainer, {
             paddingBottom: userGames.length > 2 ? 10 : userGames.length > 1 ? 8 : 4
           }]}>
@@ -1250,43 +1248,40 @@ export default function ProfileScreen() {
           <View style={styles.rankCardsSection}>
           {!riotAccount && !valorantAccount ? (
             // Empty state for new users
-            <View style={styles.emptyState}>
-              <View style={styles.emptyGameLogos}>
-                <View style={styles.emptyGameLogoCircle}>
+            <TouchableOpacity
+              style={styles.emptyBanner}
+              onPress={() => router.push('/profilePages/newRankCard')}
+              activeOpacity={0.8}
+            >
+              <View style={styles.emptyBannerIconRow}>
+                <View style={styles.emptyBannerIconCircle}>
                   <Image
                     source={require('@/assets/images/valorant-logo.png')}
-                    style={styles.emptyGameLogo}
+                    style={{ width: 18, height: 18, tintColor: '#72767d' }}
                     resizeMode="contain"
                   />
                 </View>
-                <View style={[styles.emptyGameLogoCircle, styles.emptyGameLogoCircleCenter]}>
+                <View style={[styles.emptyBannerIconCircle, styles.emptyBannerIconCircleCenter]}>
                   <Image
                     source={require('@/assets/images/riotgames.png')}
-                    style={styles.emptyGameLogoLarge}
+                    style={{ width: 24, height: 24 }}
                     resizeMode="contain"
                   />
                 </View>
-                <View style={styles.emptyGameLogoCircle}>
+                <View style={styles.emptyBannerIconCircle}>
                   <Image
                     source={require('@/assets/images/leagueoflegends.png')}
-                    style={styles.emptyGameLogo}
+                    style={{ width: 18, height: 18, tintColor: '#72767d' }}
                     resizeMode="contain"
                   />
                 </View>
               </View>
-              <ThemedText style={styles.emptyStateTitle}>Show off your rank</ThemedText>
-              <ThemedText style={styles.emptyStateSubtext}>
-                Link your Riot account to display your Valorant and League of Legends ranks on your profile
-              </ThemedText>
-              <TouchableOpacity
-                style={styles.addRankCardEmptyButton}
-                onPress={() => router.push('/profilePages/newRankCard')}
-                activeOpacity={0.8}
-              >
-                <IconSymbol size={10} name="link" color="#666" />
-                <ThemedText style={styles.addRankCardEmptyText}>Link Account</ThemedText>
-              </TouchableOpacity>
-            </View>
+              <View style={styles.emptyBannerTextContainer}>
+                <ThemedText style={styles.emptyBannerTitle}>Show off your rank</ThemedText>
+                <ThemedText style={styles.emptyBannerSubtext}>Link your Riot account to get started</ThemedText>
+              </View>
+              <IconSymbol size={16} name="chevron.right" color="#555" />
+            </TouchableOpacity>
           ) : userGames.length === 1 ? (
             // Single Card View - clickable to open game stats
             <View style={styles.verticalRankCardsContainer}>
@@ -1375,7 +1370,7 @@ export default function ProfileScreen() {
           </View>
 
           {/* Achievements Tab */}
-          <View style={{ width: screenWidth }}>
+          <View style={{ width: screenWidth, minHeight: TAB_CONTENT_MIN_HEIGHT }}>
           <View style={styles.sectionContainer}>
 
           {/* Achievements Content */}
@@ -1996,6 +1991,53 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(0, 0, 0, 0.7)',
     borderRadius: 4,
     padding: 4,
+  },
+  emptyBanner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#1a1a1a',
+    borderRadius: 14,
+    padding: 16,
+    marginHorizontal: 16,
+    marginTop: 16,
+    gap: 14,
+    borderWidth: 1,
+    borderColor: '#252525',
+  },
+  emptyBannerIconRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: -6,
+  },
+  emptyBannerIconCircle: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    backgroundColor: '#2c2f33',
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 2,
+    borderColor: '#1a1a1a',
+  },
+  emptyBannerIconCircleCenter: {
+    width: 38,
+    height: 38,
+    borderRadius: 19,
+    backgroundColor: '#c42743',
+    zIndex: 1,
+  },
+  emptyBannerTextContainer: {
+    flex: 1,
+  },
+  emptyBannerTitle: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#fff',
+    marginBottom: 2,
+  },
+  emptyBannerSubtext: {
+    fontSize: 12,
+    color: '#666',
   },
   emptyState: {
     alignItems: 'center',

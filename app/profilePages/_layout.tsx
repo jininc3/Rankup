@@ -94,12 +94,6 @@ export default function ProfilePagesLayout() {
         }}
       />
       <Stack.Screen
-        name="changePassword"
-        options={{
-          headerShown: false,
-        }}
-      />
-      <Stack.Screen
         name="tierBorders"
         options={{
           headerShown: false,

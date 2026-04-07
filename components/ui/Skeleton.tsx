@@ -214,25 +214,36 @@ export const PartyCardSkeleton: React.FC = () => {
 // Duo card skeleton - matches compactDuoCard.tsx structure EXACTLY
 // cardWidth = screenWidth - 32, cardHeight = cardWidth * 1.3
 export const DuoCardSkeleton: React.FC = () => {
-  const cardWidth = screenWidth - 32;
-  const cardHeight = cardWidth * 0.42;
-
   return (
     <View style={duoStyles.cardContainer}>
-      <View style={[duoStyles.card, { height: cardHeight }]}>
-        {/* Header Row: Avatar + Username | Game Logo */}
+      <View style={duoStyles.innerBorder}>
+        {/* Gold accent stripe - left edge */}
+        <View style={duoStyles.accentStripe} />
+
+        {/* Header: Avatar + Username | Time ago + Game logo */}
         <View style={duoStyles.header}>
           <View style={duoStyles.userSection}>
             <Skeleton width={36} height={36} borderRadius={8} />
-            <Skeleton width={100} height={15} borderRadius={4} />
+            <Skeleton width={110} height={14} borderRadius={4} />
           </View>
-          <Skeleton width={24} height={24} borderRadius={4} />
+          <View style={duoStyles.headerRight}>
+            <Skeleton width={30} height={10} borderRadius={3} />
+            <Skeleton width={24} height={24} borderRadius={4} />
+          </View>
+        </View>
+
+        {/* Divider */}
+        <View style={duoStyles.headerDivider} />
+
+        {/* Message placeholder */}
+        <View style={duoStyles.messageSection}>
+          <Skeleton width={'80%'} height={12} borderRadius={3} />
         </View>
 
         {/* Stats Row: Rank | Agent | Role | Win Rate */}
         <View style={duoStyles.statsRow}>
-          <View style={duoStyles.statItem}>
-            <Skeleton width={30} height={8} borderRadius={3} />
+          <View style={duoStyles.statItemWide}>
+            <Skeleton width={28} height={8} borderRadius={3} />
             <View style={duoStyles.rankRow}>
               <Skeleton width={20} height={20} borderRadius={4} />
               <Skeleton width={40} height={11} borderRadius={3} />
@@ -254,6 +265,12 @@ export const DuoCardSkeleton: React.FC = () => {
             <Skeleton width={32} height={11} borderRadius={3} />
           </View>
         </View>
+
+        {/* Action Buttons: View Profile | Message */}
+        <View style={duoStyles.actionRow}>
+          <Skeleton width={'48%'} height={38} borderRadius={10} />
+          <Skeleton width={'48%'} height={38} borderRadius={10} />
+        </View>
       </View>
     </View>
   );
@@ -270,25 +287,37 @@ export const DuoCardListSkeleton: React.FC<{ count?: number }> = ({ count = 2 })
   );
 };
 
-// Duo card styles - matches duoCard.tsx + duoFinder container
+// Duo card styles - matches duoCard.tsx layout
 const duoStyles = StyleSheet.create({
   cardsList: {
     gap: 10,
     paddingBottom: 20,
   },
   cardContainer: {
-    backgroundColor: '#222',
-    borderRadius: 14,
+    backgroundColor: '#141416',
+    borderRadius: 12,
+    padding: 6,
+    marginBottom: 10,
+  },
+  innerBorder: {
     borderWidth: 1,
-    borderColor: '#333',
-    padding: 4,
+    borderColor: 'rgba(180, 155, 70, 0.4)',
+    borderRadius: 8,
+    padding: 10,
+    paddingBottom: 6,
+    gap: 8,
+    backgroundColor: '#131315',
     overflow: 'hidden',
   },
-  card: {
-    backgroundColor: '#222',
-    borderRadius: 12,
-    padding: 14,
-    justifyContent: 'space-between',
+  accentStripe: {
+    position: 'absolute',
+    left: 0,
+    top: 0,
+    bottom: 0,
+    width: 2,
+    backgroundColor: 'rgba(180, 155, 70, 0.7)',
+    borderTopLeftRadius: 8,
+    borderBottomLeftRadius: 8,
   },
   header: {
     flexDirection: 'row',
@@ -301,15 +330,33 @@ const duoStyles = StyleSheet.create({
     gap: 10,
     flex: 1,
   },
+  headerRight: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  headerDivider: {
+    height: 1,
+    backgroundColor: 'rgba(180, 155, 70, 0.3)',
+    marginHorizontal: 2,
+  },
+  messageSection: {
+    paddingHorizontal: 4,
+  },
   statsRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#141414',
     borderRadius: 10,
-    padding: 12,
+    paddingHorizontal: 12,
+    paddingVertical: 6,
   },
   statItem: {
     flex: 1,
+    alignItems: 'center',
+    gap: 6,
+  },
+  statItemWide: {
+    flex: 1.4,
     alignItems: 'center',
     gap: 6,
   },
@@ -321,7 +368,12 @@ const duoStyles = StyleSheet.create({
   divider: {
     width: 1,
     height: 30,
-    backgroundColor: '#252525',
+    backgroundColor: 'rgba(180, 155, 70, 0.3)',
+  },
+  actionRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    gap: 8,
   },
 });
 

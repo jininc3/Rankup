@@ -7,7 +7,11 @@ import {
   signInWithCredential,
   User as FirebaseUser,
   deleteUser,
+  sendSignInLinkToEmail,
+  isSignInWithEmailLink,
+  signInWithEmailLink,
 } from 'firebase/auth';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { doc, setDoc, getDoc, updateDoc, deleteDoc } from 'firebase/firestore';
 import { auth, db } from '@/config/firebase';
 
@@ -33,16 +37,28 @@ export interface UserProfile {
 }
 
 /**
- * Sign up a new user with email and password
+ * Generate a random password for internal use (user never sees this)
+ */
+function generateRandomPassword(): string {
+  const chars = 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789!@#$%^&*';
+  let password = '';
+  for (let i = 0; i < 32; i++) {
+    password += chars.charAt(Math.floor(Math.random() * chars.length));
+  }
+  return password;
+}
+
+/**
+ * Sign up a new user with email (passwordless - random password generated internally)
  */
 export async function signUpWithEmail(
   email: string,
-  password: string,
   username: string
 ): Promise<UserProfile> {
   try {
-    // Create user in Firebase Auth
-    const userCredential = await createUserWithEmailAndPassword(auth, email, password);
+    // Create user in Firebase Auth with random password (user never knows it)
+    const randomPassword = generateRandomPassword();
+    const userCredential = await createUserWithEmailAndPassword(auth, email, randomPassword);
     const user = userCredential.user;
 
     // Update display name
@@ -81,7 +97,6 @@ export async function signUpWithEmail(
  */
 export async function signUpWithPhone(
   phoneNumber: string,
-  password: string,
   username: string
 ): Promise<UserProfile> {
   try {
@@ -89,8 +104,9 @@ export async function signUpWithPhone(
     const sanitizedPhone = phoneNumber.replace(/[^0-9]/g, '');
     const generatedEmail = `phone_${sanitizedPhone}@rankup-phone.internal`;
 
-    // Create user in Firebase Auth with generated email
-    const userCredential = await createUserWithEmailAndPassword(auth, generatedEmail, password);
+    // Create user in Firebase Auth with generated email and random password
+    const randomPassword = generateRandomPassword();
+    const userCredential = await createUserWithEmailAndPassword(auth, generatedEmail, randomPassword);
     const user = userCredential.user;
 
     // Update display name
@@ -127,7 +143,60 @@ export async function signUpWithPhone(
 }
 
 /**
- * Sign in with email and password
+ * Send a sign-in link to email (passwordless)
+ */
+export async function sendEmailSignInLink(email: string): Promise<void> {
+  try {
+    const actionCodeSettings = {
+      url: `https://${process.env.EXPO_PUBLIC_FIREBASE_AUTH_DOMAIN}`,
+      handleCodeInApp: true,
+      iOS: { bundleId: 'com.jininc3.RankUp' },
+      android: { packageName: 'com.jininc3.RankUp', installApp: true },
+    };
+    await sendSignInLinkToEmail(auth, email, actionCodeSettings);
+    // Store email for when the user returns via the link
+    await AsyncStorage.setItem('emailForSignIn', email);
+  } catch (error: any) {
+    console.error('Send sign-in link error:', error);
+    throw new Error(getAuthErrorMessage(error.code));
+  }
+}
+
+/**
+ * Complete sign-in with email link
+ */
+export async function completeEmailLinkSignIn(link: string): Promise<UserProfile | null> {
+  try {
+    if (!isSignInWithEmailLink(auth, link)) {
+      return null;
+    }
+
+    const email = await AsyncStorage.getItem('emailForSignIn');
+    if (!email) {
+      throw new Error('Email not found. Please try signing in again.');
+    }
+
+    const userCredential = await signInWithEmailLink(auth, email, link);
+    const user = userCredential.user;
+    await AsyncStorage.removeItem('emailForSignIn');
+
+    const userProfile = await getUserProfile(user.uid);
+    return userProfile;
+  } catch (error: any) {
+    console.error('Email link sign-in error:', error);
+    throw new Error(getAuthErrorMessage(error.code));
+  }
+}
+
+/**
+ * Check if a URL is a Firebase sign-in link
+ */
+export function isEmailSignInLink(link: string): boolean {
+  return isSignInWithEmailLink(auth, link);
+}
+
+/**
+ * Sign in with email and password (legacy - kept for compatibility)
  */
 export async function signInWithEmail(
   email: string,
