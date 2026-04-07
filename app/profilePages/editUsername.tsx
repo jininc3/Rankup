@@ -2,21 +2,52 @@ import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { IconSymbol } from '@/components/ui/icon-symbol';
 import { useRouter } from 'expo-router';
-import { StyleSheet, TouchableOpacity, View, TextInput, Alert, ActivityIndicator, Animated, Easing } from 'react-native';
+import { StyleSheet, TouchableOpacity, View, TextInput, Alert, ActivityIndicator, Animated, Easing, Keyboard, TouchableWithoutFeedback } from 'react-native';
 import { useAuth } from '@/contexts/AuthContext';
 import { useState, useEffect, useRef } from 'react';
-import { doc, updateDoc, query, collection, where, getDocs } from 'firebase/firestore';
-import { db } from '@/config/firebase';
+import { doc, getDoc, query, collection, where, getDocs } from 'firebase/firestore';
+import { db, functions } from '@/config/firebase';
+import { httpsCallable } from 'firebase/functions';
+
+const COOLDOWN_DAYS = 30;
 
 export default function EditUsernameScreen() {
   const router = useRouter();
   const { user, refreshUser } = useAuth();
-  const [newUsername, setNewUsername] = useState(user?.username || '');
+  const [newUsername, setNewUsername] = useState('');
   const [isUpdating, setIsUpdating] = useState(false);
   const [isCheckingRealtime, setIsCheckingRealtime] = useState(false);
   const [usernameAvailable, setUsernameAvailable] = useState<boolean | null>(null);
+  const [cooldownDaysLeft, setCooldownDaysLeft] = useState<number | null>(null);
   const debounceTimerRef = useRef<NodeJS.Timeout | null>(null);
   const spinValue = useRef(new Animated.Value(0)).current;
+
+  // Check cooldown on mount
+  useEffect(() => {
+    const checkCooldown = async () => {
+      if (!user?.id) return;
+      try {
+        const userRef = doc(db, 'users', user.id);
+        const userSnap = await getDoc(userRef);
+        if (userSnap.exists()) {
+          const data = userSnap.data();
+          if (data.lastUsernameChange) {
+            const lastChange = data.lastUsernameChange.toDate();
+            const now = new Date();
+            const daysSince = Math.floor(
+              (now.getTime() - lastChange.getTime()) / (1000 * 60 * 60 * 24)
+            );
+            if (daysSince < COOLDOWN_DAYS) {
+              setCooldownDaysLeft(COOLDOWN_DAYS - daysSince);
+            }
+          }
+        }
+      } catch (error) {
+        console.error('Error checking cooldown:', error);
+      }
+    };
+    checkCooldown();
+  }, [user?.id]);
 
   // Spinning animation
   useEffect(() => {
@@ -113,6 +144,14 @@ export default function EditUsernameScreen() {
       return;
     }
 
+    if (cooldownDaysLeft !== null && cooldownDaysLeft > 0) {
+      Alert.alert(
+        'Cooldown Active',
+        `You can only change your username once every 30 days. Please wait ${cooldownDaysLeft} more day${cooldownDaysLeft === 1 ? '' : 's'}.`
+      );
+      return;
+    }
+
     // Validate new username
     if (newUsername === user.username) {
       Alert.alert('No Change', 'Please enter a different username');
@@ -142,22 +181,8 @@ export default function EditUsernameScreen() {
     setIsUpdating(true);
 
     try {
-      // Double-check if we don't have a definitive answer yet
-      if (usernameAvailable === null) {
-        const isAvailable = await checkUsernameAvailable(newUsername);
-        if (!isAvailable) {
-          Alert.alert('Username Taken', 'This username is already in use. Please choose another.');
-          setIsUpdating(false);
-          return;
-        }
-      }
-
-      // Update username in Firestore
-      const userRef = doc(db, 'users', user.id);
-      await updateDoc(userRef, {
-        username: newUsername,
-        usernameLower: newUsername.toLowerCase(),
-      });
+      const updateUsername = httpsCallable(functions, 'updateUsername');
+      await updateUsername({ newUsername });
 
       // Refresh user data in context
       if (refreshUser) {
@@ -166,7 +191,7 @@ export default function EditUsernameScreen() {
 
       Alert.alert(
         'Success',
-        'Your username has been updated successfully!',
+        'Your username has been updated everywhere!',
         [
           {
             text: 'OK',
@@ -174,30 +199,43 @@ export default function EditUsernameScreen() {
           },
         ]
       );
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error updating username:', error);
-      Alert.alert('Error', 'Failed to update username. Please try again.');
+      const message = error?.message || 'Failed to update username. Please try again.';
+      Alert.alert('Error', message);
     } finally {
       setIsUpdating(false);
     }
   };
 
+  const isCooldownActive = cooldownDaysLeft !== null && cooldownDaysLeft > 0;
+
   return (
+    <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
     <ThemedView style={styles.container}>
       {/* Header */}
       <View style={styles.header}>
         <TouchableOpacity style={styles.backButton} onPress={() => router.back()}>
-          <IconSymbol size={24} name="chevron.left" color="#000" />
+          <IconSymbol size={24} name="chevron.left" color="#fff" />
         </TouchableOpacity>
         <ThemedText style={styles.headerTitle}>Edit Username</ThemedText>
         <View style={styles.headerSpacer} />
       </View>
 
       <View style={styles.content}>
+        {isCooldownActive && (
+          <View style={styles.cooldownCard}>
+            <IconSymbol size={20} name="clock" color="#f59e0b" />
+            <ThemedText style={styles.cooldownText}>
+              You can change your username again in {cooldownDaysLeft} day{cooldownDaysLeft === 1 ? '' : 's'}.
+            </ThemedText>
+          </View>
+        )}
+
         <View style={styles.infoCard}>
-          <IconSymbol size={24} name="info.circle" color="#666" />
+          <IconSymbol size={24} name="info.circle" color="#888" />
           <ThemedText style={styles.infoText}>
-            Choose a unique username. It must be 6-20 characters and can only contain letters, numbers, and underscores.
+            Choose a unique username. It must be 6-20 characters and can only contain letters, numbers, and underscores. You can only change your username once every 30 days.
           </ThemedText>
         </View>
 
@@ -210,20 +248,21 @@ export default function EditUsernameScreen() {
           <ThemedText style={styles.label}>New Username</ThemedText>
           <View style={styles.inputWrapper}>
             <TextInput
-              style={styles.input}
+              style={[styles.input, isCooldownActive && styles.inputDisabled]}
               placeholder="Enter new username"
-              placeholderTextColor="#999"
+              placeholderTextColor="#666"
               value={newUsername}
               onChangeText={setNewUsername}
               autoCapitalize="none"
               autoCorrect={false}
               maxLength={20}
+              editable={!isCooldownActive}
             />
             {/* Loading spinner inside input */}
             {isCheckingRealtime && newUsername.trim().length >= 6 && (
               <View style={styles.inputSpinner}>
                 <Animated.View style={{ transform: [{ rotate: spin }] }}>
-                  <IconSymbol size={20} name="arrow.trianglehead.2.clockwise" color="#000" />
+                  <IconSymbol size={20} name="arrow.trianglehead.2.clockwise" color="#fff" />
                 </Animated.View>
               </View>
             )}
@@ -252,9 +291,9 @@ export default function EditUsernameScreen() {
         </View>
 
         <TouchableOpacity
-          style={[styles.updateButton, isUpdating && styles.updateButtonDisabled]}
+          style={[styles.updateButton, (isUpdating || isCooldownActive) && styles.updateButtonDisabled]}
           onPress={handleUpdateUsername}
-          disabled={isUpdating}
+          disabled={isUpdating || isCooldownActive}
         >
           {isUpdating ? (
             <ActivityIndicator color="#fff" />
@@ -264,92 +303,111 @@ export default function EditUsernameScreen() {
         </TouchableOpacity>
       </View>
     </ThemedView>
+    </TouchableWithoutFeedback>
   );
 }
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#fff',
+    backgroundColor: '#0f0f0f',
   },
   header: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
     paddingHorizontal: 20,
-    paddingTop: 60,
-    paddingBottom: 16,
-    backgroundColor: '#fff',
-    borderBottomWidth: 1,
-    borderBottomColor: '#e5e7eb',
+    paddingTop: 55,
+    paddingBottom: 15,
+    backgroundColor: '#0f0f0f',
   },
   backButton: {
     padding: 4,
-    flex: 1,
+    width: 32,
   },
   headerTitle: {
-    fontSize: 17,
-    fontWeight: '600',
-    color: '#000',
-    flex: 1,
+    fontSize: 20,
+    fontWeight: '700',
+    color: '#fff',
     textAlign: 'center',
   },
   headerSpacer: {
-    flex: 1,
+    width: 32,
   },
   content: {
     flex: 1,
     padding: 20,
+  },
+  cooldownCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    padding: 14,
+    backgroundColor: 'rgba(245, 158, 11, 0.1)',
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: 'rgba(245, 158, 11, 0.25)',
+    marginBottom: 16,
+  },
+  cooldownText: {
+    flex: 1,
+    fontSize: 14,
+    fontWeight: '500',
+    color: '#f59e0b',
+    lineHeight: 20,
   },
   infoCard: {
     flexDirection: 'row',
     alignItems: 'flex-start',
     gap: 12,
     padding: 16,
-    backgroundColor: '#f9fafb',
+    backgroundColor: '#1a1a1a',
     borderRadius: 12,
     borderWidth: 1,
-    borderColor: '#e5e7eb',
+    borderColor: '#252525',
     marginBottom: 32,
   },
   infoText: {
     flex: 1,
     fontSize: 14,
-    color: '#666',
+    color: '#888',
     lineHeight: 20,
   },
   inputSection: {
-    marginBottom: 32,
+    marginBottom: 16,
   },
   label: {
     fontSize: 14,
     fontWeight: '600',
-    color: '#000',
+    color: '#fff',
     marginBottom: 8,
   },
   currentUsernameContainer: {
     padding: 16,
-    backgroundColor: '#f5f5f5',
+    backgroundColor: '#1a1a1a',
     borderRadius: 8,
     marginBottom: 24,
   },
   currentUsername: {
     fontSize: 16,
-    color: '#666',
+    color: '#888',
   },
   inputWrapper: {
     position: 'relative',
   },
   input: {
     borderWidth: 1,
-    borderColor: '#e5e7eb',
+    borderColor: '#252525',
     borderRadius: 8,
     paddingHorizontal: 16,
     paddingRight: 48,
     paddingVertical: 12,
     fontSize: 16,
-    color: '#000',
-    backgroundColor: '#fff',
+    color: '#fff',
+    backgroundColor: '#252525',
+  },
+  inputDisabled: {
+    opacity: 0.5,
   },
   inputSpinner: {
     position: 'absolute',
@@ -375,7 +433,7 @@ const styles = StyleSheet.create({
   },
   helperText: {
     fontSize: 12,
-    color: '#999',
+    color: '#666',
     marginTop: 4,
   },
   updateButton: {

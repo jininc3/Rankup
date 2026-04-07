@@ -199,9 +199,10 @@ service cloud.firestore {
         allow update: if request.auth != null
                          && request.auth.uid in get(/databases/$(database)/documents/chats/$(chatId)).data.participants;
 
-        // Allow delete if user is the sender
+        // Allow delete if user is the sender or a participant in the chat
         allow delete: if request.auth != null
-                         && request.auth.uid == resource.data.senderId;
+                         && (request.auth.uid == resource.data.senderId
+                             || request.auth.uid in get(/databases/$(database)/documents/chats/$(chatId)).data.participants);
       }
     }
 

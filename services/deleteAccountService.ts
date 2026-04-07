@@ -474,7 +474,7 @@ async function deleteUserChats(userId: string): Promise<void> {
     console.log('User chats and messages deleted');
   } catch (error) {
     console.error('Error deleting user chats:', error);
-    throw error;
+    // Don't throw - continue with deletion
   }
 }
 

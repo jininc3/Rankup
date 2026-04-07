@@ -55,7 +55,9 @@
       "Bash(grep -r \"match.*history\\\\|history.*match\\\\|recent.*match\" /c/Users/jinha/Desktop/RankUp/app --include=*.tsx --include=*.ts -l)",
       "Bash(grep:*)",
       "Bash(find /c/Users/jinha/Desktop/RankUp -path */node_modules -prune -o -type f \\\\\\(-name *achievement* -o -name *leaderboard* -o -name *party* \\\\\\) -print)",
-      "Bash(npx firebase:*)"
+      "Bash(npx firebase:*)",
+      "Bash(head:*)",
+      "Bash(find /c/Users/jinha/Desktop/RankUp -path */node_modules -prune -o -type f \\\\\\(-name *phone* -o -name *auth* \\\\\\) -print)"
     ],
     "deny": [],
     "ask": []

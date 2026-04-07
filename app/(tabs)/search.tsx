@@ -314,6 +314,7 @@ export default function SearchScreen() {
 
               return {
                 ...user,
+                username: data.username || user.username,
                 avatar: data.avatar || user.avatar,
                 leagueRank,
                 valorantRank,

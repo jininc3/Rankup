@@ -1,24 +1,18 @@
-import React, { useState, useEffect, useRef } from 'react';
-import {
-  View,
-  StyleSheet,
-  TouchableOpacity,
-  TextInput,
-  Alert,
-  KeyboardAvoidingView,
-  Platform,
-  ScrollView,
-  Animated,
-  Easing,
-  Image,
-  Modal,
-} from 'react-native';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
-import { IconSymbol } from '@/components/ui/icon-symbol';
+import MaterialIcons from '@expo/vector-icons/MaterialIcons';
+import { useState, useRef, useEffect } from 'react';
+import { StyleSheet, TextInput, TouchableOpacity, View, Alert, ActivityIndicator, ScrollView, KeyboardAvoidingView, Platform, Keyboard, Animated, Easing, Image, Modal } from 'react-native';
 import { useRouter } from 'expo-router';
-import { db } from '@/config/firebase';
-import { collection, query, where, getDocs } from 'firebase/firestore';
+import { query, collection, where, getDocs, doc, updateDoc } from 'firebase/firestore';
+import { db, auth } from '@/config/firebase';
+import { IconSymbol } from '@/components/ui/icon-symbol';
+import StepProgressIndicator from '@/components/ui/StepProgressIndicator';
+import DateTimePicker from '@react-native-community/datetimepicker';
+import { signUpWithEmail, signUpWithPhone } from '@/services/authService';
+import { uploadProfilePicture } from '@/services/storageService';
+import { sendEmailVerification } from 'firebase/auth';
+import { Asset } from 'expo-asset';
 import * as ImagePicker from 'expo-image-picker';
 
 // Default avatar images
@@ -30,12 +24,16 @@ const defaultAvatars = [
   require('@/assets/images/avatar5.png'),
 ];
 
-export default function EmailSignUpStep1() {
+export default function EmailSignUpScreen() {
   const router = useRouter();
   const [username, setUsername] = useState('');
-  const [isChecking, setIsChecking] = useState(false);
+  const [dateOfBirth, setDateOfBirth] = useState<Date | null>(null);
+  const [showDatePicker, setShowDatePicker] = useState(false);
+  const [loading, setLoading] = useState(false);
   const [isCheckingRealtime, setIsCheckingRealtime] = useState(false);
   const [usernameAvailable, setUsernameAvailable] = useState<boolean | null>(null);
+  const scrollViewRef = useRef<ScrollView>(null);
+  const usernameInputRef = useRef<View>(null);
   const debounceTimerRef = useRef<NodeJS.Timeout | null>(null);
   const spinValue = useRef(new Animated.Value(0)).current;
 
@@ -43,6 +41,22 @@ export default function EmailSignUpStep1() {
   const [selectedAvatarIndex, setSelectedAvatarIndex] = useState<number | null>(null);
   const [customAvatarUri, setCustomAvatarUri] = useState<string | null>(null);
   const [showAvatarModal, setShowAvatarModal] = useState(false);
+
+  // Email, phone & password state
+  const [email, setEmail] = useState('');
+  const [phoneNumber, setPhoneNumber] = useState('');
+  const [password, setPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
+  const emailRef = useRef<TextInput>(null);
+  const phoneRef = useRef<TextInput>(null);
+  const passwordRef = useRef<TextInput>(null);
+  const confirmPasswordRef = useRef<TextInput>(null);
+
+  // Randomly select a default avatar on mount
+  useEffect(() => {
+    const randomIndex = Math.floor(Math.random() * defaultAvatars.length);
+    setSelectedAvatarIndex(randomIndex);
+  }, []);
 
   // Spinning animation
   useEffect(() => {
@@ -66,37 +80,27 @@ export default function EmailSignUpStep1() {
     outputRange: ['0deg', '360deg'],
   });
 
-  const checkUsernameAvailability = async (usernameToCheck: string): Promise<boolean> => {
-    try {
-      const usersRef = collection(db, 'users');
-      const q = query(usersRef, where('usernameLower', '==', usernameToCheck.toLowerCase()));
-      const querySnapshot = await getDocs(q);
-      return querySnapshot.empty;
-    } catch (error) {
-      console.error('Error checking username availability:', error);
-      throw error;
-    }
-  };
-
   // Debounced real-time username check
   useEffect(() => {
-    // Clear previous timer
     if (debounceTimerRef.current) {
       clearTimeout(debounceTimerRef.current);
     }
 
-    // Reset state if username is too short or empty
     if (!username.trim() || username.trim().length < 6) {
       setUsernameAvailable(null);
       setIsCheckingRealtime(false);
       return;
     }
 
-    // Start checking indicator
+    if (!validateUsername(username)) {
+      setUsernameAvailable(null);
+      setIsCheckingRealtime(false);
+      return;
+    }
+
     setIsCheckingRealtime(true);
     setUsernameAvailable(null);
 
-    // Debounce the check by 500ms
     debounceTimerRef.current = setTimeout(async () => {
       try {
         const isAvailable = await checkUsernameAvailability(username.trim());
@@ -109,7 +113,6 @@ export default function EmailSignUpStep1() {
       }
     }, 500);
 
-    // Cleanup on unmount
     return () => {
       if (debounceTimerRef.current) {
         clearTimeout(debounceTimerRef.current);
@@ -117,61 +120,207 @@ export default function EmailSignUpStep1() {
     };
   }, [username]);
 
+  const validateUsername = (text: string): boolean => {
+    const usernameRegex = /^[a-zA-Z0-9_]{6,20}$/;
+    return usernameRegex.test(text);
+  };
+
+  const checkUsernameAvailability = async (username: string): Promise<boolean> => {
+    try {
+      const usersRef = collection(db, 'users');
+      const q = query(usersRef, where('usernameLower', '==', username.toLowerCase()));
+      const querySnapshot = await getDocs(q);
+      return querySnapshot.empty;
+    } catch (error) {
+      console.error('Error checking username availability:', error);
+      return false;
+    }
+  };
+
+  const validatePassword = (pwd: string): { isValid: boolean; message?: string } => {
+    if (pwd.length < 8) {
+      return { isValid: false, message: 'Password must be at least 8 characters' };
+    }
+    if (!/[0-9]/.test(pwd)) {
+      return { isValid: false, message: 'Password must contain at least one number' };
+    }
+    if (!/[a-zA-Z]/.test(pwd)) {
+      return { isValid: false, message: 'Password must contain at least one letter' };
+    }
+    return { isValid: true };
+  };
+
+  const isPasswordValid = password.length >= 8 && /[0-9]/.test(password) && /[a-zA-Z]/.test(password);
+  const hasEmail = email.trim().length > 0;
+  const hasPhone = phoneNumber.trim().length > 0;
+  const hasContactMethod = hasEmail || hasPhone;
+
+  const onDateChange = (event: any, selectedDate?: Date) => {
+    setShowDatePicker(Platform.OS === 'ios');
+    if (selectedDate) {
+      setDateOfBirth(selectedDate);
+    }
+  };
+
+  const formatDate = (date: Date | null): string => {
+    if (!date) return '';
+    return date.toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' });
+  };
+
   const handleContinue = async () => {
     if (!username.trim()) {
       Alert.alert('Error', 'Please enter a username');
       return;
     }
 
-    if (username.trim().length < 6) {
-      Alert.alert('Error', 'Username must be at least 6 characters');
+    if (!validateUsername(username)) {
+      Alert.alert(
+        'Invalid Username',
+        'Username must be 6-20 characters long and can only contain letters, numbers, and underscores.'
+      );
       return;
     }
 
-    // If we already know username is taken from real-time check
+    if (!dateOfBirth) {
+      Alert.alert('Error', 'Please select your date of birth');
+      return;
+    }
+
+    // Validate age (must be at least 13 years old)
+    const today = new Date();
+    const age = today.getFullYear() - dateOfBirth.getFullYear();
+    const monthDiff = today.getMonth() - dateOfBirth.getMonth();
+    const dayDiff = today.getDate() - dateOfBirth.getDate();
+    const actualAge = monthDiff < 0 || (monthDiff === 0 && dayDiff < 0) ? age - 1 : age;
+
+    if (actualAge < 13) {
+      Alert.alert('Error', 'You must be at least 13 years old to sign up');
+      return;
+    }
+
     if (usernameAvailable === false) {
       Alert.alert('Username Taken', 'This username is already in use. Please choose another one.');
       return;
     }
 
-    // If still checking, wait for check to complete
     if (isCheckingRealtime) {
       Alert.alert('Please Wait', 'Still checking username availability...');
       return;
     }
 
-    try {
-      setIsChecking(true);
+    if (!hasContactMethod) {
+      Alert.alert('Error', 'Please enter an email address or phone number');
+      return;
+    }
 
-      // Double-check if we don't have a definitive answer yet
+    const passwordValidation = validatePassword(password);
+    if (!passwordValidation.isValid) {
+      Alert.alert('Weak Password', passwordValidation.message || 'Please choose a stronger password');
+      return;
+    }
+
+    if (password !== confirmPassword) {
+      Alert.alert('Error', 'Passwords do not match');
+      return;
+    }
+
+    setLoading(true);
+
+    try {
+      // Double-check username if we don't have a definitive answer
       if (usernameAvailable === null) {
         const isAvailable = await checkUsernameAvailability(username.trim());
         if (!isAvailable) {
           Alert.alert('Username Taken', 'This username is already in use. Please choose another one.');
-          setIsChecking(false);
+          setLoading(false);
           return;
         }
       }
 
-      // Navigate to step 2 with username and avatar info
-      router.push({
-        pathname: '/(auth)/emailSignUp2',
-        params: {
-          username: username.trim(),
-          avatarType: customAvatarUri ? 'custom' : (selectedAvatarIndex !== null ? 'default' : 'none'),
-          avatarValue: customAvatarUri || (selectedAvatarIndex !== null ? selectedAvatarIndex.toString() : ''),
-        },
-      });
-    } catch (error) {
-      Alert.alert('Error', 'Failed to check username availability. Please try again.');
+      // Create the account based on what contact info was provided
+      let user;
+      if (hasEmail) {
+        user = await signUpWithEmail(email.trim(), password, username.trim());
+      } else {
+        user = await signUpWithPhone(phoneNumber.trim(), password, username.trim());
+      }
+
+      // Upload avatar and save additional data
+      if (user?.id) {
+        let avatarUrl = '';
+
+        if (customAvatarUri) {
+          avatarUrl = await uploadProfilePicture(user.id, customAvatarUri);
+        } else if (selectedAvatarIndex !== null) {
+          const asset = Asset.fromModule(defaultAvatars[selectedAvatarIndex]);
+          await asset.downloadAsync();
+          if (asset.localUri) {
+            avatarUrl = await uploadProfilePicture(user.id, asset.localUri);
+          }
+        }
+
+        await updateDoc(doc(db, 'users', user.id), {
+          dateOfBirth: dateOfBirth.toISOString(),
+          ...(avatarUrl && { avatar: avatarUrl }),
+          // If email user also provided phone, save it
+          ...(hasEmail && hasPhone && { phoneNumber: phoneNumber.trim() }),
+        });
+      }
+
+      const onboardingParams = {
+        username: username.trim(),
+        dateOfBirth: dateOfBirth.toISOString(),
+        avatarType: customAvatarUri ? 'custom' : (selectedAvatarIndex !== null ? 'default' : 'none'),
+        avatarValue: customAvatarUri || (selectedAvatarIndex !== null ? selectedAvatarIndex.toString() : ''),
+      };
+
+      // Route to appropriate verification
+      if (hasEmail && hasPhone) {
+        // Both provided - let user choose which to verify
+        router.replace({
+          pathname: '/(auth)/verifyChoiceSignUp',
+          params: {
+            ...onboardingParams,
+            phoneNumber: phoneNumber.trim(),
+          },
+        });
+      } else if (hasPhone) {
+        // Phone only - verify phone
+        router.replace({
+          pathname: '/(auth)/verifyPhoneSignUp',
+          params: {
+            ...onboardingParams,
+            phoneNumber: phoneNumber.trim(),
+          },
+        });
+      } else {
+        // Email only - verify email
+        if (auth.currentUser && !auth.currentUser.emailVerified) {
+          await sendEmailVerification(auth.currentUser);
+        }
+        router.replace({
+          pathname: '/(auth)/verifyEmailSignUp',
+          params: onboardingParams,
+        });
+      }
+    } catch (error: any) {
+      Alert.alert('Sign Up Failed', error.message);
       console.error(error);
     } finally {
-      setIsChecking(false);
+      setLoading(false);
     }
   };
 
-  const handleBack = () => {
-    router.back();
+  const handleUsernameFocus = () => {
+    setTimeout(() => {
+      usernameInputRef.current?.measureLayout(
+        scrollViewRef.current as any,
+        (x, y) => {
+          scrollViewRef.current?.scrollTo({ y: y - 100, animated: true });
+        },
+        () => {}
+      );
+    }, 100);
   };
 
   const selectDefaultAvatar = (index: number) => {
@@ -217,6 +366,12 @@ export default function EmailSignUpStep1() {
     return null;
   };
 
+  const handleBack = () => {
+    router.back();
+  };
+
+  const isFormValid = usernameAvailable && dateOfBirth && !isCheckingRealtime && hasContactMethod && isPasswordValid && password === confirmPassword;
+
   return (
     <ThemedView style={styles.container}>
       <KeyboardAvoidingView
@@ -224,27 +379,31 @@ export default function EmailSignUpStep1() {
         style={styles.keyboardView}
       >
         <ScrollView
+          ref={scrollViewRef}
           contentContainerStyle={styles.scrollContent}
           showsVerticalScrollIndicator={false}
+          keyboardShouldPersistTaps="handled"
         >
-          <TouchableOpacity
-            style={styles.backButton}
-            onPress={handleBack}
-          >
-            <IconSymbol size={24} name="chevron.left" color="#fff" />
-          </TouchableOpacity>
+          <View style={styles.headerRow}>
+            <TouchableOpacity
+              style={styles.backButton}
+              onPress={handleBack}
+              disabled={loading}
+            >
+              <IconSymbol size={20} name="chevron.left" color="#fff" />
+            </TouchableOpacity>
+            <ThemedText style={styles.title}>Let's create your profile</ThemedText>
+            <View style={styles.headerSpacer} />
+          </View>
+
+          {/* Progress Indicator */}
+          <View style={styles.progressContainer}>
+            <StepProgressIndicator currentStep={1} totalSteps={5} />
+          </View>
 
           <View style={styles.content}>
-            <View style={styles.header}>
-              <ThemedText style={styles.title}>Choose Username</ThemedText>
-              <ThemedText style={styles.subtitle}>
-                Step 1 of 3
-              </ThemedText>
-            </View>
-
             {/* Profile Icon Selection */}
             <View style={styles.avatarSection}>
-              <ThemedText style={styles.label}>Profile Icon</ThemedText>
               <TouchableOpacity
                 style={styles.avatarSelector}
                 onPress={() => setShowAvatarModal(true)}
@@ -262,26 +421,35 @@ export default function EmailSignUpStep1() {
                   </View>
                 </View>
                 <ThemedText style={styles.avatarHint}>
-                  {getAvatarSource() ? 'Tap to change' : 'Tap to select an avatar'}
+                  Tap to change avatar
                 </ThemedText>
               </TouchableOpacity>
             </View>
 
+            <ThemedText style={styles.subtitle}>
+              Pick a unique username that represents you
+            </ThemedText>
+
             <View style={styles.form}>
-              <View style={styles.inputContainer}>
+              {/* Username */}
+              <View style={styles.inputContainer} ref={usernameInputRef}>
                 <ThemedText style={styles.label}>Username *</ThemedText>
                 <View style={styles.inputWrapper}>
+                  <MaterialIcons name="person" size={20} color="#999" style={styles.inputIcon} />
                   <TextInput
-                    style={styles.input}
-                    placeholder="Enter your username"
+                    style={styles.inputWithIcon}
+                    placeholder="Enter username"
                     placeholderTextColor="#999"
                     value={username}
                     onChangeText={setUsername}
                     autoCapitalize="none"
-                    returnKeyType="done"
-                    onSubmitEditing={handleContinue}
+                    autoCorrect={false}
+                    maxLength={20}
+                    onFocus={handleUsernameFocus}
+                    returnKeyType="next"
+                    onSubmitEditing={() => emailRef.current?.focus()}
+                    blurOnSubmit={false}
                   />
-                  {/* Loading spinner inside input */}
                   {isCheckingRealtime && username.trim().length >= 6 && (
                     <View style={styles.inputSpinner}>
                       <Animated.View style={{ transform: [{ rotate: spin }] }}>
@@ -290,51 +458,246 @@ export default function EmailSignUpStep1() {
                     </View>
                   )}
                 </View>
-                {/* Username availability feedback */}
-                {username.trim().length >= 6 && !isCheckingRealtime && usernameAvailable !== null && (
-                  <View style={styles.availabilityContainer}>
-                    <IconSymbol
-                      size={16}
-                      name={usernameAvailable ? "checkmark.circle.fill" : "xmark.circle.fill"}
-                      color={usernameAvailable ? "#22c55e" : "#ef4444"}
-                    />
-                    <ThemedText style={[
-                      styles.availabilityText,
-                      usernameAvailable ? styles.availableText : styles.takenText
-                    ]}>
-                      {usernameAvailable ? "Username is available" : "Username is already taken"}
+                <View style={styles.feedbackContainer}>
+                  {username.trim().length >= 6 && validateUsername(username) && !isCheckingRealtime && usernameAvailable !== null ? (
+                    <View style={styles.availabilityContainer}>
+                      <IconSymbol
+                        size={16}
+                        name={usernameAvailable ? "checkmark.circle.fill" : "xmark.circle.fill"}
+                        color={usernameAvailable ? "#22c55e" : "#ef4444"}
+                      />
+                      <ThemedText style={[
+                        styles.availabilityText,
+                        usernameAvailable ? styles.availableText : styles.takenText
+                      ]}>
+                        {usernameAvailable ? "Username is available" : "Username is already taken"}
+                      </ThemedText>
+                    </View>
+                  ) : username.trim().length > 0 && username.trim().length < 6 ? (
+                    <View style={styles.availabilityContainer}>
+                      <IconSymbol size={16} name="info.circle" color="#999" />
+                      <ThemedText style={styles.hint}>
+                        Username must be at least 6 characters
+                      </ThemedText>
+                    </View>
+                  ) : (
+                    <ThemedText style={styles.hint}>
+                      6-20 characters, letters, numbers, and underscores only
                     </ThemedText>
+                  )}
+                </View>
+              </View>
+
+              {/* Date of Birth */}
+              <View style={styles.inputContainer}>
+                <ThemedText style={styles.label}>Date of Birth *</ThemedText>
+                <TouchableOpacity
+                  style={styles.input}
+                  onPress={() => {
+                    Keyboard.dismiss();
+                    setShowDatePicker(true);
+                  }}
+                  disabled={loading}
+                >
+                  <ThemedText style={[styles.dateText, !dateOfBirth && styles.placeholderText]}>
+                    {dateOfBirth ? formatDate(dateOfBirth) : 'Select your date of birth'}
+                  </ThemedText>
+                </TouchableOpacity>
+                <ThemedText style={styles.hint}>
+                  You must be at least 13 years old
+                </ThemedText>
+              </View>
+
+              {showDatePicker && (
+                <View style={styles.datePickerContainer}>
+                  <DateTimePicker
+                    value={dateOfBirth || new Date(2000, 0, 1)}
+                    mode="date"
+                    display={Platform.OS === 'ios' ? 'spinner' : 'default'}
+                    onChange={onDateChange}
+                    maximumDate={new Date()}
+                    minimumDate={new Date(1900, 0, 1)}
+                    themeVariant="dark"
+                    style={styles.datePicker}
+                  />
+                </View>
+              )}
+
+              {/* Email */}
+              <View style={styles.inputContainer}>
+                <ThemedText style={styles.label}>Email {hasPhone ? '' : '*'}</ThemedText>
+                <View style={styles.inputWrapper}>
+                  <MaterialIcons name="email" size={20} color="#999" style={styles.inputIcon} />
+                  <TextInput
+                    ref={emailRef}
+                    style={styles.inputWithIcon}
+                    placeholder="Enter your email"
+                    placeholderTextColor="#999"
+                    value={email}
+                    onChangeText={setEmail}
+                    autoCapitalize="none"
+                    keyboardType="email-address"
+                    editable={!loading}
+                    returnKeyType="next"
+                    onSubmitEditing={() => phoneRef.current?.focus()}
+                    blurOnSubmit={false}
+                  />
+                </View>
+              </View>
+
+              {/* Phone Number */}
+              <View style={styles.inputContainer}>
+                <ThemedText style={styles.label}>Phone Number {hasEmail ? '' : '*'}</ThemedText>
+                <View style={styles.inputWrapper}>
+                  <MaterialIcons name="phone" size={20} color="#999" style={styles.inputIcon} />
+                  <TextInput
+                    ref={phoneRef}
+                    style={styles.inputWithIcon}
+                    placeholder="Enter your phone number"
+                    placeholderTextColor="#999"
+                    value={phoneNumber}
+                    onChangeText={setPhoneNumber}
+                    keyboardType="phone-pad"
+                    editable={!loading}
+                    returnKeyType="next"
+                    onSubmitEditing={() => passwordRef.current?.focus()}
+                    blurOnSubmit={false}
+                  />
+                </View>
+                {!hasEmail && !hasPhone && (
+                  <ThemedText style={styles.hint}>
+                    Enter at least an email or phone number
+                  </ThemedText>
+                )}
+              </View>
+
+              {/* Password */}
+              <View style={styles.inputContainer}>
+                <ThemedText style={styles.label}>Password *</ThemedText>
+                <View style={styles.inputWrapper}>
+                  <MaterialIcons name="vpn-key" size={20} color="#999" style={styles.inputIcon} />
+                  <TextInput
+                    ref={passwordRef}
+                    style={styles.inputWithIcon}
+                    placeholder="Enter your password"
+                    placeholderTextColor="#999"
+                    value={password}
+                    onChangeText={setPassword}
+                    secureTextEntry
+                    editable={!loading}
+                    returnKeyType="next"
+                    onSubmitEditing={() => confirmPasswordRef.current?.focus()}
+                    blurOnSubmit={false}
+                  />
+                </View>
+                {password.length > 0 && (
+                  <View style={styles.requirementsCard}>
+                    <View style={styles.requirementItem}>
+                      <IconSymbol
+                        size={16}
+                        name={password.length >= 8 ? "checkmark.circle.fill" : "circle"}
+                        color={password.length >= 8 ? "#22c55e" : "#999"}
+                      />
+                      <ThemedText style={[
+                        styles.requirementText,
+                        password.length >= 8 && styles.requirementMet
+                      ]}>
+                        At least 8 characters
+                      </ThemedText>
+                    </View>
+                    <View style={styles.requirementItem}>
+                      <IconSymbol
+                        size={16}
+                        name={/[0-9]/.test(password) ? "checkmark.circle.fill" : "circle"}
+                        color={/[0-9]/.test(password) ? "#22c55e" : "#999"}
+                      />
+                      <ThemedText style={[
+                        styles.requirementText,
+                        /[0-9]/.test(password) && styles.requirementMet
+                      ]}>
+                        At least one number
+                      </ThemedText>
+                    </View>
+                    <View style={styles.requirementItem}>
+                      <IconSymbol
+                        size={16}
+                        name={/[a-zA-Z]/.test(password) ? "checkmark.circle.fill" : "circle"}
+                        color={/[a-zA-Z]/.test(password) ? "#22c55e" : "#999"}
+                      />
+                      <ThemedText style={[
+                        styles.requirementText,
+                        /[a-zA-Z]/.test(password) && styles.requirementMet
+                      ]}>
+                        At least one letter
+                      </ThemedText>
+                    </View>
                   </View>
                 )}
-                {/* Minimum length hint */}
-                {username.trim().length > 0 && username.trim().length < 6 && (
-                  <View style={styles.availabilityContainer}>
-                    <IconSymbol size={16} name="info.circle" color="#999" />
-                    <ThemedText style={styles.hintText}>
-                      Username must be at least 6 characters
+              </View>
+
+              {/* Confirm Password */}
+              <View style={styles.inputContainer}>
+                <ThemedText style={styles.label}>Confirm Password *</ThemedText>
+                <View style={styles.inputWrapper}>
+                  <MaterialIcons name="vpn-key" size={20} color="#999" style={styles.inputIcon} />
+                  <TextInput
+                    ref={confirmPasswordRef}
+                    style={styles.inputWithIcon}
+                    placeholder="Re-enter your password"
+                    placeholderTextColor="#999"
+                    value={confirmPassword}
+                    onChangeText={setConfirmPassword}
+                    secureTextEntry
+                    editable={!loading}
+                    returnKeyType="done"
+                    onSubmitEditing={handleContinue}
+                  />
+                </View>
+                {confirmPassword.length > 0 && (
+                  <View style={styles.requirementItem}>
+                    <IconSymbol
+                      size={16}
+                      name={password === confirmPassword ? "checkmark.circle.fill" : "circle"}
+                      color={password === confirmPassword ? "#22c55e" : "#999"}
+                    />
+                    <ThemedText style={[
+                      styles.requirementText,
+                      password === confirmPassword && styles.requirementMet
+                    ]}>
+                      Passwords match
                     </ThemedText>
                   </View>
                 )}
               </View>
 
+              {/* Create Account Button */}
               <TouchableOpacity
-                style={[styles.continueButton, isChecking && styles.buttonDisabled]}
+                style={[
+                  styles.button,
+                  (loading || !isFormValid) && styles.buttonDisabled
+                ]}
                 onPress={handleContinue}
-                disabled={isChecking}
+                disabled={loading || !isFormValid}
               >
-                <ThemedText style={styles.continueButtonText}>
-                  {isChecking ? 'Checking...' : 'Continue'}
-                </ThemedText>
+                {loading ? (
+                  <ActivityIndicator color="#fff" />
+                ) : (
+                  <ThemedText style={[
+                    styles.buttonText,
+                    !isFormValid && styles.buttonTextDisabled
+                  ]}>Create Account</ThemedText>
+                )}
               </TouchableOpacity>
-            </View>
 
-            <View style={styles.footer}>
-              <ThemedText style={styles.footerText}>
-                Already have an account?{' '}
-              </ThemedText>
-              <TouchableOpacity onPress={() => router.push('/(auth)/login')}>
-                <ThemedText style={styles.footerLink}>Sign In</ThemedText>
-              </TouchableOpacity>
+              {/* Footer */}
+              <View style={styles.footer}>
+                <ThemedText style={styles.footerText}>
+                  Already have an account?{' '}
+                </ThemedText>
+                <TouchableOpacity onPress={() => router.push('/(auth)/login')}>
+                  <ThemedText style={styles.footerLink}>Sign In</ThemedText>
+                </TouchableOpacity>
+              </View>
             </View>
           </View>
         </ScrollView>
@@ -411,60 +774,80 @@ const styles = StyleSheet.create({
   scrollContent: {
     flexGrow: 1,
   },
-  backButton: {
+  headerRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    alignSelf: 'flex-start',
+    justifyContent: 'space-between',
     paddingTop: 60,
-    paddingBottom: 10,
+    paddingBottom: 16,
+    paddingHorizontal: 24,
+  },
+  headerSpacer: {
+    width: 20,
+  },
+  progressContainer: {
     paddingHorizontal: 24,
   },
   content: {
     flex: 1,
-    padding: 24,
-    paddingTop: 20,
-    justifyContent: 'center',
+    justifyContent: 'flex-start',
+    paddingHorizontal: 24,
+    paddingTop: 0,
+    paddingBottom: 24,
   },
-  header: {
-    marginBottom: 40,
-    alignItems: 'center',
-    overflow: 'visible',
+  backButton: {
+    padding: 4,
   },
   title: {
-    fontSize: 32,
-    fontWeight: 'bold',
-    marginBottom: 8,
-    lineHeight: 40,
-    overflow: 'visible',
+    fontSize: 20,
+    fontWeight: '700',
     color: '#fff',
   },
   subtitle: {
-    fontSize: 16,
-    color: '#ccc',
+    fontSize: 14,
+    color: '#999',
     textAlign: 'center',
-    lineHeight: 22,
+    marginBottom: 12,
   },
   form: {
-    width: '100%',
+    gap: 12,
   },
   inputContainer: {
-    marginBottom: 16,
+    gap: 4,
   },
   label: {
-    fontSize: 15,
+    fontSize: 13,
     fontWeight: '600',
     color: '#fff',
-    marginBottom: 8,
+    marginBottom: 2,
   },
   inputWrapper: {
-    position: 'relative',
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#2c2f33',
+    borderRadius: 24,
+    paddingHorizontal: 16,
+    borderWidth: 1,
+    borderColor: '#3a3f44',
+  },
+  inputIcon: {
+    marginRight: 10,
   },
   input: {
     backgroundColor: '#2c2f33',
-    borderRadius: 12,
-    padding: 16,
-    paddingRight: 48,
-    fontSize: 16,
+    paddingHorizontal: 16,
+    paddingVertical: 14,
+    borderRadius: 24,
+    fontSize: 15,
+    color: '#fff',
+    borderWidth: 1,
+    borderColor: '#3a3f44',
+  },
+  inputWithIcon: {
+    flex: 1,
+    paddingVertical: 14,
+    paddingRight: 30,
+    fontSize: 15,
     color: '#fff',
   },
   inputSpinner: {
@@ -474,10 +857,14 @@ const styles = StyleSheet.create({
     bottom: 0,
     justifyContent: 'center',
   },
+  feedbackContainer: {
+    height: 20,
+    marginTop: 4,
+    justifyContent: 'center',
+  },
   availabilityContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginTop: 8,
     gap: 6,
   },
   availabilityText: {
@@ -489,29 +876,78 @@ const styles = StyleSheet.create({
   takenText: {
     color: '#ef4444',
   },
-  hintText: {
-    fontSize: 14,
+  hint: {
+    fontSize: 12,
     color: '#999',
+    marginTop: 2,
   },
-  continueButton: {
-    backgroundColor: '#c42743',
-    borderRadius: 12,
-    padding: 16,
+  button: {
+    backgroundColor: '#D4A843',
+    paddingVertical: 16,
+    borderRadius: 24,
     alignItems: 'center',
     marginTop: 8,
   },
-  continueButtonText: {
-    color: '#fff',
-    fontSize: 16,
-    fontWeight: '600',
-  },
   buttonDisabled: {
-    opacity: 0.5,
+    backgroundColor: '#3a3f44',
   },
+  buttonText: {
+    fontSize: 15,
+    fontWeight: '600',
+    color: '#fff',
+  },
+  buttonTextDisabled: {
+    color: '#72767d',
+  },
+  dateText: {
+    fontSize: 15,
+    color: '#fff',
+  },
+  placeholderText: {
+    color: '#999',
+  },
+  datePickerContainer: {
+    backgroundColor: '#2c2f33',
+    borderRadius: 8,
+    marginTop: 4,
+    overflow: 'hidden',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  datePicker: {
+    height: 200,
+    width: '100%',
+    backgroundColor: '#2c2f33',
+  },
+  // Password requirements
+  requirementsCard: {
+    marginTop: 12,
+    padding: 12,
+    backgroundColor: '#2c2f33',
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: '#3a3f44',
+    gap: 8,
+  },
+  requirementItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    marginTop: 4,
+  },
+  requirementText: {
+    fontSize: 14,
+    color: '#ccc',
+  },
+  requirementMet: {
+    color: '#22c55e',
+    fontWeight: '500',
+  },
+  // Footer
   footer: {
     flexDirection: 'row',
     justifyContent: 'center',
-    marginTop: 32,
+    marginTop: 16,
   },
   footerText: {
     color: '#ccc',
@@ -525,29 +961,29 @@ const styles = StyleSheet.create({
   // Avatar selection styles
   avatarSection: {
     alignItems: 'center',
-    marginBottom: 24,
+    marginBottom: 12,
   },
   avatarSelector: {
     alignItems: 'center',
   },
   avatarPreview: {
-    width: 100,
-    height: 100,
-    borderRadius: 50,
+    width: 70,
+    height: 70,
+    borderRadius: 35,
     backgroundColor: '#2c2f33',
     alignItems: 'center',
     justifyContent: 'center',
     position: 'relative',
   },
   avatarImage: {
-    width: 100,
-    height: 100,
-    borderRadius: 50,
+    width: 70,
+    height: 70,
+    borderRadius: 35,
   },
   avatarPlaceholder: {
-    width: 100,
-    height: 100,
-    borderRadius: 50,
+    width: 70,
+    height: 70,
+    borderRadius: 35,
     backgroundColor: '#2c2f33',
     alignItems: 'center',
     justifyContent: 'center',
@@ -556,19 +992,19 @@ const styles = StyleSheet.create({
     position: 'absolute',
     bottom: 0,
     right: 0,
-    width: 32,
-    height: 32,
-    borderRadius: 16,
+    width: 24,
+    height: 24,
+    borderRadius: 12,
     backgroundColor: '#c42743',
     alignItems: 'center',
     justifyContent: 'center',
-    borderWidth: 3,
+    borderWidth: 2,
     borderColor: '#0f0f0f',
   },
   avatarHint: {
-    fontSize: 14,
+    fontSize: 12,
     color: '#999',
-    marginTop: 8,
+    marginTop: 4,
   },
   // Modal styles
   modalOverlay: {

@@ -1,0 +1,34 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<key>CLIENT_ID</key>
+	<string>636355743624-4onv4qf54unr6sqh6crih425vjohc9b7.apps.googleusercontent.com</string>
+	<key>REVERSED_CLIENT_ID</key>
+	<string>com.googleusercontent.apps.636355743624-4onv4qf54unr6sqh6crih425vjohc9b7</string>
+	<key>API_KEY</key>
+	<string>AIzaSyCGjnTFwtkJd6MLKzFMwcC3gX3MfrCZme8</string>
+	<key>GCM_SENDER_ID</key>
+	<string>636355743624</string>
+	<key>PLIST_VERSION</key>
+	<string>1</string>
+	<key>BUNDLE_ID</key>
+	<string>com.jininc3.RankUp</string>
+	<key>PROJECT_ID</key>
+	<string>rankup-a2a8a</string>
+	<key>STORAGE_BUCKET</key>
+	<string>rankup-a2a8a.firebasestorage.app</string>
+	<key>IS_ADS_ENABLED</key>
+	<false></false>
+	<key>IS_ANALYTICS_ENABLED</key>
+	<false></false>
+	<key>IS_APPINVITE_ENABLED</key>
+	<true></true>
+	<key>IS_GCM_ENABLED</key>
+	<true></true>
+	<key>IS_SIGNIN_ENABLED</key>
+	<true></true>
+	<key>GOOGLE_APP_ID</key>
+	<string>1:636355743624:ios:e3ed3f45a41ec0309cb43d</string>
+</dict>
+</plist>

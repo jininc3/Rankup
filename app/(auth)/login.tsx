@@ -173,7 +173,7 @@ export default function LoginScreen() {
                 >
                   <MaterialIcons name="email" size={20} color="#fff" />
                   <ThemedText style={styles.socialButtonText}>
-                    Continue with Email
+                    Continue with Email or Phone
                   </ThemedText>
                 </TouchableOpacity>
               ) : (

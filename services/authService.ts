@@ -21,7 +21,9 @@ export interface UserProfile {
   bio?: string;
   discordLink?: string;
   instagramLink?: string;
-  provider: 'email' | 'google';
+  phoneNumber?: string;
+  phoneVerified?: boolean;
+  provider: 'email' | 'google' | 'phone';
   postsCount?: number;
   followersCount?: number;
   followingCount?: number;
@@ -70,6 +72,56 @@ export async function signUpWithEmail(
     return userProfile;
   } catch (error: any) {
     console.error('Sign up error:', error);
+    throw new Error(getAuthErrorMessage(error.code));
+  }
+}
+
+/**
+ * Sign up a new user with phone number (uses generated email for Firebase Auth)
+ */
+export async function signUpWithPhone(
+  phoneNumber: string,
+  password: string,
+  username: string
+): Promise<UserProfile> {
+  try {
+    // Generate a placeholder email for Firebase Auth (phone-only users)
+    const sanitizedPhone = phoneNumber.replace(/[^0-9]/g, '');
+    const generatedEmail = `phone_${sanitizedPhone}@rankup-phone.internal`;
+
+    // Create user in Firebase Auth with generated email
+    const userCredential = await createUserWithEmailAndPassword(auth, generatedEmail, password);
+    const user = userCredential.user;
+
+    // Update display name
+    await updateProfile(user, {
+      displayName: username,
+    });
+
+    // Create user profile in Firestore
+    const userProfile: UserProfile = {
+      id: user.uid,
+      email: generatedEmail,
+      username: username,
+      usernameLower: username.toLowerCase(),
+      bio: '',
+      discordLink: '',
+      instagramLink: '',
+      phoneNumber: phoneNumber,
+      phoneVerified: false,
+      provider: 'phone',
+      postsCount: 0,
+      followersCount: 0,
+      followingCount: 0,
+      createdAt: new Date(),
+      updatedAt: new Date(),
+    };
+
+    await setDoc(doc(db, 'users', user.uid), userProfile);
+
+    return userProfile;
+  } catch (error: any) {
+    console.error('Phone sign up error:', error);
     throw new Error(getAuthErrorMessage(error.code));
   }
 }
