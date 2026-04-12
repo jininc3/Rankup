@@ -57,7 +57,8 @@
       "Bash(find /c/Users/jinha/Desktop/RankUp -path */node_modules -prune -o -type f \\\\\\(-name *achievement* -o -name *leaderboard* -o -name *party* \\\\\\) -print)",
       "Bash(npx firebase:*)",
       "Bash(head:*)",
-      "Bash(find /c/Users/jinha/Desktop/RankUp -path */node_modules -prune -o -type f \\\\\\(-name *phone* -o -name *auth* \\\\\\) -print)"
+      "Bash(find /c/Users/jinha/Desktop/RankUp -path */node_modules -prune -o -type f \\\\\\(-name *phone* -o -name *auth* \\\\\\) -print)",
+      "Bash(find C:UsersjinhaDesktopRankUpfunctionssrc -type f \\\\\\(-name *.ts -o -name *.js \\\\\\))"
     ],
     "deny": [],
     "ask": []

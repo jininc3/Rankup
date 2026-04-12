@@ -22,6 +22,7 @@ export interface UserProfile {
   usernameLower?: string;
   avatar?: string;
   coverPhoto?: string;
+  coverPhotoColor?: string;
   bio?: string;
   discordLink?: string;
   instagramLink?: string;

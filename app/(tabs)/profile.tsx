@@ -59,6 +59,17 @@ const formatDuration = (seconds?: number): string => {
   return `${mins}:${secs.toString().padStart(2, '0')}`;
 };
 
+// Darken a hex color by mixing it toward black
+function darkenColor(hex: string, factor: number): string {
+  const r = parseInt(hex.slice(1, 3), 16);
+  const g = parseInt(hex.slice(3, 5), 16);
+  const b = parseInt(hex.slice(5, 7), 16);
+  const dr = Math.round(r * factor);
+  const dg = Math.round(g * factor);
+  const db = Math.round(b * factor);
+  return `#${dr.toString(16).padStart(2, '0')}${dg.toString(16).padStart(2, '0')}${db.toString(16).padStart(2, '0')}`;
+}
+
 export default function ProfileScreen() {
   const router = useRouter();
   const { refresh } = useLocalSearchParams<{ refresh?: string }>();
@@ -883,7 +894,11 @@ export default function ProfileScreen() {
       >
         {/* Header Section - Cover photo reaches top */}
         <LinearGradient
-          colors={['#24243e', '#181825', '#0f0f0f']}
+          colors={
+            user?.coverPhotoColor
+              ? [user.coverPhotoColor, darkenColor(user.coverPhotoColor, 0.5), '#0f0f0f']
+              : ['#24243e', '#181825', '#0f0f0f']
+          }
           locations={[0, 0.3, 0.6]}
           start={{ x: 0, y: 0 }}
           end={{ x: 0, y: 1 }}
@@ -1628,7 +1643,7 @@ const styles = StyleSheet.create({
   // Header icons row - overlaid on cover photo
   headerIconsRow: {
     position: 'absolute',
-    top: 10,
+    top: 55,
     left: 0,
     right: 0,
     flexDirection: 'row',

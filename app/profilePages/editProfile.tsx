@@ -16,6 +16,7 @@ import { formatCount } from '@/utils/formatCount';
 import DraggableFlatList, { ScaleDecorator, RenderItemParams } from 'react-native-draggable-flatlist';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { Asset } from 'expo-asset';
+import { getColors } from 'react-native-image-colors';
 
 // Default avatar images (local)
 const defaultAvatars = [
@@ -620,10 +621,26 @@ export default function EditProfileScreen() {
               if (pendingRemoveCoverPhoto) {
                 // User wants to remove cover photo
                 updateData.coverPhoto = '';
+                updateData.coverPhotoColor = '';
               } else if (pendingCoverPhotoUri) {
                 // User selected a new cover photo - upload it
                 const coverUrl = await uploadCoverPhoto(user.id, pendingCoverPhotoUri);
                 updateData.coverPhoto = coverUrl;
+
+                // Extract dominant color from the local image for profile gradient
+                try {
+                  const colors = await getColors(pendingCoverPhotoUri, {
+                    fallback: '#24243e',
+                    cache: true,
+                  });
+                  if (colors.platform === 'android') {
+                    updateData.coverPhotoColor = colors.dominant ?? '#24243e';
+                  } else if (colors.platform === 'ios') {
+                    updateData.coverPhotoColor = colors.background ?? '#24243e';
+                  }
+                } catch {
+                  updateData.coverPhotoColor = '#24243e';
+                }
               }
 
               // Save all changes at once
