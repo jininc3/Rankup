@@ -1,3 +1,4 @@
+import React from 'react';
 import { ThemedText } from '@/components/themed-text';
 import { IconSymbol } from '@/components/ui/icon-symbol';
 import { Image, StyleSheet, TouchableOpacity, View } from 'react-native';
@@ -81,7 +82,7 @@ const calculateDaysInfo = (startDate: any, endDate: any): { currentDay: number; 
   return { currentDay: Math.max(1, currentDay), totalDays, daysLeft };
 };
 
-export default function LeaderboardCard({ leaderboard, onPress }: LeaderboardCardProps) {
+function LeaderboardCard({ leaderboard, onPress }: LeaderboardCardProps) {
   const daysInfo = calculateDaysInfo(leaderboard.startDate, leaderboard.endDate);
   const gameLogo = GAME_LOGOS[leaderboard.game];
   const isActive = leaderboard.challengeStatus === 'active';
@@ -185,6 +186,8 @@ export default function LeaderboardCard({ leaderboard, onPress }: LeaderboardCar
     </TouchableOpacity>
   );
 }
+
+export default React.memo(LeaderboardCard);
 
 const styles = StyleSheet.create({
   container: {

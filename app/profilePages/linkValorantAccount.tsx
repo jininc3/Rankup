@@ -9,21 +9,32 @@ import {
   ActivityIndicator,
   Alert,
   Image,
+  BackHandler,
 } from 'react-native';
-import { useState, useRef } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { useRouter, useLocalSearchParams, Stack } from 'expo-router';
 import { linkValorantAccount } from '@/services/valorantService';
+import { useValorantStats } from '@/contexts/ValorantStatsContext';
 import { db, auth } from '@/config/firebase';
 import { doc, updateDoc, arrayUnion } from 'firebase/firestore';
 
 export default function LinkValorantAccountScreen() {
   const router = useRouter();
   const { fromSignup } = useLocalSearchParams<{ fromSignup?: string }>();
+  const { fetchStats: fetchValorantStatsContext } = useValorantStats();
   const [gameName, setGameName] = useState('');
   const [tagLine, setTagLine] = useState('');
   const [region, setRegion] = useState('na');
   const [loading, setLoading] = useState(false);
+  const [preparingCard, setPreparingCard] = useState(false);
   const tagLineRef = useRef<TextInput>(null);
+
+  // Block back navigation while preparing rank card
+  useEffect(() => {
+    if (!preparingCard) return;
+    const sub = BackHandler.addEventListener('hardwareBackPress', () => true);
+    return () => sub.remove();
+  }, [preparingCard]);
 
   const regions = [
     { value: 'na', label: 'NA' },
@@ -51,24 +62,22 @@ export default function LinkValorantAccountScreen() {
           enabledRankCards: arrayUnion('valorant')
         });
 
-        Alert.alert(
-          'Success!',
-          `Linked Valorant account: ${response.account?.gameName}#${response.account?.tag}`,
-          [
-            {
-              text: 'OK',
-              onPress: () => {
-                if (fromSignup === 'true') {
-                  // Go back to signup step 3
-                  router.back();
-                } else {
-                  // Navigate directly to profile tab with refresh flag
-                  router.replace('/(tabs)/profile?refresh=true');
-                }
-              },
-            },
-          ]
-        );
+        if (fromSignup === 'true') {
+          Alert.alert(
+            'Success!',
+            `Linked Valorant account: ${response.account?.gameName}#${response.account?.tag}`,
+            [{ text: 'OK', onPress: () => router.back() }]
+          );
+        } else {
+          // Pre-fetch stats so profile can show rank card instantly
+          setPreparingCard(true);
+          try {
+            await fetchValorantStatsContext(true);
+          } catch (e) {
+            // Continue even if fetch fails - profile will retry
+          }
+          router.replace('/(tabs)/profile');
+        }
       }
     } catch (error: any) {
       Alert.alert('Error', error.message || 'Failed to link Valorant account');
@@ -81,9 +90,17 @@ export default function LinkValorantAccountScreen() {
     <>
       <Stack.Screen options={{ headerShown: false }} />
       <ThemedView style={styles.container}>
+        {/* Preparing rank card overlay */}
+        {preparingCard && (
+          <View style={styles.preparingOverlay}>
+            <ActivityIndicator size="large" color="#D4A843" />
+            <ThemedText style={styles.preparingText}>Preparing your rank card...</ThemedText>
+          </View>
+        )}
+
         {/* Header */}
         <View style={styles.header}>
-          <TouchableOpacity style={styles.backButton} onPress={() => router.back()}>
+          <TouchableOpacity style={styles.backButton} onPress={() => router.back()} disabled={preparingCard}>
             <IconSymbol size={24} name="chevron.left" color="#fff" />
           </TouchableOpacity>
         </View>
@@ -315,5 +332,18 @@ const styles = StyleSheet.create({
     fontSize: 12,
     color: '#555',
     marginTop: 4,
+  },
+  preparingOverlay: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: '#0f0f0f',
+    justifyContent: 'center',
+    alignItems: 'center',
+    zIndex: 100,
+    gap: 16,
+  },
+  preparingText: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#fff',
   },
 });

@@ -1,6 +1,7 @@
 import { db, auth, storage } from '@/config/firebase';
 import {
   collection,
+  collectionGroup,
   query,
   where,
   getDocs,
@@ -95,26 +96,29 @@ export async function deleteUserAccount(
     // 3. Remove user from all followers/following relationships (including other users' lists)
     await deleteUserFollowRelationships(userId);
 
-    // 4. Delete user's subcollections (notifications, followers, following, searchHistory, gameStats)
+    // 4. Delete notifications about this user in OTHER users' notification subcollections
+    await deleteNotificationsAboutUser(userId);
+
+    // 5. Delete user's subcollections (notifications, followers, following, searchHistory, gameStats)
     await deleteUserSubcollections(userId);
 
-    // 5. Delete all user's chats and messages
+    // 6. Delete all user's chats and messages
     await deleteUserChats(userId);
 
-    // 6. Delete all linked game accounts (Riot, Valorant, etc.)
+    // 7. Delete all linked game accounts (Riot, Valorant, etc.)
     await deleteLinkedAccounts(userId);
 
-    // 7. Delete parties created by user and remove user from other parties
+    // 8. Delete parties created by user and remove user from other parties
     await deleteUserFromParties(userId);
 
-    // 8. Delete any remaining storage files in user's folder
+    // 9. Delete any remaining storage files in user's folder
     await deleteUserStorageFolder(userId);
 
-    // 9. Delete user document from Firestore
+    // 10. Delete user document from Firestore
     await deleteDoc(doc(db, 'users', userId));
     console.log('User document deleted');
 
-    // 10. Delete Firebase Auth account (must be last)
+    // 11. Delete Firebase Auth account (must be last)
     const currentUser = auth.currentUser;
     if (currentUser && currentUser.uid === userId) {
       await deleteUser(currentUser);
@@ -316,6 +320,47 @@ async function deleteUserFollowRelationships(userId: string): Promise<void> {
     console.log('User follow relationships deleted');
   } catch (error) {
     console.error('Error deleting user follow relationships:', error);
+    // Don't throw - continue with deletion
+  }
+}
+
+/**
+ * Delete all notifications about this user in OTHER users' notification subcollections.
+ * Uses a collection group query to find all notification docs where fromUserId matches.
+ */
+async function deleteNotificationsAboutUser(userId: string): Promise<void> {
+  try {
+    const notificationsQuery = query(
+      collectionGroup(db, 'notifications'),
+      where('fromUserId', '==', userId)
+    );
+    const snapshot = await getDocs(notificationsQuery);
+
+    console.log(`Found ${snapshot.size} notifications about user to delete`);
+
+    // Delete in batches of 500 (Firestore limit)
+    const batchSize = 500;
+    let batch = writeBatch(db);
+    let operationCount = 0;
+
+    for (const docSnapshot of snapshot.docs) {
+      batch.delete(docSnapshot.ref);
+      operationCount++;
+
+      if (operationCount >= batchSize) {
+        await batch.commit();
+        batch = writeBatch(db);
+        operationCount = 0;
+      }
+    }
+
+    if (operationCount > 0) {
+      await batch.commit();
+    }
+
+    console.log('Notifications about user deleted from other users');
+  } catch (error) {
+    console.error('Error deleting notifications about user:', error);
     // Don't throw - continue with deletion
   }
 }

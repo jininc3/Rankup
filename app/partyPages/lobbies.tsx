@@ -7,19 +7,23 @@ import { db } from '@/config/firebase';
 import { useAuth } from '@/contexts/AuthContext';
 import { useRouter } from 'expo-router';
 import { collection, onSnapshot, query, where } from 'firebase/firestore';
-import { useEffect, useState, useRef } from 'react';
+import { useEffect, useState, useRef, useCallback } from 'react';
 import { Modal, ScrollView, StyleSheet, TouchableOpacity, View } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 
 const MINIMUM_SKELETON_TIME = 800;
 
+// Module-level cache so data persists across navigation remounts
+let cachedLeaderboards: any[] | null = null;
+
 export default function LobbiesScreen() {
   const router = useRouter();
   const { user } = useAuth();
-  const [leaderboards, setLeaderboards] = useState<any[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [leaderboards, setLeaderboards] = useState<any[]>(cachedLeaderboards || []);
+  const [loading, setLoading] = useState(!cachedLeaderboards);
   const [showCreateModal, setShowCreateModal] = useState(false);
   const skeletonStartTime = useRef<number>(Date.now());
+  const isFirstLoad = useRef(!cachedLeaderboards);
 
   // Fetch leaderboards from Firestore
   useEffect(() => {
@@ -33,7 +37,7 @@ export default function LobbiesScreen() {
 
     const unsubscribe = onSnapshot(partiesQuery, (snapshot) => {
       setLeaderboards((prev) => {
-        return snapshot.docs
+        const updated = snapshot.docs
           .map((docSnapshot) => {
             const data = docSnapshot.data();
             const docId = docSnapshot.id;
@@ -65,19 +69,28 @@ export default function LobbiesScreen() {
             };
           })
           .filter(Boolean);
+
+        cachedLeaderboards = updated;
+        return updated;
       });
 
-      const elapsedTime = Date.now() - skeletonStartTime.current;
-      const remainingTime = Math.max(0, MINIMUM_SKELETON_TIME - elapsedTime);
-      setTimeout(() => {
+      // Only show skeleton delay on first-ever load; skip on subsequent navigations
+      if (isFirstLoad.current) {
+        const elapsedTime = Date.now() - skeletonStartTime.current;
+        const remainingTime = Math.max(0, MINIMUM_SKELETON_TIME - elapsedTime);
+        setTimeout(() => {
+          setLoading(false);
+          isFirstLoad.current = false;
+        }, remainingTime);
+      } else {
         setLoading(false);
-      }, remainingTime);
+      }
     });
 
     return () => unsubscribe();
   }, [user?.id]);
 
-  const handleLeaderboardPress = (leaderboard: any) => {
+  const handleLeaderboardPress = useCallback((leaderboard: any) => {
     if (leaderboard.challengeStatus === 'completed') {
       router.push({
         pathname: '/partyPages/leaderboardResults',
@@ -106,7 +119,7 @@ export default function LobbiesScreen() {
         },
       });
     }
-  };
+  }, [router]);
 
   return (
     <ThemedView style={styles.container}>

@@ -94,6 +94,7 @@ export default function ProfileViewScreen() {
   const [achievements, setAchievements] = useState<{ partyName: string; game: string; placement: number; endDate: string }[]>([]);
   const [loadingAchievements, setLoadingAchievements] = useState(false);
   const [achievementsError, setAchievementsError] = useState(false);
+  const [userNotFound, setUserNotFound] = useState(false);
   const [activeTab, setActiveTab] = useState<'clips' | 'rankCards' | 'achievements'>('clips');
 
   const tabs: ('clips' | 'rankCards' | 'achievements')[] = ['clips', 'rankCards', 'achievements'];
@@ -355,6 +356,12 @@ export default function ProfileViewScreen() {
         setEnabledRankCards(data.enabledRankCards || []);
 
         setLoadingUser(false);
+      } else {
+        // User has been deleted or doesn't exist
+        setUserNotFound(true);
+        setLoadingUser(false);
+        setLoadingPosts(false);
+        return;
       }
 
       // Update posts - sort by newest first
@@ -603,6 +610,39 @@ export default function ProfileViewScreen() {
     riotStats?.rankedSolo ? formatRank(riotStats.rankedSolo.tier, riotStats.rankedSolo.rank) : undefined,
     valorantStats?.currentRank
   );
+
+  // Show "user not found" screen for deleted accounts
+  if (userNotFound) {
+    return (
+      <ThemedView style={styles.container}>
+        <View style={styles.headerSection}>
+          <View style={{ paddingTop: 70, paddingHorizontal: 20, flexDirection: 'row', alignItems: 'center' }}>
+            <TouchableOpacity
+              style={styles.headerIconButton}
+              onPress={() => router.back()}
+            >
+              <IconSymbol size={22} name="chevron.left" color="#fff" />
+            </TouchableOpacity>
+          </View>
+        </View>
+        <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 40, paddingBottom: 100 }}>
+          <IconSymbol size={64} name="person.crop.circle.badge.xmark" color="#72767d" />
+          <ThemedText style={{ fontSize: 20, fontWeight: '600', color: '#fff', marginTop: 16 }}>
+            Account Not Found
+          </ThemedText>
+          <ThemedText style={{ fontSize: 14, color: '#b9bbbe', textAlign: 'center', marginTop: 8 }}>
+            This account may have been deleted or is no longer available.
+          </ThemedText>
+          <TouchableOpacity
+            style={{ marginTop: 24, paddingHorizontal: 24, paddingVertical: 10, backgroundColor: '#c42743', borderRadius: 8 }}
+            onPress={() => router.back()}
+          >
+            <ThemedText style={{ fontSize: 14, fontWeight: '600', color: '#fff' }}>Go Back</ThemedText>
+          </TouchableOpacity>
+        </View>
+      </ThemedView>
+    );
+  }
 
   return (
     <ThemedView style={styles.container}>

@@ -107,6 +107,7 @@ export default function ProfilePreviewScreen() {
   const [enabledRankCards, setEnabledRankCards] = useState<string[]>([]);
   const [achievements, setAchievements] = useState<{ partyName: string; game: string; placement: number; endDate: string }[]>([]);
   const [cardsExpanded, setCardsExpanded] = useState(false);
+  const [userNotFound, setUserNotFound] = useState(false);
   const [activeTab, setActiveTab] = useState<'clips' | 'rankCards' | 'achievements'>('clips');
   const tabs: ('clips' | 'rankCards' | 'achievements')[] = ['clips', 'rankCards', 'achievements'];
   const tabScrollRef = useRef<ScrollView>(null);
@@ -250,6 +251,8 @@ export default function ProfilePreviewScreen() {
         if (data.enabledRankCards) {
           setEnabledRankCards(data.enabledRankCards);
         }
+      } else {
+        setUserNotFound(true);
       }
     } catch (error) {
       console.error('Error fetching user profile:', error);
@@ -426,6 +429,34 @@ export default function ProfilePreviewScreen() {
     riotStats?.rankedSolo ? formatRank(riotStats.rankedSolo.tier, riotStats.rankedSolo.rank) : undefined,
     valorantStats?.currentRank
   ) || ['#333', '#333', '#333'];
+
+  // Show "user not found" screen for deleted accounts
+  if (userNotFound) {
+    return (
+      <ThemedView style={styles.container}>
+        <View style={{ paddingTop: 70, paddingHorizontal: 20, flexDirection: 'row', alignItems: 'center' }}>
+          <TouchableOpacity onPress={() => router.back()} style={{ padding: 4 }}>
+            <IconSymbol size={22} name="chevron.left" color="#fff" />
+          </TouchableOpacity>
+        </View>
+        <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 40, paddingBottom: 100 }}>
+          <IconSymbol size={64} name="person.crop.circle.badge.xmark" color="#72767d" />
+          <ThemedText style={{ fontSize: 20, fontWeight: '600', color: '#fff', marginTop: 16 }}>
+            Account Not Found
+          </ThemedText>
+          <ThemedText style={{ fontSize: 14, color: '#b9bbbe', textAlign: 'center', marginTop: 8 }}>
+            This account may have been deleted or is no longer available.
+          </ThemedText>
+          <TouchableOpacity
+            style={{ marginTop: 24, paddingHorizontal: 24, paddingVertical: 10, backgroundColor: '#c42743', borderRadius: 8 }}
+            onPress={() => router.back()}
+          >
+            <ThemedText style={{ fontSize: 14, fontWeight: '600', color: '#fff' }}>Go Back</ThemedText>
+          </TouchableOpacity>
+        </View>
+      </ThemedView>
+    );
+  }
 
   return (
     <ThemedView style={styles.container}>

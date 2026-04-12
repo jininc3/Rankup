@@ -500,13 +500,13 @@ export default function ProfileScreen() {
     }
   }, [user?.id, hasConsumedPreloadPosts, hasConsumedPreloadRiot, preloadedProfilePosts, preloadedRiotStats]);
 
-  // Refresh lightweight user data (followers/following counts) on tab focus
-  // Stats are only fetched on app load and pull-to-refresh to avoid unnecessary API calls
+  // Refresh user data and rank cards on tab focus
+  // fetchRiotData() picks up newly linked accounts and uses client cache for stats (no redundant API calls)
   useFocusEffect(
     useCallback(() => {
       if (user?.id) {
         refreshUser();
-        fetchEnabledRankCards();
+        fetchRiotData();
         fetchPosts();
       }
     }, [user?.id])
@@ -893,7 +893,7 @@ export default function ProfileScreen() {
             <>
             {/* Cover photo placeholder with icons during loading */}
             <View style={styles.coverPhotoCardContainer}>
-              <View style={[styles.coverPhotoInner, styles.coverPhotoFallbackBorder]}>
+              <View style={styles.coverPhotoInner}>
                 <LinearGradient
                   colors={['#2c2f33', '#1a1a1a', '#0f0f0f']}
                   start={{ x: 0, y: 0 }}
@@ -929,56 +929,9 @@ export default function ProfileScreen() {
             <ProfilePageSkeleton />
           </>) : (
           <>
-          {/* Cover Photo Area - inset card with tier border */}
+          {/* Cover Photo Area - inset card */}
           <View style={styles.coverPhotoCardContainer}>
-            {tierBorderGradient ? (
-              <GradientBorder colors={tierBorderGradient} borderWidth={2.5} borderRadius={18}>
-                <View style={styles.coverPhotoInner}>
-                  {user?.coverPhoto ? (
-                    <Image
-                      key={`cover-${coverPhotoKey}`}
-                      source={{ uri: `${user.coverPhoto}&t=${coverPhotoKey}` }}
-                      style={styles.coverPhotoImage}
-                      onLoad={() => setCoverPhotoLoaded(true)}
-                      onError={() => setCoverPhotoLoaded(true)}
-                    />
-                  ) : (
-                    <LinearGradient
-                      colors={['#2c2f33', '#1a1a1a', '#0f0f0f']}
-                      start={{ x: 0, y: 0 }}
-                      end={{ x: 0, y: 1 }}
-                      style={styles.coverPhotoGradient}
-                    />
-                  )}
-                  {/* Header Icons overlaid on cover photo */}
-                  <View style={styles.headerIconsRow}>
-                    <TouchableOpacity
-                      style={styles.headerIconButton}
-                      onPress={() => setShowCreateModal(true)}
-                      activeOpacity={0.7}
-                    >
-                      <IconSymbol size={27} name="plus.app" color="#fff" />
-                    </TouchableOpacity>
-                    <View style={styles.headerIconsSpacer} />
-                    <TouchableOpacity
-                      style={styles.headerIconButton}
-                      onPress={() => router.push('/chatPages/chatList')}
-                      activeOpacity={0.7}
-                    >
-                      <IconSymbol size={27} name="bubble.left" color="#fff" />
-                    </TouchableOpacity>
-                    <TouchableOpacity
-                      style={styles.headerIconButton}
-                      onPress={() => router.push('/profilePages/settings')}
-                      activeOpacity={0.7}
-                    >
-                      <IconSymbol size={27} name="gearshape" color="#fff" />
-                    </TouchableOpacity>
-                  </View>
-                </View>
-              </GradientBorder>
-            ) : (
-              <View style={[styles.coverPhotoInner, styles.coverPhotoFallbackBorder]}>
+              <View style={styles.coverPhotoInner}>
                 {user?.coverPhoto ? (
                   <Image
                     key={`cover-${coverPhotoKey}`}
@@ -1021,7 +974,6 @@ export default function ProfileScreen() {
                   </TouchableOpacity>
                 </View>
               </View>
-            )}
           </View>
 
           {/* Profile Info Section - avatar overlaps cover photo, stats on right */}
@@ -1711,8 +1663,6 @@ const styles = StyleSheet.create({
   },
   coverPhotoFallbackBorder: {
     borderRadius: 18,
-    borderWidth: 2,
-    borderColor: '#2a2a2a',
   },
   coverPhotoImage: {
     position: 'absolute',

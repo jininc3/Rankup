@@ -9,10 +9,11 @@ import {
   ActivityIndicator,
   Alert,
   Image,
+  BackHandler,
 } from 'react-native';
-import { useState, useRef } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { useRouter, useLocalSearchParams } from 'expo-router';
-import { linkRiotAccount } from '@/services/riotService';
+import { linkRiotAccount, getLeagueStats } from '@/services/riotService';
 import { db, auth } from '@/config/firebase';
 import { doc, updateDoc, arrayUnion } from 'firebase/firestore';
 
@@ -23,8 +24,16 @@ export default function LinkRiotAccountScreen() {
   const [tagLine, setTagLine] = useState('');
   const [region, setRegion] = useState('na1');
   const [loading, setLoading] = useState(false);
+  const [preparingCard, setPreparingCard] = useState(false);
   const [showAllRegions, setShowAllRegions] = useState(false);
   const tagLineRef = useRef<TextInput>(null);
+
+  // Block back navigation while preparing rank card
+  useEffect(() => {
+    if (!preparingCard) return;
+    const sub = BackHandler.addEventListener('hardwareBackPress', () => true);
+    return () => sub.remove();
+  }, [preparingCard]);
 
   const regions = [
     { value: 'na1', label: 'NA' },
@@ -66,24 +75,22 @@ export default function LinkRiotAccountScreen() {
           enabledRankCards: arrayUnion('league')
         });
 
-        Alert.alert(
-          'Success!',
-          `Linked account: ${response.account?.gameName}#${response.account?.tagLine}`,
-          [
-            {
-              text: 'OK',
-              onPress: () => {
-                if (fromSignup === 'true') {
-                  // Go back to signup step 3
-                  router.back();
-                } else {
-                  // Navigate directly to profile tab with refresh flag
-                  router.replace('/(tabs)/profile?refresh=true');
-                }
-              },
-            },
-          ]
-        );
+        if (fromSignup === 'true') {
+          Alert.alert(
+            'Success!',
+            `Linked account: ${response.account?.gameName}#${response.account?.tagLine}`,
+            [{ text: 'OK', onPress: () => router.back() }]
+          );
+        } else {
+          // Pre-fetch stats so profile can show rank card instantly
+          setPreparingCard(true);
+          try {
+            await getLeagueStats(true);
+          } catch (e) {
+            // Continue even if fetch fails - profile will retry
+          }
+          router.replace('/(tabs)/profile');
+        }
       }
     } catch (error: any) {
       Alert.alert('Error', error.message || 'Failed to link Riot account');
@@ -94,9 +101,17 @@ export default function LinkRiotAccountScreen() {
 
   return (
     <ThemedView style={styles.container}>
+      {/* Preparing rank card overlay */}
+      {preparingCard && (
+        <View style={styles.preparingOverlay}>
+          <ActivityIndicator size="large" color="#D4A843" />
+          <ThemedText style={styles.preparingText}>Preparing your rank card...</ThemedText>
+        </View>
+      )}
+
       {/* Header */}
       <View style={styles.header}>
-        <TouchableOpacity style={styles.backButton} onPress={() => router.back()}>
+        <TouchableOpacity style={styles.backButton} onPress={() => router.back()} disabled={preparingCard}>
           <IconSymbol size={24} name="chevron.left" color="#fff" />
         </TouchableOpacity>
       </View>
@@ -346,5 +361,18 @@ const styles = StyleSheet.create({
     fontSize: 12,
     color: '#555',
     marginTop: 4,
+  },
+  preparingOverlay: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: '#0f0f0f',
+    justifyContent: 'center',
+    alignItems: 'center',
+    zIndex: 100,
+    gap: 16,
+  },
+  preparingText: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#fff',
   },
 });

@@ -103,15 +103,22 @@ export default function NotificationsScreen() {
         });
       });
 
-      // Second pass: fetch current avatars for users without avatars
+      // Second pass: fetch current avatars and filter out notifications from deleted users
+      const deletedUserIds = new Set<string>();
+      const existingUserIds = new Set<string>();
+
       for (const notif of notifs) {
         // Skip avatar fetching for notifications without a fromUserId (system notifications)
         if (!notif.fromUserId) continue;
 
-        if (!notif.fromUserAvatar || !notif.fromUserAvatar.startsWith('http')) {
+        // Skip if we already know this user is deleted
+        if (deletedUserIds.has(notif.fromUserId)) continue;
+
+        if (!notif.fromUserAvatar || !notif.fromUserAvatar.startsWith('http') || !existingUserIds.has(notif.fromUserId)) {
           // Check cache first
           if (userAvatarCache[notif.fromUserId] !== undefined) {
             notif.fromUserAvatar = userAvatarCache[notif.fromUserId];
+            existingUserIds.add(notif.fromUserId);
           } else {
             // Fetch current avatar from user document
             try {
@@ -121,15 +128,26 @@ export default function NotificationsScreen() {
                 const currentAvatar = userData.avatar;
                 userAvatarCache[notif.fromUserId] = currentAvatar;
                 notif.fromUserAvatar = currentAvatar;
+                existingUserIds.add(notif.fromUserId);
+              } else {
+                // User has been deleted — mark for filtering
+                deletedUserIds.add(notif.fromUserId);
               }
             } catch (error) {
               console.error('Error fetching user avatar:', error);
             }
           }
+        } else {
+          existingUserIds.add(notif.fromUserId);
         }
       }
 
-      setNotifications(notifs);
+      // Filter out notifications from deleted users (keep system notifications without fromUserId)
+      const filteredNotifs = notifs.filter(
+        (notif) => !notif.fromUserId || !deletedUserIds.has(notif.fromUserId)
+      );
+
+      setNotifications(filteredNotifs);
       setLoading(false);
     });
 
@@ -602,10 +620,12 @@ export default function NotificationsScreen() {
         });
       });
 
-      // Fetch current avatars for users without avatars
+      // Fetch current avatars and filter out notifications from deleted users
+      const deletedUserIds = new Set<string>();
+
       for (const notif of newNotifs) {
-        // Skip avatar fetching for notifications without a fromUserId (system notifications)
         if (!notif.fromUserId) continue;
+        if (deletedUserIds.has(notif.fromUserId)) continue;
 
         if (!notif.fromUserAvatar || !notif.fromUserAvatar.startsWith('http')) {
           if (userAvatarCache[notif.fromUserId] !== undefined) {
@@ -618,6 +638,8 @@ export default function NotificationsScreen() {
                 const currentAvatar = userData.avatar;
                 userAvatarCache[notif.fromUserId] = currentAvatar;
                 notif.fromUserAvatar = currentAvatar;
+              } else {
+                deletedUserIds.add(notif.fromUserId);
               }
             } catch (error) {
               console.error('Error fetching user avatar:', error);
@@ -626,10 +648,15 @@ export default function NotificationsScreen() {
         }
       }
 
+      // Filter out notifications from deleted users
+      const filteredNewNotifs = newNotifs.filter(
+        (notif) => !notif.fromUserId || !deletedUserIds.has(notif.fromUserId)
+      );
+
       // Append new notifications and filter out duplicates
       setNotifications(prev => {
         const existingIds = new Set(prev.map(n => n.id));
-        const uniqueNewNotifs = newNotifs.filter(n => !existingIds.has(n.id));
+        const uniqueNewNotifs = filteredNewNotifs.filter(n => !existingIds.has(n.id));
         return [...prev, ...uniqueNewNotifs];
       });
 
