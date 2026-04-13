@@ -97,7 +97,7 @@ export default function SettingsVerifyEmailScreen() {
           style={styles.backButton}
           onPress={() => router.replace('/profilePages/accountSettings')}
         >
-          <IconSymbol size={24} name="chevron.left" color="#000" />
+          <IconSymbol size={20} name="chevron.left" color="#000" />
           <ThemedText style={styles.backText}>Cancel</ThemedText>
         </TouchableOpacity>
         <ThemedText style={styles.headerTitle}>Verify Email</ThemedText>

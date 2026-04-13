@@ -717,7 +717,7 @@ export default function NotificationsScreen() {
           style={styles.backButton}
           onPress={() => router.back()}
         >
-          <IconSymbol size={24} name="chevron.left" color="#fff" />
+          <IconSymbol size={20} name="chevron.left" color="#fff" />
         </TouchableOpacity>
         <ThemedText style={styles.headerTitle} numberOfLines={1}>Notifications</ThemedText>
         {notifications.length > 0 && (

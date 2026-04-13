@@ -345,7 +345,7 @@ export default function AddDuoCard({ visible, onClose, onSave, hasValorantAccoun
         {/* Header */}
         <View style={styles.header}>
           <TouchableOpacity onPress={handleBack} style={styles.backButton}>
-            <IconSymbol size={24} name="chevron.left" color="#fff" />
+            <IconSymbol size={20} name="chevron.left" color="#fff" />
           </TouchableOpacity>
           <ThemedText style={styles.headerTitle}>
             {step === 'game' ? 'Select Game' : `Create ${selectedGame === 'valorant' ? 'Valorant' : 'League'} Card`}

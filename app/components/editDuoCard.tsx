@@ -218,7 +218,7 @@ export default function EditDuoCard({
         {/* Header */}
         <View style={styles.header}>
           <TouchableOpacity onPress={onClose} style={styles.backButton}>
-            <IconSymbol size={24} name="chevron.left" color="#fff" />
+            <IconSymbol size={20} name="chevron.left" color="#fff" />
           </TouchableOpacity>
           <ThemedText style={styles.headerTitle}>
             Edit {game === 'valorant' ? 'Valorant' : 'League'} Card

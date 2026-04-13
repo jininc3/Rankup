@@ -399,7 +399,7 @@ export default function LeaderboardResults() {
           {/* Header Icons */}
           <View style={styles.headerIconsRow}>
             <TouchableOpacity style={styles.backButton} onPress={() => router.back()}>
-              <IconSymbol size={18} name="chevron.left" color="#fff" />
+              <IconSymbol size={20} name="chevron.left" color="#fff" />
             </TouchableOpacity>
           </View>
 
@@ -653,10 +653,10 @@ const styles = StyleSheet.create({
     zIndex: 10,
   },
   backButton: {
-    width: 38,
-    height: 38,
-    borderRadius: 19,
-    backgroundColor: 'rgba(0,0,0,0.5)',
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: 'rgba(0,0,0,0.4)',
     alignItems: 'center',
     justifyContent: 'center',
   },

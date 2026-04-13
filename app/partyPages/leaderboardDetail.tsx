@@ -5,8 +5,9 @@ import { useLocalSearchParams, useRouter } from 'expo-router';
 import { ScrollView, StyleSheet, TouchableOpacity, View, Image, Alert, RefreshControl, Modal, ActivityIndicator, TextInput, Animated, PanResponder, Dimensions } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useState, useEffect, useRef } from 'react';
-import { db } from '@/config/firebase';
+import { db, functions } from '@/config/firebase';
 import { doc, getDoc, updateDoc, deleteDoc, onSnapshot, collection, getDocs, addDoc, serverTimestamp } from 'firebase/firestore';
+import { httpsCallable } from 'firebase/functions';
 import * as Clipboard from 'expo-clipboard';
 import * as ImagePicker from 'expo-image-picker';
 import { uploadPartyIcon, uploadPartyCoverPhoto } from '@/services/storageService';
@@ -216,6 +217,7 @@ export default function LeaderboardDetail() {
   const [selectedChallengeMembers, setSelectedChallengeMembers] = useState<string[]>([]);
   const [creatingChallenge, setCreatingChallenge] = useState(false);
   const [spectators, setSpectators] = useState<any[]>([]);
+  const [updatingStats, setUpdatingStats] = useState(false);
 
   // Swipe-to-dismiss for invite modal
   const inviteModalTranslateY = useRef(new Animated.Value(0)).current;
@@ -902,6 +904,20 @@ export default function LeaderboardDetail() {
     }, 1000);
   };
 
+  const handleUpdateStats = async () => {
+    if (updatingStats || !id) return;
+    setUpdatingStats(true);
+    try {
+      const refreshPartyStatsFn = httpsCallable(functions, 'refreshPartyStats');
+      await refreshPartyStatsFn({ partyId: id });
+    } catch (error: any) {
+      const msg = error?.message || 'Failed to update stats';
+      Alert.alert('Update Failed', msg.includes('wait') ? msg : 'Could not refresh stats. Try again later.');
+    } finally {
+      setUpdatingStats(false);
+    }
+  };
+
   const leaderboardName = partyData?.partyName || params.name as string;
   const memberCount = partyData?.members?.length || Number(params.members);
 
@@ -998,7 +1014,7 @@ export default function LeaderboardDetail() {
           {/* Header Icons */}
           <View style={styles.headerIconsRow}>
             <TouchableOpacity style={styles.backButton} onPress={() => router.back()}>
-              <IconSymbol size={14} name="chevron.left" color="#fff" />
+              <IconSymbol size={20} name="chevron.left" color="#fff" />
             </TouchableOpacity>
             <View style={styles.headerRightButtons}>
               {isCreator && (
@@ -1115,6 +1131,21 @@ export default function LeaderboardDetail() {
 
           {/* Action Buttons */}
           <View style={styles.actionButtons}>
+            <TouchableOpacity
+              style={[styles.codeButton, updatingStats && { opacity: 0.5 }]}
+              onPress={handleUpdateStats}
+              disabled={updatingStats}
+              activeOpacity={0.7}
+            >
+              {updatingStats ? (
+                <ActivityIndicator size={12} color="#4da6ff" />
+              ) : (
+                <IconSymbol size={14} name="arrow.clockwise" color="#4da6ff" />
+              )}
+              <ThemedText style={[styles.inviteButtonText, { color: '#4da6ff' }]}>
+                {updatingStats ? 'Updating...' : 'Update'}
+              </ThemedText>
+            </TouchableOpacity>
             {canInvite && (
               <TouchableOpacity style={styles.inviteButton} onPress={handleOpenInviteModal}>
                 <IconSymbol size={14} name="person.badge.plus" color="#fff" />
@@ -2104,10 +2135,10 @@ const styles = StyleSheet.create({
     zIndex: 10,
   },
   backButton: {
-    width: 30,
-    height: 30,
-    borderRadius: 15,
-    backgroundColor: 'rgba(0,0,0,0.5)',
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: 'rgba(0,0,0,0.4)',
     alignItems: 'center',
     justifyContent: 'center',
   },

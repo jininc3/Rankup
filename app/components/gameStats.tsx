@@ -321,7 +321,7 @@ export default function GameStatsScreen() {
           onPress={() => router.back()}
         >
           <IconSymbol
-            size={24}
+            size={20}
             name="chevron.left"
             color={(game.name === 'League of Legends' || game.name === 'Valorant') ? '#fff' : '#000'}
           />
@@ -558,14 +558,12 @@ const styles = StyleSheet.create({
     paddingHorizontal: 24,
   },
   backButton: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    backgroundColor: 'rgba(255,255,255,0.3)',
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: 'rgba(0,0,0,0.4)',
     alignItems: 'center',
     justifyContent: 'center',
-    borderWidth: 1,
-    borderColor: 'rgba(0,0,0,0.1)',
   },
   heroContent: {
     alignItems: 'flex-start',

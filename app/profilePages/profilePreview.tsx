@@ -435,8 +435,8 @@ export default function ProfilePreviewScreen() {
     return (
       <ThemedView style={styles.container}>
         <View style={{ paddingTop: 70, paddingHorizontal: 20, flexDirection: 'row', alignItems: 'center' }}>
-          <TouchableOpacity onPress={() => router.back()} style={{ padding: 4 }}>
-            <IconSymbol size={22} name="chevron.left" color="#fff" />
+          <TouchableOpacity onPress={() => router.back()} style={{ width: 36, height: 36, borderRadius: 18, backgroundColor: 'rgba(0,0,0,0.4)', alignItems: 'center', justifyContent: 'center' }}>
+            <IconSymbol size={20} name="chevron.left" color="#fff" />
           </TouchableOpacity>
         </View>
         <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 40, paddingBottom: 100 }}>
@@ -876,7 +876,10 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   headerIconButton: {
-    padding: 6,
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: 'rgba(0,0,0,0.4)',
     alignItems: 'center',
     justifyContent: 'center',
   },

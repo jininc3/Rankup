@@ -101,7 +101,7 @@ export default function LinkValorantAccountScreen() {
         {/* Header */}
         <View style={styles.header}>
           <TouchableOpacity style={styles.backButton} onPress={() => router.back()} disabled={preparingCard}>
-            <IconSymbol size={24} name="chevron.left" color="#fff" />
+            <IconSymbol size={20} name="chevron.left" color="#fff" />
           </TouchableOpacity>
         </View>
 
@@ -206,7 +206,12 @@ const styles = StyleSheet.create({
     paddingBottom: 12,
   },
   backButton: {
-    padding: 6,
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: 'rgba(0,0,0,0.4)',
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   heroSection: {
     alignItems: 'center',

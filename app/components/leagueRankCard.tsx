@@ -4,7 +4,7 @@ import { BlurView } from 'expo-blur';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useEffect, useRef, useState } from 'react';
 import { Animated, Dimensions, Easing, Image, Modal, PanResponder, Pressable, ScrollView, StyleSheet, TouchableOpacity, View } from 'react-native';
-import { getProfileIconUrl, getChampionName, getChampionIconUrl } from '@/services/riotService';
+import { getProfileIconUrl, getChampionName, getChampionIconUrl, getLeagueStats } from '@/services/riotService';
 
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
 
@@ -45,6 +45,7 @@ interface LeagueRankCardProps {
   userId?: string;
   isFocused?: boolean;
   isBackOfStack?: boolean;
+  onRefresh?: () => void;
 }
 
 // League of Legends rank icon mapping
@@ -62,10 +63,11 @@ const LEAGUE_RANK_ICONS: { [key: string]: any } = {
   unranked: require('@/assets/images/leagueranks/unranked.png'),
 };
 
-export default function LeagueRankCard({ game, username, viewOnly = false, userId, isFocused = false, isBackOfStack = false }: LeagueRankCardProps) {
+export default function LeagueRankCard({ game, username, viewOnly = false, userId, isFocused = false, isBackOfStack = false, onRefresh }: LeagueRankCardProps) {
   const [isFlipped, setIsFlipped] = useState(false);
   const [showBack, setShowBack] = useState(false);
   const [modalVisible, setModalVisible] = useState(false);
+  const [updatingStats, setUpdatingStats] = useState(false);
   const [cardPosition, setCardPosition] = useState({ x: 20, y: SCREEN_HEIGHT - 350, width: 0 });
   const [showMatchHistory, setShowMatchHistory] = useState(false);
   const [matchHistoryExpanded, setMatchHistoryExpanded] = useState(false);
@@ -232,6 +234,21 @@ export default function LeagueRankCard({ game, username, viewOnly = false, userI
       useNativeDriver: false,
     }).start();
     setIsFlipped(!isFlipped);
+  };
+
+  const isOwnCard = !userId;
+
+  const handleUpdateStats = async () => {
+    if (updatingStats || !isOwnCard) return;
+    setUpdatingStats(true);
+    try {
+      await getLeagueStats(true);
+      onRefresh?.();
+    } catch (error) {
+      console.log('Failed to refresh League stats:', error);
+    } finally {
+      setUpdatingStats(false);
+    }
   };
 
   const handleCloseModal = () => {
@@ -783,6 +800,19 @@ export default function LeagueRankCard({ game, username, viewOnly = false, userI
               <View style={styles.statisticsHeaderLeft}>
                 <ThemedText style={styles.statisticsTitle}>Statistics</ThemedText>
               </View>
+              {isOwnCard && (
+                <TouchableOpacity
+                  onPress={handleUpdateStats}
+                  disabled={updatingStats}
+                  style={{ flexDirection: 'row', alignItems: 'center', gap: 4, opacity: updatingStats ? 0.5 : 1 }}
+                  activeOpacity={0.6}
+                >
+                  <IconSymbol size={12} name="arrow.clockwise" color="#4da6ff" />
+                  <ThemedText style={{ fontSize: 12, fontWeight: '600', color: '#4da6ff' }}>
+                    {updatingStats ? 'Updating...' : 'Update'}
+                  </ThemedText>
+                </TouchableOpacity>
+              )}
             </View>
 
             <Animated.View style={[styles.statisticsContent, { opacity: statisticsContentOpacity }]}>

@@ -1,6 +1,7 @@
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { IconSymbol } from '@/components/ui/icon-symbol';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { FeedSkeleton } from '@/components/ui/Skeleton';
 import { db } from '@/config/firebase';
 import { useAuth } from '@/contexts/AuthContext';
@@ -80,6 +81,7 @@ interface Post {
 }
 
 export default function HomeScreen() {
+  const insets = useSafeAreaInsets();
   const router = useRouter();
   const {
     user: currentUser,
@@ -961,7 +963,7 @@ export default function HomeScreen() {
 
   return (
     <ThemedView style={styles.container}>
-      <View style={styles.header}>
+      <View style={[styles.header, { paddingTop: insets.top - 30 }]}>
         <ThemedText style={styles.headerTitle}>Following</ThemedText>
         <View style={styles.headerActions}>
           <TouchableOpacity
@@ -1284,7 +1286,6 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     alignItems: 'center',
     paddingHorizontal: 16,
-    paddingTop: 55,
     paddingBottom: 4,
     backgroundColor: '#0f0f0f',
   },

@@ -8,7 +8,7 @@ import { deleteUserAccount } from '@/services/deleteAccountService';
 import { useState, useEffect } from 'react';
 import { auth } from '@/config/firebase';
 import { useGoogleAuth } from '@/hooks/useGoogleAuth';
-import { GoogleAuthProvider } from 'firebase/auth';
+import { GoogleAuthProvider, reauthenticateWithCredential } from 'firebase/auth';
 
 const accountSettingsData = [
   {
@@ -256,7 +256,7 @@ export default function AccountSettingsScreen() {
           style={styles.backButton}
           onPress={() => router.back()}
         >
-          <IconSymbol size={24} name="chevron.left" color="#fff" />
+          <IconSymbol size={20} name="chevron.left" color="#fff" />
         </TouchableOpacity>
         <ThemedText style={styles.headerTitle}>Account Settings</ThemedText>
         <View style={styles.headerSpacer} />

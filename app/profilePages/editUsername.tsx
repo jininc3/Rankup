@@ -178,34 +178,45 @@ export default function EditUsernameScreen() {
       return;
     }
 
-    setIsUpdating(true);
+    Alert.alert(
+      'Confirm Username Change',
+      `Are you sure you want to change your username to "${newUsername}"? You won't be able to change it again for 30 days.`,
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Change',
+          onPress: async () => {
+            setIsUpdating(true);
 
-    try {
-      const updateUsername = httpsCallable(functions, 'updateUsername');
-      await updateUsername({ newUsername });
+            try {
+              const updateUsername = httpsCallable(functions, 'updateUsername');
+              await updateUsername({ newUsername });
 
-      // Refresh user data in context
-      if (refreshUser) {
-        await refreshUser();
-      }
+              if (refreshUser) {
+                await refreshUser();
+              }
 
-      Alert.alert(
-        'Success',
-        'Your username has been updated everywhere!',
-        [
-          {
-            text: 'OK',
-            onPress: () => router.back(),
+              Alert.alert(
+                'Success',
+                'Your username has been updated everywhere!',
+                [
+                  {
+                    text: 'OK',
+                    onPress: () => router.back(),
+                  },
+                ]
+              );
+            } catch (error: any) {
+              console.error('Error updating username:', error);
+              const message = error?.message || 'Failed to update username. Please try again.';
+              Alert.alert('Error', message);
+            } finally {
+              setIsUpdating(false);
+            }
           },
-        ]
-      );
-    } catch (error: any) {
-      console.error('Error updating username:', error);
-      const message = error?.message || 'Failed to update username. Please try again.';
-      Alert.alert('Error', message);
-    } finally {
-      setIsUpdating(false);
-    }
+        },
+      ]
+    );
   };
 
   const isCooldownActive = cooldownDaysLeft !== null && cooldownDaysLeft > 0;
@@ -216,7 +227,7 @@ export default function EditUsernameScreen() {
       {/* Header */}
       <View style={styles.header}>
         <TouchableOpacity style={styles.backButton} onPress={() => router.back()}>
-          <IconSymbol size={24} name="chevron.left" color="#fff" />
+          <IconSymbol size={20} name="chevron.left" color="#fff" />
         </TouchableOpacity>
         <ThemedText style={styles.headerTitle}>Edit Username</ThemedText>
         <View style={styles.headerSpacer} />

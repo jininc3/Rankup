@@ -281,7 +281,7 @@ export default function ChatListScreen() {
       {/* Header */}
       <View style={styles.header}>
         <TouchableOpacity style={styles.backButton} onPress={() => router.back()}>
-          <IconSymbol size={24} name="chevron.left" color="#fff" />
+          <IconSymbol size={20} name="chevron.left" color="#fff" />
         </TouchableOpacity>
         <ThemedText style={styles.headerUsername}>{currentUser?.username || 'User'}</ThemedText>
         <TouchableOpacity style={styles.composeButton} onPress={() => setShowNewMessageModal(true)}>
@@ -355,7 +355,7 @@ export default function ChatListScreen() {
                 setNewMessageSearch('');
               }}
             >
-              <IconSymbol size={24} name="chevron.left" color="#fff" />
+              <IconSymbol size={20} name="chevron.left" color="#fff" />
             </TouchableOpacity>
             <ThemedText style={styles.modalTitle}>New message</ThemedText>
             <View style={styles.modalHeaderSpacer} />

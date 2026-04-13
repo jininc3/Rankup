@@ -42,6 +42,7 @@ export {
 
 // Export Party Management functions
 export {checkCompletedPartiesScheduled} from "./parties/checkCompletedParties";
+export {refreshPartyStatsFunction as refreshPartyStats} from "./parties/refreshPartyStats";
 
 // Export User Management functions
 export {updateUsernameFunction as updateUsername} from "./users/updateUsername";

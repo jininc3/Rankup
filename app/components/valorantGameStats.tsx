@@ -184,7 +184,7 @@ export default function ValorantGameStatsScreen() {
           onPress={() => router.back()}
         >
           <IconSymbol
-            size={24}
+            size={20}
             name="chevron.left"
             color="#fff"
           />
@@ -335,9 +335,10 @@ const styles = StyleSheet.create({
     paddingHorizontal: 24,
   },
   backButton: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: 'rgba(0,0,0,0.4)',
     alignItems: 'center',
     justifyContent: 'center',
   },

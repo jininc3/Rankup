@@ -407,7 +407,7 @@ export default function PostViewerModal({
         {/* Header */}
         <View style={styles.header}>
           <TouchableOpacity style={styles.backButton} onPress={onClose}>
-            <IconSymbol size={28} name="chevron.left" color="#fff" />
+            <IconSymbol size={20} name="chevron.left" color="#fff" />
           </TouchableOpacity>
           <ThemedText style={styles.headerTitle}>Posts</ThemedText>
           <View style={styles.backButton} />
@@ -500,8 +500,10 @@ const styles = StyleSheet.create({
     backgroundColor: '#0f0f0f',
   },
   backButton: {
-    width: 44,
-    height: 44,
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: 'rgba(0,0,0,0.4)',
     alignItems: 'center',
     justifyContent: 'center',
   },

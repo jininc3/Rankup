@@ -292,7 +292,7 @@ export default function LeaderboardScreen() {
             const rank = index + 1;
 
             return (
-              <View
+              <TouchableOpacity
                 key={player.userId}
                 style={[
                   styles.playerRow,
@@ -300,6 +300,20 @@ export default function LeaderboardScreen() {
                   player.isCurrentUser && styles.currentUserRow,
                   { borderLeftWidth: 4, borderLeftColor: getBorderColor(rank) },
                 ]}
+                activeOpacity={player.isCurrentUser ? 1 : 0.7}
+                onPress={() => {
+                  if (!player.isCurrentUser) {
+                    router.push({
+                      pathname: '/profilePages/profileView',
+                      params: {
+                        userId: player.userId,
+                        username: player.username,
+                        avatar: player.avatar || '',
+                        preloadedFollowing: 'true',
+                      },
+                    });
+                  }
+                }}
               >
                 {/* Rank Number */}
                 <View style={styles.rankContainer}>
@@ -336,7 +350,7 @@ export default function LeaderboardScreen() {
                     </ThemedText>
                   </View>
                 </View>
-              </View>
+              </TouchableOpacity>
             );
           })}
         </View>

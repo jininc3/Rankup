@@ -708,7 +708,7 @@ export default function EditProfileScreen() {
                 onPress={handleBack}
                 activeOpacity={0.7}
               >
-                <IconSymbol size={22} name="chevron.left" color="#fff" />
+                <IconSymbol size={20} name="chevron.left" color="#fff" />
               </TouchableOpacity>
               <View style={styles.headerIconsSpacer} />
               <TouchableOpacity
@@ -1048,7 +1048,10 @@ const styles = StyleSheet.create({
     zIndex: 10,
   },
   headerIconButton: {
-    padding: 6,
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: 'rgba(0,0,0,0.4)',
     alignItems: 'center',
     justifyContent: 'center',
   },

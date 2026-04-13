@@ -33,17 +33,18 @@ interface RankCardProps {
   userId?: string; // ID of the user whose stats to view (for viewing other users)
   isFocused?: boolean; // If true, card is in focused/unstacked mode and can be flipped
   isBackOfStack?: boolean; // If true, card is behind another card in the stack
+  onRefresh?: () => void; // Callback when stats are refreshed
 }
 
-export default function rankCard({ game, username, viewOnly = false, userId, isFocused = false, isBackOfStack = false }: RankCardProps) {
+export default function rankCard({ game, username, viewOnly = false, userId, isFocused = false, isBackOfStack = false, onRefresh }: RankCardProps) {
   // Route to the appropriate rank card based on game
   switch (game.name) {
     case 'Valorant':
-      return <ValorantRankCard game={game} username={username} viewOnly={viewOnly} userId={userId} isFocused={isFocused} isBackOfStack={isBackOfStack} />;
+      return <ValorantRankCard game={game} username={username} viewOnly={viewOnly} userId={userId} isFocused={isFocused} isBackOfStack={isBackOfStack} onRefresh={onRefresh} />;
     case 'TFT':
       return <TftRankCard game={game} username={username} viewOnly={viewOnly} userId={userId} />;
     case 'League of Legends':
     default:
-      return <LeagueRankCard game={game} username={username} viewOnly={viewOnly} userId={userId} isBackOfStack={isBackOfStack} />;
+      return <LeagueRankCard game={game} username={username} viewOnly={viewOnly} userId={userId} isBackOfStack={isBackOfStack} onRefresh={onRefresh} />;
   }
 }

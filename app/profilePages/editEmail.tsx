@@ -73,7 +73,7 @@ export default function EditEmailScreen() {
       {/* Header */}
       <View style={styles.header}>
         <TouchableOpacity style={styles.backButton} onPress={() => router.back()}>
-          <IconSymbol size={24} name="chevron.left" color="#000" />
+          <IconSymbol size={20} name="chevron.left" color="#000" />
         </TouchableOpacity>
         <ThemedText style={styles.headerTitle}>Edit Email</ThemedText>
         <View style={styles.headerSpacer} />

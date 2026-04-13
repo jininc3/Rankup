@@ -133,7 +133,7 @@ export default function PrivacySafetyScreen() {
           style={styles.backButton}
           onPress={() => router.back()}
         >
-          <IconSymbol size={24} name="chevron.left" color="#fff" />
+          <IconSymbol size={20} name="chevron.left" color="#fff" />
         </TouchableOpacity>
         <ThemedText style={styles.headerTitle}>Privacy & Safety</ThemedText>
         <View style={styles.headerSpacer} />

@@ -4,6 +4,7 @@ import { BlurView } from 'expo-blur';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useEffect, useRef, useState } from 'react';
 import { Animated, Dimensions, Easing, Image, Modal, PanResponder, Pressable, ScrollView, StyleSheet, TouchableOpacity, View } from 'react-native';
+import { getValorantStats } from '@/services/valorantService';
 
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
 
@@ -46,6 +47,7 @@ interface ValorantRankCardProps {
   userId?: string; // ID of the user whose stats to view (for viewing other users)
   isFocused?: boolean; // If true, card is in focused/unstacked mode and can be flipped
   isBackOfStack?: boolean; // If true, card is behind another card in the stack
+  onRefresh?: () => void; // Callback when stats are refreshed
 }
 
 // Valorant rank icon mapping - Includes subdivision ranks
@@ -155,10 +157,11 @@ const VALORANT_AGENT_ICONS: { [key: string]: any } = {
   yoru: require('@/assets/images/valorantagents/yoru.png'),
 };
 
-export default function ValorantRankCard({ game, username, viewOnly = false, userId, isFocused = false, isBackOfStack = false }: ValorantRankCardProps) {
+export default function ValorantRankCard({ game, username, viewOnly = false, userId, isFocused = false, isBackOfStack = false, onRefresh }: ValorantRankCardProps) {
   const [isFlipped, setIsFlipped] = useState(false);
   const [showBack, setShowBack] = useState(false);
   const [modalVisible, setModalVisible] = useState(false);
+  const [updatingStats, setUpdatingStats] = useState(false);
   const [cardPosition, setCardPosition] = useState({ x: 20, y: SCREEN_HEIGHT - 350, width: 0 });
   const [showMatchHistory, setShowMatchHistory] = useState(false);
   const [matchHistoryExpanded, setMatchHistoryExpanded] = useState(false);
@@ -345,6 +348,21 @@ export default function ValorantRankCard({ game, username, viewOnly = false, use
       useNativeDriver: false,
     }).start();
     setIsFlipped(!isFlipped);
+  };
+
+  const isOwnCard = !userId;
+
+  const handleUpdateStats = async () => {
+    if (updatingStats || !isOwnCard) return;
+    setUpdatingStats(true);
+    try {
+      await getValorantStats(true);
+      onRefresh?.();
+    } catch (error) {
+      console.log('Failed to refresh Valorant stats:', error);
+    } finally {
+      setUpdatingStats(false);
+    }
   };
 
   const handleCloseModal = () => {
@@ -1020,6 +1038,19 @@ export default function ValorantRankCard({ game, username, viewOnly = false, use
               <View style={styles.statisticsHeaderLeft}>
                 <ThemedText style={styles.statisticsTitle}>Statistics</ThemedText>
               </View>
+              {isOwnCard && (
+                <TouchableOpacity
+                  onPress={handleUpdateStats}
+                  disabled={updatingStats}
+                  style={{ flexDirection: 'row', alignItems: 'center', gap: 4, opacity: updatingStats ? 0.5 : 1 }}
+                  activeOpacity={0.6}
+                >
+                  <IconSymbol size={12} name="arrow.clockwise" color="#ef5466" />
+                  <ThemedText style={{ fontSize: 12, fontWeight: '600', color: '#ef5466' }}>
+                    {updatingStats ? 'Updating...' : 'Update'}
+                  </ThemedText>
+                </TouchableOpacity>
+              )}
             </View>
 
             {/* Statistics Content */}

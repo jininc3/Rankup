@@ -81,7 +81,7 @@ export default function ProfileViewScreen() {
   const [selectedPost, setSelectedPost] = useState<Post | null>(null);
   const [selectedPostIndex, setSelectedPostIndex] = useState(0);
   const [showPostViewer, setShowPostViewer] = useState(false);
-  const [isFollowing, setIsFollowing] = useState(false);
+  const [isFollowing, setIsFollowing] = useState(params.preloadedFollowing === 'true');
   const [followLoading, setFollowLoading] = useState(false);
   const [riotAccount, setRiotAccount] = useState<any>(null);
   const [valorantAccount, setValorantAccount] = useState<any>(null);
@@ -185,6 +185,7 @@ export default function ProfileViewScreen() {
   // Get optional preloaded data from params for instant display
   const preloadedUsername = params.username as string | undefined;
   const preloadedAvatar = params.avatar as string | undefined;
+  const preloadedFollowing = params.preloadedFollowing as string | undefined;
 
   // Enable LayoutAnimation on Android
   useEffect(() => {
@@ -621,7 +622,7 @@ export default function ProfileViewScreen() {
               style={styles.headerIconButton}
               onPress={() => router.back()}
             >
-              <IconSymbol size={22} name="chevron.left" color="#fff" />
+              <IconSymbol size={20} name="chevron.left" color="#fff" />
             </TouchableOpacity>
           </View>
         </View>
@@ -1245,7 +1246,10 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   headerIconButton: {
-    padding: 6,
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: 'rgba(0,0,0,0.4)',
     alignItems: 'center',
     justifyContent: 'center',
   },

@@ -17,6 +17,7 @@ import { collection, getDocs, query, Timestamp, where, doc, getDoc, updateDoc, i
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { Alert, Dimensions, Image, Linking, Modal, RefreshControl, ScrollView, StyleSheet, TouchableOpacity, View, LayoutAnimation, Platform, UIManager, Animated } from 'react-native';
 import * as Clipboard from 'expo-clipboard';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { getLeagueStats, getTftStats, formatRank } from '@/services/riotService';
 import { useValorantStats } from '@/contexts/ValorantStatsContext';
 import { deletePostMedia } from '@/services/storageService';
@@ -71,6 +72,7 @@ function darkenColor(hex: string, factor: number): string {
 }
 
 export default function ProfileScreen() {
+  const insets = useSafeAreaInsets();
   const router = useRouter();
   const { refresh } = useLocalSearchParams<{ refresh?: string }>();
   const { user, refreshUser, preloadedProfilePosts, preloadedRiotStats, clearPreloadedProfileData } = useAuth();
@@ -609,6 +611,11 @@ export default function ProfileScreen() {
     setRefreshing(false);
   }, [user?.id]);
 
+  // Callback for rank card update buttons
+  const handleRankCardRefresh = useCallback(() => {
+    fetchRiotData(true);
+  }, [user?.id]);
+
   // Fetch user's duo cards and in-game stats for posting
   useEffect(() => {
     const fetchDuoCards = async () => {
@@ -915,7 +922,7 @@ export default function ProfileScreen() {
                   end={{ x: 0, y: 1 }}
                   style={styles.coverPhotoGradient}
                 />
-                <View style={styles.headerIconsRow}>
+                <View style={[styles.headerIconsRow, { top: insets.top - 30 }]}>
                   <TouchableOpacity
                     style={styles.headerIconButton}
                     onPress={() => setShowCreateModal(true)}
@@ -964,7 +971,7 @@ export default function ProfileScreen() {
                   />
                 )}
                 {/* Header Icons overlaid on cover photo */}
-                <View style={styles.headerIconsRow}>
+                <View style={[styles.headerIconsRow, { top: insets.top - 30 }]}>
                   <TouchableOpacity
                     style={styles.headerIconButton}
                     onPress={() => setShowCreateModal(true)}
@@ -1315,7 +1322,7 @@ export default function ProfileScreen() {
                     key={game.id}
                     style={styles.verticalCardWrapper}
                   >
-                    <RankCard game={game} username={displayUsername} viewOnly={false} isFocused={true} />
+                    <RankCard game={game} username={displayUsername} viewOnly={false} isFocused={true} onRefresh={handleRankCardRefresh} />
                   </View>
                 );
               })()}
@@ -1370,7 +1377,7 @@ export default function ProfileScreen() {
                         >
                           {/* All cards can open modal directly from stacked position */}
                           <View style={{ width: '100%' }}>
-                            <RankCard game={game} username={displayUsername} viewOnly={false} isFocused={true} isBackOfStack={index < totalCards - 1} />
+                            <RankCard game={game} username={displayUsername} viewOnly={false} isFocused={true} isBackOfStack={index < totalCards - 1} onRefresh={handleRankCardRefresh} />
                           </View>
                         </View>
                       );
@@ -1643,7 +1650,7 @@ const styles = StyleSheet.create({
   // Header icons row - overlaid on cover photo
   headerIconsRow: {
     position: 'absolute',
-    top: 55,
+    top: 0,
     left: 0,
     right: 0,
     flexDirection: 'row',

@@ -180,7 +180,7 @@ export default function ArchivedPostsScreen() {
           style={styles.backButton}
           onPress={() => router.back()}
         >
-          <IconSymbol size={24} name="chevron.left" color="#fff" />
+          <IconSymbol size={20} name="chevron.left" color="#fff" />
         </TouchableOpacity>
         <ThemedText style={styles.headerTitle}>Archived Posts</ThemedText>
         <View style={styles.headerSpacer} />
