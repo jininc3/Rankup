@@ -10,6 +10,8 @@ import {
   sendSignInLinkToEmail,
   isSignInWithEmailLink,
   signInWithEmailLink,
+  sendEmailVerification,
+  updatePassword,
 } from 'firebase/auth';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { doc, setDoc, getDoc, updateDoc, deleteDoc } from 'firebase/firestore';
@@ -89,6 +91,127 @@ export async function signUpWithEmail(
     return userProfile;
   } catch (error: any) {
     console.error('Sign up error:', error);
+    throw new Error(getAuthErrorMessage(error.code));
+  }
+}
+
+/**
+ * Create Firebase Auth account only (no Firestore doc yet).
+ * Used in the multi-step email signup flow.
+ */
+export async function createEmailAuthAccount(email: string): Promise<string> {
+  try {
+    const tempPassword = generateRandomPassword();
+    const userCredential = await createUserWithEmailAndPassword(auth, email, tempPassword);
+    await sendEmailVerification(userCredential.user);
+    return userCredential.user.uid;
+  } catch (error: any) {
+    console.error('Create auth account error:', error);
+    throw new Error(getAuthErrorMessage(error.code));
+  }
+}
+
+/**
+ * Complete the multi-step email signup: create Firestore profile and set password.
+ */
+export async function completeEmailSignup(data: {
+  username: string;
+  email: string;
+  dateOfBirth: string;
+  avatar?: string;
+  password: string;
+}): Promise<UserProfile> {
+  try {
+    const user = auth.currentUser;
+    if (!user) throw new Error('No authenticated user found');
+
+    await updateProfile(user, { displayName: data.username });
+    await updatePassword(user, data.password);
+
+    const userProfile: UserProfile = {
+      id: user.uid,
+      email: data.email,
+      username: data.username,
+      usernameLower: data.username.toLowerCase(),
+      avatar: data.avatar || '',
+      bio: '',
+      discordLink: '',
+      instagramLink: '',
+      provider: 'email',
+      postsCount: 0,
+      followersCount: 0,
+      followingCount: 0,
+      dateOfBirth: data.dateOfBirth,
+      createdAt: new Date(),
+      updatedAt: new Date(),
+    } as any;
+
+    await setDoc(doc(db, 'users', user.uid), userProfile);
+    return userProfile;
+  } catch (error: any) {
+    console.error('Complete signup error:', error);
+    throw new Error(getAuthErrorMessage(error.code));
+  }
+}
+
+/**
+ * Create Firebase Auth account for phone signup (no Firestore doc yet).
+ * Used in the multi-step phone signup flow.
+ */
+export async function createPhoneAuthAccount(phoneNumber: string): Promise<string> {
+  try {
+    const sanitized = phoneNumber.replace(/[^0-9]/g, '');
+    const generatedEmail = `phone_${sanitized}@rankup-phone.internal`;
+    const tempPassword = generateRandomPassword();
+    const userCredential = await createUserWithEmailAndPassword(auth, generatedEmail, tempPassword);
+    return userCredential.user.uid;
+  } catch (error: any) {
+    console.error('Create phone auth account error:', error);
+    throw new Error(getAuthErrorMessage(error.code));
+  }
+}
+
+/**
+ * Complete the multi-step phone signup: create Firestore profile and set password.
+ */
+export async function completePhoneSignup(data: {
+  username: string;
+  phoneNumber: string;
+  dateOfBirth: string;
+  avatar?: string;
+  password: string;
+}): Promise<UserProfile> {
+  try {
+    const user = auth.currentUser;
+    if (!user) throw new Error('No authenticated user found');
+
+    await updateProfile(user, { displayName: data.username });
+    await updatePassword(user, data.password);
+
+    const userProfile: UserProfile = {
+      id: user.uid,
+      email: user.email!,
+      username: data.username,
+      usernameLower: data.username.toLowerCase(),
+      avatar: data.avatar || '',
+      bio: '',
+      discordLink: '',
+      instagramLink: '',
+      phoneNumber: data.phoneNumber,
+      phoneVerified: true,
+      provider: 'phone',
+      postsCount: 0,
+      followersCount: 0,
+      followingCount: 0,
+      dateOfBirth: data.dateOfBirth,
+      createdAt: new Date(),
+      updatedAt: new Date(),
+    } as any;
+
+    await setDoc(doc(db, 'users', user.uid), userProfile);
+    return userProfile;
+  } catch (error: any) {
+    console.error('Complete phone signup error:', error);
     throw new Error(getAuthErrorMessage(error.code));
   }
 }

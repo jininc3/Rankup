@@ -9,6 +9,11 @@ export default function LeaderboardPagesLayout() {
           headerShown: false,
         }}
       />
+      <Stack.Screen name="createLeaderboardName" options={{ headerShown: false, animation: 'none' }} />
+      <Stack.Screen name="createLeaderboardGame" options={{ headerShown: false, animation: 'none' }} />
+      <Stack.Screen name="createLeaderboardCover" options={{ headerShown: false, animation: 'none' }} />
+      <Stack.Screen name="createLeaderboardSettings" options={{ headerShown: false, animation: 'none' }} />
+      <Stack.Screen name="createLeaderboardInvite" options={{ headerShown: false, animation: 'none' }} />
       <Stack.Screen
         name="leaderboardDetail"
         options={{

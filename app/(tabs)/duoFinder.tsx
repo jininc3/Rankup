@@ -858,6 +858,23 @@ export default function DuoFinderScreen() {
   // --- Live Search Functions ---
   return (
     <ThemedView style={styles.container}>
+      {/* Ambient background glow */}
+      <View style={styles.backgroundGlow} pointerEvents="none">
+        <LinearGradient
+          colors={['rgba(196, 164, 78, 0.055)', 'rgba(139, 111, 47, 0.02)', 'transparent']}
+          locations={[0, 0.4, 0.75]}
+          start={{ x: 0.3, y: 0 }}
+          end={{ x: 0.7, y: 1 }}
+          style={StyleSheet.absoluteFill}
+        />
+        <LinearGradient
+          colors={['rgba(196, 164, 78, 0.025)', 'transparent']}
+          start={{ x: 1, y: 0 }}
+          end={{ x: 0.2, y: 0.5 }}
+          style={StyleSheet.absoluteFill}
+        />
+      </View>
+
       {/* Header */}
       <View style={styles.header}>
         <ThemedText style={styles.headerTitle}>DUO FINDER</ThemedText>
@@ -1329,15 +1346,18 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: '#0f0f0f',
   },
+  backgroundGlow: {
+    ...StyleSheet.absoluteFillObject,
+    overflow: 'hidden',
+  },
   // Header - matching leaderboard style
   header: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
     paddingHorizontal: 16,
-    paddingTop: 55,
+    paddingTop: 61,
     paddingBottom: 4,
-    backgroundColor: '#0f0f0f',
   },
   headerTitle: {
     fontSize: 22,

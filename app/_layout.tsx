@@ -28,7 +28,9 @@ function RootLayoutNav() {
     const onSignupFlow = segments[1]?.startsWith('googleSignUp') ||
                          segments[1]?.startsWith('onboardingSignUp') ||
                          segments[1]?.startsWith('emailSignUp') ||
-                         segments[1] === 'verifyEmailSignUp';
+                         segments[1]?.startsWith('phoneSignUp') ||
+                         segments[1] === 'verifyEmailSignUp' ||
+                         segments[1] === 'verifyPhoneSignUp';
     const inProfilePages = segments[0] === 'profilePages';
 
     console.log('Routing check:', {
@@ -46,8 +48,8 @@ function RootLayoutNav() {
       router.replace('/(auth)/login');
     } else if (isAuthenticated && needsUsernameSetup && !onSignupFlow && !inProfilePages) {
       // Authenticated but needs username setup (allow profilePages for linking accounts during signup)
-      console.log('Redirecting to googleSignUp');
-      router.replace('/(auth)/googleSignUp');
+      console.log('Redirecting to googleSignUpBirthday');
+      router.replace('/(auth)/googleSignUpBirthday');
     } else if (isAuthenticated && !needsUsernameSetup && inAuthGroup) {
       // Authenticated with username set, redirect to main app
       console.log('Redirecting to tabs');

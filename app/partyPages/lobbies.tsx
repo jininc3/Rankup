@@ -197,7 +197,7 @@ export default function LobbiesScreen() {
               style={styles.modalOption}
               onPress={() => {
                 setShowCreateModal(false);
-                router.push('/partyPages/createLeaderboard');
+                router.push('/partyPages/createLeaderboardName');
               }}
               activeOpacity={0.7}
             >

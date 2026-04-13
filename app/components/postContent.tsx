@@ -755,7 +755,6 @@ export default function PostContent({
 const styles = StyleSheet.create({
   postContainer: {
     width: screenWidth,
-    backgroundColor: '#0f0f0f',
   },
   postDivider: {
     height: 1,

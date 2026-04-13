@@ -963,7 +963,24 @@ export default function HomeScreen() {
 
   return (
     <ThemedView style={styles.container}>
-      <View style={[styles.header, { paddingTop: insets.top - 30 }]}>
+      {/* Ambient background glow */}
+      <View style={styles.backgroundGlow} pointerEvents="none">
+        <LinearGradient
+          colors={['rgba(196, 164, 78, 0.055)', 'rgba(139, 111, 47, 0.02)', 'transparent']}
+          locations={[0, 0.4, 0.75]}
+          start={{ x: 0.3, y: 0 }}
+          end={{ x: 0.7, y: 1 }}
+          style={StyleSheet.absoluteFill}
+        />
+        <LinearGradient
+          colors={['rgba(196, 164, 78, 0.025)', 'transparent']}
+          start={{ x: 1, y: 0 }}
+          end={{ x: 0.2, y: 0.5 }}
+          style={StyleSheet.absoluteFill}
+        />
+      </View>
+
+      <View style={styles.header}>
         <ThemedText style={styles.headerTitle}>Following</ThemedText>
         <View style={styles.headerActions}>
           <TouchableOpacity
@@ -1020,50 +1037,23 @@ export default function HomeScreen() {
       >
         {/* Game Filter Buttons */}
         <View style={styles.gameFilterRow}>
-          <TouchableOpacity
-            onPress={() => setSelectedGameFilter(null)}
-            activeOpacity={0.7}
-          >
-            <LinearGradient
-              colors={selectedGameFilter === null ? ['#C4A44E', '#8B6F2F'] : ['#222222', '#1a1a1a']}
-              start={{ x: 0, y: 0 }}
-              end={{ x: 1, y: 1 }}
-              style={styles.gameFilterBtn}
-            >
-              <ThemedText style={[styles.gameFilterBtnText, selectedGameFilter === null && styles.gameFilterBtnTextActive]}>
-                ALL GAMES
-              </ThemedText>
-            </LinearGradient>
+          <TouchableOpacity onPress={() => setSelectedGameFilter(null)} style={styles.gameFilterBtn} activeOpacity={0.7}>
+            <ThemedText style={[styles.gameFilterBtnText, selectedGameFilter === null && styles.gameFilterBtnTextActive]}>
+              All
+            </ThemedText>
+            {selectedGameFilter === null && <View style={styles.gameFilterUnderline} />}
           </TouchableOpacity>
-          <TouchableOpacity
-            onPress={() => setSelectedGameFilter('valorant')}
-            activeOpacity={0.7}
-          >
-            <LinearGradient
-              colors={selectedGameFilter === 'valorant' ? ['#C4A44E', '#8B6F2F'] : ['#222222', '#1a1a1a']}
-              start={{ x: 0, y: 0 }}
-              end={{ x: 1, y: 1 }}
-              style={styles.gameFilterBtn}
-            >
-              <ThemedText style={[styles.gameFilterBtnText, selectedGameFilter === 'valorant' && styles.gameFilterBtnTextActive]}>
-                VALORANT
-              </ThemedText>
-            </LinearGradient>
+          <TouchableOpacity onPress={() => setSelectedGameFilter('valorant')} style={styles.gameFilterBtn} activeOpacity={0.7}>
+            <ThemedText style={[styles.gameFilterBtnText, selectedGameFilter === 'valorant' && styles.gameFilterBtnTextActive]}>
+              Valorant
+            </ThemedText>
+            {selectedGameFilter === 'valorant' && <View style={styles.gameFilterUnderline} />}
           </TouchableOpacity>
-          <TouchableOpacity
-            onPress={() => setSelectedGameFilter('league')}
-            activeOpacity={0.7}
-          >
-            <LinearGradient
-              colors={selectedGameFilter === 'league' ? ['#C4A44E', '#8B6F2F'] : ['#222222', '#1a1a1a']}
-              start={{ x: 0, y: 0 }}
-              end={{ x: 1, y: 1 }}
-              style={styles.gameFilterBtn}
-            >
-              <ThemedText style={[styles.gameFilterBtnText, selectedGameFilter === 'league' && styles.gameFilterBtnTextActive]}>
-                LEAGUE
-              </ThemedText>
-            </LinearGradient>
+          <TouchableOpacity onPress={() => setSelectedGameFilter('league')} style={styles.gameFilterBtn} activeOpacity={0.7}>
+            <ThemedText style={[styles.gameFilterBtnText, selectedGameFilter === 'league' && styles.gameFilterBtnTextActive]}>
+              League
+            </ThemedText>
+            {selectedGameFilter === 'league' && <View style={styles.gameFilterUnderline} />}
           </TouchableOpacity>
         </View>
 
@@ -1281,13 +1271,17 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: '#0f0f0f',
   },
+  backgroundGlow: {
+    ...StyleSheet.absoluteFillObject,
+    overflow: 'hidden',
+  },
   header: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
     paddingHorizontal: 16,
+    paddingTop: 61,
     paddingBottom: 4,
-    backgroundColor: '#0f0f0f',
   },
   headerTitle: {
     fontSize: 22,
@@ -1325,7 +1319,6 @@ const styles = StyleSheet.create({
     lineHeight: 16,
   },
   tabScrollContainer: {
-    backgroundColor: '#0f0f0f',
   },
   tabScrollContent: {
     flexDirection: 'row',
@@ -1345,25 +1338,29 @@ const styles = StyleSheet.create({
   },
   gameFilterRow: {
     flexDirection: 'row',
-    gap: 8,
+    gap: 20,
     marginHorizontal: 20,
     marginTop: 10,
     marginBottom: 6,
   },
   gameFilterBtn: {
-    paddingVertical: 5,
-    paddingHorizontal: 10,
-    borderRadius: 6,
-    overflow: 'hidden' as const,
+    alignItems: 'center',
+    paddingVertical: 4,
   },
   gameFilterBtnText: {
-    fontSize: 10,
+    fontSize: 14,
     fontWeight: '600',
     color: '#555',
-    letterSpacing: 0.5,
   },
   gameFilterBtnTextActive: {
     color: '#fff',
+  },
+  gameFilterUnderline: {
+    marginTop: 4,
+    height: 2,
+    width: 20,
+    borderRadius: 1,
+    backgroundColor: '#C4A44E',
   },
   gameFilterTabText: {
     fontSize: 12,
@@ -1530,11 +1527,9 @@ const styles = StyleSheet.create({
   },
   scrollView: {
     flex: 1,
-    backgroundColor: '#0f0f0f',
   },
   scrollViewContent: {
     paddingBottom: 100,
-    backgroundColor: '#0f0f0f',
   },
   emptyContainer: {
     alignItems: 'center',

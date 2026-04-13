@@ -5,7 +5,7 @@ export default function AuthLayout() {
     <Stack
       screenOptions={{
         headerShown: false,
-        animation: 'slide_from_right',
+        animation: 'none',
       }}
     >
       <Stack.Screen
@@ -14,13 +14,28 @@ export default function AuthLayout() {
           gestureEnabled: false,
         }}
       />
+      <Stack.Screen name="loginUsername" />
+      <Stack.Screen name="loginPassword" />
       <Stack.Screen name="signUp" />
       <Stack.Screen name="emailSignUp1" />
+      <Stack.Screen name="emailSignUpBirthday" />
+      <Stack.Screen name="emailSignUpEmail" />
+      <Stack.Screen name="emailSignUpUsername" />
+      <Stack.Screen name="emailSignUpPassword" />
+      <Stack.Screen name="emailSignUpFriends" />
+      <Stack.Screen name="emailSignUpInterests" />
       <Stack.Screen name="phoneSignUp1" />
+      <Stack.Screen name="phoneSignUpBirthday" />
+      <Stack.Screen name="phoneSignUpPhone" />
+      <Stack.Screen name="phoneSignUpUsername" />
+      <Stack.Screen name="phoneSignUpPassword" />
       <Stack.Screen name="verifyEmailSignUp" />
       <Stack.Screen name="verifyPhoneSignUp" />
       <Stack.Screen name="verifyPhoneLogin" />
       <Stack.Screen name="googleSignUp" />
+      <Stack.Screen name="googleSignUpBirthday" />
+      <Stack.Screen name="googleSignUpUsername" />
+      <Stack.Screen name="googleSignUpPassword" />
       <Stack.Screen name="onboardingSignUp1" />
       <Stack.Screen name="onboardingSignUp2" />
       <Stack.Screen name="onboardingSignUp3" />

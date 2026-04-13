@@ -1,6 +1,7 @@
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import MaterialIcons from '@expo/vector-icons/MaterialIcons';
+import { IconSymbol } from '@/components/ui/icon-symbol';
 import { useGoogleAuth } from '@/hooks/useGoogleAuth';
 import { signInWithGoogleCredential } from '@/services/authService';
 import { useRouter } from 'expo-router';
@@ -55,48 +56,55 @@ export default function SignUpScreen() {
         contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}
       >
-        <View style={styles.content}>
-          <View style={styles.header}>
-            <Image source={require('@/assets/images/rankup-white.png')} style={styles.logo} />
-            <ThemedText style={styles.title}>Create Account</ThemedText>
-            <ThemedText style={styles.subtitle}>
-              Join RankUp and start climbing
-            </ThemedText>
+        {/* Top section - Logo & tagline */}
+        <View style={styles.heroSection}>
+          <Image source={require('@/assets/images/rankup-white.png')} style={styles.logo} />
+          <ThemedText style={styles.tagline}>
+            Join the{'\n'}community
+          </ThemedText>
+        </View>
+
+        {/* Bottom section - Auth buttons */}
+        <View style={styles.authSection}>
+          {/* Google signup */}
+          <TouchableOpacity
+            style={[styles.googleButton, isLoading && styles.buttonDisabled]}
+            onPress={handleGoogleSignUp}
+            disabled={!googleAuth.request || isLoading}
+            activeOpacity={0.8}
+          >
+            <Image source={require('@/assets/images/google.png')} style={styles.socialIcon} />
+            <ThemedText style={styles.googleButtonText}>Continue with Google</ThemedText>
+          </TouchableOpacity>
+
+          {/* Divider */}
+          <View style={styles.divider}>
+            <View style={styles.dividerLine} />
+            <ThemedText style={styles.dividerText}>or</ThemedText>
+            <View style={styles.dividerLine} />
           </View>
 
-          <View style={styles.form}>
-            <TouchableOpacity
-              style={[styles.socialButton, styles.googleButton, isLoading && styles.buttonDisabled]}
-              onPress={handleGoogleSignUp}
-              disabled={!googleAuth.request || isLoading}
-            >
-              <Image source={require('@/assets/images/google.png')} style={styles.googleIcon} />
-              <ThemedText style={styles.socialButtonText}>
-                Sign Up with Google
-              </ThemedText>
-            </TouchableOpacity>
+          {/* Email signup button */}
+          <TouchableOpacity
+            style={styles.emailButton}
+            onPress={() => router.push('/(auth)/emailSignUpBirthday')}
+            activeOpacity={0.8}
+          >
+            <MaterialIcons name="email" size={20} color="#fff" />
+            <ThemedText style={styles.emailButtonText}>Sign up with Email</ThemedText>
+          </TouchableOpacity>
 
-            <TouchableOpacity
-              style={[styles.socialButton, styles.emailButton]}
-              onPress={() => router.push('/(auth)/emailSignUp1')}
-            >
-              <MaterialIcons name="email" size={20} color="#fff" />
-              <ThemedText style={styles.socialButtonText}>
-                Sign Up with Email
-              </ThemedText>
-            </TouchableOpacity>
+          {/* Phone signup button */}
+          <TouchableOpacity
+            style={styles.phoneButton}
+            onPress={() => router.push('/(auth)/phoneSignUpBirthday')}
+            activeOpacity={0.8}
+          >
+            <IconSymbol size={20} name="phone.fill" color="#fff" />
+            <ThemedText style={styles.phoneButtonText}>Sign up with Phone</ThemedText>
+          </TouchableOpacity>
 
-            <TouchableOpacity
-              style={[styles.socialButton, styles.phoneButton]}
-              onPress={() => router.push('/(auth)/phoneSignUp1')}
-            >
-              <MaterialIcons name="phone" size={20} color="#fff" />
-              <ThemedText style={styles.socialButtonText}>
-                Sign Up with Phone
-              </ThemedText>
-            </TouchableOpacity>
-          </View>
-
+          {/* Footer */}
           <View style={styles.footer}>
             <ThemedText style={styles.footerText}>
               Already have an account?{' '}
@@ -118,79 +126,117 @@ const styles = StyleSheet.create({
   },
   scrollContent: {
     flexGrow: 1,
+    justifyContent: 'center',
   },
-  content: {
-    flex: 1,
-    padding: 24,
-    paddingTop: 60,
-    justifyContent: 'flex-start',
-  },
-  header: {
-    marginBottom: 20,
-    alignItems: 'center',
-    paddingTop: 8,
-    paddingBottom: 8,
-  },
-  logo: {
-    width: 200,
-    height: 60,
-    resizeMode: 'contain',
-    marginBottom: 16,
-  },
-  title: {
-    fontSize: 24,
-    fontWeight: 'bold',
-    marginBottom: 6,
-    color: '#fff',
-  },
-  subtitle: {
-    fontSize: 14,
-    color: '#999',
-  },
-  form: {
-    width: '100%',
-  },
-  socialButton: {
-    flexDirection: 'row',
+
+  heroSection: {
     alignItems: 'center',
     justifyContent: 'center',
-    borderRadius: 24,
-    paddingVertical: 16,
-    marginBottom: 8,
-    gap: 8,
+    paddingBottom: 80,
   },
-  googleButton: {
-    backgroundColor: '#c42743',
+  logo: {
+    width: 180,
+    height: 55,
+    resizeMode: 'contain',
+    marginBottom: 24,
   },
-  emailButton: {
-    backgroundColor: '#2c2f33',
+  tagline: {
+    fontSize: 32,
+    fontWeight: '800',
+    color: '#fff',
+    textAlign: 'center',
+    lineHeight: 40,
   },
-  phoneButton: {
-    backgroundColor: '#2c2f33',
+
+  authSection: {
+    paddingHorizontal: 28,
   },
-  googleIcon: {
+
+  socialIcon: {
     width: 20,
     height: 20,
   },
-  socialButtonText: {
+
+  googleButton: {
+    backgroundColor: '#fff',
+    borderRadius: 28,
+    paddingVertical: 16,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 10,
+    marginBottom: 20,
+  },
+  googleButtonText: {
+    color: '#0f0f0f',
+    fontSize: 16,
+    fontWeight: '700',
+  },
+
+  divider: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 20,
+  },
+  dividerLine: {
+    flex: 1,
+    height: 0.5,
+    backgroundColor: 'rgba(255, 255, 255, 0.1)',
+  },
+  dividerText: {
+    marginHorizontal: 16,
+    color: '#555',
+    fontSize: 13,
+  },
+
+  emailButton: {
+    borderRadius: 28,
+    paddingVertical: 16,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 10,
+    marginBottom: 10,
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.15)',
+  },
+  emailButtonText: {
     color: '#fff',
-    fontSize: 15,
+    fontSize: 16,
     fontWeight: '600',
   },
+
+  phoneButton: {
+    borderRadius: 28,
+    paddingVertical: 16,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 10,
+    marginBottom: 20,
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.15)',
+  },
+  phoneButtonText: {
+    color: '#fff',
+    fontSize: 16,
+    fontWeight: '600',
+  },
+
   buttonDisabled: {
     opacity: 0.5,
   },
+
   footer: {
     flexDirection: 'row',
     justifyContent: 'center',
-    marginTop: 12,
   },
   footerText: {
-    color: '#ccc',
+    color: '#555',
     fontSize: 13,
   },
   footerLink: {
-    color: '#c42743',
+    color: '#fff',
     fontSize: 13,
     fontWeight: '600',
   },

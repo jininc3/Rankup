@@ -42,7 +42,7 @@ export default function VerifyEmailSignUp() {
                 onPress: () => {
                   // Navigate to onboarding with params after user dismisses alert
                   router.replace({
-                    pathname: '/(auth)/onboardingSignUp1',
+                    pathname: '/(auth)/emailSignUpUsername',
                     params: {
                       ...params,
                     },

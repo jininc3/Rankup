@@ -277,6 +277,7 @@ export default function SearchScreen() {
   const [showResults, setShowResults] = useState(false);
   const [showHistory, setShowHistory] = useState(false);
 
+
   // Prefetch avatar images and resolve when all done (or timeout)
   const prefetchAvatars = (users: SearchUser[], timeoutMs: number = 2000): Promise<void> => {
     const avatarUrls = users
@@ -571,63 +572,23 @@ export default function SearchScreen() {
 
   return (
     <ThemedView style={styles.container}>
-      {/* Sci-fi wave lines */}
+      {/* Geometric shards */}
       <View style={styles.backgroundPattern} pointerEvents="none">
-        {/* Strong ambient glow */}
+        {/* Ambient glow */}
         <LinearGradient
-          colors={['rgba(100, 70, 200, 0.2)', 'rgba(50, 35, 120, 0.08)', 'transparent']}
+          colors={['rgba(196, 164, 78, 0.055)', 'rgba(139, 111, 47, 0.02)', 'transparent']}
           locations={[0, 0.4, 0.75]}
-          start={{ x: 0.15, y: 0 }}
-          end={{ x: 0.85, y: 1 }}
+          start={{ x: 0.3, y: 0 }}
+          end={{ x: 0.7, y: 1 }}
           style={StyleSheet.absoluteFill}
         />
-        {/* Cyan accent glow top-right */}
         <LinearGradient
-          colors={['rgba(0, 200, 255, 0.06)', 'transparent']}
+          colors={['rgba(196, 164, 78, 0.025)', 'transparent']}
           start={{ x: 1, y: 0 }}
-          end={{ x: 0.3, y: 0.5 }}
+          end={{ x: 0.2, y: 0.5 }}
           style={StyleSheet.absoluteFill}
         />
-        {Array.from({ length: 6 }, (_, waveIdx) => {
-          const baseY = waveIdx * 70 - 80;
-          const opacity = 0.18 - waveIdx * 0.02;
-          return (
-            <View
-              key={waveIdx}
-              style={{
-                position: 'absolute',
-                top: baseY,
-                left: -180,
-                flexDirection: 'row',
-                alignItems: 'flex-start',
-                transform: [{ rotate: '-18deg' }],
-              }}
-            >
-              {Array.from({ length: 7 }, (_, segIdx) => {
-                const isUp = segIdx % 2 === 0;
-                return (
-                  <View
-                    key={segIdx}
-                    style={{
-                      width: 120,
-                      height: 40,
-                      marginTop: isUp ? 0 : 40,
-                      borderTopLeftRadius: isUp ? 60 : 0,
-                      borderTopRightRadius: isUp ? 60 : 0,
-                      borderBottomLeftRadius: isUp ? 0 : 60,
-                      borderBottomRightRadius: isUp ? 0 : 60,
-                      borderTopWidth: isUp ? 1.5 : 0,
-                      borderBottomWidth: isUp ? 0 : 1.5,
-                      borderLeftWidth: 0,
-                      borderRightWidth: 0,
-                      borderColor: `rgba(140, 160, 255, ${opacity})`,
-                    }}
-                  />
-                );
-              })}
-            </View>
-          );
-        })}
+
       </View>
 
       <View style={styles.header}>

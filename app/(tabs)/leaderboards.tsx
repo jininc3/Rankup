@@ -8,6 +8,7 @@ import { useRouter } from 'expo-router';
 import { collection, doc, getDoc, getDocs, query } from 'firebase/firestore';
 import { useEffect, useState } from 'react';
 import { Image, Modal, ScrollView, StyleSheet, TouchableOpacity, View } from 'react-native';
+import { LinearGradient } from 'expo-linear-gradient';
 
 // League of Legends rank icon mapping
 const LEAGUE_RANK_ICONS: { [key: string]: any } = {
@@ -360,6 +361,23 @@ export default function LeaderboardScreen() {
 
   return (
     <ThemedView style={styles.container}>
+      {/* Ambient background glow */}
+      <View style={styles.backgroundGlow} pointerEvents="none">
+        <LinearGradient
+          colors={['rgba(196, 164, 78, 0.055)', 'rgba(139, 111, 47, 0.02)', 'transparent']}
+          locations={[0, 0.4, 0.75]}
+          start={{ x: 0.3, y: 0 }}
+          end={{ x: 0.7, y: 1 }}
+          style={StyleSheet.absoluteFill}
+        />
+        <LinearGradient
+          colors={['rgba(196, 164, 78, 0.025)', 'transparent']}
+          start={{ x: 1, y: 0 }}
+          end={{ x: 0.2, y: 0.5 }}
+          style={StyleSheet.absoluteFill}
+        />
+      </View>
+
       <View style={styles.header}>
         <ThemedText style={styles.headerTitle}>Leaderboards</ThemedText>
         <View style={{ width: 36 }} />
@@ -376,11 +394,8 @@ export default function LeaderboardScreen() {
           activeOpacity={0.8}
         >
           <View style={styles.lobbiesBannerContent}>
-            <View style={styles.lobbiesBannerIcon}>
-              <IconSymbol size={20} name="trophy.fill" color="#D4A843" />
-            </View>
             <View style={styles.lobbiesBannerText}>
-              <ThemedText style={styles.lobbiesBannerTitle}>Lobbies</ThemedText>
+              <ThemedText style={styles.lobbiesBannerTitle}>LOBBIES</ThemedText>
               <ThemedText style={styles.lobbiesBannerSubtitle}>Compete with friends in leaderboards</ThemedText>
             </View>
             <IconSymbol size={18} name="chevron.right" color="#555" />
@@ -468,14 +483,17 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: '#0f0f0f',
   },
+  backgroundGlow: {
+    ...StyleSheet.absoluteFillObject,
+    overflow: 'hidden',
+  },
   header: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
     paddingHorizontal: 16,
-    paddingTop: 55,
+    paddingTop: 61,
     paddingBottom: 4,
-    backgroundColor: '#0f0f0f',
   },
   headerTitle: {
     fontSize: 22,
@@ -512,38 +530,29 @@ const styles = StyleSheet.create({
     paddingTop: 20,
   },
   lobbiesBanner: {
-    backgroundColor: '#1a1a1a',
-    borderRadius: 14,
+    backgroundColor: 'rgba(255, 255, 255, 0.04)',
+    borderRadius: 10,
     marginBottom: 16,
-    borderWidth: 1,
-    borderColor: '#2a2a2a',
   },
   lobbiesBannerContent: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingVertical: 18,
+    paddingVertical: 16,
     paddingHorizontal: 16,
     gap: 12,
-  },
-  lobbiesBannerIcon: {
-    width: 40,
-    height: 40,
-    borderRadius: 12,
-    backgroundColor: '#252525',
-    alignItems: 'center',
-    justifyContent: 'center',
   },
   lobbiesBannerText: {
     flex: 1,
   },
   lobbiesBannerTitle: {
-    fontSize: 16,
+    fontSize: 18,
     fontWeight: '700',
-    color: '#bbb',
+    color: '#fff',
+    letterSpacing: 1,
   },
   lobbiesBannerSubtitle: {
     fontSize: 12,
-    color: '#666',
+    color: '#555',
     marginTop: 2,
   },
   cardsContainer: {
@@ -746,8 +755,8 @@ const styles = StyleSheet.create({
   rankInfoContainer: {
     flexDirection: 'row',
     alignItems: 'center',
+    justifyContent: 'flex-end',
     gap: 8,
-    width: 145,
     marginLeft: 'auto',
   },
   rankIconSmall: {
@@ -755,8 +764,7 @@ const styles = StyleSheet.create({
     height: 26,
   },
   rankTextContainer: {
-    flex: 1,
-    alignItems: 'flex-start',
+    alignItems: 'flex-end',
   },
   currentRankText: {
     fontSize: 11,

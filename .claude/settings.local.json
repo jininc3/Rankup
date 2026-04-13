@@ -62,7 +62,8 @@
       "Bash(for file:*)",
       "Bash(do echo:*)",
       "Read(//c/Users/jinha/Desktop/RankUp/**)",
-      "Bash(done)"
+      "Bash(done)",
+      "Bash(find /c/Users/jinha/Desktop/RankUp/assets -type f \\\\\\(-name *logo* -o -name *icon* -o -name *rankup* \\\\\\))"
     ],
     "deny": [],
     "ask": []

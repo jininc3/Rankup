@@ -1152,12 +1152,6 @@ export default function LeaderboardDetail() {
                 <ThemedText style={styles.inviteButtonText}>Invite</ThemedText>
               </TouchableOpacity>
             )}
-            {inviteCode && (isNone || isPending) && (
-              <TouchableOpacity style={styles.codeButton} onPress={handleCopyInviteCode}>
-                <ThemedText style={styles.codeButtonText}>{inviteCode}</ThemedText>
-                <IconSymbol size={12} name="doc.on.doc" color="#555" />
-              </TouchableOpacity>
-            )}
             {(isPending || isActive) && (isCreator || challengeParticipants.includes(user?.id || '')) && (
               <TouchableOpacity style={styles.codeButton} onPress={() => setShowChallengeDetailsModal(true)}>
                 <IconSymbol size={14} name="trophy.fill" color="#a08845" />
@@ -1596,6 +1590,25 @@ export default function LeaderboardDetail() {
               </View>
               <IconSymbol size={16} name="chevron.right" color="#444" />
             </TouchableOpacity>
+
+            {inviteCode && (
+              <TouchableOpacity
+                style={styles.editModalOption}
+                onPress={() => {
+                  handleCopyInviteCode();
+                  setShowEditModal(false);
+                }}
+              >
+                <View style={styles.editModalOptionIcon}>
+                  <IconSymbol size={18} name="doc.on.doc" color="#888" />
+                </View>
+                <View style={styles.editModalOptionText}>
+                  <ThemedText style={styles.editModalOptionTitle}>Invite Code</ThemedText>
+                  <ThemedText style={styles.editModalOptionSubtitle}>{inviteCode}</ThemedText>
+                </View>
+                <IconSymbol size={16} name="doc.on.doc" color="#444" />
+              </TouchableOpacity>
+            )}
           </View>
         </TouchableOpacity>
       </Modal>

@@ -12,9 +12,7 @@ import { ThemedView } from '@/components/themed-view';
 import { IconSymbol } from '@/components/ui/icon-symbol';
 import { useAuth } from '@/contexts/AuthContext';
 import { useRouter, useLocalSearchParams } from 'expo-router';
-import { deleteIncompleteAccount } from '@/services/authService';
-import { doc, updateDoc } from 'firebase/firestore';
-import { db } from '@/config/firebase';
+import { deleteIncompleteAccount, createPhoneAuthAccount } from '@/services/authService';
 import rnfbAuth, { FirebaseAuthTypes } from '@react-native-firebase/auth';
 
 export default function VerifyPhoneSignUp() {
@@ -100,12 +98,8 @@ export default function VerifyPhoneSignUp() {
       // Sign out from native Firebase SDK (we use JS SDK for auth state)
       await rnfbAuth().signOut();
 
-      // Mark phone as verified in Firestore
-      if (user?.id) {
-        await updateDoc(doc(db, 'users', user.id), {
-          phoneVerified: true,
-        });
-      }
+      // Create JS SDK auth account for this phone number
+      await createPhoneAuthAccount(phoneNumber);
 
       Alert.alert(
         'Success!',
@@ -115,7 +109,7 @@ export default function VerifyPhoneSignUp() {
             text: 'OK',
             onPress: () => {
               router.replace({
-                pathname: '/(auth)/onboardingSignUp1',
+                pathname: '/(auth)/phoneSignUpUsername',
                 params: { ...params },
               });
             },

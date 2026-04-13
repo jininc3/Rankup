@@ -380,59 +380,29 @@ const duoStyles = StyleSheet.create({
 // Leaderboard card skeleton - matches leaderboardCard.tsx structure EXACTLY
 export const LeaderboardCardSkeleton: React.FC = () => {
   return (
-    <View style={partyStyles.container}>
-      <View style={partyStyles.card}>
-        {/* Header Section - Icon (56x56) & Name */}
-        <View style={partyStyles.headerSection}>
-          <Skeleton width={56} height={56} borderRadius={12} />
-          <View style={partyStyles.headerInfo}>
-            {/* Name: fontSize 18, marginBottom 4 */}
-            <Skeleton width={130} height={18} borderRadius={4} />
-            {/* Game name: fontSize 14 */}
-            <Skeleton width={90} height={14} borderRadius={3} style={{ marginTop: 4 }} />
+    <View style={leaderboardCardStyles.container}>
+      {/* Header Section - Icon (46x46) + Name & Game */}
+      <View style={leaderboardCardStyles.headerSection}>
+        <Skeleton width={46} height={46} borderRadius={12} />
+        <View style={leaderboardCardStyles.headerInfo}>
+          <Skeleton width={140} height={16} borderRadius={4} />
+          <View style={leaderboardCardStyles.metaRow}>
+            <Skeleton width={80} height={12} borderRadius={3} />
           </View>
         </View>
+      </View>
 
-        {/* Divider - height 1, marginBottom 14 */}
-        <View style={partyStyles.divider} />
-
-        {/* Info Rows - 5 rows for Leaderboard, gap 10 */}
-        <View style={partyStyles.infoSection}>
-          {/* Type row */}
-          <View style={partyStyles.infoRow}>
-            <Skeleton width={32} height={14} borderRadius={3} />
-            <Skeleton width={75} height={14} borderRadius={3} />
+      {/* Footer - stacked avatars + player count + gold accent */}
+      <View style={leaderboardCardStyles.footer}>
+        <View style={leaderboardCardStyles.footerLeft}>
+          <View style={leaderboardCardStyles.stackedAvatars}>
+            <Skeleton width={34} height={34} borderRadius={17} />
+            <Skeleton width={34} height={34} borderRadius={17} style={{ marginLeft: -10 }} />
+            <Skeleton width={34} height={34} borderRadius={17} style={{ marginLeft: -10 }} />
           </View>
-          {/* Date row */}
-          <View style={partyStyles.infoRow}>
-            <Skeleton width={32} height={14} borderRadius={3} />
-            <Skeleton width={45} height={14} borderRadius={3} />
-          </View>
-          {/* Players row */}
-          <View style={partyStyles.infoRow}>
-            <Skeleton width={48} height={14} borderRadius={3} />
-            <Skeleton width={30} height={14} borderRadius={3} />
-          </View>
-          {/* Format row */}
-          <View style={partyStyles.infoRow}>
-            <Skeleton width={46} height={14} borderRadius={3} />
-            <Skeleton width={70} height={14} borderRadius={3} />
-          </View>
-          {/* Ranking row with stacked avatars */}
-          <View style={partyStyles.infoRow}>
-            <Skeleton width={52} height={14} borderRadius={3} />
-            <View style={partyStyles.stackedAvatars}>
-              <Skeleton width={24} height={24} borderRadius={12} />
-              <Skeleton width={24} height={24} borderRadius={12} style={{ marginLeft: -8 }} />
-              <Skeleton width={24} height={24} borderRadius={12} style={{ marginLeft: -8 }} />
-            </View>
-          </View>
+          <Skeleton width={65} height={14} borderRadius={4} />
         </View>
-
-        {/* View Button - paddingVertical 10, marginTop 14 */}
-        <View style={partyStyles.viewButton}>
-          <Skeleton width={100} height={13} borderRadius={4} />
-        </View>
+        <View style={leaderboardCardStyles.footerAccent} />
       </View>
     </View>
   );
@@ -641,6 +611,56 @@ const partyStyles = StyleSheet.create({
   },
 });
 
+// Leaderboard card styles - matches leaderboardCard.tsx layout EXACTLY
+const leaderboardCardStyles = StyleSheet.create({
+  container: {
+    marginBottom: 14,
+    borderRadius: 14,
+    overflow: 'hidden',
+    backgroundColor: '#141414',
+    borderWidth: 1,
+    borderColor: '#1e1e1e',
+  },
+  headerSection: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: 14,
+    gap: 12,
+  },
+  headerInfo: {
+    flex: 1,
+  },
+  metaRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginTop: 5,
+    gap: 6,
+  },
+  footer: {
+    paddingHorizontal: 14,
+    paddingTop: 12,
+    paddingBottom: 14,
+    backgroundColor: '#111111',
+    borderTopWidth: 1,
+    borderTopColor: '#1e1e1e',
+  },
+  footerLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+  },
+  stackedAvatars: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  footerAccent: {
+    height: 2,
+    backgroundColor: 'rgba(160, 136, 69, 0.3)',
+    borderRadius: 1,
+    marginTop: 12,
+  },
+});
+
 const styles = StyleSheet.create({
   skeleton: {
     backgroundColor: '#1a1a1a',
@@ -661,7 +681,6 @@ const styles = StyleSheet.create({
   },
   postContainer: {
     width: screenWidth,
-    backgroundColor: '#0f0f0f',
   },
   // Header - matches postContent.postHeader
   postHeader: {
