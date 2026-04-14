@@ -1,13 +1,21 @@
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { IconSymbol } from '@/components/ui/icon-symbol';
-import { useRouter } from 'expo-router';
+import { useRouter, useLocalSearchParams } from 'expo-router';
 import React, { useState } from 'react';
 import { StyleSheet, TouchableOpacity, View, Platform, Alert } from 'react-native';
 import DateTimePicker from '@react-native-community/datetimepicker';
 
-export default function EmailSignUpBirthday() {
+const PROGRESS: Record<string, string> = {
+  email: '14.3%',
+  phone: '14.3%',
+  google: '33.3%',
+};
+
+export default function SignUpBirthday() {
   const router = useRouter();
+  const params = useLocalSearchParams();
+  const signupMethod = (params.signupMethod as string) || 'email';
   const [dateOfBirth, setDateOfBirth] = useState(new Date(2000, 0, 1));
   const [showPicker, setShowPicker] = useState(Platform.OS === 'ios');
 
@@ -25,24 +33,30 @@ export default function EmailSignUpBirthday() {
       Alert.alert('Age Requirement', 'You must be at least 13 years old to use RankUp.');
       return;
     }
-    router.push({
-      pathname: '/(auth)/emailSignUpEmail',
-      params: { dateOfBirth: dateOfBirth.toISOString() },
-    });
+
+    const nextParams = { ...params, dateOfBirth: dateOfBirth.toISOString(), signupMethod };
+
+    if (signupMethod === 'email') {
+      router.push({ pathname: '/(auth)/emailSignUpEmail', params: nextParams });
+    } else if (signupMethod === 'phone') {
+      router.push({ pathname: '/(auth)/phoneSignUpPhone', params: nextParams });
+    } else {
+      router.push({ pathname: '/(auth)/signUpUsername', params: nextParams });
+    }
   };
 
   return (
     <ThemedView style={styles.container}>
-      <TouchableOpacity style={styles.backButton} onPress={() => router.back()}>
-        <IconSymbol size={22} name="chevron.left" color="#fff" />
-      </TouchableOpacity>
-
-      <View style={styles.progress}>
-        <View style={styles.progressFill} />
+      <View style={styles.headerRow}>
+        <TouchableOpacity style={styles.backButton} onPress={() => router.back()}>
+          <IconSymbol size={22} name="chevron.left" color="#fff" />
+        </TouchableOpacity>
+        <View style={styles.progress}>
+          <View style={[styles.progressFill, { width: PROGRESS[signupMethod] || '14.3%' }]} />
+        </View>
       </View>
 
       <View style={styles.content}>
-        <ThemedText style={styles.step}>Step 1 of 7</ThemedText>
         <ThemedText style={styles.title}>What's your{'\n'}birthday?</ThemedText>
         <ThemedText style={styles.subtitle}>This won't be shown publicly.</ThemedText>
 
@@ -83,11 +97,11 @@ export default function EmailSignUpBirthday() {
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#0f0f0f' },
-  backButton: { position: 'absolute', top: 60, left: 16, zIndex: 10, padding: 8 },
-  progress: { marginTop: 100, marginHorizontal: 28, height: 2, backgroundColor: 'rgba(255,255,255,0.08)', borderRadius: 1 },
-  progressFill: { width: '14.3%', height: '100%', backgroundColor: '#fff', borderRadius: 1 },
+  headerRow: { flexDirection: 'row', alignItems: 'center', marginTop: 60, paddingHorizontal: 16 },
+  backButton: { padding: 8 },
+  progress: { flex: 1, height: 2, marginLeft: 12, marginRight: 12, backgroundColor: 'rgba(255,255,255,0.08)', borderRadius: 1 },
+  progressFill: { height: '100%', backgroundColor: '#fff', borderRadius: 1 },
   content: { flex: 1, paddingHorizontal: 28, paddingTop: 32 },
-  step: { fontSize: 13, color: '#555', marginBottom: 8 },
   title: { fontSize: 28, fontWeight: '800', color: '#fff', lineHeight: 36, marginBottom: 8 },
   subtitle: { fontSize: 15, color: '#555' },
   pickerContainer: { marginTop: 32, alignItems: 'center' },

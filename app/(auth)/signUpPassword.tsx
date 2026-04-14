@@ -1,17 +1,26 @@
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { IconSymbol } from '@/components/ui/icon-symbol';
-import { completePhoneSignup } from '@/services/authService';
+import { completeEmailSignup, completePhoneSignup } from '@/services/authService';
 import { uploadProfilePicture } from '@/services/storageService';
-import { auth } from '@/config/firebase';
+import { auth, db } from '@/config/firebase';
 import { useAuth } from '@/contexts/AuthContext';
 import { useRouter, useLocalSearchParams } from 'expo-router';
+import { doc, updateDoc } from 'firebase/firestore';
+import { updateProfile, updatePassword as fbUpdatePassword } from 'firebase/auth';
 import React, { useState } from 'react';
 import { StyleSheet, TouchableOpacity, View, TextInput, Alert, KeyboardAvoidingView, Platform } from 'react-native';
 
-export default function PhoneSignUpPassword() {
+const PROGRESS: Record<string, string> = {
+  email: '71.4%',
+  phone: '71.4%',
+  google: '66.6%',
+};
+
+export default function SignUpPassword() {
   const router = useRouter();
   const params = useLocalSearchParams();
+  const signupMethod = (params.signupMethod as string) || 'email';
   const { refreshUser } = useAuth();
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
@@ -33,19 +42,59 @@ export default function PhoneSignUpPassword() {
     try {
       setIsLoading(true);
 
+      // Upload avatar if provided
       let avatarUrl = '';
       const avatarUri = params.avatarUri as string;
-      if (avatarUri && auth.currentUser) {
-        avatarUrl = await uploadProfilePicture(auth.currentUser.uid, avatarUri);
-      }
 
-      await completePhoneSignup({
-        username: params.username as string,
-        phoneNumber: params.phoneNumber as string,
-        dateOfBirth: params.dateOfBirth as string,
-        avatar: avatarUrl,
-        password,
-      });
+      if (signupMethod === 'google') {
+        const user = auth.currentUser;
+        if (!user) throw new Error('No authenticated user');
+
+        if (avatarUri) {
+          avatarUrl = await uploadProfilePicture(user.uid, avatarUri);
+        }
+
+        await updateProfile(user, { displayName: params.username as string });
+
+        try {
+          await fbUpdatePassword(user, password);
+        } catch {
+          // May fail if Google-only account can't add password
+        }
+
+        await updateDoc(doc(db, 'users', user.uid), {
+          username: params.username as string,
+          usernameLower: (params.username as string).toLowerCase(),
+          dateOfBirth: params.dateOfBirth as string,
+          avatar: avatarUrl || user.photoURL || '',
+          needsUsernameSetup: false,
+          updatedAt: new Date(),
+        });
+      } else if (signupMethod === 'phone') {
+        if (avatarUri && auth.currentUser) {
+          avatarUrl = await uploadProfilePicture(auth.currentUser.uid, avatarUri);
+        }
+
+        await completePhoneSignup({
+          username: params.username as string,
+          phoneNumber: params.phoneNumber as string,
+          dateOfBirth: params.dateOfBirth as string,
+          avatar: avatarUrl,
+          password,
+        });
+      } else {
+        if (avatarUri && auth.currentUser) {
+          avatarUrl = await uploadProfilePicture(auth.currentUser.uid, avatarUri);
+        }
+
+        await completeEmailSignup({
+          username: params.username as string,
+          email: params.email as string,
+          dateOfBirth: params.dateOfBirth as string,
+          avatar: avatarUrl,
+          password,
+        });
+      }
 
       await refreshUser();
 
@@ -63,16 +112,16 @@ export default function PhoneSignUpPassword() {
   return (
     <ThemedView style={styles.container}>
       <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={{ flex: 1 }}>
-        <TouchableOpacity style={styles.backButton} onPress={() => router.back()}>
-          <IconSymbol size={22} name="chevron.left" color="#fff" />
-        </TouchableOpacity>
-
-        <View style={styles.progress}>
-          <View style={styles.progressFill} />
+        <View style={styles.headerRow}>
+          <TouchableOpacity style={styles.backButton} onPress={() => router.back()}>
+            <IconSymbol size={22} name="chevron.left" color="#fff" />
+          </TouchableOpacity>
+          <View style={styles.progress}>
+            <View style={[styles.progressFill, { width: PROGRESS[signupMethod] || '71.4%' }]} />
+          </View>
         </View>
 
         <View style={styles.content}>
-          <ThemedText style={styles.step}>Step 5 of 7</ThemedText>
           <ThemedText style={styles.title}>Create a{'\n'}password</ThemedText>
           <ThemedText style={styles.subtitle}>At least 8 characters.</ThemedText>
 
@@ -126,11 +175,11 @@ export default function PhoneSignUpPassword() {
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#0f0f0f' },
-  backButton: { position: 'absolute', top: 60, left: 16, zIndex: 10, padding: 8 },
-  progress: { marginTop: 100, marginHorizontal: 28, height: 2, backgroundColor: 'rgba(255,255,255,0.08)', borderRadius: 1 },
-  progressFill: { width: '71.4%', height: '100%', backgroundColor: '#fff', borderRadius: 1 },
+  headerRow: { flexDirection: 'row', alignItems: 'center', marginTop: 60, paddingHorizontal: 16 },
+  backButton: { padding: 8 },
+  progress: { flex: 1, height: 2, marginLeft: 12, marginRight: 12, backgroundColor: 'rgba(255,255,255,0.08)', borderRadius: 1 },
+  progressFill: { height: '100%', backgroundColor: '#fff', borderRadius: 1 },
   content: { flex: 1, paddingHorizontal: 28, paddingTop: 32 },
-  step: { fontSize: 13, color: '#555', marginBottom: 8 },
   title: { fontSize: 28, fontWeight: '800', color: '#fff', lineHeight: 36, marginBottom: 8 },
   subtitle: { fontSize: 15, color: '#555' },
   inputGroup: { marginTop: 32, gap: 12 },

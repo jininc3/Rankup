@@ -26,26 +26,26 @@ export default function PhoneSignUpPhone() {
   return (
     <ThemedView style={styles.container}>
       <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={{ flex: 1 }}>
-        <TouchableOpacity style={styles.backButton} onPress={() => router.back()}>
-          <IconSymbol size={22} name="chevron.left" color="#fff" />
-        </TouchableOpacity>
+        <View style={styles.headerRow}>
+          <TouchableOpacity style={styles.backButton} onPress={() => router.back()}>
+            <IconSymbol size={22} name="chevron.left" color="#fff" />
+          </TouchableOpacity>
+          <View style={styles.progress}>
+            <View style={styles.progressFill} />
+          </View>
+        </View>
 
         <TouchableOpacity
-          style={styles.switchButton}
+          style={styles.switchRow}
           onPress={() => router.replace({
             pathname: '/(auth)/emailSignUpEmail',
-            params: { dateOfBirth: params.dateOfBirth as string },
+            params: { dateOfBirth: params.dateOfBirth as string, signupMethod: 'email' },
           })}
         >
           <ThemedText style={styles.switchButtonText}>Email</ThemedText>
         </TouchableOpacity>
 
-        <View style={styles.progress}>
-          <View style={styles.progressFill} />
-        </View>
-
         <View style={styles.content}>
-          <ThemedText style={styles.step}>Step 2 of 7</ThemedText>
           <ThemedText style={styles.title}>What's your{'\n'}phone number?</ThemedText>
           <ThemedText style={styles.subtitle}>We'll send a verification code.</ThemedText>
 
@@ -58,8 +58,7 @@ export default function PhoneSignUpPhone() {
               onChangeText={setPhoneNumber}
               keyboardType="phone-pad"
               autoFocus
-              returnKeyType="done"
-              onSubmitEditing={handleContinue}
+              returnKeyType="default"
             />
           </View>
         </View>
@@ -81,13 +80,13 @@ export default function PhoneSignUpPhone() {
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#0f0f0f' },
-  backButton: { position: 'absolute', top: 60, left: 16, zIndex: 10, padding: 8 },
-  switchButton: { position: 'absolute', top: 60, right: 16, zIndex: 10, padding: 8 },
-  switchButtonText: { fontSize: 15, fontWeight: '600', color: '#fff' },
-  progress: { marginTop: 100, marginHorizontal: 28, height: 2, backgroundColor: 'rgba(255,255,255,0.08)', borderRadius: 1 },
+  headerRow: { flexDirection: 'row', alignItems: 'center', marginTop: 60, paddingHorizontal: 16 },
+  backButton: { padding: 8 },
+  switchRow: { alignSelf: 'flex-end', paddingHorizontal: 28, marginTop: 10 },
+  switchButtonText: { fontSize: 13, fontWeight: '600', color: '#1a73e8' },
+  progress: { flex: 1, height: 2, marginLeft: 12, marginRight: 12, backgroundColor: 'rgba(255,255,255,0.08)', borderRadius: 1 },
   progressFill: { width: '28.6%', height: '100%', backgroundColor: '#fff', borderRadius: 1 },
   content: { flex: 1, paddingHorizontal: 28, paddingTop: 32 },
-  step: { fontSize: 13, color: '#555', marginBottom: 8 },
   title: { fontSize: 28, fontWeight: '800', color: '#fff', lineHeight: 36, marginBottom: 8 },
   subtitle: { fontSize: 15, color: '#555' },
   inputContainer: { marginTop: 32 },

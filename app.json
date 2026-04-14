@@ -13,6 +13,9 @@
       "bundleIdentifier": "com.jininc3.RankUp",
       "buildNumber": "16",
       "googleServicesFile": "./GoogleService-Info.plist",
+      "entitlements": {
+        "aps-environment": "development"
+      },
       "infoPlist": {
         "ITSAppUsesNonExemptEncryption": false,
         "LSApplicationQueriesSchemes": [

@@ -18,16 +18,16 @@ export default function EmailSignUpFriends() {
 
   return (
     <ThemedView style={styles.container}>
-      <TouchableOpacity style={styles.backButton} onPress={() => router.back()}>
-        <IconSymbol size={22} name="chevron.left" color="#fff" />
-      </TouchableOpacity>
-
-      <View style={styles.progress}>
-        <View style={styles.progressFill} />
+      <View style={styles.headerRow}>
+        <TouchableOpacity style={styles.backButton} onPress={() => router.back()}>
+          <IconSymbol size={22} name="chevron.left" color="#fff" />
+        </TouchableOpacity>
+        <View style={styles.progress}>
+          <View style={styles.progressFill} />
+        </View>
       </View>
 
       <View style={styles.content}>
-        <ThemedText style={styles.step}>Step 6 of 7</ThemedText>
         <ThemedText style={styles.title}>Find your{'\n'}friends</ThemedText>
         <ThemedText style={styles.subtitle}>Connect with people you know.</ThemedText>
 
@@ -74,11 +74,11 @@ export default function EmailSignUpFriends() {
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#0f0f0f' },
-  backButton: { position: 'absolute', top: 60, left: 16, zIndex: 10, padding: 8 },
-  progress: { marginTop: 100, marginHorizontal: 28, height: 2, backgroundColor: 'rgba(255,255,255,0.08)', borderRadius: 1 },
+  headerRow: { flexDirection: 'row', alignItems: 'center', marginTop: 60, paddingHorizontal: 16 },
+  backButton: { padding: 8 },
+  progress: { flex: 1, height: 2, marginLeft: 12, marginRight: 12, backgroundColor: 'rgba(255,255,255,0.08)', borderRadius: 1 },
   progressFill: { width: '85.7%', height: '100%', backgroundColor: '#fff', borderRadius: 1 },
   content: { flex: 1, paddingHorizontal: 28, paddingTop: 32 },
-  step: { fontSize: 13, color: '#555', marginBottom: 8 },
   title: { fontSize: 28, fontWeight: '800', color: '#fff', lineHeight: 36, marginBottom: 8 },
   subtitle: { fontSize: 15, color: '#555' },
   optionsContainer: { marginTop: 32, gap: 12 },

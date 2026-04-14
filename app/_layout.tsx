@@ -9,6 +9,7 @@ import * as Notifications from 'expo-notifications';
 import LoadingScreen from '@/app/components/loadingScreen';
 import { AuthProvider, useAuth } from '@/contexts/AuthContext';
 import { ValorantStatsProvider } from '@/contexts/ValorantStatsContext';
+import { Platform } from 'react-native';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { addNotificationTapListener, addNotificationReceivedListener } from '@/services/notificationService';
 import { InAppNotificationProvider, useInAppNotification } from '@/contexts/InAppNotificationContext';
@@ -20,6 +21,14 @@ function RootLayoutNav() {
   const segments = useSegments();
   const router = useRouter();
   const { showNotification } = useInAppNotification();
+
+  // Register for remote notifications so Firebase Auth gets the APNs token
+  // This is required for silent phone verification (skip reCAPTCHA)
+  useEffect(() => {
+    if (Platform.OS === 'ios') {
+      Notifications.getDevicePushTokenAsync().catch(() => {});
+    }
+  }, []);
 
   useEffect(() => {
     if (isLoading) return;
@@ -48,8 +57,8 @@ function RootLayoutNav() {
       router.replace('/(auth)/login');
     } else if (isAuthenticated && needsUsernameSetup && !onSignupFlow && !inProfilePages) {
       // Authenticated but needs username setup (allow profilePages for linking accounts during signup)
-      console.log('Redirecting to googleSignUpBirthday');
-      router.replace('/(auth)/googleSignUpBirthday');
+      console.log('Redirecting to signUpBirthday (google)');
+      router.replace({ pathname: '/(auth)/signUpBirthday', params: { signupMethod: 'google' } });
     } else if (isAuthenticated && !needsUsernameSetup && inAuthGroup) {
       // Authenticated with username set, redirect to main app
       console.log('Redirecting to tabs');

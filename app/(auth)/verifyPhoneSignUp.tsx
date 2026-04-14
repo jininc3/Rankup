@@ -109,7 +109,7 @@ export default function VerifyPhoneSignUp() {
             text: 'OK',
             onPress: () => {
               router.replace({
-                pathname: '/(auth)/phoneSignUpUsername',
+                pathname: '/(auth)/signUpUsername',
                 params: { ...params },
               });
             },

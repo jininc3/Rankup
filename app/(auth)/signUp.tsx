@@ -87,7 +87,7 @@ export default function SignUpScreen() {
           {/* Email signup button */}
           <TouchableOpacity
             style={styles.emailButton}
-            onPress={() => router.push('/(auth)/emailSignUpBirthday')}
+            onPress={() => router.push({ pathname: '/(auth)/signUpBirthday', params: { signupMethod: 'email' } })}
             activeOpacity={0.8}
           >
             <MaterialIcons name="email" size={20} color="#fff" />
@@ -97,7 +97,7 @@ export default function SignUpScreen() {
           {/* Phone signup button */}
           <TouchableOpacity
             style={styles.phoneButton}
-            onPress={() => router.push('/(auth)/phoneSignUpBirthday')}
+            onPress={() => router.push({ pathname: '/(auth)/signUpBirthday', params: { signupMethod: 'phone' } })}
             activeOpacity={0.8}
           >
             <IconSymbol size={20} name="phone.fill" color="#fff" />

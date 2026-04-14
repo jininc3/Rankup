@@ -1,4 +1,9 @@
 {
+  "react-native": {
+    "auth_phone_auth_settings": {
+      "force_recaptcha_flow": false
+    }
+  },
   "firestore": {
     "rules": "firestore.rules",
     "indexes": "firestore.indexes.json"

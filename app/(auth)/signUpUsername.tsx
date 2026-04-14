@@ -8,9 +8,16 @@ import React, { useState, useCallback, useRef } from 'react';
 import { StyleSheet, TouchableOpacity, View, TextInput, Image, Alert, KeyboardAvoidingView, Platform } from 'react-native';
 import * as ImagePicker from 'expo-image-picker';
 
-export default function EmailSignUpUsername() {
+const PROGRESS: Record<string, string> = {
+  email: '57.1%',
+  phone: '57.1%',
+  google: '50%',
+};
+
+export default function SignUpUsername() {
   const router = useRouter();
   const params = useLocalSearchParams();
+  const signupMethod = (params.signupMethod as string) || 'email';
   const [username, setUsername] = useState('');
   const [usernameAvailable, setUsernameAvailable] = useState<boolean | null>(null);
   const [checkingUsername, setCheckingUsername] = useState(false);
@@ -59,7 +66,7 @@ export default function EmailSignUpUsername() {
   const handleContinue = () => {
     if (!isValid) return;
     router.push({
-      pathname: '/(auth)/emailSignUpPassword',
+      pathname: '/(auth)/signUpPassword',
       params: { ...params, username, avatarUri: avatarUri || '' },
     });
   };
@@ -67,16 +74,16 @@ export default function EmailSignUpUsername() {
   return (
     <ThemedView style={styles.container}>
       <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={{ flex: 1 }}>
-        <TouchableOpacity style={styles.backButton} onPress={() => router.back()}>
-          <IconSymbol size={22} name="chevron.left" color="#fff" />
-        </TouchableOpacity>
-
-        <View style={styles.progress}>
-          <View style={styles.progressFill} />
+        <View style={styles.headerRow}>
+          <TouchableOpacity style={styles.backButton} onPress={() => router.back()}>
+            <IconSymbol size={22} name="chevron.left" color="#fff" />
+          </TouchableOpacity>
+          <View style={styles.progress}>
+            <View style={[styles.progressFill, { width: PROGRESS[signupMethod] || '57.1%' }]} />
+          </View>
         </View>
 
         <View style={styles.content}>
-          <ThemedText style={styles.step}>Step 4 of 7</ThemedText>
           <ThemedText style={styles.title}>Pick a username{'\n'}and photo</ThemedText>
 
           <TouchableOpacity style={styles.avatarPicker} onPress={pickAvatar} activeOpacity={0.7}>
@@ -137,11 +144,11 @@ export default function EmailSignUpUsername() {
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#0f0f0f' },
-  backButton: { position: 'absolute', top: 60, left: 16, zIndex: 10, padding: 8 },
-  progress: { marginTop: 100, marginHorizontal: 28, height: 2, backgroundColor: 'rgba(255,255,255,0.08)', borderRadius: 1 },
-  progressFill: { width: '57.1%', height: '100%', backgroundColor: '#fff', borderRadius: 1 },
+  headerRow: { flexDirection: 'row', alignItems: 'center', marginTop: 60, paddingHorizontal: 16 },
+  backButton: { padding: 8 },
+  progress: { flex: 1, height: 2, marginLeft: 12, marginRight: 12, backgroundColor: 'rgba(255,255,255,0.08)', borderRadius: 1 },
+  progressFill: { height: '100%', backgroundColor: '#fff', borderRadius: 1 },
   content: { flex: 1, paddingHorizontal: 28, paddingTop: 32 },
-  step: { fontSize: 13, color: '#555', marginBottom: 8 },
   title: { fontSize: 28, fontWeight: '800', color: '#fff', lineHeight: 36, marginBottom: 24 },
   avatarPicker: { alignSelf: 'center', marginBottom: 28 },
   avatarImage: { width: 90, height: 90, borderRadius: 45 },
