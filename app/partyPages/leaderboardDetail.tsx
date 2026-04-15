@@ -1029,10 +1029,8 @@ export default function LeaderboardDetail() {
           </View>
 
           {/* Cover Photo */}
-          <View style={styles.coverPhotoWrapper}>
-            {coverPhoto ? (
-              <Image source={{ uri: coverPhoto }} style={styles.coverPhotoImage} />
-            ) : (
+          <View style={[styles.coverPhotoWrapper, coverPhoto && { backgroundColor: '#000' }]}>
+            {!coverPhoto && (
               <LinearGradient
                 colors={['rgba(255,255,255,0.06)', '#1a1a1a', '#0f0f0f']}
                 start={{ x: 0, y: 0 }}
@@ -1040,18 +1038,22 @@ export default function LeaderboardDetail() {
                 style={styles.coverPhotoGradient}
               />
             )}
-            <LinearGradient
-              colors={['rgba(15, 15, 15, 0.25)', 'transparent']}
-              start={{ x: 0, y: 0 }}
-              end={{ x: 0, y: 1 }}
-              style={styles.coverPhotoFadeTop}
-            />
-            <LinearGradient
-              colors={['transparent', '#0f0f0f']}
-              start={{ x: 0, y: 0 }}
-              end={{ x: 0, y: 1 }}
-              style={styles.coverPhotoFadeBottom}
-            />
+            {!coverPhoto && (
+              <>
+                <LinearGradient
+                  colors={['rgba(15, 15, 15, 0.25)', 'transparent']}
+                  start={{ x: 0, y: 0 }}
+                  end={{ x: 0, y: 1 }}
+                  style={styles.coverPhotoFadeTop}
+                />
+                <LinearGradient
+                  colors={['transparent', '#0f0f0f']}
+                  start={{ x: 0, y: 0 }}
+                  end={{ x: 0, y: 1 }}
+                  style={styles.coverPhotoFadeBottom}
+                />
+              </>
+            )}
           </View>
         </View>
 

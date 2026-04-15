@@ -380,29 +380,26 @@ const duoStyles = StyleSheet.create({
 // Leaderboard card skeleton - matches leaderboardCard.tsx structure EXACTLY
 export const LeaderboardCardSkeleton: React.FC = () => {
   return (
-    <View style={leaderboardCardStyles.container}>
-      {/* Header Section - Icon (46x46) + Name & Game */}
-      <View style={leaderboardCardStyles.headerSection}>
-        <Skeleton width={46} height={46} borderRadius={12} />
-        <View style={leaderboardCardStyles.headerInfo}>
-          <Skeleton width={140} height={16} borderRadius={4} />
-          <View style={leaderboardCardStyles.metaRow}>
-            <Skeleton width={80} height={12} borderRadius={3} />
-          </View>
+    <View style={leaderboardCardStyles.card}>
+      {/* Main section: icon + name & meta */}
+      <View style={leaderboardCardStyles.mainSection}>
+        <Skeleton width={44} height={44} borderRadius={12} />
+        <View style={leaderboardCardStyles.info}>
+          <Skeleton width={130} height={16} borderRadius={4} />
+          <Skeleton width={100} height={13} borderRadius={3} />
         </View>
       </View>
 
-      {/* Footer - stacked avatars + player count + gold accent */}
-      <View style={leaderboardCardStyles.footer}>
+      {/* Recessed footer panel */}
+      <View style={leaderboardCardStyles.footerPanel}>
         <View style={leaderboardCardStyles.footerLeft}>
           <View style={leaderboardCardStyles.stackedAvatars}>
-            <Skeleton width={34} height={34} borderRadius={17} />
-            <Skeleton width={34} height={34} borderRadius={17} style={{ marginLeft: -10 }} />
-            <Skeleton width={34} height={34} borderRadius={17} style={{ marginLeft: -10 }} />
+            <Skeleton width={26} height={26} borderRadius={13} />
+            <Skeleton width={26} height={26} borderRadius={13} style={{ marginLeft: -8 }} />
+            <Skeleton width={26} height={26} borderRadius={13} style={{ marginLeft: -8 }} />
           </View>
-          <Skeleton width={65} height={14} borderRadius={4} />
         </View>
-        <View style={leaderboardCardStyles.footerAccent} />
+        <Skeleton width={55} height={11} borderRadius={3} />
       </View>
     </View>
   );
@@ -613,36 +610,30 @@ const partyStyles = StyleSheet.create({
 
 // Leaderboard card styles - matches leaderboardCard.tsx layout EXACTLY
 const leaderboardCardStyles = StyleSheet.create({
-  container: {
-    marginBottom: 14,
+  card: {
+    backgroundColor: '#1a1a1a',
     borderRadius: 14,
     overflow: 'hidden',
-    backgroundColor: '#141414',
-    borderWidth: 1,
-    borderColor: '#1e1e1e',
+    marginBottom: 10,
   },
-  headerSection: {
+  mainSection: {
     flexDirection: 'row',
     alignItems: 'center',
     padding: 14,
+    paddingBottom: 12,
     gap: 12,
   },
-  headerInfo: {
+  info: {
     flex: 1,
+    gap: 5,
   },
-  metaRow: {
+  footerPanel: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginTop: 5,
-    gap: 6,
-  },
-  footer: {
+    justifyContent: 'space-between',
+    backgroundColor: '#131313',
+    paddingVertical: 10,
     paddingHorizontal: 14,
-    paddingTop: 12,
-    paddingBottom: 14,
-    backgroundColor: '#111111',
-    borderTopWidth: 1,
-    borderTopColor: '#1e1e1e',
   },
   footerLeft: {
     flexDirection: 'row',
@@ -652,12 +643,6 @@ const leaderboardCardStyles = StyleSheet.create({
   stackedAvatars: {
     flexDirection: 'row',
     alignItems: 'center',
-  },
-  footerAccent: {
-    height: 2,
-    backgroundColor: 'rgba(160, 136, 69, 0.3)',
-    borderRadius: 1,
-    marginTop: 12,
   },
 });
 
@@ -807,11 +792,6 @@ export const ProfileAchievementsSkeleton: React.FC = () => (
 // Matches profile.tsx layout: cover photo, username+avatar, followers, socials, bio, tab bar, clips tab content
 export const ProfilePageSkeleton: React.FC = () => (
   <View style={profilePageStyles.container}>
-    {/* Cover Photo */}
-    <View style={profilePageStyles.coverPhotoWrapper}>
-      <Skeleton width={screenWidth} height={180} borderRadius={0} />
-    </View>
-
     {/* Profile Info Section - overlaps cover */}
     <View style={profilePageStyles.profileInfoSection}>
       {/* Avatar + Stats row */}
@@ -873,13 +853,8 @@ const profilePageStyles = StyleSheet.create({
   container: {
     backgroundColor: '#0f0f0f',
   },
-  coverPhotoWrapper: {
-    width: '100%',
-    height: 180,
-    overflow: 'hidden',
-  },
   profileInfoSection: {
-    marginTop: -32,
+    marginTop: -38,
     paddingHorizontal: 20,
     zIndex: 3,
   },

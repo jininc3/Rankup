@@ -918,15 +918,20 @@ export default function DuoFinderScreen() {
                   onPress={() => router.push('/partyPages/liveSearch')}
                   activeOpacity={0.8}
                 >
-                  <View style={styles.liveSearchBannerContent}>
+                  <LinearGradient
+                    colors={['rgba(180, 155, 70, 0.08)', 'rgba(180, 155, 70, 0.02)']}
+                    start={{ x: 0, y: 0 }}
+                    end={{ x: 1, y: 1 }}
+                    style={styles.liveSearchBannerGradient}
+                  >
                     <View style={styles.liveSearchBannerText}>
-                      <ThemedText style={styles.liveSearchBannerTitle}>Live Search</ThemedText>
+                      <ThemedText style={styles.liveSearchBannerTitle}>LIVE SEARCH</ThemedText>
                       <ThemedText style={styles.liveSearchBannerSubtitle}>
                         Find your duo in real-time
                       </ThemedText>
                     </View>
-                    <IconSymbol size={18} name="chevron.right" color="#555" />
-                  </View>
+                    <IconSymbol size={16} name="chevron.right" color="rgba(180, 155, 70, 0.5)" />
+                  </LinearGradient>
                 </TouchableOpacity>
 
                 <View style={styles.sectionHeader}>
@@ -959,12 +964,7 @@ export default function DuoFinderScreen() {
               </View>
             }
             ListEmptyComponent={
-              loadingDuoPosts ? (
-                <View style={styles.cardsList}>
-                  <DuoCardSkeleton />
-                  <DuoCardSkeleton />
-                </View>
-              ) : (
+              !loadingDuoPosts ? (
                 <View style={styles.emptyState}>
                   <ThemedText style={styles.emptyTitle}>No duo posts{'\n'}yet</ThemedText>
                   <ThemedText style={styles.emptySubtitle}>
@@ -982,7 +982,7 @@ export default function DuoFinderScreen() {
                     </TouchableOpacity>
                   )}
                 </View>
-              )
+              ) : null
             }
             renderItem={({ item: post }) => {
               const isOwn = post.userId === user?.id;
@@ -1387,30 +1387,32 @@ const styles = StyleSheet.create({
     paddingTop: 20,
   },
   liveSearchBanner: {
-    backgroundColor: 'rgba(255,255,255,0.04)',
-    borderRadius: 14,
-    borderWidth: 0.5,
-    borderColor: 'rgba(255,255,255,0.1)',
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: 'rgba(180, 155, 70, 0.2)',
+    overflow: 'hidden',
     marginBottom: 20,
   },
-  liveSearchBannerContent: {
+  liveSearchBannerGradient: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingVertical: 18,
-    paddingHorizontal: 18,
+    paddingVertical: 16,
+    paddingHorizontal: 16,
+    gap: 12,
   },
   liveSearchBannerText: {
     flex: 1,
   },
   liveSearchBannerTitle: {
-    fontSize: 17,
+    fontSize: 16,
     fontWeight: '700',
-    color: '#fff',
-    marginBottom: 2,
+    color: '#D4A843',
+    letterSpacing: 1,
   },
   liveSearchBannerSubtitle: {
-    fontSize: 13,
-    color: '#555',
+    fontSize: 12,
+    color: '#888',
+    marginTop: 2,
   },
   feedCardWrapper: {
     marginBottom: 4,

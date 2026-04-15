@@ -32,245 +32,131 @@ export default function LiveSearchIdle({
   onSearch,
   onCreateCard,
 }: LiveSearchIdleProps) {
-  // Ambient pulse for center orb
   const orbPulse = useSharedValue(1);
-  const orbGlow = useSharedValue(0.15);
-  // Stagger fade-in for content
-  const titleOpacity = useSharedValue(0);
-  const titleTranslateY = useSharedValue(12);
-  const subtitleOpacity = useSharedValue(0);
-  const pickerOpacity = useSharedValue(0);
-  const pickerTranslateY = useSharedValue(16);
-  const buttonOpacity = useSharedValue(0);
-  const buttonTranslateY = useSharedValue(20);
-  // Button pulse when ready
-  const btnPulse = useSharedValue(1);
+  const contentOpacity = useSharedValue(0);
+  const contentTranslateY = useSharedValue(16);
 
   useEffect(() => {
-    // Orb gentle pulse
     orbPulse.value = withRepeat(
       withSequence(
-        withTiming(1.06, { duration: 2200, easing: Easing.inOut(Easing.ease) }),
-        withTiming(1, { duration: 2200, easing: Easing.inOut(Easing.ease) }),
-      ),
-      -1,
-      false
-    );
-    orbGlow.value = withRepeat(
-      withSequence(
-        withTiming(0.35, { duration: 2200, easing: Easing.inOut(Easing.ease) }),
-        withTiming(0.15, { duration: 2200, easing: Easing.inOut(Easing.ease) }),
+        withTiming(1.04, { duration: 2400, easing: Easing.inOut(Easing.ease) }),
+        withTiming(1, { duration: 2400, easing: Easing.inOut(Easing.ease) }),
       ),
       -1,
       false
     );
 
-    // Staggered content reveal
-    titleOpacity.value = withDelay(200, withTiming(1, { duration: 600 }));
-    titleTranslateY.value = withDelay(200, withTiming(0, { duration: 600, easing: Easing.out(Easing.ease) }));
-    subtitleOpacity.value = withDelay(400, withTiming(1, { duration: 600 }));
-    pickerOpacity.value = withDelay(550, withTiming(1, { duration: 500 }));
-    pickerTranslateY.value = withDelay(550, withTiming(0, { duration: 500, easing: Easing.out(Easing.ease) }));
-    buttonOpacity.value = withDelay(700, withTiming(1, { duration: 500 }));
-    buttonTranslateY.value = withDelay(700, withTiming(0, { duration: 500, easing: Easing.out(Easing.ease) }));
+    contentOpacity.value = withDelay(200, withTiming(1, { duration: 500 }));
+    contentTranslateY.value = withDelay(200, withTiming(0, { duration: 500, easing: Easing.out(Easing.ease) }));
   }, []);
-
-  // Button pulse when game is picked
-  useEffect(() => {
-    if (searchGamePick) {
-      btnPulse.value = withRepeat(
-        withSequence(
-          withTiming(1.02, { duration: 1200, easing: Easing.inOut(Easing.ease) }),
-          withTiming(1, { duration: 1200, easing: Easing.inOut(Easing.ease) }),
-        ),
-        -1,
-        false
-      );
-    } else {
-      btnPulse.value = withTiming(1, { duration: 300 });
-    }
-  }, [searchGamePick]);
 
   const orbStyle = useAnimatedStyle(() => ({
     transform: [{ scale: orbPulse.value }],
   }));
 
-  const orbGlowStyle = useAnimatedStyle(() => ({
-    opacity: orbGlow.value,
+  const contentStyle = useAnimatedStyle(() => ({
+    opacity: contentOpacity.value,
+    transform: [{ translateY: contentTranslateY.value }],
   }));
-
-  const titleStyle = useAnimatedStyle(() => ({
-    opacity: titleOpacity.value,
-    transform: [{ translateY: titleTranslateY.value }],
-  }));
-
-  const subtitleStyle = useAnimatedStyle(() => ({
-    opacity: subtitleOpacity.value,
-  }));
-
-  const pickerStyle = useAnimatedStyle(() => ({
-    opacity: pickerOpacity.value,
-    transform: [{ translateY: pickerTranslateY.value }],
-  }));
-
-  const buttonStyle = useAnimatedStyle(() => ({
-    opacity: buttonOpacity.value,
-    transform: [{ translateY: buttonTranslateY.value }, { scale: btnPulse.value }],
-  }));
-
-  const accentColor = searchGamePick === 'league' ? '#1a6baa' : '#c42743';
-  const accentColorFaint = searchGamePick === 'league' ? 'rgba(26, 107, 170, 0.12)' : 'rgba(196, 39, 67, 0.12)';
 
   return (
     <View style={styles.container}>
-      {/* Orb Section */}
-      <View style={styles.orbSection}>
-        {/* Glow behind orb */}
-        <Animated.View style={[styles.orbGlow, orbGlowStyle, { backgroundColor: accentColor }]} />
+      {/* Orb */}
+      <Animated.View style={[styles.orb, orbStyle]}>
+        <Image
+          source={searchGamePick === 'league'
+            ? require('@/assets/images/lol-icon.png')
+            : require('@/assets/images/valorant-red.png')}
+          style={styles.centerLogo}
+          resizeMode="contain"
+        />
+      </Animated.View>
 
-        {/* Center orb */}
-        <Animated.View style={[styles.orb, orbStyle]}>
-          <LinearGradient
-            colors={['#1e1e1e', '#141414', '#0a0a0a']}
-            style={styles.orbGradient}
-          >
-            <Image
-              source={searchGamePick === 'league'
-                ? require('@/assets/images/lol-icon.png')
-                : require('@/assets/images/valorant-red.png')}
-              style={styles.centerLogo}
-              resizeMode="contain"
-            />
-          </LinearGradient>
-        </Animated.View>
-      </View>
-
-      {/* Title */}
-      <Animated.View style={[styles.titleContainer, titleStyle]}>
+      <Animated.View style={[styles.content, contentStyle]}>
         <ThemedText style={styles.title}>Ready Up</ThemedText>
-      </Animated.View>
-
-      {/* Subtitle */}
-      <Animated.View style={subtitleStyle}>
         <ThemedText style={styles.subtitle}>
-          Queue up and get matched with a duo{'\n'}searching in your rank range
+          Find a duo in your rank range
         </ThemedText>
-      </Animated.View>
 
-      {/* Game Picker */}
-      {hasCards && (
-        <Animated.View style={[styles.gamePicker, pickerStyle]}>
-          {valorantCard && (
-            <TouchableOpacity
-              style={[
-                styles.gameCard,
-                searchGamePick === 'valorant' && styles.gameCardActiveValorant,
-                !leagueCard && styles.gameCardOnly,
-              ]}
-              onPress={() => onPickGame('valorant')}
-              activeOpacity={0.7}
-            >
-              <LinearGradient
-                colors={searchGamePick === 'valorant'
-                  ? ['rgba(196, 39, 67, 0.15)', 'rgba(196, 39, 67, 0.04)']
-                  : ['rgba(40, 40, 40, 0.6)', 'rgba(26, 26, 26, 0.6)']}
-                style={styles.gameCardGradient}
+        {/* Game Picker */}
+        {hasCards && (
+          <View style={styles.gamePicker}>
+            {valorantCard && (
+              <TouchableOpacity
+                style={[
+                  styles.gameCard,
+                  searchGamePick === 'valorant' && styles.gameCardActive,
+                  !leagueCard && styles.gameCardOnly,
+                ]}
+                onPress={() => onPickGame('valorant')}
+                activeOpacity={0.7}
               >
                 <Image
                   source={require('@/assets/images/valorant-red.png')}
-                  style={[
-                    styles.gameCardIcon,
-                    searchGamePick !== 'valorant' && { opacity: 0.4 },
-                  ]}
+                  style={[styles.gameCardIcon, searchGamePick !== 'valorant' && { opacity: 0.35 }]}
                   resizeMode="contain"
                 />
                 <ThemedText style={[
                   styles.gameCardText,
                   searchGamePick === 'valorant' && styles.gameCardTextActive,
                 ]}>VALORANT</ThemedText>
-                {searchGamePick === 'valorant' && (
-                  <View style={styles.gameCardIndicatorWrap}>
-                    <View style={[styles.gameCardIndicator, { backgroundColor: '#c42743' }]} />
-                  </View>
-                )}
-              </LinearGradient>
-            </TouchableOpacity>
-          )}
-          {leagueCard && (
-            <TouchableOpacity
-              style={[
-                styles.gameCard,
-                searchGamePick === 'league' && styles.gameCardActiveLeague,
-                !valorantCard && styles.gameCardOnly,
-              ]}
-              onPress={() => onPickGame('league')}
-              activeOpacity={0.7}
-            >
-              <LinearGradient
-                colors={searchGamePick === 'league'
-                  ? ['rgba(26, 107, 170, 0.15)', 'rgba(26, 107, 170, 0.04)']
-                  : ['rgba(40, 40, 40, 0.6)', 'rgba(26, 26, 26, 0.6)']}
-                style={styles.gameCardGradient}
+              </TouchableOpacity>
+            )}
+            {leagueCard && (
+              <TouchableOpacity
+                style={[
+                  styles.gameCard,
+                  searchGamePick === 'league' && styles.gameCardActive,
+                  !valorantCard && styles.gameCardOnly,
+                ]}
+                onPress={() => onPickGame('league')}
+                activeOpacity={0.7}
               >
                 <Image
                   source={require('@/assets/images/lol-icon.png')}
-                  style={[
-                    styles.gameCardIcon,
-                    searchGamePick !== 'league' && { opacity: 0.4 },
-                  ]}
+                  style={[styles.gameCardIcon, searchGamePick !== 'league' && { opacity: 0.35 }]}
                   resizeMode="contain"
                 />
                 <ThemedText style={[
                   styles.gameCardText,
                   searchGamePick === 'league' && styles.gameCardTextActive,
                 ]}>LEAGUE</ThemedText>
-                {searchGamePick === 'league' && (
-                  <View style={styles.gameCardIndicatorWrap}>
-                    <View style={[styles.gameCardIndicator, { backgroundColor: '#1a6baa' }]} />
-                  </View>
-                )}
-              </LinearGradient>
-            </TouchableOpacity>
-          )}
-        </Animated.View>
-      )}
+              </TouchableOpacity>
+            )}
+          </View>
+        )}
 
-      {/* Search Button */}
-      <Animated.View style={[styles.searchBtnWrapper, buttonStyle]}>
+        {/* Search Button */}
         <TouchableOpacity
-          style={[
-            styles.searchBtn,
-            searchGamePick && {
-              borderColor: searchGamePick === 'league'
-                ? 'rgba(26, 107, 170, 0.5)'
-                : 'rgba(196, 39, 67, 0.5)',
-              shadowColor: accentColor,
-            },
-          ]}
+          style={styles.searchBtn}
           onPress={onSearch}
           activeOpacity={0.85}
           disabled={!searchGamePick}
         >
-          <ThemedText style={[
-            styles.searchBtnText,
-            searchGamePick && { color: accentColor },
-          ]}>
-            Search For Players
-          </ThemedText>
+          {searchGamePick ? (
+            <LinearGradient
+              colors={['#D4A843', '#c49a30']}
+              start={{ x: 0, y: 0 }}
+              end={{ x: 1, y: 1 }}
+              style={styles.searchBtnGradient}
+            >
+              <ThemedText style={styles.searchBtnTextActive}>Search</ThemedText>
+            </LinearGradient>
+          ) : (
+            <View style={styles.searchBtnDisabled}>
+              <ThemedText style={styles.searchBtnText}>Search</ThemedText>
+            </View>
+          )}
         </TouchableOpacity>
-      </Animated.View>
 
-      {/* No cards hint */}
-      {!hasCards && (
-        <TouchableOpacity
-          style={[styles.createCardBtn, { borderColor: accentColorFaint, backgroundColor: accentColorFaint }]}
-          onPress={onCreateCard}
-          activeOpacity={0.7}
-        >
-          <IconSymbol size={14} name="plus" color={accentColor} />
-          <ThemedText style={[styles.createCardText, { color: accentColor }]}>Create a duo card to start</ThemedText>
-        </TouchableOpacity>
-      )}
+        {/* No cards hint */}
+        {!hasCards && (
+          <TouchableOpacity style={styles.createCardBtn} onPress={onCreateCard} activeOpacity={0.7}>
+            <IconSymbol size={14} name="plus" color="#999" />
+            <ThemedText style={styles.createCardText}>Create a duo card to start</ThemedText>
+          </TouchableOpacity>
+        )}
+      </Animated.View>
     </View>
   );
 }
@@ -283,155 +169,116 @@ const styles = StyleSheet.create({
     paddingHorizontal: 24,
     paddingVertical: 32,
   },
-
-  // Orb
-  orbSection: {
-    width: 180,
-    height: 180,
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginBottom: 20,
-  },
-  orbGlow: {
-    position: 'absolute',
-    width: 100,
-    height: 100,
-    borderRadius: 50,
-  },
   orb: {
-    width: 88,
-    height: 88,
-    borderRadius: 44,
-    overflow: 'hidden',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 8 },
-    shadowOpacity: 0.5,
-    shadowRadius: 16,
-    elevation: 12,
-  },
-  orbGradient: {
-    flex: 1,
+    width: 80,
+    height: 80,
+    borderRadius: 40,
+    backgroundColor: '#1a1a1a',
     alignItems: 'center',
     justifyContent: 'center',
-    borderRadius: 44,
+    marginBottom: 28,
   },
   centerLogo: {
-    width: 44,
-    height: 44,
+    width: 40,
+    height: 40,
   },
-
-  // Title
-  titleContainer: {
-    marginBottom: 8,
+  content: {
+    alignItems: 'center',
+    width: '100%',
   },
   title: {
-    fontSize: 26,
-    fontWeight: '800',
+    fontSize: 24,
+    fontWeight: '700',
     color: '#fff',
-    letterSpacing: -0.5,
+    marginBottom: 6,
   },
   subtitle: {
     fontSize: 14,
-    color: '#777',
+    color: '#666',
     textAlign: 'center',
-    lineHeight: 21,
-    maxWidth: 280,
     marginBottom: 28,
   },
-
-  // Game Picker
   gamePicker: {
     flexDirection: 'row',
     gap: 12,
-    marginBottom: 24,
+    marginBottom: 20,
     width: '100%',
-    maxWidth: 300,
+    maxWidth: 280,
   },
   gameCard: {
     flex: 1,
     borderRadius: 14,
-    borderWidth: 1.5,
-    borderColor: 'rgba(60, 60, 60, 0.5)',
-    overflow: 'hidden',
+    backgroundColor: '#1a1a1a',
+    alignItems: 'center',
+    paddingVertical: 14,
+    gap: 6,
   },
-  gameCardActiveValorant: {
-    borderColor: 'rgba(196, 39, 67, 0.5)',
-  },
-  gameCardActiveLeague: {
-    borderColor: 'rgba(26, 107, 170, 0.5)',
+  gameCardActive: {
+    backgroundColor: '#222',
   },
   gameCardOnly: {
-    maxWidth: 170,
-  },
-  gameCardGradient: {
-    alignItems: 'center',
-    paddingVertical: 16,
-    gap: 8,
+    maxWidth: 160,
   },
   gameCardIcon: {
-    width: 28,
-    height: 28,
+    width: 26,
+    height: 26,
   },
   gameCardText: {
     fontSize: 11,
-    fontWeight: '700',
+    fontWeight: '600',
     color: '#555',
-    letterSpacing: 1.5,
+    letterSpacing: 1,
   },
   gameCardTextActive: {
-    color: '#ddd',
-  },
-  gameCardIndicatorWrap: {
-    position: 'absolute',
-    bottom: 0,
-    left: 0,
-    right: 0,
-    alignItems: 'center',
-  },
-  gameCardIndicator: {
-    width: 40,
-    height: 2,
-    borderRadius: 1,
-  },
-
-  // Search Button
-  searchBtnWrapper: {
-    width: '100%',
-    maxWidth: 300,
+    color: '#ccc',
   },
   searchBtn: {
-    borderRadius: 14,
-    borderWidth: 1.5,
-    borderColor: 'rgba(60, 60, 60, 0.4)',
-    backgroundColor: 'rgba(20, 20, 20, 0.6)',
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingVertical: 16,
-    paddingHorizontal: 22,
+    width: '100%',
+    maxWidth: 280,
+    borderRadius: 24,
+    overflow: 'hidden',
+    shadowColor: '#D4A843',
     shadowOffset: { width: 0, height: 0 },
-    shadowOpacity: 0.4,
-    shadowRadius: 16,
+    shadowOpacity: 0,
+    shadowRadius: 0,
+    elevation: 0,
+  },
+  searchBtnGradient: {
+    alignItems: 'center',
+    paddingVertical: 16,
+    shadowColor: '#D4A843',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 12,
     elevation: 8,
   },
-  searchBtnText: {
-    fontSize: 16,
-    fontWeight: '700',
-    color: '#555',
+  searchBtnDisabled: {
+    alignItems: 'center',
+    paddingVertical: 16,
+    backgroundColor: '#1a1a1a',
   },
-
-  // Create card hint
+  searchBtnText: {
+    fontSize: 15,
+    fontWeight: '600',
+    color: '#444',
+  },
+  searchBtnTextActive: {
+    fontSize: 15,
+    fontWeight: '700',
+    color: '#fff',
+    letterSpacing: 0.3,
+  },
   createCardBtn: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 6,
     marginTop: 16,
     paddingVertical: 10,
-    paddingHorizontal: 18,
-    borderRadius: 10,
-    borderWidth: 1,
+    paddingHorizontal: 16,
   },
   createCardText: {
     fontSize: 13,
-    fontWeight: '600',
+    fontWeight: '500',
+    color: '#999',
   },
 });

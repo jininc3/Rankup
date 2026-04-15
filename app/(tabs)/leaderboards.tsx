@@ -7,7 +7,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { useRouter } from 'expo-router';
 import { collection, doc, getDoc, getDocs, query } from 'firebase/firestore';
 import { useEffect, useState } from 'react';
-import { Image, Modal, ScrollView, StyleSheet, TouchableOpacity, View } from 'react-native';
+import { ActivityIndicator, Image, Modal, ScrollView, StyleSheet, TouchableOpacity, View } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 
 // League of Legends rank icon mapping
@@ -137,115 +137,118 @@ export default function LeaderboardScreen() {
   const [mutualLoading, setMutualLoading] = useState(true);
   const [selectedMutualGame, setSelectedMutualGame] = useState<'league' | 'valorant'>('league');
   const [showGameDropdown, setShowGameDropdown] = useState(false);
+  const [updatingStats, setUpdatingStats] = useState(false);
 
-
-  // Fetch mutual follower IDs and their game stats
-  useEffect(() => {
+  const fetchMutualsAndStats = async (showLoading: boolean = true) => {
     if (!user?.id) return;
-
-    // New user with no followers/following — skip fetch, show empty state immediately
     if ((user.followersCount || 0) === 0 && (user.followingCount || 0) === 0) {
       setMutualLoading(false);
       return;
     }
 
-    const fetchMutualsAndStats = async () => {
-      try {
-        setMutualLoading(true);
-        const followersRef = collection(db, 'users', user.id, 'followers');
-        const followingRef = collection(db, 'users', user.id, 'following');
+    try {
+      if (showLoading) setMutualLoading(true);
+      const followersRef = collection(db, 'users', user.id, 'followers');
+      const followingRef = collection(db, 'users', user.id, 'following');
 
-        const [followersSnapshot, followingSnapshot] = await Promise.all([
-          getDocs(followersRef),
-          getDocs(followingRef),
-        ]);
+      const [followersSnapshot, followingSnapshot] = await Promise.all([
+        getDocs(followersRef),
+        getDocs(followingRef),
+      ]);
 
-        const followerIds = new Set(followersSnapshot.docs.map(d => d.data().followerId));
-        const followingIds = new Set(followingSnapshot.docs.map(d => d.data().followingId));
+      const followerIds = new Set(followersSnapshot.docs.map(d => d.data().followerId));
+      const followingIds = new Set(followingSnapshot.docs.map(d => d.data().followingId));
 
-        const mutuals = new Set([...followerIds].filter(id => followingIds.has(id)));
-        setMutualIds(mutuals);
+      const mutuals = new Set([...followerIds].filter(id => followingIds.has(id)));
+      setMutualIds(mutuals);
 
-        // Fetch game stats for all mutuals + current user
-        const allUserIds = [...mutuals, user.id];
+      const allUserIds = [...mutuals, user.id];
 
-        const leagueResults: MutualPlayer[] = [];
-        const valorantResults: MutualPlayer[] = [];
+      const leagueResults: MutualPlayer[] = [];
+      const valorantResults: MutualPlayer[] = [];
 
-        await Promise.all(
-          allUserIds.map(async (userId) => {
-            try {
-              const userDoc = await getDoc(doc(db, 'users', userId));
-              const userData = userDoc.data();
-              const username = userData?.username || 'User';
-              const avatar = userData?.avatar || null;
+      await Promise.all(
+        allUserIds.map(async (userId) => {
+          try {
+            const userDoc = await getDoc(doc(db, 'users', userId));
+            const userData = userDoc.data();
+            const username = userData?.username || 'User';
+            const avatar = userData?.avatar || null;
 
-              // League stats
-              const leagueStatsDoc = await getDoc(doc(db, 'users', userId, 'gameStats', 'league'));
-              let leagueStats = leagueStatsDoc.data();
+            const leagueStatsDoc = await getDoc(doc(db, 'users', userId, 'gameStats', 'league'));
+            let leagueStats = leagueStatsDoc.data();
 
-              if (!leagueStats?.currentRank && userData?.riotStats?.rankedSolo) {
-                leagueStats = {
-                  currentRank: `${userData.riotStats.rankedSolo.tier} ${userData.riotStats.rankedSolo.rank}`,
-                  lp: userData.riotStats.rankedSolo.leaguePoints || 0,
-                };
-              }
-
-              if (leagueStats?.currentRank && leagueStats.currentRank !== 'Unranked') {
-                leagueResults.push({
-                  userId,
-                  username,
-                  avatar,
-                  currentRank: leagueStats.currentRank,
-                  lp: leagueStats.lp || 0,
-                  rr: 0,
-                  isCurrentUser: userId === user.id,
-                });
-              }
-
-              // Valorant stats
-              const valStatsDoc = await getDoc(doc(db, 'users', userId, 'gameStats', 'valorant'));
-              let valStats = valStatsDoc.data();
-
-              if (!valStats?.currentRank && userData?.valorantStats) {
-                valStats = {
-                  currentRank: userData.valorantStats.currentRank || 'Unranked',
-                  rr: userData.valorantStats.rankRating || 0,
-                };
-              }
-
-              if (valStats?.currentRank && valStats.currentRank !== 'Unranked') {
-                valorantResults.push({
-                  userId,
-                  username,
-                  avatar,
-                  currentRank: valStats.currentRank,
-                  lp: 0,
-                  rr: valStats.rr || 0,
-                  isCurrentUser: userId === user.id,
-                });
-              }
-            } catch (error) {
-              console.error(`Error fetching stats for user ${userId}:`, error);
+            if (!leagueStats?.currentRank && userData?.riotStats?.rankedSolo) {
+              leagueStats = {
+                currentRank: `${userData.riotStats.rankedSolo.tier} ${userData.riotStats.rankedSolo.rank}`,
+                lp: userData.riotStats.rankedSolo.leaguePoints || 0,
+              };
             }
-          })
-        );
 
-        // Sort by rank
-        leagueResults.sort((a, b) => getLeagueRankValue(b.currentRank, b.lp) - getLeagueRankValue(a.currentRank, a.lp));
-        valorantResults.sort((a, b) => getValorantRankValue(b.currentRank, b.rr) - getValorantRankValue(a.currentRank, a.rr));
+            if (leagueStats?.currentRank && leagueStats.currentRank !== 'Unranked') {
+              leagueResults.push({
+                userId,
+                username,
+                avatar,
+                currentRank: leagueStats.currentRank,
+                lp: leagueStats.lp || 0,
+                rr: 0,
+                isCurrentUser: userId === user.id,
+              });
+            }
 
-        setLeaguePlayers(leagueResults);
-        setValorantPlayers(valorantResults);
-        // Default to whichever game has more players
-        setSelectedMutualGame(valorantResults.length > leagueResults.length ? 'valorant' : 'league');
-        setMutualLoading(false);
-      } catch (error) {
-        console.error('Error fetching mutual stats:', error);
-        setMutualLoading(false);
-      }
-    };
+            const valStatsDoc = await getDoc(doc(db, 'users', userId, 'gameStats', 'valorant'));
+            let valStats = valStatsDoc.data();
 
+            if (!valStats?.currentRank && userData?.valorantStats) {
+              valStats = {
+                currentRank: userData.valorantStats.currentRank || 'Unranked',
+                rr: userData.valorantStats.rankRating || 0,
+              };
+            }
+
+            if (valStats?.currentRank && valStats.currentRank !== 'Unranked') {
+              valorantResults.push({
+                userId,
+                username,
+                avatar,
+                currentRank: valStats.currentRank,
+                lp: 0,
+                rr: valStats.rr || 0,
+                isCurrentUser: userId === user.id,
+              });
+            }
+          } catch (error) {
+            console.error(`Error fetching stats for user ${userId}:`, error);
+          }
+        })
+      );
+
+      leagueResults.sort((a, b) => getLeagueRankValue(b.currentRank, b.lp) - getLeagueRankValue(a.currentRank, a.lp));
+      valorantResults.sort((a, b) => getValorantRankValue(b.currentRank, b.rr) - getValorantRankValue(a.currentRank, a.rr));
+
+      setLeaguePlayers(leagueResults);
+      setValorantPlayers(valorantResults);
+      setSelectedMutualGame(valorantResults.length > leagueResults.length ? 'valorant' : 'league');
+      setMutualLoading(false);
+    } catch (error) {
+      console.error('Error fetching mutual stats:', error);
+      setMutualLoading(false);
+    }
+  };
+
+  const handleUpdateStats = async () => {
+    if (updatingStats) return;
+    setUpdatingStats(true);
+    try {
+      await fetchMutualsAndStats(false);
+    } finally {
+      setUpdatingStats(false);
+    }
+  };
+
+  // Fetch mutual follower IDs and their game stats
+  useEffect(() => {
     fetchMutualsAndStats();
   }, [user?.id]);
 
@@ -277,8 +280,24 @@ export default function LeaderboardScreen() {
           <Image source={gameLogo} style={styles.gameLogoSmall} resizeMode="contain" />
           <ThemedText style={styles.mutualSectionTitle}>{title}</ThemedText>
           {otherPlayers.length > 0 && (
-            <IconSymbol size={18} name="chevron.down" color="#888" style={{ marginRight: 10 }} />
+            <IconSymbol size={18} name="chevron.down" color="#888" />
           )}
+          <View style={{ flex: 1 }} />
+          <TouchableOpacity
+            style={[styles.updateButton, updatingStats && { opacity: 0.5 }]}
+            onPress={handleUpdateStats}
+            disabled={updatingStats}
+            activeOpacity={0.7}
+          >
+            {updatingStats ? (
+              <ActivityIndicator size={12} color="#4da6ff" />
+            ) : (
+              <IconSymbol size={14} name="arrow.clockwise" color="#4da6ff" />
+            )}
+            <ThemedText style={styles.updateButtonText}>
+              {updatingStats ? 'Updating...' : 'Update'}
+            </ThemedText>
+          </TouchableOpacity>
         </TouchableOpacity>
 
         {/* Column Headers */}
@@ -399,13 +418,18 @@ export default function LeaderboardScreen() {
           onPress={() => router.push('/partyPages/lobbies')}
           activeOpacity={0.8}
         >
-          <View style={styles.lobbiesBannerContent}>
+          <LinearGradient
+            colors={['rgba(180, 155, 70, 0.08)', 'rgba(180, 155, 70, 0.02)']}
+            start={{ x: 0, y: 0 }}
+            end={{ x: 1, y: 1 }}
+            style={styles.lobbiesBannerGradient}
+          >
             <View style={styles.lobbiesBannerText}>
               <ThemedText style={styles.lobbiesBannerTitle}>LOBBIES</ThemedText>
               <ThemedText style={styles.lobbiesBannerSubtitle}>Compete with friends in leaderboards</ThemedText>
             </View>
-            <IconSymbol size={18} name="chevron.right" color="#555" />
-          </View>
+            <IconSymbol size={16} name="chevron.right" color="rgba(180, 155, 70, 0.5)" />
+          </LinearGradient>
         </TouchableOpacity>
 
         {mutualLoading ? (
@@ -536,11 +560,13 @@ const styles = StyleSheet.create({
     paddingTop: 20,
   },
   lobbiesBanner: {
-    backgroundColor: 'rgba(255, 255, 255, 0.04)',
-    borderRadius: 10,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: 'rgba(180, 155, 70, 0.2)',
+    overflow: 'hidden',
     marginBottom: 16,
   },
-  lobbiesBannerContent: {
+  lobbiesBannerGradient: {
     flexDirection: 'row',
     alignItems: 'center',
     paddingVertical: 16,
@@ -551,14 +577,14 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   lobbiesBannerTitle: {
-    fontSize: 18,
+    fontSize: 16,
     fontWeight: '700',
-    color: '#fff',
+    color: '#D4A843',
     letterSpacing: 1,
   },
   lobbiesBannerSubtitle: {
     fontSize: 12,
-    color: '#555',
+    color: '#888',
     marginTop: 2,
   },
   cardsContainer: {
@@ -623,6 +649,20 @@ const styles = StyleSheet.create({
   bottomSpacer: {
     height: 40,
   },
+  updateButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    backgroundColor: '#1a1a1a',
+    paddingVertical: 8,
+    paddingHorizontal: 12,
+    borderRadius: 10,
+  },
+  updateButtonText: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: '#4da6ff',
+  },
   // Mutual leaderboard styles
   mutualSection: {
     marginBottom: 20,
@@ -642,7 +682,6 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     color: '#fff',
     letterSpacing: 0.3,
-    flex: 1,
   },
   gameSwitchOption: {
     flexDirection: 'row',

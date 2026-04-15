@@ -1,7 +1,8 @@
 import React from 'react';
 import { ThemedText } from '@/components/themed-text';
 import { IconSymbol } from '@/components/ui/icon-symbol';
-import { Image, StyleSheet, TouchableOpacity, View } from 'react-native';
+import { Animated, Image, Pressable, StyleSheet, View } from 'react-native';
+import { LinearGradient } from 'expo-linear-gradient';
 
 const GAME_LOGOS: { [key: string]: any } = {
   'Valorant': require('@/assets/images/valorant-red.png'),
@@ -70,185 +71,183 @@ const calculateDaysInfo = (startDate: any, endDate: any): { currentDay: number; 
 };
 
 function LeaderboardCard({ leaderboard, onPress }: LeaderboardCardProps) {
+  const scaleAnim = React.useRef(new Animated.Value(1)).current;
   const daysInfo = calculateDaysInfo(leaderboard.startDate, leaderboard.endDate);
   const gameLogo = GAME_LOGOS[leaderboard.game];
   const isActive = leaderboard.challengeStatus === 'active';
 
-  const topPlayers = (leaderboard.players || []).filter(
-    (player: any) => player && (player.photoUrl || player.displayName || player.username)
+  // Use memberDetails (has avatar/username) with fallback to players (has photoUrl/displayName)
+  const members = leaderboard.memberDetails?.length ? leaderboard.memberDetails : leaderboard.players || [];
+  const topPlayers = members.filter(
+    (m: any) => m && (m.avatar || m.photoUrl || m.username || m.displayName)
   ).slice(0, 3);
 
+  const onPressIn = () => {
+    Animated.spring(scaleAnim, {
+      toValue: 0.97,
+      useNativeDriver: true,
+      friction: 8,
+    }).start();
+  };
+
+  const onPressOut = () => {
+    Animated.spring(scaleAnim, {
+      toValue: 1,
+      useNativeDriver: true,
+      friction: 8,
+    }).start();
+  };
+
   return (
-    <TouchableOpacity
-      activeOpacity={0.7}
-      onPress={() => onPress(leaderboard)}
-      style={styles.container}
-    >
-      {/* Header */}
-      <View style={styles.headerSection}>
-        {leaderboard.partyIcon ? (
-          <Image source={{ uri: leaderboard.partyIcon }} style={styles.leaderboardIcon} resizeMode="cover" />
-        ) : gameLogo ? (
-          <Image source={gameLogo} style={styles.leaderboardIcon} resizeMode="contain" />
-        ) : (
-          <View style={styles.iconPlaceholder}>
-            <ThemedText style={styles.iconPlaceholderText}>
-              {leaderboard.name.charAt(0).toUpperCase()}
-            </ThemedText>
-          </View>
-        )}
+    <Animated.View style={[styles.card, { transform: [{ scale: scaleAnim }] }]}>
+      <Pressable
+        onPress={() => onPress(leaderboard)}
+        onPressIn={onPressIn}
+        onPressOut={onPressOut}
+      >
+        {/* Accent line at top */}
+        <LinearGradient
+          colors={['rgba(255,255,255,0.06)', 'transparent']}
+          start={{ x: 0, y: 0 }}
+          end={{ x: 1, y: 0 }}
+          style={styles.accentLine}
+        />
 
-        <View style={styles.headerInfo}>
-          <ThemedText style={styles.name} numberOfLines={1}>
-            {leaderboard.name.toUpperCase()}
-          </ThemedText>
-          <View style={styles.metaRow}>
-            <ThemedText style={styles.gameText}>{leaderboard.game}</ThemedText>
-            {isActive && (
-              <>
-                <View style={styles.metaDot} />
-                <View style={styles.challengeBadge}>
-                  <View style={styles.challengeDot} />
-                  <ThemedText style={styles.challengeText}>CHALLENGE</ThemedText>
-                </View>
-              </>
-            )}
-            {daysInfo && isActive && (
-              <>
-                <View style={styles.metaDot} />
-                <ThemedText style={styles.daysText}>{daysInfo.daysLeft}d left</ThemedText>
-              </>
-            )}
-          </View>
-        </View>
-
-        <IconSymbol size={16} name="chevron.right" color="#555" />
-      </View>
-
-      {/* Footer */}
-      <View style={styles.footer}>
-        <View style={styles.footerLeft}>
-          {topPlayers.length > 0 && (
-            <View style={styles.stackedAvatars}>
-              {topPlayers.map((player: any, index: number) => (
-                <View
-                  key={player.odId || index}
-                  style={[styles.miniAvatarWrapper, { marginLeft: index === 0 ? 0 : -10, zIndex: 5 - index }]}
-                >
-                  <View style={styles.miniAvatar}>
-                    {player.photoUrl ? (
-                      <Image source={{ uri: player.photoUrl }} style={styles.miniAvatarImage} />
-                    ) : (
-                      <View style={styles.miniAvatarPlaceholder}>
-                        <ThemedText style={styles.miniAvatarText}>
-                          {(player.displayName || '?').charAt(0)}
-                        </ThemedText>
-                      </View>
-                    )}
-                  </View>
-                </View>
-              ))}
+        {/* Main content */}
+        <View style={styles.mainSection}>
+          {leaderboard.partyIcon ? (
+            <Image source={{ uri: leaderboard.partyIcon }} style={styles.icon} resizeMode="cover" />
+          ) : gameLogo ? (
+            <Image source={gameLogo} style={styles.icon} resizeMode="contain" />
+          ) : (
+            <View style={styles.iconPlaceholder}>
+              <ThemedText style={styles.iconPlaceholderText}>
+                {leaderboard.name.charAt(0).toUpperCase()}
+              </ThemedText>
             </View>
           )}
-          <ThemedText style={styles.playersText}>
-            {leaderboard.members} player{leaderboard.members !== 1 ? 's' : ''}
-          </ThemedText>
+
+          <View style={styles.info}>
+            <ThemedText style={styles.name} numberOfLines={1}>{leaderboard.name}</ThemedText>
+            <ThemedText style={styles.meta} numberOfLines={1}>
+              {leaderboard.game}
+              <ThemedText style={styles.metaSep}> · </ThemedText>
+              {leaderboard.members} player{leaderboard.members !== 1 ? 's' : ''}
+            </ThemedText>
+          </View>
+
+          <IconSymbol size={14} name="chevron.right" color="#333" />
         </View>
-      </View>
-    </TouchableOpacity>
+
+        {/* Recessed footer panel — always shown for consistent card size */}
+        <View style={styles.footerPanel}>
+          <View style={styles.footerLeft}>
+            {topPlayers.length > 0 && (
+              <View style={styles.stackedAvatars}>
+                {topPlayers.map((player: any, index: number) => {
+                  const photo = player.avatar || player.photoUrl;
+                  const name = player.username || player.displayName || '?';
+                  return (
+                    <View
+                      key={player.userId || player.odId || index}
+                      style={[styles.avatarWrap, { marginLeft: index === 0 ? 0 : -8, zIndex: 5 - index }]}
+                    >
+                      {photo ? (
+                        <Image source={{ uri: photo }} style={styles.avatarImg} />
+                      ) : (
+                        <View style={styles.avatarFallback}>
+                          <ThemedText style={styles.avatarFallbackText}>
+                            {name.charAt(0)}
+                          </ThemedText>
+                        </View>
+                      )}
+                    </View>
+                  );
+                })}
+              </View>
+            )}
+            {isActive && (
+              <View style={styles.activeTag}>
+                <View style={styles.challengeDot} />
+                <ThemedText style={styles.challengeText}>Challenge</ThemedText>
+              </View>
+            )}
+          </View>
+
+          {daysInfo && isActive ? (
+            <ThemedText style={[styles.daysLeft, daysInfo.daysLeft < 7 && styles.daysLeftUrgent]}>{daysInfo.daysLeft} days left</ThemedText>
+          ) : (
+            <ThemedText style={styles.memberCount}>
+              {leaderboard.members}/{leaderboard.maxMembers || 10}
+            </ThemedText>
+          )}
+        </View>
+      </Pressable>
+    </Animated.View>
   );
 }
 
 export default React.memo(LeaderboardCard);
 
 const styles = StyleSheet.create({
-  container: {
-    marginBottom: 12,
+  card: {
+    backgroundColor: '#1a1a1a',
     borderRadius: 14,
     overflow: 'hidden',
-    backgroundColor: 'rgba(255,255,255,0.04)',
-    borderWidth: 0.5,
-    borderColor: 'rgba(255,255,255,0.06)',
+    marginBottom: 10,
   },
-  headerSection: {
+  accentLine: {
+    height: 1,
+  },
+  mainSection: {
     flexDirection: 'row',
     alignItems: 'center',
     padding: 14,
+    paddingBottom: 12,
     gap: 12,
   },
-  leaderboardIcon: {
-    width: 46,
-    height: 46,
+  icon: {
+    width: 44,
+    height: 44,
     borderRadius: 12,
-    backgroundColor: 'rgba(255,255,255,0.06)',
+    backgroundColor: '#1a1a1a',
   },
   iconPlaceholder: {
-    width: 46,
-    height: 46,
+    width: 44,
+    height: 44,
     borderRadius: 12,
-    backgroundColor: 'rgba(255,255,255,0.06)',
+    backgroundColor: '#1a1a1a',
     alignItems: 'center',
     justifyContent: 'center',
   },
   iconPlaceholderText: {
-    fontSize: 18,
-    fontWeight: '800',
-    color: '#555',
+    fontSize: 17,
+    fontWeight: '700',
+    color: '#444',
   },
-  headerInfo: {
+  info: {
     flex: 1,
+    gap: 3,
   },
   name: {
     fontSize: 16,
-    fontWeight: '700',
+    fontWeight: '600',
     color: '#fff',
-    letterSpacing: 0.4,
-    marginBottom: 5,
   },
-  metaRow: {
+  meta: {
+    fontSize: 13,
+    color: '#666',
+  },
+  metaSep: {
+    color: '#333',
+  },
+  footerPanel: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 6,
-  },
-  gameText: {
-    fontSize: 12,
-    color: '#555',
-    fontWeight: '500',
-  },
-  metaDot: {
-    width: 3,
-    height: 3,
-    borderRadius: 1.5,
-    backgroundColor: 'rgba(255,255,255,0.1)',
-  },
-  challengeBadge: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 4,
-  },
-  challengeDot: {
-    width: 5,
-    height: 5,
-    borderRadius: 2.5,
-    backgroundColor: '#22C55E',
-  },
-  challengeText: {
-    fontSize: 10,
-    fontWeight: '700',
-    color: '#22C55E',
-    letterSpacing: 0.5,
-  },
-  daysText: {
-    fontSize: 12,
-    fontWeight: '500',
-    color: '#555',
-  },
-  footer: {
+    justifyContent: 'space-between',
+    backgroundColor: '#131313',
+    paddingVertical: 10,
     paddingHorizontal: 14,
-    paddingTop: 10,
-    paddingBottom: 14,
-    borderTopWidth: 0.5,
-    borderTopColor: 'rgba(255,255,255,0.06)',
   },
   footerLeft: {
     flexDirection: 'row',
@@ -259,36 +258,62 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
   },
-  miniAvatarWrapper: {
-    alignItems: 'center',
-  },
-  miniAvatar: {
-    width: 30,
-    height: 30,
-    borderRadius: 15,
+  avatarWrap: {
+    width: 26,
+    height: 26,
+    borderRadius: 13,
     borderWidth: 2,
-    borderColor: '#0f0f0f',
+    borderColor: '#131313',
     overflow: 'hidden',
   },
-  miniAvatarImage: {
+  avatarImg: {
     width: '100%',
     height: '100%',
   },
-  miniAvatarPlaceholder: {
+  avatarFallback: {
     width: '100%',
     height: '100%',
-    backgroundColor: 'rgba(255,255,255,0.06)',
+    backgroundColor: '#1a1a1a',
     alignItems: 'center',
     justifyContent: 'center',
   },
-  miniAvatarText: {
-    fontSize: 11,
+  avatarFallbackText: {
+    fontSize: 9,
     fontWeight: '600',
     color: '#555',
   },
-  playersText: {
-    fontSize: 13,
+  activeTag: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 5,
+  },
+  challengeDot: {
+    width: 5,
+    height: 5,
+    borderRadius: 2.5,
+    backgroundColor: '#D4A843',
+  },
+  challengeText: {
+    fontSize: 11,
     fontWeight: '500',
-    color: '#555',
+    color: '#fff',
+  },
+  daysLeft: {
+    fontSize: 11,
+    fontWeight: '500',
+    color: '#fff',
+  },
+  daysLeftUrgent: {
+    color: '#ef4444',
+  },
+  noMembersText: {
+    fontSize: 11,
+    fontWeight: '500',
+    color: '#444',
+  },
+  memberCount: {
+    fontSize: 11,
+    fontWeight: '500',
+    color: '#fff',
   },
 });

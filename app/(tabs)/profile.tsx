@@ -1670,15 +1670,14 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
-  // Cover photo card container - flush top and right, gap on left
+  // Cover photo card container - full width
   coverPhotoCardContainer: {
-    marginLeft: 16,
+    marginLeft: 0,
     marginRight: 0,
     marginTop: 0,
   },
   coverPhotoInner: {
     height: 220,
-    borderBottomLeftRadius: 20,
     backgroundColor: 'rgba(255,255,255,0.04)',
     overflow: 'hidden',
   },

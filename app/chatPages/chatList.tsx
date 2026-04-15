@@ -1,6 +1,7 @@
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { IconSymbol } from '@/components/ui/icon-symbol';
+import { Skeleton } from '@/components/ui/Skeleton';
 import { useState, useEffect } from 'react';
 import {
   View,
@@ -310,8 +311,18 @@ export default function ChatListScreen() {
 
       {/* Chat List */}
       {loading ? (
-        <View style={styles.loadingContainer}>
-          <ActivityIndicator size="large" color="#fff" />
+        <View style={styles.chatList}>
+          {[0, 1, 2, 3, 4, 5].map((i) => (
+            <View key={i} style={styles.chatItem}>
+              <View style={styles.avatarContainer}>
+                <Skeleton width={50} height={50} borderRadius={25} />
+              </View>
+              <View style={styles.chatContent}>
+                <Skeleton width={100} height={14} borderRadius={4} />
+                <Skeleton width={180} height={12} borderRadius={4} style={{ marginTop: 6 }} />
+              </View>
+            </View>
+          ))}
         </View>
       ) : chats.length > 0 ? (
         <FlatList
@@ -380,8 +391,17 @@ export default function ChatListScreen() {
           </View>
 
           {loadingFollowing ? (
-            <View style={styles.modalLoadingContainer}>
-              <ActivityIndicator size="large" color="#fff" />
+            <View style={styles.suggestedList}>
+              {[0, 1, 2, 3, 4, 5].map((i) => (
+                <View key={i} style={styles.suggestedUserItem}>
+                  <View style={styles.suggestedAvatarWrapper}>
+                    <Skeleton width={50} height={50} borderRadius={25} />
+                  </View>
+                  <View style={styles.suggestedUserInfo}>
+                    <Skeleton width={120} height={14} borderRadius={4} />
+                  </View>
+                </View>
+              ))}
             </View>
           ) : filteredFollowing.length > 0 ? (
             <FlatList
@@ -473,11 +493,6 @@ const styles = StyleSheet.create({
     fontSize: 16,
     color: '#fff',
     padding: 0,
-  },
-  loadingContainer: {
-    flex: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
   },
   chatList: {
     paddingBottom: 20,
@@ -692,11 +707,6 @@ const styles = StyleSheet.create({
     fontSize: 15,
     fontWeight: '500',
     color: '#fff',
-  },
-  modalLoadingContainer: {
-    flex: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
   },
   noSuggestionsContainer: {
     flex: 1,

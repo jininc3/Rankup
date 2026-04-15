@@ -458,9 +458,9 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    paddingHorizontal: 16,
+    paddingHorizontal: 24,
     paddingTop: 60,
-    paddingBottom: 12,
+    paddingBottom: 16,
   },
   backButton: {
     padding: 4,
@@ -472,7 +472,7 @@ const styles = StyleSheet.create({
   },
   scrollContent: {
     flexGrow: 1,
-    paddingHorizontal: 16,
+    paddingHorizontal: 24,
     paddingTop: 16,
   },
 });
