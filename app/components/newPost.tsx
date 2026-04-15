@@ -449,7 +449,7 @@ export default function NewPost({ visible, onClose, onPostCreated }: NewPostProp
       {uploading && (
         <View style={styles.uploadingOverlay}>
           <View style={styles.uploadingContainer}>
-            <ActivityIndicator size="small" color="#C9A84C" />
+            <ActivityIndicator size="small" color="#fff" />
             <ThemedText style={styles.uploadingText}>Uploading...</ThemedText>
           </View>
         </View>
@@ -472,12 +472,9 @@ export default function NewPost({ visible, onClose, onPostCreated }: NewPostProp
               style={styles.backButton}
               onPress={handleClose}
             >
-              <IconSymbol size={22} name="xmark" color="rgba(255,255,255,0.5)" />
+              <IconSymbol size={22} name="chevron.left" color="#fff" />
             </TouchableOpacity>
-            <View style={styles.headerTitleRow}>
-              <View style={styles.headerAccent} />
-              <ThemedText style={styles.headerTitle}>New Post</ThemedText>
-            </View>
+            <ThemedText style={styles.headerTitle}>New Post</ThemedText>
             <TouchableOpacity
               style={[styles.shareButton, (!selectedMedia.length || !selectedPostGame) && styles.shareButtonDisabled]}
               onPress={handleSharePost}
@@ -499,7 +496,7 @@ export default function NewPost({ visible, onClose, onPostCreated }: NewPostProp
             {/* Media Selection Card */}
             <View style={styles.card}>
               <View style={styles.cardHeader}>
-                <IconSymbol size={16} name="video.fill" color="rgba(201, 168, 76, 0.4)" />
+                <IconSymbol size={16} name="video.fill" color="rgba(255,255,255,0.3)" />
                 <ThemedText style={styles.cardHeaderTitle}>Video</ThemedText>
               </View>
 
@@ -507,7 +504,7 @@ export default function NewPost({ visible, onClose, onPostCreated }: NewPostProp
                 <TouchableOpacity style={styles.addMediaButton} onPress={handleAddPhoto} activeOpacity={0.6}>
                   <View style={styles.addMediaContent}>
                     <View style={styles.addMediaIconWrapper}>
-                      <IconSymbol size={22} name="plus" color="rgba(201, 168, 76, 0.5)" />
+                      <IconSymbol size={22} name="plus" color="rgba(255,255,255,0.4)" />
                     </View>
                     <ThemedText style={styles.addMediaTitle}>Add Video</ThemedText>
                     <ThemedText style={styles.addMediaSubtext}>Tap to select · Max 20 MB</ThemedText>
@@ -578,7 +575,7 @@ export default function NewPost({ visible, onClose, onPostCreated }: NewPostProp
             {/* Caption Card */}
             <View style={styles.card} ref={captionInputRef}>
               <View style={styles.cardHeader}>
-                <IconSymbol size={16} name="text.alignleft" color="rgba(201, 168, 76, 0.4)" />
+                <IconSymbol size={16} name="text.alignleft" color="rgba(255,255,255,0.3)" />
                 <ThemedText style={styles.cardHeaderTitle}>Caption</ThemedText>
               </View>
 
@@ -643,18 +640,18 @@ export default function NewPost({ visible, onClose, onPostCreated }: NewPostProp
                   activeOpacity={0.7}
                 >
                   <View style={styles.cardHeaderLeft}>
-                    <IconSymbol size={16} name="photo.fill" color="rgba(201, 168, 76, 0.4)" />
+                    <IconSymbol size={16} name="photo.fill" color="rgba(255,255,255,0.3)" />
                     <ThemedText style={styles.cardHeaderTitle}>Thumbnail</ThemedText>
                     {selectedThumbnailUri && thumbnailOption !== 'auto' && (
                       <View style={styles.customBadge}>
-                        <IconSymbol size={10} name="checkmark" color="#C9A84C" />
+                        <IconSymbol size={10} name="checkmark" color="#fff" />
                       </View>
                     )}
                   </View>
                   <IconSymbol
                     size={14}
                     name={showThumbnailOptions ? "chevron.up" : "chevron.down"}
-                    color="rgba(201, 168, 76, 0.3)"
+                    color="rgba(255,255,255,0.2)"
                   />
                 </TouchableOpacity>
 
@@ -681,10 +678,10 @@ export default function NewPost({ visible, onClose, onPostCreated }: NewPostProp
                         activeOpacity={0.7}
                       >
                         {generatingFrames ? (
-                          <ActivityIndicator size="small" color="#C9A84C" />
+                          <ActivityIndicator size="small" color="#fff" />
                         ) : (
                           <>
-                            <IconSymbol size={16} name="film" color="rgba(201, 168, 76, 0.4)" />
+                            <IconSymbol size={16} name="film" color="rgba(255,255,255,0.3)" />
                             <ThemedText style={styles.thumbnailButtonText}>Video Frame</ThemedText>
                           </>
                         )}
@@ -695,7 +692,7 @@ export default function NewPost({ visible, onClose, onPostCreated }: NewPostProp
                         onPress={pickCustomThumbnail}
                         activeOpacity={0.7}
                       >
-                        <IconSymbol size={16} name="photo.on.rectangle" color="rgba(201, 168, 76, 0.4)" />
+                        <IconSymbol size={16} name="photo.on.rectangle" color="rgba(255,255,255,0.3)" />
                         <ThemedText style={styles.thumbnailButtonText}>Custom</ThemedText>
                       </TouchableOpacity>
 
@@ -710,7 +707,7 @@ export default function NewPost({ visible, onClose, onPostCreated }: NewPostProp
                         }}
                         activeOpacity={0.7}
                       >
-                        <IconSymbol size={16} name="wand.and.stars" color={thumbnailOption === 'auto' ? '#C9A84C' : 'rgba(201, 168, 76, 0.4)'} />
+                        <IconSymbol size={16} name="wand.and.stars" color={thumbnailOption === 'auto' ? '#fff' : 'rgba(255,255,255,0.3)'} />
                         <ThemedText style={[styles.thumbnailButtonText, thumbnailOption === 'auto' && styles.thumbnailButtonTextSelected]}>Auto</ThemedText>
                       </TouchableOpacity>
                     </View>
@@ -900,38 +897,21 @@ const styles = StyleSheet.create({
     backgroundColor: '#0f0f0f',
   },
   backButton: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
-    backgroundColor: 'transparent',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  headerTitleRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-  },
-  headerAccent: {
-    width: 2,
-    height: 14,
-    backgroundColor: '#C9A84C',
-    borderRadius: 1,
+    padding: 8,
   },
   headerTitle: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: 'rgba(255, 255, 255, 0.7)',
-    letterSpacing: 0,
+    fontSize: 17,
+    fontWeight: '700',
+    color: '#fff',
   },
   shareButton: {
     paddingVertical: 6,
-    paddingHorizontal: 14,
-    backgroundColor: '#C9A84C',
-    borderRadius: 6,
+    paddingHorizontal: 16,
+    backgroundColor: '#fff',
+    borderRadius: 16,
   },
   shareButtonDisabled: {
-    backgroundColor: 'transparent',
+    backgroundColor: 'rgba(255,255,255,0.08)',
   },
   shareButtonText: {
     fontSize: 13,
@@ -951,8 +931,10 @@ const styles = StyleSheet.create({
   },
   // Cards
   card: {
-    backgroundColor: 'rgba(255, 255, 255, 0.03)',
-    borderRadius: 12,
+    backgroundColor: 'rgba(255,255,255,0.04)',
+    borderRadius: 14,
+    borderWidth: 0.5,
+    borderColor: 'rgba(255,255,255,0.06)',
     overflow: 'hidden',
   },
   cardHeader: {
@@ -986,37 +968,36 @@ const styles = StyleSheet.create({
   },
   // Add Media
   addMediaButton: {
-    margin: 12,
+    margin: 14,
     marginTop: 0,
-    borderRadius: 10,
+    borderRadius: 14,
     borderWidth: 1,
-    borderColor: 'rgba(201, 168, 76, 0.12)',
+    borderColor: 'rgba(255,255,255,0.08)',
     borderStyle: 'dashed',
-    backgroundColor: 'rgba(201, 168, 76, 0.03)',
   },
   addMediaContent: {
-    paddingVertical: 28,
+    paddingVertical: 32,
     alignItems: 'center',
     justifyContent: 'center',
     gap: 8,
   },
   addMediaIconWrapper: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    backgroundColor: 'rgba(201, 168, 76, 0.08)',
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    backgroundColor: 'rgba(255,255,255,0.06)',
     alignItems: 'center',
     justifyContent: 'center',
     marginBottom: 4,
   },
   addMediaTitle: {
-    fontSize: 13,
-    fontWeight: '500',
-    color: 'rgba(255, 255, 255, 0.4)',
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#999',
   },
   addMediaSubtext: {
-    fontSize: 11,
-    color: 'rgba(255, 255, 255, 0.2)',
+    fontSize: 12,
+    color: '#555',
   },
   // Media Preview
   mediaPreviewContainer: {
@@ -1107,58 +1088,57 @@ const styles = StyleSheet.create({
   },
   // Game Tag
   gameTagSection: {
-    paddingHorizontal: 4,
+    gap: 12,
   },
   gameTagLabel: {
-    fontSize: 12,
-    fontWeight: '500',
-    color: 'rgba(255, 255, 255, 0.35)',
-    marginBottom: 10,
+    fontSize: 15,
+    fontWeight: '700',
+    color: '#fff',
   },
   gameTagRequired: {
-    fontSize: 11,
+    fontSize: 13,
     fontWeight: '400',
-    color: 'rgba(201, 168, 76, 0.4)',
+    color: '#555',
   },
   gameTagRow: {
-    flexDirection: 'row',
+    flexDirection: 'column',
     gap: 10,
   },
   gameTagChip: {
-    flex: 1,
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'center',
-    gap: 8,
-    paddingVertical: 12,
-    paddingHorizontal: 14,
-    borderRadius: 10,
-    backgroundColor: 'rgba(255, 255, 255, 0.03)',
+    gap: 14,
+    paddingVertical: 18,
+    paddingHorizontal: 18,
+    borderRadius: 14,
+    backgroundColor: 'rgba(255,255,255,0.04)',
     borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.04)',
+    borderColor: 'rgba(255,255,255,0.06)',
   },
   gameTagChipSelected: {
-    backgroundColor: 'rgba(201, 168, 76, 0.06)',
-    borderColor: 'rgba(201, 168, 76, 0.2)',
+    borderColor: '#fff',
+    backgroundColor: 'rgba(255,255,255,0.08)',
   },
   gameTagIcon: {
-    width: 20,
-    height: 20,
+    width: 36,
+    height: 36,
+    borderRadius: 8,
   },
   gameTagText: {
-    fontSize: 13,
-    fontWeight: '500',
-    color: 'rgba(255, 255, 255, 0.3)',
+    flex: 1,
+    fontSize: 17,
+    fontWeight: '600',
+    color: '#999',
   },
   gameTagTextSelected: {
-    color: 'rgba(255, 255, 255, 0.8)',
+    color: '#fff',
   },
   // Thumbnail
   customBadge: {
     width: 16,
     height: 16,
     borderRadius: 8,
-    backgroundColor: 'rgba(201, 168, 76, 0.12)',
+    backgroundColor: 'rgba(255,255,255,0.08)',
     alignItems: 'center',
     justifyContent: 'center',
     marginLeft: 4,
@@ -1197,7 +1177,7 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(255, 255, 255, 0.03)',
   },
   thumbnailButtonSelected: {
-    backgroundColor: 'rgba(201, 168, 76, 0.08)',
+    backgroundColor: 'rgba(255,255,255,0.06)',
     borderWidth: 1,
     borderColor: 'rgba(201, 168, 76, 0.15)',
   },
@@ -1436,7 +1416,7 @@ const styles = StyleSheet.create({
     borderColor: 'transparent',
   },
   frameItemSelected: {
-    borderColor: 'rgba(201, 168, 76, 0.3)',
+    borderColor: 'rgba(255,255,255,0.2)',
   },
   frameImage: {
     width: '100%',

@@ -880,25 +880,18 @@ export default function DuoFinderScreen() {
         <ThemedText style={styles.headerTitle}>DUO FINDER</ThemedText>
         <View style={styles.headerButtons}>
           <TouchableOpacity
-            style={styles.headerAddButton}
+            style={styles.headerIconButton}
             onPress={() => hasCards ? setShowPostDuoCard(true) : setShowAddCard(true)}
-            activeOpacity={0.85}
+            activeOpacity={0.7}
           >
-            <LinearGradient
-              colors={['#C4A44E', '#8B6F2F']}
-              start={{ x: 0, y: 0 }}
-              end={{ x: 1, y: 1 }}
-              style={styles.headerAddButtonInner}
-            >
-              <IconSymbol size={14} name="plus" color="#fff" />
-            </LinearGradient>
+            <IconSymbol size={16} name="plus" color="#fff" />
           </TouchableOpacity>
           <TouchableOpacity
-            style={styles.myCardsHeaderButton}
+            style={styles.headerTextButton}
             onPress={() => setShowMyCards(true)}
             activeOpacity={0.7}
           >
-            <ThemedText style={styles.myCardsHeaderText}>My Cards</ThemedText>
+            <ThemedText style={styles.headerTextButtonLabel}>My Cards</ThemedText>
           </TouchableOpacity>
         </View>
       </View>
@@ -923,43 +916,17 @@ export default function DuoFinderScreen() {
                 <TouchableOpacity
                   style={styles.liveSearchBanner}
                   onPress={() => router.push('/partyPages/liveSearch')}
-                  activeOpacity={0.9}
+                  activeOpacity={0.8}
                 >
-                  <LinearGradient
-                    colors={['#1c1708', '#12100a', '#0f0f0f']}
-                    start={{ x: 0, y: 0 }}
-                    end={{ x: 1, y: 1 }}
-                    style={styles.liveSearchBannerGradient}
-                  >
-                    {/* Ambient glow */}
-                    <Animated.View style={[styles.liveSearchGlow, { opacity: pulseAnim }]} />
-
-                    {/* Scan line accent */}
-                    <View style={styles.liveSearchScanLine} />
-
-                    <View style={styles.liveSearchBannerContent}>
-                      {/* Left: Radar icon */}
-                      <View style={styles.liveSearchRadar}>
-                        <Animated.View style={[styles.liveSearchRadarRing, { opacity: pulseAnim, transform: [{ scale: pulseAnim.interpolate({ inputRange: [0.4, 1], outputRange: [0.85, 1.15] }) }] }]} />
-                        <View style={styles.liveSearchRadarDot} />
-                      </View>
-
-                      {/* Center: Text */}
-                      <View style={styles.liveSearchBannerText}>
-                        <View style={styles.liveSearchBannerTitleRow}>
-                          <ThemedText style={styles.liveSearchBannerTitle}>LIVE SEARCH</ThemedText>
-                        </View>
-                        <ThemedText style={styles.liveSearchBannerSubtitle}>
-                          Find your duo in real-time
-                        </ThemedText>
-                      </View>
-
-                      {/* Right: Arrow */}
-                      <View style={styles.liveSearchArrow}>
-                        <IconSymbol size={16} name="arrow.right" color="#D4A843" />
-                      </View>
+                  <View style={styles.liveSearchBannerContent}>
+                    <View style={styles.liveSearchBannerText}>
+                      <ThemedText style={styles.liveSearchBannerTitle}>Live Search</ThemedText>
+                      <ThemedText style={styles.liveSearchBannerSubtitle}>
+                        Find your duo in real-time
+                      </ThemedText>
                     </View>
-                  </LinearGradient>
+                    <IconSymbol size={18} name="chevron.right" color="#555" />
+                  </View>
                 </TouchableOpacity>
 
                 <View style={styles.sectionHeader}>
@@ -999,30 +966,11 @@ export default function DuoFinderScreen() {
                 </View>
               ) : (
                 <View style={styles.emptyState}>
-                  <View style={styles.emptyIconsRow}>
-                    <View style={styles.emptyIconCircle}>
-                      <Image
-                        source={require('@/assets/images/valorant-logo.png')}
-                        style={styles.emptyGameLogo}
-                        resizeMode="contain"
-                      />
-                    </View>
-                    <View style={[styles.emptyIconCircle, styles.emptyIconCircleCenter]}>
-                      <IconSymbol size={32} name="person.2.fill" color="#fff" />
-                    </View>
-                    <View style={styles.emptyIconCircle}>
-                      <Image
-                        source={require('@/assets/images/leagueoflegends.png')}
-                        style={styles.emptyGameLogo}
-                        resizeMode="contain"
-                      />
-                    </View>
-                  </View>
-                  <ThemedText style={styles.emptyTitle}>No posts yet</ThemedText>
+                  <ThemedText style={styles.emptyTitle}>No duo posts{'\n'}yet</ThemedText>
                   <ThemedText style={styles.emptySubtitle}>
                     {hasCards
                       ? 'Be the first to post your duo card to the feed!'
-                      : 'Create your duo card to start posting and matching'}
+                      : 'Create your duo card to start posting and matching.'}
                   </ThemedText>
                   {!hasCards && (
                     <TouchableOpacity
@@ -1030,7 +978,6 @@ export default function DuoFinderScreen() {
                       onPress={() => setShowAddCard(true)}
                       activeOpacity={0.8}
                     >
-                      <IconSymbol size={18} name="plus" color="#fff" />
                       <ThemedText style={styles.emptyButtonText}>Create Duo Card</ThemedText>
                     </TouchableOpacity>
                   )}
@@ -1371,18 +1318,13 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: 8,
   },
-  myCardsHeaderButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
+  headerTextButton: {
     paddingVertical: 6,
-    paddingHorizontal: 12,
-    backgroundColor: '#1a1a1a',
-    borderRadius: 10,
-    borderWidth: 1,
-    borderColor: '#2a2a2a',
+    paddingHorizontal: 14,
+    backgroundColor: 'rgba(255,255,255,0.08)',
+    borderRadius: 16,
   },
-  myCardsHeaderText: {
+  headerTextButtonLabel: {
     fontSize: 13,
     fontWeight: '600',
     color: '#fff',
@@ -1445,109 +1387,41 @@ const styles = StyleSheet.create({
     paddingTop: 20,
   },
   liveSearchBanner: {
-    borderRadius: 16,
-    overflow: 'hidden',
+    backgroundColor: 'rgba(255,255,255,0.04)',
+    borderRadius: 14,
+    borderWidth: 0.5,
+    borderColor: 'rgba(255,255,255,0.1)',
     marginBottom: 20,
-    borderWidth: 1,
-    borderColor: 'rgba(212, 168, 67, 0.2)',
-  },
-  liveSearchBannerGradient: {
-    borderRadius: 15,
-    position: 'relative',
-    overflow: 'hidden',
-  },
-  liveSearchGlow: {
-    position: 'absolute',
-    top: -20,
-    left: -20,
-    width: 100,
-    height: 100,
-    borderRadius: 50,
-    backgroundColor: 'rgba(212, 168, 67, 0.08)',
-  },
-  liveSearchScanLine: {
-    position: 'absolute',
-    top: 0,
-    left: 0,
-    right: 0,
-    height: 1,
-    backgroundColor: 'rgba(212, 168, 67, 0.15)',
   },
   liveSearchBannerContent: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingVertical: 20,
+    paddingVertical: 18,
     paddingHorizontal: 18,
-    gap: 14,
-  },
-  liveSearchRadar: {
-    width: 44,
-    height: 44,
-    borderRadius: 22,
-    backgroundColor: 'rgba(212, 168, 67, 0.06)',
-    borderWidth: 1,
-    borderColor: 'rgba(212, 168, 67, 0.15)',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  liveSearchRadarRing: {
-    position: 'absolute',
-    width: 44,
-    height: 44,
-    borderRadius: 22,
-    borderWidth: 1.5,
-    borderColor: 'rgba(212, 168, 67, 0.25)',
-  },
-  liveSearchRadarDot: {
-    width: 10,
-    height: 10,
-    borderRadius: 5,
-    backgroundColor: '#D4A843',
   },
   liveSearchBannerText: {
     flex: 1,
   },
-  liveSearchBannerTitleRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-    marginBottom: 3,
-  },
   liveSearchBannerTitle: {
-    fontSize: 14,
-    fontWeight: '800',
-    color: '#D4A843',
-    letterSpacing: 1.5,
+    fontSize: 17,
+    fontWeight: '700',
+    color: '#fff',
+    marginBottom: 2,
   },
   liveSearchBannerSubtitle: {
     fontSize: 13,
-    color: '#777',
-  },
-  liveSearchArrow: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
-    backgroundColor: 'rgba(212, 168, 67, 0.08)',
-    borderWidth: 1,
-    borderColor: 'rgba(212, 168, 67, 0.15)',
-    alignItems: 'center',
-    justifyContent: 'center',
+    color: '#555',
   },
   feedCardWrapper: {
     marginBottom: 4,
   },
-  headerAddButton: {
-    width: 26,
-    height: 26,
-    borderRadius: 8,
-    overflow: 'hidden',
-  },
-  headerAddButtonInner: {
-    width: '100%',
-    height: '100%',
+  headerIconButton: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    backgroundColor: 'rgba(255,255,255,0.08)',
     alignItems: 'center',
     justifyContent: 'center',
-    borderRadius: 8,
   },
   // Section Headers - Parties style
   sectionHeader: {
@@ -1683,69 +1557,32 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: 16,
   },
-  // Empty States - Profile style
   emptyState: {
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingVertical: 40,
-    paddingHorizontal: 24,
-  },
-  emptyIconsRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginBottom: 24,
-    gap: -12,
-  },
-  emptyIconCircle: {
-    width: 56,
-    height: 56,
-    borderRadius: 28,
-    backgroundColor: '#2c2f33',
-    alignItems: 'center',
-    justifyContent: 'center',
-    borderWidth: 3,
-    borderColor: '#0f0f0f',
-  },
-  emptyIconCircleCenter: {
-    width: 72,
-    height: 72,
-    borderRadius: 36,
-    backgroundColor: '#c42743',
-    zIndex: 1,
-  },
-  emptyGameLogo: {
-    width: 28,
-    height: 28,
-    tintColor: '#72767d',
+    paddingHorizontal: 28,
+    paddingTop: 40,
   },
   emptyTitle: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: '#72767d',
-    marginBottom: 6,
+    fontSize: 28,
+    fontWeight: '800',
+    color: '#fff',
+    lineHeight: 36,
+    marginBottom: 8,
   },
   emptySubtitle: {
-    fontSize: 13,
+    fontSize: 15,
     color: '#555',
-    textAlign: 'center',
-    lineHeight: 18,
-    maxWidth: 260,
   },
   emptyButton: {
-    flexDirection: 'row',
+    marginTop: 24,
+    backgroundColor: '#fff',
+    borderRadius: 28,
+    paddingVertical: 16,
     alignItems: 'center',
-    gap: 8,
-    marginTop: 28,
-    paddingVertical: 14,
-    paddingHorizontal: 28,
-    backgroundColor: '#c42743',
-    borderRadius: 12,
   },
   emptyButtonText: {
     fontSize: 16,
-    fontWeight: '600',
-    color: '#fff',
+    fontWeight: '700',
+    color: '#0f0f0f',
   },
   cardsList: {
     paddingHorizontal: 12,

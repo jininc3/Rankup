@@ -2,14 +2,8 @@ import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { IconSymbol } from '@/components/ui/icon-symbol';
 import {
-  StyleSheet,
-  View,
-  TextInput,
-  TouchableOpacity,
-  ActivityIndicator,
-  Alert,
-  Image,
-  BackHandler,
+  StyleSheet, View, TextInput, TouchableOpacity, ActivityIndicator,
+  Alert, Image, BackHandler, Keyboard, TouchableWithoutFeedback,
 } from 'react-native';
 import { useState, useRef, useEffect } from 'react';
 import { useRouter, useLocalSearchParams, Stack } from 'expo-router';
@@ -29,7 +23,6 @@ export default function LinkValorantAccountScreen() {
   const [preparingCard, setPreparingCard] = useState(false);
   const tagLineRef = useRef<TextInput>(null);
 
-  // Block back navigation while preparing rank card
   useEffect(() => {
     if (!preparingCard) return;
     const sub = BackHandler.addEventListener('hardwareBackPress', () => true);
@@ -37,12 +30,9 @@ export default function LinkValorantAccountScreen() {
   }, [preparingCard]);
 
   const regions = [
-    { value: 'na', label: 'NA' },
-    { value: 'eu', label: 'EU' },
-    { value: 'ap', label: 'AP' },
-    { value: 'kr', label: 'KR' },
-    { value: 'latam', label: 'LATAM' },
-    { value: 'br', label: 'BR' },
+    { value: 'na', label: 'NA' }, { value: 'eu', label: 'EU' },
+    { value: 'ap', label: 'AP' }, { value: 'kr', label: 'KR' },
+    { value: 'latam', label: 'LATAM' }, { value: 'br', label: 'BR' },
     { value: 'mn', label: 'MENA' },
   ];
 
@@ -57,25 +47,16 @@ export default function LinkValorantAccountScreen() {
       const response = await linkValorantAccount(gameName.trim(), tagLine.trim(), region);
 
       if (response.success && auth.currentUser) {
-        // Automatically add Valorant to enabled rank cards
         await updateDoc(doc(db, 'users', auth.currentUser.uid), {
-          enabledRankCards: arrayUnion('valorant')
+          enabledRankCards: arrayUnion('valorant'),
         });
 
         if (fromSignup === 'true') {
-          Alert.alert(
-            'Success!',
-            `Linked Valorant account: ${response.account?.gameName}#${response.account?.tag}`,
-            [{ text: 'OK', onPress: () => router.back() }]
-          );
+          Alert.alert('Success!', `Linked Valorant account: ${response.account?.gameName}#${response.account?.tag}`,
+            [{ text: 'OK', onPress: () => router.back() }]);
         } else {
-          // Pre-fetch stats so profile can show rank card instantly
           setPreparingCard(true);
-          try {
-            await fetchValorantStatsContext(true);
-          } catch (e) {
-            // Continue even if fetch fails - profile will retry
-          }
+          try { await fetchValorantStatsContext(true); } catch {}
           router.replace('/(tabs)/profile');
         }
       }
@@ -89,41 +70,32 @@ export default function LinkValorantAccountScreen() {
   return (
     <>
       <Stack.Screen options={{ headerShown: false }} />
-      <ThemedView style={styles.container}>
-        {/* Preparing rank card overlay */}
-        {preparingCard && (
-          <View style={styles.preparingOverlay}>
-            <ActivityIndicator size="large" color="#D4A843" />
-            <ThemedText style={styles.preparingText}>Preparing your rank card...</ThemedText>
+      <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
+        <ThemedView style={styles.container}>
+          {preparingCard && (
+            <View style={styles.preparingOverlay}>
+              <ActivityIndicator size="large" color="#fff" />
+              <ThemedText style={styles.preparingText}>Preparing your rank card...</ThemedText>
+            </View>
+          )}
+
+          <View style={styles.header}>
+            <TouchableOpacity style={styles.backButton} onPress={() => router.back()} disabled={preparingCard}>
+              <IconSymbol size={22} name="chevron.left" color="#fff" />
+            </TouchableOpacity>
+            <ThemedText style={styles.headerTitle}>Link Valorant</ThemedText>
+            <View style={{ width: 38 }} />
           </View>
-        )}
 
-        {/* Header */}
-        <View style={styles.header}>
-          <TouchableOpacity style={styles.backButton} onPress={() => router.back()} disabled={preparingCard}>
-            <IconSymbol size={20} name="chevron.left" color="#fff" />
-          </TouchableOpacity>
-        </View>
+          <View style={styles.content}>
+            <View style={styles.logoRow}>
+              <Image source={require('@/assets/images/valorantlogo.png')} style={styles.logo} resizeMode="contain" />
+            </View>
+            <ThemedText style={styles.subtitle}>
+              Connect your Riot ID to display your competitive stats and rank
+            </ThemedText>
 
-        {/* Logo and Title Section */}
-        <View style={styles.heroSection}>
-          <View style={styles.logoWrapper}>
-            <Image
-              source={require('@/assets/images/valorantlogo.png')}
-              style={styles.logo}
-              resizeMode="contain"
-            />
-          </View>
-          <ThemedText style={styles.heroTitle}>Link Valorant</ThemedText>
-          <ThemedText style={styles.heroSubtitle}>
-            Connect your Riot ID to display your competitive stats and rank
-          </ThemedText>
-        </View>
-
-        {/* Form Card */}
-        <View style={styles.formCard}>
-          {/* Riot ID Input */}
-          <View style={styles.inputGroup}>
+            {/* Riot ID */}
             <ThemedText style={styles.label}>Riot ID</ThemedText>
             <View style={styles.riotIdWrapper}>
               <TextInput
@@ -137,9 +109,7 @@ export default function LinkValorantAccountScreen() {
                 returnKeyType="next"
                 onSubmitEditing={() => tagLineRef.current?.focus()}
               />
-              <View style={styles.hashContainer}>
-                <ThemedText style={styles.hashSymbol}>#</ThemedText>
-              </View>
+              <ThemedText style={styles.hashSymbol}>#</ThemedText>
               <TextInput
                 ref={tagLineRef}
                 style={styles.tagLineInput}
@@ -152,203 +122,84 @@ export default function LinkValorantAccountScreen() {
                 maxLength={5}
               />
             </View>
-            <ThemedText style={styles.exampleHint}>e.g. SEN TenZ#SEN</ThemedText>
-          </View>
+            <ThemedText style={styles.hint}>e.g. SEN TenZ#SEN</ThemedText>
 
-          {/* Region Selector */}
-          <View style={styles.inputGroup}>
-            <ThemedText style={styles.label}>Region</ThemedText>
+            {/* Region */}
+            <ThemedText style={[styles.label, { marginTop: 24 }]}>Region</ThemedText>
             <View style={styles.regionContainer}>
               {regions.map((r) => (
                 <TouchableOpacity
                   key={r.value}
-                  style={[styles.regionButton, region === r.value && styles.regionButtonActive]}
+                  style={[styles.regionChip, region === r.value && styles.regionChipSelected]}
                   onPress={() => setRegion(r.value)}
                 >
-                  <ThemedText
-                    style={[styles.regionButtonText, region === r.value && styles.regionButtonTextActive]}
-                  >
+                  <ThemedText style={[styles.regionChipText, region === r.value && styles.regionChipTextSelected]}>
                     {r.label}
                   </ThemedText>
                 </TouchableOpacity>
               ))}
             </View>
-          </View>
 
-          {/* Link Button */}
-          <TouchableOpacity
-            style={[styles.linkButton, loading && styles.linkButtonDisabled]}
-            onPress={handleLinkAccount}
-            disabled={loading}
-          >
-            {loading ? (
-              <ActivityIndicator color="#fff" />
-            ) : (
-              <ThemedText style={styles.linkButtonText}>Link Account</ThemedText>
-            )}
-          </TouchableOpacity>
-        </View>
-      </ThemedView>
+            {/* Link Button */}
+            <TouchableOpacity
+              style={[styles.linkButton, loading && styles.linkButtonDisabled]}
+              onPress={handleLinkAccount}
+              disabled={loading}
+              activeOpacity={0.8}
+            >
+              {loading ? (
+                <ActivityIndicator color="#0f0f0f" />
+              ) : (
+                <ThemedText style={styles.linkButtonText}>Link Account</ThemedText>
+              )}
+            </TouchableOpacity>
+          </View>
+        </ThemedView>
+      </TouchableWithoutFeedback>
     </>
   );
 }
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: '#0f0f0f',
-  },
+  container: { flex: 1, backgroundColor: '#0f0f0f' },
   header: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: 16,
-    paddingTop: 70,
-    paddingBottom: 12,
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
+    paddingHorizontal: 16, paddingTop: 60, paddingBottom: 16,
   },
-  backButton: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
-    backgroundColor: 'rgba(0,0,0,0.4)',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  heroSection: {
-    alignItems: 'center',
-    paddingHorizontal: 20,
-    paddingTop: 10,
-    paddingBottom: 20,
-    overflow: 'visible',
-  },
-  logoWrapper: {
-    width: 60,
-    height: 60,
-    borderRadius: 16,
-    backgroundColor: '#1a1a1a',
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginBottom: 12,
-  },
-  logo: {
-    width: 38,
-    height: 38,
-  },
-  heroTitle: {
-    fontSize: 24,
-    fontWeight: '800',
-    color: '#fff',
-    letterSpacing: -0.5,
-    lineHeight: 30,
-    marginBottom: 6,
-    overflow: 'visible',
-  },
-  heroSubtitle: {
-    fontSize: 13,
-    color: '#666',
-    textAlign: 'center',
-    lineHeight: 18,
-    maxWidth: 280,
-  },
-  formCard: {
-    marginHorizontal: 16,
-    backgroundColor: '#1a1a1a',
-    borderRadius: 16,
-    padding: 16,
-    gap: 16,
-  },
-  inputGroup: {
-    gap: 8,
-  },
-  label: {
-    fontSize: 13,
-    fontWeight: '600',
-    color: '#888',
-    letterSpacing: 0.3,
-  },
+  backButton: { padding: 8 },
+  headerTitle: { fontSize: 17, fontWeight: '700', color: '#fff' },
+  content: { paddingHorizontal: 28, paddingTop: 16 },
+  logoRow: { alignItems: 'center', marginBottom: 12 },
+  logo: { width: 48, height: 48 },
+  subtitle: { fontSize: 15, color: '#555', textAlign: 'center', marginBottom: 28 },
+  label: { fontSize: 15, fontWeight: '700', color: '#fff', marginBottom: 10 },
   riotIdWrapper: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: '#252525',
-    borderRadius: 12,
+    flexDirection: 'row', alignItems: 'center',
+    backgroundColor: 'rgba(255,255,255,0.04)', borderRadius: 14,
+    borderWidth: 0.5, borderColor: 'rgba(255,255,255,0.06)',
     overflow: 'hidden',
   },
-  gameNameInput: {
-    flex: 1,
-    paddingHorizontal: 16,
-    paddingVertical: 14,
-    fontSize: 16,
-    color: '#fff',
+  gameNameInput: { flex: 1, paddingHorizontal: 18, paddingVertical: 16, fontSize: 16, color: '#fff' },
+  hashSymbol: { fontSize: 18, fontWeight: '600', color: '#555' },
+  tagLineInput: { width: 90, paddingLeft: 6, paddingRight: 18, paddingVertical: 16, fontSize: 16, color: '#fff' },
+  hint: { fontSize: 12, color: '#555', marginTop: 6 },
+  regionContainer: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
+  regionChip: {
+    paddingVertical: 8, paddingHorizontal: 14, borderRadius: 20,
+    backgroundColor: 'rgba(255,255,255,0.04)', borderWidth: 1, borderColor: 'rgba(255,255,255,0.06)',
   },
-  hashContainer: {
-    justifyContent: 'center',
-  },
-  hashSymbol: {
-    fontSize: 18,
-    fontWeight: '600',
-    color: '#666',
-  },
-  tagLineInput: {
-    width: 90,
-    paddingLeft: 6,
-    paddingRight: 16,
-    paddingVertical: 14,
-    fontSize: 16,
-    color: '#fff',
-  },
-  regionContainer: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 8,
-  },
-  regionButton: {
-    paddingVertical: 10,
-    paddingHorizontal: 16,
-    borderRadius: 10,
-    backgroundColor: '#252525',
-  },
-  regionButtonActive: {
-    backgroundColor: '#D4A843',
-  },
-  regionButtonText: {
-    fontSize: 13,
-    color: '#888',
-    fontWeight: '600',
-  },
-  regionButtonTextActive: {
-    color: '#fff',
-  },
+  regionChipSelected: { backgroundColor: 'rgba(255,255,255,0.1)', borderColor: '#fff' },
+  regionChipText: { fontSize: 13, fontWeight: '600', color: '#999' },
+  regionChipTextSelected: { color: '#fff' },
   linkButton: {
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: '#D4A843',
-    paddingVertical: 14,
-    borderRadius: 12,
-    marginTop: 4,
+    marginTop: 28, backgroundColor: '#fff', borderRadius: 28,
+    paddingVertical: 16, alignItems: 'center',
   },
-  linkButtonDisabled: {
-    opacity: 0.6,
-  },
-  linkButtonText: {
-    fontSize: 16,
-    fontWeight: '700',
-    color: '#fff',
-  },
-  exampleHint: {
-    fontSize: 12,
-    color: '#555',
-    marginTop: 4,
-  },
+  linkButtonDisabled: { opacity: 0.4 },
+  linkButtonText: { fontSize: 16, fontWeight: '700', color: '#0f0f0f' },
   preparingOverlay: {
-    ...StyleSheet.absoluteFillObject,
-    backgroundColor: '#0f0f0f',
-    justifyContent: 'center',
-    alignItems: 'center',
-    zIndex: 100,
-    gap: 16,
+    ...StyleSheet.absoluteFillObject, backgroundColor: '#0f0f0f',
+    justifyContent: 'center', alignItems: 'center', zIndex: 100, gap: 16,
   },
-  preparingText: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: '#fff',
-  },
+  preparingText: { fontSize: 16, fontWeight: '600', color: '#fff' },
 });

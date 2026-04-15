@@ -7,20 +7,19 @@ import { StyleSheet, TouchableOpacity, View, Image } from 'react-native';
 
 const GAMES = [
   { id: 'valorant', name: 'Valorant', logo: require('@/assets/images/valorant-red.png') },
-  { id: 'league', name: 'League', logo: require('@/assets/images/lol-icon.png') },
+  { id: 'league', name: 'League of Legends', logo: require('@/assets/images/lol-icon.png') },
 ];
 
-export default function CreateLeaderboardGame() {
+export default function CreatePostGame() {
   const router = useRouter();
   const params = useLocalSearchParams();
   const [selectedGame, setSelectedGame] = useState<string | null>(null);
 
   const handleContinue = () => {
     if (!selectedGame) return;
-    const game = GAMES.find(g => g.id === selectedGame)!;
     router.push({
-      pathname: '/partyPages/createLeaderboardCover',
-      params: { ...params, gameId: game.id, gameName: game.name },
+      pathname: '/postPages/createPostCaption',
+      params: { ...params, game: selectedGame },
     });
   };
 
@@ -31,12 +30,12 @@ export default function CreateLeaderboardGame() {
           <IconSymbol size={22} name="chevron.left" color="#fff" />
         </TouchableOpacity>
         <View style={styles.progress}>
-          <View style={[styles.progressFill, { width: '40%' }]} />
+          <View style={[styles.progressFill, { width: '50%' }]} />
         </View>
       </View>
 
       <View style={styles.content}>
-        <ThemedText style={styles.step}>Step 2 of 5</ThemedText>
+        <ThemedText style={styles.step}>Step 2 of 4</ThemedText>
         <ThemedText style={styles.title}>Pick a game</ThemedText>
 
         <View style={styles.gameList}>
@@ -94,10 +93,7 @@ const styles = StyleSheet.create({
     paddingVertical: 18, paddingHorizontal: 18,
     borderWidth: 1, borderColor: 'rgba(255,255,255,0.06)',
   },
-  gameCardSelected: {
-    borderColor: '#fff',
-    backgroundColor: 'rgba(255,255,255,0.08)',
-  },
+  gameCardSelected: { borderColor: '#fff', backgroundColor: 'rgba(255,255,255,0.08)' },
   gameLogo: { width: 36, height: 36, borderRadius: 8 },
   gameName: { flex: 1, fontSize: 17, fontWeight: '600', color: '#999' },
   gameNameSelected: { color: '#fff' },

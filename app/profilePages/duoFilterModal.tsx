@@ -18,7 +18,6 @@ interface DuoFilterModalProps {
   onApplyFilters: (filters: DuoFilterOptions) => void;
 }
 
-// Rank tiers for filtering (simplified - just tiers, not divisions)
 const VALORANT_RANK_TIERS = [
   'Iron', 'Bronze', 'Silver', 'Gold', 'Platinum', 'Diamond', 'Ascendant', 'Immortal', 'Radiant'
 ];
@@ -32,7 +31,6 @@ const LEAGUE_ROLES = ['Top', 'Jungle', 'Mid', 'ADC', 'Support'];
 
 const LANGUAGES = ['English', 'Korean', 'Japanese', 'Chinese', 'Spanish', 'Portuguese', 'German', 'French'];
 
-// League lane icons
 const LEAGUE_LANE_ICONS: { [key: string]: any } = {
   'Top': require('@/assets/images/leaguelanes/top.png'),
   'Jungle': require('@/assets/images/leaguelanes/jungle.png'),
@@ -41,7 +39,6 @@ const LEAGUE_LANE_ICONS: { [key: string]: any } = {
   'Support': require('@/assets/images/leaguelanes/support.png'),
 };
 
-// Valorant role icons
 const VALORANT_ROLE_ICONS: { [key: string]: any } = {
   'Duelist': require('@/assets/images/valorantroles/Duelist.png'),
   'Initiator': require('@/assets/images/valorantroles/Initiator.png'),
@@ -55,10 +52,8 @@ export default function DuoFilterModal({
   filters,
   onApplyFilters,
 }: DuoFilterModalProps) {
-  // Local state for editing filters
   const [localFilters, setLocalFilters] = useState<DuoFilterOptions>({ ...filters });
 
-  // Reset local filters when modal opens or filters change
   useEffect(() => {
     if (visible) {
       setLocalFilters({ ...filters });
@@ -71,36 +66,13 @@ export default function DuoFilterModal({
   };
 
   const handleReset = () => {
-    const resetFilters: DuoFilterOptions = {
-      game: null,
-      role: null,
-      minRank: null,
-      maxRank: null,
-      language: null,
-    };
-    setLocalFilters(resetFilters);
-  };
-
-  const getRoles = () => {
-    if (localFilters.game === 'valorant') return VALORANT_ROLES;
-    if (localFilters.game === 'league') return LEAGUE_ROLES;
-    return [];
+    setLocalFilters({ game: null, role: null, minRank: null, maxRank: null, language: null });
   };
 
   const getRankTiers = () => {
     if (localFilters.game === 'valorant') return VALORANT_RANK_TIERS;
     if (localFilters.game === 'league') return LEAGUE_RANK_TIERS;
     return [];
-  };
-
-  const getRoleIcon = (role: string) => {
-    if (localFilters.game === 'valorant') {
-      return VALORANT_ROLE_ICONS[role];
-    }
-    if (localFilters.game === 'league') {
-      return LEAGUE_LANE_ICONS[role];
-    }
-    return null;
   };
 
   const hasActiveFilters = () => {
@@ -112,36 +84,22 @@ export default function DuoFilterModal({
   };
 
   return (
-    <Modal
-      visible={visible}
-      animationType="slide"
-      transparent={true}
-      onRequestClose={onClose}
-    >
-      <TouchableOpacity
-        style={styles.modalContainer}
-        activeOpacity={1}
-        onPress={onClose}
-      >
-        <TouchableOpacity
-          style={styles.modalContent}
-          activeOpacity={1}
-          onPress={(e) => e.stopPropagation()}
-        >
+    <Modal visible={visible} animationType="slide" transparent onRequestClose={onClose}>
+      <TouchableOpacity style={styles.overlay} activeOpacity={1} onPress={onClose}>
+        <TouchableOpacity style={styles.sheet} activeOpacity={1} onPress={(e) => e.stopPropagation()}>
+          <View style={styles.handle} />
+
           {/* Header */}
           <View style={styles.header}>
-            <View style={styles.headerLeft}>
-              <IconSymbol size={18} name="slider.horizontal.3" color="#fff" />
-              <ThemedText style={styles.headerTitle}>Filters</ThemedText>
-            </View>
+            <ThemedText style={styles.headerTitle}>Filters</ThemedText>
             <View style={styles.headerRight}>
               {hasActiveFilters() && (
-                <TouchableOpacity onPress={handleReset} style={styles.resetBtn}>
+                <TouchableOpacity onPress={handleReset}>
                   <ThemedText style={styles.resetText}>Reset</ThemedText>
                 </TouchableOpacity>
               )}
               <TouchableOpacity onPress={onClose}>
-                <IconSymbol size={22} name="xmark" color="#666" />
+                <IconSymbol size={22} name="xmark" color="#555" />
               </TouchableOpacity>
             </View>
           </View>
@@ -150,103 +108,78 @@ export default function DuoFilterModal({
             style={styles.scrollView}
             contentContainerStyle={styles.scrollContent}
             showsVerticalScrollIndicator={false}
-            bounces={true}
-            scrollEventThrottle={16}
-            nestedScrollEnabled={true}
+            bounces
+            nestedScrollEnabled
           >
-            {/* Game Filter */}
-            <View style={styles.filterSection}>
+            {/* Game */}
+            <View style={styles.section}>
               <ThemedText style={styles.sectionTitle}>Game</ThemedText>
               <View style={styles.chipRow}>
                 <TouchableOpacity
-                  style={[styles.chip, localFilters.game === null && styles.chipActive]}
+                  style={[styles.chip, localFilters.game === null && styles.chipSelected]}
                   onPress={() => setLocalFilters({ ...localFilters, game: null, role: null, minRank: null, maxRank: null })}
                 >
-                  <ThemedText style={[styles.chipText, localFilters.game === null && styles.chipTextActive]}>
-                    All Games
-                  </ThemedText>
+                  <ThemedText style={[styles.chipText, localFilters.game === null && styles.chipTextSelected]}>All</ThemedText>
                 </TouchableOpacity>
                 <TouchableOpacity
-                  style={[styles.chip, localFilters.game === 'valorant' && styles.chipActive]}
+                  style={[styles.chip, localFilters.game === 'valorant' && styles.chipSelected]}
                   onPress={() => setLocalFilters({ ...localFilters, game: 'valorant', role: null, minRank: null, maxRank: null })}
                 >
-                  <Image
-                    source={require('@/assets/images/valorant-red.png')}
-                    style={styles.chipIcon}
-                    resizeMode="contain"
-                  />
-                  <ThemedText style={[styles.chipText, localFilters.game === 'valorant' && styles.chipTextActive]}>
-                    Valorant
-                  </ThemedText>
+                  <Image source={require('@/assets/images/valorant-red.png')} style={styles.chipIcon} resizeMode="contain" />
+                  <ThemedText style={[styles.chipText, localFilters.game === 'valorant' && styles.chipTextSelected]}>Valorant</ThemedText>
                 </TouchableOpacity>
                 <TouchableOpacity
-                  style={[styles.chip, localFilters.game === 'league' && styles.chipActive]}
+                  style={[styles.chip, localFilters.game === 'league' && styles.chipSelected]}
                   onPress={() => setLocalFilters({ ...localFilters, game: 'league', role: null, minRank: null, maxRank: null })}
                 >
-                  <Image
-                    source={require('@/assets/images/lol.png')}
-                    style={styles.chipIcon}
-                    resizeMode="contain"
-                  />
-                  <ThemedText style={[styles.chipText, localFilters.game === 'league' && styles.chipTextActive]}>
-                    League
-                  </ThemedText>
+                  <Image source={require('@/assets/images/lol.png')} style={styles.chipIcon} resizeMode="contain" />
+                  <ThemedText style={[styles.chipText, localFilters.game === 'league' && styles.chipTextSelected]}>League</ThemedText>
                 </TouchableOpacity>
               </View>
             </View>
 
-            {/* Position Filter - Always show */}
-            <View style={styles.filterSection}>
+            {/* Position */}
+            <View style={styles.section}>
               <ThemedText style={styles.sectionTitle}>Position</ThemedText>
-
-              {/* Any option */}
               <View style={styles.chipRow}>
                 <TouchableOpacity
-                  style={[styles.chip, localFilters.role === null && styles.chipActive]}
+                  style={[styles.chip, localFilters.role === null && styles.chipSelected]}
                   onPress={() => setLocalFilters({ ...localFilters, role: null })}
                 >
-                  <ThemedText style={[styles.chipText, localFilters.role === null && styles.chipTextActive]}>
-                    Any
-                  </ThemedText>
+                  <ThemedText style={[styles.chipText, localFilters.role === null && styles.chipTextSelected]}>Any</ThemedText>
                 </TouchableOpacity>
               </View>
 
-              {/* Valorant Roles */}
               {(localFilters.game === null || localFilters.game === 'valorant') && (
                 <>
-                  <ThemedText style={styles.subSectionTitle}>Valorant</ThemedText>
+                  <ThemedText style={styles.subTitle}>Valorant</ThemedText>
                   <View style={styles.chipRow}>
                     {VALORANT_ROLES.map((role) => (
                       <TouchableOpacity
                         key={role}
-                        style={[styles.chip, localFilters.role === role && styles.chipActive]}
+                        style={[styles.chip, localFilters.role === role && styles.chipSelected]}
                         onPress={() => setLocalFilters({ ...localFilters, role })}
                       >
                         <Image source={VALORANT_ROLE_ICONS[role]} style={styles.roleIcon} resizeMode="contain" />
-                        <ThemedText style={[styles.chipText, localFilters.role === role && styles.chipTextActive]}>
-                          {role}
-                        </ThemedText>
+                        <ThemedText style={[styles.chipText, localFilters.role === role && styles.chipTextSelected]}>{role}</ThemedText>
                       </TouchableOpacity>
                     ))}
                   </View>
                 </>
               )}
 
-              {/* League Roles */}
               {(localFilters.game === null || localFilters.game === 'league') && (
                 <>
-                  <ThemedText style={styles.subSectionTitle}>League of Legends</ThemedText>
+                  <ThemedText style={styles.subTitle}>League of Legends</ThemedText>
                   <View style={styles.chipRow}>
                     {LEAGUE_ROLES.map((role) => (
                       <TouchableOpacity
                         key={role}
-                        style={[styles.chip, localFilters.role === role && styles.chipActive]}
+                        style={[styles.chip, localFilters.role === role && styles.chipSelected]}
                         onPress={() => setLocalFilters({ ...localFilters, role })}
                       >
                         <Image source={LEAGUE_LANE_ICONS[role]} style={styles.roleIcon} resizeMode="contain" />
-                        <ThemedText style={[styles.chipText, localFilters.role === role && styles.chipTextActive]}>
-                          {role}
-                        </ThemedText>
+                        <ThemedText style={[styles.chipText, localFilters.role === role && styles.chipTextSelected]}>{role}</ThemedText>
                       </TouchableOpacity>
                     ))}
                   </View>
@@ -254,56 +187,48 @@ export default function DuoFilterModal({
               )}
             </View>
 
-            {/* Rank Filter - Only show if game is selected */}
+            {/* Rank */}
             {localFilters.game && (
-              <View style={styles.filterSection}>
+              <View style={styles.section}>
                 <ThemedText style={styles.sectionTitle}>Rank Range</ThemedText>
-                <View style={styles.rankRangeContainer}>
+                <View style={styles.rankContainer}>
                   <View style={styles.rankColumn}>
-                    <ThemedText style={styles.rankLabel}>Min Rank</ThemedText>
-                    <View style={styles.rankChipColumn}>
+                    <ThemedText style={styles.rankLabel}>Min</ThemedText>
+                    <View style={styles.rankChips}>
                       <TouchableOpacity
-                        style={[styles.rankChip, localFilters.minRank === null && styles.rankChipActive]}
+                        style={[styles.rankChip, localFilters.minRank === null && styles.rankChipSelected]}
                         onPress={() => setLocalFilters({ ...localFilters, minRank: null })}
                       >
-                        <ThemedText style={[styles.rankChipText, localFilters.minRank === null && styles.rankChipTextActive]}>
-                          Any
-                        </ThemedText>
+                        <ThemedText style={[styles.rankChipText, localFilters.minRank === null && styles.rankChipTextSelected]}>Any</ThemedText>
                       </TouchableOpacity>
                       {getRankTiers().map((rank) => (
                         <TouchableOpacity
                           key={rank}
-                          style={[styles.rankChip, localFilters.minRank === rank && styles.rankChipActive]}
+                          style={[styles.rankChip, localFilters.minRank === rank && styles.rankChipSelected]}
                           onPress={() => setLocalFilters({ ...localFilters, minRank: rank })}
                         >
-                          <ThemedText style={[styles.rankChipText, localFilters.minRank === rank && styles.rankChipTextActive]}>
-                            {rank}
-                          </ThemedText>
+                          <ThemedText style={[styles.rankChipText, localFilters.minRank === rank && styles.rankChipTextSelected]}>{rank}</ThemedText>
                         </TouchableOpacity>
                       ))}
                     </View>
                   </View>
                   <View style={styles.rankDivider} />
                   <View style={styles.rankColumn}>
-                    <ThemedText style={styles.rankLabel}>Max Rank</ThemedText>
-                    <View style={styles.rankChipColumn}>
+                    <ThemedText style={styles.rankLabel}>Max</ThemedText>
+                    <View style={styles.rankChips}>
                       <TouchableOpacity
-                        style={[styles.rankChip, localFilters.maxRank === null && styles.rankChipActive]}
+                        style={[styles.rankChip, localFilters.maxRank === null && styles.rankChipSelected]}
                         onPress={() => setLocalFilters({ ...localFilters, maxRank: null })}
                       >
-                        <ThemedText style={[styles.rankChipText, localFilters.maxRank === null && styles.rankChipTextActive]}>
-                          Any
-                        </ThemedText>
+                        <ThemedText style={[styles.rankChipText, localFilters.maxRank === null && styles.rankChipTextSelected]}>Any</ThemedText>
                       </TouchableOpacity>
                       {getRankTiers().map((rank) => (
                         <TouchableOpacity
                           key={rank}
-                          style={[styles.rankChip, localFilters.maxRank === rank && styles.rankChipActive]}
+                          style={[styles.rankChip, localFilters.maxRank === rank && styles.rankChipSelected]}
                           onPress={() => setLocalFilters({ ...localFilters, maxRank: rank })}
                         >
-                          <ThemedText style={[styles.rankChipText, localFilters.maxRank === rank && styles.rankChipTextActive]}>
-                            {rank}
-                          </ThemedText>
+                          <ThemedText style={[styles.rankChipText, localFilters.maxRank === rank && styles.rankChipTextSelected]}>{rank}</ThemedText>
                         </TouchableOpacity>
                       ))}
                     </View>
@@ -312,36 +237,32 @@ export default function DuoFilterModal({
               </View>
             )}
 
-            {/* Language Filter */}
-            <View style={styles.filterSection}>
+            {/* Language */}
+            <View style={styles.section}>
               <ThemedText style={styles.sectionTitle}>Language</ThemedText>
               <View style={styles.chipRow}>
                 <TouchableOpacity
-                  style={[styles.chip, localFilters.language === null && styles.chipActive]}
+                  style={[styles.chip, localFilters.language === null && styles.chipSelected]}
                   onPress={() => setLocalFilters({ ...localFilters, language: null })}
                 >
-                  <ThemedText style={[styles.chipText, localFilters.language === null && styles.chipTextActive]}>
-                    Any
-                  </ThemedText>
+                  <ThemedText style={[styles.chipText, localFilters.language === null && styles.chipTextSelected]}>Any</ThemedText>
                 </TouchableOpacity>
                 {LANGUAGES.map((lang) => (
                   <TouchableOpacity
                     key={lang}
-                    style={[styles.chip, localFilters.language === lang && styles.chipActive]}
+                    style={[styles.chip, localFilters.language === lang && styles.chipSelected]}
                     onPress={() => setLocalFilters({ ...localFilters, language: lang })}
                   >
-                    <ThemedText style={[styles.chipText, localFilters.language === lang && styles.chipTextActive]}>
-                      {lang}
-                    </ThemedText>
+                    <ThemedText style={[styles.chipText, localFilters.language === lang && styles.chipTextSelected]}>{lang}</ThemedText>
                   </TouchableOpacity>
                 ))}
               </View>
             </View>
           </ScrollView>
 
-          {/* Apply Button */}
+          {/* Apply */}
           <View style={styles.footer}>
-            <TouchableOpacity style={styles.applyBtn} onPress={handleApply}>
+            <TouchableOpacity style={styles.applyBtn} onPress={handleApply} activeOpacity={0.8}>
               <ThemedText style={styles.applyBtnText}>Apply Filters</ThemedText>
             </TouchableOpacity>
           </View>
@@ -352,31 +273,31 @@ export default function DuoFilterModal({
 }
 
 const styles = StyleSheet.create({
-  modalContainer: {
+  overlay: {
     flex: 1,
-    backgroundColor: 'rgba(0, 0, 0, 0.6)',
+    backgroundColor: 'rgba(0,0,0,0.6)',
     justifyContent: 'flex-end',
   },
-  modalContent: {
-    backgroundColor: '#151515',
+  sheet: {
+    backgroundColor: '#1a1a1a',
     borderTopLeftRadius: 20,
     borderTopRightRadius: 20,
     maxHeight: '85%',
     minHeight: 400,
   },
+  handle: {
+    width: 36, height: 4, borderRadius: 2,
+    backgroundColor: 'rgba(255,255,255,0.2)',
+    alignSelf: 'center',
+    marginTop: 12,
+  },
   header: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    paddingHorizontal: 20,
-    paddingVertical: 16,
-    borderBottomWidth: 1,
-    borderBottomColor: '#252525',
-  },
-  headerLeft: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 10,
+    paddingHorizontal: 24,
+    paddingTop: 16,
+    paddingBottom: 16,
   },
   headerTitle: {
     fontSize: 18,
@@ -388,39 +309,32 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: 16,
   },
-  resetBtn: {
-    paddingVertical: 4,
-    paddingHorizontal: 8,
-  },
   resetText: {
     fontSize: 14,
     fontWeight: '600',
-    color: '#c42743',
+    color: '#fff',
   },
   scrollView: {
     flexGrow: 1,
     flexShrink: 1,
   },
   scrollContent: {
-    paddingVertical: 8,
     paddingBottom: 20,
   },
-  filterSection: {
-    paddingHorizontal: 20,
-    paddingVertical: 16,
+  section: {
+    paddingHorizontal: 24,
+    paddingVertical: 14,
   },
   sectionTitle: {
+    fontSize: 15,
+    fontWeight: '700',
+    color: '#fff',
+    marginBottom: 12,
+  },
+  subTitle: {
     fontSize: 13,
     fontWeight: '600',
-    color: '#888',
-    marginBottom: 12,
-    textTransform: 'uppercase',
-    letterSpacing: 0.5,
-  },
-  subSectionTitle: {
-    fontSize: 11,
-    fontWeight: '600',
-    color: '#666',
+    color: '#555',
     marginTop: 12,
     marginBottom: 8,
   },
@@ -436,20 +350,20 @@ const styles = StyleSheet.create({
     paddingVertical: 8,
     paddingHorizontal: 14,
     borderRadius: 20,
-    backgroundColor: '#252525',
+    backgroundColor: 'rgba(255,255,255,0.04)',
     borderWidth: 1,
-    borderColor: '#333',
+    borderColor: 'rgba(255,255,255,0.06)',
   },
-  chipActive: {
-    backgroundColor: 'rgba(196, 39, 67, 0.15)',
-    borderColor: '#c42743',
+  chipSelected: {
+    backgroundColor: 'rgba(255,255,255,0.1)',
+    borderColor: '#fff',
   },
   chipText: {
     fontSize: 13,
     fontWeight: '500',
-    color: '#888',
+    color: '#999',
   },
-  chipTextActive: {
+  chipTextSelected: {
     color: '#fff',
   },
   chipIcon: {
@@ -460,7 +374,7 @@ const styles = StyleSheet.create({
     width: 18,
     height: 18,
   },
-  rankRangeContainer: {
+  rankContainer: {
     flexDirection: 'row',
     gap: 12,
   },
@@ -468,56 +382,54 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   rankLabel: {
-    fontSize: 12,
-    fontWeight: '500',
-    color: '#666',
+    fontSize: 13,
+    fontWeight: '600',
+    color: '#555',
     marginBottom: 8,
   },
-  rankChipColumn: {
+  rankChips: {
     gap: 6,
   },
   rankChip: {
     paddingVertical: 8,
     paddingHorizontal: 12,
-    borderRadius: 8,
-    backgroundColor: '#252525',
+    borderRadius: 10,
+    backgroundColor: 'rgba(255,255,255,0.04)',
     borderWidth: 1,
-    borderColor: '#333',
+    borderColor: 'rgba(255,255,255,0.06)',
   },
-  rankChipActive: {
-    backgroundColor: 'rgba(196, 39, 67, 0.15)',
-    borderColor: '#c42743',
+  rankChipSelected: {
+    backgroundColor: 'rgba(255,255,255,0.1)',
+    borderColor: '#fff',
   },
   rankChipText: {
     fontSize: 13,
     fontWeight: '500',
-    color: '#888',
+    color: '#999',
     textAlign: 'center',
   },
-  rankChipTextActive: {
+  rankChipTextSelected: {
     color: '#fff',
   },
   rankDivider: {
-    width: 1,
-    backgroundColor: '#333',
+    width: 0.5,
+    backgroundColor: 'rgba(255,255,255,0.06)',
     marginVertical: 24,
   },
   footer: {
-    paddingHorizontal: 20,
+    paddingHorizontal: 24,
     paddingVertical: 16,
     paddingBottom: 32,
-    borderTopWidth: 1,
-    borderTopColor: '#252525',
   },
   applyBtn: {
-    backgroundColor: '#c42743',
-    paddingVertical: 14,
-    borderRadius: 12,
+    backgroundColor: '#fff',
+    paddingVertical: 16,
+    borderRadius: 28,
     alignItems: 'center',
   },
   applyBtnText: {
     fontSize: 16,
-    fontWeight: '600',
-    color: '#fff',
+    fontWeight: '700',
+    color: '#0f0f0f',
   },
 });

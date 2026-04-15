@@ -131,16 +131,9 @@ export default function LobbiesScreen() {
         <TouchableOpacity
           style={styles.createButton}
           onPress={() => setShowCreateModal(true)}
-          activeOpacity={0.85}
+          activeOpacity={0.7}
         >
-          <LinearGradient
-            colors={['#C4A44E', '#8B6F2F']}
-            start={{ x: 0, y: 0 }}
-            end={{ x: 1, y: 1 }}
-            style={styles.createButtonInner}
-          >
-            <IconSymbol size={20} name="plus" color="#fff" />
-          </LinearGradient>
+          <IconSymbol size={18} name="plus" color="#fff" />
         </TouchableOpacity>
       </View>
 
@@ -238,17 +231,12 @@ const styles = StyleSheet.create({
     color: '#fff',
   },
   createButton: {
-    width: 36,
-    height: 36,
-    borderRadius: 10,
-    overflow: 'hidden',
-  },
-  createButtonInner: {
-    width: '100%',
-    height: '100%',
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    backgroundColor: 'rgba(255,255,255,0.08)',
     alignItems: 'center',
     justifyContent: 'center',
-    borderRadius: 10,
   },
   scrollContent: {
     paddingHorizontal: 16,

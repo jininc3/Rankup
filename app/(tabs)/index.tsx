@@ -10,7 +10,6 @@ import { likePost, unlikePost, isPostLiked } from '@/services/likeService';
 import { createOrGetChat, subscribeToUserChats } from '@/services/chatService';
 import CommentModal from '@/app/components/commentModal';
 import PostContent from '@/app/components/postContent';
-import NewPost from '@/app/components/newPost';
 import PostDuoCard from '@/app/components/postDuoCard';
 import { DuoCardData } from '@/app/components/addDuoCard';
 import { collection, getDocs, orderBy, query, Timestamp, where, onSnapshot, limit, startAfter, QueryDocumentSnapshot, DocumentData, doc, getDoc } from 'firebase/firestore';
@@ -762,7 +761,7 @@ export default function HomeScreen() {
       }
     });
 
-    setShowNewClip(true);
+    router.push('/postPages/createPostVideo');
   };
 
   // Handle when a new post is created
@@ -1114,15 +1113,14 @@ export default function HomeScreen() {
           </>
         ) : (
           <View style={styles.emptyContainer}>
-            <IconSymbol size={64} name="person.2" color="#fff" />
-            <ThemedText style={styles.emptyText}>
+            <ThemedText style={styles.emptyTitle}>
               {activeTab === 'following'
-                ? "No posts from people you follow yet"
+                ? "Nothing here yet"
                 : "No posts available"}
             </ThemedText>
             <ThemedText style={styles.emptySubtext}>
               {activeTab === 'following'
-                ? "Follow users to see their posts here"
+                ? "Follow people to see their clips"
                 : "Check back later for new content"}
             </ThemedText>
           </View>
@@ -1149,30 +1147,10 @@ export default function HomeScreen() {
       <TouchableOpacity
         style={styles.fabButton}
         onPress={handleAddClip}
-        activeOpacity={0.85}
+        activeOpacity={0.7}
       >
-        <LinearGradient
-          colors={['#C4A44E', '#8B6F2F']}
-          start={{ x: 0, y: 0 }}
-          end={{ x: 1, y: 1 }}
-          style={styles.fabInner}
-        >
-          <IconSymbol size={26} name="plus" color="#fff" />
-        </LinearGradient>
+        <IconSymbol size={26} name="plus" color="#fff" />
       </TouchableOpacity>
-
-      {/* New Clip Modal */}
-      <NewPost
-        visible={showNewClip}
-        onClose={() => {
-          setShowNewClip(false);
-          setIsScreenFocused(true);
-        }}
-        onPostCreated={(newPost) => {
-          setShowNewClip(false);
-          handlePostCreated(newPost);
-        }}
-      />
 
       {/* Post Duo Card Modal */}
       <PostDuoCard
@@ -1531,23 +1509,19 @@ const styles = StyleSheet.create({
     paddingBottom: 100,
   },
   emptyContainer: {
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingVertical: 100,
-    paddingHorizontal: 40,
-    gap: 12,
+    paddingHorizontal: 28,
+    paddingTop: 80,
   },
-  emptyText: {
-    fontSize: 18,
-    fontWeight: '600',
+  emptyTitle: {
+    fontSize: 28,
+    fontWeight: '800',
     color: '#fff',
-    textAlign: 'center',
-    marginTop: 16,
+    lineHeight: 36,
+    marginBottom: 8,
   },
   emptySubtext: {
-    fontSize: 14,
-    color: '#ccc',
-    textAlign: 'center',
+    fontSize: 15,
+    color: '#555',
   },
   loadingMoreContainer: {
     flexDirection: 'row',
@@ -1587,22 +1561,9 @@ const styles = StyleSheet.create({
     right: 20,
     width: 56,
     height: 56,
-    borderRadius: 16,
-    overflow: 'hidden',
-    shadowColor: '#000',
-    shadowOffset: {
-      width: 0,
-      height: 4,
-    },
-    shadowOpacity: 0.4,
-    shadowRadius: 12,
-    elevation: 8,
-  },
-  fabInner: {
-    width: '100%',
-    height: '100%',
+    borderRadius: 28,
+    backgroundColor: 'rgba(255,255,255,0.1)',
     alignItems: 'center',
     justifyContent: 'center',
-    borderRadius: 16,
   },
 });

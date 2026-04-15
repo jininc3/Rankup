@@ -8,7 +8,6 @@ import {
   Image,
   ActivityIndicator,
   Alert,
-  Dimensions,
 } from 'react-native';
 import { useRouter, useFocusEffect } from 'expo-router';
 import { useAuth } from '@/contexts/AuthContext';
@@ -18,8 +17,6 @@ import { doc, getDoc, updateDoc, arrayUnion } from 'firebase/firestore';
 import { useValorantStats } from '@/contexts/ValorantStatsContext';
 import { unlinkRiotAccount } from '@/services/riotService';
 import { formatRank } from '@/services/riotService';
-
-const { width: screenWidth } = Dimensions.get('window');
 
 type GameType = 'league' | 'valorant' | 'tft';
 
@@ -34,15 +31,10 @@ export default function NewRankCardScreen() {
   const [enabledRankCards, setEnabledRankCards] = useState<string[]>([]);
   const [loading, setLoading] = useState(true);
 
-  // Fetch Riot account status and enabled rank cards when screen gains focus
   useFocusEffect(
     useCallback(() => {
       const fetchData = async () => {
-        if (!user?.id) {
-          setLoading(false);
-          return;
-        }
-
+        if (!user?.id) { setLoading(false); return; }
         setLoading(true);
         try {
           const userDoc = await getDoc(doc(db, 'users', user.id));
@@ -60,7 +52,6 @@ export default function NewRankCardScreen() {
           setLoading(false);
         }
       };
-
       fetchData();
     }, [user?.id])
   );
@@ -68,21 +59,15 @@ export default function NewRankCardScreen() {
   const handleGameSelect = async (game: GameType) => {
     if (!user?.id) return;
 
-    // Valorant uses Henrik's API - separate flow
+    // Already active — no action needed
+    if (enabledRankCards.includes(game)) return;
+
     if (game === 'valorant') {
       if (valorantAccount) {
         try {
-          await updateDoc(doc(db, 'users', user.id), {
-            enabledRankCards: arrayUnion(game),
-          });
+          await updateDoc(doc(db, 'users', user.id), { enabledRankCards: arrayUnion(game) });
           setEnabledRankCards([...enabledRankCards, game]);
-
-          try {
-            await fetchValorantStats(false);
-          } catch (statsError) {
-            console.warn('Failed to fetch stats, but rank card added:', statsError);
-          }
-
+          try { await fetchValorantStats(false); } catch {}
           router.back();
         } catch (error) {
           console.error('Error adding rank card:', error);
@@ -93,31 +78,24 @@ export default function NewRankCardScreen() {
       return;
     }
 
-    // If already connected to Riot, just add the rank card
     if (riotAccount) {
       try {
-        await updateDoc(doc(db, 'users', user.id), {
-          enabledRankCards: arrayUnion(game),
-        });
+        await updateDoc(doc(db, 'users', user.id), { enabledRankCards: arrayUnion(game) });
         setEnabledRankCards([...enabledRankCards, game]);
         router.back();
       } catch (error) {
         console.error('Error adding rank card:', error);
       }
     } else {
-      router.push({
-        pathname: '/profilePages/linkRiotAccount',
-        params: { selectedGame: game },
-      });
+      router.push({ pathname: '/profilePages/linkRiotAccount', params: { selectedGame: game } });
     }
   };
 
   const handleUnlinkRiotAccount = () => {
     if (!riotAccount) return;
-
     Alert.alert(
       'Unlink League of Legends Account',
-      `Are you sure you want to unlink ${riotAccount?.gameName}#${riotAccount?.tagLine}? All League and TFT rank cards will be removed from your profile.`,
+      `Are you sure you want to unlink ${riotAccount?.gameName}#${riotAccount?.tagLine}? All League and TFT rank cards will be removed.`,
       [
         { text: 'Cancel', style: 'cancel' },
         {
@@ -126,28 +104,19 @@ export default function NewRankCardScreen() {
           onPress: async () => {
             try {
               await unlinkRiotAccount();
-
               if (user?.id) {
                 const userDoc = await getDoc(doc(db, 'users', user.id));
                 if (userDoc.exists()) {
                   const data = userDoc.data();
-                  const currentCards = data.enabledRankCards || [];
-                  const updatedCards = currentCards.filter((card: string) => card !== 'league' && card !== 'tft');
-
-                  await updateDoc(doc(db, 'users', user.id), {
-                    enabledRankCards: updatedCards,
-                  });
-
+                  const updatedCards = (data.enabledRankCards || []).filter((c: string) => c !== 'league' && c !== 'tft');
+                  await updateDoc(doc(db, 'users', user.id), { enabledRankCards: updatedCards });
                   setEnabledRankCards(updatedCards);
                 }
               }
-
               setRiotAccount(null);
               setRiotStats(null);
-              Alert.alert('Success', 'League of Legends account unlinked successfully');
             } catch (error: any) {
-              Alert.alert('Error', error.message || 'Failed to unlink League account');
-              console.error(error);
+              Alert.alert('Error', error.message || 'Failed to unlink');
             }
           },
         },
@@ -157,10 +126,9 @@ export default function NewRankCardScreen() {
 
   const handleUnlinkValorantAccount = () => {
     if (!valorantAccount) return;
-
     Alert.alert(
       'Unlink Valorant Account',
-      `Are you sure you want to unlink ${valorantAccount?.gameName}#${valorantAccount?.tagLine}? Your Valorant rank card will be removed from your profile.`,
+      `Are you sure you want to unlink ${valorantAccount?.gameName}#${valorantAccount?.tagLine}?`,
       [
         { text: 'Cancel', style: 'cancel' },
         {
@@ -169,31 +137,19 @@ export default function NewRankCardScreen() {
           onPress: async () => {
             try {
               if (user?.id) {
-                await updateDoc(doc(db, 'users', user.id), {
-                  valorantAccount: null,
-                  valorantStats: null,
-                });
-
+                await updateDoc(doc(db, 'users', user.id), { valorantAccount: null, valorantStats: null });
                 const userDoc = await getDoc(doc(db, 'users', user.id));
                 if (userDoc.exists()) {
                   const data = userDoc.data();
-                  const currentCards = data.enabledRankCards || [];
-                  const updatedCards = currentCards.filter((card: string) => card !== 'valorant');
-
-                  await updateDoc(doc(db, 'users', user.id), {
-                    enabledRankCards: updatedCards,
-                  });
-
+                  const updatedCards = (data.enabledRankCards || []).filter((c: string) => c !== 'valorant');
+                  await updateDoc(doc(db, 'users', user.id), { enabledRankCards: updatedCards });
                   setEnabledRankCards(updatedCards);
                 }
               }
-
               setValorantAccount(null);
               setValorantStats(null);
-              Alert.alert('Success', 'Valorant account unlinked successfully');
             } catch (error: any) {
-              Alert.alert('Error', error.message || 'Failed to unlink Valorant account');
-              console.error(error);
+              Alert.alert('Error', error.message || 'Failed to unlink');
             }
           },
         },
@@ -202,17 +158,13 @@ export default function NewRankCardScreen() {
   };
 
   const getLeagueRank = () => {
-    if (riotStats?.rankedSolo) {
-      return formatRank(riotStats.rankedSolo.tier, riotStats.rankedSolo.rank);
-    }
+    if (riotStats?.rankedSolo) return formatRank(riotStats.rankedSolo.tier, riotStats.rankedSolo.rank);
     return 'Unranked';
   };
 
-  const getValorantRank = () => {
-    return valorantStats?.currentRank || 'Unranked';
-  };
+  const getValorantRank = () => valorantStats?.currentRank || 'Unranked';
 
-  const renderGameRow = (
+  const renderGameCard = (
     game: GameType,
     name: string,
     logo: any,
@@ -224,58 +176,33 @@ export default function NewRankCardScreen() {
     const isEnabled = enabledRankCards.includes(game);
 
     return (
-      <View style={styles.gameRow} key={game}>
+      <View key={game} style={styles.gameCardWrapper}>
         <TouchableOpacity
-          style={styles.gameCard}
-          onPress={() => {
-            if (!isLinked) {
-              handleGameSelect(game);
-            } else if (!isEnabled) {
-              handleGameSelect(game);
-            }
-          }}
-          activeOpacity={isLinked && isEnabled ? 1 : 0.7}
+          style={[styles.gameCard, isEnabled && styles.gameCardActive]}
+          onPress={() => handleGameSelect(game)}
+          activeOpacity={0.7}
         >
-          {/* Left: Logo */}
-          <Image source={logo} style={[styles.gameLogo, !isLinked && { opacity: 0.35 }]} resizeMode="contain" />
-
-          {/* Middle: Info */}
+          <Image source={logo} style={styles.gameLogo} resizeMode="contain" />
           <View style={styles.gameInfo}>
-            <ThemedText style={[styles.gameName, !isLinked && { opacity: 0.4 }]}>{name}</ThemedText>
+            <ThemedText style={styles.gameName}>{name}</ThemedText>
             {isLinked ? (
               <>
-                <ThemedText style={styles.accountName}>
-                  {account.gameName}#{account.tagLine || account.tag}
-                </ThemedText>
+                <ThemedText style={styles.accountName}>{account.gameName}#{account.tagLine || account.tag}</ThemedText>
                 <ThemedText style={styles.rankText}>{rankText}</ThemedText>
               </>
             ) : (
-              <ThemedText style={styles.notLinkedText}>Not linked</ThemedText>
+              <ThemedText style={styles.notLinkedText}>Tap to link your account</ThemedText>
             )}
           </View>
-
-          {/* Right: Action */}
-          <View style={styles.cardAction}>
-            {isLinked && isEnabled ? (
-              <View style={styles.activePill}>
-                <View style={styles.activeDot} />
-                <ThemedText style={styles.activePillText}>Active</ThemedText>
-              </View>
-            ) : isLinked ? (
-              <View style={styles.addPill}>
-                <IconSymbol size={12} name="plus" color="#C9A84C" />
-                <ThemedText style={styles.addPillText}>Add</ThemedText>
-              </View>
-            ) : (
-              <View style={styles.linkPill}>
-                <IconSymbol size={12} name="link" color="#C9A84C" />
-                <ThemedText style={styles.linkPillText}>Link</ThemedText>
-              </View>
-            )}
-          </View>
+          {isLinked && isEnabled ? (
+            <View style={styles.activePill}>
+              <View style={styles.activeDot} />
+              <ThemedText style={styles.activePillText}>Active</ThemedText>
+            </View>
+          ) : (
+            <IconSymbol size={18} name="chevron.right" color="#555" />
+          )}
         </TouchableOpacity>
-
-        {/* Unlink */}
         {isLinked && (
           <TouchableOpacity style={styles.unlinkButton} onPress={onUnlink}>
             <ThemedText style={styles.unlinkText}>Unlink</ThemedText>
@@ -287,58 +214,43 @@ export default function NewRankCardScreen() {
 
   return (
     <ScrollView style={styles.container} showsVerticalScrollIndicator={false}>
-      {/* Header */}
       <View style={styles.header}>
         <TouchableOpacity style={styles.backButton} onPress={() => router.back()}>
-          <IconSymbol size={20} name="chevron.left" color="#fff" />
+          <IconSymbol size={22} name="chevron.left" color="#fff" />
         </TouchableOpacity>
-        <View style={styles.headerTitleRow}>
-          <View style={styles.headerAccent} />
-          <ThemedText style={styles.headerTitle}>Rank Cards</ThemedText>
-        </View>
+        <ThemedText style={styles.headerTitle}>Rank Cards</ThemedText>
       </View>
 
-      {/* Content */}
       <View style={styles.content}>
         {loading ? (
           <View style={styles.loadingContainer}>
-            <ActivityIndicator size="small" color="#C9A84C" />
+            <ActivityIndicator size="small" color="#fff" />
           </View>
         ) : (
           <>
-            <ThemedText style={styles.sectionLabel}>Games</ThemedText>
+            <ThemedText style={styles.sectionTitle}>Games</ThemedText>
 
-            {renderGameRow(
-              'league',
-              'League of Legends',
-              require('@/assets/images/lol-icon.png'),
-              riotAccount,
-              getLeagueRank(),
-              handleUnlinkRiotAccount,
-            )}
-
-            <View style={styles.divider} />
-
-            {renderGameRow(
-              'valorant',
-              'Valorant',
-              require('@/assets/images/valorant-red.png'),
-              valorantAccount,
-              getValorantRank(),
-              handleUnlinkValorantAccount,
-            )}
-
-            {/* Info */}
-            <View style={styles.infoContainer}>
-              <ThemedText style={styles.infoText}>
-                Linked accounts display your current rank on your profile.
-              </ThemedText>
+            <View style={styles.gameList}>
+              {renderGameCard(
+                'league', 'League of Legends',
+                require('@/assets/images/lol-icon.png'),
+                riotAccount, getLeagueRank(), handleUnlinkRiotAccount,
+              )}
+              {renderGameCard(
+                'valorant', 'Valorant',
+                require('@/assets/images/valorant-red.png'),
+                valorantAccount, getValorantRank(), handleUnlinkValorantAccount,
+              )}
             </View>
+
+            <ThemedText style={styles.infoText}>
+              Linked accounts display your current rank on your profile.
+            </ThemedText>
           </>
         )}
       </View>
 
-      <View style={styles.bottomSpacer} />
+      <View style={{ height: 60 }} />
     </ScrollView>
   );
 }
@@ -352,98 +264,78 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     paddingHorizontal: 16,
-    paddingTop: 58,
-    paddingBottom: 20,
+    paddingTop: 60,
+    paddingBottom: 16,
+    gap: 12,
   },
   backButton: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
-    backgroundColor: 'rgba(0,0,0,0.4)',
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginRight: 12,
-  },
-  headerTitleRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-  },
-  headerAccent: {
-    width: 2,
-    height: 16,
-    backgroundColor: '#C9A84C',
-    borderRadius: 1,
+    padding: 8,
   },
   headerTitle: {
-    fontSize: 18,
-    fontWeight: '600',
-    color: 'rgba(255, 255, 255, 0.85)',
-    letterSpacing: -0.3,
+    fontSize: 17,
+    fontWeight: '700',
+    color: '#fff',
   },
   content: {
-    paddingHorizontal: 20,
-    paddingTop: 4,
+    paddingHorizontal: 28,
+    paddingTop: 16,
   },
   loadingContainer: {
     paddingVertical: 100,
     alignItems: 'center',
     justifyContent: 'center',
   },
-  sectionLabel: {
-    fontSize: 11,
-    fontWeight: '500',
-    color: 'rgba(201, 168, 76, 0.5)',
-    letterSpacing: 0.8,
-    textTransform: 'uppercase',
+  sectionTitle: {
+    fontSize: 15,
+    fontWeight: '700',
+    color: '#fff',
     marginBottom: 16,
   },
-  divider: {
-    height: StyleSheet.hairlineWidth,
-    backgroundColor: 'rgba(255, 255, 255, 0.06)',
-    marginVertical: 2,
+  gameList: {
+    gap: 12,
   },
-  gameRow: {
-    marginVertical: 2,
-  },
+  gameCardWrapper: {},
   gameCard: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingVertical: 14,
-    paddingHorizontal: 0,
-    gap: 12,
+    gap: 14,
+    backgroundColor: 'rgba(255,255,255,0.04)',
+    borderRadius: 14,
+    paddingVertical: 18,
+    paddingHorizontal: 18,
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.06)',
+  },
+  gameCardActive: {
+    borderColor: '#fff',
+    backgroundColor: 'rgba(255,255,255,0.08)',
   },
   gameLogo: {
-    width: 22,
-    height: 22,
-    opacity: 0.7,
+    width: 36,
+    height: 36,
+    borderRadius: 8,
   },
   gameInfo: {
     flex: 1,
-    gap: 1,
+    gap: 2,
   },
   gameName: {
-    fontSize: 15,
-    fontWeight: '500',
-    color: 'rgba(255, 255, 255, 0.85)',
+    fontSize: 17,
+    fontWeight: '600',
+    color: '#fff',
   },
   accountName: {
-    fontSize: 12,
-    fontWeight: '400',
-    color: 'rgba(255, 255, 255, 0.3)',
+    fontSize: 13,
+    color: '#555',
   },
   rankText: {
-    fontSize: 12,
+    fontSize: 13,
     fontWeight: '500',
-    color: 'rgba(201, 168, 76, 0.5)',
+    color: '#999',
   },
   notLinkedText: {
-    fontSize: 12,
-    fontWeight: '400',
-    color: '#3a3a3a',
-  },
-  cardAction: {
-    marginLeft: 8,
+    fontSize: 13,
+    color: '#555',
   },
   activePill: {
     flexDirection: 'row',
@@ -457,65 +349,25 @@ const styles = StyleSheet.create({
     width: 6,
     height: 6,
     borderRadius: 3,
-    backgroundColor: '#C9A84C',
+    backgroundColor: '#22C55E',
   },
   activePillText: {
     fontSize: 11,
     fontWeight: '500',
-    color: 'rgba(201, 168, 76, 0.6)',
-  },
-  addPill: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 4,
-    backgroundColor: 'rgba(201, 168, 76, 0.08)',
-    paddingHorizontal: 12,
-    paddingVertical: 5,
-    borderRadius: 20,
-    borderWidth: 1,
-    borderColor: 'rgba(201, 168, 76, 0.15)',
-  },
-  addPillText: {
-    fontSize: 11,
-    fontWeight: '600',
-    color: 'rgba(201, 168, 76, 0.7)',
-  },
-  linkPill: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 4,
-    backgroundColor: 'rgba(201, 168, 76, 0.06)',
-    paddingHorizontal: 12,
-    paddingVertical: 5,
-    borderRadius: 20,
-    borderWidth: 1,
-    borderColor: 'rgba(201, 168, 76, 0.12)',
-  },
-  linkPillText: {
-    fontSize: 11,
-    fontWeight: '600',
-    color: 'rgba(201, 168, 76, 0.5)',
+    color: '#22C55E',
   },
   unlinkButton: {
     alignSelf: 'flex-end',
-    paddingVertical: 4,
-    paddingHorizontal: 0,
+    paddingVertical: 6,
   },
   unlinkText: {
-    fontSize: 11,
-    fontWeight: '400',
-    color: '#3a3a3a',
-  },
-  infoContainer: {
-    marginTop: 24,
-    paddingHorizontal: 0,
+    fontSize: 12,
+    color: '#555',
   },
   infoText: {
-    fontSize: 11,
-    color: '#3a3a3a',
-    lineHeight: 16,
-  },
-  bottomSpacer: {
-    height: 60,
+    fontSize: 13,
+    color: '#555',
+    lineHeight: 18,
+    marginTop: 24,
   },
 });

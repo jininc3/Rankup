@@ -143,6 +143,12 @@ export default function LeaderboardScreen() {
   useEffect(() => {
     if (!user?.id) return;
 
+    // New user with no followers/following — skip fetch, show empty state immediately
+    if ((user.followersCount || 0) === 0 && (user.followingCount || 0) === 0) {
+      setMutualLoading(false);
+      return;
+    }
+
     const fetchMutualsAndStats = async () => {
       try {
         setMutualLoading(true);
@@ -406,9 +412,9 @@ export default function LeaderboardScreen() {
           <LeaderboardsTabSkeleton />
         ) : leaguePlayers.length + valorantPlayers.length === 0 ? (
           <View style={styles.emptyState}>
-            <ThemedText style={styles.emptyStateText}>No friends to rank</ThemedText>
+            <ThemedText style={styles.emptyStateTitle}>No friends to{'\n'}rank yet</ThemedText>
             <ThemedText style={styles.emptyStateSubtext}>
-              Follow users who follow you back to see mutual rankings
+              Follow users who follow you back to see mutual rankings.
             </ThemedText>
           </View>
         ) : (
@@ -600,19 +606,19 @@ const styles = StyleSheet.create({
     backgroundColor: '#333',
   },
   emptyState: {
-    paddingVertical: 40,
-    alignItems: 'center',
+    paddingHorizontal: 28,
+    paddingTop: 40,
   },
-  emptyStateText: {
-    fontSize: 15,
+  emptyStateTitle: {
+    fontSize: 28,
+    fontWeight: '800',
     color: '#fff',
-    marginBottom: 4,
-    textAlign: 'center',
+    lineHeight: 36,
+    marginBottom: 8,
   },
   emptyStateSubtext: {
-    fontSize: 13,
-    color: '#b9bbbe',
-    textAlign: 'center',
+    fontSize: 15,
+    color: '#555',
   },
   bottomSpacer: {
     height: 40,
