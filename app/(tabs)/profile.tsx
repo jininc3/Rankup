@@ -1402,12 +1402,10 @@ export default function ProfileScreen() {
                 {achievements.map((achievement, index) => {
                   const isGold = achievement.placement === 1;
                   const isSilver = achievement.placement === 2;
-                  const accentColor = isGold ? '#FFD700' : isSilver ? '#C0C0C0' : '#CD7F32';
-
                   return (
                     <TouchableOpacity
                       key={index}
-                      style={[styles.achievementCard, { borderLeftColor: accentColor }]}
+                      style={styles.achievementCard}
                       activeOpacity={0.7}
                       onPress={() => router.push(`/profilePages/achievementsView?partyId=${achievement.partyId}&game=${achievement.game}`)}
                     >
@@ -1434,7 +1432,7 @@ export default function ProfileScreen() {
 
                       {/* Right: Placement */}
                       <View style={styles.achievementPlacementContainer}>
-                        <ThemedText style={[styles.achievementPlacement, { color: accentColor }]}>
+                        <ThemedText style={styles.achievementPlacement}>
                           {isGold ? '1st' : isSilver ? '2nd' : '3rd'}
                         </ThemedText>
                       </View>
@@ -1672,15 +1670,16 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
-  // Cover photo card container - inset with margins
+  // Cover photo card container - flush top and right, gap on left
   coverPhotoCardContainer: {
-    marginHorizontal: 16,
-    marginTop: 10,
+    marginLeft: 16,
+    marginRight: 0,
+    marginTop: 0,
   },
   coverPhotoInner: {
-    height: 180,
-    borderRadius: 16,
-    backgroundColor: '#1a1a1a',
+    height: 220,
+    borderBottomLeftRadius: 20,
+    backgroundColor: 'rgba(255,255,255,0.04)',
     overflow: 'hidden',
   },
   coverPhotoFallbackBorder: {
@@ -1782,17 +1781,15 @@ const styles = StyleSheet.create({
   editProfileButton: {
     flex: 1,
     paddingVertical: 8,
-    backgroundColor: '#1e1e1e',
-    borderRadius: 8,
-    borderWidth: 1,
-    borderColor: '#2a2a2a',
+    backgroundColor: 'rgba(255,255,255,0.08)',
+    borderRadius: 20,
     alignItems: 'center',
     justifyContent: 'center',
   },
   editProfileButtonText: {
     fontSize: 13,
     fontWeight: '600',
-    color: '#e0e0e0',
+    color: '#fff',
   },
   socialIconsGroup: {
     flexDirection: 'row',
@@ -1801,10 +1798,8 @@ const styles = StyleSheet.create({
   socialIconButton: {
     width: 36,
     height: 36,
-    borderRadius: 8,
-    backgroundColor: '#1e1e1e',
-    borderWidth: 1,
-    borderColor: '#2a2a2a',
+    borderRadius: 18,
+    backgroundColor: 'rgba(255,255,255,0.08)',
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -1822,11 +1817,11 @@ const styles = StyleSheet.create({
     width: 40,
     height: 40,
     borderRadius: 20,
-    backgroundColor: '#36393e',
+    backgroundColor: 'rgba(255,255,255,0.06)',
     alignItems: 'center',
     justifyContent: 'center',
     borderWidth: 2,
-    borderColor: '#2c2f33',
+    borderColor: 'rgba(255,255,255,0.1)',
   },
   smallAvatarCircleWithGradient: {
     width: 40,
@@ -2018,14 +2013,14 @@ const styles = StyleSheet.create({
   emptyBanner: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#1a1a1a',
+    backgroundColor: 'rgba(255,255,255,0.04)',
     borderRadius: 14,
     padding: 16,
     marginHorizontal: 16,
     marginTop: 16,
     gap: 14,
-    borderWidth: 1,
-    borderColor: '#252525',
+    borderWidth: 0.5,
+    borderColor: 'rgba(255,255,255,0.06)',
   },
   emptyBannerIconRow: {
     flexDirection: 'row',
@@ -2036,17 +2031,17 @@ const styles = StyleSheet.create({
     width: 32,
     height: 32,
     borderRadius: 16,
-    backgroundColor: '#2c2f33',
+    backgroundColor: 'rgba(255,255,255,0.06)',
     alignItems: 'center',
     justifyContent: 'center',
     borderWidth: 2,
-    borderColor: '#1a1a1a',
+    borderColor: '#0f0f0f',
   },
   emptyBannerIconCircleCenter: {
     width: 38,
     height: 38,
     borderRadius: 19,
-    backgroundColor: '#c42743',
+    backgroundColor: 'rgba(255,255,255,0.1)',
     zIndex: 1,
   },
   emptyBannerTextContainer: {
@@ -2079,7 +2074,7 @@ const styles = StyleSheet.create({
     width: 36,
     height: 36,
     borderRadius: 18,
-    backgroundColor: '#2c2f33',
+    backgroundColor: 'rgba(255,255,255,0.06)',
     alignItems: 'center',
     justifyContent: 'center',
     borderWidth: 2,
@@ -2089,7 +2084,7 @@ const styles = StyleSheet.create({
     width: 46,
     height: 46,
     borderRadius: 23,
-    backgroundColor: '#c42743',
+    backgroundColor: 'rgba(255,255,255,0.1)',
     zIndex: 1,
   },
   emptyGameLogo: {
@@ -2112,7 +2107,7 @@ const styles = StyleSheet.create({
     width: 36,
     height: 36,
     borderRadius: 18,
-    backgroundColor: '#2c2f33',
+    backgroundColor: 'rgba(255,255,255,0.06)',
     alignItems: 'center',
     justifyContent: 'center',
     borderWidth: 2,
@@ -2122,7 +2117,7 @@ const styles = StyleSheet.create({
     width: 46,
     height: 46,
     borderRadius: 23,
-    backgroundColor: '#c42743',
+    backgroundColor: 'rgba(255,255,255,0.1)',
     zIndex: 1,
   },
   addClipsEmptyButton: {
@@ -2379,10 +2374,11 @@ const styles = StyleSheet.create({
   achievementCard: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#141414',
-    borderRadius: 10,
+    backgroundColor: 'rgba(255,255,255,0.04)',
+    borderRadius: 14,
     padding: 14,
-    borderLeftWidth: 3,
+    borderWidth: 0.5,
+    borderColor: 'rgba(255,255,255,0.06)',
     gap: 12,
   },
   achievementMedal: {
@@ -2424,6 +2420,7 @@ const styles = StyleSheet.create({
   achievementPlacement: {
     fontSize: 15,
     fontWeight: '800',
+    color: '#fff',
     letterSpacing: -0.3,
   },
   // Create Modal styles
@@ -2439,9 +2436,9 @@ const styles = StyleSheet.create({
     paddingBottom: 40,
   },
   createModalHandle: {
-    width: 40,
+    width: 36,
     height: 4,
-    backgroundColor: '#666',
+    backgroundColor: 'rgba(255,255,255,0.2)',
     borderRadius: 2,
     alignSelf: 'center',
     marginTop: 12,
@@ -2455,8 +2452,8 @@ const styles = StyleSheet.create({
     marginBottom: 16,
   },
   createModalDivider: {
-    height: 1,
-    backgroundColor: '#333',
+    height: 0.5,
+    backgroundColor: 'rgba(255,255,255,0.06)',
     marginHorizontal: 20,
     marginBottom: 8,
   },
@@ -2479,8 +2476,8 @@ const styles = StyleSheet.create({
     color: '#fff',
   },
   createModalOptionDivider: {
-    height: 1,
-    backgroundColor: '#252525',
+    height: 0.5,
+    backgroundColor: 'rgba(255,255,255,0.06)',
     marginLeft: 72,
   },
   // Avatar Modal styles
@@ -2498,18 +2495,18 @@ const styles = StyleSheet.create({
     width: 200,
     height: 200,
     borderRadius: 100,
-    backgroundColor: '#36393e',
+    backgroundColor: 'rgba(255,255,255,0.06)',
     alignItems: 'center',
     justifyContent: 'center',
     borderWidth: 4,
-    borderColor: '#2c2f33',
+    borderColor: 'rgba(255,255,255,0.1)',
     overflow: 'hidden',
   },
   avatarModalCircleWithGradient: {
     width: 200,
     height: 200,
     borderRadius: 100,
-    backgroundColor: '#36393e',
+    backgroundColor: 'rgba(255,255,255,0.06)',
     alignItems: 'center',
     justifyContent: 'center',
     overflow: 'hidden',

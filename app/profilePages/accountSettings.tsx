@@ -2,9 +2,8 @@ import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { IconSymbol } from '@/components/ui/icon-symbol';
 import { useRouter } from 'expo-router';
-import { ScrollView, StyleSheet, TouchableOpacity, View, Alert, TextInput, Modal, KeyboardAvoidingView, Platform } from 'react-native';
+import { ScrollView, StyleSheet, TouchableOpacity, View, Alert } from 'react-native';
 import { useAuth } from '@/contexts/AuthContext';
-import { deleteUserAccount } from '@/services/deleteAccountService';
 import { useState, useEffect } from 'react';
 import { auth } from '@/config/firebase';
 import { useGoogleAuth } from '@/hooks/useGoogleAuth';
@@ -15,48 +14,17 @@ const accountSettingsData = [
     id: 'profile',
     title: 'Profile Information',
     items: [
-      {
-        id: 1,
-        icon: 'person',
-        title: 'Edit Username',
-        subtitle: 'Change your display name',
-        hasChevron: true,
-      },
-      {
-        id: 2,
-        icon: 'envelope',
-        title: 'Email Address',
-        subtitle: 'Update your email',
-        hasChevron: true,
-      },
-      {
-        id: 3,
-        icon: 'phone',
-        title: 'Phone Number',
-        subtitle: 'Add or change phone',
-        hasChevron: true,
-      },
+      { id: 1, icon: 'person', title: 'Edit Username', subtitle: 'Change your display name', hasChevron: true },
+      { id: 2, icon: 'envelope', title: 'Email Address', subtitle: 'Update your email', hasChevron: true },
+      { id: 3, icon: 'phone', title: 'Phone Number', subtitle: 'Add or change phone', hasChevron: true },
     ],
   },
   {
     id: 'data',
     title: 'Data & Privacy',
     items: [
-      {
-        id: 7,
-        icon: 'arrow.down.doc',
-        title: 'Download Your Data',
-        subtitle: 'Request a copy of your data',
-        hasChevron: true,
-      },
-      {
-        id: 8,
-        icon: 'trash',
-        title: 'Delete Account',
-        subtitle: 'Permanently delete your account',
-        hasChevron: true,
-        isDangerous: true,
-      },
+      { id: 7, icon: 'arrow.down.doc', title: 'Download Your Data', subtitle: 'Request a copy of your data', hasChevron: true },
+      { id: 8, icon: 'trash', title: 'Delete Account', subtitle: 'Permanently delete your account', hasChevron: true, isDangerous: true },
     ],
   },
 ];
@@ -64,42 +32,28 @@ const accountSettingsData = [
 export default function AccountSettingsScreen() {
   const router = useRouter();
   const { user } = useAuth();
-  const [showDeleteModal, setShowDeleteModal] = useState(false);
-  const [deleteConfirmText, setDeleteConfirmText] = useState('');
-  const [isDeleting, setIsDeleting] = useState(false);
   const [authProvider, setAuthProvider] = useState<'password' | 'google.com' | 'phone' | null>(null);
   const googleAuth = useGoogleAuth();
-
-  // Edit flow states
   const [isEditUsernameFlow, setIsEditUsernameFlow] = useState(false);
 
-  // Detect the authentication provider when component mounts
   useEffect(() => {
     const currentUser = auth.currentUser;
     if (currentUser && currentUser.providerData.length > 0) {
-      const providerId = currentUser.providerData[0]?.providerId;
-      setAuthProvider(providerId as 'password' | 'google.com' | 'phone');
+      setAuthProvider(currentUser.providerData[0]?.providerId as any);
     }
   }, []);
 
-  // Handle Google re-authentication response
   useEffect(() => {
-    if (googleAuth.response?.type === 'success') {
-      if (isEditUsernameFlow) {
-        handleGoogleEditUsernameSuccess(googleAuth.response);
-      } else if (isDeleting) {
-        handleGoogleDeleteSuccess(googleAuth.response);
-      }
+    if (googleAuth.response?.type === 'success' && isEditUsernameFlow) {
+      handleGoogleEditUsernameSuccess(googleAuth.response);
     }
   }, [googleAuth.response]);
 
-  // Handle Edit Username
   const handleEditUsername = async () => {
-    // Handle Google users - re-authenticate with Google
     if (user?.provider === 'google') {
       Alert.alert(
         'Verify Your Identity',
-        'Please sign in with your Google account to verify your identity before editing your username.',
+        'Please sign in with your Google account to verify your identity.',
         [
           { text: 'Cancel', style: 'cancel' },
           {
@@ -109,8 +63,7 @@ export default function AccountSettingsScreen() {
                 setIsEditUsernameFlow(true);
                 await googleAuth.promptAsync();
               } catch (error: any) {
-                console.error('Google sign-in prompt error:', error);
-                Alert.alert('Error', 'Failed to open Google sign-in. Please try again.');
+                Alert.alert('Error', 'Failed to open Google sign-in.');
                 setIsEditUsernameFlow(false);
               }
             },
@@ -119,158 +72,52 @@ export default function AccountSettingsScreen() {
       );
       return;
     }
-
-    // For email/phone passwordless users - navigate directly
     router.push('/profilePages/editUsername');
   };
 
   const handleGoogleEditUsernameSuccess = async (response: any) => {
     try {
       const { id_token } = response.params;
-
       if (id_token) {
         const currentUser = auth.currentUser;
-        if (!currentUser) {
-          Alert.alert('Error', 'User not found');
-          setIsEditUsernameFlow(false);
-          return;
-        }
-
-        // Re-authenticate with Google credential
+        if (!currentUser) { setIsEditUsernameFlow(false); return; }
         const googleCredential = GoogleAuthProvider.credential(id_token);
         await reauthenticateWithCredential(currentUser, googleCredential);
-
-        // Successfully re-authenticated, navigate to edit username page
         setIsEditUsernameFlow(false);
         router.push('/profilePages/editUsername');
       }
     } catch (error: any) {
-      console.error('Google re-authentication error:', error);
-      Alert.alert('Error', 'Failed to verify your identity. Please try again.');
+      Alert.alert('Error', 'Failed to verify your identity.');
       setIsEditUsernameFlow(false);
     }
   };
 
   const handleEditEmail = async () => {
     if (user?.provider === 'google') {
-      Alert.alert(
-        'Not Available',
-        'Email editing is not available for Google accounts.',
-        [{ text: 'OK' }]
-      );
+      Alert.alert('Not Available', 'Email editing is not available for Google accounts.');
       return;
     }
-
     router.push('/profilePages/editEmail');
-  };
-
-  const handleGoogleDeleteSuccess = async (response: any) => {
-    try {
-      const { id_token } = response.params;
-      if (id_token && user?.id) {
-        await deleteUserAccount(user.id, id_token);
-        handleDeleteSuccess();
-      }
-    } catch (error: any) {
-      console.error('Error deleting account:', error);
-      Alert.alert('Error', error.message || 'Failed to delete account. Please try again.');
-      setIsDeleting(false);
-    }
-  };
-
-  const handleDeleteSuccess = () => {
-    setShowDeleteModal(false);
-    setDeleteConfirmText('');
-    Alert.alert(
-      'Account Deleted',
-      'Your account has been permanently deleted.',
-      [
-        {
-          text: 'OK',
-          onPress: () => router.replace('/(auth)/login'),
-        },
-      ],
-      { cancelable: false }
-    );
-  };
-
-  const handleDeleteAccountPress = () => {
-    Alert.alert(
-      'Delete Account',
-      'This action cannot be undone. All your data will be permanently deleted.',
-      [
-        {
-          text: 'Cancel',
-          style: 'cancel',
-        },
-        {
-          text: 'Continue',
-          style: 'destructive',
-          onPress: () => setShowDeleteModal(true),
-        },
-      ]
-    );
-  };
-
-  const handleConfirmDelete = async () => {
-    if (deleteConfirmText.toUpperCase() !== 'DELETE') {
-      Alert.alert('Error', 'Please type DELETE to confirm');
-      return;
-    }
-
-    if (!user?.id) {
-      Alert.alert('Error', 'User not found');
-      return;
-    }
-
-    setIsDeleting(true);
-
-    try {
-      if (authProvider === 'password' || authProvider === 'phone') {
-        // Email/phone passwordless users - delete directly
-        await deleteUserAccount(user.id);
-        handleDeleteSuccess();
-      } else if (authProvider === 'google.com') {
-        // Google authentication - prompt for Google sign-in
-        await googleAuth.promptAsync();
-        // The actual deletion will happen in the handleGoogleDeleteSuccess callback
-      } else {
-        Alert.alert('Error', 'Unknown authentication provider');
-        setIsDeleting(false);
-      }
-    } catch (error: any) {
-      console.error('Error deleting account:', error);
-      Alert.alert(
-        'Error',
-        error.message || 'Failed to delete account. Please try again.'
-      );
-      setIsDeleting(false);
-    }
   };
 
   return (
     <ThemedView style={styles.container}>
-      {/* Header */}
       <View style={styles.header}>
-        <TouchableOpacity
-          style={styles.backButton}
-          onPress={() => router.back()}
-        >
-          <IconSymbol size={20} name="chevron.left" color="#fff" />
+        <TouchableOpacity style={styles.backButton} onPress={() => router.back()}>
+          <IconSymbol size={22} name="chevron.left" color="#fff" />
         </TouchableOpacity>
         <ThemedText style={styles.headerTitle}>Account Settings</ThemedText>
-        <View style={styles.headerSpacer} />
+        <View style={{ width: 38 }} />
       </View>
 
       <ScrollView showsVerticalScrollIndicator={false}>
-        {/* Settings Sections */}
         {accountSettingsData.map((section) => (
           <View key={section.id} style={styles.section}>
             {section.title && (
               <View style={styles.sectionHeader}>
                 <IconSymbol
                   size={18}
-                  name={section.id === 'profile' ? 'person.fill' : section.id === 'security' ? 'lock.shield' : 'doc.text'}
+                  name={section.id === 'profile' ? 'person.fill' : 'doc.text'}
                   color="#fff"
                 />
                 <ThemedText style={styles.sectionHeaderTitle}>{section.title}</ThemedText>
@@ -280,36 +127,19 @@ export default function AccountSettingsScreen() {
               {section.items.map((item, index) => (
                 <TouchableOpacity
                   key={item.id}
-                  style={[
-                    styles.settingItem,
-                    index === section.items.length - 1 && styles.settingItemLast,
-                  ]}
+                  style={[styles.settingItem, index === section.items.length - 1 && styles.settingItemLast]}
                   onPress={() => {
-                    if (item.id === 1) {
-                      // Edit Username
-                      handleEditUsername();
-                    } else if (item.id === 2) {
-                      // Edit Email
-                      handleEditEmail();
-                    } else if (item.id === 8) {
-                      // Delete Account
-                      handleDeleteAccountPress();
-                    }
+                    if (item.id === 1) handleEditUsername();
+                    else if (item.id === 2) handleEditEmail();
+                    else if (item.id === 8) router.push('/profilePages/deleteAccount');
                   }}
                 >
                   <View style={styles.settingLeft}>
                     <View style={styles.iconContainer}>
-                      <IconSymbol
-                        size={20}
-                        name={item.icon}
-                        color={item.isDangerous ? '#c42743' : '#888'}
-                      />
+                      <IconSymbol size={20} name={item.icon} color={item.isDangerous ? '#c42743' : '#888'} />
                     </View>
                     <View style={styles.settingTextContainer}>
-                      <ThemedText style={[
-                        styles.settingTitle,
-                        item.isDangerous && styles.dangerousText
-                      ]}>
+                      <ThemedText style={[styles.settingTitle, item.isDangerous && styles.dangerousText]}>
                         {item.title}
                       </ThemedText>
                       {item.subtitle && (
@@ -325,325 +155,46 @@ export default function AccountSettingsScreen() {
             </View>
           </View>
         ))}
-
-        {/* Bottom Spacing */}
         <View style={styles.bottomSpacer} />
       </ScrollView>
-
-      {/* Delete Account Confirmation Modal */}
-      <Modal
-        visible={showDeleteModal}
-        animationType="fade"
-        transparent={true}
-        onRequestClose={() => !isDeleting && setShowDeleteModal(false)}
-      >
-        <KeyboardAvoidingView
-          behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-          style={styles.modalOverlay}
-        >
-          <View style={styles.modalContent}>
-            <View style={styles.modalHeader}>
-              <IconSymbol size={48} name="exclamationmark.triangle.fill" color="#ef4444" />
-              <ThemedText style={styles.modalTitle}>Delete Account</ThemedText>
-              <ThemedText style={styles.modalDescription}>
-                This will permanently delete:
-              </ThemedText>
-            </View>
-
-            <View style={styles.deleteListContainer}>
-              <View style={styles.deleteListItem}>
-                <IconSymbol size={16} name="checkmark" color="#b9bbbe" />
-                <ThemedText style={styles.deleteListText}>All your posts and media</ThemedText>
-              </View>
-              <View style={styles.deleteListItem}>
-                <IconSymbol size={16} name="checkmark" color="#b9bbbe" />
-                <ThemedText style={styles.deleteListText}>Your profile and photos</ThemedText>
-              </View>
-              <View style={styles.deleteListItem}>
-                <IconSymbol size={16} name="checkmark" color="#b9bbbe" />
-                <ThemedText style={styles.deleteListText}>All comments and likes</ThemedText>
-              </View>
-              <View style={styles.deleteListItem}>
-                <IconSymbol size={16} name="checkmark" color="#b9bbbe" />
-                <ThemedText style={styles.deleteListText}>Your followers and following</ThemedText>
-              </View>
-              <View style={styles.deleteListItem}>
-                <IconSymbol size={16} name="checkmark" color="#b9bbbe" />
-                <ThemedText style={styles.deleteListText}>All chat messages</ThemedText>
-              </View>
-              <View style={styles.deleteListItem}>
-                <IconSymbol size={16} name="checkmark" color="#b9bbbe" />
-                <ThemedText style={styles.deleteListText}>Leaderboard party memberships</ThemedText>
-              </View>
-            </View>
-
-            {/* Google re-authentication notice */}
-            {authProvider === 'google.com' && (
-              <View style={styles.confirmInputContainer}>
-                <ThemedText style={styles.googleNotice}>
-                  You will be prompted to sign in with Google to confirm this action.
-                </ThemedText>
-              </View>
-            )}
-
-            <View style={styles.confirmInputContainer}>
-              <ThemedText style={styles.confirmInputLabel}>
-                Type DELETE to confirm:
-              </ThemedText>
-              <TextInput
-                style={styles.confirmInput}
-                value={deleteConfirmText}
-                onChangeText={setDeleteConfirmText}
-                placeholder="DELETE"
-                placeholderTextColor="#72767d"
-                autoCapitalize="characters"
-                editable={!isDeleting}
-              />
-            </View>
-
-            <View style={styles.modalButtons}>
-              <TouchableOpacity
-                style={styles.modalCancelButton}
-                onPress={() => {
-                  setShowDeleteModal(false);
-                  setDeleteConfirmText('');
-                  setIsDeleting(false);
-                }}
-                disabled={isDeleting}
-              >
-                <ThemedText style={styles.modalCancelText}>Cancel</ThemedText>
-              </TouchableOpacity>
-
-              <TouchableOpacity
-                style={[
-                  styles.modalDeleteButton,
-                  (deleteConfirmText.toUpperCase() !== 'DELETE' || isDeleting) &&
-                    styles.modalDeleteButtonDisabled,
-                ]}
-                onPress={handleConfirmDelete}
-                disabled={deleteConfirmText.toUpperCase() !== 'DELETE' || isDeleting}
-              >
-                <ThemedText style={styles.modalDeleteText}>
-                  {isDeleting ? 'Deleting...' : 'Delete Forever'}
-                </ThemedText>
-              </TouchableOpacity>
-            </View>
-          </View>
-        </KeyboardAvoidingView>
-      </Modal>
-
     </ThemedView>
   );
 }
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: '#0f0f0f',
-  },
+  container: { flex: 1, backgroundColor: '#0f0f0f' },
   header: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    paddingHorizontal: 20,
-    paddingTop: 55,
-    paddingBottom: 15,
-    backgroundColor: '#0f0f0f',
+    flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center',
+    paddingHorizontal: 16, paddingTop: 60, paddingBottom: 16,
   },
-  backButton: {
-    padding: 4,
-    width: 32,
-  },
-  headerTitle: {
-    fontSize: 20,
-    fontWeight: '700',
-    color: '#fff',
-    textAlign: 'center',
-  },
-  headerSpacer: {
-    width: 32,
-  },
-  section: {
-    marginBottom: 8,
-  },
+  backButton: { padding: 8 },
+  headerTitle: { fontSize: 17, fontWeight: '700', color: '#fff' },
+  section: { marginBottom: 8 },
   sectionHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-    paddingHorizontal: 20,
-    paddingTop: 16,
-    paddingBottom: 12,
+    flexDirection: 'row', alignItems: 'center', gap: 8,
+    paddingHorizontal: 20, paddingTop: 16, paddingBottom: 12,
   },
-  sectionHeaderTitle: {
-    fontSize: 18,
-    fontWeight: '700',
-    color: '#fff',
-    letterSpacing: -0.5,
-  },
-  sectionTitle: {
-    fontSize: 13,
-    fontWeight: '600',
-    color: '#888',
-    textTransform: 'uppercase',
-    letterSpacing: 0.5,
-    marginBottom: 12,
-    marginHorizontal: 20,
-  },
+  sectionHeaderTitle: { fontSize: 18, fontWeight: '700', color: '#fff', letterSpacing: -0.5 },
   settingsGroup: {
-    marginHorizontal: 16,
-    backgroundColor: '#1a1a1a',
-    borderRadius: 16,
-    overflow: 'hidden',
+    marginHorizontal: 16, backgroundColor: 'rgba(255,255,255,0.04)',
+    borderRadius: 14, overflow: 'hidden',
+    borderWidth: 0.5, borderColor: 'rgba(255,255,255,0.06)',
   },
   settingItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingVertical: 14,
-    paddingHorizontal: 16,
-    borderBottomWidth: 1,
-    borderBottomColor: '#252525',
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
+    paddingVertical: 14, paddingHorizontal: 16,
+    borderBottomWidth: 0.5, borderBottomColor: 'rgba(255,255,255,0.06)',
   },
-  settingItemLast: {
-    borderBottomWidth: 0,
-  },
-  settingLeft: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 12,
-    flex: 1,
-  },
+  settingItemLast: { borderBottomWidth: 0 },
+  settingLeft: { flexDirection: 'row', alignItems: 'center', gap: 12, flex: 1 },
   iconContainer: {
-    width: 32,
-    height: 32,
-    borderRadius: 8,
-    backgroundColor: '#252525',
-    alignItems: 'center',
-    justifyContent: 'center',
+    width: 32, height: 32, borderRadius: 8,
+    backgroundColor: 'rgba(255,255,255,0.06)',
+    alignItems: 'center', justifyContent: 'center',
   },
-  settingTextContainer: {
-    flex: 1,
-  },
-  settingTitle: {
-    fontSize: 15,
-    fontWeight: '500',
-    color: '#fff',
-    letterSpacing: -0.2,
-  },
-  settingSubtitle: {
-    fontSize: 12,
-    color: '#666',
-    marginTop: 2,
-  },
-  dangerousText: {
-    color: '#c42743',
-  },
-  bottomSpacer: {
-    height: 40,
-  },
-  modalOverlay: {
-    flex: 1,
-    backgroundColor: 'rgba(0, 0, 0, 0.7)',
-    justifyContent: 'center',
-    alignItems: 'center',
-    padding: 20,
-  },
-  modalContent: {
-    backgroundColor: '#1a1a1a',
-    borderRadius: 16,
-    padding: 24,
-    width: '100%',
-    maxWidth: 400,
-  },
-  modalHeader: {
-    alignItems: 'center',
-    marginBottom: 24,
-  },
-  modalTitle: {
-    fontSize: 22,
-    fontWeight: '700',
-    color: '#fff',
-    marginTop: 12,
-    marginBottom: 8,
-  },
-  modalDescription: {
-    fontSize: 15,
-    color: '#666',
-    textAlign: 'center',
-  },
-  deleteListContainer: {
-    backgroundColor: '#252525',
-    borderRadius: 12,
-    padding: 16,
-    marginBottom: 24,
-    gap: 12,
-  },
-  deleteListItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 10,
-  },
-  deleteListText: {
-    fontSize: 14,
-    color: '#999',
-    flex: 1,
-  },
-  confirmInputContainer: {
-    marginBottom: 24,
-  },
-  confirmInputLabel: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: '#fff',
-    marginBottom: 8,
-  },
-  confirmInput: {
-    borderWidth: 1,
-    borderColor: '#252525',
-    borderRadius: 8,
-    padding: 12,
-    fontSize: 16,
-    color: '#fff',
-    backgroundColor: '#252525',
-  },
-  googleNotice: {
-    fontSize: 14,
-    color: '#666',
-    textAlign: 'center',
-    backgroundColor: '#252525',
-    padding: 12,
-    borderRadius: 8,
-  },
-  modalButtons: {
-    flexDirection: 'row',
-    gap: 12,
-  },
-  modalCancelButton: {
-    flex: 1,
-    paddingVertical: 12,
-    borderRadius: 8,
-    backgroundColor: '#252525',
-    alignItems: 'center',
-  },
-  modalCancelText: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: '#fff',
-  },
-  modalDeleteButton: {
-    flex: 1,
-    paddingVertical: 12,
-    borderRadius: 8,
-    backgroundColor: '#c42743',
-    alignItems: 'center',
-  },
-  modalDeleteButtonDisabled: {
-    backgroundColor: '#c42743',
-    opacity: 0.5,
-  },
-  modalDeleteText: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: '#fff',
-  },
+  settingTextContainer: { flex: 1 },
+  settingTitle: { fontSize: 15, fontWeight: '500', color: '#fff' },
+  settingSubtitle: { fontSize: 12, color: '#555', marginTop: 2 },
+  dangerousText: { color: '#c42743' },
+  bottomSpacer: { height: 40 },
 });

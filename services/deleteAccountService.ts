@@ -26,7 +26,8 @@ import { deleteProfilePicture, deleteCoverPhoto, deletePostMedia } from './stora
  * @param googleIdToken - Google ID token (required for Google auth)
  */
 export async function reauthenticateUser(
-  googleIdToken?: string
+  googleIdToken?: string,
+  password?: string
 ): Promise<void> {
   const currentUser = auth.currentUser;
   if (!currentUser) {
@@ -37,18 +38,23 @@ export async function reauthenticateUser(
     const providerId = currentUser.providerData[0]?.providerId;
 
     if (providerId === 'google.com' && googleIdToken) {
-      // Google re-authentication
       const credential = GoogleAuthProvider.credential(googleIdToken);
       await reauthenticateWithCredential(currentUser, credential);
-      console.log('Re-authenticated with Google');
     } else if (providerId === 'google.com') {
       throw new Error('Google re-authentication required');
+    } else if (password && currentUser.email) {
+      // Email/phone users — re-authenticate with password
+      const { EmailAuthProvider } = await import('firebase/auth');
+      const credential = EmailAuthProvider.credential(currentUser.email, password);
+      await reauthenticateWithCredential(currentUser, credential);
+    } else {
+      throw new Error('Password required to delete account');
     }
-    // For email/phone passwordless users, no re-auth needed
-    // (Firebase will throw requires-recent-login if session is too old)
   } catch (error: any) {
     console.error('Re-authentication failed:', error);
-    if (error.code === 'auth/too-many-requests') {
+    if (error.code === 'auth/wrong-password' || error.code === 'auth/invalid-credential') {
+      throw new Error('Incorrect password. Please try again.');
+    } else if (error.code === 'auth/too-many-requests') {
       throw new Error('Too many failed attempts. Please try again later.');
     } else {
       throw error;
@@ -76,16 +82,18 @@ export async function reauthenticateUser(
  *
  * @param userId - The ID of the user to delete
  * @param googleIdToken - Google ID token (required for Google auth)
+ * @param password - User password (required for email/phone auth)
  */
 export async function deleteUserAccount(
   userId: string,
-  googleIdToken?: string
+  googleIdToken?: string,
+  password?: string
 ): Promise<void> {
   try {
     console.log(`Starting account deletion for user: ${userId}`);
 
     // 0. Re-authenticate user before deletion (required by Firebase for Google users)
-    await reauthenticateUser(googleIdToken);
+    await reauthenticateUser(googleIdToken, password);
 
     // 1. Delete all user's posts (including their likes and comments subcollections) and media
     await deleteUserPosts(userId);
