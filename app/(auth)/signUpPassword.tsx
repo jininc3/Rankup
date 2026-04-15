@@ -4,7 +4,7 @@ import { IconSymbol } from '@/components/ui/icon-symbol';
 import { completeEmailSignup, completePhoneSignup } from '@/services/authService';
 import { uploadProfilePicture } from '@/services/storageService';
 import { auth, db } from '@/config/firebase';
-import { useAuth } from '@/contexts/AuthContext';
+
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { doc, updateDoc } from 'firebase/firestore';
 import { updateProfile, updatePassword as fbUpdatePassword } from 'firebase/auth';
@@ -21,13 +21,27 @@ export default function SignUpPassword() {
   const router = useRouter();
   const params = useLocalSearchParams();
   const signupMethod = (params.signupMethod as string) || 'email';
-  const { refreshUser } = useAuth();
+
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
 
   const isValid = password.length >= 8 && password === confirmPassword;
+
+  const handleBack = () => {
+    Alert.alert(
+      'Leave Signup?',
+      'You can continue where you left off next time.',
+      [
+        { text: 'Stay', style: 'cancel' },
+        {
+          text: 'Leave',
+          onPress: () => router.replace('/(auth)/login'),
+        },
+      ]
+    );
+  };
 
   const handleContinue = async () => {
     if (password.length < 8) {
@@ -96,8 +110,6 @@ export default function SignUpPassword() {
         });
       }
 
-      await refreshUser();
-
       router.push({
         pathname: '/(auth)/emailSignUpFriends',
         params: { ...params },
@@ -113,7 +125,7 @@ export default function SignUpPassword() {
     <ThemedView style={styles.container}>
       <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={{ flex: 1 }}>
         <View style={styles.headerRow}>
-          <TouchableOpacity style={styles.backButton} onPress={() => router.back()}>
+          <TouchableOpacity style={styles.backButton} onPress={handleBack}>
             <IconSymbol size={22} name="chevron.left" color="#fff" />
           </TouchableOpacity>
           <View style={styles.progress}>
@@ -142,21 +154,21 @@ export default function SignUpPassword() {
               </TouchableOpacity>
             </View>
 
-            <TextInput
-              style={styles.input}
-              placeholder="Confirm password"
-              placeholderTextColor="#555"
-              value={confirmPassword}
-              onChangeText={setConfirmPassword}
-              secureTextEntry={!showPassword}
-              editable={!isLoading}
-              returnKeyType="done"
-              onSubmitEditing={handleContinue}
-            />
+            <View style={styles.inputWrapper}>
+              <TextInput
+                style={styles.input}
+                placeholder="Confirm password"
+                placeholderTextColor="#555"
+                value={confirmPassword}
+                onChangeText={setConfirmPassword}
+                secureTextEntry={!showPassword}
+                editable={!isLoading}
+                returnKeyType="done"
+                onSubmitEditing={handleContinue}
+              />
+            </View>
           </View>
-        </View>
 
-        <View style={styles.bottomSection}>
           <TouchableOpacity
             style={[styles.continueButton, (!isValid || isLoading) && styles.buttonDisabled]}
             onPress={handleContinue}
@@ -179,7 +191,7 @@ const styles = StyleSheet.create({
   backButton: { padding: 8 },
   progress: { flex: 1, height: 2, marginLeft: 12, marginRight: 12, backgroundColor: 'rgba(255,255,255,0.08)', borderRadius: 1 },
   progressFill: { height: '100%', backgroundColor: '#fff', borderRadius: 1 },
-  content: { flex: 1, paddingHorizontal: 28, paddingTop: 32 },
+  content: { paddingHorizontal: 28, paddingTop: 32 },
   title: { fontSize: 28, fontWeight: '800', color: '#fff', lineHeight: 36, marginBottom: 8 },
   subtitle: { fontSize: 15, color: '#555' },
   inputGroup: { marginTop: 32, gap: 12 },
@@ -192,8 +204,7 @@ const styles = StyleSheet.create({
     borderWidth: 0.5, borderColor: 'rgba(255,255,255,0.1)',
   },
   eyeButton: { position: 'absolute', right: 16 },
-  bottomSection: { paddingHorizontal: 28, paddingBottom: 40 },
-  continueButton: { backgroundColor: '#fff', borderRadius: 28, paddingVertical: 16, alignItems: 'center' },
+  continueButton: { marginTop: 24, backgroundColor: '#fff', borderRadius: 28, paddingVertical: 16, alignItems: 'center' },
   continueButtonText: { color: '#0f0f0f', fontSize: 16, fontWeight: '700' },
   buttonDisabled: { opacity: 0.4 },
 });

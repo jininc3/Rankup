@@ -47,6 +47,10 @@ export {refreshPartyStatsFunction as refreshPartyStats} from "./parties/refreshP
 // Export User Management functions
 export {updateUsernameFunction as updateUsername} from "./users/updateUsername";
 
+// Export Email Verification functions
+export {sendEmailVerificationCodeFunction as sendEmailVerificationCode} from "./email/emailVerification";
+export {verifyEmailCodeFunction as verifyEmailCode} from "./email/emailVerification";
+
 // Export Duo Matching functions
 export {onDuoQueueCreated} from "./duo/onDuoQueueCreated";
 export {onDuoMatchUpdated} from "./duo/onMatchUpdated";

@@ -3,9 +3,10 @@ import { ThemedView } from '@/components/themed-view';
 import { IconSymbol } from '@/components/ui/icon-symbol';
 import { db } from '@/config/firebase';
 import { useRouter, useLocalSearchParams } from 'expo-router';
+import { Asset } from 'expo-asset';
 import { collection, getDocs, query, where } from 'firebase/firestore';
 import React, { useState, useCallback, useRef } from 'react';
-import { StyleSheet, TouchableOpacity, View, TextInput, Image, Alert, KeyboardAvoidingView, Platform } from 'react-native';
+import { StyleSheet, TouchableOpacity, View, TextInput, Image, Alert, KeyboardAvoidingView, Platform, Modal, Pressable, Keyboard, TouchableWithoutFeedback } from 'react-native';
 import * as ImagePicker from 'expo-image-picker';
 
 const PROGRESS: Record<string, string> = {
@@ -14,6 +15,14 @@ const PROGRESS: Record<string, string> = {
   google: '50%',
 };
 
+const DEFAULT_AVATARS = [
+  require('@/assets/images/avatar1.png'),
+  require('@/assets/images/avatar2.png'),
+  require('@/assets/images/avatar3.png'),
+  require('@/assets/images/avatar4.png'),
+  require('@/assets/images/avatar5.png'),
+];
+
 export default function SignUpUsername() {
   const router = useRouter();
   const params = useLocalSearchParams();
@@ -21,7 +30,12 @@ export default function SignUpUsername() {
   const [username, setUsername] = useState('');
   const [usernameAvailable, setUsernameAvailable] = useState<boolean | null>(null);
   const [checkingUsername, setCheckingUsername] = useState(false);
-  const [avatarUri, setAvatarUri] = useState<string | null>(null);
+  const [selectedDefault, setSelectedDefault] = useState(
+    () => Math.floor(Math.random() * DEFAULT_AVATARS.length)
+  );
+  const [customAvatarUri, setCustomAvatarUri] = useState<string | null>(null);
+  const [showModal, setShowModal] = useState(false);
+  const [isNavigating, setIsNavigating] = useState(false);
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const checkUsername = useCallback(async (name: string) => {
@@ -51,31 +65,68 @@ export default function SignUpUsername() {
     }
   };
 
-  const pickAvatar = async () => {
+  const selectDefaultAvatar = (index: number) => {
+    setSelectedDefault(index);
+    setCustomAvatarUri(null);
+    setShowModal(false);
+  };
+
+  const pickCustomAvatar = async () => {
+    setShowModal(false);
     const result = await ImagePicker.launchImageLibraryAsync({
       mediaTypes: ['images'],
       allowsEditing: true,
       aspect: [1, 1],
       quality: 0.8,
     });
-    if (!result.canceled) setAvatarUri(result.assets[0].uri);
+    if (!result.canceled) setCustomAvatarUri(result.assets[0].uri);
   };
 
   const isValid = username.length >= 3 && usernameAvailable === true;
 
-  const handleContinue = () => {
-    if (!isValid) return;
-    router.push({
-      pathname: '/(auth)/signUpPassword',
-      params: { ...params, username, avatarUri: avatarUri || '' },
-    });
+  const handleBack = () => {
+    Alert.alert(
+      'Leave Signup?',
+      'You can continue where you left off next time.',
+      [
+        { text: 'Stay', style: 'cancel' },
+        {
+          text: 'Leave',
+          onPress: () => router.replace('/(auth)/login'),
+        },
+      ]
+    );
+  };
+
+  const handleContinue = async () => {
+    if (!isValid || isNavigating) return;
+
+    setIsNavigating(true);
+    try {
+      let avatarUri = '';
+      if (customAvatarUri) {
+        avatarUri = customAvatarUri;
+      } else {
+        const asset = Asset.fromModule(DEFAULT_AVATARS[selectedDefault]);
+        await asset.downloadAsync();
+        avatarUri = asset.localUri || '';
+      }
+
+      router.push({
+        pathname: '/(auth)/signUpPassword',
+        params: { ...params, username, avatarUri },
+      });
+    } finally {
+      setIsNavigating(false);
+    }
   };
 
   return (
     <ThemedView style={styles.container}>
+      <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
       <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={{ flex: 1 }}>
         <View style={styles.headerRow}>
-          <TouchableOpacity style={styles.backButton} onPress={() => router.back()}>
+          <TouchableOpacity style={styles.backButton} onPress={handleBack}>
             <IconSymbol size={22} name="chevron.left" color="#fff" />
           </TouchableOpacity>
           <View style={styles.progress}>
@@ -86,18 +137,17 @@ export default function SignUpUsername() {
         <View style={styles.content}>
           <ThemedText style={styles.title}>Pick a username{'\n'}and photo</ThemedText>
 
-          <TouchableOpacity style={styles.avatarPicker} onPress={pickAvatar} activeOpacity={0.7}>
-            {avatarUri ? (
-              <Image source={{ uri: avatarUri }} style={styles.avatarImage} />
-            ) : (
-              <View style={styles.avatarPlaceholder}>
-                <IconSymbol size={28} name="camera.fill" color="#555" />
+          <View style={styles.avatarSection}>
+            <TouchableOpacity onPress={() => setShowModal(true)} activeOpacity={0.7}>
+              <Image
+                source={customAvatarUri ? { uri: customAvatarUri } : DEFAULT_AVATARS[selectedDefault]}
+                style={styles.mainAvatar}
+              />
+              <View style={styles.avatarBadge}>
+                <IconSymbol size={12} name="pencil" color="#0f0f0f" />
               </View>
-            )}
-            <View style={styles.avatarBadge}>
-              <IconSymbol size={12} name="plus" color="#0f0f0f" />
-            </View>
-          </TouchableOpacity>
+            </TouchableOpacity>
+          </View>
 
           <View style={styles.inputContainer}>
             <TextInput
@@ -125,19 +175,55 @@ export default function SignUpUsername() {
           </View>
 
           <ThemedText style={styles.hint}>3-20 characters. Letters, numbers, and underscores only.</ThemedText>
-        </View>
 
-        <View style={styles.bottomSection}>
           <TouchableOpacity
-            style={[styles.continueButton, !isValid && styles.buttonDisabled]}
+            style={[styles.continueButton, (!isValid || isNavigating) && styles.buttonDisabled]}
             onPress={handleContinue}
-            disabled={!isValid}
+            disabled={!isValid || isNavigating}
             activeOpacity={0.8}
           >
             <ThemedText style={styles.continueButtonText}>Continue</ThemedText>
           </TouchableOpacity>
         </View>
       </KeyboardAvoidingView>
+      </TouchableWithoutFeedback>
+
+      <Modal
+        visible={showModal}
+        transparent
+        animationType="slide"
+        onRequestClose={() => setShowModal(false)}
+      >
+        <Pressable style={styles.modalOverlay} onPress={() => setShowModal(false)}>
+          <Pressable style={styles.modalSheet} onPress={(e) => e.stopPropagation()}>
+            <View style={styles.modalHandle} />
+            <ThemedText style={styles.modalTitle}>Choose avatar</ThemedText>
+
+            <View style={styles.modalAvatarGrid}>
+              {DEFAULT_AVATARS.map((src, index) => (
+                <TouchableOpacity
+                  key={index}
+                  onPress={() => selectDefaultAvatar(index)}
+                  activeOpacity={0.7}
+                >
+                  <Image
+                    source={src}
+                    style={[
+                      styles.modalAvatarOption,
+                      !customAvatarUri && selectedDefault === index && styles.modalAvatarSelected,
+                    ]}
+                  />
+                </TouchableOpacity>
+              ))}
+            </View>
+
+            <TouchableOpacity style={styles.uploadButton} onPress={pickCustomAvatar} activeOpacity={0.8}>
+              <IconSymbol size={18} name="camera.fill" color="#fff" />
+              <ThemedText style={styles.uploadButtonText}>Upload photo</ThemedText>
+            </TouchableOpacity>
+          </Pressable>
+        </Pressable>
+      </Modal>
     </ThemedView>
   );
 }
@@ -148,16 +234,10 @@ const styles = StyleSheet.create({
   backButton: { padding: 8 },
   progress: { flex: 1, height: 2, marginLeft: 12, marginRight: 12, backgroundColor: 'rgba(255,255,255,0.08)', borderRadius: 1 },
   progressFill: { height: '100%', backgroundColor: '#fff', borderRadius: 1 },
-  content: { flex: 1, paddingHorizontal: 28, paddingTop: 32 },
+  content: { paddingHorizontal: 28, paddingTop: 32 },
   title: { fontSize: 28, fontWeight: '800', color: '#fff', lineHeight: 36, marginBottom: 24 },
-  avatarPicker: { alignSelf: 'center', marginBottom: 28 },
-  avatarImage: { width: 90, height: 90, borderRadius: 45 },
-  avatarPlaceholder: {
-    width: 90, height: 90, borderRadius: 45,
-    backgroundColor: 'rgba(255,255,255,0.06)',
-    borderWidth: 0.5, borderColor: 'rgba(255,255,255,0.1)',
-    alignItems: 'center', justifyContent: 'center',
-  },
+  avatarSection: { alignItems: 'center', marginBottom: 28 },
+  mainAvatar: { width: 90, height: 90, borderRadius: 45 },
   avatarBadge: {
     position: 'absolute', bottom: 0, right: 0,
     width: 26, height: 26, borderRadius: 13,
@@ -175,8 +255,55 @@ const styles = StyleSheet.create({
   statusAvailable: { fontSize: 13, color: '#22C55E' },
   statusTaken: { fontSize: 13, color: '#EF4444' },
   hint: { fontSize: 12, color: '#444', marginTop: 8 },
-  bottomSection: { paddingHorizontal: 28, paddingBottom: 40 },
-  continueButton: { backgroundColor: '#fff', borderRadius: 28, paddingVertical: 16, alignItems: 'center' },
+  continueButton: { marginTop: 24, backgroundColor: '#fff', borderRadius: 28, paddingVertical: 16, alignItems: 'center' },
   continueButtonText: { color: '#0f0f0f', fontSize: 16, fontWeight: '700' },
   buttonDisabled: { opacity: 0.4 },
+
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.6)',
+    justifyContent: 'flex-end',
+  },
+  modalSheet: {
+    backgroundColor: '#1a1a1a',
+    borderTopLeftRadius: 20,
+    borderTopRightRadius: 20,
+    paddingHorizontal: 28,
+    paddingBottom: 40,
+    paddingTop: 12,
+  },
+  modalHandle: {
+    width: 36, height: 4, borderRadius: 2,
+    backgroundColor: 'rgba(255,255,255,0.2)',
+    alignSelf: 'center',
+    marginBottom: 20,
+  },
+  modalTitle: {
+    fontSize: 18, fontWeight: '700', color: '#fff',
+    marginBottom: 20,
+  },
+  modalAvatarGrid: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    marginBottom: 24,
+  },
+  modalAvatarOption: {
+    width: 56, height: 56, borderRadius: 28,
+    borderWidth: 2, borderColor: 'transparent',
+  },
+  modalAvatarSelected: {
+    borderColor: '#fff',
+  },
+  uploadButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    backgroundColor: 'rgba(255,255,255,0.08)',
+    borderRadius: 14,
+    paddingVertical: 14,
+  },
+  uploadButtonText: {
+    fontSize: 15, fontWeight: '600', color: '#fff',
+  },
 });

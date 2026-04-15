@@ -2,7 +2,7 @@ import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { IconSymbol } from '@/components/ui/icon-symbol';
 import MaterialIcons from '@expo/vector-icons/MaterialIcons';
-import { signInWithEmail } from '@/services/authService';
+import { signInWithEmail, resetPassword } from '@/services/authService';
 import { db } from '@/config/firebase';
 import { collection, getDocs, query, where } from 'firebase/firestore';
 import { useRouter, useLocalSearchParams } from 'expo-router';
@@ -25,6 +25,24 @@ export default function LoginPassword() {
   }, []);
 
   const isEmailInput = (input: string) => input.includes('@');
+
+  const handleForgotPassword = async () => {
+    try {
+      let email = usernameOrEmail;
+      if (!isEmailInput(usernameOrEmail)) {
+        const resolved = await getEmailFromUsername(usernameOrEmail);
+        if (!resolved) {
+          Alert.alert('Error', 'No account found with this username.');
+          return;
+        }
+        email = resolved;
+      }
+      await resetPassword(email);
+      Alert.alert('Password Reset', `We sent a reset link to ${email}. Check your email.`);
+    } catch (error: any) {
+      Alert.alert('Error', 'Failed to send reset email. Please try again.');
+    }
+  };
 
   const getEmailFromUsername = async (username: string): Promise<string | null> => {
     try {
@@ -93,6 +111,10 @@ export default function LoginPassword() {
               </TouchableOpacity>
             </View>
           </View>
+
+          <TouchableOpacity onPress={handleForgotPassword}>
+            <ThemedText style={styles.forgotText}>Forgot password?</ThemedText>
+          </TouchableOpacity>
         </View>
 
         <View style={[styles.bottomSection, !keyboardVisible && styles.bottomSectionResting]}>
@@ -132,4 +154,5 @@ const styles = StyleSheet.create({
   signInButton: { backgroundColor: '#fff', borderRadius: 28, paddingVertical: 16, alignItems: 'center' },
   signInButtonText: { color: '#0f0f0f', fontSize: 16, fontWeight: '700' },
   buttonDisabled: { opacity: 0.4 },
+  forgotText: { fontSize: 13, fontWeight: '600', color: '#1a73e8', marginTop: 16 },
 });

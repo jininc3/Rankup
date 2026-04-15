@@ -67,7 +67,10 @@
       "Bash(cd:*)",
       "Bash(find /c/Users/jinha/Desktop/RankUp -maxdepth 2 -type f \\\\\\(-name *.plist -o -name Info.plist -o -name *google* -o -name *.pbxproj \\\\\\))",
       "Bash(find /c/Users/jinha/Desktop/RankUp -maxdepth 3 \\\\\\(-name *.xcodeproj -o -name *.xcworkspace \\\\\\))",
-      "Bash(find /c/Users/jinha/Desktop/RankUp -maxdepth 1 -type f \\\\\\(-name *.json -o -name *.plist \\\\\\))"
+      "Bash(find /c/Users/jinha/Desktop/RankUp -maxdepth 1 -type f \\\\\\(-name *.json -o -name *.plist \\\\\\))",
+      "Bash(echo \"exit: $?\")",
+      "Bash(gcloud functions:*)",
+      "Bash(firebase functions:secrets:access RESEND_API_KEY)"
     ],
     "deny": [],
     "ask": []

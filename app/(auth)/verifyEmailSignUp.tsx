@@ -16,9 +16,10 @@ import { useRouter, useLocalSearchParams } from 'expo-router';
 import { deleteIncompleteAccount } from '@/services/authService';
 
 export default function VerifyEmailSignUp() {
-  const { user, refreshUser } = useAuth();
+  const { refreshUser } = useAuth();
   const router = useRouter();
   const params = useLocalSearchParams();
+  const email = params.email as string;
   const [isChecking, setIsChecking] = useState(false);
   const [isResending, setIsResending] = useState(false);
 
@@ -26,13 +27,11 @@ export default function VerifyEmailSignUp() {
     try {
       setIsChecking(true);
 
-      // Reload the user to get the latest emailVerified status
       if (auth.currentUser) {
         await auth.currentUser.reload();
         await refreshUser();
 
         if (auth.currentUser.emailVerified) {
-          // Email is verified, show success message
           Alert.alert(
             'Success!',
             'Your email has been verified!',
@@ -40,15 +39,12 @@ export default function VerifyEmailSignUp() {
               {
                 text: 'OK',
                 onPress: () => {
-                  // Navigate to onboarding with params after user dismisses alert
                   router.replace({
                     pathname: '/(auth)/signUpUsername',
-                    params: {
-                      ...params,
-                    },
+                    params: { ...params },
                   });
-                }
-              }
+                },
+              },
             ]
           );
         } else {
@@ -82,7 +78,7 @@ export default function VerifyEmailSignUp() {
     }
   };
 
-  const handleClose = async () => {
+  const handleBack = async () => {
     Alert.alert(
       'Cancel Signup?',
       'Are you sure you want to cancel? Your account will be deleted.',
@@ -100,7 +96,7 @@ export default function VerifyEmailSignUp() {
               router.replace('/(auth)/login');
             } catch (error) {
               console.error('Error deleting account:', error);
-              Alert.alert('Error', 'Failed to cancel signup. Please try again.');
+              router.replace('/(auth)/login');
             }
           },
         },
@@ -110,156 +106,77 @@ export default function VerifyEmailSignUp() {
 
   return (
     <ThemedView style={styles.container}>
-      <TouchableOpacity
-        style={styles.closeButton}
-        onPress={handleClose}
-      >
-        <IconSymbol size={24} name="xmark" color="#fff" />
-      </TouchableOpacity>
+      <View style={styles.headerRow}>
+        <TouchableOpacity style={styles.backButton} onPress={handleBack}>
+          <IconSymbol size={22} name="chevron.left" color="#fff" />
+        </TouchableOpacity>
+        <View style={styles.progress}>
+          <View style={styles.progressFill} />
+        </View>
+      </View>
 
       <View style={styles.content}>
-        <View style={styles.iconContainer}>
-          <IconSymbol size={80} name="envelope.fill" color="#fff" />
-        </View>
+        <ThemedText style={styles.title}>Verify your{'\n'}email</ThemedText>
+        <ThemedText style={styles.subtitle}>
+          We sent a verification link to {email || auth.currentUser?.email}
+        </ThemedText>
 
-        <View style={styles.textContainer}>
-          <ThemedText style={styles.title}>Verify Your Email</ThemedText>
-          <ThemedText style={styles.subtitle}>
-            We've sent a verification link to
-          </ThemedText>
-          <ThemedText style={styles.email}>{user?.email}</ThemedText>
+        <View style={styles.infoContainer}>
+          <View style={styles.iconRow}>
+            <IconSymbol size={48} name="envelope.fill" color="#fff" />
+          </View>
           <ThemedText style={styles.description}>
-            Click the link in the email to verify your account, then come back here and click the button below.
+            Click the link in the email to verify your account, then come back here and tap continue.
           </ThemedText>
-        </View>
-
-        <View style={styles.buttonContainer}>
-          <TouchableOpacity
-            style={[styles.verifyButton, isChecking && styles.buttonDisabled]}
-            onPress={handleCheckVerification}
-            disabled={isChecking}
-          >
-            {isChecking ? (
-              <ActivityIndicator color="#fff" />
-            ) : (
-              <ThemedText style={styles.verifyButtonText}>Email Verified</ThemedText>
-            )}
-          </TouchableOpacity>
-
-          <TouchableOpacity
-            style={[styles.resendButton, isResending && styles.buttonDisabled]}
-            onPress={handleResendEmail}
-            disabled={isResending}
-          >
-            <ThemedText style={styles.resendButtonText}>
-              {isResending ? 'Sending...' : 'Resend Verification Email'}
-            </ThemedText>
-          </TouchableOpacity>
-        </View>
-
-        <View style={styles.footer}>
-          <ThemedText style={styles.footerText}>
+          <ThemedText style={styles.spamNote}>
             Make sure to check your spam folder if you don't see the email.
           </ThemedText>
         </View>
+
+        <TouchableOpacity
+          onPress={handleResendEmail}
+          disabled={isResending}
+        >
+          <ThemedText style={styles.resendText}>
+            {isResending ? 'Sending...' : 'Resend email'}
+          </ThemedText>
+        </TouchableOpacity>
+      </View>
+
+      <View style={styles.bottomSection}>
+        <TouchableOpacity
+          style={[styles.continueButton, isChecking && styles.buttonDisabled]}
+          onPress={handleCheckVerification}
+          disabled={isChecking}
+          activeOpacity={0.8}
+        >
+          {isChecking ? (
+            <ActivityIndicator color="#0f0f0f" />
+          ) : (
+            <ThemedText style={styles.continueButtonText}>Continue</ThemedText>
+          )}
+        </TouchableOpacity>
       </View>
     </ThemedView>
   );
 }
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: '#0f0f0f',
-  },
-  closeButton: {
-    position: 'absolute',
-    top: 60,
-    right: 24,
-    zIndex: 10,
-    padding: 8,
-  },
-  content: {
-    flex: 1,
-    padding: 24,
-    justifyContent: 'center',
-    alignItems: 'center',
-    overflow: 'visible',
-  },
-  iconContainer: {
-    marginBottom: 32,
-  },
-  textContainer: {
-    alignItems: 'center',
-    marginBottom: 48,
-    overflow: 'visible',
-  },
-  title: {
-    fontSize: 28,
-    fontWeight: 'bold',
-    marginBottom: 16,
-    textAlign: 'center',
-    lineHeight: 36,
-    overflow: 'visible',
-    color: '#fff',
-  },
-  subtitle: {
-    fontSize: 16,
-    color: '#ccc',
-    textAlign: 'center',
-    marginBottom: 8,
-  },
-  email: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: '#fff',
-    marginBottom: 16,
-    textAlign: 'center',
-  },
-  description: {
-    fontSize: 14,
-    color: '#ccc',
-    textAlign: 'center',
-    lineHeight: 20,
-    paddingHorizontal: 16,
-  },
-  buttonContainer: {
-    width: '100%',
-    gap: 12,
-  },
-  verifyButton: {
-    backgroundColor: '#c42743',
-    borderRadius: 12,
-    padding: 16,
-    alignItems: 'center',
-  },
-  verifyButtonText: {
-    color: '#fff',
-    fontSize: 16,
-    fontWeight: '600',
-  },
-  resendButton: {
-    backgroundColor: '#2c2f33',
-    borderRadius: 12,
-    padding: 16,
-    alignItems: 'center',
-  },
-  resendButtonText: {
-    color: '#fff',
-    fontSize: 16,
-    fontWeight: '600',
-  },
-  buttonDisabled: {
-    opacity: 0.5,
-  },
-  footer: {
-    marginTop: 32,
-    paddingHorizontal: 16,
-  },
-  footerText: {
-    fontSize: 12,
-    color: '#999',
-    textAlign: 'center',
-    lineHeight: 18,
-  },
+  container: { flex: 1, backgroundColor: '#0f0f0f' },
+  headerRow: { flexDirection: 'row', alignItems: 'center', marginTop: 60, paddingHorizontal: 16 },
+  backButton: { padding: 8 },
+  progress: { flex: 1, height: 2, marginLeft: 12, marginRight: 12, backgroundColor: 'rgba(255,255,255,0.08)', borderRadius: 1 },
+  progressFill: { width: '42.8%', height: '100%', backgroundColor: '#fff', borderRadius: 1 },
+  content: { flex: 1, paddingHorizontal: 28, paddingTop: 32 },
+  title: { fontSize: 28, fontWeight: '800', color: '#fff', lineHeight: 36, marginBottom: 8 },
+  subtitle: { fontSize: 15, color: '#555', marginBottom: 32 },
+  infoContainer: { alignItems: 'center', marginBottom: 24, gap: 16 },
+  iconRow: { marginBottom: 8 },
+  description: { fontSize: 14, color: '#999', textAlign: 'center', lineHeight: 20, paddingHorizontal: 8 },
+  spamNote: { fontSize: 12, color: '#555', textAlign: 'center' },
+  resendText: { fontSize: 13, fontWeight: '600', color: '#1a73e8' },
+  bottomSection: { paddingHorizontal: 28, paddingBottom: 40 },
+  continueButton: { backgroundColor: '#fff', borderRadius: 28, paddingVertical: 16, alignItems: 'center' },
+  continueButtonText: { color: '#0f0f0f', fontSize: 16, fontWeight: '700' },
+  buttonDisabled: { opacity: 0.4 },
 });

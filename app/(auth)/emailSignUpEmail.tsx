@@ -1,7 +1,7 @@
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { IconSymbol } from '@/components/ui/icon-symbol';
-import { createEmailAuthAccount } from '@/services/authService';
+import { createEmailAuthAccount, tryResumeEmailSignup } from '@/services/authService';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import React, { useState } from 'react';
 import { StyleSheet, TouchableOpacity, View, TextInput, Alert, KeyboardAvoidingView, Platform } from 'react-native';
@@ -28,7 +28,19 @@ export default function EmailSignUpEmail() {
         params: { ...params, email: email.trim() },
       });
     } catch (error: any) {
-      Alert.alert('Error', error.message);
+      if (error.code === 'auth/email-already-in-use') {
+        const result = await tryResumeEmailSignup(email.trim());
+        if (result === 'resume') {
+          router.push({
+            pathname: '/(auth)/verifyEmailSignUp',
+            params: { ...params, email: email.trim() },
+          });
+        } else {
+          Alert.alert('Already Registered', 'This email already has an account. Please log in instead.');
+        }
+      } else {
+        Alert.alert('Error', error.message || 'An error occurred. Please try again.');
+      }
     } finally {
       setIsLoading(false);
     }
@@ -108,13 +120,9 @@ const styles = StyleSheet.create({
   inputContainer: { marginTop: 32 },
   input: {
     backgroundColor: 'rgba(255,255,255,0.06)',
-    borderRadius: 12,
-    paddingHorizontal: 18,
-    paddingVertical: 16,
-    fontSize: 16,
-    color: '#fff',
-    borderWidth: 0.5,
-    borderColor: 'rgba(255,255,255,0.1)',
+    borderRadius: 12, paddingHorizontal: 18, paddingVertical: 16,
+    fontSize: 16, color: '#fff',
+    borderWidth: 0.5, borderColor: 'rgba(255,255,255,0.1)',
   },
   bottomSection: { paddingHorizontal: 28, paddingBottom: 40 },
   continueButton: { backgroundColor: '#fff', borderRadius: 28, paddingVertical: 16, alignItems: 'center' },

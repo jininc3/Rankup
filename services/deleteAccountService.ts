@@ -359,8 +359,11 @@ async function deleteNotificationsAboutUser(userId: string): Promise<void> {
     }
 
     console.log('Notifications about user deleted from other users');
-  } catch (error) {
-    console.error('Error deleting notifications about user:', error);
+  } catch (error: any) {
+    // Silently ignore permission errors (collection group query may not be allowed by rules)
+    if (error?.code !== 'permission-denied') {
+      console.error('Error deleting notifications about user:', error);
+    }
     // Don't throw - continue with deletion
   }
 }

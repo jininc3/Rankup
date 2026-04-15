@@ -495,13 +495,12 @@ export default function HomeScreen() {
 
     if (followingUserIds.length > 0 || activeTab === 'forYou') {
       fetchPostsWithPagination(false);
+    } else if (activeTab === 'following') {
+      // No one followed — nothing to load, show empty state
+      setLoading(false);
     } else if (preloadedPosts !== null && preloadedPosts.length === 0) {
-      // Only set loading to false if preloadedPosts has been determined to be empty
-      // preloadedPosts === null means still loading, so keep skeleton visible
       setLoading(false);
     }
-    // If preloadedPosts is null (still loading) or has items, keep loading=true
-    // The enrichPreloadedPosts effect will handle setting loading=false
   }, [currentUser?.id, followingUserIds, activeTab, selectedGameFilter, hasConsumedPreload, preloadedPosts]);
 
   // Check which posts are liked by the current user

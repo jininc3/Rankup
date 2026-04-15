@@ -10,8 +10,11 @@ import {
   sendSignInLinkToEmail,
   isSignInWithEmailLink,
   signInWithEmailLink,
-  sendEmailVerification,
   updatePassword,
+  sendPasswordResetEmail,
+  sendEmailVerification,
+  EmailAuthProvider,
+  reauthenticateWithCredential,
 } from 'firebase/auth';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { doc, setDoc, getDoc, updateDoc, deleteDoc } from 'firebase/firestore';
@@ -39,9 +42,6 @@ export interface UserProfile {
   updatedAt: Date;
 }
 
-/**
- * Generate a random password for internal use (user never sees this)
- */
 function generateRandomPassword(): string {
   const chars = 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789!@#$%^&*';
   let password = '';
@@ -51,68 +51,49 @@ function generateRandomPassword(): string {
   return password;
 }
 
-/**
- * Sign up a new user with email (passwordless - random password generated internally)
- */
-export async function signUpWithEmail(
-  email: string,
-  username: string
-): Promise<UserProfile> {
-  try {
-    // Create user in Firebase Auth with random password (user never knows it)
-    const randomPassword = generateRandomPassword();
-    const userCredential = await createUserWithEmailAndPassword(auth, email, randomPassword);
-    const user = userCredential.user;
+// ─── Email signup (Firebase email link verification) ──────────────────────
 
-    // Update display name
-    await updateProfile(user, {
-      displayName: username,
-    });
-
-    // Create user profile in Firestore
-    const userProfile: UserProfile = {
-      id: user.uid,
-      email: user.email!,
-      username: username,
-      usernameLower: username.toLowerCase(),
-      bio: '',
-      discordLink: '',
-      instagramLink: '',
-      provider: 'email',
-      postsCount: 0,
-      followersCount: 0,
-      followingCount: 0,
-      createdAt: new Date(),
-      updatedAt: new Date(),
-    };
-
-    await setDoc(doc(db, 'users', user.uid), userProfile);
-
-    return userProfile;
-  } catch (error: any) {
-    console.error('Sign up error:', error);
-    throw new Error(getAuthErrorMessage(error.code));
-  }
-}
+const SIGNUP_EMAIL_TEMP_PASSWORD_KEY = 'signupEmailTempPassword';
 
 /**
- * Create Firebase Auth account only (no Firestore doc yet).
- * Used in the multi-step email signup flow.
+ * Create Firebase Auth account with temp password + send verification email.
+ * Called when user enters their email. Stores temp password in AsyncStorage
+ * so we can re-authenticate later when setting the real password.
  */
 export async function createEmailAuthAccount(email: string): Promise<string> {
   try {
     const tempPassword = generateRandomPassword();
     const userCredential = await createUserWithEmailAndPassword(auth, email, tempPassword);
     await sendEmailVerification(userCredential.user);
+    await AsyncStorage.setItem(SIGNUP_EMAIL_TEMP_PASSWORD_KEY, tempPassword);
     return userCredential.user.uid;
   } catch (error: any) {
     console.error('Create auth account error:', error);
-    throw new Error(getAuthErrorMessage(error.code));
+    throw error;
   }
 }
 
 /**
- * Complete the multi-step email signup: create Firestore profile and set password.
+ * Try to resume an incomplete email signup (Auth account exists, no Firestore profile).
+ */
+export async function tryResumeEmailSignup(email: string): Promise<'resume' | 'registered' | 'none'> {
+  try {
+    const tempPassword = await AsyncStorage.getItem(SIGNUP_EMAIL_TEMP_PASSWORD_KEY);
+    if (!tempPassword) return 'none';
+
+    await signInWithEmailAndPassword(auth, email, tempPassword);
+    const profile = await getUserProfile(auth.currentUser!.uid);
+
+    if (profile) return 'registered';
+    return 'resume';
+  } catch {
+    return 'none';
+  }
+}
+
+/**
+ * Complete email signup: re-auth with temp password, set real password, create Firestore profile.
+ * Called at the end of the signup flow. auth.currentUser already exists from createEmailAuthAccount.
  */
 export async function completeEmailSignup(data: {
   username: string;
@@ -125,8 +106,16 @@ export async function completeEmailSignup(data: {
     const user = auth.currentUser;
     if (!user) throw new Error('No authenticated user found');
 
+    // Re-authenticate to satisfy Firebase's recent-login requirement
+    const tempPassword = await AsyncStorage.getItem(SIGNUP_EMAIL_TEMP_PASSWORD_KEY);
+    if (tempPassword && user.email) {
+      const credential = EmailAuthProvider.credential(user.email, tempPassword);
+      await reauthenticateWithCredential(user, credential);
+    }
+
     await updateProfile(user, { displayName: data.username });
     await updatePassword(user, data.password);
+    await AsyncStorage.removeItem(SIGNUP_EMAIL_TEMP_PASSWORD_KEY);
 
     const userProfile: UserProfile = {
       id: user.uid,
@@ -154,9 +143,14 @@ export async function completeEmailSignup(data: {
   }
 }
 
+// ─── Phone signup ─────────────────────────────────────────────────────────
+
+const SIGNUP_TEMP_PASSWORD_KEY = 'signupTempPassword';
+const SIGNUP_PHONE_KEY = 'signupPhone';
+
 /**
  * Create Firebase Auth account for phone signup (no Firestore doc yet).
- * Used in the multi-step phone signup flow.
+ * Called after phone OTP verification succeeds.
  */
 export async function createPhoneAuthAccount(phoneNumber: string): Promise<string> {
   try {
@@ -164,15 +158,38 @@ export async function createPhoneAuthAccount(phoneNumber: string): Promise<strin
     const generatedEmail = `phone_${sanitized}@rankup-phone.internal`;
     const tempPassword = generateRandomPassword();
     const userCredential = await createUserWithEmailAndPassword(auth, generatedEmail, tempPassword);
+    await AsyncStorage.setItem(SIGNUP_TEMP_PASSWORD_KEY, tempPassword);
+    await AsyncStorage.setItem(SIGNUP_PHONE_KEY, phoneNumber);
     return userCredential.user.uid;
   } catch (error: any) {
     console.error('Create phone auth account error:', error);
-    throw new Error(getAuthErrorMessage(error.code));
+    throw error;
   }
 }
 
 /**
- * Complete the multi-step phone signup: create Firestore profile and set password.
+ * Try to resume an incomplete phone signup.
+ */
+export async function tryResumePhoneSignup(phoneNumber: string): Promise<'resume' | 'registered' | 'none'> {
+  try {
+    const tempPassword = await AsyncStorage.getItem(SIGNUP_TEMP_PASSWORD_KEY);
+    if (!tempPassword) return 'none';
+
+    const sanitized = phoneNumber.replace(/[^0-9]/g, '');
+    const generatedEmail = `phone_${sanitized}@rankup-phone.internal`;
+
+    await signInWithEmailAndPassword(auth, generatedEmail, tempPassword);
+    const profile = await getUserProfile(auth.currentUser!.uid);
+
+    if (profile) return 'registered';
+    return 'resume';
+  } catch {
+    return 'none';
+  }
+}
+
+/**
+ * Complete phone signup: set real password + create Firestore profile.
  */
 export async function completePhoneSignup(data: {
   username: string;
@@ -185,8 +202,16 @@ export async function completePhoneSignup(data: {
     const user = auth.currentUser;
     if (!user) throw new Error('No authenticated user found');
 
+    // Re-authenticate to satisfy Firebase's recent-login requirement
+    const tempPassword = await AsyncStorage.getItem(SIGNUP_TEMP_PASSWORD_KEY);
+    if (tempPassword && user.email) {
+      const credential = EmailAuthProvider.credential(user.email, tempPassword);
+      await reauthenticateWithCredential(user, credential);
+    }
+
     await updateProfile(user, { displayName: data.username });
     await updatePassword(user, data.password);
+    await AsyncStorage.multiRemove([SIGNUP_TEMP_PASSWORD_KEY, SIGNUP_PHONE_KEY]);
 
     const userProfile: UserProfile = {
       id: user.uid,
@@ -216,59 +241,8 @@ export async function completePhoneSignup(data: {
   }
 }
 
-/**
- * Sign up a new user with phone number (uses generated email for Firebase Auth)
- */
-export async function signUpWithPhone(
-  phoneNumber: string,
-  username: string
-): Promise<UserProfile> {
-  try {
-    // Generate a placeholder email for Firebase Auth (phone-only users)
-    const sanitizedPhone = phoneNumber.replace(/[^0-9]/g, '');
-    const generatedEmail = `phone_${sanitizedPhone}@rankup-phone.internal`;
+// ─── Passwordless email link sign-in ──────────────────────────────────────
 
-    // Create user in Firebase Auth with generated email and random password
-    const randomPassword = generateRandomPassword();
-    const userCredential = await createUserWithEmailAndPassword(auth, generatedEmail, randomPassword);
-    const user = userCredential.user;
-
-    // Update display name
-    await updateProfile(user, {
-      displayName: username,
-    });
-
-    // Create user profile in Firestore
-    const userProfile: UserProfile = {
-      id: user.uid,
-      email: generatedEmail,
-      username: username,
-      usernameLower: username.toLowerCase(),
-      bio: '',
-      discordLink: '',
-      instagramLink: '',
-      phoneNumber: phoneNumber,
-      phoneVerified: false,
-      provider: 'phone',
-      postsCount: 0,
-      followersCount: 0,
-      followingCount: 0,
-      createdAt: new Date(),
-      updatedAt: new Date(),
-    };
-
-    await setDoc(doc(db, 'users', user.uid), userProfile);
-
-    return userProfile;
-  } catch (error: any) {
-    console.error('Phone sign up error:', error);
-    throw new Error(getAuthErrorMessage(error.code));
-  }
-}
-
-/**
- * Send a sign-in link to email (passwordless)
- */
 export async function sendEmailSignInLink(email: string): Promise<void> {
   try {
     const actionCodeSettings = {
@@ -278,7 +252,6 @@ export async function sendEmailSignInLink(email: string): Promise<void> {
       android: { packageName: 'com.jininc3.RankUp', installApp: true },
     };
     await sendSignInLinkToEmail(auth, email, actionCodeSettings);
-    // Store email for when the user returns via the link
     await AsyncStorage.setItem('emailForSignIn', email);
   } catch (error: any) {
     console.error('Send sign-in link error:', error);
@@ -286,42 +259,28 @@ export async function sendEmailSignInLink(email: string): Promise<void> {
   }
 }
 
-/**
- * Complete sign-in with email link
- */
 export async function completeEmailLinkSignIn(link: string): Promise<UserProfile | null> {
   try {
-    if (!isSignInWithEmailLink(auth, link)) {
-      return null;
-    }
+    if (!isSignInWithEmailLink(auth, link)) return null;
 
     const email = await AsyncStorage.getItem('emailForSignIn');
-    if (!email) {
-      throw new Error('Email not found. Please try signing in again.');
-    }
+    if (!email) throw new Error('Email not found. Please try signing in again.');
 
     const userCredential = await signInWithEmailLink(auth, email, link);
-    const user = userCredential.user;
     await AsyncStorage.removeItem('emailForSignIn');
-
-    const userProfile = await getUserProfile(user.uid);
-    return userProfile;
+    return await getUserProfile(userCredential.user.uid);
   } catch (error: any) {
     console.error('Email link sign-in error:', error);
     throw new Error(getAuthErrorMessage(error.code));
   }
 }
 
-/**
- * Check if a URL is a Firebase sign-in link
- */
 export function isEmailSignInLink(link: string): boolean {
   return isSignInWithEmailLink(auth, link);
 }
 
-/**
- * Sign in with email and password (legacy - kept for compatibility)
- */
+// ─── Standard sign-in ─────────────────────────────────────────────────────
+
 export async function signInWithEmail(
   email: string,
   password: string
@@ -329,12 +288,9 @@ export async function signInWithEmail(
   try {
     const userCredential = await signInWithEmailAndPassword(auth, email, password);
     const user = userCredential.user;
-
-    // Get user profile from Firestore
     const userProfile = await getUserProfile(user.uid);
 
     if (!userProfile) {
-      // If profile doesn't exist, create it
       const newProfile: UserProfile = {
         id: user.uid,
         email: user.email!,
@@ -361,24 +317,21 @@ export async function signInWithEmail(
   }
 }
 
-/**
- * Sign in with Google using ID token from AuthSession
- * Note: This should be called after getting the ID token from Google OAuth
- */
+export async function resetPassword(email: string): Promise<void> {
+  await sendPasswordResetEmail(auth, email);
+}
+
+// ─── Google sign-in ───────────────────────────────────────────────────────
+
 export async function signInWithGoogleCredential(idToken: string): Promise<UserProfile> {
   try {
-    // Create a Google credential with the token
     const googleCredential = GoogleAuthProvider.credential(idToken);
-
-    // Sign in with credential
     const userCredential = await signInWithCredential(auth, googleCredential);
     const user = userCredential.user;
 
-    // Check if user profile exists
     let userProfile = await getUserProfile(user.uid);
 
     if (!userProfile) {
-      // Create new user profile - mark as needing username setup
       userProfile = {
         id: user.uid,
         email: user.email!,
@@ -405,12 +358,10 @@ export async function signInWithGoogleCredential(idToken: string): Promise<UserP
   }
 }
 
-/**
- * Sign out the current user
- */
+// ─── Sign out & account deletion ──────────────────────────────────────────
+
 export async function signOut(): Promise<void> {
   try {
-    // Sign out from Firebase
     await firebaseSignOut(auth);
   } catch (error) {
     console.error('Sign out error:', error);
@@ -418,13 +369,8 @@ export async function signOut(): Promise<void> {
   }
 }
 
-/**
- * Delete incomplete account (used when user backs out of signup)
- * Deletes both Firebase Auth account and Firestore document
- */
 export async function deleteIncompleteAccount(): Promise<void> {
   const user = auth.currentUser;
-
   if (!user) {
     console.log('No user to delete');
     return;
@@ -432,23 +378,18 @@ export async function deleteIncompleteAccount(): Promise<void> {
 
   const userId = user.uid;
 
-  // Delete Firestore document first
   try {
     await deleteDoc(doc(db, 'users', userId));
-    console.log('Deleted Firestore document for user:', userId);
   } catch (firestoreError) {
     console.error('Error deleting Firestore document:', firestoreError);
-    // Continue even if Firestore deletion fails
   }
 
-  // Delete Firebase Auth account - let errors propagate with their codes
   await deleteUser(user);
   console.log('Deleted Firebase Auth account for user:', userId);
 }
 
-/**
- * Get user profile from Firestore
- */
+// ─── User profile helpers ─────────────────────────────────────────────────
+
 export async function getUserProfile(userId: string): Promise<UserProfile | null> {
   try {
     const docRef = doc(db, 'users', userId);
@@ -470,9 +411,6 @@ export async function getUserProfile(userId: string): Promise<UserProfile | null
   }
 }
 
-/**
- * Update user profile with additional information
- */
 export async function updateUserProfile(
   userId: string,
   data: {
@@ -485,32 +423,21 @@ export async function updateUserProfile(
 ): Promise<void> {
   try {
     const userRef = doc(db, 'users', userId);
-
     const updateData: Record<string, any> = { ...data };
     if (updateData.username) {
       updateData.usernameLower = updateData.username.toLowerCase();
     }
-
-    await updateDoc(userRef, {
-      ...updateData,
-      updatedAt: new Date(),
-    });
+    await updateDoc(userRef, { ...updateData, updatedAt: new Date() });
   } catch (error: any) {
     console.error('Update user profile error:', error);
     throw new Error('Failed to update profile');
   }
 }
 
-/**
- * Get current Firebase user
- */
 export function getCurrentUser(): FirebaseUser | null {
   return auth.currentUser;
 }
 
-/**
- * Convert Firebase auth error codes to user-friendly messages
- */
 function getAuthErrorMessage(errorCode: string): string {
   switch (errorCode) {
     case 'auth/email-already-in-use':
@@ -535,4 +462,3 @@ function getAuthErrorMessage(errorCode: string): string {
       return 'An error occurred. Please try again';
   }
 }
-

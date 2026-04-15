@@ -6,13 +6,17 @@ import {
   Alert,
   ActivityIndicator,
   TextInput,
+  KeyboardAvoidingView,
+  Platform,
+  Keyboard,
+  TouchableWithoutFeedback,
 } from 'react-native';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { IconSymbol } from '@/components/ui/icon-symbol';
 import { useAuth } from '@/contexts/AuthContext';
 import { useRouter, useLocalSearchParams } from 'expo-router';
-import { deleteIncompleteAccount, createPhoneAuthAccount } from '@/services/authService';
+import { deleteIncompleteAccount, createPhoneAuthAccount, tryResumePhoneSignup } from '@/services/authService';
 import rnfbAuth, { FirebaseAuthTypes } from '@react-native-firebase/auth';
 
 export default function VerifyPhoneSignUp() {
@@ -21,7 +25,6 @@ export default function VerifyPhoneSignUp() {
   const params = useLocalSearchParams();
   const phoneNumberRaw = params.phoneNumber as string;
 
-  // Ensure E.164 format: strip spaces/dashes, add + if missing
   const formatE164 = (phone: string): string => {
     let cleaned = phone.replace(/[\s\-\(\)]/g, '');
     if (!cleaned.startsWith('+')) {
@@ -40,7 +43,6 @@ export default function VerifyPhoneSignUp() {
 
   const inputRefs = useRef<(TextInput | null)[]>([]);
 
-  // Send verification code on mount
   useEffect(() => {
     sendVerificationCode();
   }, []);
@@ -64,7 +66,6 @@ export default function VerifyPhoneSignUp() {
     newCode[index] = text;
     setCode(newCode);
 
-    // Auto-focus next input
     if (text && index < 5) {
       inputRefs.current[index + 1]?.focus();
     }
@@ -90,16 +91,28 @@ export default function VerifyPhoneSignUp() {
 
     try {
       setIsVerifying(true);
-      console.log('Verifying code:', JSON.stringify(verificationCode), 'length:', verificationCode.length);
-
-      // Verify the code (this signs in with native Firebase SDK)
       await confirmation.confirm(verificationCode);
-
-      // Sign out from native Firebase SDK (we use JS SDK for auth state)
       await rnfbAuth().signOut();
 
-      // Create JS SDK auth account for this phone number
-      await createPhoneAuthAccount(phoneNumber);
+      try {
+        await createPhoneAuthAccount(phoneNumber);
+      } catch (createError: any) {
+        if (createError.code === 'auth/email-already-in-use') {
+          // Incomplete signup from before — try to resume
+          const result = await tryResumePhoneSignup(phoneNumber);
+          if (result === 'resume') {
+            router.replace({
+              pathname: '/(auth)/signUpUsername',
+              params: { ...params },
+            });
+            return;
+          } else {
+            Alert.alert('Already Registered', 'This phone number already has an account. Please log in instead.');
+            return;
+          }
+        }
+        throw createError;
+      }
 
       Alert.alert(
         'Success!',
@@ -135,7 +148,7 @@ export default function VerifyPhoneSignUp() {
     Alert.alert('Code Sent', 'A new verification code has been sent to your phone.');
   };
 
-  const handleClose = async () => {
+  const handleBack = async () => {
     Alert.alert(
       'Cancel Signup?',
       'Are you sure you want to cancel? Your account will be deleted.',
@@ -161,206 +174,110 @@ export default function VerifyPhoneSignUp() {
 
   return (
     <ThemedView style={styles.container}>
-      <TouchableOpacity style={styles.closeButton} onPress={handleClose}>
-        <IconSymbol size={24} name="xmark" color="#fff" />
-      </TouchableOpacity>
-
-      <View style={styles.content}>
-        <View style={styles.iconContainer}>
-          <IconSymbol size={80} name="phone.fill" color="#fff" />
-        </View>
-
-        <View style={styles.textContainer}>
-          <ThemedText style={styles.title}>Verify Your Phone</ThemedText>
-          <ThemedText style={styles.subtitle}>
-            We've sent a verification code to
-          </ThemedText>
-          <ThemedText style={styles.phone}>{phoneNumber}</ThemedText>
-          <ThemedText style={styles.description}>
-            Enter the 6-digit code below to verify your phone number.
-          </ThemedText>
-        </View>
-
-        {isSending && !codeSent ? (
-          <View style={styles.loadingContainer}>
-            <ActivityIndicator size="large" color="#c42743" />
-            <ThemedText style={styles.loadingText}>Sending code...</ThemedText>
+      <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
+        <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={{ flex: 1 }}>
+          <View style={styles.headerRow}>
+            <TouchableOpacity style={styles.backButton} onPress={handleBack}>
+              <IconSymbol size={22} name="chevron.left" color="#fff" />
+            </TouchableOpacity>
+            <View style={styles.progress}>
+              <View style={styles.progressFill} />
+            </View>
           </View>
-        ) : (
-          <>
-            {/* OTP Input */}
-            <View style={styles.otpContainer}>
-              {code.map((digit, index) => (
-                <TextInput
-                  key={index}
-                  ref={(ref) => { inputRefs.current[index] = ref; }}
-                  style={[styles.otpInput, digit ? styles.otpInputFilled : null]}
-                  value={digit}
-                  onChangeText={(text) => handleCodeChange(text, index)}
-                  onKeyPress={(e) => handleKeyPress(e, index)}
-                  keyboardType="number-pad"
-                  maxLength={1}
-                  selectTextOnFocus
-                  editable={!isVerifying}
-                />
-              ))}
-            </View>
 
-            <View style={styles.buttonContainer}>
-              <TouchableOpacity
-                style={[styles.verifyButton, isVerifying && styles.buttonDisabled]}
-                onPress={handleVerify}
-                disabled={isVerifying || code.join('').length !== 6}
-              >
-                {isVerifying ? (
-                  <ActivityIndicator color="#fff" />
-                ) : (
-                  <ThemedText style={styles.verifyButtonText}>Verify Phone</ThemedText>
-                )}
-              </TouchableOpacity>
+          <View style={styles.content}>
+            <ThemedText style={styles.title}>Verify your{'\n'}phone number</ThemedText>
+            <ThemedText style={styles.subtitle}>
+              We sent a code to {phoneNumber}
+            </ThemedText>
 
-              <TouchableOpacity
-                style={[styles.resendButton, isSending && styles.buttonDisabled]}
-                onPress={handleResend}
-                disabled={isSending}
-              >
-                <ThemedText style={styles.resendButtonText}>
-                  {isSending ? 'Sending...' : 'Resend Code'}
-                </ThemedText>
-              </TouchableOpacity>
-            </View>
-          </>
-        )}
+            {isSending && !codeSent ? (
+              <View style={styles.loadingContainer}>
+                <ActivityIndicator size="large" color="#fff" />
+                <ThemedText style={styles.loadingText}>Sending code...</ThemedText>
+              </View>
+            ) : (
+              <View style={styles.otpContainer}>
+                {code.map((digit, index) => (
+                  <TextInput
+                    key={index}
+                    ref={(ref) => { inputRefs.current[index] = ref; }}
+                    style={[styles.otpInput, digit ? styles.otpInputFilled : null]}
+                    value={digit}
+                    onChangeText={(text) => handleCodeChange(text, index)}
+                    onKeyPress={(e) => handleKeyPress(e, index)}
+                    keyboardType="number-pad"
+                    maxLength={1}
+                    selectTextOnFocus
+                    editable={!isVerifying}
+                  />
+                ))}
+              </View>
+            )}
 
-        <View style={styles.footer}>
-          <ThemedText style={styles.footerText}>
-            Standard messaging rates may apply.
-          </ThemedText>
-        </View>
-      </View>
+            <TouchableOpacity
+              onPress={handleResend}
+              disabled={isSending}
+            >
+              <ThemedText style={styles.resendText}>
+                {isSending ? 'Sending...' : 'Resend code'}
+              </ThemedText>
+            </TouchableOpacity>
+          </View>
+
+          <View style={styles.bottomSection}>
+            <TouchableOpacity
+              style={[styles.continueButton, (isVerifying || code.join('').length !== 6) && styles.buttonDisabled]}
+              onPress={handleVerify}
+              disabled={isVerifying || code.join('').length !== 6}
+              activeOpacity={0.8}
+            >
+              <ThemedText style={styles.continueButtonText}>
+                {isVerifying ? 'Verifying...' : 'Continue'}
+              </ThemedText>
+            </TouchableOpacity>
+          </View>
+        </KeyboardAvoidingView>
+      </TouchableWithoutFeedback>
     </ThemedView>
   );
 }
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: '#0f0f0f',
-  },
-  closeButton: {
-    position: 'absolute',
-    top: 60,
-    right: 24,
-    zIndex: 10,
-    padding: 8,
-  },
-  content: {
-    flex: 1,
-    padding: 24,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  iconContainer: {
-    marginBottom: 32,
-  },
-  textContainer: {
-    alignItems: 'center',
-    marginBottom: 32,
-  },
-  title: {
-    fontSize: 28,
-    fontWeight: 'bold',
-    marginBottom: 16,
-    textAlign: 'center',
-    color: '#fff',
-  },
-  subtitle: {
-    fontSize: 16,
-    color: '#ccc',
-    textAlign: 'center',
-    marginBottom: 8,
-  },
-  phone: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: '#fff',
-    marginBottom: 16,
-    textAlign: 'center',
-  },
-  description: {
-    fontSize: 14,
-    color: '#ccc',
-    textAlign: 'center',
-    lineHeight: 20,
-    paddingHorizontal: 16,
-  },
-  loadingContainer: {
-    alignItems: 'center',
-    gap: 12,
-    marginBottom: 32,
-  },
-  loadingText: {
-    fontSize: 14,
-    color: '#999',
-  },
+  container: { flex: 1, backgroundColor: '#0f0f0f' },
+  headerRow: { flexDirection: 'row', alignItems: 'center', marginTop: 60, paddingHorizontal: 16 },
+  backButton: { padding: 8 },
+  progress: { flex: 1, height: 2, marginLeft: 12, marginRight: 12, backgroundColor: 'rgba(255,255,255,0.08)', borderRadius: 1 },
+  progressFill: { width: '42.8%', height: '100%', backgroundColor: '#fff', borderRadius: 1 },
+  content: { flex: 1, paddingHorizontal: 28, paddingTop: 32 },
+  title: { fontSize: 28, fontWeight: '800', color: '#fff', lineHeight: 36, marginBottom: 8 },
+  subtitle: { fontSize: 15, color: '#555', marginBottom: 32 },
+  loadingContainer: { alignItems: 'center', gap: 12, marginTop: 32 },
+  loadingText: { fontSize: 14, color: '#555' },
   otpContainer: {
     flexDirection: 'row',
-    justifyContent: 'center',
+    justifyContent: 'space-between',
     gap: 10,
-    marginBottom: 32,
+    marginBottom: 24,
   },
   otpInput: {
-    width: 48,
+    flex: 1,
     height: 56,
     borderRadius: 12,
-    borderWidth: 2,
-    borderColor: '#3a3f44',
-    backgroundColor: '#2c2f33',
+    backgroundColor: 'rgba(255,255,255,0.06)',
+    borderWidth: 0.5,
+    borderColor: 'rgba(255,255,255,0.1)',
     textAlign: 'center',
     fontSize: 22,
     fontWeight: '700',
     color: '#fff',
   },
   otpInputFilled: {
-    borderColor: '#c42743',
+    borderColor: '#fff',
   },
-  buttonContainer: {
-    width: '100%',
-    gap: 12,
-  },
-  verifyButton: {
-    backgroundColor: '#c42743',
-    borderRadius: 12,
-    padding: 16,
-    alignItems: 'center',
-  },
-  verifyButtonText: {
-    color: '#fff',
-    fontSize: 16,
-    fontWeight: '600',
-  },
-  resendButton: {
-    backgroundColor: '#2c2f33',
-    borderRadius: 12,
-    padding: 16,
-    alignItems: 'center',
-  },
-  resendButtonText: {
-    color: '#fff',
-    fontSize: 16,
-    fontWeight: '600',
-  },
-  buttonDisabled: {
-    opacity: 0.5,
-  },
-  footer: {
-    marginTop: 32,
-    paddingHorizontal: 16,
-  },
-  footerText: {
-    fontSize: 12,
-    color: '#999',
-    textAlign: 'center',
-    lineHeight: 18,
-  },
+  resendText: { fontSize: 13, fontWeight: '600', color: '#1a73e8' },
+  bottomSection: { paddingHorizontal: 28, paddingBottom: 40 },
+  continueButton: { backgroundColor: '#fff', borderRadius: 28, paddingVertical: 16, alignItems: 'center' },
+  continueButtonText: { color: '#0f0f0f', fontSize: 16, fontWeight: '700' },
+  buttonDisabled: { opacity: 0.4 },
 });
