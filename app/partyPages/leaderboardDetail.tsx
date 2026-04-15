@@ -1006,7 +1006,7 @@ export default function LeaderboardDetail() {
         style={styles.scrollView}
         showsVerticalScrollIndicator={false}
         refreshControl={
-          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor="#c42743" />
+          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor="#fff" />
         }
       >
         {/* Cover Photo Section */}
@@ -1034,7 +1034,7 @@ export default function LeaderboardDetail() {
               <Image source={{ uri: coverPhoto }} style={styles.coverPhotoImage} />
             ) : (
               <LinearGradient
-                colors={['#252525', '#1a1a1a', '#0f0f0f']}
+                colors={['rgba(255,255,255,0.06)', '#1a1a1a', '#0f0f0f']}
                 start={{ x: 0, y: 0 }}
                 end={{ x: 0, y: 1 }}
                 style={styles.coverPhotoGradient}
@@ -1108,7 +1108,7 @@ export default function LeaderboardDetail() {
               onPress={() => setShowChallengeDetailsModal(true)}
               activeOpacity={0.7}
             >
-              <IconSymbol size={14} name="trophy.fill" color="#a08845" />
+              <IconSymbol size={14} name="trophy.fill" color="#fff" />
               <ThemedText style={styles.pendingChallengeBtnText}>Pending Challenge</ThemedText>
             </TouchableOpacity>
           ) : isNone && isCreator ? (
@@ -1154,7 +1154,7 @@ export default function LeaderboardDetail() {
             )}
             {(isPending || isActive) && (isCreator || challengeParticipants.includes(user?.id || '')) && (
               <TouchableOpacity style={styles.codeButton} onPress={() => setShowChallengeDetailsModal(true)}>
-                <IconSymbol size={14} name="trophy.fill" color="#a08845" />
+                <IconSymbol size={14} name="trophy.fill" color="#fff" />
                 <ThemedText style={styles.inviteButtonText}>Challenge</ThemedText>
               </TouchableOpacity>
             )}
@@ -1341,7 +1341,7 @@ export default function LeaderboardDetail() {
                 <IconSymbol
                   size={20}
                   name="chart.line.uptrend.xyaxis"
-                  color={challengeTypeSelection === 'climbing' ? '#a08845' : '#555'}
+                  color={challengeTypeSelection === 'climbing' ? '#fff' : '#555'}
                 />
                 <ThemedText style={[
                   styles.createChallengeTypeBtnTitle,
@@ -1363,7 +1363,7 @@ export default function LeaderboardDetail() {
                 <IconSymbol
                   size={20}
                   name="trophy.fill"
-                  color={challengeTypeSelection === 'rank' ? '#a08845' : '#555'}
+                  color={challengeTypeSelection === 'rank' ? '#fff' : '#555'}
                 />
                 <ThemedText style={[
                   styles.createChallengeTypeBtnTitle,
@@ -1654,7 +1654,7 @@ export default function LeaderboardDetail() {
             <ScrollView style={styles.inviteUsersList} showsVerticalScrollIndicator={false}>
               {loadingMutuals || searchingUsers ? (
                 <View style={styles.inviteLoadingContainer}>
-                  <ActivityIndicator size="small" color="#A08845" />
+                  <ActivityIndicator size="small" color="#fff" />
                 </View>
               ) : (
                 <>
@@ -1922,7 +1922,7 @@ export default function LeaderboardDetail() {
                 <IconSymbol
                   size={18}
                   name="chart.line.uptrend.xyaxis"
-                  color={editChallengeType === 'climbing' ? '#c42743' : '#666'}
+                  color={editChallengeType === 'climbing' ? '#fff' : '#555'}
                 />
                 <View style={{ flex: 1 }}>
                   <ThemedText style={[
@@ -1946,7 +1946,7 @@ export default function LeaderboardDetail() {
                 <IconSymbol
                   size={18}
                   name="trophy.fill"
-                  color={editChallengeType === 'rank' ? '#c42743' : '#666'}
+                  color={editChallengeType === 'rank' ? '#fff' : '#555'}
                 />
                 <View style={{ flex: 1 }}>
                   <ThemedText style={[
@@ -2004,7 +2004,7 @@ export default function LeaderboardDetail() {
             <View style={styles.cdHeader}>
               <View style={styles.cdHeaderLeft}>
                 <View style={styles.pcTrophyCircle}>
-                  <IconSymbol size={16} name="trophy.fill" color="#a08845" />
+                  <IconSymbol size={16} name="trophy.fill" color="#fff" />
                 </View>
                 <ThemedText style={styles.cdTitle}>Challenge Details</ThemedText>
               </View>
@@ -2018,7 +2018,7 @@ export default function LeaderboardDetail() {
               <View style={styles.cdGridItem}>
                 <ThemedText style={styles.cdGridLabel}>TYPE</ThemedText>
                 <View style={styles.cdGridValueRow}>
-                  <IconSymbol size={14} name={partyData?.challengeType === 'rank' ? 'trophy.fill' : 'chart.line.uptrend.xyaxis'} color="#a08845" />
+                  <IconSymbol size={14} name={partyData?.challengeType === 'rank' ? 'trophy.fill' : 'chart.line.uptrend.xyaxis'} color="#fff" />
                   <ThemedText style={styles.cdGridValue}>
                     {partyData?.challengeType === 'rank' ? 'Highest Rank' : 'LP/RR Climbing'}
                   </ThemedText>
@@ -2115,7 +2115,7 @@ export default function LeaderboardDetail() {
       {uploading && (
         <View style={styles.uploadingOverlay}>
           <View style={styles.uploadingContent}>
-            <ActivityIndicator size="large" color="#c42743" />
+            <ActivityIndicator size="large" color="#fff" />
             <ThemedText style={styles.uploadingText}>Uploading...</ThemedText>
           </View>
         </View>
@@ -2166,7 +2166,7 @@ const styles = StyleSheet.create({
     borderRadius: 16,
     backgroundColor: 'transparent',
     borderWidth: 1,
-    borderColor: 'rgba(160, 136, 69, 0.3)',
+    borderColor: 'rgba(255,255,255,0.1)',
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -2302,9 +2302,9 @@ const styles = StyleSheet.create({
   },
   pendingChallengeCard: {
     width: '100%',
-    backgroundColor: 'rgba(160, 136, 69, 0.05)',
+    backgroundColor: 'rgba(255,255,255,0.04)',
     borderWidth: 1,
-    borderColor: 'rgba(160, 136, 69, 0.2)',
+    borderColor: 'rgba(255,255,255,0.08)',
     borderRadius: 14,
     padding: 16,
     gap: 14,
@@ -2323,7 +2323,7 @@ const styles = StyleSheet.create({
     width: 36,
     height: 36,
     borderRadius: 18,
-    backgroundColor: 'rgba(160, 136, 69, 0.12)',
+    backgroundColor: 'rgba(255,255,255,0.06)',
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -2341,7 +2341,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 5,
-    backgroundColor: 'rgba(160, 136, 69, 0.1)',
+    backgroundColor: 'rgba(255,255,255,0.06)',
     paddingVertical: 4,
     paddingHorizontal: 10,
     borderRadius: 8,
@@ -2350,12 +2350,12 @@ const styles = StyleSheet.create({
     width: 6,
     height: 6,
     borderRadius: 3,
-    backgroundColor: '#a08845',
+    backgroundColor: '#fff',
   },
   pcStatusText: {
     fontSize: 11,
     fontWeight: '600',
-    color: '#a08845',
+    color: '#fff',
   },
   pcParticipants: {
     gap: 8,
@@ -2375,7 +2375,7 @@ const styles = StyleSheet.create({
     borderRadius: 14,
     borderWidth: 2,
     borderColor: '#151513',
-    backgroundColor: '#252525',
+    backgroundColor: 'rgba(255,255,255,0.06)',
     overflow: 'hidden',
     alignItems: 'center',
     justifyContent: 'center',
@@ -2402,7 +2402,7 @@ const styles = StyleSheet.create({
   },
   pcProgressFill: {
     height: '100%',
-    backgroundColor: '#a08845',
+    backgroundColor: '#fff',
     borderRadius: 2,
   },
   pcStartBtn: {
@@ -2413,13 +2413,13 @@ const styles = StyleSheet.create({
     paddingVertical: 12,
     borderRadius: 10,
     borderWidth: 1,
-    borderColor: 'rgba(160, 136, 69, 0.3)',
-    backgroundColor: 'rgba(160, 136, 69, 0.08)',
+    borderColor: 'rgba(255,255,255,0.1)',
+    backgroundColor: 'rgba(255,255,255,0.06)',
   },
   pcStartBtnText: {
     fontSize: 14,
     fontWeight: '600',
-    color: '#a08845',
+    color: '#fff',
   },
   pcActionRow: {
     flexDirection: 'row',
@@ -2430,14 +2430,14 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     paddingVertical: 11,
     borderRadius: 10,
-    backgroundColor: 'rgba(160, 136, 69, 0.15)',
+    backgroundColor: 'rgba(255,255,255,0.08)',
     borderWidth: 1,
-    borderColor: 'rgba(160, 136, 69, 0.25)',
+    borderColor: 'rgba(255,255,255,0.1)',
   },
   pcAcceptBtnText: {
     fontSize: 14,
     fontWeight: '600',
-    color: '#a08845',
+    color: '#fff',
   },
   pcDeclineBtn: {
     width: 44,
@@ -2464,7 +2464,7 @@ const styles = StyleSheet.create({
   pcChangeText: {
     fontSize: 13,
     fontWeight: '600',
-    color: '#a08845',
+    color: '#fff',
   },
   // Challenge Details Modal
   cdModal: {
@@ -2482,7 +2482,7 @@ const styles = StyleSheet.create({
     paddingTop: 20,
     paddingBottom: 16,
     borderBottomWidth: 1,
-    borderBottomColor: 'rgba(160, 136, 69, 0.1)',
+    borderBottomColor: 'rgba(255,255,255,0.06)',
   },
   cdHeaderLeft: {
     flexDirection: 'row',
@@ -2537,12 +2537,12 @@ const styles = StyleSheet.create({
   cdDateText: {
     fontSize: 14,
     fontWeight: '600',
-    color: '#a08845',
+    color: '#fff',
   },
   cdDateDivider: {
     width: 1,
     height: 28,
-    backgroundColor: 'rgba(160, 136, 69, 0.2)',
+    backgroundColor: 'rgba(255,255,255,0.08)',
   },
   cdSectionLabel: {
     fontSize: 10,
@@ -2590,7 +2590,7 @@ const styles = StyleSheet.create({
     color: '#ccc',
   },
   cdLeaderBadge: {
-    backgroundColor: 'rgba(160, 136, 69, 0.12)',
+    backgroundColor: 'rgba(255,255,255,0.06)',
     paddingVertical: 3,
     paddingHorizontal: 8,
     borderRadius: 6,
@@ -2598,19 +2598,19 @@ const styles = StyleSheet.create({
   cdLeaderBadgeText: {
     fontSize: 11,
     fontWeight: '600',
-    color: '#a08845',
+    color: '#fff',
   },
   cdInviteStatus: {
     fontSize: 12,
     fontWeight: '500',
-    color: '#a08845',
+    color: '#fff',
   },
   startChallengeButton: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
     gap: 6,
-    backgroundColor: '#A08845',
+    backgroundColor: '#fff',
     paddingVertical: 8,
     paddingHorizontal: 16,
     borderRadius: 8,
@@ -2624,7 +2624,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 6,
-    backgroundColor: '#252525',
+    backgroundColor: 'rgba(255,255,255,0.06)',
     paddingVertical: 10,
     paddingHorizontal: 16,
     borderRadius: 10,
@@ -2649,7 +2649,7 @@ const styles = StyleSheet.create({
   daysLeftText: {
     fontSize: 11,
     fontWeight: '600',
-    color: '#A08845',
+    color: '#fff',
   },
   progressBarBackground: {
     width: '100%',
@@ -2660,7 +2660,7 @@ const styles = StyleSheet.create({
   },
   progressBarFill: {
     height: '100%',
-    backgroundColor: '#A08845',
+    backgroundColor: '#fff',
     borderRadius: 2,
   },
   // Action Buttons
@@ -2682,12 +2682,12 @@ const styles = StyleSheet.create({
     width: 6,
     height: 6,
     borderRadius: 3,
-    backgroundColor: '#a08845',
+    backgroundColor: '#fff',
   },
   activeProgressText: {
     fontSize: 13,
     fontWeight: '600',
-    color: '#a08845',
+    color: '#fff',
   },
   activeProgressDays: {
     fontSize: 13,
@@ -2703,12 +2703,12 @@ const styles = StyleSheet.create({
     borderRadius: 10,
     backgroundColor: '#1a1a1a',
     borderWidth: 1,
-    borderColor: 'rgba(160, 136, 69, 0.3)',
+    borderColor: 'rgba(255,255,255,0.1)',
   },
   pendingChallengeBtnText: {
     fontSize: 14,
     fontWeight: '600',
-    color: '#a08845',
+    color: '#fff',
   },
   createChallengeInlineBtn: {
     flexDirection: 'row',
@@ -2717,7 +2717,7 @@ const styles = StyleSheet.create({
     gap: 8,
     paddingVertical: 12,
     borderRadius: 10,
-    backgroundColor: '#a08845',
+    backgroundColor: '#fff',
   },
   createChallengeInlineBtnText: {
     fontSize: 14,
@@ -2773,7 +2773,7 @@ const styles = StyleSheet.create({
     marginBottom: 0,
     backgroundColor: '#1a1a1a',
     borderBottomWidth: 1,
-    borderBottomColor: '#252525',
+    borderBottomColor: 'rgba(255,255,255,0.06)',
   },
   columnHeaderText: {
     fontSize: 10,
@@ -2801,13 +2801,13 @@ const styles = StyleSheet.create({
     borderLeftWidth: 3,
   },
   evenRow: {
-    backgroundColor: '#141414',
+    backgroundColor: 'rgba(255,255,255,0.04)',
   },
   oddRow: {
     backgroundColor: '#1a1a1a',
   },
   currentUserRow: {
-    backgroundColor: '#252525',
+    backgroundColor: 'rgba(255,255,255,0.06)',
   },
   rankContainer: {
     width: 40,
@@ -2827,7 +2827,7 @@ const styles = StyleSheet.create({
   playerAvatar: {
     width: 32,
     height: 32,
-    backgroundColor: '#252525',
+    backgroundColor: 'rgba(255,255,255,0.06)',
     borderRadius: 6,
     alignItems: 'center',
     justifyContent: 'center',
@@ -2921,7 +2921,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     padding: 20,
     borderBottomWidth: 1,
-    borderBottomColor: '#252525',
+    borderBottomColor: 'rgba(255,255,255,0.06)',
   },
   editModalTitle: {
     fontSize: 18,
@@ -2939,7 +2939,7 @@ const styles = StyleSheet.create({
     width: 40,
     height: 40,
     borderRadius: 10,
-    backgroundColor: '#252525',
+    backgroundColor: 'rgba(255,255,255,0.06)',
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -2988,7 +2988,7 @@ const styles = StyleSheet.create({
   inviteSearchContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#252525',
+    backgroundColor: 'rgba(255,255,255,0.06)',
     marginHorizontal: 20,
     paddingHorizontal: 14,
     borderRadius: 12,
@@ -3037,7 +3037,7 @@ const styles = StyleSheet.create({
     width: 44,
     height: 44,
     borderRadius: 22,
-    backgroundColor: '#252525',
+    backgroundColor: 'rgba(255,255,255,0.06)',
     alignItems: 'center',
     justifyContent: 'center',
     overflow: 'hidden',
@@ -3058,7 +3058,7 @@ const styles = StyleSheet.create({
     color: '#fff',
   },
   inviteSendButton: {
-    backgroundColor: '#A08845',
+    backgroundColor: '#fff',
     paddingHorizontal: 16,
     paddingVertical: 8,
     borderRadius: 8,
@@ -3077,7 +3077,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 4,
-    backgroundColor: '#252525',
+    backgroundColor: 'rgba(255,255,255,0.06)',
     paddingHorizontal: 10,
     paddingVertical: 6,
     borderRadius: 8,
@@ -3139,7 +3139,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 8,
   },
   canInviteToggleActive: {
-    backgroundColor: '#a08845',
+    backgroundColor: '#fff',
   },
   canInviteToggleText: {
     fontSize: 10,
@@ -3154,14 +3154,14 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     paddingVertical: 12,
     borderBottomWidth: 1,
-    borderBottomColor: '#252525',
+    borderBottomColor: 'rgba(255,255,255,0.06)',
     gap: 12,
   },
   manageMemberAvatar: {
     width: 44,
     height: 44,
     borderRadius: 22,
-    backgroundColor: '#252525',
+    backgroundColor: 'rgba(255,255,255,0.06)',
     alignItems: 'center',
     justifyContent: 'center',
     overflow: 'hidden',
@@ -3223,14 +3223,14 @@ const styles = StyleSheet.create({
     paddingHorizontal: 12,
     marginHorizontal: 16,
     marginVertical: 2,
-    backgroundColor: '#252525',
+    backgroundColor: 'rgba(255,255,255,0.06)',
     borderRadius: 8,
     borderWidth: 1.5,
     borderColor: 'transparent',
   },
   permissionOptionActive: {
     backgroundColor: '#1f1518',
-    borderColor: '#c42743',
+    borderColor: '#fff',
   },
   permissionOptionLeft: {
     flexDirection: 'row',
@@ -3246,7 +3246,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   permissionOptionIconActive: {
-    backgroundColor: '#c42743',
+    backgroundColor: '#fff',
   },
   permissionOptionTitle: {
     fontSize: 13,
@@ -3280,8 +3280,8 @@ const styles = StyleSheet.create({
     borderColor: 'transparent',
   },
   durationChipActive: {
-    backgroundColor: '#252525',
-    borderColor: '#c42743',
+    backgroundColor: 'rgba(255,255,255,0.06)',
+    borderColor: '#fff',
   },
   durationChipText: {
     fontSize: 14,
@@ -3289,10 +3289,10 @@ const styles = StyleSheet.create({
     color: '#666',
   },
   durationChipTextActive: {
-    color: '#c42743',
+    color: '#fff',
   },
   saveSettingButton: {
-    backgroundColor: '#c42743',
+    backgroundColor: '#fff',
     borderRadius: 10,
     padding: 14,
     alignItems: 'center',
@@ -3318,8 +3318,8 @@ const styles = StyleSheet.create({
     borderColor: 'transparent',
   },
   challengeTypeButtonActive: {
-    backgroundColor: '#252525',
-    borderColor: '#c42743',
+    backgroundColor: 'rgba(255,255,255,0.06)',
+    borderColor: '#fff',
   },
   challengeTypeTitle: {
     fontSize: 14,
@@ -3327,7 +3327,7 @@ const styles = StyleSheet.create({
     color: '#888',
   },
   challengeTypeTitleActive: {
-    color: '#c42743',
+    color: '#fff',
   },
   challengeTypeDesc: {
     fontSize: 11,
@@ -3386,7 +3386,7 @@ const styles = StyleSheet.create({
   },
   createChallengeTypeBtnActive: {
     backgroundColor: '#1a1a1a',
-    borderColor: 'rgba(160, 136, 69, 0.4)',
+    borderColor: 'rgba(255,255,255,0.15)',
   },
   createChallengeTypeBtnTitle: {
     fontSize: 15,
@@ -3418,8 +3418,8 @@ const styles = StyleSheet.create({
     borderColor: 'transparent',
   },
   createChallengeDurationChipActive: {
-    backgroundColor: '#A08845',
-    borderColor: '#A08845',
+    backgroundColor: '#fff',
+    borderColor: '#fff',
   },
   createChallengeDurationText: {
     fontSize: 14,
@@ -3486,7 +3486,7 @@ const styles = StyleSheet.create({
     width: 36,
     height: 36,
     borderRadius: 18,
-    backgroundColor: '#252525',
+    backgroundColor: 'rgba(255,255,255,0.06)',
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -3510,8 +3510,8 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   createChallengeCheckboxActive: {
-    backgroundColor: '#A08845',
-    borderColor: '#A08845',
+    backgroundColor: '#fff',
+    borderColor: '#fff',
   },
   createChallengeBtn: {
     backgroundColor: '#111',
@@ -3520,7 +3520,7 @@ const styles = StyleSheet.create({
     marginHorizontal: 20,
     alignItems: 'center',
     borderWidth: 1.5,
-    borderColor: 'rgba(160, 136, 69, 0.4)',
+    borderColor: 'rgba(255,255,255,0.15)',
   },
   createChallengeBtnText: {
     fontSize: 16,
@@ -3547,7 +3547,7 @@ const styles = StyleSheet.create({
     gap: 10,
   },
   challengeAcceptBtn: {
-    backgroundColor: '#c42743',
+    backgroundColor: '#fff',
     paddingVertical: 10,
     paddingHorizontal: 24,
     borderRadius: 10,
@@ -3558,7 +3558,7 @@ const styles = StyleSheet.create({
     color: '#fff',
   },
   challengeDeclineBtn: {
-    backgroundColor: '#252525',
+    backgroundColor: 'rgba(255,255,255,0.06)',
     paddingVertical: 10,
     paddingHorizontal: 24,
     borderRadius: 10,

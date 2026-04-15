@@ -3,7 +3,6 @@ import { ThemedText } from '@/components/themed-text';
 import { IconSymbol } from '@/components/ui/icon-symbol';
 import { Image, StyleSheet, TouchableOpacity, View } from 'react-native';
 
-// Game logo mapping
 const GAME_LOGOS: { [key: string]: any } = {
   'Valorant': require('@/assets/images/valorant-red.png'),
   'League of Legends': require('@/assets/images/lol-icon.png'),
@@ -38,22 +37,16 @@ interface LeaderboardCardProps {
   showDivider?: boolean;
 }
 
-// Helper function to calculate days information
 const calculateDaysInfo = (startDate: any, endDate: any): { currentDay: number; totalDays: number; daysLeft: number } | null => {
   if (!startDate || !endDate) return null;
 
   const parseDate = (date: any): Date | null => {
-    if (date.toDate && typeof date.toDate === 'function') {
-      return date.toDate();
-    } else if (date instanceof Date) {
-      return date;
-    } else if (typeof date === 'string') {
+    if (date.toDate && typeof date.toDate === 'function') return date.toDate();
+    if (date instanceof Date) return date;
+    if (typeof date === 'string') {
       const parts = date.split('/');
       if (parts.length === 3) {
-        const month = parseInt(parts[0], 10) - 1;
-        const day = parseInt(parts[1], 10);
-        const year = parseInt(parts[2], 10);
-        return new Date(year, month, day);
+        return new Date(parseInt(parts[2], 10), parseInt(parts[0], 10) - 1, parseInt(parts[1], 10));
       }
       return new Date(date);
     }
@@ -62,10 +55,7 @@ const calculateDaysInfo = (startDate: any, endDate: any): { currentDay: number; 
 
   const startDateObj = parseDate(startDate);
   const endDateObj = parseDate(endDate);
-
-  if (!startDateObj || !endDateObj || isNaN(startDateObj.getTime()) || isNaN(endDateObj.getTime())) {
-    return null;
-  }
+  if (!startDateObj || !endDateObj || isNaN(startDateObj.getTime()) || isNaN(endDateObj.getTime())) return null;
 
   const today = new Date();
   today.setHours(0, 0, 0, 0);
@@ -73,10 +63,7 @@ const calculateDaysInfo = (startDate: any, endDate: any): { currentDay: number; 
   endDateObj.setHours(0, 0, 0, 0);
 
   const totalDays = Math.ceil((endDateObj.getTime() - startDateObj.getTime()) / (1000 * 60 * 60 * 24));
-  const currentDay = Math.min(
-    Math.ceil((today.getTime() - startDateObj.getTime()) / (1000 * 60 * 60 * 24)) + 1,
-    totalDays
-  );
+  const currentDay = Math.min(Math.ceil((today.getTime() - startDateObj.getTime()) / (1000 * 60 * 60 * 24)) + 1, totalDays);
   const daysLeft = Math.max(0, totalDays - currentDay + 1);
 
   return { currentDay: Math.max(1, currentDay), totalDays, daysLeft };
@@ -87,31 +74,22 @@ function LeaderboardCard({ leaderboard, onPress }: LeaderboardCardProps) {
   const gameLogo = GAME_LOGOS[leaderboard.game];
   const isActive = leaderboard.challengeStatus === 'active';
 
-  // Get top 3 players for ranking rows
   const topPlayers = (leaderboard.players || []).filter(
     (player: any) => player && (player.photoUrl || player.displayName || player.username)
   ).slice(0, 3);
 
   return (
     <TouchableOpacity
-      activeOpacity={0.85}
+      activeOpacity={0.7}
       onPress={() => onPress(leaderboard)}
       style={styles.container}
     >
-      {/* Header Section */}
+      {/* Header */}
       <View style={styles.headerSection}>
         {leaderboard.partyIcon ? (
-          <Image
-            source={{ uri: leaderboard.partyIcon }}
-            style={styles.leaderboardIcon}
-            resizeMode="cover"
-          />
+          <Image source={{ uri: leaderboard.partyIcon }} style={styles.leaderboardIcon} resizeMode="cover" />
         ) : gameLogo ? (
-          <Image
-            source={gameLogo}
-            style={styles.leaderboardIcon}
-            resizeMode="contain"
-          />
+          <Image source={gameLogo} style={styles.leaderboardIcon} resizeMode="contain" />
         ) : (
           <View style={styles.iconPlaceholder}>
             <ThemedText style={styles.iconPlaceholderText}>
@@ -143,6 +121,8 @@ function LeaderboardCard({ leaderboard, onPress }: LeaderboardCardProps) {
             )}
           </View>
         </View>
+
+        <IconSymbol size={16} name="chevron.right" color="#555" />
       </View>
 
       {/* Footer */}
@@ -155,11 +135,6 @@ function LeaderboardCard({ leaderboard, onPress }: LeaderboardCardProps) {
                   key={player.odId || index}
                   style={[styles.miniAvatarWrapper, { marginLeft: index === 0 ? 0 : -10, zIndex: 5 - index }]}
                 >
-                  {index === 0 && (
-                    <View style={styles.crownContainer}>
-                      <IconSymbol size={9} name="crown.fill" color="#A08845" />
-                    </View>
-                  )}
                   <View style={styles.miniAvatar}>
                     {player.photoUrl ? (
                       <Image source={{ uri: player.photoUrl }} style={styles.miniAvatarImage} />
@@ -179,9 +154,6 @@ function LeaderboardCard({ leaderboard, onPress }: LeaderboardCardProps) {
             {leaderboard.members} player{leaderboard.members !== 1 ? 's' : ''}
           </ThemedText>
         </View>
-
-        {/* Gold accent line */}
-        <View style={styles.footerAccent} />
       </View>
     </TouchableOpacity>
   );
@@ -191,14 +163,13 @@ export default React.memo(LeaderboardCard);
 
 const styles = StyleSheet.create({
   container: {
-    marginBottom: 14,
+    marginBottom: 12,
     borderRadius: 14,
     overflow: 'hidden',
-    backgroundColor: '#141414',
-    borderWidth: 1,
-    borderColor: '#1e1e1e',
+    backgroundColor: 'rgba(255,255,255,0.04)',
+    borderWidth: 0.5,
+    borderColor: 'rgba(255,255,255,0.06)',
   },
-  // Header
   headerSection: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -209,13 +180,13 @@ const styles = StyleSheet.create({
     width: 46,
     height: 46,
     borderRadius: 12,
-    backgroundColor: '#1e1e1e',
+    backgroundColor: 'rgba(255,255,255,0.06)',
   },
   iconPlaceholder: {
     width: 46,
     height: 46,
     borderRadius: 12,
-    backgroundColor: '#1e1e1e',
+    backgroundColor: 'rgba(255,255,255,0.06)',
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -248,7 +219,7 @@ const styles = StyleSheet.create({
     width: 3,
     height: 3,
     borderRadius: 1.5,
-    backgroundColor: '#333',
+    backgroundColor: 'rgba(255,255,255,0.1)',
   },
   challengeBadge: {
     flexDirection: 'row',
@@ -259,12 +230,12 @@ const styles = StyleSheet.create({
     width: 5,
     height: 5,
     borderRadius: 2.5,
-    backgroundColor: '#A08845',
+    backgroundColor: '#22C55E',
   },
   challengeText: {
     fontSize: 10,
     fontWeight: '700',
-    color: '#A08845',
+    color: '#22C55E',
     letterSpacing: 0.5,
   },
   daysText: {
@@ -272,14 +243,12 @@ const styles = StyleSheet.create({
     fontWeight: '500',
     color: '#555',
   },
-  // Footer
   footer: {
     paddingHorizontal: 14,
-    paddingTop: 12,
+    paddingTop: 10,
     paddingBottom: 14,
-    backgroundColor: '#111111',
-    borderTopWidth: 1,
-    borderTopColor: '#1e1e1e',
+    borderTopWidth: 0.5,
+    borderTopColor: 'rgba(255,255,255,0.06)',
   },
   footerLeft: {
     flexDirection: 'row',
@@ -293,17 +262,12 @@ const styles = StyleSheet.create({
   miniAvatarWrapper: {
     alignItems: 'center',
   },
-  crownContainer: {
-    position: 'absolute',
-    top: -8,
-    zIndex: 10,
-  },
   miniAvatar: {
-    width: 34,
-    height: 34,
-    borderRadius: 17,
+    width: 30,
+    height: 30,
+    borderRadius: 15,
     borderWidth: 2,
-    borderColor: '#141414',
+    borderColor: '#0f0f0f',
     overflow: 'hidden',
   },
   miniAvatarImage: {
@@ -313,25 +277,18 @@ const styles = StyleSheet.create({
   miniAvatarPlaceholder: {
     width: '100%',
     height: '100%',
-    backgroundColor: '#252525',
+    backgroundColor: 'rgba(255,255,255,0.06)',
     alignItems: 'center',
     justifyContent: 'center',
   },
   miniAvatarText: {
-    fontSize: 12,
+    fontSize: 11,
     fontWeight: '600',
-    color: '#666',
-  },
-  playersText: {
-    fontSize: 14,
-    fontWeight: '500',
     color: '#555',
   },
-  // Thin gold line at bottom of footer
-  footerAccent: {
-    height: 2,
-    backgroundColor: '#A08845',
-    borderRadius: 1,
-    marginTop: 12,
+  playersText: {
+    fontSize: 13,
+    fontWeight: '500',
+    color: '#555',
   },
 });
