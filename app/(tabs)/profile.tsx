@@ -26,6 +26,7 @@ import { formatCount } from '@/utils/formatCount';
 import { ProfilePageSkeleton } from '@/components/ui/Skeleton';
 import GradientBorder from '@/components/GradientBorder';
 import { LinearGradient } from 'expo-linear-gradient';
+import { BlurView } from 'expo-blur';
 
 const { width: screenWidth, height: screenHeight } = Dimensions.get('window');
 const TAB_CONTENT_MIN_HEIGHT = screenHeight * 0.4;
@@ -121,8 +122,8 @@ export default function ProfileScreen() {
   // Create modal state
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [showAvatarModal, setShowAvatarModal] = useState(false);
-  const [activeTab, setActiveTab] = useState<'clips' | 'rankCards' | 'achievements'>('clips');
-  const tabs: ('clips' | 'rankCards' | 'achievements')[] = ['clips', 'rankCards', 'achievements'];
+  const [activeTab, setActiveTab] = useState<'clips' | 'achievements'>('clips');
+  const tabs: ('clips' | 'achievements')[] = ['clips', 'achievements'];
   const tabScrollRef = useRef<ScrollView>(null);
   const isRemovingPost = useRef(false);
 
@@ -135,7 +136,7 @@ export default function ProfileScreen() {
     }
   }, []);
 
-  const scrollToTab = useCallback((tab: 'clips' | 'rankCards' | 'achievements') => {
+  const scrollToTab = useCallback((tab: 'clips' | 'achievements') => {
     const index = tabs.indexOf(tab);
     tabScrollRef.current?.scrollTo({ x: index * screenWidth, animated: true });
   }, []);
@@ -874,6 +875,38 @@ export default function ProfileScreen() {
 
   return (
     <ThemedView style={styles.container}>
+      {/* Background shimmer — matches tabs pages */}
+      <View style={styles.backgroundGlow} pointerEvents="none">
+        <View style={styles.shimmerBand} pointerEvents="none">
+          <LinearGradient
+            colors={[
+              'transparent',
+              'rgba(255, 255, 255, 0.03)',
+              'rgba(255, 255, 255, 0.065)',
+              'rgba(255, 255, 255, 0.03)',
+              'transparent',
+            ]}
+            locations={[0, 0.37, 0.5, 0.63, 1]}
+            start={{ x: 0, y: 0.5 }}
+            end={{ x: 1, y: 0.5 }}
+            style={StyleSheet.absoluteFill}
+          />
+        </View>
+        <View style={styles.shimmerBandSecondary} pointerEvents="none">
+          <LinearGradient
+            colors={[
+              'transparent',
+              'rgba(255, 255, 255, 0.035)',
+              'transparent',
+            ]}
+            locations={[0, 0.5, 1]}
+            start={{ x: 0, y: 0.5 }}
+            end={{ x: 1, y: 0.5 }}
+            style={StyleSheet.absoluteFill}
+          />
+        </View>
+      </View>
+
       <Animated.ScrollView
         showsVerticalScrollIndicator={false}
         scrollEventThrottle={16}
@@ -888,21 +921,12 @@ export default function ProfileScreen() {
             onRefresh={onRefresh}
             tintColor="#c42743"
             colors={['#c42743']}
+            progressViewOffset={110}
           />
         }
       >
         {/* Header Section - Cover photo reaches top */}
-        <LinearGradient
-          colors={
-            user?.coverPhotoColor
-              ? [user.coverPhotoColor, darkenColor(user.coverPhotoColor, 0.5), '#0f0f0f']
-              : ['#24243e', '#181825', '#0f0f0f']
-          }
-          locations={[0, 0.3, 0.6]}
-          start={{ x: 0, y: 0 }}
-          end={{ x: 0, y: 1 }}
-          style={styles.headerSection}
-        >
+        <View style={styles.headerSection}>
           {!allContentLoaded ? (
             <>
             {/* Cover photo placeholder with icons during loading */}
@@ -1165,6 +1189,148 @@ export default function ProfileScreen() {
             </View>
           </View>
 
+          {/* Rank Cards Banner */}
+          {userGames.length > 0 ? (
+            <TouchableOpacity
+              style={styles.rankCardsBanner}
+              onPress={() => router.push('/profilePages/rankCards')}
+              activeOpacity={0.85}
+            >
+              {/* Frosted glass blur */}
+              <BlurView
+                intensity={40}
+                tint="dark"
+                style={StyleSheet.absoluteFillObject}
+                pointerEvents="none"
+              />
+              {/* Glass tint — translucent face so blur shows through */}
+              <LinearGradient
+                colors={['rgba(38,38,38,0.55)', 'rgba(24,24,24,0.55)']}
+                start={{ x: 0, y: 0 }}
+                end={{ x: 1, y: 1 }}
+                style={StyleSheet.absoluteFillObject}
+                pointerEvents="none"
+              />
+              {/* Diagonal shimmer sheen */}
+              <LinearGradient
+                colors={['transparent', 'rgba(255,255,255,0.04)', 'transparent']}
+                locations={[0.4, 0.5, 0.6]}
+                start={{ x: 0, y: 0 }}
+                end={{ x: 1, y: 1 }}
+                style={StyleSheet.absoluteFillObject}
+                pointerEvents="none"
+              />
+              {/* Top highlight edge */}
+              <LinearGradient
+                colors={['rgba(255,255,255,0.07)', 'transparent']}
+                start={{ x: 0, y: 0 }}
+                end={{ x: 1, y: 0 }}
+                style={styles.rankCardsBannerTopEdge}
+                pointerEvents="none"
+              />
+
+              {/* Stacked mini rank card teaser */}
+              <View style={styles.rankCardsBannerPeek}>
+                {(() => {
+                  const cardOrder = enabledRankCards
+                    .filter(c => c === 'valorant' || c === 'league' || c === 'tft')
+                    .slice(0, 3);
+                  const total = cardOrder.length;
+                  return cardOrder.map((card, idx) => {
+                    const reverseIdx = total - 1 - idx;
+                    const accent =
+                      card === 'valorant' ? 'rgba(196,39,67,0.35)' :
+                      card === 'league' ? 'rgba(59,130,246,0.30)' :
+                      'rgba(212,168,67,0.30)';
+                    const img =
+                      card === 'valorant' ? require('@/assets/images/valorant-red.png') :
+                      card === 'league' ? require('@/assets/images/lol-icon.png') :
+                      require('@/assets/images/tft.png');
+                    return (
+                      <View
+                        key={card}
+                        style={[
+                          styles.rankCardsBannerMini,
+                          {
+                            left: reverseIdx * 8,
+                            top: reverseIdx * -5,
+                            zIndex: idx + 1,
+                          },
+                        ]}
+                      >
+                        <LinearGradient
+                          colors={['#2a2a2a', '#1a1a1a']}
+                          start={{ x: 0, y: 0 }}
+                          end={{ x: 1, y: 1 }}
+                          style={StyleSheet.absoluteFillObject}
+                        />
+                        <LinearGradient
+                          colors={[accent, 'transparent']}
+                          start={{ x: 0, y: 0 }}
+                          end={{ x: 1, y: 1 }}
+                          style={StyleSheet.absoluteFillObject}
+                        />
+                        <LinearGradient
+                          colors={['rgba(255,255,255,0.18)', 'transparent']}
+                          start={{ x: 0, y: 0 }}
+                          end={{ x: 1, y: 0.4 }}
+                          style={styles.rankCardsBannerMiniGloss}
+                        />
+                        <Image
+                          source={img}
+                          style={styles.rankCardsBannerMiniLogo}
+                          resizeMode="contain"
+                        />
+                      </View>
+                    );
+                  });
+                })()}
+              </View>
+
+              <View style={styles.emptyBannerTextContainer}>
+                <ThemedText style={styles.rankCardsBannerTitle}>Rank Cards</ThemedText>
+                <ThemedText style={styles.rankCardsBannerSubtext}>
+                  Tap to view your stacked cards
+                </ThemedText>
+              </View>
+              <IconSymbol size={14} name="chevron.right" color="#aaa" />
+            </TouchableOpacity>
+          ) : (
+            <TouchableOpacity
+              style={styles.rankCardsBanner}
+              onPress={() => router.push('/profilePages/newRankCard')}
+              activeOpacity={0.8}
+            >
+              <View style={styles.emptyBannerIconRow}>
+                <View style={styles.emptyBannerIconCircle}>
+                  <Image
+                    source={require('@/assets/images/valorant-logo.png')}
+                    style={{ width: 18, height: 18, tintColor: '#72767d' }}
+                    resizeMode="contain"
+                  />
+                </View>
+                <View style={[styles.emptyBannerIconCircle, styles.emptyBannerIconCircleCenter]}>
+                  <Image
+                    source={require('@/assets/images/riotgames.png')}
+                    style={{ width: 24, height: 24 }}
+                    resizeMode="contain"
+                  />
+                </View>
+                <View style={styles.emptyBannerIconCircle}>
+                  <Image
+                    source={require('@/assets/images/leagueoflegends.png')}
+                    style={{ width: 18, height: 18, tintColor: '#72767d' }}
+                    resizeMode="contain"
+                  />
+                </View>
+              </View>
+              <View style={styles.emptyBannerTextContainer}>
+                <ThemedText style={styles.emptyBannerTitle}>Show off your rank</ThemedText>
+                <ThemedText style={styles.emptyBannerSubtext}>Link your Riot account to get started</ThemedText>
+              </View>
+            </TouchableOpacity>
+          )}
+
           {/* Tab Bar */}
           <View style={styles.tabBar}>
             <TouchableOpacity
@@ -1173,13 +1339,6 @@ export default function ProfileScreen() {
               activeOpacity={0.7}
             >
               <ThemedText style={[styles.tabText, activeTab === 'clips' && styles.tabTextActive]}>CLIPS</ThemedText>
-            </TouchableOpacity>
-            <TouchableOpacity
-              style={styles.tabItem}
-              onPress={() => scrollToTab('rankCards')}
-              activeOpacity={0.7}
-            >
-              <ThemedText style={[styles.tabText, activeTab === 'rankCards' && styles.tabTextActive]}>RANKS</ThemedText>
             </TouchableOpacity>
             <TouchableOpacity
               style={styles.tabItem}
@@ -1266,136 +1425,6 @@ export default function ProfileScreen() {
           </View>
           </View>
 
-          {/* Rank Cards Tab */}
-          <View style={{ width: screenWidth, minHeight: TAB_CONTENT_MIN_HEIGHT }}>
-          <View style={[styles.sectionContainer, {
-            paddingBottom: userGames.length > 2 ? 10 : userGames.length > 1 ? 8 : 4
-          }]}>
-
-          {/* Rank Cards Content */}
-          <View style={styles.rankCardsSection}>
-          {!riotAccount && !valorantAccount ? (
-            // Empty state for new users
-            <TouchableOpacity
-              style={styles.emptyBanner}
-              onPress={() => router.push('/profilePages/newRankCard')}
-              activeOpacity={0.8}
-            >
-              <View style={styles.emptyBannerIconRow}>
-                <View style={styles.emptyBannerIconCircle}>
-                  <Image
-                    source={require('@/assets/images/valorant-logo.png')}
-                    style={{ width: 18, height: 18, tintColor: '#72767d' }}
-                    resizeMode="contain"
-                  />
-                </View>
-                <View style={[styles.emptyBannerIconCircle, styles.emptyBannerIconCircleCenter]}>
-                  <Image
-                    source={require('@/assets/images/riotgames.png')}
-                    style={{ width: 24, height: 24 }}
-                    resizeMode="contain"
-                  />
-                </View>
-                <View style={styles.emptyBannerIconCircle}>
-                  <Image
-                    source={require('@/assets/images/leagueoflegends.png')}
-                    style={{ width: 18, height: 18, tintColor: '#72767d' }}
-                    resizeMode="contain"
-                  />
-                </View>
-              </View>
-              <View style={styles.emptyBannerTextContainer}>
-                <ThemedText style={styles.emptyBannerTitle}>Show off your rank</ThemedText>
-                <ThemedText style={styles.emptyBannerSubtext}>Link your Riot account to get started</ThemedText>
-              </View>
-            </TouchableOpacity>
-          ) : userGames.length === 1 ? (
-            // Single Card View - clickable to open game stats
-            <View style={styles.verticalRankCardsContainer}>
-              {(() => {
-                const game = userGames[0];
-                let displayUsername = user?.username || 'User';
-
-                if (game.name === 'Valorant' && valorantAccount) {
-                  displayUsername = `${valorantAccount.gameName}#${valorantAccount.tag}`;
-                } else if ((game.name === 'League of Legends' || game.name === 'TFT') && riotAccount) {
-                  displayUsername = `${riotAccount.gameName}#${riotAccount.tagLine}`;
-                }
-
-                return (
-                  <View
-                    key={game.id}
-                    style={styles.verticalCardWrapper}
-                  >
-                    <RankCard game={game} username={displayUsername} viewOnly={false} isFocused={true} onRefresh={handleRankCardRefresh} />
-                  </View>
-                );
-              })()}
-            </View>
-          ) : (
-            // Multiple Cards View - Apple Wallet style stacked cards
-            (() => {
-              const totalCards = userGames.length;
-              const CARD_HEIGHT = 240;
-              const STACK_OFFSET = 50; // How much each card peeks from behind
-
-              // Container height: just the front card height (back cards peek above with negative offset)
-              const containerHeight = CARD_HEIGHT;
-
-              // Calculate top margin to prevent cards from overlapping the title
-              // Back cards have negative offsets, so we need margin to compensate
-              const stackMarginTop = (totalCards - 1) * STACK_OFFSET;
-
-              return (
-                <View style={[styles.verticalRankCardsContainer, { paddingBottom: 0 }]}>
-                  <View style={[styles.stackedCardsWrapper, { height: containerHeight, marginTop: stackMarginTop }]}>
-                    {userGames.map((game, index) => {
-                      // Use appropriate account username based on game
-                      let displayUsername = user?.username || 'User';
-
-                      if (game.name === 'Valorant' && valorantAccount) {
-                        displayUsername = `${valorantAccount.gameName}#${valorantAccount.tag}`;
-                      } else if ((game.name === 'League of Legends' || game.name === 'TFT') && riotAccount) {
-                        displayUsername = `${riotAccount.gameName}#${riotAccount.tagLine}`;
-                      }
-
-                      // Calculate stacking offset - cards behind peek from above
-                      const reverseIndex = totalCards - 1 - index;
-                      const topOffset = reverseIndex * -STACK_OFFSET;
-                      const scale = 1 - (reverseIndex * 0.02);
-
-                      // z-index: front card (last in array) has highest z-index
-                      const cardZIndex = index + 1;
-
-                      return (
-                        <View
-                          key={game.id}
-                          style={[
-                            styles.stackedCardItem,
-                            {
-                              bottom: 0,
-                              top: topOffset,
-                              transform: [{ scale }],
-                              zIndex: cardZIndex,
-                            }
-                          ]}
-                        >
-                          {/* All cards can open modal directly from stacked position */}
-                          <View style={{ width: '100%' }}>
-                            <RankCard game={game} username={displayUsername} viewOnly={false} isFocused={true} isBackOfStack={index < totalCards - 1} onRefresh={handleRankCardRefresh} />
-                          </View>
-                        </View>
-                      );
-                    })}
-                  </View>
-                </View>
-              );
-            })()
-          )}
-          </View>
-          </View>
-          </View>
-
           {/* Achievements Tab */}
           <View style={{ width: screenWidth, minHeight: TAB_CONTENT_MIN_HEIGHT }}>
           <View style={styles.sectionContainer}>
@@ -1463,7 +1492,7 @@ export default function ProfileScreen() {
           </ScrollView>
           </>
           )}
-        </LinearGradient>
+        </View>
       </Animated.ScrollView>
 
       {/* Post Viewer Modal */}
@@ -1618,10 +1647,30 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: '#0f0f0f',
   },
+  backgroundGlow: {
+    ...StyleSheet.absoluteFillObject,
+    overflow: 'hidden',
+  },
+  shimmerBand: {
+    position: 'absolute',
+    top: -screenHeight * 0.35,
+    left: -screenWidth * 0.6,
+    width: screenWidth * 2.2,
+    height: screenHeight * 1.7,
+    transform: [{ rotate: '20deg' }],
+  },
+  shimmerBandSecondary: {
+    position: 'absolute',
+    top: -screenHeight * 0.2,
+    left: -screenWidth * 0.1,
+    width: screenWidth * 1.9,
+    height: screenHeight * 1.5,
+    transform: [{ rotate: '-15deg' }],
+  },
   tabBar: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingTop: 12,
+    paddingTop: 8,
     paddingBottom: 8,
   },
   tabItem: {
@@ -1640,9 +1689,7 @@ const styles = StyleSheet.create({
   tabTextActive: {
     color: '#fff',
   },
-  headerSection: {
-    backgroundColor: '#0f0f0f',
-  },
+  headerSection: {},
   // Header icons row - overlaid on cover photo
   headerIconsRow: {
     position: 'absolute',
@@ -1675,7 +1722,7 @@ const styles = StyleSheet.create({
     marginTop: 0,
   },
   coverPhotoInner: {
-    height: 220,
+    height: 170,
     backgroundColor: 'rgba(255,255,255,0.04)',
     overflow: 'hidden',
   },
@@ -2025,6 +2072,81 @@ const styles = StyleSheet.create({
     gap: 14,
     borderWidth: 0.5,
     borderColor: 'rgba(255,255,255,0.06)',
+  },
+  rankCardsBanner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: 'transparent',
+    borderRadius: 14,
+    paddingVertical: 26,
+    paddingHorizontal: 18,
+    marginHorizontal: 16,
+    marginTop: 16,
+    marginBottom: 4,
+    gap: 16,
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.14)',
+    overflow: 'hidden',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.35,
+    shadowRadius: 8,
+    elevation: 6,
+  },
+  rankCardsBannerTopEdge: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    height: 1.5,
+  },
+  rankCardsBannerPeek: {
+    width: 86,
+    height: 60,
+    position: 'relative',
+  },
+  rankCardsBannerMini: {
+    position: 'absolute',
+    width: 70,
+    height: 46,
+    borderRadius: 7,
+    overflow: 'hidden',
+    borderWidth: 0.5,
+    borderColor: 'rgba(255,255,255,0.18)',
+    alignItems: 'center',
+    justifyContent: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 2, height: 3 },
+    shadowOpacity: 0.5,
+    shadowRadius: 3,
+  },
+  rankCardsBannerMiniGloss: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    height: '55%',
+  },
+  rankCardsBannerMiniLogo: {
+    width: 30,
+    height: 30,
+  },
+  rankCardsBannerTitle: {
+    fontSize: 20,
+    fontWeight: '800',
+    color: '#fff',
+    marginBottom: 3,
+    letterSpacing: -0.3,
+    lineHeight: 24,
+    textShadowColor: 'rgba(0,0,0,0.5)',
+    textShadowOffset: { width: 0, height: 1 },
+    textShadowRadius: 3,
+  },
+  rankCardsBannerSubtext: {
+    fontSize: 12,
+    color: '#9a9a9a',
+    fontWeight: '500',
+    letterSpacing: 0.1,
   },
   emptyBannerIconRow: {
     flexDirection: 'row',

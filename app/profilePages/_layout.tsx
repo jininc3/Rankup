@@ -70,6 +70,12 @@ export default function ProfilePagesLayout() {
         }}
       />
       <Stack.Screen
+        name="rankCards"
+        options={{
+          headerShown: false,
+        }}
+      />
+      <Stack.Screen
         name="rankCardWallet"
         options={{
           headerShown: false,

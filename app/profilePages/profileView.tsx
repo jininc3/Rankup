@@ -48,7 +48,7 @@ const formatDuration = (seconds?: number): string => {
   return `${mins}:${secs.toString().padStart(2, '0')}`;
 };
 
-const { width: screenWidth } = Dimensions.get('window');
+const { width: screenWidth, height: screenHeight } = Dimensions.get('window');
 const CARD_PADDING = 20;
 const CARD_GAP = 16;
 const CARD_WIDTH = screenWidth - (CARD_PADDING * 2);
@@ -616,15 +616,37 @@ export default function ProfileViewScreen() {
   if (userNotFound) {
     return (
       <ThemedView style={styles.container}>
-        {/* Top background gradient */}
-        <LinearGradient
-          colors={['rgba(255, 255, 255, 0.06)', 'rgba(255, 255, 255, 0.02)', 'transparent']}
-          locations={[0, 0.5, 1]}
-          start={{ x: 0.5, y: 0 }}
-          end={{ x: 0.5, y: 1 }}
-          style={styles.topGradient}
-          pointerEvents="none"
-        />
+        {/* Background shimmer — matches tabs pages */}
+        <View style={styles.backgroundGlow} pointerEvents="none">
+          <View style={styles.shimmerBand} pointerEvents="none">
+            <LinearGradient
+              colors={[
+                'transparent',
+                'rgba(255, 255, 255, 0.03)',
+                'rgba(255, 255, 255, 0.065)',
+                'rgba(255, 255, 255, 0.03)',
+                'transparent',
+              ]}
+              locations={[0, 0.37, 0.5, 0.63, 1]}
+              start={{ x: 0, y: 0.5 }}
+              end={{ x: 1, y: 0.5 }}
+              style={StyleSheet.absoluteFill}
+            />
+          </View>
+          <View style={styles.shimmerBandSecondary} pointerEvents="none">
+            <LinearGradient
+              colors={[
+                'transparent',
+                'rgba(255, 255, 255, 0.035)',
+                'transparent',
+              ]}
+              locations={[0, 0.5, 1]}
+              start={{ x: 0, y: 0.5 }}
+              end={{ x: 1, y: 0.5 }}
+              style={StyleSheet.absoluteFill}
+            />
+          </View>
+        </View>
         <View style={styles.headerSection}>
           <View style={{ paddingTop: 70, paddingHorizontal: 20, flexDirection: 'row', alignItems: 'center' }}>
             <TouchableOpacity
@@ -656,15 +678,37 @@ export default function ProfileViewScreen() {
 
   return (
     <ThemedView style={styles.container}>
-      {/* Top background gradient */}
-      <LinearGradient
-        colors={['rgba(255, 255, 255, 0.06)', 'rgba(255, 255, 255, 0.02)', 'transparent']}
-        locations={[0, 0.5, 1]}
-        start={{ x: 0.5, y: 0 }}
-        end={{ x: 0.5, y: 1 }}
-        style={styles.topGradient}
-        pointerEvents="none"
-      />
+      {/* Background shimmer — matches tabs pages */}
+      <View style={styles.backgroundGlow} pointerEvents="none">
+        <View style={styles.shimmerBand} pointerEvents="none">
+          <LinearGradient
+            colors={[
+              'transparent',
+              'rgba(255, 255, 255, 0.03)',
+              'rgba(255, 255, 255, 0.065)',
+              'rgba(255, 255, 255, 0.03)',
+              'transparent',
+            ]}
+            locations={[0, 0.37, 0.5, 0.63, 1]}
+            start={{ x: 0, y: 0.5 }}
+            end={{ x: 1, y: 0.5 }}
+            style={StyleSheet.absoluteFill}
+          />
+        </View>
+        <View style={styles.shimmerBandSecondary} pointerEvents="none">
+          <LinearGradient
+            colors={[
+              'transparent',
+              'rgba(255, 255, 255, 0.035)',
+              'transparent',
+            ]}
+            locations={[0, 0.5, 1]}
+            start={{ x: 0, y: 0.5 }}
+            end={{ x: 1, y: 0.5 }}
+            style={StyleSheet.absoluteFill}
+          />
+        </View>
+      </View>
       <ScrollView showsVerticalScrollIndicator={false} decelerationRate="fast">
         {/* Header Section */}
         <View style={styles.headerSection}>
@@ -1223,12 +1267,25 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: '#0f0f0f',
   },
-  topGradient: {
+  backgroundGlow: {
+    ...StyleSheet.absoluteFillObject,
+    overflow: 'hidden',
+  },
+  shimmerBand: {
     position: 'absolute',
-    top: 0,
-    left: 0,
-    right: 0,
-    height: 260,
+    top: -screenHeight * 0.35,
+    left: -screenWidth * 0.6,
+    width: screenWidth * 2.2,
+    height: screenHeight * 1.7,
+    transform: [{ rotate: '20deg' }],
+  },
+  shimmerBandSecondary: {
+    position: 'absolute',
+    top: -screenHeight * 0.2,
+    left: -screenWidth * 0.1,
+    width: screenWidth * 1.9,
+    height: screenHeight * 1.5,
+    transform: [{ rotate: '-15deg' }],
   },
   tabBar: {
     flexDirection: 'row',
@@ -1252,9 +1309,7 @@ const styles = StyleSheet.create({
   tabTextActive: {
     color: '#fff',
   },
-  headerSection: {
-    backgroundColor: '#0f0f0f',
-  },
+  headerSection: {},
   // Header icons row - overlaid on cover photo
   headerIconsRow: {
     position: 'absolute',

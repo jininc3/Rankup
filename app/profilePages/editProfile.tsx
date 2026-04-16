@@ -18,6 +18,8 @@ import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { Asset } from 'expo-asset';
 import { getColors } from 'react-native-image-colors';
 
+const { width: screenWidth, height: screenHeight } = Dimensions.get('window');
+
 // Default avatar images (local)
 const defaultAvatars = [
   require('@/assets/images/avatar1.png'),
@@ -498,13 +500,6 @@ export default function EditProfileScreen() {
             isActive && styles.rankCardItemDragging,
           ]}
         >
-          {/* Drag handle */}
-          {availableCards.length > 1 && (
-            <View style={styles.dragHandle}>
-              <IconSymbol size={14} name="line.3.horizontal" color={isActive ? 'rgba(201, 168, 76, 0.7)' : 'rgba(201, 168, 76, 0.4)'} />
-            </View>
-          )}
-
           {/* Logo */}
           <Image source={logoSource} style={styles.rankCardLogoImage} resizeMode="contain" />
 
@@ -513,6 +508,13 @@ export default function EditProfileScreen() {
             <ThemedText style={styles.rankCardName}>{item.name}</ThemedText>
             <ThemedText style={styles.rankCardRank}>{rankText}</ThemedText>
           </View>
+
+          {/* Drag handle */}
+          {availableCards.length > 1 && (
+            <View style={styles.dragHandle}>
+              <IconSymbol size={16} name="line.3.horizontal" color={isActive ? '#fff' : '#666'} />
+            </View>
+          )}
         </TouchableOpacity>
       </ScaleDecorator>
     );
@@ -668,15 +670,37 @@ export default function EditProfileScreen() {
 
   return (
     <ThemedView style={styles.container}>
-      {/* Top background gradient */}
-      <LinearGradient
-        colors={['rgba(255, 255, 255, 0.06)', 'rgba(255, 255, 255, 0.02)', 'transparent']}
-        locations={[0, 0.5, 1]}
-        start={{ x: 0.5, y: 0 }}
-        end={{ x: 0.5, y: 1 }}
-        style={styles.topGradient}
-        pointerEvents="none"
-      />
+      {/* Background shimmer — matches tabs pages */}
+      <View style={styles.backgroundGlow} pointerEvents="none">
+        <View style={styles.shimmerBand} pointerEvents="none">
+          <LinearGradient
+            colors={[
+              'transparent',
+              'rgba(255, 255, 255, 0.03)',
+              'rgba(255, 255, 255, 0.065)',
+              'rgba(255, 255, 255, 0.03)',
+              'transparent',
+            ]}
+            locations={[0, 0.37, 0.5, 0.63, 1]}
+            start={{ x: 0, y: 0.5 }}
+            end={{ x: 1, y: 0.5 }}
+            style={StyleSheet.absoluteFill}
+          />
+        </View>
+        <View style={styles.shimmerBandSecondary} pointerEvents="none">
+          <LinearGradient
+            colors={[
+              'transparent',
+              'rgba(255, 255, 255, 0.035)',
+              'transparent',
+            ]}
+            locations={[0, 0.5, 1]}
+            start={{ x: 0, y: 0.5 }}
+            end={{ x: 1, y: 0.5 }}
+            style={StyleSheet.absoluteFill}
+          />
+        </View>
+      </View>
       <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.scrollContent}>
         {/* Header Section - matches profile page layout */}
         <View style={styles.headerSection}>
@@ -732,32 +756,43 @@ export default function EditProfileScreen() {
 
           {/* Profile Info Section - overlaps cover photo */}
           <View style={styles.profileInfoSection}>
-            {/* Row: Avatar + Stats */}
+            {/* Row: Avatar+Username group (left) + Stats (right) */}
             <View style={styles.avatarStatsRow}>
-              {/* Avatar */}
-              <TouchableOpacity
-                style={styles.profileAvatarButton}
-                onPress={showImageOptions}
-                disabled={isLoading}
-                activeOpacity={0.7}
-              >
-                <View style={styles.profileAvatarCircle}>
-                  {pendingRemoveProfileImage ? (
-                    <ThemedText style={styles.profileAvatarInitial}>{user?.username?.[0]?.toUpperCase() || 'U'}</ThemedText>
-                  ) : pendingDefaultAvatarIndex !== null ? (
-                    <Image source={defaultAvatars[pendingDefaultAvatarIndex]} style={styles.profileAvatarImage} />
-                  ) : pendingProfileImageUri ? (
-                    <Image source={{ uri: pendingProfileImageUri }} style={styles.profileAvatarImage} />
-                  ) : profileImage ? (
-                    <Image source={{ uri: profileImage }} style={styles.profileAvatarImage} />
-                  ) : (
-                    <ThemedText style={styles.profileAvatarInitial}>{avatar}</ThemedText>
-                  )}
-                </View>
-                <View style={styles.editAvatarBadge}>
-                  <IconSymbol size={12} name="camera.fill" color="#fff" />
-                </View>
-              </TouchableOpacity>
+              <View style={styles.avatarUsernameGroup}>
+                <TouchableOpacity
+                  style={styles.profileAvatarButton}
+                  onPress={showImageOptions}
+                  disabled={isLoading}
+                  activeOpacity={0.7}
+                >
+                  <View style={styles.profileAvatarCircle}>
+                    {pendingRemoveProfileImage ? (
+                      <ThemedText style={styles.profileAvatarInitial}>{user?.username?.[0]?.toUpperCase() || 'U'}</ThemedText>
+                    ) : pendingDefaultAvatarIndex !== null ? (
+                      <Image source={defaultAvatars[pendingDefaultAvatarIndex]} style={styles.profileAvatarImage} />
+                    ) : pendingProfileImageUri ? (
+                      <Image source={{ uri: pendingProfileImageUri }} style={styles.profileAvatarImage} />
+                    ) : profileImage ? (
+                      <Image source={{ uri: profileImage }} style={styles.profileAvatarImage} />
+                    ) : (
+                      <ThemedText style={styles.profileAvatarInitial}>{avatar}</ThemedText>
+                    )}
+                  </View>
+                  <View style={styles.editAvatarBadge}>
+                    <IconSymbol size={12} name="camera.fill" color="#fff" />
+                  </View>
+                </TouchableOpacity>
+
+                {/* Username input under avatar */}
+                <TextInput
+                  style={styles.usernameInput}
+                  value={username}
+                  onChangeText={(text) => setUsername(text.toLowerCase())}
+                  placeholder="Username"
+                  placeholderTextColor="#72767d"
+                  autoCapitalize="none"
+                />
+              </View>
 
               {/* Stats columns */}
               <View style={styles.statsColumns}>
@@ -775,16 +810,6 @@ export default function EditProfileScreen() {
                 </View>
               </View>
             </View>
-
-            {/* Username input below avatar */}
-            <TextInput
-              style={styles.usernameInput}
-              value={username}
-              onChangeText={(text) => setUsername(text.toLowerCase())}
-              placeholder="Username"
-              placeholderTextColor="#72767d"
-              autoCapitalize="none"
-            />
 
             {/* Bio */}
             <View style={styles.bioSection}>
@@ -839,23 +864,20 @@ export default function EditProfileScreen() {
           {/* Rank Cards Section */}
           <View style={styles.rankCardsSectionOuter}>
             <View style={styles.rankCardsSectionHeader}>
-              <View style={styles.rankCardsTitleRow}>
-                <View style={styles.rankCardsTitleAccent} />
-                <ThemedText style={styles.rankCardsSectionTitle}>Rank Cards</ThemedText>
-              </View>
+              <ThemedText style={styles.rankCardsSectionTitle}>Rank Cards</ThemedText>
               <TouchableOpacity
                 style={styles.linkAccountButton}
                 onPress={() => router.push('/profilePages/newRankCard')}
                 activeOpacity={0.7}
               >
                 <ThemedText style={styles.linkAccountText}>Manage</ThemedText>
-                <IconSymbol size={10} name="chevron.right" color="#C9A84C" />
+                <IconSymbol size={11} name="chevron.right" color="#888" />
               </TouchableOpacity>
             </View>
 
             {loadingRankCards ? (
               <View style={styles.rankCardsLoading}>
-                <ActivityIndicator size="small" color="#C9A84C" />
+                <ActivityIndicator size="small" color="#fff" />
               </View>
             ) : !riotAccount && !valorantAccount ? (
               <View style={styles.noAccountsContainer}>
@@ -871,27 +893,28 @@ export default function EditProfileScreen() {
                   keyExtractor={(item) => item.type}
                   renderItem={renderRankCardItem}
                   scrollEnabled={false}
+                  contentContainerStyle={styles.rankCardsList}
                 />
               </GestureHandlerRootView>
             )}
           </View>
+
+          {/* Save Button — flows with content */}
+          <View style={styles.saveButtonContainer}>
+            <TouchableOpacity
+              style={[styles.saveButton, isLoading && styles.saveButtonDisabled]}
+              onPress={handleSave}
+              disabled={isLoading}
+            >
+              {isLoading ? (
+                <ActivityIndicator size="small" color="#fff" />
+              ) : (
+                <ThemedText style={styles.saveButtonText}>Save Changes</ThemedText>
+              )}
+            </TouchableOpacity>
+          </View>
         </View>
       </ScrollView>
-
-      {/* Fixed Save Button at Bottom */}
-      <View style={styles.saveButtonContainer}>
-        <TouchableOpacity
-          style={[styles.saveButton, isLoading && styles.saveButtonDisabled]}
-          onPress={handleSave}
-          disabled={isLoading}
-        >
-          {isLoading ? (
-            <ActivityIndicator size="small" color="#fff" />
-          ) : (
-            <ThemedText style={styles.saveButtonText}>Save Changes</ThemedText>
-          )}
-        </TouchableOpacity>
-      </View>
 
       {/* Default Avatar Selection Modal */}
       <Modal
@@ -1012,19 +1035,30 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: '#0f0f0f',
   },
-  topGradient: {
+  backgroundGlow: {
+    ...StyleSheet.absoluteFillObject,
+    overflow: 'hidden',
+  },
+  shimmerBand: {
     position: 'absolute',
-    top: 0,
-    left: 0,
-    right: 0,
-    height: 260,
+    top: -screenHeight * 0.35,
+    left: -screenWidth * 0.6,
+    width: screenWidth * 2.2,
+    height: screenHeight * 1.7,
+    transform: [{ rotate: '20deg' }],
+  },
+  shimmerBandSecondary: {
+    position: 'absolute',
+    top: -screenHeight * 0.2,
+    left: -screenWidth * 0.1,
+    width: screenWidth * 1.9,
+    height: screenHeight * 1.5,
+    transform: [{ rotate: '-15deg' }],
   },
   scrollContent: {
-    paddingBottom: 120,
+    paddingBottom: 40,
   },
-  headerSection: {
-    backgroundColor: '#0f0f0f',
-  },
+  headerSection: {},
   // Cover photo area - reaches top of screen
   coverPhotoWrapper: {
     width: '100%',
@@ -1081,14 +1115,17 @@ const styles = StyleSheet.create({
   },
   // Profile info section below cover
   profileInfoSection: {
-    marginTop: -32,
+    marginTop: -20,
     paddingHorizontal: 20,
     zIndex: 3,
   },
   avatarStatsRow: {
     flexDirection: 'row',
     alignItems: 'flex-end',
-    gap: 16,
+    justifyContent: 'space-between',
+  },
+  avatarUsernameGroup: {
+    alignItems: 'flex-start',
   },
   profileAvatarButton: {
   },
@@ -1150,13 +1187,17 @@ const styles = StyleSheet.create({
   },
   // Username input
   usernameInput: {
-    fontSize: 26,
+    fontSize: 16,
     fontWeight: '800',
     color: '#fff',
-    letterSpacing: -0.5,
-    marginTop: 10,
-    marginBottom: 2,
+    letterSpacing: -0.3,
+    marginTop: 6,
     padding: 0,
+    width: 96,
+    height: 20,
+    lineHeight: 20,
+    includeFontPadding: false,
+    textAlignVertical: 'center',
   },
   // Bio section
   bioSection: {
@@ -1212,26 +1253,21 @@ const styles = StyleSheet.create({
   },
   // Save button
   saveButtonContainer: {
-    position: 'absolute',
-    bottom: 0,
-    left: 0,
-    right: 0,
-    backgroundColor: '#0f0f0f',
-    paddingHorizontal: 20,
-    paddingVertical: 16,
-    paddingBottom: 36,
-    borderTopWidth: 1,
-    borderTopColor: '#2c2f33',
+    paddingHorizontal: 28,
+    paddingTop: 8,
+    paddingBottom: 24,
   },
   saveButton: {
-    backgroundColor: '#C9A84C',
+    backgroundColor: 'rgba(255,255,255,0.08)',
     paddingVertical: 16,
-    borderRadius: 12,
+    borderRadius: 28,
     alignItems: 'center',
     justifyContent: 'center',
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.1)',
   },
   saveButtonDisabled: {
-    opacity: 0.5,
+    opacity: 0.4,
   },
   saveButtonText: {
     color: '#fff',
@@ -1240,42 +1276,31 @@ const styles = StyleSheet.create({
   },
   // Rank Cards Section Styles
   rankCardsSectionOuter: {
-    paddingHorizontal: 20,
+    paddingHorizontal: 28,
+    marginTop: 8,
     marginBottom: 20,
   },
   rankCardsSectionHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: 14,
-  },
-  rankCardsTitleRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-  },
-  rankCardsTitleAccent: {
-    width: 2,
-    height: 14,
-    backgroundColor: '#C9A84C',
-    borderRadius: 1,
+    marginBottom: 16,
   },
   rankCardsSectionTitle: {
-    fontSize: 13,
-    fontWeight: '500',
-    color: 'rgba(255, 255, 255, 0.5)',
-    letterSpacing: 0.5,
-    textTransform: 'uppercase',
+    fontSize: 15,
+    fontWeight: '700',
+    color: '#fff',
   },
   linkAccountButton: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 4,
+    paddingVertical: 4,
   },
   linkAccountText: {
-    fontSize: 12,
+    fontSize: 13,
     fontWeight: '500',
-    color: 'rgba(201, 168, 76, 0.6)',
+    color: '#888',
   },
   rankCardsLoading: {
     paddingVertical: 24,
@@ -1287,49 +1312,50 @@ const styles = StyleSheet.create({
   },
   noAccountsText: {
     fontSize: 13,
-    color: '#444',
+    color: '#555',
+  },
+  rankCardsList: {
+    gap: 12,
   },
   rankCardItem: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingVertical: 12,
-    paddingHorizontal: 0,
-    gap: 10,
-    borderBottomWidth: StyleSheet.hairlineWidth,
-    borderBottomColor: 'rgba(255, 255, 255, 0.04)',
+    gap: 14,
+    backgroundColor: 'rgba(255,255,255,0.04)',
+    borderRadius: 14,
+    paddingVertical: 18,
+    paddingHorizontal: 18,
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.06)',
+    marginBottom: 12,
   },
   rankCardItemDragging: {
-    backgroundColor: 'rgba(201, 168, 76, 0.08)',
-    borderRadius: 10,
-    borderBottomWidth: 0,
-    marginHorizontal: 20,
-    paddingHorizontal: 10,
-    borderWidth: 1,
-    borderColor: 'rgba(201, 168, 76, 0.15)',
+    backgroundColor: 'rgba(255,255,255,0.08)',
+    borderColor: 'rgba(255,255,255,0.14)',
   },
   dragHandle: {
-    width: 18,
+    width: 24,
+    height: 24,
     alignItems: 'center',
     justifyContent: 'center',
   },
   rankCardLogoImage: {
-    width: 20,
-    height: 20,
-    opacity: 0.7,
+    width: 36,
+    height: 36,
+    borderRadius: 8,
   },
   rankCardInfo: {
     flex: 1,
-    gap: 1,
+    gap: 2,
   },
   rankCardName: {
-    fontSize: 14,
-    fontWeight: '500',
-    color: 'rgba(255, 255, 255, 0.85)',
+    fontSize: 17,
+    fontWeight: '600',
+    color: '#fff',
   },
   rankCardRank: {
-    fontSize: 11,
-    fontWeight: '400',
-    color: 'rgba(201, 168, 76, 0.45)',
+    fontSize: 13,
+    color: '#888',
   },
   // Modal styles
   modalOverlay: {
