@@ -1,12 +1,7 @@
 import { ThemedText } from '@/components/themed-text';
 import { IconSymbol } from '@/components/ui/icon-symbol';
-import { LinearGradient } from 'expo-linear-gradient';
-import { Dimensions, Image, StyleSheet, TouchableOpacity, View } from 'react-native';
+import { Image, StyleSheet, TouchableOpacity, View } from 'react-native';
 
-const { width } = Dimensions.get('window');
-const cardHeight = width * 0.52;
-
-// Game logo mapping
 const GAME_LOGOS: { [key: string]: any } = {
   'Valorant': require('@/assets/images/valorant-red.png'),
   'League of Legends': require('@/assets/images/lol-icon.png'),
@@ -14,7 +9,6 @@ const GAME_LOGOS: { [key: string]: any } = {
   'Apex Legends': require('@/assets/images/apex.png'),
 };
 
-// Valorant rank icon mapping
 const VALORANT_RANK_ICONS: { [key: string]: any } = {
   iron: require('@/assets/images/valorantranks/iron.png'),
   bronze: require('@/assets/images/valorantranks/bronze.png'),
@@ -28,7 +22,6 @@ const VALORANT_RANK_ICONS: { [key: string]: any } = {
   unranked: require('@/assets/images/valorantranks/unranked.png'),
 };
 
-// League rank icon mapping
 const LEAGUE_RANK_ICONS: { [key: string]: any } = {
   iron: require('@/assets/images/leagueranks/iron.png'),
   bronze: require('@/assets/images/leagueranks/bronze.png'),
@@ -43,7 +36,6 @@ const LEAGUE_RANK_ICONS: { [key: string]: any } = {
   unranked: require('@/assets/images/leagueranks/unranked.png'),
 };
 
-// Valorant agent icon mapping
 const VALORANT_AGENT_ICONS: { [key: string]: any } = {
   astra: require('@/assets/images/valoranticons/astra.png'),
   breach: require('@/assets/images/valoranticons/breach.png'),
@@ -76,7 +68,6 @@ const VALORANT_AGENT_ICONS: { [key: string]: any } = {
   yoru: require('@/assets/images/valoranticons/yoru.png'),
 };
 
-// Valorant role icon mapping
 const VALORANT_ROLE_ICONS: { [key: string]: any } = {
   controller: require('@/assets/images/valorantroles/Controller.png'),
   duelist: require('@/assets/images/valorantroles/Duelist.png'),
@@ -84,7 +75,6 @@ const VALORANT_ROLE_ICONS: { [key: string]: any } = {
   sentinel: require('@/assets/images/valorantroles/Sentinel.png'),
 };
 
-// League lane icon mapping
 const LEAGUE_LANE_ICONS: { [key: string]: any } = {
   top: require('@/assets/images/leaguelanes/top.png'),
   jungle: require('@/assets/images/leaguelanes/jungle.png'),
@@ -94,15 +84,6 @@ const LEAGUE_LANE_ICONS: { [key: string]: any } = {
   bot: require('@/assets/images/leaguelanes/bottom.png'),
   adc: require('@/assets/images/leaguelanes/bottom.png'),
   support: require('@/assets/images/leaguelanes/support.png'),
-};
-
-// Card accent colors — white, gold, black theme
-const CARD_COLORS = {
-  border: 'rgba(180, 155, 70, 0.4)',
-  stripe: 'rgba(180, 155, 70, 0.7)',
-  overlayStart: 'rgba(180, 155, 70, 0.06)',
-  overlayEnd: 'rgba(180, 155, 70, 0.03)',
-  divider: 'rgba(180, 155, 70, 0.3)',
 };
 
 interface Duo {
@@ -127,20 +108,18 @@ interface Duo {
   createdAt?: any;
 }
 
-// Helper to format time ago
 const formatTimeAgo = (timestamp: any): string => {
   if (!timestamp) return '';
   const date = timestamp.toDate ? timestamp.toDate() : new Date(timestamp);
   const now = new Date();
   const diffInSeconds = Math.floor((now.getTime() - date.getTime()) / 1000);
-
   if (diffInSeconds < 60) return 'now';
   const diffInMinutes = Math.floor(diffInSeconds / 60);
-  if (diffInMinutes < 60) return `${diffInMinutes}m ago`;
+  if (diffInMinutes < 60) return `${diffInMinutes}m`;
   const diffInHours = Math.floor(diffInMinutes / 60);
-  if (diffInHours < 24) return `${diffInHours}h ago`;
+  if (diffInHours < 24) return `${diffInHours}h`;
   const diffInDays = Math.floor(diffInHours / 24);
-  return `${diffInDays}d ago`;
+  return `${diffInDays}d`;
 };
 
 interface DuoCardProps {
@@ -152,20 +131,16 @@ interface DuoCardProps {
   noShadow?: boolean;
 }
 
-// Helper to get rank icon
 const getRankIcon = (rank: string, game: string) => {
   if (!rank || rank === 'Unranked') {
     return game === 'League' || game === 'League of Legends'
       ? LEAGUE_RANK_ICONS.unranked
       : VALORANT_RANK_ICONS.unranked;
   }
-
   const tier = rank.split(' ')[0].toLowerCase();
-
   if (game === 'League' || game === 'League of Legends') {
     return LEAGUE_RANK_ICONS[tier] || LEAGUE_RANK_ICONS.unranked;
   }
-
   return VALORANT_RANK_ICONS[tier] || VALORANT_RANK_ICONS.unranked;
 };
 
@@ -184,392 +159,235 @@ export default function DuoCard({ duo, onPress, onMessage, onViewProfile, onDele
     ? LEAGUE_LANE_ICONS[duo.favoriteRole.toLowerCase()] || null
     : null;
 
+  const agentOrChamp = duo.favoriteAgent || null;
+  const role = duo.favoriteRole || null;
+
+  // Build tags
+  const tags: string[] = [];
+  if (role) tags.push(role);
+  if (agentOrChamp) tags.push(agentOrChamp);
+  if (duo.winRate > 0) tags.push(`${duo.winRate}% WR`);
+
   return (
-    <TouchableOpacity
-      style={[styles.container, noShadow && { shadowOpacity: 0, elevation: 0, marginBottom: 0 }]}
-      onPress={onPress}
-      activeOpacity={0.7}
-    >
-      <LinearGradient
-        colors={['#111113', '#161618', '#1a1a1c']}
-        start={{ x: 0, y: 0 }}
-        end={{ x: 0, y: 1 }}
-        style={[styles.innerBorder, { borderColor: CARD_COLORS.border }]}
-      >
-      {/* Gold accent stripe - left edge */}
-      <View style={{
-        position: 'absolute',
-        left: 0,
-        top: 0,
-        bottom: 0,
-        width: 2,
-        backgroundColor: CARD_COLORS.stripe,
-        borderTopLeftRadius: 8,
-        borderBottomLeftRadius: 8,
-      }} />
-
-      {/* Subtle gold overlay */}
-      <LinearGradient
-        colors={[CARD_COLORS.overlayStart, 'transparent', CARD_COLORS.overlayEnd]}
-        start={{ x: 0, y: 0 }}
-        end={{ x: 1, y: 1 }}
-        style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, borderRadius: 8 }}
-        pointerEvents="none"
-      />
-
-      {/* Header Section: In-Game Icon + In-Game Name | Time Ago | Game Logo */}
-      <View style={styles.headerSection}>
-        <View style={styles.header}>
-          <View style={styles.userSection}>
-            <View style={styles.avatarContainer}>
-              {duo.inGameIcon ? (
-                <Image source={{ uri: duo.inGameIcon }} style={styles.avatar} />
-              ) : duo.avatar && duo.avatar.startsWith('http') ? (
-                <Image source={{ uri: duo.avatar }} style={styles.avatar} />
-              ) : (
-                <ThemedText style={styles.avatarText}>
-                  {(duo.inGameName || duo.username)[0].toUpperCase()}
-                </ThemedText>
-              )}
+    <TouchableOpacity style={styles.card} onPress={onPress} activeOpacity={0.8}>
+      {/* Top section — white area */}
+      <View style={styles.topSection}>
+        {/* Name row */}
+        <View style={styles.nameRow}>
+          <View style={styles.avatarWrap}>
+            {duo.inGameIcon ? (
+              <Image source={{ uri: duo.inGameIcon }} style={styles.avatarImg} />
+            ) : duo.avatar && duo.avatar.startsWith('http') ? (
+              <Image source={{ uri: duo.avatar }} style={styles.avatarImg} />
+            ) : (
+              <ThemedText style={styles.avatarLetter}>
+                {(duo.inGameName || duo.username)[0].toUpperCase()}
+              </ThemedText>
+            )}
+          </View>
+          <View style={styles.nameCol}>
+            <ThemedText style={styles.name} numberOfLines={1}>{duo.inGameName || duo.username}</ThemedText>
+            <View style={styles.subRow}>
+              {gameLogo && <Image source={gameLogo} style={styles.gameIcon} resizeMode="contain" />}
+              {duo.createdAt && <ThemedText style={styles.time}>{formatTimeAgo(duo.createdAt)}</ThemedText>}
             </View>
-            <ThemedText style={styles.username} numberOfLines={1}>
-              {duo.inGameName || duo.username}
-            </ThemedText>
-          </View>
-
-          <View style={styles.headerRight}>
-            {duo.createdAt && (
-              <ThemedText style={styles.timeAgo}>{formatTimeAgo(duo.createdAt)}</ThemedText>
-            )}
-            {gameLogo && (
-              <Image source={gameLogo} style={styles.gameLogo} resizeMode="contain" />
-            )}
           </View>
         </View>
 
-      </View>
-
-      {/* Header Divider */}
-      <View style={[styles.headerDivider, { backgroundColor: CARD_COLORS.divider }]} />
-
-      {/* Message */}
-      {duo.message ? (
-        <View style={styles.messageSection}>
-          <ThemedText style={styles.messageText} numberOfLines={2}>
-            "{duo.message}"
-          </ThemedText>
-        </View>
-      ) : null}
-
-      {/* Stats Row: Current Rank | Agent/Champion | Role | Win Rate */}
-      <View style={styles.statsRow}>
-        {/* Current Rank */}
-        <View style={styles.statItemWide}>
-          <ThemedText style={styles.statLabel}>Rank</ThemedText>
-          <View style={styles.rankRow}>
-            <Image source={currentRankIcon} style={styles.rankIcon} resizeMode="contain" />
-            <ThemedText style={styles.rankText} numberOfLines={1}>
-              {duo.currentRank || 'Unranked'}
-            </ThemedText>
-          </View>
-        </View>
-
-        <View style={[styles.divider, { backgroundColor: CARD_COLORS.divider }]} />
-
-        {/* Agent (Valorant) / Champion (League) */}
-        <View style={styles.statItem}>
-          <ThemedText style={styles.statLabel}>
-            {isLeague ? 'Champion' : 'Agent'}
-          </ThemedText>
-          {!isLeague && agentIcon ? (
-            <Image source={agentIcon} style={styles.agentIcon} resizeMode="contain" />
-          ) : (
-            <ThemedText style={styles.roleText} numberOfLines={1}>
-              {duo.favoriteAgent || 'Any'}
-            </ThemedText>
-          )}
-        </View>
-
-        <View style={[styles.divider, { backgroundColor: CARD_COLORS.divider }]} />
-
-        {/* Role */}
-        <View style={styles.statItem}>
-          <ThemedText style={styles.statLabel}>Role</ThemedText>
-          {!isLeague && roleIcon ? (
-            <Image source={roleIcon} style={styles.roleIcon} resizeMode="contain" />
-          ) : isLeague && laneIcon ? (
-            <Image source={laneIcon} style={styles.roleIcon} resizeMode="contain" />
-          ) : (
-            <ThemedText style={styles.roleText} numberOfLines={1}>
-              {duo.favoriteRole || 'Any'}
-            </ThemedText>
-          )}
-        </View>
-
-        <View style={[styles.divider, { backgroundColor: CARD_COLORS.divider }]} />
-
-        {/* Win Rate */}
-        <View style={styles.statItem}>
-          <ThemedText style={styles.statLabel}>Win Rate</ThemedText>
-          <ThemedText style={[styles.roleText, duo.winRate >= 50 && styles.winRateGood]} numberOfLines={1}>
-            {duo.winRate > 0 ? `${duo.winRate}%` : 'N/A'}
-          </ThemedText>
-        </View>
-      </View>
-
-      {/* Delete button for own posts */}
-      {duo.isOwnPost && onDelete && (
-        <TouchableOpacity style={styles.deletePostButton} onPress={onDelete} activeOpacity={0.7}>
-          <IconSymbol size={12} name="trash" color="#ff6b6b" />
-          <ThemedText style={styles.deletePostText}>Remove Post</ThemedText>
-        </TouchableOpacity>
-      )}
-
-      {/* Action Buttons */}
-      {(onMessage || onViewProfile) && (
-        <View style={styles.actionRow}>
-          {onViewProfile && (
-            <TouchableOpacity style={[styles.actionButton, onMessage && styles.actionButtonHalf]} onPress={onViewProfile} activeOpacity={0.7}>
-              <View style={styles.profileIconSmall}>
-                {duo.avatar && duo.avatar.startsWith('http') ? (
-                  <Image source={{ uri: duo.avatar }} style={styles.profileIconImage} />
-                ) : (
-                  <ThemedText style={styles.profileIconText}>
-                    {duo.username[0].toUpperCase()}
-                  </ThemedText>
-                )}
+        {/* Rank display */}
+        <View style={styles.rankDisplay}>
+          <Image source={currentRankIcon} style={styles.rankImg} resizeMode="contain" />
+          <View>
+            <ThemedText style={styles.rankName}>{duo.currentRank || 'Unranked'}</ThemedText>
+            {(agentIcon || roleIcon || laneIcon) && (
+              <View style={styles.iconsRow}>
+                {agentIcon && <Image source={agentIcon} style={styles.smallIcon} resizeMode="contain" />}
+                {(roleIcon || laneIcon) && <Image source={roleIcon || laneIcon} style={styles.smallIcon} resizeMode="contain" />}
               </View>
-              <ThemedText style={styles.actionButtonText}>View Profile</ThemedText>
-            </TouchableOpacity>
-          )}
-          {onMessage && (
-            <TouchableOpacity style={[styles.actionButton, onViewProfile && styles.actionButtonHalf, styles.messageButton]} onPress={onMessage} activeOpacity={0.7}>
-              <IconSymbol size={14} name="bubble.left.fill" color="#c9a84c" />
-              <ThemedText style={styles.messageButtonText}>Message</ThemedText>
-            </TouchableOpacity>
-          )}
+            )}
+          </View>
         </View>
-      )}
-      </LinearGradient>
+
+        {/* Message */}
+        {duo.message ? (
+          <ThemedText style={styles.message} numberOfLines={2}>{duo.message}</ThemedText>
+        ) : null}
+
+        {/* Tags */}
+        {tags.length > 0 && (
+          <View style={styles.tagsRow}>
+            {tags.map((tag, i) => (
+              <View key={i} style={styles.tag}>
+                <ThemedText style={styles.tagText}>{tag}</ThemedText>
+              </View>
+            ))}
+          </View>
+        )}
+      </View>
+
+      {/* Bottom section — dark actions */}
+      <View style={styles.bottomSection}>
+        {duo.isOwnPost && onDelete ? (
+          <TouchableOpacity style={styles.bottomBtn} onPress={onDelete} activeOpacity={0.7}>
+            <ThemedText style={styles.deleteActionText}>Remove Post</ThemedText>
+          </TouchableOpacity>
+        ) : (
+          <>
+            {onViewProfile && (
+              <TouchableOpacity style={styles.bottomBtn} onPress={onViewProfile} activeOpacity={0.7}>
+                <ThemedText style={styles.bottomBtnText}>Profile</ThemedText>
+              </TouchableOpacity>
+            )}
+            {onMessage && onViewProfile && <View style={styles.btnDivider} />}
+            {onMessage && (
+              <TouchableOpacity style={styles.bottomBtn} onPress={onMessage} activeOpacity={0.7}>
+                <ThemedText style={styles.bottomBtnTextPrimary}>Message</ThemedText>
+              </TouchableOpacity>
+            )}
+          </>
+        )}
+      </View>
     </TouchableOpacity>
   );
 }
 
 const styles = StyleSheet.create({
-  container: {
-    backgroundColor: '#141416',
-    borderRadius: 12,
-    padding: 6,
-    marginBottom: 10,
-    shadowColor: '#000',
-    shadowOffset: { width: -3, height: 4 },
-    shadowOpacity: 0.4,
-    shadowRadius: 6,
-    elevation: 6,
+  card: {
+    borderRadius: 16,
+    overflow: 'hidden',
+    marginBottom: 12,
   },
-  innerBorder: {
-    borderWidth: 1,
-    borderColor: '#3d3d44',
-    borderRadius: 8,
-    padding: 10,
-    paddingBottom: 6,
-    gap: 8,
+  // Top — light section
+  topSection: {
+    backgroundColor: '#f0f0f0',
+    padding: 16,
+    gap: 12,
   },
-  // Header Section
-  headerSection: {
-    gap: 10,
-  },
-  header: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-  },
-  headerDivider: {
-    height: 1,
-    backgroundColor: 'rgba(255,255,255,0.12)',
-    marginHorizontal: 2,
-  },
-  userSection: {
+  nameRow: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 10,
-    flex: 1,
   },
-  avatarContainer: {
-    width: 36,
-    height: 36,
-    borderRadius: 8,
-    backgroundColor: 'rgba(255,255,255,0.1)',
-    borderWidth: 1,
-    borderColor: 'rgba(180, 155, 70, 0.3)',
+  avatarWrap: {
+    width: 42,
+    height: 42,
+    borderRadius: 21,
+    backgroundColor: '#ddd',
     alignItems: 'center',
     justifyContent: 'center',
     overflow: 'hidden',
   },
-  avatar: {
+  avatarImg: {
     width: '100%',
     height: '100%',
   },
-  avatarText: {
-    fontSize: 14,
-    fontWeight: '600',
+  avatarLetter: {
+    fontSize: 16,
+    fontWeight: '700',
     color: '#999',
   },
-  username: {
-    fontSize: 15,
-    fontWeight: '700',
-    color: '#fff',
+  nameCol: {
     flex: 1,
+    gap: 1,
   },
-  actionRow: {
-    flexDirection: 'row',
-    gap: 8,
+  name: {
+    fontSize: 16,
+    fontWeight: '700',
+    color: '#111',
   },
-  actionButton: {
+  subRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'center',
-    gap: 6,
-    paddingVertical: 10,
-    backgroundColor: 'rgba(0,0,0,0.05)',
-    borderRadius: 10,
-    borderWidth: 1,
-    borderColor: 'rgba(180, 155, 70, 0.25)',
-    flex: 1,
+    gap: 5,
   },
-  actionButtonHalf: {
-    flex: 1,
+  gameIcon: {
+    width: 14,
+    height: 14,
+    opacity: 0.4,
   },
-  actionButtonText: {
+  time: {
     fontSize: 12,
-    fontWeight: '600',
-    color: '#fff',
+    color: '#999',
   },
-  messageButton: {
-    backgroundColor: 'rgba(180, 155, 70, 0.12)',
-    borderColor: 'rgba(180, 155, 70, 0.4)',
+  // Rank
+  rankDisplay: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    backgroundColor: '#fff',
+    borderRadius: 12,
+    padding: 10,
   },
-  messageButtonText: {
-    fontSize: 12,
-    fontWeight: '600',
-    color: '#c9a84c',
+  rankImg: {
+    width: 36,
+    height: 36,
   },
-  profileIconSmall: {
+  rankName: {
+    fontSize: 14,
+    fontWeight: '700',
+    color: '#222',
+  },
+  iconsRow: {
+    flexDirection: 'row',
+    gap: 4,
+    marginTop: 2,
+  },
+  smallIcon: {
     width: 18,
     height: 18,
     borderRadius: 9,
-    backgroundColor: 'rgba(255,255,255,0.12)',
-    alignItems: 'center',
-    justifyContent: 'center',
-    overflow: 'hidden',
   },
-  profileIconImage: {
-    width: '100%',
-    height: '100%',
+  // Message
+  message: {
+    fontSize: 13,
+    color: '#666',
+    lineHeight: 18,
   },
-  profileIconText: {
-    fontSize: 9,
-    fontWeight: '600',
-    color: '#999',
-  },
-  headerRight: {
+  // Tags
+  tagsRow: {
     flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
+    flexWrap: 'wrap',
+    gap: 6,
   },
-  timeAgo: {
+  tag: {
+    backgroundColor: '#e0e0e0',
+    borderRadius: 20,
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+  },
+  tagText: {
     fontSize: 11,
-    color: 'rgba(255,255,255,0.5)',
-    fontWeight: '500',
+    fontWeight: '600',
+    color: '#555',
   },
-  gameLogo: {
-    width: 24,
-    height: 24,
-    opacity: 0.7,
-  },
-  // Stats Row
-  statsRow: {
+  // Bottom — dark actions
+  bottomSection: {
+    backgroundColor: '#111',
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: 'transparent',
-    borderRadius: 10,
-    paddingHorizontal: 12,
-    paddingVertical: 6,
   },
-  statItem: {
+  bottomBtn: {
     flex: 1,
     alignItems: 'center',
-    gap: 6,
+    paddingVertical: 13,
   },
-  statItemWide: {
-    flex: 1.4,
-    alignItems: 'center',
-    gap: 6,
-  },
-  statLabel: {
-    fontSize: 10,
-    fontWeight: '700',
-    color: 'rgba(201, 168, 76, 0.7)',
-    textTransform: 'uppercase',
-    letterSpacing: 0.5,
-  },
-  rankRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 4,
-    marginLeft: -6,
-  },
-  rankIcon: {
-    width: 20,
+  btnDivider: {
+    width: StyleSheet.hairlineWidth,
     height: 20,
+    backgroundColor: '#333',
   },
-  rankText: {
-    fontSize: 11,
+  bottomBtnText: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: '#888',
+  },
+  bottomBtnTextPrimary: {
+    fontSize: 13,
     fontWeight: '600',
     color: '#fff',
   },
-  agentIcon: {
-    width: 24,
-    height: 24,
-    borderRadius: 12,
-  },
-  roleIcon: {
-    width: 24,
-    height: 24,
-  },
-  roleText: {
-    fontSize: 11,
-    fontWeight: '600',
-    color: '#fff',
-  },
-  winRateGood: {
-    color: '#4ade80',
-  },
-  divider: {
-    width: 1,
-    height: 30,
-    backgroundColor: 'rgba(255,255,255,0.12)',
-  },
-  messageSection: {
-    paddingHorizontal: 4,
-  },
-  messageText: {
-    fontSize: 12,
-    fontStyle: 'italic',
-    color: 'rgba(255,255,255,0.6)',
-    lineHeight: 17,
-  },
-  deletePostButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 6,
-    paddingVertical: 8,
-    backgroundColor: 'rgba(220,60,75,0.08)',
-    borderRadius: 8,
-  },
-  deletePostText: {
-    fontSize: 12,
+  deleteActionText: {
+    fontSize: 13,
     fontWeight: '600',
     color: '#ff6b6b',
   },

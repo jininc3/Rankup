@@ -44,6 +44,12 @@ export default function LeaderboardPagesLayout() {
           headerShown: false,
         }}
       />
+      <Stack.Screen
+        name="challengeDetail"
+        options={{
+          headerShown: false,
+        }}
+      />
     </Stack>
   );
 }

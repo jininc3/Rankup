@@ -61,23 +61,27 @@ export default function LiveSearchIdle({
 
   return (
     <View style={styles.container}>
-      {/* Orb */}
-      <Animated.View style={[styles.orb, orbStyle]}>
-        <Image
-          source={searchGamePick === 'league'
-            ? require('@/assets/images/lol-icon.png')
-            : require('@/assets/images/valorant-red.png')}
-          style={styles.centerLogo}
-          resizeMode="contain"
-        />
-      </Animated.View>
+      {/* Top Section */}
+      <View style={styles.topSection}>
+        <Animated.View style={[styles.orb, orbStyle]}>
+          <Image
+            source={searchGamePick === 'league'
+              ? require('@/assets/images/lol-icon.png')
+              : require('@/assets/images/valorant-red.png')}
+            style={styles.centerLogo}
+            resizeMode="contain"
+          />
+        </Animated.View>
+
+        <Animated.View style={[styles.titleGroup, contentStyle]}>
+          <ThemedText style={styles.title}>Ready Up</ThemedText>
+          <ThemedText style={styles.subtitle}>
+            Find a duo in your rank range
+          </ThemedText>
+        </Animated.View>
+      </View>
 
       <Animated.View style={[styles.content, contentStyle]}>
-        <ThemedText style={styles.title}>Ready Up</ThemedText>
-        <ThemedText style={styles.subtitle}>
-          Find a duo in your rank range
-        </ThemedText>
-
         {/* Game Picker */}
         {hasCards && (
           <View style={styles.gamePicker}>
@@ -130,21 +134,26 @@ export default function LiveSearchIdle({
         <TouchableOpacity
           style={styles.searchBtn}
           onPress={onSearch}
-          activeOpacity={0.85}
+          activeOpacity={0.9}
           disabled={!searchGamePick}
         >
           {searchGamePick ? (
-            <LinearGradient
-              colors={['#D4A843', '#c49a30']}
-              start={{ x: 0, y: 0 }}
-              end={{ x: 1, y: 1 }}
-              style={styles.searchBtnGradient}
-            >
-              <ThemedText style={styles.searchBtnTextActive}>Search</ThemedText>
-            </LinearGradient>
+            <View style={styles.searchBtn3dBase}>
+              <LinearGradient
+                colors={['#EBC158', '#D4A843', '#b8902a']}
+                locations={[0, 0.55, 1]}
+                start={{ x: 0, y: 0 }}
+                end={{ x: 0, y: 1 }}
+                style={styles.searchBtnGradient}
+              >
+                <ThemedText style={styles.searchBtnTextActive}>Search now</ThemedText>
+              </LinearGradient>
+            </View>
           ) : (
-            <View style={styles.searchBtnDisabled}>
-              <ThemedText style={styles.searchBtnText}>Search</ThemedText>
+            <View style={styles.searchBtn3dBaseDisabled}>
+              <View style={styles.searchBtnDisabled}>
+                <ThemedText style={styles.searchBtnText}>Search now</ThemedText>
+              </View>
             </View>
           )}
         </TouchableOpacity>
@@ -164,10 +173,14 @@ export default function LiveSearchIdle({
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
     paddingHorizontal: 24,
     paddingVertical: 32,
+  },
+  topSection: {
+    alignItems: 'center',
+  },
+  titleGroup: {
+    alignItems: 'center',
   },
   orb: {
     width: 80,
@@ -183,7 +196,9 @@ const styles = StyleSheet.create({
     height: 40,
   },
   content: {
+    flex: 1,
     alignItems: 'center',
+    justifyContent: 'center',
     width: '100%',
   },
   title: {
@@ -235,26 +250,33 @@ const styles = StyleSheet.create({
   searchBtn: {
     width: '100%',
     maxWidth: 280,
+  },
+  searchBtn3dBase: {
     borderRadius: 24,
-    overflow: 'hidden',
-    shadowColor: '#D4A843',
-    shadowOffset: { width: 0, height: 0 },
-    shadowOpacity: 0,
-    shadowRadius: 0,
-    elevation: 0,
+    backgroundColor: '#6b4f12',
+    paddingBottom: 6,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.45,
+    shadowRadius: 14,
+    elevation: 12,
+  },
+  searchBtn3dBaseDisabled: {
+    borderRadius: 24,
+    backgroundColor: '#0d0d0d',
+    paddingBottom: 5,
   },
   searchBtnGradient: {
     alignItems: 'center',
     paddingVertical: 16,
-    shadowColor: '#D4A843',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.3,
-    shadowRadius: 12,
-    elevation: 8,
+    borderRadius: 24,
+    borderTopWidth: 1.5,
+    borderTopColor: 'rgba(255, 235, 180, 0.7)',
   },
   searchBtnDisabled: {
     alignItems: 'center',
     paddingVertical: 16,
+    borderRadius: 24,
     backgroundColor: '#1a1a1a',
   },
   searchBtnText: {

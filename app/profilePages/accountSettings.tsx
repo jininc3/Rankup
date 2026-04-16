@@ -17,6 +17,7 @@ const accountSettingsData = [
       { id: 1, icon: 'person', title: 'Edit Username', subtitle: 'Change your display name', hasChevron: true },
       { id: 2, icon: 'envelope', title: 'Email Address', subtitle: 'Update your email', hasChevron: true },
       { id: 3, icon: 'phone', title: 'Phone Number', subtitle: 'Add or change phone', hasChevron: true },
+      { id: 4, icon: 'lock', title: 'Change Password', subtitle: 'Update your password', hasChevron: true, passwordOnly: true },
     ],
   },
   {
@@ -111,7 +112,10 @@ export default function AccountSettingsScreen() {
       </View>
 
       <ScrollView showsVerticalScrollIndicator={false}>
-        {accountSettingsData.map((section) => (
+        {accountSettingsData.map((section) => {
+          const filteredItems = section.items.filter((item: any) => !item.passwordOnly || authProvider === 'password');
+          if (filteredItems.length === 0) return null;
+          return (
           <View key={section.id} style={styles.section}>
             {section.title && (
               <View style={styles.sectionHeader}>
@@ -124,13 +128,14 @@ export default function AccountSettingsScreen() {
               </View>
             )}
             <View style={styles.settingsGroup}>
-              {section.items.map((item, index) => (
+              {filteredItems.map((item, index) => (
                 <TouchableOpacity
                   key={item.id}
-                  style={[styles.settingItem, index === section.items.length - 1 && styles.settingItemLast]}
+                  style={[styles.settingItem, index === filteredItems.length - 1 && styles.settingItemLast]}
                   onPress={() => {
                     if (item.id === 1) handleEditUsername();
                     else if (item.id === 2) handleEditEmail();
+                    else if (item.id === 4) router.push('/profilePages/changePassword');
                     else if (item.id === 8) router.push('/profilePages/deleteAccount');
                   }}
                 >
@@ -154,7 +159,8 @@ export default function AccountSettingsScreen() {
               ))}
             </View>
           </View>
-        ))}
+          );
+        })}
         <View style={styles.bottomSpacer} />
       </ScrollView>
     </ThemedView>

@@ -129,6 +129,12 @@ export default function ProfilePagesLayout() {
           headerShown: false,
         }}
       />
+      <Stack.Screen
+        name="changePassword"
+        options={{
+          headerShown: false,
+        }}
+      />
     </Stack>
   );
 }

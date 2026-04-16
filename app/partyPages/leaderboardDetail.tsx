@@ -859,25 +859,12 @@ export default function LeaderboardDetail() {
             }
           });
 
-          // Split into participants and spectators when challenge is active
-          const activeParticipants = partyDoc.challengeParticipants || [];
-          const isActiveChallenge = partyDoc.challengeStatus === 'active' && activeParticipants.length > 0;
-
-          if (isActiveChallenge) {
-            const participants = fetchedPlayers.filter(p => activeParticipants.includes(p.userId));
-            const spectatorPlayers = fetchedPlayers.filter(p => !activeParticipants.includes(p.userId));
-            participants.forEach((player, index) => {
-              player.rank = index + 1;
-            });
-            setPlayers(participants);
-            setSpectators(spectatorPlayers);
-          } else {
-            fetchedPlayers.forEach((player, index) => {
-              player.rank = index + 1;
-            });
-            setPlayers(fetchedPlayers);
-            setSpectators([]);
-          }
+          // Always show all members ranked equally
+          fetchedPlayers.forEach((player, index) => {
+            player.rank = index + 1;
+          });
+          setPlayers(fetchedPlayers);
+          setSpectators([]);
           setRefreshing(false);
         }, (error) => {
           console.error('Error in real-time listener:', error);
@@ -1029,32 +1016,7 @@ export default function LeaderboardDetail() {
           </View>
 
           {/* Cover Photo */}
-          <View style={[styles.coverPhotoWrapper, coverPhoto && { backgroundColor: '#000' }]}>
-            {!coverPhoto && (
-              <LinearGradient
-                colors={['rgba(255,255,255,0.06)', '#1a1a1a', '#0f0f0f']}
-                start={{ x: 0, y: 0 }}
-                end={{ x: 0, y: 1 }}
-                style={styles.coverPhotoGradient}
-              />
-            )}
-            {!coverPhoto && (
-              <>
-                <LinearGradient
-                  colors={['rgba(15, 15, 15, 0.25)', 'transparent']}
-                  start={{ x: 0, y: 0 }}
-                  end={{ x: 0, y: 1 }}
-                  style={styles.coverPhotoFadeTop}
-                />
-                <LinearGradient
-                  colors={['transparent', '#0f0f0f']}
-                  start={{ x: 0, y: 0 }}
-                  end={{ x: 0, y: 1 }}
-                  style={styles.coverPhotoFadeBottom}
-                />
-              </>
-            )}
-          </View>
+          <View style={[styles.coverPhotoWrapper, { backgroundColor: '#000' }]} />
         </View>
 
         {/* Leaderboard Info Section */}
@@ -1088,32 +1050,8 @@ export default function LeaderboardDetail() {
             </View>
           </View>
 
-          {/* Challenge Status / Progress */}
-          {isActive && daysInfo ? (
-            <View style={styles.activeProgressSection}>
-              <View style={styles.activeProgressHeader}>
-                <View style={styles.activeProgressLabel}>
-                  <View style={styles.activeDotSmall} />
-                  <ThemedText style={styles.activeProgressText}>Challenge Active</ThemedText>
-                </View>
-                <ThemedText style={styles.activeProgressDays}>
-                  {daysInfo.daysLeft <= 1 ? `${daysInfo.hoursLeft}h left` : `${daysInfo.daysLeft}d left`}
-                </ThemedText>
-              </View>
-              <View style={styles.progressBarBackground}>
-                <View style={[styles.progressBarFill, { width: `${progress}%` }]} />
-              </View>
-            </View>
-          ) : isPending ? (
-            <TouchableOpacity
-              style={styles.pendingChallengeBtn}
-              onPress={() => setShowChallengeDetailsModal(true)}
-              activeOpacity={0.7}
-            >
-              <IconSymbol size={14} name="trophy.fill" color="#fff" />
-              <ThemedText style={styles.pendingChallengeBtnText}>Pending Challenge</ThemedText>
-            </TouchableOpacity>
-          ) : isNone && isCreator ? (
+          {/* Challenge Button */}
+          {isNone && isCreator ? (
             <TouchableOpacity
               style={styles.createChallengeInlineBtn}
               onPress={() => {
@@ -1154,8 +1092,8 @@ export default function LeaderboardDetail() {
                 <ThemedText style={styles.inviteButtonText}>Invite</ThemedText>
               </TouchableOpacity>
             )}
-            {(isPending || isActive) && (isCreator || challengeParticipants.includes(user?.id || '')) && (
-              <TouchableOpacity style={styles.codeButton} onPress={() => setShowChallengeDetailsModal(true)}>
+            {(isPending || isActive) && (
+              <TouchableOpacity style={styles.codeButton} onPress={() => router.push({ pathname: '/partyPages/challengeDetail', params: { id: partyDocId, game } })}>
                 <IconSymbol size={14} name="trophy.fill" color="#fff" />
                 <ThemedText style={styles.inviteButtonText}>Challenge</ThemedText>
               </TouchableOpacity>
@@ -1246,64 +1184,6 @@ export default function LeaderboardDetail() {
           })}
         </View>
 
-        {/* Spectators Section */}
-        {spectators.length > 0 && isActive && (
-          <View style={styles.spectatorsSection}>
-            <View style={styles.spectatorsHeaderRow}>
-              <IconSymbol size={14} name="eye.fill" color="#555" />
-              <ThemedText style={styles.spectatorsHeaderText}>Spectators</ThemedText>
-            </View>
-            {spectators.map((spectator, index) => {
-              const rankIcon = isLeague
-                ? getLeagueRankIcon(spectator.currentRank)
-                : getValorantRankIcon(spectator.currentRank);
-
-              return (
-                <View
-                  key={spectator.userId}
-                  style={[
-                    styles.playerRow,
-                    index % 2 === 0 ? styles.evenRow : styles.oddRow,
-                    spectator.isCurrentUser && styles.currentUserRow,
-                    { borderLeftWidth: 4, borderLeftColor: '#333' },
-                  ]}
-                >
-                  <View style={styles.rankContainer}>
-                    <ThemedText style={[styles.rankText, { color: '#444' }]}>—</ThemedText>
-                  </View>
-
-                  <View style={styles.playerInfo}>
-                    <TouchableOpacity
-                      style={styles.playerAvatar}
-                      onPress={() => handlePlayerPress(spectator)}
-                      activeOpacity={0.7}
-                    >
-                      {spectator.avatar && spectator.avatar.startsWith('http') ? (
-                        <Image source={{ uri: spectator.avatar }} style={styles.playerAvatarImage} />
-                      ) : (
-                        <ThemedText style={styles.avatarText}>
-                          {spectator.username?.[0]?.toUpperCase()}
-                        </ThemedText>
-                      )}
-                    </TouchableOpacity>
-                    <ThemedText style={[styles.playerName, { color: '#666' }]} numberOfLines={1}>
-                      {spectator.username}
-                    </ThemedText>
-                  </View>
-
-                  <View style={styles.rankInfoContainer}>
-                    <Image source={rankIcon} style={[styles.rankIconSmall, { opacity: 0.5 }]} resizeMode="contain" />
-                    <View style={styles.rankTextContainer}>
-                      <ThemedText style={[styles.currentRankText, { color: '#555' }]}>
-                        {spectator.currentRank}
-                      </ThemedText>
-                    </View>
-                  </View>
-                </View>
-              );
-            })}
-          </View>
-        )}
 
         <View style={styles.bottomSpacer} />
       </ScrollView>
@@ -1469,7 +1349,7 @@ export default function LeaderboardDetail() {
                         <ThemedText style={styles.challengeMemberName}>{member.username}</ThemedText>
                       </View>
                       <View style={[styles.createChallengeCheckbox, isSelected && styles.createChallengeCheckboxActive]}>
-                        {isSelected && <IconSymbol size={12} name="checkmark" color="#fff" />}
+                        {isSelected && <IconSymbol size={12} name="checkmark" color="#D4A843" />}
                       </View>
                     </TouchableOpacity>
                   );
@@ -1989,130 +1869,6 @@ export default function LeaderboardDetail() {
         </TouchableOpacity>
       </Modal>
 
-      {/* Challenge Details Modal */}
-      <Modal
-        visible={showChallengeDetailsModal}
-        transparent
-        animationType="slide"
-        onRequestClose={() => setShowChallengeDetailsModal(false)}
-      >
-        <TouchableOpacity
-          style={styles.modalOverlay}
-          activeOpacity={1}
-          onPress={() => setShowChallengeDetailsModal(false)}
-        >
-          <View style={styles.cdModal} onStartShouldSetResponder={() => true}>
-            {/* Header */}
-            <View style={styles.cdHeader}>
-              <View style={styles.cdHeaderLeft}>
-                <View style={styles.pcTrophyCircle}>
-                  <IconSymbol size={16} name="trophy.fill" color="#fff" />
-                </View>
-                <ThemedText style={styles.cdTitle}>Challenge Details</ThemedText>
-              </View>
-              <TouchableOpacity onPress={() => setShowChallengeDetailsModal(false)}>
-                <IconSymbol size={20} name="xmark" color="#666" />
-              </TouchableOpacity>
-            </View>
-
-            {/* Info Grid */}
-            <View style={styles.cdGrid}>
-              <View style={styles.cdGridItem}>
-                <ThemedText style={styles.cdGridLabel}>TYPE</ThemedText>
-                <View style={styles.cdGridValueRow}>
-                  <IconSymbol size={14} name={partyData?.challengeType === 'rank' ? 'trophy.fill' : 'chart.line.uptrend.xyaxis'} color="#fff" />
-                  <ThemedText style={styles.cdGridValue}>
-                    {partyData?.challengeType === 'rank' ? 'Highest Rank' : 'LP/RR Climbing'}
-                  </ThemedText>
-                </View>
-              </View>
-              <View style={styles.cdGridItem}>
-                <ThemedText style={styles.cdGridLabel}>DURATION</ThemedText>
-                <ThemedText style={styles.cdGridValue}>{partyData?.duration || 30} days</ThemedText>
-              </View>
-              <View style={styles.cdGridItem}>
-                <ThemedText style={styles.cdGridLabel}>STATUS</ThemedText>
-                <View style={styles.cdGridValueRow}>
-                  <View style={[styles.pcStatusDot, isActive && { backgroundColor: '#4ade80' }]} />
-                  <ThemedText style={styles.cdGridValue}>
-                    {isActive ? 'Active' : 'Pending'}
-                  </ThemedText>
-                </View>
-              </View>
-              <View style={styles.cdGridItem}>
-                <ThemedText style={styles.cdGridLabel}>PARTICIPANTS</ThemedText>
-                <ThemedText style={styles.cdGridValue}>{challengeParticipants.length}</ThemedText>
-              </View>
-            </View>
-
-            {isActive && partyData?.startDate && partyData?.endDate && (
-              <View style={styles.cdDatesRow}>
-                <View style={styles.cdDateItem}>
-                  <ThemedText style={styles.cdGridLabel}>STARTED</ThemedText>
-                  <ThemedText style={styles.cdDateText}>{formatDisplayDate(partyData.startDate)}</ThemedText>
-                </View>
-                <View style={styles.cdDateDivider} />
-                <View style={styles.cdDateItem}>
-                  <ThemedText style={styles.cdGridLabel}>ENDS</ThemedText>
-                  <ThemedText style={styles.cdDateText}>{formatDisplayDate(partyData.endDate)}</ThemedText>
-                </View>
-              </View>
-            )}
-
-            {/* Participants List */}
-            <ThemedText style={styles.cdSectionLabel}>PARTICIPANTS</ThemedText>
-            <ScrollView style={styles.cdParticipantsList} nestedScrollEnabled>
-              {(partyData?.memberDetails || [])
-                .filter((m: any) => challengeParticipants.includes(m.userId))
-                .map((m: any) => (
-                  <View key={m.userId} style={styles.cdParticipantRow}>
-                    <View style={styles.cdParticipantInfo}>
-                      {m.avatar && m.avatar.startsWith('http') ? (
-                        <Image source={{ uri: m.avatar }} style={styles.cdParticipantAvatar} />
-                      ) : (
-                        <View style={styles.cdParticipantAvatarPlaceholder}>
-                          <ThemedText style={styles.cdParticipantAvatarText}>{m.username?.[0]?.toUpperCase()}</ThemedText>
-                        </View>
-                      )}
-                      <ThemedText style={styles.cdParticipantName}>{m.username}</ThemedText>
-                    </View>
-                    {m.userId === partyData?.createdBy && (
-                      <View style={styles.cdLeaderBadge}>
-                        <ThemedText style={styles.cdLeaderBadgeText}>Leader</ThemedText>
-                      </View>
-                    )}
-                  </View>
-                ))}
-            </ScrollView>
-
-            {/* Invited (pending/declined) */}
-            {challengeInvites.filter((inv: any) => inv.status !== 'accepted').length > 0 && (
-              <>
-                <ThemedText style={styles.cdSectionLabel}>INVITED</ThemedText>
-                {challengeInvites
-                  .filter((inv: any) => inv.status !== 'accepted')
-                  .map((inv: any) => (
-                    <View key={inv.userId} style={styles.cdParticipantRow}>
-                      <View style={styles.cdParticipantInfo}>
-                        {inv.avatar && inv.avatar.startsWith('http') ? (
-                          <Image source={{ uri: inv.avatar }} style={styles.cdParticipantAvatar} />
-                        ) : (
-                          <View style={styles.cdParticipantAvatarPlaceholder}>
-                            <ThemedText style={styles.cdParticipantAvatarText}>{inv.username?.[0]?.toUpperCase()}</ThemedText>
-                          </View>
-                        )}
-                        <ThemedText style={[styles.cdParticipantName, { color: '#555' }]}>{inv.username}</ThemedText>
-                      </View>
-                      <ThemedText style={[styles.cdInviteStatus, inv.status === 'rejected' && { color: '#666' }]}>
-                        {inv.status === 'pending' ? 'Pending' : 'Declined'}
-                      </ThemedText>
-                    </View>
-                  ))}
-              </>
-            )}
-          </View>
-        </TouchableOpacity>
-      </Modal>
 
       {uploading && (
         <View style={styles.uploadingOverlay}>
@@ -2612,15 +2368,15 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     gap: 6,
-    backgroundColor: '#fff',
-    paddingVertical: 8,
-    paddingHorizontal: 16,
-    borderRadius: 8,
+    backgroundColor: '#D4A843',
+    paddingVertical: 10,
+    paddingHorizontal: 18,
+    borderRadius: 24,
   },
   startChallengeButtonText: {
     fontSize: 13,
     fontWeight: '600',
-    color: '#fff',
+    color: '#000',
   },
   waitingBadge: {
     flexDirection: 'row',
@@ -2719,7 +2475,7 @@ const styles = StyleSheet.create({
     gap: 8,
     paddingVertical: 12,
     borderRadius: 10,
-    backgroundColor: '#fff',
+    backgroundColor: '#1a1a1a',
   },
   createChallengeInlineBtnText: {
     fontSize: 14,
@@ -3429,7 +3185,7 @@ const styles = StyleSheet.create({
     color: '#555',
   },
   createChallengeDurationTextActive: {
-    color: '#fff',
+    color: '#000',
   },
   customDurationRow: {
     flexDirection: 'row',
@@ -3470,8 +3226,6 @@ const styles = StyleSheet.create({
   },
   createChallengeMemberRowSelected: {
     backgroundColor: '#1a1a1a',
-    borderWidth: 1.5,
-    borderColor: 'rgba(196, 39, 67, 0.4)',
   },
   challengeMemberInfo: {
     flexDirection: 'row',
@@ -3512,8 +3266,8 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   createChallengeCheckboxActive: {
-    backgroundColor: '#fff',
-    borderColor: '#fff',
+    backgroundColor: 'transparent',
+    borderColor: '#333',
   },
   createChallengeBtn: {
     backgroundColor: '#111',

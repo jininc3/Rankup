@@ -1253,7 +1253,6 @@ export default function ProfileScreen() {
                 <ThemedText style={styles.emptyBannerTitle}>Share your clips</ThemedText>
                 <ThemedText style={styles.emptyBannerSubtext}>Post your best gaming moments</ThemedText>
               </View>
-              <IconSymbol size={16} name="chevron.right" color="#555" />
             </TouchableOpacity>
           )}
           </View>
@@ -1302,7 +1301,6 @@ export default function ProfileScreen() {
                 <ThemedText style={styles.emptyBannerTitle}>Show off your rank</ThemedText>
                 <ThemedText style={styles.emptyBannerSubtext}>Link your Riot account to get started</ThemedText>
               </View>
-              <IconSymbol size={16} name="chevron.right" color="#555" />
             </TouchableOpacity>
           ) : userGames.length === 1 ? (
             // Single Card View - clickable to open game stats
