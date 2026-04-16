@@ -167,7 +167,7 @@ export default function DuoFinderScreen() {
           setValorantInGameIcon(userData.valorantStats.card.small);
         }
         if (userData.valorantStats?.gameName) {
-          const tagLine = userData.valorantAccount?.tagLine || '';
+          const tagLine = userData.valorantAccount?.tag || userData.valorantAccount?.tagLine || '';
           setValorantInGameName(tagLine ? `${userData.valorantStats.gameName}#${tagLine}` : userData.valorantStats.gameName);
         }
         if (userData.valorantStats?.winRate !== undefined) {
@@ -517,7 +517,7 @@ export default function DuoFinderScreen() {
                       inGameIcon = userData.valorantStats.card.small;
                     }
                     if (userData?.valorantStats?.gameName) {
-                      const tagLine = userData?.valorantAccount?.tagLine || '';
+                      const tagLine = userData?.valorantAccount?.tag || userData?.valorantAccount?.tagLine || '';
                       inGameName = tagLine ? `${userData.valorantStats.gameName}#${tagLine}` : userData.valorantStats.gameName;
                     }
                     // Get win rate and games played for Valorant

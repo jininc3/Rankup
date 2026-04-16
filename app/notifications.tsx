@@ -58,6 +58,7 @@ export default function NotificationsScreen() {
   const [selectedPost, setSelectedPost] = useState<Post | null>(null);
   const [showPostViewer, setShowPostViewer] = useState(false);
   const [loadingPost, setLoadingPost] = useState(false);
+  const [partyIcons, setPartyIcons] = useState<{ [partyId: string]: string | null }>({});
   const swipeableRefs = useRef<{ [key: string]: Swipeable | null }>({});
 
   // Pagination state
@@ -157,6 +158,45 @@ export default function NotificationsScreen() {
 
     return () => unsubscribe();
   }, [currentUser?.id]);
+
+  // Fetch party icons for any leaderboard notifications missing them
+  useEffect(() => {
+    const partyIdsToFetch = Array.from(
+      new Set(
+        notifications
+          .map(n => n.partyId)
+          .filter((pid): pid is string => !!pid && partyIcons[pid] === undefined)
+      )
+    );
+    if (partyIdsToFetch.length === 0) return;
+
+    let cancelled = false;
+    (async () => {
+      const updates: { [k: string]: string | null } = {};
+      await Promise.all(
+        partyIdsToFetch.map(async (pid) => {
+          try {
+            const partyDoc = await getDoc(doc(db, 'parties', pid));
+            if (partyDoc.exists()) {
+              const data = partyDoc.data();
+              updates[pid] = data.partyIcon || data.icon || null;
+            } else {
+              updates[pid] = null;
+            }
+          } catch {
+            updates[pid] = null;
+          }
+        })
+      );
+      if (!cancelled && Object.keys(updates).length > 0) {
+        setPartyIcons(prev => ({ ...prev, ...updates }));
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [notifications, partyIcons]);
 
   // Mark all notifications as read when screen comes into focus
   useFocusEffect(
@@ -802,6 +842,13 @@ export default function NotificationsScreen() {
                           </ThemedText>
                         )}
                       </TouchableOpacity>
+                    ) : notification.partyId && partyIcons[notification.partyId] ? (
+                      <View style={styles.avatar}>
+                        <Image
+                          source={{ uri: partyIcons[notification.partyId] as string }}
+                          style={styles.avatarImage}
+                        />
+                      </View>
                     ) : (
                       <View style={styles.avatar}>
                         <IconSymbol size={18} name="trophy.fill" color="#A08845" />
@@ -978,7 +1025,7 @@ const styles = StyleSheet.create({
     top: 0,
     left: 0,
     right: 0,
-    height: 260,
+    bottom: 0,
   },
   header: {
     flexDirection: 'row',
@@ -1035,12 +1082,12 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     paddingVertical: 10,
     paddingHorizontal: 16,
-    backgroundColor: '#0f0f0f',
+    backgroundColor: 'transparent',
     borderRadius: 12,
     position: 'relative',
   },
   unreadNotification: {
-    backgroundColor: '#36393e',
+    backgroundColor: 'rgba(255,255,255,0.05)',
   },
   notificationLeft: {
     flexDirection: 'row',
@@ -1196,7 +1243,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     paddingTop: 20,
     paddingBottom: 8,
-    backgroundColor: '#0f0f0f',
+    backgroundColor: 'transparent',
   },
   sectionHeaderText: {
     fontSize: 16,

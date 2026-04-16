@@ -518,8 +518,8 @@ export default function LeaderboardDetail() {
 
   const displayUsers = inviteSearchQuery.trim().length >= 2 ? searchResults : mutuals;
 
-  // Handle changing cover photo
-  const handleChangeCoverPhoto = async () => {
+  // Pick a new cover photo from the library and upload it
+  const pickAndUploadCoverPhoto = async () => {
     try {
       const result = await ImagePicker.launchImageLibraryAsync({
         mediaTypes: ImagePicker.MediaTypeOptions.Images,
@@ -544,6 +544,37 @@ export default function LeaderboardDetail() {
     } catch (error) {
       console.error('Error picking cover photo:', error);
       Alert.alert('Error', 'Failed to select cover photo');
+    }
+  };
+
+  // Remove the current cover photo
+  const removeCoverPhoto = async () => {
+    setShowEditModal(false);
+    setUploading(true);
+    try {
+      const partyRef = doc(db, 'parties', partyDocId);
+      await updateDoc(partyRef, { coverPhoto: null });
+    } catch (error) {
+      console.error('Error removing cover photo:', error);
+      Alert.alert('Error', 'Failed to remove cover photo');
+    }
+    setUploading(false);
+  };
+
+  // Handle changing cover photo — offer options if one already exists
+  const handleChangeCoverPhoto = () => {
+    if (partyData?.coverPhoto) {
+      Alert.alert(
+        'Cover Photo',
+        'What would you like to do?',
+        [
+          { text: 'Choose New Photo', onPress: pickAndUploadCoverPhoto },
+          { text: 'Remove Current Photo', style: 'destructive', onPress: removeCoverPhoto },
+          { text: 'Cancel', style: 'cancel' },
+        ],
+      );
+    } else {
+      pickAndUploadCoverPhoto();
     }
   };
 
@@ -1025,8 +1056,12 @@ export default function LeaderboardDetail() {
             </View>
           </View>
 
-          {/* Cover Photo */}
-          <View style={[styles.coverPhotoWrapper, { backgroundColor: '#000' }]} />
+          {/* Cover Photo — only render shadow/image when a cover is set */}
+          <View style={styles.coverPhotoWrapper}>
+            {coverPhoto && (
+              <Image source={{ uri: coverPhoto }} style={styles.coverPhotoImage} />
+            )}
+          </View>
         </View>
 
         {/* Leaderboard Info Section */}
@@ -1110,9 +1145,6 @@ export default function LeaderboardDetail() {
             )}
           </View>
         </View>
-
-        {/* Divider */}
-        <View style={styles.sectionDivider} />
 
         {/* Column Headers */}
         <View style={styles.columnHeaders}>

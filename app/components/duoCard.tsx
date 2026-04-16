@@ -152,6 +152,10 @@ export default function DuoCard({ duo, onPress, onMessage, onViewProfile, onDele
   const agentIcon = !isLeague && duo.favoriteAgent
     ? VALORANT_AGENT_ICONS[duo.favoriteAgent.toLowerCase()] || null
     : null;
+  // League champions come from DDragon (no local asset bundle)
+  const championIconSrc = isLeague && duo.favoriteAgent
+    ? { uri: `https://ddragon.leagueoflegends.com/cdn/14.24.1/img/champion/${duo.favoriteAgent.replace(/[\s'.]/g, '')}.png` }
+    : null;
   const roleIcon = !isLeague && duo.favoriteRole
     ? VALORANT_ROLE_ICONS[duo.favoriteRole.toLowerCase()] || null
     : null;
@@ -159,18 +163,12 @@ export default function DuoCard({ duo, onPress, onMessage, onViewProfile, onDele
     ? LEAGUE_LANE_ICONS[duo.favoriteRole.toLowerCase()] || null
     : null;
 
-  const agentOrChamp = duo.favoriteAgent || null;
-  const role = duo.favoriteRole || null;
-
-  // Build tags
-  const tags: string[] = [];
-  if (role) tags.push(role);
-  if (agentOrChamp) tags.push(agentOrChamp);
-  if (duo.winRate > 0) tags.push(`${duo.winRate}% WR`);
+  const positionIcon = roleIcon || laneIcon;
+  const characterIcon = agentIcon || championIconSrc;
 
   return (
     <TouchableOpacity style={styles.card} onPress={onPress} activeOpacity={0.8}>
-      {/* Top section — white area */}
+      {/* Top section */}
       <View style={styles.topSection}>
         {/* Name row */}
         <View style={styles.nameRow}>
@@ -187,42 +185,77 @@ export default function DuoCard({ duo, onPress, onMessage, onViewProfile, onDele
           </View>
           <View style={styles.nameCol}>
             <ThemedText style={styles.name} numberOfLines={1}>{duo.inGameName || duo.username}</ThemedText>
-            <View style={styles.subRow}>
-              {gameLogo && <Image source={gameLogo} style={styles.gameIcon} resizeMode="contain" />}
-              {duo.createdAt && <ThemedText style={styles.time}>{formatTimeAgo(duo.createdAt)}</ThemedText>}
-            </View>
+            {duo.createdAt && (
+              <ThemedText style={styles.time}>{formatTimeAgo(duo.createdAt)}</ThemedText>
+            )}
           </View>
+          {gameLogo && (
+            <Image
+              source={gameLogo}
+              style={isLeague ? styles.gameIconCorner : styles.gameIconCornerSmall}
+              resizeMode="contain"
+            />
+          )}
         </View>
 
-        {/* Rank display */}
-        <View style={styles.rankDisplay}>
-          <Image source={currentRankIcon} style={styles.rankImg} resizeMode="contain" />
-          <View>
-            <ThemedText style={styles.rankName}>{duo.currentRank || 'Unranked'}</ThemedText>
-            {(agentIcon || roleIcon || laneIcon) && (
-              <View style={styles.iconsRow}>
-                {agentIcon && <Image source={agentIcon} style={styles.smallIcon} resizeMode="contain" />}
-                {(roleIcon || laneIcon) && <Image source={roleIcon || laneIcon} style={styles.smallIcon} resizeMode="contain" />}
+        {/* Stats panel: row 1 — rank | role/agent icons; row 2 — win rate + games */}
+        <View style={styles.statsPanel}>
+          <View style={styles.statsTopRow}>
+            <View style={styles.rankBlock}>
+              <Image source={currentRankIcon} style={styles.rankImg} resizeMode="contain" />
+              <ThemedText style={styles.rankName} numberOfLines={1}>
+                {duo.currentRank || 'Unranked'}
+              </ThemedText>
+            </View>
+
+            {(positionIcon || characterIcon) && (
+              <View style={styles.iconBlock}>
+                {positionIcon && (
+                  <View style={styles.iconChip}>
+                    <Image source={positionIcon} style={styles.iconChipImg} resizeMode="contain" />
+                  </View>
+                )}
+                {characterIcon && (
+                  <View style={styles.iconChip}>
+                    <Image
+                      source={characterIcon}
+                      style={isLeague ? styles.iconChipImgFill : styles.iconChipImg}
+                      resizeMode={isLeague ? 'cover' : 'contain'}
+                    />
+                  </View>
+                )}
               </View>
             )}
           </View>
+
+          {(duo.winRate > 0 || duo.gamesPlayed > 0) && (
+            <View style={styles.statsBottomRow}>
+              {duo.winRate > 0 && (
+                <ThemedText style={styles.winRateInline}>
+                  <ThemedText style={styles.winRateInlineValue}>{duo.winRate}% </ThemedText>
+                  <ThemedText style={styles.winRateInlineLabel}>WIN RATE</ThemedText>
+                </ThemedText>
+              )}
+              {duo.gamesPlayed > 0 && (
+                <ThemedText style={styles.winRateInline}>
+                  <ThemedText style={styles.winRateInlineValue}>{duo.gamesPlayed} </ThemedText>
+                  <ThemedText style={styles.winRateInlineLabel}>GAMES</ThemedText>
+                </ThemedText>
+              )}
+            </View>
+          )}
         </View>
 
         {/* Message */}
         {duo.message ? (
-          <ThemedText style={styles.message} numberOfLines={2}>{duo.message}</ThemedText>
+          <ThemedText
+            style={styles.message}
+            numberOfLines={2}
+            ellipsizeMode="tail"
+          >
+            {duo.message}
+          </ThemedText>
         ) : null}
-
-        {/* Tags */}
-        {tags.length > 0 && (
-          <View style={styles.tagsRow}>
-            {tags.map((tag, i) => (
-              <View key={i} style={styles.tag}>
-                <ThemedText style={styles.tagText}>{tag}</ThemedText>
-              </View>
-            ))}
-          </View>
-        )}
       </View>
 
       {/* Bottom section — dark actions */}
@@ -238,7 +271,6 @@ export default function DuoCard({ duo, onPress, onMessage, onViewProfile, onDele
                 <ThemedText style={styles.bottomBtnText}>Profile</ThemedText>
               </TouchableOpacity>
             )}
-            {onMessage && onViewProfile && <View style={styles.btnDivider} />}
             {onMessage && (
               <TouchableOpacity style={styles.bottomBtn} onPress={onMessage} activeOpacity={0.7}>
                 <ThemedText style={styles.bottomBtnTextPrimary}>Message</ThemedText>
@@ -256,10 +288,12 @@ const styles = StyleSheet.create({
     borderRadius: 16,
     overflow: 'hidden',
     marginBottom: 12,
+    backgroundColor: '#161616',
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.04)',
   },
-  // Top — light section
+  // Top section
   topSection: {
-    backgroundColor: '#f0f0f0',
     padding: 16,
     gap: 12,
   },
@@ -272,7 +306,7 @@ const styles = StyleSheet.create({
     width: 42,
     height: 42,
     borderRadius: 21,
-    backgroundColor: '#ddd',
+    backgroundColor: 'rgba(255,255,255,0.06)',
     alignItems: 'center',
     justifyContent: 'center',
     overflow: 'hidden',
@@ -284,106 +318,145 @@ const styles = StyleSheet.create({
   avatarLetter: {
     fontSize: 16,
     fontWeight: '700',
-    color: '#999',
+    color: '#888',
   },
   nameCol: {
     flex: 1,
-    gap: 1,
+    gap: 2,
   },
   name: {
     fontSize: 16,
     fontWeight: '700',
-    color: '#111',
+    color: '#fff',
+    letterSpacing: -0.2,
   },
-  subRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 5,
+  gameIconCorner: {
+    width: 50,
+    height: 50,
+    opacity: 0.9,
   },
-  gameIcon: {
-    width: 14,
-    height: 14,
-    opacity: 0.4,
+  gameIconCornerSmall: {
+    width: 28,
+    height: 28,
+    opacity: 0.9,
   },
   time: {
     fontSize: 12,
-    color: '#999',
+    color: '#666',
   },
-  // Rank
-  rankDisplay: {
+  // Stats panel — row 1: rank + icons; row 2: win rate + games
+  statsPanel: {
+    backgroundColor: 'rgba(255,255,255,0.04)',
+    borderRadius: 12,
+    paddingVertical: 10,
+    paddingHorizontal: 12,
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.05)',
+    gap: 8,
+  },
+  statsTopRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 10,
-    backgroundColor: '#fff',
-    borderRadius: 12,
-    padding: 10,
+    gap: 12,
+  },
+  statsBottomRow: {
+    flexDirection: 'row',
+    gap: 14,
+  },
+  rankBlock: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    flexShrink: 1,
   },
   rankImg: {
-    width: 36,
-    height: 36,
+    width: 34,
+    height: 34,
   },
   rankName: {
-    fontSize: 14,
+    fontSize: 13,
     fontWeight: '700',
-    color: '#222',
+    color: '#fff',
+    letterSpacing: 0.5,
+    flexShrink: 1,
+    textTransform: 'uppercase',
   },
-  iconsRow: {
+  iconBlock: {
     flexDirection: 'row',
-    gap: 4,
-    marginTop: 2,
+    gap: 6,
   },
-  smallIcon: {
-    width: 18,
-    height: 18,
-    borderRadius: 9,
+  iconChip: {
+    width: 30,
+    height: 30,
+    borderRadius: 15,
+    backgroundColor: 'rgba(255,255,255,0.07)',
+    alignItems: 'center',
+    justifyContent: 'center',
+    overflow: 'hidden',
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.06)',
+  },
+  iconChipImg: {
+    width: 22,
+    height: 22,
+  },
+  iconChipImgFill: {
+    width: '100%',
+    height: '100%',
+    borderRadius: 999,
+    transform: [{ scale: 1.18 }],
+  },
+  winRateInline: {
+    fontSize: 13,
+    color: '#888',
+  },
+  winRateInlineValue: {
+    fontSize: 14,
+    fontWeight: '800',
+    color: '#fff',
+    letterSpacing: -0.2,
+  },
+  winRateInlineLabel: {
+    fontSize: 9,
+    fontWeight: '700',
+    color: '#888',
+    letterSpacing: 0.6,
   },
   // Message
   message: {
     fontSize: 13,
-    color: '#666',
+    color: '#888',
     lineHeight: 18,
+    textAlign: 'center',
+    maxHeight: 36,
+    overflow: 'hidden',
   },
-  // Tags
-  tagsRow: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 6,
-  },
-  tag: {
-    backgroundColor: '#e0e0e0',
-    borderRadius: 20,
-    paddingHorizontal: 10,
-    paddingVertical: 4,
-  },
-  tagText: {
-    fontSize: 11,
-    fontWeight: '600',
-    color: '#555',
-  },
-  // Bottom — dark actions
+  // Bottom action row
   bottomSection: {
-    backgroundColor: '#111',
     flexDirection: 'row',
     alignItems: 'center',
+    paddingHorizontal: 12,
+    paddingTop: 4,
+    paddingBottom: 12,
+    gap: 8,
   },
   bottomBtn: {
     flex: 1,
     alignItems: 'center',
-    paddingVertical: 13,
-  },
-  btnDivider: {
-    width: StyleSheet.hairlineWidth,
-    height: 20,
-    backgroundColor: '#333',
+    paddingVertical: 12,
+    borderRadius: 20,
+    backgroundColor: 'rgba(255,255,255,0.06)',
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.08)',
   },
   bottomBtnText: {
     fontSize: 13,
     fontWeight: '600',
-    color: '#888',
+    color: '#bbb',
   },
   bottomBtnTextPrimary: {
     fontSize: 13,
-    fontWeight: '600',
+    fontWeight: '700',
     color: '#fff',
   },
   deleteActionText: {

@@ -1,6 +1,7 @@
 import { ThemedText } from '@/components/themed-text';
 import { IconSymbol } from '@/components/ui/icon-symbol';
 import { Image, Modal, StyleSheet, TouchableOpacity, View, ScrollView, ActivityIndicator } from 'react-native';
+import { LinearGradient } from 'expo-linear-gradient';
 import { useState, useEffect } from 'react';
 import { getRecentMatches, RecentMatchResult } from '@/services/riotService';
 import { doc, getDoc } from 'firebase/firestore';
@@ -244,21 +245,28 @@ export default function DuoCardProfile({
     <Modal
       visible={visible}
       animationType="slide"
-      transparent={true}
       onRequestClose={onClose}
     >
-      <View style={styles.overlay}>
-        <View style={styles.modalContent}>
-          {/* Close Button */}
-          <TouchableOpacity style={styles.closeButton} onPress={onClose}>
-            <IconSymbol size={24} name="xmark" color="#fff" />
-          </TouchableOpacity>
+      <View style={styles.container}>
+        {/* Top background gradient */}
+        <LinearGradient
+          colors={['rgba(255, 255, 255, 0.06)', 'rgba(255, 255, 255, 0.02)', 'transparent']}
+          locations={[0, 0.5, 1]}
+          start={{ x: 0.5, y: 0 }}
+          end={{ x: 0.5, y: 1 }}
+          style={styles.topGradient}
+          pointerEvents="none"
+        />
+        {/* Close Button */}
+        <TouchableOpacity style={styles.closeButton} onPress={onClose}>
+          <IconSymbol size={24} name="xmark" color="#fff" />
+        </TouchableOpacity>
 
-          <ScrollView
-            style={styles.scrollContent}
-            showsVerticalScrollIndicator={false}
-            contentContainerStyle={styles.scrollContentContainer}
-          >
+        <ScrollView
+          style={styles.scrollContent}
+          showsVerticalScrollIndicator={false}
+          contentContainerStyle={styles.scrollContentContainer}
+        >
           {/* Profile Section */}
           <TouchableOpacity
             style={styles.profileSection}
@@ -366,77 +374,48 @@ export default function DuoCardProfile({
             </View>
           )}
 
-          {/* Details Section */}
-          <View style={styles.detailsSection}>
-            {/* Region and Main Role - Split Row */}
-            <View style={styles.splitRow}>
-              <View style={styles.detailRowHalf}>
+          {/* Details Section — Region only */}
+          {region ? (
+            <View style={styles.detailsSection}>
+              <View style={styles.detailRow}>
                 <IconSymbol size={20} name="globe" color="#94a3b8" />
                 <View style={styles.detailTextContainer}>
                   <ThemedText style={styles.detailLabel}>Region</ThemedText>
                   <ThemedText style={styles.detailValue}>{region}</ThemedText>
                 </View>
               </View>
-
-              <View style={styles.detailRowHalf}>
-                <Image
-                  source={getRoleIcon(mainRole)}
-                  style={styles.roleIcon}
-                  resizeMode="contain"
-                />
-                <View style={styles.detailTextContainer}>
-                  <ThemedText style={styles.detailLabel}>Main Role</ThemedText>
-                  <ThemedText style={styles.detailValue}>{mainRole}</ThemedText>
-                </View>
-              </View>
             </View>
-
-            {/* Main Agent - Full Width */}
-            <View style={styles.detailRow}>
-              <IconSymbol size={20} name="star.fill" color="#94a3b8" />
-              <View style={styles.detailTextContainer}>
-                <ThemedText style={styles.detailLabel}>
-                  {game === 'valorant' ? 'Main Agent' : 'Main Champion'}
-                </ThemedText>
-                <ThemedText style={styles.detailValue}>{mainAgent}</ThemedText>
-              </View>
-            </View>
-          </View>
-          </ScrollView>
-        </View>
+          ) : null}
+        </ScrollView>
       </View>
     </Modal>
   );
 }
 
 const styles = StyleSheet.create({
-  overlay: {
+  container: {
     flex: 1,
-    backgroundColor: 'rgba(0, 0, 0, 0.8)',
-    justifyContent: 'center',
-    alignItems: 'center',
-    padding: 20,
+    backgroundColor: '#0f0f0f',
+    paddingTop: 60,
+    paddingHorizontal: 24,
   },
-  modalContent: {
-    backgroundColor: '#242428',
-    borderRadius: 24,
-    padding: 24,
-    width: '100%',
-    maxWidth: 400,
-    maxHeight: '90%',
-    borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.15)',
+  topGradient: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    height: 260,
   },
   scrollContent: {
     flexGrow: 0,
   },
   scrollContentContainer: {
-    paddingBottom: 8,
+    paddingBottom: 40,
   },
   closeButton: {
     position: 'absolute',
-    top: 16,
-    right: 16,
+    top: 60,
+    right: 24,
     zIndex: 10,
     padding: 8,
   },
@@ -482,7 +461,7 @@ const styles = StyleSheet.create({
   rankBox: {
     flex: 1,
     alignItems: 'center',
-    backgroundColor: 'rgba(255,255,255,0.12)',
+    backgroundColor: 'rgba(255,255,255,0.05)',
     padding: 16,
     borderRadius: 16,
     gap: 8,
@@ -512,7 +491,7 @@ const styles = StyleSheet.create({
   statBox: {
     flex: 1,
     alignItems: 'center',
-    backgroundColor: 'rgba(255,255,255,0.12)',
+    backgroundColor: 'rgba(255,255,255,0.05)',
     padding: 14,
     borderRadius: 12,
     gap: 6,
@@ -551,7 +530,7 @@ const styles = StyleSheet.create({
   matchRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: 'rgba(255,255,255,0.12)',
+    backgroundColor: 'rgba(255,255,255,0.05)',
     borderRadius: 10,
     padding: 10,
     gap: 10,
@@ -639,7 +618,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 12,
-    backgroundColor: 'rgba(255,255,255,0.12)',
+    backgroundColor: 'rgba(255,255,255,0.05)',
     padding: 14,
     borderRadius: 12,
   },
@@ -648,7 +627,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 12,
-    backgroundColor: 'rgba(255,255,255,0.12)',
+    backgroundColor: 'rgba(255,255,255,0.05)',
     padding: 14,
     borderRadius: 12,
   },

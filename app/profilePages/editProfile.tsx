@@ -482,11 +482,12 @@ export default function EditProfileScreen() {
       ? require('@/assets/images/lol-icon.png')
       : require('@/assets/images/valorant-red.png');
 
-    const rankText = item.type === 'league'
-      ? (riotStats?.rankedSolo ? formatRank(riotStats.rankedSolo.tier, riotStats.rankedSolo.rank) : 'Unranked')
-      : (valorantStats?.currentRank || 'Unranked');
+    const accountName = item.type === 'league'
+      ? (riotAccount ? `${riotAccount.gameName}#${riotAccount.tagLine}` : '')
+      : (valorantAccount ? `${valorantAccount.gameName}#${valorantAccount.tag || valorantAccount.tagLine || ''}` : '');
 
     const availableCards = getAvailableCards();
+    const isEnabled = enabledRankCards.includes(item.type);
 
     return (
       <ScaleDecorator activeScale={1}>
@@ -497,6 +498,7 @@ export default function EditProfileScreen() {
           disabled={isActive}
           style={[
             styles.rankCardItem,
+            isEnabled && styles.rankCardItemActive,
             isActive && styles.rankCardItemDragging,
           ]}
         >
@@ -505,8 +507,15 @@ export default function EditProfileScreen() {
 
           {/* Info */}
           <View style={styles.rankCardInfo}>
-            <ThemedText style={styles.rankCardName}>{item.name}</ThemedText>
-            <ThemedText style={styles.rankCardRank}>{rankText}</ThemedText>
+            <View style={styles.rankCardNameRow}>
+              <ThemedText style={styles.rankCardName}>{item.name}</ThemedText>
+              {isEnabled && <View style={styles.rankCardActiveDot} />}
+            </View>
+            {accountName ? (
+              <ThemedText style={styles.rankCardAccountName}>{accountName}</ThemedText>
+            ) : (
+              <ThemedText style={styles.rankCardNotLinked}>Tap to link your account</ThemedText>
+            )}
           </View>
 
           {/* Drag handle */}
@@ -518,7 +527,7 @@ export default function EditProfileScreen() {
         </TouchableOpacity>
       </ScaleDecorator>
     );
-  }, [enabledRankCards, riotStats, valorantStats, getAvailableCards]);
+  }, [enabledRankCards, riotAccount, valorantAccount, getAvailableCards]);
 
   const hasChanges = () => {
     // Check if any field has changed from original user data
@@ -1329,6 +1338,10 @@ const styles = StyleSheet.create({
     borderColor: 'rgba(255,255,255,0.06)',
     marginBottom: 12,
   },
+  rankCardItemActive: {
+    backgroundColor: 'rgba(255,255,255,0.06)',
+    borderColor: 'rgba(255,255,255,0.12)',
+  },
   rankCardItemDragging: {
     backgroundColor: 'rgba(255,255,255,0.08)',
     borderColor: 'rgba(255,255,255,0.14)',
@@ -1348,14 +1361,29 @@ const styles = StyleSheet.create({
     flex: 1,
     gap: 2,
   },
+  rankCardNameRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
   rankCardName: {
     fontSize: 17,
     fontWeight: '600',
     color: '#fff',
   },
-  rankCardRank: {
+  rankCardActiveDot: {
+    width: 7,
+    height: 7,
+    borderRadius: 4,
+    backgroundColor: '#22C55E',
+  },
+  rankCardAccountName: {
     fontSize: 13,
     color: '#888',
+  },
+  rankCardNotLinked: {
+    fontSize: 13,
+    color: '#555',
   },
   // Modal styles
   modalOverlay: {

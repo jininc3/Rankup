@@ -302,7 +302,7 @@ export default function OnboardingSignUp2() {
                       <View style={styles.accountRow}>
                         <IconSymbol size={14} name="person.fill" color="rgba(255, 255, 255, 0.7)" />
                         <ThemedText style={styles.accountName}>
-                          {valorantAccount.gameName}#{valorantAccount.tagLine}
+                          {valorantAccount.gameName}#{valorantAccount.tag || valorantAccount.tagLine || ''}
                         </ThemedText>
                       </View>
                       <View style={styles.rankRow}>

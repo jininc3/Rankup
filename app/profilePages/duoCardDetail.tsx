@@ -6,7 +6,6 @@ import { useState, useEffect } from 'react';
 import { getRecentMatches, RecentMatchResult } from '@/services/riotService';
 import { doc, setDoc, getDoc, serverTimestamp } from 'firebase/firestore';
 import { db } from '@/config/firebase';
-import { LinearGradient } from 'expo-linear-gradient';
 
 // League rank icon mapping
 const LEAGUE_RANK_ICONS: { [key: string]: any } = {
@@ -309,18 +308,9 @@ export default function DuoCardDetailScreen() {
 
   return (
     <View style={styles.container}>
-      {/* Top background gradient */}
-      <LinearGradient
-        colors={['rgba(255, 255, 255, 0.06)', 'rgba(255, 255, 255, 0.02)', 'transparent']}
-        locations={[0, 0.5, 1]}
-        start={{ x: 0.5, y: 0 }}
-        end={{ x: 0.5, y: 1 }}
-        style={styles.topGradient}
-        pointerEvents="none"
-      />
       {/* Close Button */}
       <TouchableOpacity style={styles.closeButton} onPress={() => router.back()}>
-        <IconSymbol size={24} name="xmark" color="#fff" />
+        <IconSymbol size={22} name="xmark" color="#fff" />
       </TouchableOpacity>
 
       <ScrollView
@@ -342,7 +332,7 @@ export default function DuoCardDetailScreen() {
               <Image source={{ uri: avatar }} style={styles.avatar} />
             ) : (
               <View style={styles.avatarPlaceholder}>
-                <IconSymbol size={40} name="person.fill" color="#fff" />
+                <IconSymbol size={36} name="person.fill" color="#888" />
               </View>
             )}
           </View>
@@ -360,8 +350,8 @@ export default function DuoCardDetailScreen() {
               style={styles.rankIcon}
               resizeMode="contain"
             />
-            <ThemedText style={styles.rankLabel}>Peak Rank</ThemedText>
-            <ThemedText style={styles.rankValue}>{peakRank}</ThemedText>
+            <ThemedText style={styles.rankValue} numberOfLines={1}>{peakRank}</ThemedText>
+            <ThemedText style={styles.rankLabel}>PEAK RANK</ThemedText>
           </View>
 
           <View style={styles.rankBox}>
@@ -370,290 +360,126 @@ export default function DuoCardDetailScreen() {
               style={styles.rankIcon}
               resizeMode="contain"
             />
-            <ThemedText style={styles.rankLabel}>Current Rank</ThemedText>
-            <ThemedText style={styles.rankValue}>{currentRank}</ThemedText>
+            <ThemedText style={styles.rankValue} numberOfLines={1}>{currentRank}</ThemedText>
+            <ThemedText style={styles.rankLabel}>CURRENT RANK</ThemedText>
           </View>
         </View>
 
-        {/* Stats Section */}
+        {/* Stats Section — inline win rate + games */}
         {(winRate !== undefined || gamesPlayed !== undefined) && (
           <View style={styles.statsSection}>
             {winRate !== undefined && (
-              <View style={styles.statBox}>
-                <IconSymbol size={20} name="chart.bar.fill" color="#4ade80" />
-                <ThemedText style={styles.statValue}>
-                  {winRate.toFixed(1)}%
-                </ThemedText>
-                <ThemedText style={styles.statLabel}>Win Rate</ThemedText>
-              </View>
+              <ThemedText style={styles.statInline}>
+                <ThemedText style={styles.statInlineValue}>{winRate.toFixed(1)}% </ThemedText>
+                <ThemedText style={styles.statInlineLabel}>WIN RATE</ThemedText>
+              </ThemedText>
             )}
             {gamesPlayed !== undefined && (
-              <View style={styles.statBox}>
-                <IconSymbol size={20} name="gamecontroller.fill" color="#60a5fa" />
-                <ThemedText style={styles.statValue}>{gamesPlayed}</ThemedText>
-                <ThemedText style={styles.statLabel}>Games</ThemedText>
-              </View>
+              <ThemedText style={styles.statInline}>
+                <ThemedText style={styles.statInlineValue}>{gamesPlayed} </ThemedText>
+                <ThemedText style={styles.statInlineLabel}>GAMES</ThemedText>
+              </ThemedText>
             )}
           </View>
         )}
 
-        {/* Recent Matches Section */}
+        {/* Recent Matches Section — rank-card style table rows */}
         {!loadingMatches && isMatchesRecent(recentMatches) && (
           <View style={styles.matchesSection}>
             <ThemedText style={styles.matchesSectionLabel}>RECENT MATCHES</ThemedText>
             <View style={styles.matchList}>
-              {recentMatches.slice(0, 5).map((match, i) => (
-                <View key={i} style={[styles.matchRow, match.won ? styles.matchRowWin : styles.matchRowLoss]}>
-                  <View style={[styles.matchResultBadge, match.won ? styles.matchResultWin : styles.matchResultLoss]}>
-                    <ThemedText style={styles.matchResultText}>{match.won ? 'W' : 'L'}</ThemedText>
-                  </View>
-                  {getAgentIcon(match.agent || '') ? (
-                    <Image source={getAgentIcon(match.agent || '')} style={styles.matchAgentIcon} />
-                  ) : (
-                    <View style={styles.matchAgentPlaceholder}>
-                      <ThemedText style={styles.matchAgentPlaceholderText}>
-                        {(match.agent || '?')[0].toUpperCase()}
-                      </ThemedText>
+              {recentMatches.slice(0, 5).map((match, i, arr) => {
+                const isLast = i === arr.length - 1;
+                const rawTime = match.playedAt;
+                let formattedDate = '';
+                if (rawTime) {
+                  const timestamp = rawTime < 10000000000 ? rawTime * 1000 : rawTime;
+                  const date = new Date(timestamp);
+                  const now = Date.now();
+                  const diffMs = now - timestamp;
+                  const diffHours = Math.floor(diffMs / (1000 * 60 * 60));
+                  const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
+                  if (diffHours < 1) formattedDate = 'Just now';
+                  else if (diffHours < 24) formattedDate = diffHours === 1 ? '1 hr ago' : `${diffHours} hrs ago`;
+                  else if (diffDays === 1) formattedDate = '1 day ago';
+                  else if (diffDays < 30) formattedDate = `${diffDays} days ago`;
+                  else {
+                    const months = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+                    formattedDate = `${date.getDate()}${months[date.getMonth()]}`;
+                  }
+                }
+                return (
+                  <View key={i} style={[styles.matchItem, isLast && styles.matchItemLast]}>
+                    <View style={[styles.matchIndicator, match.won ? styles.matchWin : styles.matchLoss]} />
+                    <View style={styles.matchColAgent}>
+                      {getAgentIcon(match.agent || '') ? (
+                        <Image
+                          source={getAgentIcon(match.agent || '')}
+                          style={styles.matchAgentIcon}
+                          resizeMode="contain"
+                        />
+                      ) : (
+                        <ThemedText style={styles.matchCellText} numberOfLines={1}>
+                          {match.agent || '?'}
+                        </ThemedText>
+                      )}
                     </View>
-                  )}
-                  <View style={styles.matchInfo}>
-                    <ThemedText style={styles.matchKda}>
+                    <View style={styles.matchColRank}>
+                      <View style={[
+                        styles.matchRankPill,
+                        match.placement === 1 && styles.matchRankPill1st,
+                        match.placement === 2 && styles.matchRankPill2nd,
+                        match.placement === 3 && styles.matchRankPill3rd,
+                      ]}>
+                        <ThemedText style={[
+                          styles.matchRankText,
+                          match.placement === 1 && styles.matchRank1st,
+                          match.placement === 2 && styles.matchRank2nd,
+                          match.placement === 3 && styles.matchRank3rd,
+                        ]}>
+                          {match.placement
+                            ? (match.placement === 1
+                                ? 'MVP'
+                                : `${match.placement}${match.placement === 2 ? 'nd' : match.placement === 3 ? 'rd' : 'th'}`)
+                            : '-'}
+                        </ThemedText>
+                      </View>
+                    </View>
+                    <ThemedText style={[styles.matchCellText, styles.matchColKDA]}>
                       {match.kills ?? 0}/{match.deaths ?? 0}/{match.assists ?? 0}
                     </ThemedText>
-                  </View>
-                  {match.placement && (
-                    <View style={[
-                      styles.matchPlacementPill,
-                      match.placement === 1 && styles.matchPlacementPill1st,
-                      match.placement === 2 && styles.matchPlacementPill2nd,
-                      match.placement === 3 && styles.matchPlacementPill3rd,
+                    <ThemedText style={[
+                      styles.matchCellText,
+                      styles.matchColResult,
+                      match.won ? styles.matchResultWin : styles.matchResultLoss,
                     ]}>
-                      <ThemedText style={[
-                        styles.matchPlacement,
-                        match.placement === 1 && styles.matchPlacement1st,
-                        match.placement === 2 && styles.matchPlacement2nd,
-                        match.placement === 3 && styles.matchPlacement3rd,
-                      ]}>
-                        {match.placement === 1 ? 'MVP' : `${match.placement}${match.placement === 2 ? 'nd' : match.placement === 3 ? 'rd' : 'th'}`}
-                      </ThemedText>
-                    </View>
-                  )}
-                  <View style={styles.matchMeta}>
-                    {match.map && (
-                      <ThemedText style={styles.matchMap} numberOfLines={1}>{match.map}</ThemedText>
-                    )}
-                    {match.playedAt && (
-                      <ThemedText style={styles.matchTime}>{formatTimeAgo(match.playedAt)}</ThemedText>
-                    )}
+                      {match.won ? 'Victory' : 'Defeat'}
+                    </ThemedText>
+                    <ThemedText style={[styles.matchCellText, styles.matchColScore]}>
+                      {match.score || '-'}
+                    </ThemedText>
+                    <ThemedText style={[styles.matchCellText, styles.matchColDate, styles.matchDateText]}>
+                      {formattedDate}
+                    </ThemedText>
                   </View>
-                </View>
-              ))}
+                );
+              })}
             </View>
           </View>
         )}
 
-        {/* Details / Edit Section */}
-        <View style={styles.detailsSection}>
-          {isOwnCard ? (
-            <>
-              {/* Edit Mode: Main Role & Main Agent in same row */}
-              <View style={styles.editRow}>
-                {/* Main Role */}
-                <View style={styles.editFieldHalf}>
-                  <ThemedText style={styles.fieldLabel}>Role</ThemedText>
-                  <TouchableOpacity
-                    style={styles.dropdownCompact}
-                    onPress={() => {
-                      setShowRoleDropdown(!showRoleDropdown);
-                      setShowAgentDropdown(false);
-                      setShowLookingForDropdown(false);
-                    }}
-                  >
-                    <Image
-                      source={getRoleIcon(mainRole)}
-                      style={styles.dropdownIconSmall}
-                      resizeMode="contain"
-                    />
-                    <ThemedText style={styles.dropdownTextCompact} numberOfLines={1}>{mainRole}</ThemedText>
-                    <IconSymbol size={14} name="chevron.down" color="#94a3b8" />
-                  </TouchableOpacity>
-                  {showRoleDropdown && (
-                    <View style={styles.dropdownListAbsolute}>
-                      {roles.map((role) => (
-                        <TouchableOpacity
-                          key={role}
-                          style={styles.dropdownOptionCompact}
-                          onPress={() => {
-                            setMainRole(role);
-                            setMainAgent('');
-                            setShowRoleDropdown(false);
-                          }}
-                        >
-                          <Image
-                            source={getRoleIcon(role)}
-                            style={styles.dropdownOptionIconSmall}
-                            resizeMode="contain"
-                          />
-                          <ThemedText style={styles.dropdownOptionTextCompact}>{role}</ThemedText>
-                        </TouchableOpacity>
-                      ))}
-                    </View>
-                  )}
-                </View>
-
-                {/* Main Agent */}
-                <View style={styles.editFieldHalf}>
-                  <ThemedText style={styles.fieldLabel}>
-                    {game === 'valorant' ? 'Agent' : 'Champion'}
-                  </ThemedText>
-                  <TouchableOpacity
-                    style={[styles.dropdownCompact, !mainRole && styles.dropdownDisabled]}
-                    onPress={() => {
-                      if (mainRole) {
-                        setShowAgentDropdown(!showAgentDropdown);
-                        setShowRoleDropdown(false);
-                        setShowLookingForDropdown(false);
-                      }
-                    }}
-                    disabled={!mainRole}
-                  >
-                    <ThemedText
-                      style={mainAgent ? styles.dropdownTextCompact : styles.dropdownPlaceholderCompact}
-                      numberOfLines={1}
-                    >
-                      {mainAgent || 'Select'}
-                    </ThemedText>
-                    {mainRole && <IconSymbol size={14} name="chevron.down" color="#94a3b8" />}
-                  </TouchableOpacity>
-                  {showAgentDropdown && mainRole && (
-                    <View style={styles.dropdownListAbsolute}>
-                      <ScrollView style={styles.dropdownScrollCompact} nestedScrollEnabled={true}>
-                        {agents.map((agent) => (
-                          <TouchableOpacity
-                            key={agent}
-                            style={styles.dropdownOptionCompact}
-                            onPress={() => {
-                              setMainAgent(agent);
-                              setShowAgentDropdown(false);
-                            }}
-                          >
-                            <ThemedText style={styles.dropdownOptionTextCompact}>{agent}</ThemedText>
-                          </TouchableOpacity>
-                        ))}
-                      </ScrollView>
-                    </View>
-                  )}
-                </View>
+        {/* Details Section — Region only (other users) */}
+        {!isOwnCard && region ? (
+          <View style={styles.detailsSection}>
+            <View style={styles.detailRow}>
+              <IconSymbol size={20} name="globe" color="#94a3b8" />
+              <View style={styles.detailTextContainer}>
+                <ThemedText style={styles.detailLabel}>Region</ThemedText>
+                <ThemedText style={styles.detailValue}>{region}</ThemedText>
               </View>
-
-              {/* Looking For - Full width below */}
-              <View style={styles.editFieldFull}>
-                <ThemedText style={styles.fieldLabel}>Looking For</ThemedText>
-                <TouchableOpacity
-                  style={styles.dropdownCompact}
-                  onPress={() => {
-                    setShowLookingForDropdown(!showLookingForDropdown);
-                    setShowRoleDropdown(false);
-                    setShowAgentDropdown(false);
-                  }}
-                >
-                  <View style={styles.dropdownContent}>
-                    {lookingFor !== 'Any' && (
-                      <Image
-                        source={getRoleIcon(lookingFor)}
-                        style={styles.dropdownIconSmall}
-                        resizeMode="contain"
-                      />
-                    )}
-                    <ThemedText style={styles.dropdownTextCompact}>{lookingFor}</ThemedText>
-                  </View>
-                  <IconSymbol size={14} name="chevron.down" color="#94a3b8" />
-                </TouchableOpacity>
-                {showLookingForDropdown && (
-                  <View style={styles.dropdownList}>
-                    <TouchableOpacity
-                      style={styles.dropdownOptionCompact}
-                      onPress={() => {
-                        setLookingFor('Any');
-                        setShowLookingForDropdown(false);
-                      }}
-                    >
-                      <ThemedText style={styles.dropdownOptionTextCompact}>Any</ThemedText>
-                    </TouchableOpacity>
-                    {roles.map((role) => (
-                      <TouchableOpacity
-                        key={role}
-                        style={styles.dropdownOptionCompact}
-                        onPress={() => {
-                          setLookingFor(role);
-                          setShowLookingForDropdown(false);
-                        }}
-                      >
-                        <Image
-                          source={getRoleIcon(role)}
-                          style={styles.dropdownOptionIconSmall}
-                          resizeMode="contain"
-                        />
-                        <ThemedText style={styles.dropdownOptionTextCompact}>{role}</ThemedText>
-                      </TouchableOpacity>
-                    ))}
-                  </View>
-                )}
-              </View>
-
-              {/* Save Button */}
-              <TouchableOpacity
-                style={[
-                  styles.saveButton,
-                  hasChanges ? { backgroundColor: gameAccentColor } : styles.saveButtonInactive,
-                  isSaving && styles.saveButtonDisabled
-                ]}
-                onPress={handleSaveChanges}
-                disabled={isSaving || !hasChanges}
-              >
-                <ThemedText style={[styles.saveButtonText, !hasChanges && styles.saveButtonTextInactive]}>
-                  {isSaving ? 'Saving...' : 'Save Changes'}
-                </ThemedText>
-              </TouchableOpacity>
-            </>
-          ) : (
-            <>
-              {/* View Mode: Region and Main Role - Split Row */}
-              <View style={styles.splitRow}>
-                <View style={styles.detailRowHalf}>
-                  <IconSymbol size={20} name="globe" color="#94a3b8" />
-                  <View style={styles.detailTextContainer}>
-                    <ThemedText style={styles.detailLabel}>Region</ThemedText>
-                    <ThemedText style={styles.detailValue}>{region}</ThemedText>
-                  </View>
-                </View>
-
-                <View style={styles.detailRowHalf}>
-                  <Image
-                    source={getRoleIcon(mainRole)}
-                    style={styles.roleIcon}
-                    resizeMode="contain"
-                  />
-                  <View style={styles.detailTextContainer}>
-                    <ThemedText style={styles.detailLabel}>Main Role</ThemedText>
-                    <ThemedText style={styles.detailValue}>{mainRole}</ThemedText>
-                  </View>
-                </View>
-              </View>
-
-              {/* Main Agent - Full Width */}
-              <View style={styles.detailRow}>
-                <IconSymbol size={20} name="star.fill" color="#94a3b8" />
-                <View style={styles.detailTextContainer}>
-                  <ThemedText style={styles.detailLabel}>
-                    {game === 'valorant' ? 'Main Agent' : 'Main Champion'}
-                  </ThemedText>
-                  <ThemedText style={styles.detailValue}>{mainAgent}</ThemedText>
-                </View>
-              </View>
-            </>
-          )}
-        </View>
+            </View>
+          </View>
+        ) : null}
       </ScrollView>
     </View>
   );
@@ -664,19 +490,12 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: '#0f0f0f',
     paddingTop: 60,
-    paddingHorizontal: 24,
-  },
-  topGradient: {
-    position: 'absolute',
-    top: 0,
-    left: 0,
-    right: 0,
-    height: 260,
+    paddingHorizontal: 20,
   },
   closeButton: {
     position: 'absolute',
     top: 60,
-    right: 24,
+    right: 16,
     zIndex: 10,
     padding: 8,
   },
@@ -696,7 +515,8 @@ const styles = StyleSheet.create({
     height: 80,
     borderRadius: 40,
     overflow: 'hidden',
-    marginBottom: 12,
+    marginBottom: 14,
+    backgroundColor: 'rgba(255,255,255,0.06)',
   },
   avatar: {
     width: '100%',
@@ -705,245 +525,237 @@ const styles = StyleSheet.create({
   avatarPlaceholder: {
     width: '100%',
     height: '100%',
-    backgroundColor: '#3a3a3a',
     alignItems: 'center',
     justifyContent: 'center',
   },
   username: {
-    fontSize: 20,
+    fontSize: 22,
     fontWeight: '700',
     color: '#fff',
-    letterSpacing: -0.5,
+    letterSpacing: -0.3,
   },
   inGameName: {
-    fontSize: 14,
+    fontSize: 13,
     fontWeight: '500',
-    color: '#94a3b8',
+    color: '#888',
     marginTop: 4,
   },
-  // Ranks Section
+  // Ranks Section — two matte panels, uppercase rank names (matches duoCard rankName)
   ranksSection: {
     flexDirection: 'row',
-    gap: 12,
-    marginBottom: 24,
+    gap: 10,
+    marginBottom: 12,
   },
   rankBox: {
     flex: 1,
     alignItems: 'center',
-    backgroundColor: 'rgba(255,255,255,0.05)',
-    padding: 16,
-    borderRadius: 16,
+    backgroundColor: 'rgba(255,255,255,0.04)',
+    paddingVertical: 16,
+    paddingHorizontal: 12,
+    borderRadius: 14,
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.05)',
     gap: 8,
   },
   rankIcon: {
-    width: 60,
-    height: 60,
-  },
-  rankLabel: {
-    fontSize: 11,
-    color: '#94a3b8',
-    fontWeight: '600',
-    textTransform: 'uppercase',
-    letterSpacing: 0.5,
+    width: 56,
+    height: 56,
   },
   rankValue: {
     fontSize: 14,
     color: '#fff',
     fontWeight: '700',
     textAlign: 'center',
+    letterSpacing: 0.5,
+    textTransform: 'uppercase',
   },
-  // Stats Section
+  rankLabel: {
+    fontSize: 9,
+    color: '#888',
+    fontWeight: '700',
+    letterSpacing: 0.6,
+  },
+  // Stats Section — inline two-stat row (matches duoCard statsBottomRow)
   statsSection: {
     flexDirection: 'row',
-    gap: 12,
+    gap: 14,
+    backgroundColor: 'rgba(255,255,255,0.04)',
+    borderRadius: 14,
+    paddingVertical: 14,
+    paddingHorizontal: 16,
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.05)',
     marginBottom: 24,
   },
-  statBox: {
-    flex: 1,
-    alignItems: 'center',
-    backgroundColor: 'rgba(255,255,255,0.05)',
-    padding: 14,
-    borderRadius: 12,
-    gap: 6,
+  statInline: {
+    fontSize: 13,
+    color: '#888',
   },
-  statValue: {
-    fontSize: 20,
+  statInlineValue: {
+    fontSize: 16,
+    fontWeight: '800',
     color: '#fff',
-    fontWeight: '700',
+    letterSpacing: -0.2,
   },
-  statLabel: {
-    fontSize: 11,
-    color: '#94a3b8',
-    fontWeight: '600',
-    textTransform: 'uppercase',
-    letterSpacing: 0.5,
+  statInlineLabel: {
+    fontSize: 10,
+    fontWeight: '700',
+    color: '#888',
+    letterSpacing: 0.6,
   },
   // Match List Styles
   matchesSection: {
     marginBottom: 24,
   },
   matchesSectionLabel: {
-    fontSize: 11,
-    color: '#94a3b8',
-    fontWeight: '600',
-    textTransform: 'uppercase',
-    letterSpacing: 0.5,
-    marginBottom: 12,
+    fontSize: 10,
+    color: '#888',
+    fontWeight: '700',
+    letterSpacing: 0.6,
+    marginBottom: 10,
+    paddingHorizontal: 2,
   },
   matchList: {
-    gap: 8,
+    backgroundColor: 'rgba(255,255,255,0.04)',
+    borderRadius: 14,
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.05)',
+    paddingHorizontal: 12,
+    overflow: 'hidden',
   },
-  matchRow: {
+  matchItem: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: 'rgba(255,255,255,0.05)',
-    borderRadius: 10,
-    padding: 10,
-    gap: 10,
-    borderLeftWidth: 3,
+    justifyContent: 'space-between',
+    paddingVertical: 12,
+    paddingHorizontal: 4,
+    borderBottomWidth: 1,
+    borderBottomColor: 'rgba(255,255,255,0.05)',
   },
-  matchRowWin: {
-    borderLeftColor: '#4ade80',
+  matchItemLast: {
+    borderBottomWidth: 0,
   },
-  matchRowLoss: {
-    borderLeftColor: '#ef4444',
+  matchIndicator: {
+    width: 4,
+    height: 36,
+    borderRadius: 2,
+    marginRight: 12,
   },
-  matchResultBadge: {
-    width: 26,
-    height: 26,
-    borderRadius: 6,
+  matchWin: {
+    backgroundColor: '#4CAF50',
+  },
+  matchLoss: {
+    backgroundColor: '#DC3D4B',
+  },
+  matchColAgent: {
+    flex: 1,
     alignItems: 'center',
     justifyContent: 'center',
   },
-  matchResultWin: {
-    backgroundColor: 'rgba(74, 222, 128, 0.2)',
+  matchAgentIcon: {
+    width: 36,
+    height: 36,
+    borderRadius: 6,
   },
-  matchResultLoss: {
-    backgroundColor: 'rgba(239, 68, 68, 0.2)',
+  matchColRank: {
+    flex: 0.8,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
-  matchResultText: {
-    fontSize: 11,
-    fontWeight: '700',
-    color: '#fff',
-  },
-  matchPlacementPill: {
-    paddingHorizontal: 8,
-    paddingVertical: 3,
+  matchRankPill: {
+    paddingHorizontal: 6,
+    paddingVertical: 2,
     borderRadius: 10,
     backgroundColor: 'rgba(255, 255, 255, 0.08)',
-    marginRight: 4,
   },
-  matchPlacementPill1st: {
+  matchRankPill1st: {
     backgroundColor: 'rgba(255, 215, 0, 0.15)',
   },
-  matchPlacementPill2nd: {
+  matchRankPill2nd: {
     backgroundColor: 'rgba(192, 192, 192, 0.15)',
   },
-  matchPlacementPill3rd: {
+  matchRankPill3rd: {
     backgroundColor: 'rgba(205, 127, 50, 0.15)',
   },
-  matchPlacement: {
+  matchRankText: {
     fontSize: 10,
     fontWeight: '700',
     color: '#999',
+    textAlign: 'center',
   },
-  matchPlacement1st: {
+  matchRank1st: {
     color: '#FFD700',
     fontWeight: '900',
   },
-  matchPlacement2nd: {
+  matchRank2nd: {
     color: '#C0C0C0',
     fontWeight: '900',
   },
-  matchPlacement3rd: {
+  matchRank3rd: {
     color: '#CD7F32',
     fontWeight: '900',
   },
-  matchInfo: {
+  matchColKDA: {
+    flex: 1.2,
+    textAlign: 'center',
+  },
+  matchColResult: {
+    flex: 1.2,
+    textAlign: 'center',
+  },
+  matchColScore: {
     flex: 1,
-    gap: 2,
+    textAlign: 'center',
   },
-  matchAgentIcon: {
-    width: 28,
-    height: 28,
-    borderRadius: 6,
+  matchColDate: {
+    flex: 1.5,
+    textAlign: 'right',
   },
-  matchAgentPlaceholder: {
-    width: 28,
-    height: 28,
-    borderRadius: 6,
-    backgroundColor: '#222',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  matchAgentPlaceholderText: {
+  matchCellText: {
     fontSize: 12,
-    fontWeight: '600',
-    color: '#555',
+    fontWeight: '700',
+    color: '#fff',
   },
-  matchKda: {
+  matchResultWin: {
+    color: '#4CAF50',
+  },
+  matchResultLoss: {
+    color: '#DC3D4B',
+  },
+  matchDateText: {
+    color: 'rgba(255,255,255,0.5)',
     fontSize: 11,
-    fontWeight: '500',
-    color: '#94a3b8',
   },
-  matchMeta: {
-    alignItems: 'flex-end',
-    gap: 2,
-  },
-  matchMap: {
-    fontSize: 10,
-    fontWeight: '500',
-    color: '#94a3b8',
-    maxWidth: 60,
-  },
-  matchTime: {
-    fontSize: 9,
-    color: '#64748b',
-  },
-  // Details Section
+  // Details Section — Region row only
   detailsSection: {
-    gap: 12,
-  },
-  splitRow: {
-    flexDirection: 'row',
     gap: 12,
   },
   detailRow: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 12,
-    backgroundColor: 'rgba(255,255,255,0.05)',
+    backgroundColor: 'rgba(255,255,255,0.04)',
     padding: 14,
-    borderRadius: 12,
-  },
-  detailRowHalf: {
-    flex: 1,
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 12,
-    backgroundColor: 'rgba(255,255,255,0.05)',
-    padding: 14,
-    borderRadius: 12,
-  },
-  roleIcon: {
-    width: 20,
-    height: 20,
+    borderRadius: 14,
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.05)',
   },
   detailTextContainer: {
     flex: 1,
     gap: 2,
   },
   detailLabel: {
-    fontSize: 11,
-    color: '#94a3b8',
-    fontWeight: '600',
-    textTransform: 'uppercase',
-    letterSpacing: 0.5,
+    fontSize: 9,
+    color: '#888',
+    fontWeight: '700',
+    letterSpacing: 0.6,
   },
   detailValue: {
-    fontSize: 15,
+    fontSize: 14,
     color: '#fff',
-    fontWeight: '600',
+    fontWeight: '700',
+    letterSpacing: 0.3,
+    textTransform: 'uppercase',
   },
   // Edit Fields
   fieldLabel: {

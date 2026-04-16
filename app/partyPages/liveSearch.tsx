@@ -65,8 +65,8 @@ export default function LiveSearchScreen() {
             setValorantInGameIcon(userData.valorantStats.card.small);
           }
           if (userData.valorantStats?.gameName) {
-            const tagLine = userData.valorantAccount?.tagLine || '';
-            setValorantInGameName(`${userData.valorantStats.gameName}#${tagLine}`);
+            const tagLine = userData.valorantAccount?.tag || userData.valorantAccount?.tagLine || '';
+            setValorantInGameName(tagLine ? `${userData.valorantStats.gameName}#${tagLine}` : userData.valorantStats.gameName);
           }
           if (userData.riotStats?.profileIconId) {
             setLeagueInGameIcon(`https://ddragon.leagueoflegends.com/cdn/14.1.1/img/profileicon/${userData.riotStats.profileIconId}.png`);

@@ -631,7 +631,7 @@ export default function ProfileScreen() {
             setValorantInGameIcon(userData.valorantStats.card.small);
           }
           if (userData.valorantStats?.gameName) {
-            const tagLine = userData.valorantAccount?.tagLine || '';
+            const tagLine = userData.valorantAccount?.tag || userData.valorantAccount?.tagLine || '';
             setValorantInGameName(tagLine ? `${userData.valorantStats.gameName}#${tagLine}` : userData.valorantStats.gameName);
           }
           if (userData.valorantStats?.winRate !== undefined) {
@@ -945,7 +945,7 @@ export default function ProfileScreen() {
                   style={styles.coverPhotoBottomFade}
                   pointerEvents="none"
                 />
-                <View style={[styles.headerIconsRow, { top: insets.top - 20 }]}>
+                <View style={[styles.headerIconsRow, { top: insets.top - 10 }]}>
                   <TouchableOpacity
                     style={styles.headerIconButton}
                     onPress={() => setShowCreateModal(true)}
@@ -1002,7 +1002,7 @@ export default function ProfileScreen() {
                   pointerEvents="none"
                 />
                 {/* Header Icons overlaid on cover photo */}
-                <View style={[styles.headerIconsRow, { top: insets.top - 20 }]}>
+                <View style={[styles.headerIconsRow, { top: insets.top - 10 }]}>
                   <TouchableOpacity
                     style={styles.headerIconButton}
                     onPress={() => setShowCreateModal(true)}
@@ -1188,6 +1188,9 @@ export default function ProfileScreen() {
               </View>
             </View>
           </View>
+
+          {/* Section Divider */}
+          <View style={styles.profileSectionDivider} />
 
           {/* Rank Cards Banner */}
           {userGames.length > 0 ? (
@@ -1836,6 +1839,12 @@ const styles = StyleSheet.create({
     letterSpacing: 0.2,
   },
   // Action row: Edit Profile + Social icons
+  profileSectionDivider: {
+    height: StyleSheet.hairlineWidth,
+    backgroundColor: 'rgba(255,255,255,0.08)',
+    marginHorizontal: 20,
+    marginTop: 16,
+  },
   actionRow: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -2150,7 +2159,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     backgroundColor: 'transparent',
     borderRadius: 14,
-    paddingVertical: 26,
+    paddingVertical: 16,
     paddingHorizontal: 18,
     marginHorizontal: 16,
     marginTop: 16,

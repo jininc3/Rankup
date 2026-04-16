@@ -7,6 +7,7 @@ import { useState, useEffect, useRef } from 'react';
 import {
   ActivityIndicator,
   Alert,
+  Image,
   Keyboard,
   KeyboardAvoidingView,
   Modal,
@@ -19,6 +20,76 @@ import {
 } from 'react-native';
 import { DuoCardData } from './addDuoCard';
 import DuoCard from './duoCard';
+
+// Roles
+const VALORANT_ROLES = ['Duelist', 'Initiator', 'Controller', 'Sentinel'];
+const LEAGUE_ROLES = ['Top', 'Jungle', 'Mid', 'ADC', 'Support'];
+
+// Role icons
+const VALORANT_ROLE_ICONS: { [key: string]: any } = {
+  Duelist: require('@/assets/images/valorantroles/Duelist.png'),
+  Initiator: require('@/assets/images/valorantroles/Initiator.png'),
+  Controller: require('@/assets/images/valorantroles/Controller.png'),
+  Sentinel: require('@/assets/images/valorantroles/Sentinel.png'),
+};
+
+const LEAGUE_LANE_ICONS: { [key: string]: any } = {
+  Top: require('@/assets/images/leaguelanes/top.png'),
+  Jungle: require('@/assets/images/leaguelanes/jungle.png'),
+  Mid: require('@/assets/images/leaguelanes/mid.png'),
+  ADC: require('@/assets/images/leaguelanes/bottom.png'),
+  Support: require('@/assets/images/leaguelanes/support.png'),
+};
+
+// Valorant agents grouped by role
+const VALORANT_AGENTS: { [key: string]: string[] } = {
+  Duelist: ['Jett', 'Reyna', 'Raze', 'Phoenix', 'Yoru', 'Neon', 'Iso'],
+  Initiator: ['Sova', 'Breach', 'Skye', 'KAY/O', 'Fade', 'Gekko'],
+  Controller: ['Brimstone', 'Omen', 'Viper', 'Astra', 'Harbor', 'Clove'],
+  Sentinel: ['Sage', 'Cypher', 'Killjoy', 'Chamber', 'Deadlock', 'Vyse'],
+};
+
+const VALORANT_AGENT_ICONS: { [key: string]: any } = {
+  jett: require('@/assets/images/valoranticons/jett.png'),
+  reyna: require('@/assets/images/valoranticons/reyna.png'),
+  raze: require('@/assets/images/valoranticons/raze.png'),
+  phoenix: require('@/assets/images/valoranticons/phoenix.png'),
+  yoru: require('@/assets/images/valoranticons/yoru.png'),
+  neon: require('@/assets/images/valoranticons/neon.png'),
+  iso: require('@/assets/images/valoranticons/iso.png'),
+  sova: require('@/assets/images/valoranticons/sova.png'),
+  breach: require('@/assets/images/valoranticons/breach.png'),
+  skye: require('@/assets/images/valoranticons/skye.png'),
+  'kay/o': require('@/assets/images/valoranticons/kayo.png'),
+  fade: require('@/assets/images/valoranticons/fade.png'),
+  gekko: require('@/assets/images/valoranticons/gekko.png'),
+  brimstone: require('@/assets/images/valoranticons/brimstone.png'),
+  omen: require('@/assets/images/valoranticons/omen.png'),
+  viper: require('@/assets/images/valoranticons/viper.png'),
+  astra: require('@/assets/images/valoranticons/astra.png'),
+  harbor: require('@/assets/images/valoranticons/harbor.png'),
+  clove: require('@/assets/images/valoranticons/clove.png'),
+  sage: require('@/assets/images/valoranticons/sage.png'),
+  cypher: require('@/assets/images/valoranticons/cypher.png'),
+  killjoy: require('@/assets/images/valoranticons/killjoy.png'),
+  chamber: require('@/assets/images/valoranticons/chamber.png'),
+  deadlock: require('@/assets/images/valoranticons/deadlock.png'),
+  vyse: require('@/assets/images/valoranticons/vyse.png'),
+};
+
+// League champions grouped by role
+const LEAGUE_CHAMPIONS: { [key: string]: string[] } = {
+  Top: ['Aatrox', 'Darius', 'Garen', 'Jax', 'Fiora', 'Camille', 'Ornn', 'Sett'],
+  Jungle: ['Lee Sin', "Kha'Zix", 'Graves', 'Elise', 'Vi', "Rek'Sai", 'Hecarim'],
+  Mid: ['Ahri', 'Zed', 'Yasuo', 'Syndra', 'Orianna', 'Viktor', 'LeBlanc'],
+  ADC: ['Jinx', 'Caitlyn', "Kai'Sa", 'Jhin', 'Vayne', 'Ezreal', 'Ashe'],
+  Support: ['Thresh', 'Leona', 'Lulu', 'Nami', 'Braum', 'Nautilus', 'Soraka'],
+};
+
+const getChampionIconUrl = (champion: string) => {
+  const ddKey = champion.replace(/[\s'.]/g, '');
+  return `https://ddragon.leagueoflegends.com/cdn/14.24.1/img/champion/${ddKey}.png`;
+};
 
 interface PostDuoCardProps {
   visible: boolean;
@@ -51,6 +122,8 @@ export default function PostDuoCard({
 }: PostDuoCardProps) {
   const { user } = useAuth();
   const [selectedGame, setSelectedGame] = useState<'valorant' | 'league' | null>(null);
+  const [selectedRole, setSelectedRole] = useState<string>('');
+  const [selectedAgent, setSelectedAgent] = useState<string>('');
   const [message, setMessage] = useState('');
   const [posting, setPosting] = useState(false);
   const [activeValorantPost, setActiveValorantPost] = useState(false);
@@ -71,10 +144,28 @@ export default function PostDuoCard({
   useEffect(() => {
     if (visible) {
       setSelectedGame(null);
+      setSelectedRole('');
+      setSelectedAgent('');
       setMessage('');
       checkActivePosts();
     }
   }, [visible]);
+
+  // Pre-fill role/agent from the selected card whenever the user picks a card
+  useEffect(() => {
+    if (!selectedGame) {
+      setSelectedRole('');
+      setSelectedAgent('');
+      return;
+    }
+    const card = selectedGame === 'valorant' ? valorantCard : leagueCard;
+    if (card) {
+      setSelectedRole(card.mainRole || '');
+      // mainAgent may be a comma-separated string — take the first
+      const firstAgent = card.mainAgent ? card.mainAgent.split(',')[0].trim() : '';
+      setSelectedAgent(firstAgent);
+    }
+  }, [selectedGame, valorantCard, leagueCard]);
 
   const checkActivePosts = async () => {
     if (!user?.id) return;
@@ -129,8 +220,8 @@ export default function PostDuoCard({
         game: selectedGame,
         currentRank: selectedCard.currentRank,
         peakRank: selectedCard.peakRank,
-        mainRole: selectedCard.mainRole,
-        mainAgent: selectedCard.mainAgent || '',
+        mainRole: selectedRole || selectedCard.mainRole,
+        mainAgent: selectedAgent || selectedCard.mainAgent || '',
         region: selectedCard.region,
         lookingFor: selectedCard.lookingFor || 'Any',
         avatar: userData?.avatar || '',
@@ -138,7 +229,11 @@ export default function PostDuoCard({
           ? userData?.valorantStats?.card?.small || ''
           : (userData?.riotStats?.profileIconId ? `https://ddragon.leagueoflegends.com/cdn/14.24.1/img/profileicon/${userData?.riotStats?.profileIconId}.png` : ''),
         inGameName: selectedGame === 'valorant'
-          ? (userData?.valorantStats?.gameName ? `${userData.valorantStats.gameName}${userData?.valorantAccount?.tagLine ? '#' + userData.valorantAccount.tagLine : ''}` : '')
+          ? (() => {
+              const gn = userData?.valorantStats?.gameName;
+              const tag = userData?.valorantAccount?.tag || userData?.valorantAccount?.tagLine;
+              return gn ? `${gn}${tag ? '#' + tag : ''}` : '';
+            })()
           : (userData?.riotAccount?.gameName ? `${userData.riotAccount.gameName}${userData?.riotAccount?.tagLine ? '#' + userData.riotAccount.tagLine : ''}` : ''),
         winRate: getWinRate(),
         gamesPlayed: 0,
@@ -196,7 +291,7 @@ export default function PostDuoCard({
         <ScrollView ref={scrollViewRef} showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled" contentContainerStyle={styles.scrollContent}>
           {checkingPosts ? (
             <View style={styles.emptyState}>
-              <ActivityIndicator size="small" color="#a08845" />
+              <ActivityIndicator size="small" color="#fff" />
             </View>
           ) : hasNoCards ? (
             <View style={styles.emptyState}>
@@ -236,8 +331,8 @@ export default function PostDuoCard({
                       matchPercentage: 0,
                       currentRank: valorantCard.currentRank,
                       peakRank: valorantCard.peakRank,
-                      favoriteAgent: valorantCard.mainAgent || '',
-                      favoriteRole: valorantCard.mainRole || '',
+                      favoriteAgent: selectedGame === 'valorant' ? selectedAgent : (valorantCard.mainAgent || ''),
+                      favoriteRole: selectedGame === 'valorant' ? selectedRole : (valorantCard.mainRole || ''),
                       winRate: valorantWinRate || 0,
                       gamesPlayed: 0,
                       game: 'Valorant',
@@ -268,8 +363,8 @@ export default function PostDuoCard({
                       matchPercentage: 0,
                       currentRank: leagueCard.currentRank,
                       peakRank: leagueCard.peakRank,
-                      favoriteAgent: leagueCard.mainAgent || '',
-                      favoriteRole: leagueCard.mainRole || '',
+                      favoriteAgent: selectedGame === 'league' ? selectedAgent : (leagueCard.mainAgent || ''),
+                      favoriteRole: selectedGame === 'league' ? selectedRole : (leagueCard.mainRole || ''),
                       winRate: leagueWinRate || 0,
                       gamesPlayed: 0,
                       game: 'League of Legends',
@@ -288,6 +383,86 @@ export default function PostDuoCard({
             <ThemedText style={styles.hint}>Your card will be visible in the feed for 24 hours</ThemedText>
           )}
 
+          {/* Role picker */}
+          {selectedCard && (() => {
+            const roles = selectedGame === 'valorant' ? VALORANT_ROLES : LEAGUE_ROLES;
+            const roleIcons = selectedGame === 'valorant' ? VALORANT_ROLE_ICONS : LEAGUE_LANE_ICONS;
+            return (
+              <>
+                <ThemedText style={styles.label}>ROLE</ThemedText>
+                <View style={styles.roleRow}>
+                  {roles.map(role => {
+                    const isSelected = selectedRole === role;
+                    const icon = roleIcons[role];
+                    return (
+                      <TouchableOpacity
+                        key={role}
+                        style={[styles.roleChip, isSelected && styles.roleChipSelected]}
+                        onPress={() => {
+                          setSelectedRole(role);
+                          // Reset agent if it doesn't belong to the new role
+                          const agentList = selectedGame === 'valorant'
+                            ? (VALORANT_AGENTS[role] || [])
+                            : (LEAGUE_CHAMPIONS[role] || []);
+                          if (selectedAgent && !agentList.includes(selectedAgent)) {
+                            setSelectedAgent('');
+                          }
+                        }}
+                        activeOpacity={0.7}
+                      >
+                        {icon && <Image source={icon} style={styles.roleChipIcon} resizeMode="contain" />}
+                        <ThemedText style={[styles.roleChipText, isSelected && styles.roleChipTextSelected]}>
+                          {role}
+                        </ThemedText>
+                      </TouchableOpacity>
+                    );
+                  })}
+                </View>
+              </>
+            );
+          })()}
+
+          {/* Agent / Champion picker */}
+          {selectedCard && selectedRole && (() => {
+            const list = selectedGame === 'valorant'
+              ? (VALORANT_AGENTS[selectedRole] || [])
+              : (LEAGUE_CHAMPIONS[selectedRole] || []);
+            return (
+              <>
+                <ThemedText style={styles.label}>
+                  {selectedGame === 'valorant' ? 'AGENT' : 'CHAMPION'}
+                </ThemedText>
+                <ScrollView
+                  horizontal
+                  showsHorizontalScrollIndicator={false}
+                  contentContainerStyle={styles.agentScrollContent}
+                >
+                  {list.map(name => {
+                    const isSelected = selectedAgent === name;
+                    const iconSrc = selectedGame === 'valorant'
+                      ? VALORANT_AGENT_ICONS[name.toLowerCase()]
+                      : { uri: getChampionIconUrl(name) };
+                    return (
+                      <TouchableOpacity
+                        key={name}
+                        style={[styles.agentChip, isSelected && styles.agentChipSelected]}
+                        onPress={() => setSelectedAgent(name)}
+                        activeOpacity={0.7}
+                      >
+                        {iconSrc && (
+                          <Image source={iconSrc} style={styles.agentChipIcon} resizeMode="cover" />
+                        )}
+                        <ThemedText style={[styles.agentChipText, isSelected && styles.agentChipTextSelected]} numberOfLines={1}>
+                          {name}
+                        </ThemedText>
+                      </TouchableOpacity>
+                    );
+                  })}
+                </ScrollView>
+              </>
+            );
+          })()}
+
           {/* Message Input - shown after selecting a card */}
           {selectedCard && (
             <>
@@ -305,29 +480,30 @@ export default function PostDuoCard({
               <ThemedText style={styles.charCount}>{message.length}/140</ThemedText>
             </>
           )}
-          {/* Post Button */}
-          {selectedCard && (
-            <View style={styles.bottomSection}>
-              <TouchableOpacity
-                style={[styles.postButton, (!selectedCard || posting) && styles.postButtonDisabled]}
-                onPress={handlePost}
-                disabled={!selectedCard || posting}
-                activeOpacity={0.8}
-              >
-                {posting ? (
-                  <View style={styles.postingRow}>
-                    <ActivityIndicator size="small" color="#fff" />
-                    <ThemedText style={styles.postButtonText}>Posting...</ThemedText>
-                  </View>
-                ) : (
-                  <ThemedText style={styles.postButtonText}>Post to Feed</ThemedText>
-                )}
-              </TouchableOpacity>
-            </View>
-          )}
           </>
           )}
         </ScrollView>
+
+        {/* Post Button — pinned above keyboard */}
+        {selectedCard && (
+          <View style={styles.bottomSection}>
+            <TouchableOpacity
+              style={[styles.postButton, (!selectedCard || posting) && styles.postButtonDisabled]}
+              onPress={handlePost}
+              disabled={!selectedCard || posting}
+              activeOpacity={0.8}
+            >
+              {posting ? (
+                <View style={styles.postingRow}>
+                  <ActivityIndicator size="small" color="#0f0f0f" />
+                  <ThemedText style={styles.postButtonText}>Posting...</ThemedText>
+                </View>
+              ) : (
+                <ThemedText style={styles.postButtonText}>Post to Feed</ThemedText>
+              )}
+            </TouchableOpacity>
+          </View>
+        )}
       </KeyboardAvoidingView>
     </Modal>
   );
@@ -336,8 +512,8 @@ export default function PostDuoCard({
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#111',
-    paddingHorizontal: 20,
+    backgroundColor: '#0f0f0f',
+    paddingHorizontal: 28,
   },
   scrollContent: {
     paddingBottom: 34,
@@ -346,82 +522,149 @@ const styles = StyleSheet.create({
     width: 36,
     height: 4,
     borderRadius: 2,
-    backgroundColor: '#333',
+    backgroundColor: 'rgba(255,255,255,0.15)',
     alignSelf: 'center',
     marginTop: 8,
-    marginBottom: 12,
+    marginBottom: 16,
   },
   header: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    paddingBottom: 16,
-    borderBottomWidth: 1,
-    borderBottomColor: 'rgba(160, 136, 69, 0.1)',
+    paddingBottom: 20,
   },
   title: {
-    fontSize: 17,
-    fontWeight: '700',
-    color: '#eee',
+    fontSize: 28,
+    fontWeight: '800',
+    color: '#fff',
+    letterSpacing: -0.3,
+    lineHeight: 34,
   },
   label: {
-    fontSize: 10,
+    fontSize: 13,
     fontWeight: '700',
     color: '#fff',
-    letterSpacing: 0.5,
-    marginTop: 20,
-    marginBottom: 10,
+    marginTop: 24,
+    marginBottom: 12,
   },
   cardSectionHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    alignItems: 'center',
+    alignItems: 'flex-end',
   },
   cardOptions: {
     gap: 12,
   },
   cardOption: {
-    borderRadius: 14,
-    borderWidth: 2,
-    borderColor: 'transparent',
+    borderRadius: 16,
   },
-  cardOptionSelected: {
-    borderColor: '#a08845',
-  },
+  cardOptionSelected: {},
   changeCardText: {
     fontSize: 13,
     fontWeight: '600',
-    color: '#a08845',
-    marginTop: 20,
+    color: '#888',
+    marginTop: 24,
   },
   messageInput: {
-    backgroundColor: '#1a1a1a',
-    borderRadius: 10,
-    padding: 14,
-    fontSize: 14,
+    backgroundColor: 'rgba(255,255,255,0.06)',
+    borderRadius: 12,
+    paddingHorizontal: 18,
+    paddingVertical: 16,
+    fontSize: 16,
     color: '#fff',
-    minHeight: 60,
+    minHeight: 80,
     textAlignVertical: 'top',
+    borderWidth: 0.5,
+    borderColor: 'rgba(255,255,255,0.1)',
+  },
+  // Role picker
+  roleRow: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8,
+  },
+  roleChip: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    paddingVertical: 10,
+    paddingHorizontal: 14,
+    borderRadius: 20,
+    backgroundColor: 'rgba(255,255,255,0.06)',
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.08)',
+  },
+  roleChipSelected: {
+    backgroundColor: 'rgba(255,255,255,0.16)',
+    borderColor: 'rgba(255,255,255,0.3)',
+  },
+  roleChipIcon: {
+    width: 18,
+    height: 18,
+  },
+  roleChipText: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: '#aaa',
+  },
+  roleChipTextSelected: {
+    color: '#fff',
+  },
+  // Agent picker
+  agentScrollContent: {
+    gap: 8,
+    paddingRight: 28,
+  },
+  agentChip: {
+    alignItems: 'center',
+    width: 64,
+    paddingVertical: 8,
+    paddingHorizontal: 4,
+    borderRadius: 12,
+    backgroundColor: 'rgba(255,255,255,0.04)',
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.06)',
+    gap: 4,
+  },
+  agentChipSelected: {
+    backgroundColor: 'rgba(255,255,255,0.12)',
+    borderColor: 'rgba(255,255,255,0.25)',
+  },
+  agentChipIcon: {
+    width: 36,
+    height: 36,
+    borderRadius: 8,
+  },
+  agentChipText: {
+    fontSize: 11,
+    fontWeight: '600',
+    color: '#aaa',
+    textAlign: 'center',
+  },
+  agentChipTextSelected: {
+    color: '#fff',
   },
   charCount: {
-    fontSize: 10,
-    color: '#444',
-    textAlign: 'right',
-    marginTop: 6,
-  },
-  hint: {
     fontSize: 11,
     color: '#555',
-    marginTop: 12,
+    textAlign: 'right',
+    marginTop: 8,
+  },
+  hint: {
+    fontSize: 12,
+    color: '#555',
+    marginTop: 14,
     textAlign: 'center',
   },
   bottomSection: {
     paddingTop: 16,
+    paddingBottom: 32,
+    backgroundColor: '#0f0f0f',
   },
   postButton: {
-    backgroundColor: '#a08845',
-    borderRadius: 12,
-    padding: 16,
+    backgroundColor: '#fff',
+    borderRadius: 28,
+    paddingVertical: 16,
     alignItems: 'center',
   },
   postButtonDisabled: {
@@ -430,7 +673,7 @@ const styles = StyleSheet.create({
   postButtonText: {
     fontSize: 16,
     fontWeight: '700',
-    color: '#fff',
+    color: '#0f0f0f',
   },
   postingRow: {
     flexDirection: 'row',
@@ -440,7 +683,7 @@ const styles = StyleSheet.create({
   emptyState: {
     alignItems: 'center',
     justifyContent: 'center',
-    paddingVertical: 60,
+    paddingVertical: 80,
   },
   emptyStateText: {
     fontSize: 14,

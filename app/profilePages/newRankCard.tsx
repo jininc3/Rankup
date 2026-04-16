@@ -128,7 +128,7 @@ export default function NewRankCardScreen() {
     if (!valorantAccount) return;
     Alert.alert(
       'Unlink Valorant Account',
-      `Are you sure you want to unlink ${valorantAccount?.gameName}#${valorantAccount?.tagLine}?`,
+      `Are you sure you want to unlink ${valorantAccount?.gameName}#${valorantAccount?.tag || valorantAccount?.tagLine || ''}?`,
       [
         { text: 'Cancel', style: 'cancel' },
         {
