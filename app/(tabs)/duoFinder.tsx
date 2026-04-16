@@ -11,7 +11,9 @@ import { IconSymbol } from '@/components/ui/icon-symbol';
 import { DuoCardSkeleton } from '@/components/ui/Skeleton';
 import { useAuth } from '@/contexts/AuthContext';
 import { useState, useEffect, useCallback, useRef } from 'react';
-import { Alert, ScrollView, FlatList, ActivityIndicator, StyleSheet, TouchableOpacity, View, RefreshControl, Image, Modal, Animated, Easing } from 'react-native';
+import { Alert, Dimensions, ScrollView, FlatList, ActivityIndicator, StyleSheet, TouchableOpacity, View, RefreshControl, Image, Modal, Animated, Easing } from 'react-native';
+
+const { width: screenWidth, height: screenHeight } = Dimensions.get('window');
 import { doc, getDoc, setDoc, deleteDoc, serverTimestamp, collection, query, where, getDocs, orderBy, limit, Timestamp } from 'firebase/firestore';
 import { db } from '@/config/firebase';
 import { useRouter } from 'expo-router';
@@ -858,21 +860,38 @@ export default function DuoFinderScreen() {
   // --- Live Search Functions ---
   return (
     <ThemedView style={styles.container}>
-      {/* Ambient background glow */}
+      {/* Background shimmer */}
       <View style={styles.backgroundGlow} pointerEvents="none">
-        <LinearGradient
-          colors={['rgba(196, 164, 78, 0.055)', 'rgba(139, 111, 47, 0.02)', 'transparent']}
-          locations={[0, 0.4, 0.75]}
-          start={{ x: 0.3, y: 0 }}
-          end={{ x: 0.7, y: 1 }}
-          style={StyleSheet.absoluteFill}
-        />
-        <LinearGradient
-          colors={['rgba(196, 164, 78, 0.025)', 'transparent']}
-          start={{ x: 1, y: 0 }}
-          end={{ x: 0.2, y: 0.5 }}
-          style={StyleSheet.absoluteFill}
-        />
+        {/* Fixed shimmer band — diagonal gleam */}
+        <View style={styles.shimmerBand} pointerEvents="none">
+          <LinearGradient
+            colors={[
+              'transparent',
+              'rgba(255, 255, 255, 0.03)',
+              'rgba(255, 255, 255, 0.065)',
+              'rgba(255, 255, 255, 0.03)',
+              'transparent',
+            ]}
+            locations={[0, 0.37, 0.5, 0.63, 1]}
+            start={{ x: 0, y: 0.5 }}
+            end={{ x: 1, y: 0.5 }}
+            style={StyleSheet.absoluteFill}
+          />
+        </View>
+        {/* Secondary fainter shimmer */}
+        <View style={styles.shimmerBandSecondary} pointerEvents="none">
+          <LinearGradient
+            colors={[
+              'transparent',
+              'rgba(255, 255, 255, 0.035)',
+              'transparent',
+            ]}
+            locations={[0, 0.5, 1]}
+            start={{ x: 0, y: 0.5 }}
+            end={{ x: 1, y: 0.5 }}
+            style={StyleSheet.absoluteFill}
+          />
+        </View>
       </View>
 
       {/* Header */}
@@ -1296,6 +1315,22 @@ const styles = StyleSheet.create({
   backgroundGlow: {
     ...StyleSheet.absoluteFillObject,
     overflow: 'hidden',
+  },
+  shimmerBand: {
+    position: 'absolute',
+    top: -screenHeight * 0.35,
+    left: -screenWidth * 0.6,
+    width: screenWidth * 2.2,
+    height: screenHeight * 1.7,
+    transform: [{ rotate: '20deg' }],
+  },
+  shimmerBandSecondary: {
+    position: 'absolute',
+    top: -screenHeight * 0.2,
+    left: -screenWidth * 0.1,
+    width: screenWidth * 1.9,
+    height: screenHeight * 1.5,
+    transform: [{ rotate: '-15deg' }],
   },
   // Header - matching leaderboard style
   header: {

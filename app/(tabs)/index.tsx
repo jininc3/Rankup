@@ -19,7 +19,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { useRouter } from 'expo-router';
 import { useFocusEffect } from '@react-navigation/native';
 
-const { width } = Dimensions.get('window');
+const { width, height: screenHeight } = Dimensions.get('window');
 
 // Format timestamp for comments
 const formatTimeAgo = (timestamp: any): string => {
@@ -963,19 +963,36 @@ export default function HomeScreen() {
     <ThemedView style={styles.container}>
       {/* Ambient background glow */}
       <View style={styles.backgroundGlow} pointerEvents="none">
-        <LinearGradient
-          colors={['rgba(196, 164, 78, 0.055)', 'rgba(139, 111, 47, 0.02)', 'transparent']}
-          locations={[0, 0.4, 0.75]}
-          start={{ x: 0.3, y: 0 }}
-          end={{ x: 0.7, y: 1 }}
-          style={StyleSheet.absoluteFill}
-        />
-        <LinearGradient
-          colors={['rgba(196, 164, 78, 0.025)', 'transparent']}
-          start={{ x: 1, y: 0 }}
-          end={{ x: 0.2, y: 0.5 }}
-          style={StyleSheet.absoluteFill}
-        />
+        {/* Fixed shimmer band — diagonal gleam */}
+        <View style={styles.shimmerBand} pointerEvents="none">
+          <LinearGradient
+            colors={[
+              'transparent',
+              'rgba(255, 255, 255, 0.03)',
+              'rgba(255, 255, 255, 0.065)',
+              'rgba(255, 255, 255, 0.03)',
+              'transparent',
+            ]}
+            locations={[0, 0.37, 0.5, 0.63, 1]}
+            start={{ x: 0, y: 0.5 }}
+            end={{ x: 1, y: 0.5 }}
+            style={StyleSheet.absoluteFill}
+          />
+        </View>
+        {/* Secondary fainter shimmer */}
+        <View style={styles.shimmerBandSecondary} pointerEvents="none">
+          <LinearGradient
+            colors={[
+              'transparent',
+              'rgba(255, 255, 255, 0.035)',
+              'transparent',
+            ]}
+            locations={[0, 0.5, 1]}
+            start={{ x: 0, y: 0.5 }}
+            end={{ x: 1, y: 0.5 }}
+            style={StyleSheet.absoluteFill}
+          />
+        </View>
       </View>
 
       <View style={styles.header}>
@@ -1251,6 +1268,22 @@ const styles = StyleSheet.create({
   backgroundGlow: {
     ...StyleSheet.absoluteFillObject,
     overflow: 'hidden',
+  },
+  shimmerBand: {
+    position: 'absolute',
+    top: -screenHeight * 0.35,
+    left: -width * 0.6,
+    width: width * 2.2,
+    height: screenHeight * 1.7,
+    transform: [{ rotate: '20deg' }],
+  },
+  shimmerBandSecondary: {
+    position: 'absolute',
+    top: -screenHeight * 0.2,
+    left: -width * 0.1,
+    width: width * 1.9,
+    height: screenHeight * 1.5,
+    transform: [{ rotate: '-15deg' }],
   },
   header: {
     flexDirection: 'row',
