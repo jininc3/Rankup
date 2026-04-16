@@ -99,19 +99,31 @@ function LeaderboardCard({ leaderboard, onPress }: LeaderboardCardProps) {
   };
 
   return (
-    <Animated.View style={[styles.card, { transform: [{ scale: scaleAnim }] }]}>
-      <Pressable
-        onPress={() => onPress(leaderboard)}
-        onPressIn={onPressIn}
-        onPressOut={onPressOut}
-      >
-        {/* Accent line at top */}
-        <LinearGradient
-          colors={['rgba(255,255,255,0.06)', 'transparent']}
-          start={{ x: 0, y: 0 }}
-          end={{ x: 1, y: 0 }}
-          style={styles.accentLine}
-        />
+    <Animated.View style={[styles.cardWrapper, { transform: [{ scale: scaleAnim }] }]}>
+      <View style={styles.cardBase}>
+        <View style={styles.card}>
+        <Pressable
+          onPress={() => onPress(leaderboard)}
+          onPressIn={onPressIn}
+          onPressOut={onPressOut}
+        >
+          {/* Face gradient — subtle curved lighting top→bottom */}
+          <LinearGradient
+            colors={['rgba(255,255,255,0.03)', 'transparent', 'rgba(0,0,0,0.08)']}
+            locations={[0, 0.55, 1]}
+            start={{ x: 0.5, y: 0 }}
+            end={{ x: 0.5, y: 1 }}
+            style={StyleSheet.absoluteFillObject}
+            pointerEvents="none"
+          />
+
+          {/* Top highlight bevel */}
+          <LinearGradient
+            colors={['rgba(255,255,255,0.12)', 'rgba(255,255,255,0.03)', 'transparent']}
+            start={{ x: 0, y: 0 }}
+            end={{ x: 1, y: 0 }}
+            style={styles.accentLine}
+          />
 
         {/* Main content */}
         <View style={styles.mainSection}>
@@ -182,7 +194,9 @@ function LeaderboardCard({ leaderboard, onPress }: LeaderboardCardProps) {
             </ThemedText>
           )}
         </View>
-      </Pressable>
+        </Pressable>
+        </View>
+      </View>
     </Animated.View>
   );
 }
@@ -190,14 +204,30 @@ function LeaderboardCard({ leaderboard, onPress }: LeaderboardCardProps) {
 export default React.memo(LeaderboardCard);
 
 const styles = StyleSheet.create({
+  cardWrapper: {
+    marginBottom: 12,
+    borderRadius: 15,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    elevation: 6,
+  },
+  cardBase: {
+    backgroundColor: '#0a0a0a',
+    borderRadius: 15,
+    paddingBottom: 2,
+  },
   card: {
     backgroundColor: '#1a1a1a',
     borderRadius: 14,
     overflow: 'hidden',
-    marginBottom: 10,
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.05)',
+    borderTopColor: 'rgba(255,255,255,0.09)',
   },
   accentLine: {
-    height: 1,
+    height: 1.5,
   },
   mainSection: {
     flexDirection: 'row',
