@@ -6,6 +6,7 @@ import { useState, useEffect } from 'react';
 import { getRecentMatches, RecentMatchResult } from '@/services/riotService';
 import { doc, setDoc, getDoc, serverTimestamp } from 'firebase/firestore';
 import { db } from '@/config/firebase';
+import { LinearGradient } from 'expo-linear-gradient';
 
 // League rank icon mapping
 const LEAGUE_RANK_ICONS: { [key: string]: any } = {
@@ -308,6 +309,15 @@ export default function DuoCardDetailScreen() {
 
   return (
     <View style={styles.container}>
+      {/* Top background gradient */}
+      <LinearGradient
+        colors={['rgba(255, 255, 255, 0.06)', 'rgba(255, 255, 255, 0.02)', 'transparent']}
+        locations={[0, 0.5, 1]}
+        start={{ x: 0.5, y: 0 }}
+        end={{ x: 0.5, y: 1 }}
+        style={styles.topGradient}
+        pointerEvents="none"
+      />
       {/* Close Button */}
       <TouchableOpacity style={styles.closeButton} onPress={() => router.back()}>
         <IconSymbol size={24} name="xmark" color="#fff" />
@@ -655,6 +665,13 @@ const styles = StyleSheet.create({
     backgroundColor: '#0f0f0f',
     paddingTop: 60,
     paddingHorizontal: 24,
+  },
+  topGradient: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    height: 260,
   },
   closeButton: {
     position: 'absolute',

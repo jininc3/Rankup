@@ -6,6 +6,7 @@ import { FollowerData, followUser, getFollowers, isFollowing, unfollowUser } fro
 import { useRouter } from 'expo-router';
 import { useEffect, useState } from 'react';
 import { ActivityIndicator, Alert, Image, ScrollView, StyleSheet, TextInput, TouchableOpacity, View } from 'react-native';
+import { LinearGradient } from 'expo-linear-gradient';
 
 interface Follower {
   id: string;
@@ -95,6 +96,15 @@ export default function FollowersScreen() {
 
   return (
     <ThemedView style={styles.container}>
+      {/* Top background gradient */}
+      <LinearGradient
+        colors={['rgba(255, 255, 255, 0.06)', 'rgba(255, 255, 255, 0.02)', 'transparent']}
+        locations={[0, 0.5, 1]}
+        start={{ x: 0.5, y: 0 }}
+        end={{ x: 0.5, y: 1 }}
+        style={styles.topGradient}
+        pointerEvents="none"
+      />
       {/* Header */}
       <View style={styles.header}>
         <TouchableOpacity
@@ -194,6 +204,13 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: '#0f0f0f',
   },
+  topGradient: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    height: 260,
+  },
   header: {
     flexDirection: 'row',
     justifyContent: 'space-between',
@@ -201,7 +218,6 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20,
     paddingTop: 70,
     paddingBottom: 16,
-    backgroundColor: '#0f0f0f',
     borderBottomWidth: 1,
     borderBottomColor: 'rgba(255, 255, 255, 0.06)',
   },

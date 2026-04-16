@@ -27,6 +27,7 @@ import {
   Chat,
 } from '@/services/chatService';
 import { Timestamp, QueryDocumentSnapshot, DocumentData } from 'firebase/firestore';
+import { LinearGradient } from 'expo-linear-gradient';
 
 export default function ChatScreen() {
   const router = useRouter();
@@ -317,6 +318,16 @@ export default function ChatScreen() {
       behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
       keyboardVerticalOffset={-15}
     >
+      {/* Top background gradient */}
+      <LinearGradient
+        colors={['rgba(255, 255, 255, 0.06)', 'rgba(255, 255, 255, 0.02)', 'transparent']}
+        locations={[0, 0.5, 1]}
+        start={{ x: 0.5, y: 0 }}
+        end={{ x: 0.5, y: 1 }}
+        style={styles.topGradient}
+        pointerEvents="none"
+      />
+
       {/* Header */}
       <View style={styles.header}>
         <TouchableOpacity style={styles.backButton} onPress={() => router.back()}>
@@ -420,6 +431,13 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: '#0f0f0f',
   },
+  topGradient: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    height: 260,
+  },
   header: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -427,7 +445,6 @@ const styles = StyleSheet.create({
     paddingHorizontal: 8,
     paddingTop: 60,
     paddingBottom: 12,
-    backgroundColor: '#0f0f0f',
     borderBottomWidth: 1,
     borderBottomColor: '#1a1a1a',
   },

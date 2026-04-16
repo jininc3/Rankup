@@ -8,6 +8,7 @@ import { useState, useEffect } from 'react';
 import { auth } from '@/config/firebase';
 import { useGoogleAuth } from '@/hooks/useGoogleAuth';
 import { GoogleAuthProvider, reauthenticateWithCredential } from 'firebase/auth';
+import { LinearGradient } from 'expo-linear-gradient';
 
 const accountSettingsData = [
   {
@@ -103,6 +104,15 @@ export default function AccountSettingsScreen() {
 
   return (
     <ThemedView style={styles.container}>
+      {/* Top background gradient */}
+      <LinearGradient
+        colors={['rgba(255, 255, 255, 0.06)', 'rgba(255, 255, 255, 0.02)', 'transparent']}
+        locations={[0, 0.5, 1]}
+        start={{ x: 0.5, y: 0 }}
+        end={{ x: 0.5, y: 1 }}
+        style={styles.topGradient}
+        pointerEvents="none"
+      />
       <View style={styles.header}>
         <TouchableOpacity style={styles.backButton} onPress={() => router.back()}>
           <IconSymbol size={22} name="chevron.left" color="#fff" />
@@ -169,6 +179,13 @@ export default function AccountSettingsScreen() {
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#0f0f0f' },
+  topGradient: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    height: 260,
+  },
   header: {
     flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center',
     paddingHorizontal: 16, paddingTop: 60, paddingBottom: 16,

@@ -434,6 +434,15 @@ export default function ProfilePreviewScreen() {
   if (userNotFound) {
     return (
       <ThemedView style={styles.container}>
+        {/* Top background gradient */}
+        <LinearGradient
+          colors={['rgba(255, 255, 255, 0.06)', 'rgba(255, 255, 255, 0.02)', 'transparent']}
+          locations={[0, 0.5, 1]}
+          start={{ x: 0.5, y: 0 }}
+          end={{ x: 0.5, y: 1 }}
+          style={styles.topGradient}
+          pointerEvents="none"
+        />
         <View style={{ paddingTop: 70, paddingHorizontal: 20, flexDirection: 'row', alignItems: 'center' }}>
           <TouchableOpacity onPress={() => router.back()} style={{ width: 36, height: 36, borderRadius: 18, backgroundColor: 'rgba(0,0,0,0.4)', alignItems: 'center', justifyContent: 'center' }}>
             <IconSymbol size={20} name="chevron.left" color="#fff" />
@@ -460,6 +469,15 @@ export default function ProfilePreviewScreen() {
 
   return (
     <ThemedView style={styles.container}>
+      {/* Top background gradient */}
+      <LinearGradient
+        colors={['rgba(255, 255, 255, 0.06)', 'rgba(255, 255, 255, 0.02)', 'transparent']}
+        locations={[0, 0.5, 1]}
+        start={{ x: 0.5, y: 0 }}
+        end={{ x: 0.5, y: 1 }}
+        style={styles.topGradient}
+        pointerEvents="none"
+      />
       <ScrollView showsVerticalScrollIndicator={false}>
         {/* Header Section */}
         <View style={styles.headerSection}>
@@ -856,6 +874,13 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: '#0f0f0f',
+  },
+  topGradient: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    height: 260,
   },
   headerSection: {
     backgroundColor: '#0f0f0f',

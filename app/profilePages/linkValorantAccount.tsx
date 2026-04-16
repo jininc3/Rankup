@@ -11,6 +11,7 @@ import { linkValorantAccount } from '@/services/valorantService';
 import { useValorantStats } from '@/contexts/ValorantStatsContext';
 import { db, auth } from '@/config/firebase';
 import { doc, updateDoc, arrayUnion } from 'firebase/firestore';
+import { LinearGradient } from 'expo-linear-gradient';
 
 export default function LinkValorantAccountScreen() {
   const router = useRouter();
@@ -72,6 +73,15 @@ export default function LinkValorantAccountScreen() {
       <Stack.Screen options={{ headerShown: false }} />
       <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
         <ThemedView style={styles.container}>
+          {/* Top background gradient */}
+          <LinearGradient
+            colors={['rgba(255, 255, 255, 0.06)', 'rgba(255, 255, 255, 0.02)', 'transparent']}
+            locations={[0, 0.5, 1]}
+            start={{ x: 0.5, y: 0 }}
+            end={{ x: 0.5, y: 1 }}
+            style={styles.topGradient}
+            pointerEvents="none"
+          />
           {preparingCard && (
             <View style={styles.preparingOverlay}>
               <ActivityIndicator size="large" color="#fff" />
@@ -162,6 +172,13 @@ export default function LinkValorantAccountScreen() {
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#0f0f0f' },
+  topGradient: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    height: 260,
+  },
   header: {
     flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
     paddingHorizontal: 16, paddingTop: 60, paddingBottom: 16,

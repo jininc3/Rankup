@@ -208,6 +208,15 @@ export default function AchievementsView() {
   if (loading) {
     return (
       <ThemedView style={styles.container}>
+        {/* Top background gradient */}
+        <LinearGradient
+          colors={['rgba(255, 255, 255, 0.06)', 'rgba(255, 255, 255, 0.02)', 'transparent']}
+          locations={[0, 0.5, 1]}
+          start={{ x: 0.5, y: 0 }}
+          end={{ x: 0.5, y: 1 }}
+          style={styles.topGradient}
+          pointerEvents="none"
+        />
         <View style={styles.loadingContainer}>
           <ActivityIndicator size="small" color="#c42743" />
         </View>
@@ -217,6 +226,15 @@ export default function AchievementsView() {
 
   return (
     <ThemedView style={styles.container}>
+      {/* Top background gradient */}
+      <LinearGradient
+        colors={['rgba(255, 255, 255, 0.06)', 'rgba(255, 255, 255, 0.02)', 'transparent']}
+        locations={[0, 0.5, 1]}
+        start={{ x: 0.5, y: 0 }}
+        end={{ x: 0.5, y: 1 }}
+        style={styles.topGradient}
+        pointerEvents="none"
+      />
       <ScrollView style={styles.scrollView} showsVerticalScrollIndicator={false}>
         {/* Cover Photo */}
         <View style={styles.coverSection}>
@@ -441,6 +459,13 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: '#0f0f0f',
+  },
+  topGradient: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    height: 260,
   },
   scrollView: {
     flex: 1,
