@@ -38,10 +38,10 @@ export default function GradientBorder({
     );
   }
 
-  // Create a multi-layered gradient effect
-  // Layer 1: Outer glow with first gradient color
-  // Layer 2: Main border with middle color
-  // Layer 3: Inner glow with last gradient color
+  // Glass-style border:
+  // - Tier color as the main rim
+  // - Subtle neutral depth shadow (no colored glow)
+  // - Inner white highlight stroke for a glassy sheen
   return (
     <View
       style={[
@@ -57,25 +57,30 @@ export default function GradientBorder({
         style={{
           borderWidth: borderWidth,
           borderRadius,
-          borderColor: colors[1], // Middle/main color
-          shadowColor: colors[0], // First color for outer glow
-          shadowOffset: { width: 0, height: 0 },
-          shadowOpacity: 0.6,
-          shadowRadius: borderWidth * 2,
-          elevation: 5, // For Android
+          borderColor: colors[1], // Tier color as the glass rim
+          shadowColor: '#000',
+          shadowOffset: { width: 0, height: 1 },
+          shadowOpacity: 0.3,
+          shadowRadius: 2,
+          elevation: 2, // For Android
         }}
       >
+        {/* Inner glass highlight rim */}
         <View
+          pointerEvents="none"
           style={{
-            shadowColor: colors[2] || colors[0], // Last color for inner glow
-            shadowOffset: { width: 0, height: 0 },
-            shadowOpacity: 0.4,
-            shadowRadius: borderWidth,
-            elevation: 3, // For Android
+            position: 'absolute',
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: 0,
+            borderRadius: Math.max(0, borderRadius - borderWidth),
+            borderWidth: 1,
+            borderColor: 'rgba(255, 255, 255, 0.22)',
+            zIndex: 1,
           }}
-        >
-          {children}
-        </View>
+        />
+        {children}
       </View>
     </View>
   );

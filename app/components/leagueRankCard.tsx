@@ -135,8 +135,6 @@ export default function LeagueRankCard({ game, username, viewOnly = false, userI
   }, []);
 
   const handlePress = () => {
-    if (viewOnly) return;
-
     // Measure card position before opening modal
     cardRef.current?.measureInWindow((x, y, width, height) => {
       setCardPosition({ x, y, width });
@@ -841,10 +839,13 @@ export default function LeagueRankCard({ game, username, viewOnly = false, userI
                     {game.topChampions.map((champ, index) => (
                       <View key={champ.championId} style={styles.topChampionItem}>
                         <View style={[styles.topChampionImageWrapper, index === 0 && styles.topChampionFirst]}>
-                          <Image
-                            source={{ uri: getChampionIconUrl(champ.championId) }}
-                            style={[styles.topChampionImage, index === 0 && styles.topChampionImageFirst]}
-                          />
+                          <View style={[styles.topChampionImageMask, index === 0 && styles.topChampionImageMaskFirst]}>
+                            <Image
+                              source={{ uri: getChampionIconUrl(champ.championId) }}
+                              style={styles.topChampionImage}
+                              resizeMode="cover"
+                            />
+                          </View>
                         </View>
                         <ThemedText style={styles.topChampionName} numberOfLines={1}>
                           {getChampionName(champ.championId)}
@@ -1071,10 +1072,38 @@ const styles = StyleSheet.create({
   topChampionsTitle: { fontSize: 11, fontWeight: '800', color: 'rgba(255,255,255,0.5)', letterSpacing: 1, marginBottom: 12, textTransform: 'uppercase' },
   topChampionsRow: { flexDirection: 'row', justifyContent: 'space-around', alignItems: 'center' },
   topChampionItem: { alignItems: 'center', flex: 1 },
-  topChampionImageWrapper: { width: 48, height: 48, borderRadius: 24, overflow: 'hidden', borderWidth: 2, borderColor: 'rgba(255,255,255,0.15)', marginBottom: 6 },
-  topChampionFirst: { width: 56, height: 56, borderRadius: 28, borderColor: 'rgba(200,170,110,0.6)' },
-  topChampionImage: { width: '100%', height: '100%' },
-  topChampionImageFirst: {},
+  topChampionImageWrapper: {
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    backgroundColor: 'rgba(255,255,255,0.15)',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 6,
+  },
+  topChampionFirst: {
+    width: 56,
+    height: 56,
+    borderRadius: 28,
+    backgroundColor: 'rgba(200,170,110,0.6)',
+  },
+  topChampionImageMask: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    overflow: 'hidden',
+    backgroundColor: '#1a1a1a',
+  },
+  topChampionImageMaskFirst: {
+    width: 52,
+    height: 52,
+    borderRadius: 26,
+  },
+  topChampionImage: {
+    width: '100%',
+    height: '100%',
+    transform: [{ scale: 1.18 }],
+  },
   topChampionName: { fontSize: 11, fontWeight: '700', color: '#fff', textAlign: 'center' },
   topChampionPoints: { fontSize: 10, fontWeight: '600', color: 'rgba(255,255,255,0.45)', marginTop: 2 },
   // Match History Card

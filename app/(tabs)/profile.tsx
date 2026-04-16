@@ -1366,38 +1366,53 @@ export default function ProfileScreen() {
           {/* Clips Content */}
           <View style={styles.clipsSection}>
           {posts.length > 0 ? (
-            <ScrollView
-              horizontal
-              showsHorizontalScrollIndicator={false}
-              contentContainerStyle={styles.horizontalClipsContainer}
-            >
-              {posts.map((post, index) => (
+            <View style={styles.gridClipsContainer}>
+              {posts.map((post) => (
                 <TouchableOpacity
                   key={post.id}
-                  style={styles.horizontalClipItem}
+                  style={styles.gridClipItem}
                   onPress={() => handlePostPress(post)}
                   activeOpacity={0.9}
                 >
                   <Image
                     source={{ uri: post.mediaType === 'video' && post.thumbnailUrl ? post.thumbnailUrl : post.mediaUrl }}
-                    style={styles.horizontalClipImage}
+                    style={styles.gridClipImage}
                     resizeMode="cover"
                   />
+                  {/* Bottom gradient for overlay legibility */}
+                  <LinearGradient
+                    colors={['transparent', 'rgba(0,0,0,0.75)']}
+                    locations={[0.5, 1]}
+                    style={styles.gridClipBottomGradient}
+                    pointerEvents="none"
+                  />
+                  {/* Bottom-left: play icon + duration */}
                   {post.mediaType === 'video' && (
-                    <View style={styles.videoDuration}>
-                      <ThemedText style={styles.videoDurationText}>
+                    <View style={styles.gridClipMeta}>
+                      <IconSymbol size={10} name="play.fill" color="#fff" />
+                      <ThemedText style={styles.gridClipMetaText}>
                         {formatDuration(post.duration)}
                       </ThemedText>
                     </View>
                   )}
+                  {/* Top-right: multi-item badge */}
                   {post.mediaUrls && post.mediaUrls.length > 1 && (
-                    <View style={styles.multipleIndicator}>
-                      <IconSymbol size={14} name="square.on.square" color="#fff" />
+                    <View style={styles.gridClipMultiple}>
+                      <IconSymbol size={13} name="square.on.square" color="#fff" />
+                    </View>
+                  )}
+                  {/* Bottom-right: like count */}
+                  {post.likes > 0 && (
+                    <View style={styles.gridClipLikes}>
+                      <IconSymbol size={10} name="heart.fill" color="#fff" />
+                      <ThemedText style={styles.gridClipMetaText}>
+                        {formatCount(post.likes)}
+                      </ThemedText>
                     </View>
                   )}
                 </TouchableOpacity>
               ))}
-            </ScrollView>
+            </View>
           ) : (
             <TouchableOpacity
               style={styles.emptyBanner}
@@ -1432,47 +1447,45 @@ export default function ProfileScreen() {
           {/* Achievements Content */}
           <View style={styles.achievementsSection}>
             {achievements.length > 0 ? (
-              <View style={styles.achievementsList}>
+              <View style={styles.achievementsBadgesGrid}>
                 {achievements.map((achievement, index) => {
                   const isGold = achievement.placement === 1;
                   const isSilver = achievement.placement === 2;
+                  const gradient = isGold
+                    ? ['#FBE28A', '#D4A843', '#8C6A1A']
+                    : isSilver
+                    ? ['#EDEDED', '#B5B5B5', '#7A7A7A']
+                    : ['#EBB98C', '#B07A4B', '#6E4320'];
+                  const accentColor = isGold ? '#D4A843' : isSilver ? '#C7C7C7' : '#B07A4B';
+                  const medal = isGold ? '\u{1F947}' : isSilver ? '\u{1F948}' : '\u{1F949}';
+                  const placementLabel = isGold ? '1st' : isSilver ? '2nd' : '3rd';
                   return (
-                    <TouchableOpacity
-                      key={index}
-                      style={styles.achievementCard}
-                      activeOpacity={0.7}
-                      onPress={() => router.push(`/profilePages/achievementsView?partyId=${achievement.partyId}&game=${achievement.game}`)}
-                    >
-                      {/* Left: Medal */}
-                      <ThemedText style={styles.achievementMedal}>
-                        {isGold ? '\u{1F947}' : isSilver ? '\u{1F948}' : '\u{1F949}'}
-                      </ThemedText>
-
-                      {/* Center: Info */}
-                      <View style={styles.achievementInfo}>
-                        <ThemedText style={styles.achievementPartyName} numberOfLines={1}>
-                          {achievement.partyName}
-                        </ThemedText>
-                        <View style={styles.achievementMeta}>
-                          <ThemedText style={styles.achievementGame}>{achievement.game}</ThemedText>
-                          {achievement.endDate && (
-                            <>
-                              <View style={styles.achievementMetaDot} />
-                              <ThemedText style={styles.achievementDate}>{achievement.endDate}</ThemedText>
-                            </>
-                          )}
+                    <View key={index} style={styles.achievementBadgeWrapper}>
+                      <View style={[styles.achievementBadge, { shadowColor: accentColor }]}>
+                        <LinearGradient
+                          colors={gradient}
+                          start={{ x: 0, y: 0 }}
+                          end={{ x: 1, y: 1 }}
+                          style={StyleSheet.absoluteFillObject}
+                        />
+                        <LinearGradient
+                          colors={['rgba(255,255,255,0.55)', 'transparent']}
+                          start={{ x: 0.3, y: 0 }}
+                          end={{ x: 0.7, y: 0.6 }}
+                          style={styles.achievementBadgeShine}
+                          pointerEvents="none"
+                        />
+                        <View style={styles.achievementBadgeInner}>
+                          <ThemedText style={styles.achievementBadgeMedal}>{medal}</ThemedText>
                         </View>
                       </View>
-
-                      {/* Right: Placement */}
-                      <View style={styles.achievementPlacementContainer}>
-                        <ThemedText style={styles.achievementPlacement}>
-                          {isGold ? '1st' : isSilver ? '2nd' : '3rd'}
-                        </ThemedText>
-                      </View>
-
-                      <IconSymbol size={14} name="chevron.right" color="#444" />
-                    </TouchableOpacity>
+                      <ThemedText style={styles.achievementBadgeName} numberOfLines={1}>
+                        {achievement.partyName}
+                      </ThemedText>
+                      <ThemedText style={[styles.achievementBadgePlacement, { color: accentColor }]}>
+                        {placementLabel}
+                      </ThemedText>
+                    </View>
                   );
                 })}
               </View>
@@ -2021,6 +2034,65 @@ const styles = StyleSheet.create({
     width: '100%',
     height: '100%',
   },
+  // 2-column landscape grid
+  gridClipsContainer: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    paddingHorizontal: 12,
+    gap: 6,
+  },
+  gridClipItem: {
+    width: (screenWidth - 30) / 2,
+    aspectRatio: 16 / 9,
+    backgroundColor: '#1a1a1a',
+    borderRadius: 10,
+    overflow: 'hidden',
+    position: 'relative',
+  },
+  gridClipImage: {
+    width: '100%',
+    height: '100%',
+  },
+  gridClipBottomGradient: {
+    position: 'absolute',
+    left: 0,
+    right: 0,
+    bottom: 0,
+    height: '55%',
+  },
+  gridClipMeta: {
+    position: 'absolute',
+    bottom: 6,
+    left: 6,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 3,
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderRadius: 10,
+    backgroundColor: 'rgba(0,0,0,0.45)',
+  },
+  gridClipMetaText: {
+    fontSize: 10,
+    fontWeight: '600',
+    color: '#fff',
+  },
+  gridClipMultiple: {
+    position: 'absolute',
+    top: 6,
+    right: 6,
+    backgroundColor: 'rgba(0,0,0,0.45)',
+    padding: 5,
+    borderRadius: 6,
+  },
+  gridClipLikes: {
+    position: 'absolute',
+    bottom: 6,
+    right: 6,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 3,
+  },
   postsGrid: {
     flexDirection: 'row',
     flexWrap: 'wrap',
@@ -2496,6 +2568,66 @@ const styles = StyleSheet.create({
   achievementsList: {
     paddingHorizontal: 20,
     gap: 8,
+  },
+  achievementsBadgesGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    paddingHorizontal: 12,
+    paddingTop: 6,
+    paddingBottom: 4,
+  },
+  achievementBadgeWrapper: {
+    width: '33.333%',
+    alignItems: 'center',
+    paddingHorizontal: 4,
+    marginBottom: 20,
+  },
+  achievementBadge: {
+    width: 72,
+    height: 72,
+    borderRadius: 36,
+    overflow: 'hidden',
+    alignItems: 'center',
+    justifyContent: 'center',
+    shadowOffset: { width: 0, height: 0 },
+    shadowOpacity: 0.5,
+    shadowRadius: 8,
+    elevation: 6,
+  },
+  achievementBadgeShine: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    height: '60%',
+  },
+  achievementBadgeInner: {
+    width: 56,
+    height: 56,
+    borderRadius: 28,
+    backgroundColor: 'rgba(0,0,0,0.22)',
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.15)',
+  },
+  achievementBadgeMedal: {
+    fontSize: 28,
+    textAlign: 'center',
+  },
+  achievementBadgeName: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: '#fff',
+    marginTop: 8,
+    textAlign: 'center',
+    maxWidth: '100%',
+  },
+  achievementBadgePlacement: {
+    fontSize: 10,
+    fontWeight: '700',
+    letterSpacing: 0.5,
+    marginTop: 2,
   },
   achievementCard: {
     flexDirection: 'row',

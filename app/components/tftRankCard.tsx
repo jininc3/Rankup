@@ -73,7 +73,6 @@ export default function TftRankCard({ game, username, viewOnly = false, userId }
   });
 
   const handlePress = () => {
-    if (viewOnly) return; // Don't navigate if view only
     router.push({
       pathname: '/components/gameStats',
       params: {
@@ -91,13 +90,12 @@ export default function TftRankCard({ game, username, viewOnly = false, userId }
     return TFT_RANK_ICONS[tier] || TFT_RANK_ICONS.unranked;
   };
 
-  const CardWrapper = viewOnly ? View : TouchableOpacity;
-
   return (
     <View style={styles.cardOuter}>
-      <CardWrapper
+      <TouchableOpacity
         style={styles.rankCard}
-        {...(!viewOnly && { onPress: handlePress, activeOpacity: 0.9 })}
+        onPress={handlePress}
+        activeOpacity={0.9}
       >
         <LinearGradient
           colors={['#2A2A2A', '#1A1A1A', '#0A0A0A']}
@@ -172,7 +170,7 @@ export default function TftRankCard({ game, username, viewOnly = false, userId }
           </View>
         </View>
       </LinearGradient>
-    </CardWrapper>
+    </TouchableOpacity>
     </View>
   );
 }

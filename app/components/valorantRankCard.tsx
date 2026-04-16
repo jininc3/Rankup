@@ -249,8 +249,6 @@ export default function ValorantRankCard({ game, username, viewOnly = false, use
   }, []);
 
   const handlePress = () => {
-    if (viewOnly) return;
-
     // Measure card position before opening modal
     cardRef.current?.measureInWindow((x, y, width, height) => {
       setCardPosition({ x, y, width });

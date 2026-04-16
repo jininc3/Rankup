@@ -20,6 +20,7 @@ import { calculateTierBorderColor, calculateTierBorderGradient } from '@/utils/t
 import { formatCount } from '@/utils/formatCount';
 import GradientBorder from '@/components/GradientBorder';
 import { LinearGradient } from 'expo-linear-gradient';
+import { BlurView } from 'expo-blur';
 
 interface ViewedUser {
   id: string;
@@ -95,9 +96,9 @@ export default function ProfileViewScreen() {
   const [loadingAchievements, setLoadingAchievements] = useState(false);
   const [achievementsError, setAchievementsError] = useState(false);
   const [userNotFound, setUserNotFound] = useState(false);
-  const [activeTab, setActiveTab] = useState<'clips' | 'rankCards' | 'achievements'>('clips');
+  const [activeTab, setActiveTab] = useState<'clips' | 'achievements'>('clips');
 
-  const tabs: ('clips' | 'rankCards' | 'achievements')[] = ['clips', 'rankCards', 'achievements'];
+  const tabs: ('clips' | 'achievements')[] = ['clips', 'achievements'];
   const tabScrollRef = useRef<ScrollView>(null);
 
   const handleTabScroll = useCallback((event: any) => {
@@ -108,7 +109,7 @@ export default function ProfileViewScreen() {
     }
   }, [activeTab]);
 
-  const scrollToTab = useCallback((tab: 'clips' | 'rankCards' | 'achievements') => {
+  const scrollToTab = useCallback((tab: 'clips' | 'achievements') => {
     const index = tabs.indexOf(tab);
     tabScrollRef.current?.scrollTo({ x: index * screenWidth, animated: true });
   }, []);
@@ -748,16 +749,27 @@ export default function ProfileViewScreen() {
 
           {/* Profile Info Section - overlaps cover photo */}
           <View style={styles.profileInfoSection}>
-            {/* Row: Avatar + Stats */}
+            {/* Row: Avatar+Username group (left) + Stats (right) */}
             <View style={styles.avatarStatsRow}>
-              {/* Avatar */}
-              {tierBorderGradient ? (
-                <GradientBorder
-                  colors={tierBorderGradient}
-                  borderWidth={2.5}
-                  borderRadius={38}
-                >
-                  <View style={styles.profileAvatarCircleWithGradient}>
+              <View style={styles.avatarUsernameGroup}>
+                {tierBorderGradient ? (
+                  <GradientBorder
+                    colors={tierBorderGradient}
+                    borderWidth={2.5}
+                    borderRadius={38}
+                  >
+                    <View style={styles.profileAvatarCircleWithGradient}>
+                      {viewedUser?.avatar && viewedUser.avatar.startsWith('http') ? (
+                        <Image source={{ uri: viewedUser.avatar }} style={styles.profileAvatarImage} />
+                      ) : (
+                        <ThemedText style={styles.profileAvatarInitial}>
+                          {viewedUser?.username?.[0]?.toUpperCase() || 'U'}
+                        </ThemedText>
+                      )}
+                    </View>
+                  </GradientBorder>
+                ) : (
+                  <View style={styles.profileAvatarCircle}>
                     {viewedUser?.avatar && viewedUser.avatar.startsWith('http') ? (
                       <Image source={{ uri: viewedUser.avatar }} style={styles.profileAvatarImage} />
                     ) : (
@@ -766,18 +778,11 @@ export default function ProfileViewScreen() {
                       </ThemedText>
                     )}
                   </View>
-                </GradientBorder>
-              ) : (
-                <View style={styles.profileAvatarCircle}>
-                  {viewedUser?.avatar && viewedUser.avatar.startsWith('http') ? (
-                    <Image source={{ uri: viewedUser.avatar }} style={styles.profileAvatarImage} />
-                  ) : (
-                    <ThemedText style={styles.profileAvatarInitial}>
-                      {viewedUser?.username?.[0]?.toUpperCase() || 'U'}
-                    </ThemedText>
-                  )}
-                </View>
-              )}
+                )}
+                <ThemedText style={styles.profileUsername} numberOfLines={1}>
+                  {viewedUser?.username || 'User'}
+                </ThemedText>
+              </View>
 
               {/* Stats columns */}
               <View style={styles.statsColumns}>
@@ -809,9 +814,6 @@ export default function ProfileViewScreen() {
                 </View>
               </View>
             </View>
-
-            {/* Username below avatar */}
-            <ThemedText style={styles.profileUsername} numberOfLines={1}>{viewedUser?.username || 'User'}</ThemedText>
 
             {/* Bio */}
             {viewedUser?.bio && (
@@ -900,6 +902,113 @@ export default function ProfileViewScreen() {
           </View>
         </View>
 
+        {/* Rank Cards Banner */}
+        {userGames.length > 0 && (
+          <TouchableOpacity
+            style={styles.rankCardsBanner}
+            onPress={() => router.push({
+              pathname: '/profilePages/rankCards',
+              params: { userId: viewedUser?.id || '', username: viewedUser?.username || '' },
+            })}
+            activeOpacity={0.85}
+          >
+            <BlurView
+              intensity={40}
+              tint="dark"
+              style={StyleSheet.absoluteFillObject}
+              pointerEvents="none"
+            />
+            <LinearGradient
+              colors={['rgba(38,38,38,0.55)', 'rgba(24,24,24,0.55)']}
+              start={{ x: 0, y: 0 }}
+              end={{ x: 1, y: 1 }}
+              style={StyleSheet.absoluteFillObject}
+              pointerEvents="none"
+            />
+            <LinearGradient
+              colors={['transparent', 'rgba(255,255,255,0.04)', 'transparent']}
+              locations={[0.4, 0.5, 0.6]}
+              start={{ x: 0, y: 0 }}
+              end={{ x: 1, y: 1 }}
+              style={StyleSheet.absoluteFillObject}
+              pointerEvents="none"
+            />
+            <LinearGradient
+              colors={['rgba(255,255,255,0.07)', 'transparent']}
+              start={{ x: 0, y: 0 }}
+              end={{ x: 1, y: 0 }}
+              style={styles.rankCardsBannerTopEdge}
+              pointerEvents="none"
+            />
+
+            {/* Stacked mini rank card teaser */}
+            <View style={styles.rankCardsBannerPeek}>
+              {(() => {
+                const cardOrder = enabledRankCards
+                  .filter(c => c === 'valorant' || c === 'league' || c === 'tft')
+                  .slice(0, 3);
+                const total = cardOrder.length;
+                return cardOrder.map((card, idx) => {
+                  const reverseIdx = total - 1 - idx;
+                  const accent =
+                    card === 'valorant' ? 'rgba(196,39,67,0.35)' :
+                    card === 'league' ? 'rgba(59,130,246,0.30)' :
+                    'rgba(212,168,67,0.30)';
+                  const img =
+                    card === 'valorant' ? require('@/assets/images/valorant-red.png') :
+                    card === 'league' ? require('@/assets/images/lol-icon.png') :
+                    require('@/assets/images/tft.png');
+                  return (
+                    <View
+                      key={card}
+                      style={[
+                        styles.rankCardsBannerMini,
+                        {
+                          left: reverseIdx * 8,
+                          top: reverseIdx * -5,
+                          zIndex: idx + 1,
+                        },
+                      ]}
+                    >
+                      <LinearGradient
+                        colors={['#2a2a2a', '#1a1a1a']}
+                        start={{ x: 0, y: 0 }}
+                        end={{ x: 1, y: 1 }}
+                        style={StyleSheet.absoluteFillObject}
+                      />
+                      <LinearGradient
+                        colors={[accent, 'transparent']}
+                        start={{ x: 0, y: 0 }}
+                        end={{ x: 1, y: 1 }}
+                        style={StyleSheet.absoluteFillObject}
+                      />
+                      <LinearGradient
+                        colors={['rgba(255,255,255,0.18)', 'transparent']}
+                        start={{ x: 0, y: 0 }}
+                        end={{ x: 1, y: 0.4 }}
+                        style={styles.rankCardsBannerMiniGloss}
+                      />
+                      <Image
+                        source={img}
+                        style={styles.rankCardsBannerMiniLogo}
+                        resizeMode="contain"
+                      />
+                    </View>
+                  );
+                });
+              })()}
+            </View>
+
+            <View style={styles.rankCardsBannerTextContainer}>
+              <ThemedText style={styles.rankCardsBannerTitle}>Rank Cards</ThemedText>
+              <ThemedText style={styles.rankCardsBannerSubtext}>
+                Tap to view stacked cards
+              </ThemedText>
+            </View>
+            <IconSymbol size={14} name="chevron.right" color="#aaa" />
+          </TouchableOpacity>
+        )}
+
         {/* Tab Bar */}
         <View style={styles.tabBar}>
           <TouchableOpacity
@@ -908,13 +1017,6 @@ export default function ProfileViewScreen() {
             activeOpacity={0.7}
           >
             <ThemedText style={[styles.tabText, activeTab === 'clips' && styles.tabTextActive]}>CLIPS</ThemedText>
-          </TouchableOpacity>
-          <TouchableOpacity
-            style={styles.tabItem}
-            onPress={() => scrollToTab('rankCards')}
-            activeOpacity={0.7}
-          >
-            <ThemedText style={[styles.tabText, activeTab === 'rankCards' && styles.tabTextActive]}>RANKS</ThemedText>
           </TouchableOpacity>
           <TouchableOpacity
             style={styles.tabItem}
@@ -942,33 +1044,44 @@ export default function ProfileViewScreen() {
         {/* Clips Content */}
         <View style={styles.clipsSection}>
           {posts.length > 0 ? (
-            <ScrollView
-              horizontal
-              showsHorizontalScrollIndicator={false}
-              contentContainerStyle={styles.horizontalClipsContainer}
-            >
+            <View style={styles.gridClipsContainer}>
               {posts.map((post, index) => (
                 <TouchableOpacity
                   key={post.id}
-                  style={styles.horizontalClipItem}
+                  style={styles.gridClipItem}
                   onPress={() => handlePostPress(post, index)}
                   activeOpacity={0.9}
                 >
                   <Image
                     source={{ uri: post.mediaType === 'video' && post.thumbnailUrl ? post.thumbnailUrl : post.mediaUrl }}
-                    style={styles.horizontalClipImage}
+                    style={styles.gridClipImage}
                     resizeMode="cover"
                   />
+                  <LinearGradient
+                    colors={['transparent', 'rgba(0,0,0,0.75)']}
+                    locations={[0.5, 1]}
+                    style={styles.gridClipBottomGradient}
+                    pointerEvents="none"
+                  />
                   {post.mediaType === 'video' && (
-                    <View style={styles.videoDuration}>
-                      <ThemedText style={styles.videoDurationText}>
+                    <View style={styles.gridClipMeta}>
+                      <IconSymbol size={10} name="play.fill" color="#fff" />
+                      <ThemedText style={styles.gridClipMetaText}>
                         {formatDuration(post.duration)}
+                      </ThemedText>
+                    </View>
+                  )}
+                  {post.likes > 0 && (
+                    <View style={styles.gridClipLikes}>
+                      <IconSymbol size={10} name="heart.fill" color="#fff" />
+                      <ThemedText style={styles.gridClipMetaText}>
+                        {formatCount(post.likes)}
                       </ThemedText>
                     </View>
                   )}
                 </TouchableOpacity>
               ))}
-            </ScrollView>
+            </View>
           ) : (
             <View style={styles.emptyState}>
               <ThemedText style={styles.emptyStateTitle}>No clips yet</ThemedText>
@@ -976,105 +1089,6 @@ export default function ProfileViewScreen() {
                 This user hasn't posted any clips
               </ThemedText>
             </View>
-          )}
-        </View>
-        </View>
-        </View>
-
-        {/* Rank Cards Tab */}
-        <View style={{ width: screenWidth }}>
-        <View style={[styles.sectionContainer, {
-          paddingBottom: userGames.length > 2 ? 10 : userGames.length > 1 ? 8 : 4
-        }]}>
-        {/* Rank Cards Content */}
-        <View style={styles.rankCardsSection}>
-          {!riotAccount && !valorantAccount ? (
-            <View style={styles.emptyState}>
-              <ThemedText style={styles.emptyStateTitle}>No rank cards yet</ThemedText>
-              <ThemedText style={styles.emptyStateSubtext}>
-                This user hasn't linked any gaming accounts
-              </ThemedText>
-            </View>
-          ) : userGames.length === 0 ? (
-            <View style={styles.emptyState}>
-              <ThemedText style={styles.emptyStateTitle}>No rank cards yet</ThemedText>
-              <ThemedText style={styles.emptyStateSubtext}>
-                This user hasn't linked any gaming accounts
-              </ThemedText>
-            </View>
-          ) : userGames.length === 1 ? (
-            // Single Card View
-            <View style={styles.verticalRankCardsContainer}>
-              {(() => {
-                const game = userGames[0];
-                let displayUsername = viewedUser?.username || 'User';
-
-                if (game.name === 'Valorant' && valorantAccount) {
-                  displayUsername = `${valorantAccount.gameName}#${valorantAccount.tag}`;
-                } else if ((game.name === 'League of Legends' || game.name === 'TFT') && riotAccount) {
-                  displayUsername = `${riotAccount.gameName}#${riotAccount.tagLine}`;
-                }
-
-                return (
-                  <View
-                    key={game.id}
-                    style={styles.verticalCardWrapper}
-                  >
-                    <RankCard game={game} username={displayUsername} viewOnly={false} isFocused={true} userId={viewedUser?.id} />
-                  </View>
-                );
-              })()}
-            </View>
-          ) : (
-            // Multiple Cards View - Apple Wallet style stacked cards
-            (() => {
-              const totalCards = userGames.length;
-              const CARD_HEIGHT = 240;
-              const STACK_OFFSET = 50;
-
-              const containerHeight = CARD_HEIGHT;
-              const stackMarginTop = (totalCards - 1) * STACK_OFFSET;
-
-              return (
-                <View style={[styles.verticalRankCardsContainer, { paddingBottom: 0 }]}>
-                  <View style={[styles.stackedCardsWrapper, { height: containerHeight, marginTop: stackMarginTop }]}>
-                    {userGames.map((game, index) => {
-                      let displayUsername = viewedUser?.username || 'User';
-
-                      if (game.name === 'Valorant' && valorantAccount) {
-                        displayUsername = `${valorantAccount.gameName}#${valorantAccount.tag}`;
-                      } else if ((game.name === 'League of Legends' || game.name === 'TFT') && riotAccount) {
-                        displayUsername = `${riotAccount.gameName}#${riotAccount.tagLine}`;
-                      }
-
-                      const reverseIndex = totalCards - 1 - index;
-                      const topOffset = reverseIndex * -STACK_OFFSET;
-                      const scale = 1 - (reverseIndex * 0.02);
-                      const cardZIndex = index + 1;
-
-                      return (
-                        <View
-                          key={game.id}
-                          style={[
-                            styles.stackedCardItem,
-                            {
-                              bottom: 0,
-                              top: topOffset,
-                              transform: [{ scale }],
-                              zIndex: cardZIndex,
-                            }
-                          ]}
-                        >
-                          <View style={{ width: '100%' }}>
-                            <RankCard game={game} username={displayUsername} viewOnly={false} isFocused={true} userId={viewedUser?.id} isBackOfStack={index < totalCards - 1} />
-                          </View>
-                        </View>
-                      );
-                    })}
-                  </View>
-                </View>
-              );
-            })()
           )}
         </View>
         </View>
@@ -1093,28 +1107,48 @@ export default function ProfileViewScreen() {
                   <ThemedText style={styles.emptyStateText}>Loading achievements...</ThemedText>
                 </View>
               ) : achievements.length > 0 ? (
-                <ScrollView
-                  horizontal
-                  showsHorizontalScrollIndicator={false}
-                  contentContainerStyle={styles.horizontalAchievementsContainer}
-                >
-                  {achievements.map((achievement, index) => (
-                    <View key={index} style={styles.achievementCard}>
-                      <ThemedText style={styles.achievementMedal}>
-                        {achievement.placement === 1 ? '\u{1F947}' : achievement.placement === 2 ? '\u{1F948}' : '\u{1F949}'}
-                      </ThemedText>
-                      <ThemedText style={styles.achievementPlacement}>
-                        {achievement.placement === 1 ? '1st Place' : achievement.placement === 2 ? '2nd Place' : '3rd Place'}
-                      </ThemedText>
-                      <ThemedText style={styles.achievementPartyName} numberOfLines={2}>
-                        {achievement.partyName}
-                      </ThemedText>
-                      <ThemedText style={styles.achievementGame}>
-                        {achievement.game}
-                      </ThemedText>
-                    </View>
-                  ))}
-                </ScrollView>
+                <View style={styles.achievementsBadgesGrid}>
+                  {achievements.map((achievement, index) => {
+                    const isGold = achievement.placement === 1;
+                    const isSilver = achievement.placement === 2;
+                    const gradient = isGold
+                      ? ['#FBE28A', '#D4A843', '#8C6A1A']
+                      : isSilver
+                      ? ['#EDEDED', '#B5B5B5', '#7A7A7A']
+                      : ['#EBB98C', '#B07A4B', '#6E4320'];
+                    const accentColor = isGold ? '#D4A843' : isSilver ? '#C7C7C7' : '#B07A4B';
+                    const medal = isGold ? '\u{1F947}' : isSilver ? '\u{1F948}' : '\u{1F949}';
+                    const placementLabel = isGold ? '1st' : isSilver ? '2nd' : '3rd';
+                    return (
+                      <View key={index} style={styles.achievementBadgeWrapper}>
+                        <View style={[styles.achievementBadge, { shadowColor: accentColor }]}>
+                          <LinearGradient
+                            colors={gradient}
+                            start={{ x: 0, y: 0 }}
+                            end={{ x: 1, y: 1 }}
+                            style={StyleSheet.absoluteFillObject}
+                          />
+                          <LinearGradient
+                            colors={['rgba(255,255,255,0.55)', 'transparent']}
+                            start={{ x: 0.3, y: 0 }}
+                            end={{ x: 0.7, y: 0.6 }}
+                            style={styles.achievementBadgeShine}
+                            pointerEvents="none"
+                          />
+                          <View style={styles.achievementBadgeInner}>
+                            <ThemedText style={styles.achievementBadgeMedal}>{medal}</ThemedText>
+                          </View>
+                        </View>
+                        <ThemedText style={styles.achievementBadgeName} numberOfLines={1}>
+                          {achievement.partyName}
+                        </ThemedText>
+                        <ThemedText style={[styles.achievementBadgePlacement, { color: accentColor }]}>
+                          {placementLabel}
+                        </ThemedText>
+                      </View>
+                    );
+                  })}
+                </View>
               ) : (
                 <View style={styles.emptyState}>
                   <IconSymbol size={36} name="trophy" color="#72767d" />
@@ -1336,7 +1370,7 @@ const styles = StyleSheet.create({
   // Cover photo area - reaches top of screen
   coverPhotoWrapper: {
     width: '100%',
-    height: 180,
+    height: 170,
     backgroundColor: '#1a1a1a',
     overflow: 'hidden',
   },
@@ -1362,22 +1396,24 @@ const styles = StyleSheet.create({
   },
   // Profile info section below cover
   profileInfoSection: {
-    marginTop: -32,
+    marginTop: -38,
     paddingHorizontal: 20,
     zIndex: 3,
   },
+  avatarUsernameGroup: {
+    alignItems: 'flex-start',
+  },
   profileUsername: {
-    fontSize: 26,
+    fontSize: 16,
     fontWeight: '800',
     color: '#fff',
-    letterSpacing: -0.5,
-    marginTop: 10,
-    marginBottom: 2,
+    letterSpacing: -0.3,
+    marginTop: 6,
   },
   avatarStatsRow: {
     flexDirection: 'row',
     alignItems: 'flex-end',
-    gap: 16,
+    justifyContent: 'space-between',
   },
   profileAvatarCircle: {
     width: 76,
@@ -1440,15 +1476,15 @@ const styles = StyleSheet.create({
   followButton: {
     flex: 1,
     paddingVertical: 8,
-    backgroundColor: '#c42743',
-    borderRadius: 8,
+    backgroundColor: 'rgba(255,255,255,0.08)',
+    borderRadius: 20,
     alignItems: 'center',
     justifyContent: 'center',
   },
   followButtonFollowing: {
-    backgroundColor: '#1e1e1e',
+    backgroundColor: 'rgba(255,255,255,0.04)',
     borderWidth: 1,
-    borderColor: '#2a2a2a',
+    borderColor: 'rgba(255,255,255,0.1)',
   },
   followButtonText: {
     fontSize: 13,
@@ -1639,6 +1675,197 @@ const styles = StyleSheet.create({
   },
   rankCardsSection: {
     marginBottom: 8,
+  },
+  // Rank Cards Banner — glass teaser style
+  rankCardsBanner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: 'transparent',
+    borderRadius: 14,
+    paddingVertical: 26,
+    paddingHorizontal: 18,
+    marginHorizontal: 16,
+    marginTop: 16,
+    marginBottom: 4,
+    gap: 16,
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.14)',
+    overflow: 'hidden',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.35,
+    shadowRadius: 8,
+    elevation: 6,
+  },
+  rankCardsBannerTopEdge: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    height: 1.5,
+  },
+  rankCardsBannerPeek: {
+    width: 86,
+    height: 60,
+    position: 'relative',
+  },
+  rankCardsBannerMini: {
+    position: 'absolute',
+    width: 70,
+    height: 46,
+    borderRadius: 7,
+    overflow: 'hidden',
+    borderWidth: 0.5,
+    borderColor: 'rgba(255,255,255,0.18)',
+    alignItems: 'center',
+    justifyContent: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 2, height: 3 },
+    shadowOpacity: 0.5,
+    shadowRadius: 3,
+  },
+  rankCardsBannerMiniGloss: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    height: '55%',
+  },
+  rankCardsBannerMiniLogo: {
+    width: 30,
+    height: 30,
+  },
+  rankCardsBannerTextContainer: {
+    flex: 1,
+  },
+  rankCardsBannerTitle: {
+    fontSize: 20,
+    fontWeight: '800',
+    color: '#fff',
+    marginBottom: 3,
+    letterSpacing: -0.3,
+    lineHeight: 24,
+    textShadowColor: 'rgba(0,0,0,0.5)',
+    textShadowOffset: { width: 0, height: 1 },
+    textShadowRadius: 3,
+  },
+  rankCardsBannerSubtext: {
+    fontSize: 12,
+    color: '#9a9a9a',
+    fontWeight: '500',
+    letterSpacing: 0.1,
+  },
+  // 2-column landscape clips grid
+  gridClipsContainer: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    paddingHorizontal: 12,
+    gap: 6,
+  },
+  gridClipItem: {
+    width: (screenWidth - 30) / 2,
+    aspectRatio: 16 / 9,
+    backgroundColor: '#1a1a1a',
+    borderRadius: 10,
+    overflow: 'hidden',
+    position: 'relative',
+  },
+  gridClipImage: {
+    width: '100%',
+    height: '100%',
+  },
+  gridClipBottomGradient: {
+    position: 'absolute',
+    left: 0,
+    right: 0,
+    bottom: 0,
+    height: '55%',
+  },
+  gridClipMeta: {
+    position: 'absolute',
+    bottom: 6,
+    left: 6,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 3,
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderRadius: 10,
+    backgroundColor: 'rgba(0,0,0,0.45)',
+  },
+  gridClipMetaText: {
+    fontSize: 10,
+    fontWeight: '600',
+    color: '#fff',
+  },
+  gridClipLikes: {
+    position: 'absolute',
+    bottom: 6,
+    right: 6,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 3,
+  },
+  // Achievements badge grid
+  achievementsBadgesGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    paddingHorizontal: 12,
+    paddingTop: 6,
+    paddingBottom: 4,
+  },
+  achievementBadgeWrapper: {
+    width: '33.333%',
+    alignItems: 'center',
+    paddingHorizontal: 4,
+    marginBottom: 20,
+  },
+  achievementBadge: {
+    width: 72,
+    height: 72,
+    borderRadius: 36,
+    overflow: 'hidden',
+    alignItems: 'center',
+    justifyContent: 'center',
+    shadowOffset: { width: 0, height: 0 },
+    shadowOpacity: 0.5,
+    shadowRadius: 8,
+    elevation: 6,
+  },
+  achievementBadgeShine: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    height: '60%',
+  },
+  achievementBadgeInner: {
+    width: 56,
+    height: 56,
+    borderRadius: 28,
+    backgroundColor: 'rgba(0,0,0,0.22)',
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.15)',
+  },
+  achievementBadgeMedal: {
+    fontSize: 28,
+    textAlign: 'center',
+  },
+  achievementBadgeName: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: '#fff',
+    marginTop: 8,
+    textAlign: 'center',
+    maxWidth: '100%',
+  },
+  achievementBadgePlacement: {
+    fontSize: 10,
+    fontWeight: '700',
+    letterSpacing: 0.5,
+    marginTop: 2,
   },
   horizontalClipsContainer: {
     paddingLeft: 20,

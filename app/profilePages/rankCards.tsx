@@ -14,7 +14,7 @@ import {
 } from 'react-native';
 
 const { width: screenWidth, height: screenHeight } = Dimensions.get('window');
-import { useRouter, useFocusEffect } from 'expo-router';
+import { useRouter, useFocusEffect, useLocalSearchParams } from 'expo-router';
 import { useAuth } from '@/contexts/AuthContext';
 import { useCallback, useState } from 'react';
 import { db } from '@/config/firebase';
@@ -27,18 +27,25 @@ export default function RankCardsScreen() {
   const router = useRouter();
   const { user } = useAuth();
   const { fetchStats: fetchValorantStats } = useValorantStats();
+  const params = useLocalSearchParams<{ userId?: string; username?: string }>();
+
+  // If userId is passed, we're viewing another user's rank cards
+  const viewingUserId = params.userId && params.userId !== user?.id ? params.userId : null;
+  const isOwnProfile = !viewingUserId;
+  const targetUserId = viewingUserId || user?.id;
 
   const [riotAccount, setRiotAccount] = useState<any>(null);
   const [valorantAccount, setValorantAccount] = useState<any>(null);
   const [riotStats, setRiotStats] = useState<any>(null);
   const [valorantStats, setValorantStats] = useState<any>(null);
   const [enabledRankCards, setEnabledRankCards] = useState<string[]>([]);
+  const [fetchedUsername, setFetchedUsername] = useState<string>('User');
   const [loading, setLoading] = useState(true);
 
   const fetchData = useCallback(async () => {
-    if (!user?.id) { setLoading(false); return; }
+    if (!targetUserId) { setLoading(false); return; }
     try {
-      const userDoc = await getDoc(doc(db, 'users', user.id));
+      const userDoc = await getDoc(doc(db, 'users', targetUserId));
       if (userDoc.exists()) {
         const data = userDoc.data();
         setRiotAccount(data.riotAccount || null);
@@ -46,13 +53,14 @@ export default function RankCardsScreen() {
         setRiotStats(data.riotStats || null);
         setValorantStats(data.valorantStats || null);
         setEnabledRankCards(data.enabledRankCards || []);
+        setFetchedUsername(data.username || params.username || 'User');
       }
     } catch (error) {
       console.error('Error fetching rank card data:', error);
     } finally {
       setLoading(false);
     }
-  }, [user?.id]);
+  }, [targetUserId, params.username]);
 
   useFocusEffect(
     useCallback(() => {
@@ -62,9 +70,11 @@ export default function RankCardsScreen() {
   );
 
   const handleRankCardRefresh = useCallback(async () => {
-    try { await fetchValorantStats(false); } catch {}
+    if (isOwnProfile) {
+      try { await fetchValorantStats(false); } catch {}
+    }
     await fetchData();
-  }, [fetchData, fetchValorantStats]);
+  }, [fetchData, fetchValorantStats, isOwnProfile]);
 
   // Derive userGames — identical mapping to profile.tsx (userGamesBase)
   const userGames = (riotAccount || valorantAccount)
@@ -173,7 +183,7 @@ export default function RankCardsScreen() {
         </View>
 
         <View style={styles.content}>
-          <ThemedText style={styles.step}>Profile</ThemedText>
+          <ThemedText style={styles.step}>{isOwnProfile ? 'Profile' : `@${fetchedUsername}`}</ThemedText>
           <ThemedText style={styles.title}>Rank Cards</ThemedText>
 
           {loading && (
@@ -183,39 +193,50 @@ export default function RankCardsScreen() {
           )}
 
           {!loading && userGames.length === 0 && (
-            <TouchableOpacity
-              style={styles.emptyBanner}
-              onPress={() => router.push('/profilePages/newRankCard')}
-              activeOpacity={0.8}
-            >
-              <View style={styles.emptyBannerIconRow}>
-                <View style={styles.emptyBannerIconCircle}>
-                  <Image
-                    source={require('@/assets/images/valorant-logo.png')}
-                    style={{ width: 18, height: 18, tintColor: '#72767d' }}
-                    resizeMode="contain"
-                  />
+            isOwnProfile ? (
+              <TouchableOpacity
+                style={styles.emptyBanner}
+                onPress={() => router.push('/profilePages/newRankCard')}
+                activeOpacity={0.8}
+              >
+                <View style={styles.emptyBannerIconRow}>
+                  <View style={styles.emptyBannerIconCircle}>
+                    <Image
+                      source={require('@/assets/images/valorant-logo.png')}
+                      style={{ width: 18, height: 18, tintColor: '#72767d' }}
+                      resizeMode="contain"
+                    />
+                  </View>
+                  <View style={[styles.emptyBannerIconCircle, styles.emptyBannerIconCircleCenter]}>
+                    <Image
+                      source={require('@/assets/images/riotgames.png')}
+                      style={{ width: 24, height: 24 }}
+                      resizeMode="contain"
+                    />
+                  </View>
+                  <View style={styles.emptyBannerIconCircle}>
+                    <Image
+                      source={require('@/assets/images/leagueoflegends.png')}
+                      style={{ width: 18, height: 18, tintColor: '#72767d' }}
+                      resizeMode="contain"
+                    />
+                  </View>
                 </View>
-                <View style={[styles.emptyBannerIconCircle, styles.emptyBannerIconCircleCenter]}>
-                  <Image
-                    source={require('@/assets/images/riotgames.png')}
-                    style={{ width: 24, height: 24 }}
-                    resizeMode="contain"
-                  />
+                <View style={styles.emptyBannerTextContainer}>
+                  <ThemedText style={styles.emptyBannerTitle}>Show off your rank</ThemedText>
+                  <ThemedText style={styles.emptyBannerSubtext}>Link your Riot account to get started</ThemedText>
                 </View>
-                <View style={styles.emptyBannerIconCircle}>
-                  <Image
-                    source={require('@/assets/images/leagueoflegends.png')}
-                    style={{ width: 18, height: 18, tintColor: '#72767d' }}
-                    resizeMode="contain"
-                  />
+              </TouchableOpacity>
+            ) : (
+              <View style={styles.emptyBanner}>
+                <View style={styles.emptyBannerTextContainer}>
+                  <ThemedText style={styles.emptyBannerTitle}>No rank cards yet</ThemedText>
+                  <ThemedText style={styles.emptyBannerSubtext}>
+                    This user hasn't linked any gaming accounts
+                  </ThemedText>
                 </View>
               </View>
-              <View style={styles.emptyBannerTextContainer}>
-                <ThemedText style={styles.emptyBannerTitle}>Show off your rank</ThemedText>
-                <ThemedText style={styles.emptyBannerSubtext}>Link your Riot account to get started</ThemedText>
-              </View>
-            </TouchableOpacity>
+            )
           )}
         </View>
 
@@ -223,7 +244,7 @@ export default function RankCardsScreen() {
           <View style={styles.verticalRankCardsContainer}>
             {(() => {
               const game = userGames[0];
-              let displayUsername = user?.username || 'User';
+              let displayUsername = (isOwnProfile ? user?.username : fetchedUsername) || 'User';
 
               if (game.name === 'Valorant' && valorantAccount) {
                 displayUsername = `${valorantAccount.gameName}#${valorantAccount.tag}`;
@@ -233,7 +254,7 @@ export default function RankCardsScreen() {
 
               return (
                 <View key={game.id} style={styles.verticalCardWrapper}>
-                  <RankCard game={game} username={displayUsername} viewOnly={false} isFocused={true} onRefresh={handleRankCardRefresh} />
+                  <RankCard game={game} username={displayUsername} viewOnly={false} userId={viewingUserId || undefined} isFocused={true} onRefresh={handleRankCardRefresh} />
                 </View>
               );
             })()}
@@ -244,14 +265,15 @@ export default function RankCardsScreen() {
           const totalCards = userGames.length;
           const CARD_HEIGHT = 240;
           const STACK_OFFSET = 50;
-          const containerHeight = CARD_HEIGHT;
-          const stackMarginTop = (totalCards - 1) * STACK_OFFSET;
+          // Wrapper contains all cards within its bounds so back-card peek regions
+          // are hit-testable (RN can't receive touches outside parent bounds).
+          const containerHeight = CARD_HEIGHT + (totalCards - 1) * STACK_OFFSET;
 
           return (
             <View style={[styles.verticalRankCardsContainer, { paddingBottom: 0 }]}>
-              <View style={[styles.stackedCardsWrapper, { height: containerHeight, marginTop: stackMarginTop }]}>
+              <View style={[styles.stackedCardsWrapper, { height: containerHeight }]}>
                 {userGames.map((game, index) => {
-                  let displayUsername = user?.username || 'User';
+                  let displayUsername = (isOwnProfile ? user?.username : fetchedUsername) || 'User';
 
                   if (game.name === 'Valorant' && valorantAccount) {
                     displayUsername = `${valorantAccount.gameName}#${valorantAccount.tag}`;
@@ -260,7 +282,9 @@ export default function RankCardsScreen() {
                   }
 
                   const reverseIndex = totalCards - 1 - index;
-                  const topOffset = reverseIndex * -STACK_OFFSET;
+                  // Back cards sit at the top of the wrapper, front card lowest — gives
+                  // the "peek from above" look without negative offsets.
+                  const topOffset = index * STACK_OFFSET;
                   const scale = 1 - (reverseIndex * 0.02);
                   const cardZIndex = index + 1;
 
@@ -270,7 +294,6 @@ export default function RankCardsScreen() {
                       style={[
                         styles.stackedCardItem,
                         {
-                          bottom: 0,
                           top: topOffset,
                           transform: [{ scale }],
                           zIndex: cardZIndex,
@@ -278,7 +301,7 @@ export default function RankCardsScreen() {
                       ]}
                     >
                       <View style={{ width: '100%' }}>
-                        <RankCard game={game} username={displayUsername} viewOnly={false} isFocused={true} isBackOfStack={index < totalCards - 1} onRefresh={handleRankCardRefresh} />
+                        <RankCard game={game} username={displayUsername} viewOnly={false} userId={viewingUserId || undefined} isFocused={true} isBackOfStack={index < totalCards - 1} onRefresh={handleRankCardRefresh} />
                       </View>
                     </View>
                   );
