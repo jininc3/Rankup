@@ -2,7 +2,6 @@ import rankCard from '@/app/components/rankCard';
 
 // Alias for JSX usage (React components must start with uppercase)
 const RankCard = rankCard;
-import NewPost from '@/app/components/newPost';
 import PostDuoCard from '@/app/components/postDuoCard';
 import { DuoCardData } from '@/app/components/addDuoCard';
 import PostViewerModal from '@/app/components/postViewerModal';
@@ -121,7 +120,6 @@ export default function ProfileScreen() {
 
   // Create modal state
   const [showCreateModal, setShowCreateModal] = useState(false);
-  const [showNewClip, setShowNewClip] = useState(false);
   const [showAvatarModal, setShowAvatarModal] = useState(false);
   const [activeTab, setActiveTab] = useState<'clips' | 'rankCards' | 'achievements'>('clips');
   const tabs: ('clips' | 'rankCards' | 'achievements')[] = ['clips', 'rankCards', 'achievements'];
@@ -774,12 +772,6 @@ export default function ProfileScreen() {
     );
   };
 
-  const handlePostCreated = (newPost: Post) => {
-    // Add new post to the beginning of the posts array (most recent first)
-    setPosts(prevPosts => [newPost, ...prevPosts]);
-    console.log('New post added to local state:', newPost.id);
-  };
-
   const handleCommentAdded = () => {
     // Update comment count locally instead of refetching all posts
     if (selectedPost) {
@@ -922,7 +914,14 @@ export default function ProfileScreen() {
                   end={{ x: 0, y: 1 }}
                   style={styles.coverPhotoGradient}
                 />
-                <View style={[styles.headerIconsRow, { top: insets.top - 30 }]}>
+                <LinearGradient
+                  colors={['transparent', '#0f0f0f']}
+                  start={{ x: 0.5, y: 0 }}
+                  end={{ x: 0.5, y: 1 }}
+                  style={styles.coverPhotoBottomFade}
+                  pointerEvents="none"
+                />
+                <View style={[styles.headerIconsRow, { top: insets.top - 20 }]}>
                   <TouchableOpacity
                     style={styles.headerIconButton}
                     onPress={() => setShowCreateModal(true)}
@@ -970,8 +969,16 @@ export default function ProfileScreen() {
                     style={styles.coverPhotoGradient}
                   />
                 )}
+                {/* Bottom fade into background */}
+                <LinearGradient
+                  colors={['transparent', '#0f0f0f']}
+                  start={{ x: 0.5, y: 0 }}
+                  end={{ x: 0.5, y: 1 }}
+                  style={styles.coverPhotoBottomFade}
+                  pointerEvents="none"
+                />
                 {/* Header Icons overlaid on cover photo */}
-                <View style={[styles.headerIconsRow, { top: insets.top - 30 }]}>
+                <View style={[styles.headerIconsRow, { top: insets.top - 20 }]}>
                   <TouchableOpacity
                     style={styles.headerIconButton}
                     onPress={() => setShowCreateModal(true)}
@@ -1235,7 +1242,7 @@ export default function ProfileScreen() {
           ) : (
             <TouchableOpacity
               style={styles.emptyBanner}
-              onPress={() => setShowNewClip(true)}
+              onPress={() => router.push('/postPages/createPostVideo')}
               activeOpacity={0.8}
             >
               <View style={styles.emptyBannerIconRow}>
@@ -1474,13 +1481,6 @@ export default function ProfileScreen() {
         onArchive={handleArchivePost}
       />
 
-      {/* New Clip Modal */}
-      <NewPost
-        visible={showNewClip}
-        onClose={() => setShowNewClip(false)}
-        onPostCreated={handlePostCreated}
-      />
-
       {/* Post Duo Card Modal */}
       <PostDuoCard
         visible={showNewPost}
@@ -1528,7 +1528,7 @@ export default function ProfileScreen() {
               style={styles.createModalOption}
               onPress={() => {
                 setShowCreateModal(false);
-                setShowNewClip(true);
+                router.push('/postPages/createPostVideo');
               }}
               activeOpacity={0.7}
             >
@@ -1693,6 +1693,13 @@ const styles = StyleSheet.create({
   coverPhotoGradient: {
     width: '100%',
     height: '100%',
+  },
+  coverPhotoBottomFade: {
+    position: 'absolute',
+    left: 0,
+    right: 0,
+    bottom: 0,
+    height: 90,
   },
   // Profile info section below cover
   profileInfoSection: {

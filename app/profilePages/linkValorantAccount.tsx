@@ -158,7 +158,7 @@ export default function LinkValorantAccountScreen() {
               activeOpacity={0.8}
             >
               {loading ? (
-                <ActivityIndicator color="#0f0f0f" />
+                <ActivityIndicator color="#fff" />
               ) : (
                 <ThemedText style={styles.linkButtonText}>Link Account</ThemedText>
               )}
@@ -187,7 +187,7 @@ const styles = StyleSheet.create({
   headerTitle: { fontSize: 17, fontWeight: '700', color: '#fff' },
   content: { paddingHorizontal: 28, paddingTop: 16 },
   logoRow: { alignItems: 'center', marginBottom: 12 },
-  logo: { width: 48, height: 48 },
+  logo: { width: 96, height: 96 },
   subtitle: { fontSize: 15, color: '#555', textAlign: 'center', marginBottom: 28 },
   label: { fontSize: 15, fontWeight: '700', color: '#fff', marginBottom: 10 },
   riotIdWrapper: {
@@ -209,11 +209,12 @@ const styles = StyleSheet.create({
   regionChipText: { fontSize: 13, fontWeight: '600', color: '#999' },
   regionChipTextSelected: { color: '#fff' },
   linkButton: {
-    marginTop: 28, backgroundColor: '#fff', borderRadius: 28,
+    marginTop: 28, backgroundColor: 'rgba(255,255,255,0.08)', borderRadius: 28,
     paddingVertical: 16, alignItems: 'center',
+    borderWidth: 1, borderColor: 'rgba(255,255,255,0.1)',
   },
   linkButtonDisabled: { opacity: 0.4 },
-  linkButtonText: { fontSize: 16, fontWeight: '700', color: '#0f0f0f' },
+  linkButtonText: { fontSize: 16, fontWeight: '700', color: '#fff' },
   preparingOverlay: {
     ...StyleSheet.absoluteFillObject, backgroundColor: '#0f0f0f',
     justifyContent: 'center', alignItems: 'center', zIndex: 100, gap: 16,

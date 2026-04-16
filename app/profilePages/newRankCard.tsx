@@ -16,7 +16,6 @@ import { db } from '@/config/firebase';
 import { doc, getDoc, updateDoc, arrayUnion } from 'firebase/firestore';
 import { useValorantStats } from '@/contexts/ValorantStatsContext';
 import { unlinkRiotAccount } from '@/services/riotService';
-import { formatRank } from '@/services/riotService';
 import { LinearGradient } from 'expo-linear-gradient';
 
 type GameType = 'league' | 'valorant' | 'tft';
@@ -158,58 +157,50 @@ export default function NewRankCardScreen() {
     );
   };
 
-  const getLeagueRank = () => {
-    if (riotStats?.rankedSolo) return formatRank(riotStats.rankedSolo.tier, riotStats.rankedSolo.rank);
-    return 'Unranked';
-  };
-
-  const getValorantRank = () => valorantStats?.currentRank || 'Unranked';
-
   const renderGameCard = (
     game: GameType,
     name: string,
     logo: any,
     account: any,
-    rankText: string,
     onUnlink: () => void,
   ) => {
     const isLinked = !!account;
     const isEnabled = enabledRankCards.includes(game);
 
     return (
-      <View key={game} style={styles.gameCardWrapper}>
-        <TouchableOpacity
-          style={[styles.gameCard, isEnabled && styles.gameCardActive]}
-          onPress={() => handleGameSelect(game)}
-          activeOpacity={0.7}
-        >
-          <Image source={logo} style={styles.gameLogo} resizeMode="contain" />
-          <View style={styles.gameInfo}>
+      <TouchableOpacity
+        key={game}
+        style={[styles.gameCard, isEnabled && styles.gameCardActive]}
+        onPress={() => handleGameSelect(game)}
+        activeOpacity={0.7}
+      >
+        <Image source={logo} style={styles.gameLogo} resizeMode="contain" />
+        <View style={styles.gameInfo}>
+          <View style={styles.gameNameRow}>
             <ThemedText style={styles.gameName}>{name}</ThemedText>
-            {isLinked ? (
-              <>
-                <ThemedText style={styles.accountName}>{account.gameName}#{account.tagLine || account.tag}</ThemedText>
-                <ThemedText style={styles.rankText}>{rankText}</ThemedText>
-              </>
-            ) : (
-              <ThemedText style={styles.notLinkedText}>Tap to link your account</ThemedText>
-            )}
+            {isLinked && isEnabled && <View style={styles.activeDot} />}
           </View>
-          {isLinked && isEnabled ? (
-            <View style={styles.activePill}>
-              <View style={styles.activeDot} />
-              <ThemedText style={styles.activePillText}>Active</ThemedText>
-            </View>
+          {isLinked ? (
+            <ThemedText style={styles.accountName}>
+              {account.gameName}#{account.tagLine || account.tag}
+            </ThemedText>
           ) : (
-            <IconSymbol size={18} name="chevron.right" color="#555" />
+            <ThemedText style={styles.notLinkedText}>Tap to link your account</ThemedText>
           )}
-        </TouchableOpacity>
-        {isLinked && (
-          <TouchableOpacity style={styles.unlinkButton} onPress={onUnlink}>
-            <ThemedText style={styles.unlinkText}>Unlink</ThemedText>
+        </View>
+        {isLinked ? (
+          <TouchableOpacity
+            style={styles.unlinkIconButton}
+            onPress={onUnlink}
+            hitSlop={8}
+            activeOpacity={0.6}
+          >
+            <IconSymbol size={14} name="xmark" color="#888" />
           </TouchableOpacity>
+        ) : (
+          <IconSymbol size={18} name="chevron.right" color="#555" />
         )}
-      </View>
+      </TouchableOpacity>
     );
   };
 
@@ -225,14 +216,16 @@ export default function NewRankCardScreen() {
         pointerEvents="none"
       />
       <ScrollView style={styles.scrollView} showsVerticalScrollIndicator={false}>
-      <View style={styles.header}>
+      <View style={styles.headerRow}>
         <TouchableOpacity style={styles.backButton} onPress={() => router.back()}>
           <IconSymbol size={22} name="chevron.left" color="#fff" />
         </TouchableOpacity>
-        <ThemedText style={styles.headerTitle}>Rank Cards</ThemedText>
       </View>
 
       <View style={styles.content}>
+        <ThemedText style={styles.step}>Profile</ThemedText>
+        <ThemedText style={styles.title}>Rank Cards</ThemedText>
+
         {loading ? (
           <View style={styles.loadingContainer}>
             <ActivityIndicator size="small" color="#fff" />
@@ -245,12 +238,12 @@ export default function NewRankCardScreen() {
               {renderGameCard(
                 'league', 'League of Legends',
                 require('@/assets/images/lol-icon.png'),
-                riotAccount, getLeagueRank(), handleUnlinkRiotAccount,
+                riotAccount, handleUnlinkRiotAccount,
               )}
               {renderGameCard(
                 'valorant', 'Valorant',
                 require('@/assets/images/valorant-red.png'),
-                valorantAccount, getValorantRank(), handleUnlinkValorantAccount,
+                valorantAccount, handleUnlinkValorantAccount,
               )}
             </View>
 
@@ -283,25 +276,30 @@ const styles = StyleSheet.create({
   scrollView: {
     flex: 1,
   },
-  header: {
+  headerRow: {
     flexDirection: 'row',
     alignItems: 'center',
+    marginTop: 60,
     paddingHorizontal: 16,
-    paddingTop: 60,
-    paddingBottom: 16,
-    gap: 12,
   },
   backButton: {
     padding: 8,
   },
-  headerTitle: {
-    fontSize: 17,
-    fontWeight: '700',
-    color: '#fff',
-  },
   content: {
     paddingHorizontal: 28,
     paddingTop: 16,
+  },
+  step: {
+    fontSize: 13,
+    color: '#555',
+    marginBottom: 8,
+  },
+  title: {
+    fontSize: 28,
+    fontWeight: '800',
+    color: '#fff',
+    lineHeight: 36,
+    marginBottom: 32,
   },
   loadingContainer: {
     paddingVertical: 100,
@@ -317,7 +315,6 @@ const styles = StyleSheet.create({
   gameList: {
     gap: 12,
   },
-  gameCardWrapper: {},
   gameCard: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -330,8 +327,8 @@ const styles = StyleSheet.create({
     borderColor: 'rgba(255,255,255,0.06)',
   },
   gameCardActive: {
-    borderColor: '#fff',
-    backgroundColor: 'rgba(255,255,255,0.08)',
+    backgroundColor: 'rgba(255,255,255,0.06)',
+    borderColor: 'rgba(255,255,255,0.12)',
   },
   gameLogo: {
     width: 36,
@@ -342,50 +339,39 @@ const styles = StyleSheet.create({
     flex: 1,
     gap: 2,
   },
+  gameNameRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
   gameName: {
     fontSize: 17,
     fontWeight: '600',
     color: '#fff',
   },
+  activeDot: {
+    width: 7,
+    height: 7,
+    borderRadius: 4,
+    backgroundColor: '#22C55E',
+  },
   accountName: {
     fontSize: 13,
-    color: '#555',
-  },
-  rankText: {
-    fontSize: 13,
-    fontWeight: '500',
-    color: '#999',
+    color: '#888',
   },
   notLinkedText: {
     fontSize: 13,
     color: '#555',
   },
-  activePill: {
-    flexDirection: 'row',
+  unlinkIconButton: {
+    width: 30,
+    height: 30,
+    borderRadius: 15,
+    backgroundColor: 'rgba(255,255,255,0.05)',
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.08)',
     alignItems: 'center',
-    gap: 6,
-    paddingHorizontal: 10,
-    paddingVertical: 5,
-    borderRadius: 20,
-  },
-  activeDot: {
-    width: 6,
-    height: 6,
-    borderRadius: 3,
-    backgroundColor: '#22C55E',
-  },
-  activePillText: {
-    fontSize: 11,
-    fontWeight: '500',
-    color: '#22C55E',
-  },
-  unlinkButton: {
-    alignSelf: 'flex-end',
-    paddingVertical: 6,
-  },
-  unlinkText: {
-    fontSize: 12,
-    color: '#555',
+    justifyContent: 'center',
   },
   infoText: {
     fontSize: 13,

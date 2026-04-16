@@ -1103,9 +1103,9 @@ export default function LeaderboardDetail() {
               </TouchableOpacity>
             )}
             {(isPending || isActive) && (
-              <TouchableOpacity style={styles.codeButton} onPress={() => router.push({ pathname: '/partyPages/challengeDetail', params: { id: partyDocId, game } })}>
-                <IconSymbol size={14} name="trophy.fill" color="#fff" />
-                <ThemedText style={styles.inviteButtonText}>Challenge</ThemedText>
+              <TouchableOpacity style={[styles.codeButton, isActive && styles.codeButtonActive]} onPress={() => router.push({ pathname: '/partyPages/challengeDetail', params: { id: partyDocId, game } })}>
+                <IconSymbol size={14} name="trophy.fill" color={isActive ? '#0f0f0f' : '#fff'} />
+                <ThemedText style={[styles.inviteButtonText, isActive && styles.codeButtonTextActive]}>Challenge</ThemedText>
               </TouchableOpacity>
             )}
           </View>
@@ -2533,6 +2533,12 @@ const styles = StyleSheet.create({
     paddingHorizontal: 14,
     borderRadius: 10,
   },
+  codeButtonActive: {
+    backgroundColor: '#D4A843',
+  },
+  codeButtonTextActive: {
+    color: '#0f0f0f',
+  },
   codeButtonText: {
     fontSize: 13,
     fontWeight: '600',
@@ -2834,33 +2840,40 @@ const styles = StyleSheet.create({
   },
   inviteSendButton: {
     backgroundColor: '#fff',
-    paddingHorizontal: 16,
-    paddingVertical: 8,
+    paddingHorizontal: 14,
     borderRadius: 8,
-    minWidth: 70,
+    minWidth: 84,
+    height: 30,
     alignItems: 'center',
+    justifyContent: 'center',
   },
   inviteSendButtonSent: {
-    backgroundColor: '#333',
+    backgroundColor: '#2a2a2a',
   },
   inviteSendButtonText: {
-    fontSize: 13,
-    fontWeight: '600',
-    color: '#fff',
+    fontSize: 12,
+    fontWeight: '700',
+    color: '#000',
+    letterSpacing: 0.3,
   },
   pendingBadge: {
     flexDirection: 'row',
     alignItems: 'center',
+    justifyContent: 'center',
     gap: 4,
-    backgroundColor: 'rgba(255,255,255,0.06)',
+    backgroundColor: 'rgba(255,255,255,0.05)',
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.08)',
     paddingHorizontal: 10,
-    paddingVertical: 6,
     borderRadius: 8,
+    minWidth: 84,
+    height: 30,
   },
   pendingBadgeText: {
     fontSize: 12,
     fontWeight: '500',
     color: '#888',
+    letterSpacing: 0.3,
   },
   // Uploading Overlay
   uploadingOverlay: {
