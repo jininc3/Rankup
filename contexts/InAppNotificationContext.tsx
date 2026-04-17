@@ -2,7 +2,7 @@ import React, { createContext, useContext, useState, useRef, useCallback } from 
 
 export interface InAppNotificationData {
   id: string;
-  type: 'follow' | 'like' | 'comment' | 'tag' | 'message' | 'party_invite' | 'party_complete' | 'party_ranking_change';
+  type: 'follow' | 'like' | 'comment' | 'tag' | 'message' | 'party_invite' | 'challenge_invite' | 'party_complete' | 'party_ranking_change';
   fromUserId: string;
   fromUsername: string;
   fromUserAvatar?: string;

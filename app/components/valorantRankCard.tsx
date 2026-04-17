@@ -1824,8 +1824,8 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
   },
   statisticsScrollContent: {
-    paddingVertical: 12,
-    paddingBottom: 100,
+    paddingTop: 12,
+    paddingBottom: 250,
   },
   statsWithChart: {
     flexDirection: 'row',
@@ -1965,7 +1965,7 @@ const styles = StyleSheet.create({
   recentlyPlayingImage: {
     position: 'absolute',
     right: -30,
-    top: -40,
+    top: -100,
     width: 260,
     height: 400,
     opacity: 0.9,

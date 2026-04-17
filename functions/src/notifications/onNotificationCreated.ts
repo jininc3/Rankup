@@ -96,6 +96,11 @@ export const onNotificationCreated = onDocumentCreated(
         timestamp: new Date().toISOString(),
       };
 
+      // Add avatar
+      if (notification.fromUserAvatar) {
+        pushData.fromUserAvatar = notification.fromUserAvatar;
+      }
+
       // Add type-specific data
       if (notification.postId) {
         pushData.postId = notification.postId;

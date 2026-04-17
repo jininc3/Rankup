@@ -82,7 +82,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   winRateValue: {
-    fontSize: 18,
+    fontSize: 14,
     fontWeight: '800',
     color: '#fff',
   },

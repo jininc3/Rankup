@@ -102,20 +102,26 @@ function RootLayoutNav() {
       const data = notification.request.content.data;
       console.log('Foreground notification received:', data);
 
-      // Format notification message
+      // Format notification message to match push notification content
       let message = '';
       if (data.type === 'follow') {
         message = 'started following you';
       } else if (data.type === 'like') {
         message = 'liked your post';
       } else if (data.type === 'comment') {
-        message = 'commented on your post';
+        const commentPreview = data.commentText?.substring(0, 50) || '';
+        const commentSuffix = data.commentText?.length > 50 ? '...' : '';
+        message = commentPreview ? `${commentPreview}${commentSuffix}` : 'commented on your post';
       } else if (data.type === 'tag') {
         message = 'tagged you in a post';
       } else if (data.type === 'message') {
-        message = 'sent you a message';
+        const msgPreview = data.messageText?.substring(0, 100) || '';
+        const msgSuffix = data.messageText?.length > 100 ? '...' : '';
+        message = msgPreview ? `${msgPreview}${msgSuffix}` : 'sent you a message';
       } else if (data.type === 'party_invite') {
-        message = `invited you to ${data.partyName || 'a leaderboard'}`;
+        message = `invited you to join "${data.partyName || 'a leaderboard'}"${data.game ? ` for ${data.game}` : ''}!`;
+      } else if (data.type === 'challenge_invite') {
+        message = `challenged you in "${data.partyName || 'a leaderboard'}"! Accept to compete.`;
       } else if (data.type === 'party_complete') {
         message = data.winnerUsername ? `${data.winnerUsername} won the leaderboard!` : 'Leaderboard completed!';
       } else if (data.type === 'party_ranking_change') {
