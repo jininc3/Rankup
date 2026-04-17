@@ -1,5 +1,6 @@
 import { ThemedText } from '@/components/themed-text';
 import { IconSymbol } from '@/components/ui/icon-symbol';
+import WinLossPieChart from './WinLossPieChart';
 import { BlurView } from 'expo-blur';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useEffect, useRef, useState } from 'react';
@@ -814,20 +815,34 @@ export default function LeagueRankCard({ game, username, viewOnly = false, userI
             </View>
 
             <Animated.View style={[styles.statisticsContent, { opacity: statisticsContentOpacity }]}>
-              <View style={styles.statsRow}>
-                <View style={styles.statBox}>
-                  <ThemedText style={styles.statBoxValue}>{game.winRate}%</ThemedText>
-                  <ThemedText style={styles.statBoxLabel}>Win Rate</ThemedText>
-                </View>
-                <View style={styles.statBoxDivider} />
-                <View style={styles.statBox}>
-                  <ThemedText style={styles.statBoxValue}>{game.wins}</ThemedText>
-                  <ThemedText style={styles.statBoxLabel}>Wins</ThemedText>
-                </View>
-                <View style={styles.statBoxDivider} />
-                <View style={styles.statBox}>
-                  <ThemedText style={styles.statBoxValue}>{game.losses}</ThemedText>
-                  <ThemedText style={styles.statBoxLabel}>Losses</ThemedText>
+              <View style={styles.statsWithChart}>
+                <WinLossPieChart
+                  wins={game.wins}
+                  losses={game.losses}
+                  winRate={game.winRate}
+                  size={90}
+                  strokeWidth={9}
+                  winColor="#4ade80"
+                  lossColor="#ef4444"
+                />
+                <View style={styles.statsColumn}>
+                  <View style={styles.statRowItem}>
+                    <View style={[styles.statDot, { backgroundColor: '#4ade80' }]} />
+                    <ThemedText style={styles.statRowLabel}>Wins</ThemedText>
+                    <ThemedText style={styles.statRowValue}>{game.wins}</ThemedText>
+                  </View>
+                  <View style={styles.statRowDivider} />
+                  <View style={styles.statRowItem}>
+                    <View style={[styles.statDot, { backgroundColor: '#ef4444' }]} />
+                    <ThemedText style={styles.statRowLabel}>Losses</ThemedText>
+                    <ThemedText style={styles.statRowValue}>{game.losses}</ThemedText>
+                  </View>
+                  <View style={styles.statRowDivider} />
+                  <View style={styles.statRowItem}>
+                    <View style={[styles.statDot, { backgroundColor: 'rgba(255,255,255,0.3)' }]} />
+                    <ThemedText style={styles.statRowLabel}>Total</ThemedText>
+                    <ThemedText style={styles.statRowValue}>{game.wins + game.losses}</ThemedText>
+                  </View>
                 </View>
               </View>
 
@@ -1062,11 +1077,42 @@ const styles = StyleSheet.create({
   statisticsHeaderLeft: { flexDirection: 'row', alignItems: 'center' },
   statisticsTitle: { fontSize: 16, fontWeight: '800', color: '#fff', letterSpacing: -0.3 },
   statisticsContent: { paddingHorizontal: 20, paddingVertical: 20 },
-  statsRow: { flexDirection: 'row', justifyContent: 'space-around', alignItems: 'center' },
-  statBox: { alignItems: 'center', flex: 1 },
-  statBoxDivider: { width: 1, height: 40, backgroundColor: 'rgba(30, 100, 200, 0.2)' },
-  statBoxValue: { fontSize: 24, fontWeight: '800', color: '#fff' },
-  statBoxLabel: { fontSize: 11, fontWeight: '600', color: 'rgba(255,255,255,0.5)', marginTop: 4, textTransform: 'uppercase', letterSpacing: 0.5 },
+  statsWithChart: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 24,
+  },
+  statsColumn: {
+    flex: 1,
+    gap: 0,
+  },
+  statRowItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 6,
+  },
+  statDot: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+    marginRight: 10,
+  },
+  statRowLabel: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: 'rgba(255,255,255,0.6)',
+    flex: 1,
+  },
+  statRowValue: {
+    fontSize: 16,
+    fontWeight: '800',
+    color: '#fff',
+  },
+  statRowDivider: {
+    height: 1,
+    backgroundColor: 'rgba(30, 100, 200, 0.12)',
+    marginLeft: 18,
+  },
   recentlyPlayingImage: { position: 'absolute', right: -30, top: -40, width: 200, height: 300, opacity: 0.15 },
   topChampionsSection: { marginTop: 16, paddingTop: 16, borderTopWidth: 1, borderTopColor: 'rgba(255,255,255,0.08)' },
   topChampionsTitle: { fontSize: 11, fontWeight: '800', color: 'rgba(255,255,255,0.5)', letterSpacing: 1, marginBottom: 12, textTransform: 'uppercase' },

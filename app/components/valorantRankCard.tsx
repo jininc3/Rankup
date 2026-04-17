@@ -1,5 +1,6 @@
 import { ThemedText } from '@/components/themed-text';
 import { IconSymbol } from '@/components/ui/icon-symbol';
+import WinLossPieChart from './WinLossPieChart';
 import { BlurView } from 'expo-blur';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useEffect, useRef, useState } from 'react';
@@ -1020,6 +1021,7 @@ export default function ValorantRankCard({ game, username, viewOnly = false, use
           {...statisticsSwipePanResponder.panHandlers}
         >
           <Pressable
+            style={{ flex: 0 }}
             onPress={() => {
               if (matchHistoryExpanded) {
                 setMatchHistoryExpanded(false);
@@ -1050,25 +1052,92 @@ export default function ValorantRankCard({ game, username, viewOnly = false, use
                 </TouchableOpacity>
               )}
             </View>
+          </Pressable>
 
-            {/* Statistics Content */}
-            <Animated.View style={[styles.statisticsContent, { opacity: statisticsContentOpacity }]}>
-              <View style={styles.statsRow}>
-                <View style={styles.statBox}>
-                  <ThemedText style={styles.statBoxValue}>{game.winRate}%</ThemedText>
-                  <ThemedText style={styles.statBoxLabel}>Win Rate</ThemedText>
-                </View>
-                <View style={styles.statBoxDivider} />
-                <View style={styles.statBox}>
-                  <ThemedText style={styles.statBoxValue}>{game.gamesPlayed || 0}</ThemedText>
-                  <ThemedText style={styles.statBoxLabel}>Games</ThemedText>
-                </View>
-                <View style={styles.statBoxDivider} />
-                <View style={styles.statBox}>
-                  <ThemedText style={styles.statBoxValue}>{game.mmr || 0}</ThemedText>
-                  <ThemedText style={styles.statBoxLabel}>MMR</ThemedText>
+          {/* Statistics Content - Scrollable */}
+          <Animated.View style={{ flex: 1, opacity: statisticsContentOpacity }}>
+            <ScrollView
+              style={styles.statisticsContent}
+              contentContainerStyle={styles.statisticsScrollContent}
+              showsVerticalScrollIndicator={false}
+              nestedScrollEnabled
+            >
+              <View style={styles.statsWithChart}>
+                <WinLossPieChart
+                  wins={game.wins}
+                  losses={game.losses}
+                  winRate={game.winRate}
+                  size={90}
+                  strokeWidth={9}
+                  winColor="#4ade80"
+                  lossColor="#ef4444"
+                />
+                <View style={styles.statsColumn}>
+                  <View style={styles.statRowItem}>
+                    <View style={[styles.statDot, { backgroundColor: '#4ade80' }]} />
+                    <ThemedText style={styles.statRowLabel}>Wins</ThemedText>
+                    <ThemedText style={styles.statRowValue}>{game.wins}</ThemedText>
+                  </View>
+                  <View style={styles.statRowDivider} />
+                  <View style={styles.statRowItem}>
+                    <View style={[styles.statDot, { backgroundColor: '#ef4444' }]} />
+                    <ThemedText style={styles.statRowLabel}>Losses</ThemedText>
+                    <ThemedText style={styles.statRowValue}>{game.losses}</ThemedText>
+                  </View>
+                  <View style={styles.statRowDivider} />
+                  <View style={styles.statRowItem}>
+                    <View style={[styles.statDot, { backgroundColor: 'rgba(255,255,255,0.3)' }]} />
+                    <ThemedText style={styles.statRowLabel}>Games</ThemedText>
+                    <ThemedText style={styles.statRowValue}>{game.gamesPlayed || 0}</ThemedText>
+                  </View>
+                  <View style={styles.statRowDivider} />
+                  <View style={styles.statRowItem}>
+                    <View style={[styles.statDot, { backgroundColor: 'rgba(255,255,255,0.3)' }]} />
+                    <ThemedText style={styles.statRowLabel}>MMR</ThemedText>
+                    <ThemedText style={styles.statRowValue}>{game.mmr || 0}</ThemedText>
+                  </View>
                 </View>
               </View>
+
+              {/* KDA - Last 10 Games */}
+              {game.matchHistory && game.matchHistory.length > 0 && (() => {
+                const matches = game.matchHistory!.slice(0, 10);
+                const totalKills = matches.reduce((sum, m) => sum + m.kills, 0);
+                const totalDeaths = matches.reduce((sum, m) => sum + m.deaths, 0);
+                const totalAssists = matches.reduce((sum, m) => sum + m.assists, 0);
+                const kdaRatio = totalDeaths === 0
+                  ? (totalKills + totalAssists).toFixed(1)
+                  : ((totalKills + totalAssists) / totalDeaths).toFixed(2);
+                const avgK = (totalKills / matches.length).toFixed(1);
+                const avgD = (totalDeaths / matches.length).toFixed(1);
+                const avgA = (totalAssists / matches.length).toFixed(1);
+                return (
+                  <View style={styles.kdaSection}>
+                    <View style={styles.kdaDivider} />
+                    <ThemedText style={styles.kdaSectionLabel}>KDA — LAST {matches.length} GAMES</ThemedText>
+                    <View style={styles.kdaRow}>
+                      <View style={styles.kdaStatItem}>
+                        <ThemedText style={styles.kdaValue}>{avgK}</ThemedText>
+                        <ThemedText style={styles.kdaLabel}>Kills</ThemedText>
+                      </View>
+                      <ThemedText style={styles.kdaSlash}>/</ThemedText>
+                      <View style={styles.kdaStatItem}>
+                        <ThemedText style={[styles.kdaValue, styles.kdaDeathsText]}>{avgD}</ThemedText>
+                        <ThemedText style={styles.kdaLabel}>Deaths</ThemedText>
+                      </View>
+                      <ThemedText style={styles.kdaSlash}>/</ThemedText>
+                      <View style={styles.kdaStatItem}>
+                        <ThemedText style={styles.kdaValue}>{avgA}</ThemedText>
+                        <ThemedText style={styles.kdaLabel}>Assists</ThemedText>
+                      </View>
+                      <View style={styles.kdaRatioBadge}>
+                        <ThemedText style={styles.kdaRatioValue}>{kdaRatio}</ThemedText>
+                        <ThemedText style={styles.kdaRatioLabel}>KDA</ThemedText>
+                      </View>
+                    </View>
+                  </View>
+                );
+              })()}
 
               {/* Recently Playing Section */}
               {mostPlayedAgent && (
@@ -1089,8 +1158,8 @@ export default function ValorantRankCard({ game, username, viewOnly = false, use
                   </View>
                 </View>
               )}
-            </Animated.View>
-          </Pressable>
+            </ScrollView>
+          </Animated.View>
         </Animated.View>
 
         {/* Match History Card - Fixed at bottom, expands upward */}
@@ -1751,34 +1820,115 @@ const styles = StyleSheet.create({
     textTransform: 'uppercase',
   },
   statisticsContent: {
-    paddingHorizontal: 16,
-    paddingVertical: 12,
-  },
-  statsRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-around',
-    alignItems: 'center',
-  },
-  statBox: {
     flex: 1,
-    alignItems: 'center',
+    paddingHorizontal: 16,
   },
-  statBoxValue: {
-    fontSize: 20,
+  statisticsScrollContent: {
+    paddingVertical: 12,
+    paddingBottom: 100,
+  },
+  statsWithChart: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 20,
+  },
+  statsColumn: {
+    flex: 1,
+    gap: 0,
+  },
+  statRowItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 5,
+  },
+  statDot: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+    marginRight: 10,
+  },
+  statRowLabel: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: 'rgba(255,255,255,0.6)',
+    flex: 1,
+  },
+  statRowValue: {
+    fontSize: 15,
     fontWeight: '800',
     color: '#fff',
   },
-  statBoxLabel: {
-    fontSize: 10,
+  statRowDivider: {
+    height: 1,
+    backgroundColor: 'rgba(239, 84, 102, 0.12)',
+    marginLeft: 18,
+  },
+  // KDA Section styles
+  kdaSection: {
+    marginTop: 12,
+  },
+  kdaDivider: {
+    height: 1,
+    backgroundColor: 'rgba(255,255,255,0.08)',
+    marginBottom: 10,
+  },
+  kdaSectionLabel: {
+    fontSize: 9,
+    fontWeight: '800',
+    color: 'rgba(255,255,255,0.4)',
+    letterSpacing: 1,
+    textTransform: 'uppercase',
+    marginBottom: 8,
+  },
+  kdaRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+  },
+  kdaStatItem: {
+    alignItems: 'center',
+  },
+  kdaValue: {
+    fontSize: 16,
+    fontWeight: '800',
+    color: '#fff',
+  },
+  kdaDeathsText: {
+    color: '#EF5466',
+  },
+  kdaLabel: {
+    fontSize: 8,
     fontWeight: '600',
-    color: 'rgba(255,255,255,0.5)',
-    marginTop: 4,
+    color: 'rgba(255,255,255,0.4)',
+    marginTop: 1,
     textTransform: 'uppercase',
   },
-  statBoxDivider: {
-    width: 1,
-    height: 36,
-    backgroundColor: 'rgba(239, 84, 102, 0.2)',
+  kdaSlash: {
+    fontSize: 16,
+    fontWeight: '300',
+    color: 'rgba(255,255,255,0.2)',
+    marginHorizontal: 2,
+  },
+  kdaRatioBadge: {
+    backgroundColor: 'rgba(239, 84, 102, 0.15)',
+    borderRadius: 8,
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    marginLeft: 10,
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: 'rgba(239, 84, 102, 0.25)',
+  },
+  kdaRatioValue: {
+    fontSize: 14,
+    fontWeight: '800',
+    color: '#EF5466',
+  },
+  kdaRatioLabel: {
+    fontSize: 7,
+    fontWeight: '700',
+    color: 'rgba(255,255,255,0.4)',
+    letterSpacing: 1,
   },
   // Recently Playing styles
   recentlyPlayingSection: {

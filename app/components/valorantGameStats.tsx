@@ -79,6 +79,24 @@ export default function ValorantGameStatsScreen() {
   const loading = isOwnProfile ? contextLoading : otherUserLoading;
   const error = isOwnProfile ? contextError : otherUserError;
 
+  // Compute KDA from last 10 matches
+  const kdaData = (() => {
+    if (!valorantStats?.matchHistory || valorantStats.matchHistory.length === 0) return null;
+    const matches = valorantStats.matchHistory.slice(0, 10);
+    const totalKills = matches.reduce((sum, m) => sum + m.kills, 0);
+    const totalDeaths = matches.reduce((sum, m) => sum + m.deaths, 0);
+    const totalAssists = matches.reduce((sum, m) => sum + m.assists, 0);
+    return {
+      avgKills: (totalKills / matches.length).toFixed(1),
+      avgDeaths: (totalDeaths / matches.length).toFixed(1),
+      avgAssists: (totalAssists / matches.length).toFixed(1),
+      ratio: totalDeaths === 0
+        ? (totalKills + totalAssists).toFixed(1)
+        : ((totalKills + totalAssists) / totalDeaths).toFixed(2),
+      count: matches.length,
+    };
+  })();
+
   // Load other user's cached stats from Firestore
   useEffect(() => {
     if (isOwnProfile || !viewedUserId || !game) return;
@@ -301,6 +319,33 @@ export default function ValorantGameStatsScreen() {
                 <ThemedText style={styles.compactStatValue}>{valorantStats.accountLevel}</ThemedText>
               </View>
             </View>
+
+            {/* Third Container: KDA (Last 10 Games) */}
+            {kdaData && (
+              <View style={styles.kdaContainer}>
+                <ThemedText style={styles.kdaSectionLabel}>KDA — LAST {kdaData.count} GAMES</ThemedText>
+                <View style={styles.kdaRow}>
+                  <View style={styles.kdaStatItem}>
+                    <ThemedText style={styles.kdaValue}>{kdaData.avgKills}</ThemedText>
+                    <ThemedText style={styles.kdaLabel}>Kills</ThemedText>
+                  </View>
+                  <ThemedText style={styles.kdaSlash}>/</ThemedText>
+                  <View style={styles.kdaStatItem}>
+                    <ThemedText style={[styles.kdaValue, styles.kdaDeaths]}>{kdaData.avgDeaths}</ThemedText>
+                    <ThemedText style={styles.kdaLabel}>Deaths</ThemedText>
+                  </View>
+                  <ThemedText style={styles.kdaSlash}>/</ThemedText>
+                  <View style={styles.kdaStatItem}>
+                    <ThemedText style={styles.kdaValue}>{kdaData.avgAssists}</ThemedText>
+                    <ThemedText style={styles.kdaLabel}>Assists</ThemedText>
+                  </View>
+                  <View style={styles.kdaRatioBadge}>
+                    <ThemedText style={styles.kdaRatioValue}>{kdaData.ratio}</ThemedText>
+                    <ThemedText style={styles.kdaRatioLabel}>KDA</ThemedText>
+                  </View>
+                </View>
+              </View>
+            )}
           </>
         ) : null}
       </View>
@@ -570,5 +615,78 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     color: '#5c6066',
     marginTop: 2,
+  },
+  // KDA Container Styles
+  kdaContainer: {
+    backgroundColor: '#1a1d21',
+    borderRadius: 16,
+    padding: 16,
+    marginBottom: 12,
+    borderWidth: 1,
+    borderColor: 'rgba(239, 84, 102, 0.15)',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    elevation: 6,
+  },
+  kdaSectionLabel: {
+    fontSize: 9,
+    fontWeight: '800',
+    color: '#8e9297',
+    letterSpacing: 1,
+    textAlign: 'center',
+    marginBottom: 12,
+  },
+  kdaRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+  },
+  kdaStatItem: {
+    alignItems: 'center',
+  },
+  kdaValue: {
+    fontSize: 20,
+    fontWeight: '800',
+    color: '#fff',
+  },
+  kdaDeaths: {
+    color: '#EF5466',
+  },
+  kdaLabel: {
+    fontSize: 10,
+    fontWeight: '600',
+    color: '#5c6066',
+    marginTop: 2,
+    textTransform: 'uppercase',
+  },
+  kdaSlash: {
+    fontSize: 20,
+    fontWeight: '300',
+    color: '#36393e',
+    marginHorizontal: 4,
+  },
+  kdaRatioBadge: {
+    backgroundColor: 'rgba(178, 49, 59, 0.3)',
+    borderRadius: 10,
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    marginLeft: 12,
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: 'rgba(239, 84, 102, 0.3)',
+  },
+  kdaRatioValue: {
+    fontSize: 16,
+    fontWeight: '800',
+    color: '#EF5466',
+  },
+  kdaRatioLabel: {
+    fontSize: 9,
+    fontWeight: '700',
+    color: '#8e9297',
+    letterSpacing: 1,
   },
 });
