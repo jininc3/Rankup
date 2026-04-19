@@ -5,11 +5,13 @@ import {
   query,
   where,
   getDocs,
+  getDoc,
   deleteDoc,
   doc,
   writeBatch,
   updateDoc,
   increment,
+  or,
 } from 'firebase/firestore';
 import { ref, deleteObject, listAll } from 'firebase/storage';
 import {
@@ -76,6 +78,7 @@ export async function reauthenticateUser(
  * - User's linked game accounts (Riot, Valorant, etc.)
  * - Parties created by the user (deleted completely)
  * - User from parties they are members of (removed from party)
+ * - User's duo data (duoCards, duoPosts, duoQueue, duoMatches)
  * - User's storage files (profile pictures, cover photos, post media)
  * - User document
  * - Firebase Auth account
@@ -118,6 +121,9 @@ export async function deleteUserAccount(
 
     // 8. Delete parties created by user and remove user from other parties
     await deleteUserFromParties(userId);
+
+    // 8.5. Delete user's duo posts and duo queue entries
+    await deleteUserDuoData(userId);
 
     // 9. Delete any remaining storage files in user's folder
     await deleteUserStorageFolder(userId);
@@ -291,13 +297,22 @@ async function deleteUserFollowRelationships(userId: string): Promise<void> {
     for (const followingDoc of followingSnapshot.docs) {
       const targetUserId = followingDoc.id;
       try {
-        // Delete from target user's followers list
-        await deleteDoc(doc(db, `users/${targetUserId}/followers/${userId}`));
+        // Only decrement if the follower doc actually exists
+        const followerDocRef = doc(db, `users/${targetUserId}/followers/${userId}`);
+        const followerDocSnap = await getDoc(followerDocRef);
 
-        // Decrement target user's follower count
-        await updateDoc(doc(db, 'users', targetUserId), {
-          followersCount: increment(-1),
-        });
+        if (followerDocSnap.exists()) {
+          await deleteDoc(followerDocRef);
+
+          // Decrement target user's follower count (min 0)
+          const targetUserDoc = await getDoc(doc(db, 'users', targetUserId));
+          const currentCount = targetUserDoc.data()?.followersCount || 0;
+          if (currentCount > 0) {
+            await updateDoc(doc(db, 'users', targetUserId), {
+              followersCount: increment(-1),
+            });
+          }
+        }
       } catch (error) {
         console.error(`Error removing user from ${targetUserId}'s followers:`, error);
       }
@@ -313,13 +328,22 @@ async function deleteUserFollowRelationships(userId: string): Promise<void> {
     for (const followerDoc of followersSnapshot.docs) {
       const followerId = followerDoc.id;
       try {
-        // Delete from follower's following list
-        await deleteDoc(doc(db, `users/${followerId}/following/${userId}`));
+        // Only decrement if the following doc actually exists
+        const followingDocRef = doc(db, `users/${followerId}/following/${userId}`);
+        const followingDocSnap = await getDoc(followingDocRef);
 
-        // Decrement follower's following count
-        await updateDoc(doc(db, 'users', followerId), {
-          followingCount: increment(-1),
-        });
+        if (followingDocSnap.exists()) {
+          await deleteDoc(followingDocRef);
+
+          // Decrement follower's following count (min 0)
+          const followerUserDoc = await getDoc(doc(db, 'users', followerId));
+          const currentCount = followerUserDoc.data()?.followingCount || 0;
+          if (currentCount > 0) {
+            await updateDoc(doc(db, 'users', followerId), {
+              followingCount: increment(-1),
+            });
+          }
+        }
       } catch (error) {
         console.error(`Error removing user from ${followerId}'s following:`, error);
       }
@@ -462,11 +486,23 @@ async function deleteUserFromParties(userId: string): Promise<void> {
         ? partyData.pendingInvites.filter((invite: any) => invite.userId !== userId)
         : [];
 
+      // Remove user from challengeParticipants if present
+      const updatedChallengeParticipants = partyData.challengeParticipants
+        ? partyData.challengeParticipants.filter((id: string) => id !== userId)
+        : [];
+
+      // Remove user from startingStats if present
+      const updatedStartingStats = partyData.startingStats
+        ? partyData.startingStats.filter((stat: any) => stat.userId !== userId)
+        : [];
+
       // Update the party document
       await updateDoc(partyDoc.ref, {
         members: updatedMembers,
         memberDetails: updatedMemberDetails,
         pendingInvites: updatedPendingInvites,
+        challengeParticipants: updatedChallengeParticipants,
+        startingStats: updatedStartingStats,
       });
 
       console.log(`Removed user from party: ${partyData.partyName}`);
@@ -477,6 +513,50 @@ async function deleteUserFromParties(userId: string): Promise<void> {
     // Silently ignore permission errors (likely means no parties to process)
     if (error?.code !== 'permission-denied') {
       console.error('Error removing user from parties:', error);
+    }
+    // Don't throw - continue with deletion
+  }
+}
+
+/**
+ * Delete user's duo posts and duo queue entries
+ */
+async function deleteUserDuoData(userId: string): Promise<void> {
+  try {
+    const batch = writeBatch(db);
+    const games = ['valorant', 'league'];
+
+    for (const game of games) {
+      // Delete duo cards, duo posts, and duo queue entries (format: {userId}_{game})
+      batch.delete(doc(db, 'duoCards', `${userId}_${game}`));
+      batch.delete(doc(db, 'duoPosts', `${userId}_${game}`));
+      batch.delete(doc(db, 'duoQueue', `${userId}_${game}`));
+    }
+
+    await batch.commit();
+
+    // Delete duo matches where user is either user1 or user2
+    const matchesQuery = query(
+      collection(db, 'duoMatches'),
+      or(
+        where('user1Id', '==', userId),
+        where('user2Id', '==', userId)
+      )
+    );
+    const matchesSnapshot = await getDocs(matchesQuery);
+
+    if (matchesSnapshot.size > 0) {
+      const matchBatch = writeBatch(db);
+      matchesSnapshot.docs.forEach((matchDoc) => {
+        matchBatch.delete(matchDoc.ref);
+      });
+      await matchBatch.commit();
+    }
+
+    console.log('User duo data deleted (cards, posts, queue, matches)');
+  } catch (error: any) {
+    if (error?.code !== 'permission-denied') {
+      console.error('Error deleting duo data:', error);
     }
     // Don't throw - continue with deletion
   }

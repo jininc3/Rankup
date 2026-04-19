@@ -257,7 +257,7 @@ export default function LeaderboardDetail() {
   const isNone = challengeStatus === 'none';
   const isPending = challengeStatus === 'pending';
   const isActive = challengeStatus === 'active';
-  const canInvite = (isCreator || allowedInviters.includes(user?.id || '')) && (isPending || isNone);
+  const canInvite = isCreator || allowedInviters.includes(user?.id || '');
   const challengeParticipants: string[] = partyData?.challengeParticipants || [];
   const challengeInvites: any[] = partyData?.challengeInvites || [];
   const acceptedCount = challengeInvites.filter((inv: any) => inv.status === 'accepted').length + 1; // +1 for leader
@@ -987,13 +987,14 @@ export default function LeaderboardDetail() {
 
     const today = new Date();
     const totalDays = Math.ceil((end.getTime() - start.getTime()) / (1000 * 60 * 60 * 24));
-    const currentDay = Math.ceil((today.getTime() - start.getTime()) / (1000 * 60 * 60 * 24));
+    const msElapsed = today.getTime() - start.getTime();
+    const completedDays = Math.floor(msElapsed / (1000 * 60 * 60 * 24));
 
     const msLeft = Math.max(0, end.getTime() - today.getTime());
     const hoursLeft = Math.floor(msLeft / (1000 * 60 * 60));
     const daysLeft = Math.ceil(msLeft / (1000 * 60 * 60 * 24));
 
-    return { currentDay: Math.max(1, Math.min(currentDay, totalDays)), totalDays, daysLeft, hoursLeft };
+    return { currentDay: Math.max(0, Math.min(completedDays, totalDays)), totalDays, daysLeft, hoursLeft };
   };
 
   const daysInfo = calculateDaysRemaining();
@@ -2774,7 +2775,7 @@ const styles = StyleSheet.create({
     backgroundColor: '#1a1a1a',
     borderTopLeftRadius: 20,
     borderTopRightRadius: 20,
-    height: '60%',
+    height: '75%',
     paddingBottom: 20,
   },
   inviteModalHandle: {

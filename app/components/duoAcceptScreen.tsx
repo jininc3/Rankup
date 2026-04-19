@@ -11,6 +11,7 @@ interface DuoAcceptScreenProps {
   otherAccepted: boolean;
   onAccept: () => void;
   onDecline: () => void;
+  onViewProfile?: () => void;
 }
 
 export default function DuoAcceptScreen({
@@ -21,6 +22,7 @@ export default function DuoAcceptScreen({
   otherAccepted,
   onAccept,
   onDecline,
+  onViewProfile,
 }: DuoAcceptScreenProps) {
   const [timeLeft, setTimeLeft] = useState(60);
   const fadeIn = useRef(new Animated.Value(0)).current;
@@ -65,7 +67,12 @@ export default function DuoAcceptScreen({
       </View>
 
       {/* Player Card */}
-      <View style={styles.playerCard}>
+      <TouchableOpacity
+        style={styles.playerCard}
+        onPress={onViewProfile}
+        activeOpacity={onViewProfile ? 0.7 : 1}
+        disabled={!onViewProfile}
+      >
         {matchedUser.avatar ? (
           <Image source={{ uri: matchedUser.avatar }} style={styles.avatar} />
         ) : (
@@ -77,6 +84,9 @@ export default function DuoAcceptScreen({
         )}
         <ThemedText style={styles.username}>{matchedUser.username}</ThemedText>
         <ThemedText style={styles.rank}>{matchedUser.currentRank || 'Unranked'}</ThemedText>
+        {onViewProfile && (
+          <ThemedText style={styles.viewProfileHint}>Tap to view duo profile</ThemedText>
+        )}
 
         {/* Status */}
         <View style={styles.statusRow}>
@@ -89,7 +99,7 @@ export default function DuoAcceptScreen({
             <ThemedText style={styles.statusLabel}>Opponent</ThemedText>
           </View>
         </View>
-      </View>
+      </TouchableOpacity>
 
       {/* Buttons */}
       {!hasAccepted ? (
@@ -193,7 +203,12 @@ const styles = StyleSheet.create({
     fontSize: 13,
     fontWeight: '500',
     color: '#666',
-    marginBottom: 16,
+    marginBottom: 6,
+  },
+  viewProfileHint: {
+    fontSize: 11,
+    color: '#444',
+    marginBottom: 10,
   },
   statusRow: {
     flexDirection: 'row',

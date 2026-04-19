@@ -111,7 +111,7 @@ export default function SignUpPassword() {
       }
 
       router.push({
-        pathname: '/(auth)/emailSignUpFriends',
+        pathname: '/(auth)/signUpFriends',
         params: { ...params },
       });
     } catch (error: any) {

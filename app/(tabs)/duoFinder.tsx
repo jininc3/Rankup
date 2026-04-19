@@ -723,10 +723,23 @@ export default function DuoFinderScreen() {
   const handleDuoPostMessage = async (post: DuoPostWithId) => {
     if (!user?.id) return;
     try {
-      const chatId = await createOrGetChat(user.id, post.userId);
+      const chatId = await createOrGetChat(
+        user.id,
+        user.username || '',
+        user.avatar,
+        post.userId,
+        post.username,
+        post.avatar,
+      );
       router.push({
         pathname: '/chatPages/chatScreen',
-        params: { chatId, otherUserId: post.userId, otherUsername: post.username },
+        params: {
+          chatId,
+          otherUserId: post.userId,
+          otherUsername: post.username,
+          otherUserAvatar: post.avatar || '',
+          focusInput: 'true',
+        },
       });
     } catch (error) {
       console.error('Error starting chat:', error);
@@ -924,6 +937,14 @@ export default function DuoFinderScreen() {
             nestedScrollEnabled
             onEndReached={loadMorePosts}
             onEndReachedThreshold={0.3}
+            refreshControl={
+              <RefreshControl
+                refreshing={refreshingPosts}
+                onRefresh={refreshPosts}
+                tintColor="#A08845"
+                colors={['#A08845']}
+              />
+            }
             ListFooterComponent={
               loadingMore ? (
                 <ActivityIndicator size="small" color="#A08845" style={{ paddingVertical: 16 }} />

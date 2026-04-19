@@ -1,7 +1,7 @@
 import { ThemedText } from '@/components/themed-text';
 import { IconSymbol } from '@/components/ui/icon-symbol';
 import { StyleSheet, View, Image, TouchableOpacity } from 'react-native';
-import { LinearGradient } from 'expo-linear-gradient';
+
 import Animated, {
   useSharedValue,
   useAnimatedStyle,
@@ -132,30 +132,14 @@ export default function LiveSearchIdle({
 
         {/* Search Button */}
         <TouchableOpacity
-          style={styles.searchBtn}
+          style={[styles.searchBtn, !searchGamePick && styles.searchBtnDisabled]}
           onPress={onSearch}
-          activeOpacity={0.9}
+          activeOpacity={0.8}
           disabled={!searchGamePick}
         >
-          {searchGamePick ? (
-            <View style={styles.searchBtn3dBase}>
-              <LinearGradient
-                colors={['#EBC158', '#D4A843', '#b8902a']}
-                locations={[0, 0.55, 1]}
-                start={{ x: 0, y: 0 }}
-                end={{ x: 0, y: 1 }}
-                style={styles.searchBtnGradient}
-              >
-                <ThemedText style={styles.searchBtnTextActive}>Search now</ThemedText>
-              </LinearGradient>
-            </View>
-          ) : (
-            <View style={styles.searchBtn3dBaseDisabled}>
-              <View style={styles.searchBtnDisabled}>
-                <ThemedText style={styles.searchBtnText}>Search now</ThemedText>
-              </View>
-            </View>
-          )}
+          <ThemedText style={[styles.searchBtnText, searchGamePick && styles.searchBtnTextActive]}>
+            Search now
+          </ThemedText>
         </TouchableOpacity>
 
         {/* No cards hint */}
@@ -215,6 +199,7 @@ const styles = StyleSheet.create({
   },
   gamePicker: {
     flexDirection: 'row',
+    justifyContent: 'center',
     gap: 12,
     marginBottom: 20,
     width: '100%',
@@ -250,45 +235,21 @@ const styles = StyleSheet.create({
   searchBtn: {
     width: '100%',
     maxWidth: 280,
-  },
-  searchBtn3dBase: {
-    borderRadius: 24,
-    backgroundColor: '#6b4f12',
-    paddingBottom: 6,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 8 },
-    shadowOpacity: 0.45,
-    shadowRadius: 14,
-    elevation: 12,
-  },
-  searchBtn3dBaseDisabled: {
-    borderRadius: 24,
-    backgroundColor: '#0d0d0d',
-    paddingBottom: 5,
-  },
-  searchBtnGradient: {
-    alignItems: 'center',
+    backgroundColor: '#fff',
+    borderRadius: 28,
     paddingVertical: 16,
-    borderRadius: 24,
-    borderTopWidth: 1.5,
-    borderTopColor: 'rgba(255, 235, 180, 0.7)',
+    alignItems: 'center',
   },
   searchBtnDisabled: {
-    alignItems: 'center',
-    paddingVertical: 16,
-    borderRadius: 24,
-    backgroundColor: '#1a1a1a',
+    opacity: 0.4,
   },
   searchBtnText: {
-    fontSize: 15,
-    fontWeight: '600',
-    color: '#444',
+    fontSize: 16,
+    fontWeight: '700',
+    color: '#0f0f0f',
   },
   searchBtnTextActive: {
-    fontSize: 15,
-    fontWeight: '700',
-    color: '#fff',
-    letterSpacing: 0.3,
+    color: '#0f0f0f',
   },
   createCardBtn: {
     flexDirection: 'row',

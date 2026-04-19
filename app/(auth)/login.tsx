@@ -32,8 +32,11 @@ export default function LoginScreen() {
       const { id_token } = response.params;
 
       if (id_token) {
-        await signInWithGoogleCredential(id_token);
-        // Router navigation is handled by AuthContext automatically
+        const profile = await signInWithGoogleCredential(id_token);
+        if (profile.needsUsernameSetup) {
+          router.replace({ pathname: '/(auth)/signUpBirthday', params: { signupMethod: 'google' } });
+        }
+        // Existing users: root routing redirects to tabs automatically
       }
     } catch (error: any) {
       Alert.alert('Google Sign In Failed', error.message);

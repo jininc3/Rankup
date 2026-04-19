@@ -11,7 +11,7 @@ export default function EmailSignUpFriends() {
 
   const handleContinue = () => {
     router.push({
-      pathname: '/(auth)/emailSignUpInterests',
+      pathname: '/(auth)/signUpInterests',
       params: { ...params },
     });
   };

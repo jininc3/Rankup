@@ -405,6 +405,9 @@ export default function ChatScreen() {
           onChangeText={setMessageText}
           multiline
           maxLength={500}
+          autoCorrect={true}
+          spellCheck={true}
+          autoCapitalize="sentences"
         />
         <TouchableOpacity
           style={[styles.sendButton, !messageText.trim() && styles.sendButtonDisabled]}

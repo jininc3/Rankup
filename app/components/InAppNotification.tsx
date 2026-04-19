@@ -28,6 +28,10 @@ export default function InAppNotification({ notification }: InAppNotificationPro
       if (navigationData.chatId && navigationData.senderId && navigationData.senderUsername) {
         router.push(`/chatPages/chatScreen?chatId=${navigationData.chatId}&otherUserId=${navigationData.senderId}&otherUsername=${navigationData.senderUsername}`);
       }
+    } else if (navigationData.type === 'challenge_invite') {
+      if (navigationData.partyId && navigationData.game) {
+        router.push(`/partyPages/challengeDetail?id=${navigationData.partyId}&game=${encodeURIComponent(navigationData.game)}`);
+      }
     } else if (navigationData.type === 'party_invite' || navigationData.type === 'party_complete') {
       if (navigationData.partyId && navigationData.game) {
         router.push(`/partyPages/leaderboardDetail?id=${navigationData.partyId}&game=${encodeURIComponent(navigationData.game)}`);

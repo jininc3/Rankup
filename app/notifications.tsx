@@ -3,7 +3,7 @@ import { ThemedView } from '@/components/themed-view';
 import { IconSymbol } from '@/components/ui/icon-symbol';
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { SectionList, StyleSheet, TouchableOpacity, View, Image, ActivityIndicator, Animated, Alert } from 'react-native';
-import { GestureHandlerRootView, Swipeable } from 'react-native-gesture-handler';
+// Long-press to delete replaces swipe-to-delete
 import { useRouter } from 'expo-router';
 import { collection, query, orderBy, limit, onSnapshot, doc, updateDoc, deleteDoc, where, Timestamp, getDocs, writeBatch, getDoc, startAfter, QueryDocumentSnapshot, DocumentData } from 'firebase/firestore';
 import { db } from '@/config/firebase';
@@ -59,7 +59,7 @@ export default function NotificationsScreen() {
   const [showPostViewer, setShowPostViewer] = useState(false);
   const [loadingPost, setLoadingPost] = useState(false);
   const [partyIcons, setPartyIcons] = useState<{ [partyId: string]: string | null }>({});
-  const swipeableRefs = useRef<{ [key: string]: Swipeable | null }>({});
+  // Swipeable refs removed — using long-press to delete
 
   // Pagination state
   const [hasMore, setHasMore] = useState(true);
@@ -546,36 +546,25 @@ export default function NotificationsScreen() {
     } else if ((notification.type === 'like' || notification.type === 'comment' || notification.type === 'tag') && notification.postId) {
       // Show post viewer for like/comment/tag notifications
       fetchAndShowPost(notification.postId);
-    } else if ((notification.type === 'party_invite' || notification.type === 'party_complete' || notification.type === 'party_ranking_change' || notification.type === 'challenge_invite') && notification.partyId) {
-      // Fetch party to determine type, then navigate to appropriate page
-      try {
-        const partyRef = doc(db, 'parties', notification.partyId);
-        const partySnapshot = await getDoc(partyRef);
-
-        if (partySnapshot.exists()) {
-          const partyData = partySnapshot.data();
-
-          router.push({
-            pathname: '/partyPages/leaderboardDetail',
-            params: {
-              id: notification.partyId,
-              name: notification.partyName || 'Leaderboard',
-              game: notification.game || '',
-            },
-          });
-        }
-      } catch (error) {
-        console.error('Error fetching party for navigation:', error);
-        // Fallback to leaderboard detail
-        router.push({
-          pathname: '/partyPages/leaderboardDetail',
-          params: {
-            id: notification.partyId,
-            name: notification.partyName || 'Leaderboard',
-            game: notification.game || '',
-          },
-        });
-      }
+    } else if (notification.type === 'challenge_invite' && notification.partyId) {
+      // Navigate to challenge detail page
+      router.push({
+        pathname: '/partyPages/challengeDetail',
+        params: {
+          id: notification.partyId,
+          game: notification.game || '',
+        },
+      });
+    } else if ((notification.type === 'party_invite' || notification.type === 'party_complete' || notification.type === 'party_ranking_change') && notification.partyId) {
+      // Navigate to leaderboard detail
+      router.push({
+        pathname: '/partyPages/leaderboardDetail',
+        params: {
+          id: notification.partyId,
+          name: notification.partyName || 'Leaderboard',
+          game: notification.game || '',
+        },
+      });
     }
   };
 
@@ -598,29 +587,11 @@ export default function NotificationsScreen() {
   };
 
   // Close any previously open swipeable when a new one opens
-  const previousOpenSwipe = useRef<string | null>(null);
-
-  const onSwipeableOpen = (notificationId: string) => {
-    if (previousOpenSwipe.current && previousOpenSwipe.current !== notificationId) {
-      swipeableRefs.current[previousOpenSwipe.current]?.close();
-    }
-    previousOpenSwipe.current = notificationId;
-  };
-
-  // Render the delete action behind the swipeable
-  const renderRightActions = (notificationId: string) => {
-    return (
-      <TouchableOpacity
-        style={styles.swipeDeleteAction}
-        onPress={() => {
-          swipeableRefs.current[notificationId]?.close();
-          deleteNotification(notificationId);
-        }}
-      >
-        <IconSymbol size={20} name="trash" color="#fff" />
-        <ThemedText style={styles.deleteButtonText}>Delete</ThemedText>
-      </TouchableOpacity>
-    );
+  const handleLongPress = (notificationId: string) => {
+    Alert.alert('Delete Notification', 'Do you want to delete this notification?', [
+      { text: 'Cancel', style: 'cancel' },
+      { text: 'Delete', style: 'destructive', onPress: () => deleteNotification(notificationId) },
+    ]);
   };
 
   // Load older notifications when scrolling
@@ -750,7 +721,6 @@ export default function NotificationsScreen() {
   };
 
   return (
-    <GestureHandlerRootView style={{ flex: 1 }}>
     <ThemedView style={styles.container}>
       {/* Top background gradient */}
       <LinearGradient
@@ -813,18 +783,12 @@ export default function NotificationsScreen() {
           </View>
         )}
         renderItem={({ item: notification }) => (
-              <Swipeable
-                ref={(ref) => { swipeableRefs.current[notification.id] = ref; }}
-                renderRightActions={() => renderRightActions(notification.id)}
-                rightThreshold={40}
-                overshootRight={false}
-                friction={2}
-                onSwipeableWillOpen={() => onSwipeableOpen(notification.id)}
-              >
                 <TouchableOpacity
                   style={[styles.notificationCard, !notification.read && styles.unreadNotification]}
                   onPress={() => handleNotificationPress(notification)}
+                  onLongPress={() => handleLongPress(notification.id)}
                   activeOpacity={0.7}
+                  delayLongPress={400}
                 >
                   <View style={styles.notificationLeft}>
                     {/* Avatar */}
@@ -989,7 +953,6 @@ export default function NotificationsScreen() {
                   {/* Unread indicator */}
                   {!notification.read && <View style={styles.unreadDot} />}
                 </TouchableOpacity>
-              </Swipeable>
         )}
       />
 
@@ -1011,7 +974,6 @@ export default function NotificationsScreen() {
         />
       )}
     </ThemedView>
-    </GestureHandlerRootView>
   );
 }
 
@@ -1061,15 +1023,6 @@ const styles = StyleSheet.create({
   loadingText: {
     fontSize: 16,
     color: '#b9bbbe',
-  },
-  swipeDeleteAction: {
-    backgroundColor: '#ef4444',
-    justifyContent: 'center',
-    alignItems: 'center',
-    width: 80,
-    gap: 4,
-    borderTopRightRadius: 12,
-    borderBottomRightRadius: 12,
   },
   deleteButtonText: {
     fontSize: 11,

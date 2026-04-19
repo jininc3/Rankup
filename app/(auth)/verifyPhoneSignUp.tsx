@@ -35,13 +35,13 @@ export default function VerifyPhoneSignUp() {
 
   const phoneNumber = formatE164(phoneNumberRaw);
 
-  const [code, setCode] = useState(['', '', '', '', '', '']);
+  const [code, setCode] = useState('');
   const [isSending, setIsSending] = useState(false);
   const [isVerifying, setIsVerifying] = useState(false);
   const [confirmation, setConfirmation] = useState<FirebaseAuthTypes.ConfirmationResult | null>(null);
   const [codeSent, setCodeSent] = useState(false);
 
-  const inputRefs = useRef<(TextInput | null)[]>([]);
+  const hiddenInputRef = useRef<TextInput | null>(null);
 
   useEffect(() => {
     sendVerificationCode();
@@ -61,25 +61,16 @@ export default function VerifyPhoneSignUp() {
     }
   };
 
-  const handleCodeChange = (text: string, index: number) => {
-    const newCode = [...code];
-    newCode[index] = text;
-    setCode(newCode);
-
-    if (text && index < 5) {
-      inputRefs.current[index + 1]?.focus();
-    }
-  };
-
-  const handleKeyPress = (e: any, index: number) => {
-    if (e.nativeEvent.key === 'Backspace' && !code[index] && index > 0) {
-      inputRefs.current[index - 1]?.focus();
+  const handleCodeChange = (text: string) => {
+    const digits = text.replace(/[^0-9]/g, '').slice(0, 6);
+    setCode(digits);
+    if (digits.length === 6) {
+      hiddenInputRef.current?.blur();
     }
   };
 
   const handleVerify = async () => {
-    const verificationCode = code.join('');
-    if (verificationCode.length !== 6) {
+    if (code.length !== 6) {
       Alert.alert('Error', 'Please enter the 6-digit verification code');
       return;
     }
@@ -91,7 +82,7 @@ export default function VerifyPhoneSignUp() {
 
     try {
       setIsVerifying(true);
-      await confirmation.confirm(verificationCode);
+      await confirmation.confirm(code);
       await rnfbAuth().signOut();
 
       try {
@@ -107,7 +98,20 @@ export default function VerifyPhoneSignUp() {
             });
             return;
           } else {
-            Alert.alert('Already Registered', 'This phone number already has an account. Please log in instead.');
+            Alert.alert(
+              'Already Registered',
+              'This phone number already has an account.',
+              [
+                {
+                  text: 'Use Different Number',
+                  onPress: () => router.replace('/(auth)/phoneSignUp'),
+                },
+                {
+                  text: 'Go to Login',
+                  onPress: () => router.replace('/(auth)/login'),
+                },
+              ]
+            );
             return;
           }
         }
@@ -142,8 +146,8 @@ export default function VerifyPhoneSignUp() {
   };
 
   const handleResend = async () => {
-    setCode(['', '', '', '', '', '']);
-    inputRefs.current[0]?.focus();
+    setCode('');
+    hiddenInputRef.current?.focus();
     await sendVerificationCode();
     Alert.alert('Code Sent', 'A new verification code has been sent to your phone.');
   };
@@ -197,22 +201,32 @@ export default function VerifyPhoneSignUp() {
                 <ThemedText style={styles.loadingText}>Sending code...</ThemedText>
               </View>
             ) : (
-              <View style={styles.otpContainer}>
-                {code.map((digit, index) => (
-                  <TextInput
+              <TouchableOpacity
+                style={styles.otpContainer}
+                activeOpacity={1}
+                onPress={() => hiddenInputRef.current?.focus()}
+              >
+                <TextInput
+                  ref={hiddenInputRef}
+                  value={code}
+                  onChangeText={handleCodeChange}
+                  keyboardType="number-pad"
+                  textContentType="oneTimeCode"
+                  autoComplete="sms-otp"
+                  maxLength={6}
+                  editable={!isVerifying}
+                  autoFocus
+                  style={styles.hiddenInput}
+                />
+                {[0, 1, 2, 3, 4, 5].map((index) => (
+                  <View
                     key={index}
-                    ref={(ref) => { inputRefs.current[index] = ref; }}
-                    style={[styles.otpInput, digit ? styles.otpInputFilled : null]}
-                    value={digit}
-                    onChangeText={(text) => handleCodeChange(text, index)}
-                    onKeyPress={(e) => handleKeyPress(e, index)}
-                    keyboardType="number-pad"
-                    maxLength={1}
-                    selectTextOnFocus
-                    editable={!isVerifying}
-                  />
+                    style={[styles.otpInput, code[index] ? styles.otpInputFilled : null]}
+                  >
+                    <ThemedText style={styles.otpDigit}>{code[index] || ''}</ThemedText>
+                  </View>
                 ))}
-              </View>
+              </TouchableOpacity>
             )}
 
             <TouchableOpacity
@@ -227,9 +241,9 @@ export default function VerifyPhoneSignUp() {
 
           <View style={styles.bottomSection}>
             <TouchableOpacity
-              style={[styles.continueButton, (isVerifying || code.join('').length !== 6) && styles.buttonDisabled]}
+              style={[styles.continueButton, (isVerifying || code.length !== 6) && styles.buttonDisabled]}
               onPress={handleVerify}
-              disabled={isVerifying || code.join('').length !== 6}
+              disabled={isVerifying || code.length !== 6}
               activeOpacity={0.8}
             >
               <ThemedText style={styles.continueButtonText}>
@@ -260,6 +274,15 @@ const styles = StyleSheet.create({
     gap: 10,
     marginBottom: 24,
   },
+  hiddenInput: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    opacity: 0,
+    fontSize: 22,
+  },
   otpInput: {
     flex: 1,
     height: 56,
@@ -267,13 +290,16 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(255,255,255,0.06)',
     borderWidth: 0.5,
     borderColor: 'rgba(255,255,255,0.1)',
-    textAlign: 'center',
-    fontSize: 22,
-    fontWeight: '700',
-    color: '#fff',
+    justifyContent: 'center',
+    alignItems: 'center',
   },
   otpInputFilled: {
     borderColor: '#fff',
+  },
+  otpDigit: {
+    fontSize: 22,
+    fontWeight: '700',
+    color: '#fff',
   },
   resendText: { fontSize: 13, fontWeight: '600', color: '#1a73e8' },
   bottomSection: { paddingHorizontal: 28, paddingBottom: 40 },

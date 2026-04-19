@@ -71,15 +71,19 @@ export default function SignUpUsername() {
     setShowModal(false);
   };
 
-  const pickCustomAvatar = async () => {
+  const pickCustomAvatar = () => {
     setShowModal(false);
-    const result = await ImagePicker.launchImageLibraryAsync({
-      mediaTypes: ['images'],
-      allowsEditing: true,
-      aspect: [1, 1],
-      quality: 0.8,
-    });
-    if (!result.canceled) setCustomAvatarUri(result.assets[0].uri);
+    // Short delay so the modal dismiss animation doesn't block picker
+    setTimeout(async () => {
+      const result = await ImagePicker.launchImageLibraryAsync({
+        mediaTypes: ['images'],
+        allowsEditing: true,
+        aspect: [1, 1],
+        quality: 0.7,
+        exif: false,
+      });
+      if (!result.canceled) setCustomAvatarUri(result.assets[0].uri);
+    }, 100);
   };
 
   const isValid = username.length >= 3 && usernameAvailable === true;

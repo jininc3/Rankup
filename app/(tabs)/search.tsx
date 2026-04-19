@@ -508,8 +508,8 @@ export default function SearchScreen() {
       const usersRef = collection(db, 'users');
       const q = query(
         usersRef,
-        where('username', '>=', text.toLowerCase()),
-        where('username', '<=', text.toLowerCase() + '\uf8ff'),
+        where('usernameLower', '>=', text.toLowerCase()),
+        where('usernameLower', '<=', text.toLowerCase() + '\uf8ff'),
         limit(20)
       );
 

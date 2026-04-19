@@ -70,7 +70,8 @@
       "Bash(find /c/Users/jinha/Desktop/RankUp -maxdepth 1 -type f \\\\\\(-name *.json -o -name *.plist \\\\\\))",
       "Bash(echo \"exit: $?\")",
       "Bash(gcloud functions:*)",
-      "Bash(firebase functions:secrets:access RESEND_API_KEY)"
+      "Bash(firebase functions:secrets:access RESEND_API_KEY)",
+      "Bash(find /c/Users/jinha/Desktop/RankUp -type f \\\\\\(-name *service*.ts -o -name *service*.tsx \\\\\\))"
     ],
     "deny": [],
     "ask": []

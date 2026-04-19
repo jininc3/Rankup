@@ -163,10 +163,14 @@ export default function CreateLeaderboardInvite() {
           : 'Leaderboard created!',
         [{
           text: 'OK',
-          onPress: () => router.replace({
-            pathname: '/partyPages/leaderboardDetail',
-            params: { id: partyId, name: params.name as string, game: params.gameName as string, members: '1' },
-          }),
+          onPress: () => {
+            // Dismiss all create pages so back button goes to lobbies, not create flow
+            router.dismissAll();
+            router.replace({
+              pathname: '/partyPages/leaderboardDetail',
+              params: { id: partyId, name: params.name as string, game: params.gameName as string, members: '1' },
+            });
+          },
         }]
       );
     } catch (e: any) {

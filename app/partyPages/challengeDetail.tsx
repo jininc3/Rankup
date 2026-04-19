@@ -3,10 +3,10 @@ import { ThemedView } from '@/components/themed-view';
 import { IconSymbol } from '@/components/ui/icon-symbol';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useLocalSearchParams, useRouter } from 'expo-router';
-import { ScrollView, StyleSheet, TouchableOpacity, View, Image, Alert, ActivityIndicator } from 'react-native';
-import { useState, useEffect } from 'react';
+import { ScrollView, StyleSheet, TouchableOpacity, View, Image, Alert, ActivityIndicator, Modal, Animated, PanResponder, Dimensions } from 'react-native';
+import { useState, useEffect, useRef } from 'react';
 import { db } from '@/config/firebase';
-import { doc, onSnapshot, getDoc, updateDoc } from 'firebase/firestore';
+import { doc, onSnapshot, getDoc, updateDoc, collection, query, where, getDocs, deleteDoc, addDoc, serverTimestamp, arrayUnion } from 'firebase/firestore';
 import { useAuth } from '@/contexts/AuthContext';
 
 const LEAGUE_RANK_ICONS: { [key: string]: any } = {
@@ -97,6 +97,28 @@ export default function ChallengeDetail() {
   const [participants, setParticipants] = useState<Player[]>([]);
   const [spectators, setSpectators] = useState<Player[]>([]);
   const [startingChallenge, setStartingChallenge] = useState(false);
+  const [acceptingChallenge, setAcceptingChallenge] = useState(false);
+  const [showInviteModal, setShowInviteModal] = useState(false);
+  const [invitingUsers, setInvitingUsers] = useState<Set<string>>(new Set());
+  const [invitedUsers, setInvitedUsers] = useState<Set<string>>(new Set());
+  const inviteModalY = useRef(new Animated.Value(0)).current;
+  const invitePanResponder = useRef(
+    PanResponder.create({
+      onStartShouldSetPanResponder: () => true,
+      onMoveShouldSetPanResponder: (_, g) => g.dy > 5,
+      onPanResponderMove: (_, g) => { if (g.dy > 0) inviteModalY.setValue(g.dy); },
+      onPanResponderRelease: (_, g) => {
+        if (g.dy > 100 || g.vy > 0.5) {
+          Animated.timing(inviteModalY, { toValue: Dimensions.get('window').height, duration: 200, useNativeDriver: true }).start(() => {
+            setShowInviteModal(false);
+            inviteModalY.setValue(0);
+          });
+        } else {
+          Animated.spring(inviteModalY, { toValue: 0, useNativeDriver: true }).start();
+        }
+      },
+    })
+  ).current;
 
   const isCreator = partyData?.createdBy === user?.id;
   const challengeStatus = partyData?.challengeStatus || 'none';
@@ -104,6 +126,8 @@ export default function ChallengeDetail() {
   const isActive = challengeStatus === 'active';
   const challengeParticipants: string[] = partyData?.challengeParticipants || [];
   const challengeInvites: any[] = partyData?.challengeInvites || [];
+  const myInvite = challengeInvites.find((inv: any) => inv.userId === user?.id);
+  const isInvitedPending = isPending && myInvite?.status === 'pending';
 
   // Convert date helper
   const convertToDate = (dateValue: any): Date | null => {
@@ -135,11 +159,13 @@ export default function ChallengeDetail() {
     if (!start || !end) return null;
     const today = new Date();
     const totalDays = Math.ceil((end.getTime() - start.getTime()) / (1000 * 60 * 60 * 24));
-    const currentDay = Math.ceil((today.getTime() - start.getTime()) / (1000 * 60 * 60 * 24));
+    const msElapsed = today.getTime() - start.getTime();
+    const completedDays = Math.floor(msElapsed / (1000 * 60 * 60 * 24));
     const msLeft = Math.max(0, end.getTime() - today.getTime());
     const hoursLeft = Math.floor(msLeft / (1000 * 60 * 60));
+    const minutesLeft = Math.floor((msLeft % (1000 * 60 * 60)) / (1000 * 60));
     const daysLeft = Math.ceil(msLeft / (1000 * 60 * 60 * 24));
-    return { currentDay: Math.max(1, Math.min(currentDay, totalDays)), totalDays, daysLeft, hoursLeft };
+    return { currentDay: Math.max(0, Math.min(completedDays, totalDays)), totalDays, daysLeft, hoursLeft, minutesLeft };
   };
 
   const daysInfo = calculateDaysRemaining();
@@ -208,6 +234,97 @@ export default function ChallengeDetail() {
     });
     return () => unsubscribe();
   }, [id, user?.id]);
+
+  const handleAcceptChallenge = async () => {
+    if (!user?.id || !id) return;
+    setAcceptingChallenge(true);
+    try {
+      const partyRef = doc(db, 'parties', id as string);
+      const partySnapshot = await getDoc(partyRef);
+      if (!partySnapshot.exists()) {
+        Alert.alert('Error', 'This leaderboard no longer exists.');
+        setAcceptingChallenge(false);
+        return;
+      }
+      const data = partySnapshot.data();
+
+      // Update invite status to accepted
+      const updatedInvites = (data.challengeInvites || []).map((inv: any) =>
+        inv.userId === user.id ? { ...inv, status: 'accepted' } : inv
+      );
+      const updatedParticipants = [...(data.challengeParticipants || [])];
+      if (!updatedParticipants.includes(user.id)) {
+        updatedParticipants.push(user.id);
+      }
+
+      await updateDoc(partyRef, {
+        challengeInvites: updatedInvites,
+        challengeParticipants: updatedParticipants,
+      });
+
+      // Delete the challenge_invite notification for this user
+      try {
+        const notifRef = collection(db, `users/${user.id}/notifications`);
+        const notifQuery = query(notifRef, where('type', '==', 'challenge_invite'), where('partyId', '==', id));
+        const notifSnapshot = await getDocs(notifQuery);
+        for (const notifDoc of notifSnapshot.docs) {
+          await deleteDoc(notifDoc.ref);
+        }
+      } catch {
+        // Non-critical, ignore
+      }
+    } catch (error) {
+      console.error('Error accepting challenge:', error);
+      Alert.alert('Error', 'Failed to accept challenge.');
+    } finally {
+      setAcceptingChallenge(false);
+    }
+  };
+
+  const handleInviteToChallenge = async (spectator: Player) => {
+    if (!user?.id || !id || invitingUsers.has(spectator.userId)) return;
+    setInvitingUsers(prev => new Set(prev).add(spectator.userId));
+    try {
+      const partyRef = doc(db, 'parties', id as string);
+
+      // Add to challengeInvites
+      const newInvite = {
+        userId: spectator.userId,
+        username: spectator.username,
+        avatar: spectator.avatar || '',
+        status: 'pending',
+        invitedAt: new Date().toISOString(),
+      };
+      await updateDoc(partyRef, {
+        challengeInvites: arrayUnion(newInvite),
+      });
+
+      // Send notification
+      const notifRef = collection(db, `users/${spectator.userId}/notifications`);
+      await addDoc(notifRef, {
+        type: 'challenge_invite',
+        fromUserId: user.id,
+        fromUsername: user.username || '',
+        fromAvatar: user.avatar || '',
+        partyId: id,
+        partyName: partyData?.partyName || '',
+        game: game,
+        read: false,
+        createdAt: serverTimestamp(),
+      });
+
+      setInvitedUsers(prev => new Set(prev).add(spectator.userId));
+    } catch (error) {
+      console.error('Error inviting to challenge:', error);
+      Alert.alert('Error', 'Failed to send invite.');
+    } finally {
+      setInvitingUsers(prev => {
+        const next = new Set(prev);
+        next.delete(spectator.userId);
+        return next;
+      });
+    }
+  };
 
   const handleStartChallenge = async () => {
     if (!id || !isCreator) return;
@@ -328,13 +445,44 @@ export default function ChallengeDetail() {
               <View style={styles.progressHeader}>
                 <ThemedText style={styles.progressLabel}>Progress</ThemedText>
                 <ThemedText style={styles.progressDays}>
-                  {daysInfo.daysLeft <= 1 ? `${daysInfo.hoursLeft}h left` : `${daysInfo.daysLeft}d left`}
+                  {daysInfo.daysLeft <= 1 ? `${daysInfo.hoursLeft}h ${daysInfo.minutesLeft}m left` : `${daysInfo.daysLeft}d ${daysInfo.hoursLeft % 24}h left`}
                 </ThemedText>
               </View>
               <View style={styles.progressBarBg}>
                 <View style={[styles.progressBarFill, { width: `${progress}%` }]} />
               </View>
             </View>
+          )}
+
+          {/* Accept button for invited users */}
+          {isInvitedPending && (
+            <TouchableOpacity
+              style={[styles.acceptButton, acceptingChallenge && { opacity: 0.5 }]}
+              onPress={handleAcceptChallenge}
+              disabled={acceptingChallenge}
+              activeOpacity={0.8}
+            >
+              {acceptingChallenge ? (
+                <ActivityIndicator size={14} color="#0f0f0f" />
+              ) : (
+                <IconSymbol size={14} name="checkmark" color="#0f0f0f" />
+              )}
+              <ThemedText style={styles.acceptButtonText}>
+                {acceptingChallenge ? 'Accepting...' : 'Accept Challenge'}
+              </ThemedText>
+            </TouchableOpacity>
+          )}
+
+          {/* Invite button for pending challenge (creator only) */}
+          {isPending && isCreator && (
+            <TouchableOpacity
+              style={styles.inviteButton}
+              onPress={() => setShowInviteModal(true)}
+              activeOpacity={0.8}
+            >
+              <IconSymbol size={14} name="person.badge.plus" color="#fff" />
+              <ThemedText style={styles.inviteButtonText}>Invite Members</ThemedText>
+            </TouchableOpacity>
           )}
 
           {/* Start button for pending */}
@@ -486,6 +634,69 @@ export default function ChallengeDetail() {
 
         <View style={{ height: 40 }} />
       </ScrollView>
+
+      {/* Invite to Challenge Modal */}
+      <Modal visible={showInviteModal} transparent animationType="fade" onRequestClose={() => setShowInviteModal(false)}>
+        <TouchableOpacity style={styles.modalOverlay} activeOpacity={1} onPress={() => setShowInviteModal(false)}>
+          <Animated.View
+            style={[styles.modalSheet, { transform: [{ translateY: inviteModalY }] }]}
+            {...invitePanResponder.panHandlers}
+          >
+            <TouchableOpacity activeOpacity={1}>
+              <View style={styles.modalHandle} />
+              <ThemedText style={styles.modalTitle}>Invite to Challenge</ThemedText>
+
+              <ScrollView style={styles.modalScroll} showsVerticalScrollIndicator={false}>
+                {spectators.filter(s => {
+                  const alreadyInvited = challengeInvites.some((inv: any) => inv.userId === s.userId);
+                  return !alreadyInvited;
+                }).length === 0 ? (
+                  <ThemedText style={styles.modalEmptyText}>All members have been invited</ThemedText>
+                ) : (
+                  spectators
+                    .filter(s => !challengeInvites.some((inv: any) => inv.userId === s.userId))
+                    .map(spectator => (
+                      <View key={spectator.userId} style={styles.modalUserRow}>
+                        <View style={styles.modalUserInfo}>
+                          {spectator.avatar && spectator.avatar.startsWith('http') ? (
+                            <Image source={{ uri: spectator.avatar }} style={styles.modalUserAvatar} />
+                          ) : (
+                            <View style={styles.modalUserAvatarPlaceholder}>
+                              <ThemedText style={styles.modalUserAvatarText}>
+                                {spectator.username?.[0]?.toUpperCase()}
+                              </ThemedText>
+                            </View>
+                          )}
+                          <View>
+                            <ThemedText style={styles.modalUsername}>{spectator.username}</ThemedText>
+                            <ThemedText style={styles.modalUserRank}>{spectator.currentRank}</ThemedText>
+                          </View>
+                        </View>
+                        <TouchableOpacity
+                          style={[
+                            styles.modalInviteBtn,
+                            invitedUsers.has(spectator.userId) && styles.modalInviteBtnDone,
+                          ]}
+                          onPress={() => handleInviteToChallenge(spectator)}
+                          disabled={invitingUsers.has(spectator.userId) || invitedUsers.has(spectator.userId)}
+                          activeOpacity={0.7}
+                        >
+                          {invitingUsers.has(spectator.userId) ? (
+                            <ActivityIndicator size={12} color="#fff" />
+                          ) : invitedUsers.has(spectator.userId) ? (
+                            <ThemedText style={styles.modalInviteBtnText}>Invited</ThemedText>
+                          ) : (
+                            <ThemedText style={styles.modalInviteBtnText}>Invite</ThemedText>
+                          )}
+                        </TouchableOpacity>
+                      </View>
+                    ))
+                )}
+              </ScrollView>
+            </TouchableOpacity>
+          </Animated.View>
+        </TouchableOpacity>
+      </Modal>
     </ThemedView>
   );
 }
@@ -611,6 +822,21 @@ const styles = StyleSheet.create({
     height: '100%',
     backgroundColor: '#fff',
     borderRadius: 2,
+  },
+  acceptButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 6,
+    backgroundColor: '#fff',
+    paddingVertical: 16,
+    borderRadius: 28,
+    marginTop: 16,
+  },
+  acceptButtonText: {
+    fontSize: 16,
+    fontWeight: '700',
+    color: '#0f0f0f',
   },
   startButton: {
     flexDirection: 'row',
@@ -796,5 +1022,110 @@ const styles = StyleSheet.create({
     fontSize: 12,
     fontWeight: '500',
     color: '#fff',
+  },
+  inviteButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 6,
+    backgroundColor: '#1a1a1a',
+    paddingVertical: 14,
+    borderRadius: 24,
+    marginTop: 10,
+  },
+  inviteButtonText: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#fff',
+  },
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.6)',
+    justifyContent: 'flex-end',
+  },
+  modalSheet: {
+    backgroundColor: '#1a1a1a',
+    borderTopLeftRadius: 20,
+    borderTopRightRadius: 20,
+    paddingHorizontal: 20,
+    paddingBottom: 40,
+    maxHeight: Dimensions.get('window').height * 0.6,
+  },
+  modalHandle: {
+    width: 36,
+    height: 4,
+    borderRadius: 2,
+    backgroundColor: '#333',
+    alignSelf: 'center',
+    marginTop: 10,
+    marginBottom: 16,
+  },
+  modalTitle: {
+    fontSize: 18,
+    fontWeight: '700',
+    color: '#fff',
+    marginBottom: 16,
+  },
+  modalScroll: {
+    maxHeight: 350,
+  },
+  modalEmptyText: {
+    fontSize: 14,
+    color: '#555',
+    textAlign: 'center',
+    paddingVertical: 24,
+  },
+  modalUserRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingVertical: 10,
+  },
+  modalUserInfo: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    flex: 1,
+  },
+  modalUserAvatar: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+  },
+  modalUserAvatarPlaceholder: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: '#2a2a2a',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  modalUserAvatarText: {
+    fontSize: 16,
+    fontWeight: '700',
+    color: '#666',
+  },
+  modalUsername: {
+    fontSize: 15,
+    fontWeight: '600',
+    color: '#fff',
+  },
+  modalUserRank: {
+    fontSize: 12,
+    color: '#666',
+  },
+  modalInviteBtn: {
+    backgroundColor: '#fff',
+    borderRadius: 20,
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+  },
+  modalInviteBtnDone: {
+    opacity: 0.5,
+  },
+  modalInviteBtnText: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: '#0f0f0f',
   },
 });

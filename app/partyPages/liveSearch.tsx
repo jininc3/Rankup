@@ -13,7 +13,7 @@ import { doc, getDoc } from 'firebase/firestore';
 import { db } from '@/config/firebase';
 import { useRouter } from 'expo-router';
 import { joinDuoQueue, leaveDuoQueue, subscribeToDuoQueue, getDuoMatch, acceptMatch, declineMatch, subscribeToMatch, DuoMatchCardData, DuoMatch } from '@/services/duoMatchService';
-import { createOrGetChat } from '@/services/chatService';
+import { createOrGetChat, sendMessage } from '@/services/chatService';
 import { DuoCardData } from '@/app/components/addDuoCard';
 import AddDuoCard from '@/app/components/addDuoCard';
 
@@ -282,17 +282,30 @@ export default function LiveSearchScreen() {
     } catch (error) {
       console.error('Error declining match:', error);
     }
-    // Cloud Function handles cleanup; local state updated by match listener
+    // Cloud Function re-queues the other user; reset local state to idle
+    cleanupSearch();
+    setMatchState('idle');
+    setSearchGame(null);
+    setMatchedUserCard(null);
+    setMatchedUserId(null);
+    setCurrentMatchId(null);
   };
 
   const handleAcceptTimeout = async () => {
-    // Timer expired without accepting — treat as decline
+    // Timer expired — treat as decline and reset to idle
     if (!currentMatchId || !user?.id) return;
     try {
       await declineMatch(currentMatchId, user.id);
     } catch (error) {
       console.error('Error on timeout decline:', error);
     }
+    cleanupSearch();
+    setMatchState('idle');
+    setSearchGame(null);
+    setMatchedUserCard(null);
+    setMatchedUserId(null);
+    setCurrentMatchId(null);
+    Alert.alert('Match Expired', 'The match timed out. Try searching again!');
   };
 
   const handleSearchAgain = () => {
@@ -317,10 +330,11 @@ export default function LiveSearchScreen() {
     });
   };
 
-  const handleMatchStartChat = async () => {
-    if (!user?.id || !matchedUserCard) return;
+  const handleSendUsername = async () => {
+    if (!user?.id || !matchedUserCard || !searchGame) return;
 
     try {
+      const myInGameName = searchGame === 'valorant' ? valorantInGameName : leagueInGameName;
       const chatId = await createOrGetChat(
         user.id,
         user.username || '',
@@ -329,6 +343,13 @@ export default function LiveSearchScreen() {
         matchedUserCard.username,
         matchedUserCard.avatar || undefined,
       );
+
+      // Auto-send in-game username as first message
+      if (myInGameName) {
+        const gameLabel = searchGame === 'valorant' ? 'Valorant' : 'League';
+        await sendMessage(chatId, user.id, `My ${gameLabel} username: ${myInGameName}`);
+      }
+
       router.push({
         pathname: '/chatPages/chatScreen',
         params: {
@@ -339,7 +360,7 @@ export default function LiveSearchScreen() {
         },
       });
     } catch (error) {
-      console.error('Error starting chat:', error);
+      console.error('Error sending username:', error);
       Alert.alert('Error', 'Failed to start chat. Please try again.');
     }
   };
@@ -425,13 +446,31 @@ export default function LiveSearchScreen() {
             otherAccepted={otherAccepted}
             onAccept={handleAccept}
             onDecline={handleDecline}
+            onViewProfile={() => {
+              router.push({
+                pathname: '/profilePages/duoCardDetail',
+                params: {
+                  game: searchGame,
+                  username: matchedUserCard.username,
+                  avatar: matchedUserCard.avatar || '',
+                  inGameIcon: matchedUserCard.inGameIcon || '',
+                  inGameName: matchedUserCard.inGameName || '',
+                  currentRank: matchedUserCard.currentRank || '',
+                  mainRole: matchedUserCard.mainRole || '',
+                  mainAgent: matchedUserCard.mainAgent || '',
+                  userId: matchedUserCard.userId,
+                  isOwnCard: 'false',
+                },
+              });
+            }}
           />
         ) : matchState === 'matched' && matchedUserCard && searchGame ? (
           <DuoMatchResult
             game={searchGame}
             matchedUser={matchedUserCard}
+            myInGameName={searchGame === 'valorant' ? valorantInGameName : leagueInGameName}
+            onSendUsername={handleSendUsername}
             onViewProfile={handleMatchViewProfile}
-            onStartChat={handleMatchStartChat}
             onSearchAgain={handleSearchAgain}
           />
         ) : (

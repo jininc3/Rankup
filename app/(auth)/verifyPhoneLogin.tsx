@@ -18,13 +18,13 @@ export default function VerifyPhoneLogin() {
   const params = useLocalSearchParams();
   const phoneNumber = params.phoneNumber as string;
 
-  const [code, setCode] = useState(['', '', '', '', '', '']);
+  const [code, setCode] = useState('');
   const [isSending, setIsSending] = useState(false);
   const [isVerifying, setIsVerifying] = useState(false);
   const [confirmation, setConfirmation] = useState<FirebaseAuthTypes.ConfirmationResult | null>(null);
   const [codeSent, setCodeSent] = useState(false);
 
-  const inputRefs = useRef<(TextInput | null)[]>([]);
+  const hiddenInputRef = useRef<TextInput | null>(null);
 
   useEffect(() => {
     sendVerificationCode();
@@ -44,24 +44,16 @@ export default function VerifyPhoneLogin() {
     }
   };
 
-  const handleCodeChange = (text: string, index: number) => {
-    const newCode = [...code];
-    newCode[index] = text;
-    setCode(newCode);
-    if (text && index < 5) {
-      inputRefs.current[index + 1]?.focus();
-    }
-  };
-
-  const handleKeyPress = (e: any, index: number) => {
-    if (e.nativeEvent.key === 'Backspace' && !code[index] && index > 0) {
-      inputRefs.current[index - 1]?.focus();
+  const handleCodeChange = (text: string) => {
+    const digits = text.replace(/[^0-9]/g, '').slice(0, 6);
+    setCode(digits);
+    if (digits.length === 6) {
+      hiddenInputRef.current?.blur();
     }
   };
 
   const handleVerify = async () => {
-    const verificationCode = code.join('');
-    if (verificationCode.length !== 6) {
+    if (code.length !== 6) {
       Alert.alert('Error', 'Please enter the 6-digit verification code');
       return;
     }
@@ -74,7 +66,7 @@ export default function VerifyPhoneLogin() {
     try {
       setIsVerifying(true);
       // This signs in the user with the native Firebase SDK
-      await confirmation.confirm(verificationCode);
+      await confirmation.confirm(code);
       // AuthContext will detect the sign-in via onAuthStateChanged
       // Navigation handled automatically
     } catch (error: any) {
@@ -90,8 +82,8 @@ export default function VerifyPhoneLogin() {
   };
 
   const handleResend = async () => {
-    setCode(['', '', '', '', '', '']);
-    inputRefs.current[0]?.focus();
+    setCode('');
+    hiddenInputRef.current?.focus();
     await sendVerificationCode();
     Alert.alert('Code Sent', 'A new verification code has been sent to your phone.');
   };
@@ -122,28 +114,38 @@ export default function VerifyPhoneLogin() {
           </View>
         ) : (
           <>
-            <View style={styles.otpContainer}>
-              {code.map((digit, index) => (
-                <TextInput
+            <TouchableOpacity
+              style={styles.otpContainer}
+              activeOpacity={1}
+              onPress={() => hiddenInputRef.current?.focus()}
+            >
+              <TextInput
+                ref={hiddenInputRef}
+                value={code}
+                onChangeText={handleCodeChange}
+                keyboardType="number-pad"
+                textContentType="oneTimeCode"
+                autoComplete="sms-otp"
+                maxLength={6}
+                editable={!isVerifying}
+                autoFocus
+                style={styles.hiddenInput}
+              />
+              {[0, 1, 2, 3, 4, 5].map((index) => (
+                <View
                   key={index}
-                  ref={(ref) => { inputRefs.current[index] = ref; }}
-                  style={[styles.otpInput, digit ? styles.otpInputFilled : null]}
-                  value={digit}
-                  onChangeText={(text) => handleCodeChange(text, index)}
-                  onKeyPress={(e) => handleKeyPress(e, index)}
-                  keyboardType="number-pad"
-                  maxLength={1}
-                  selectTextOnFocus
-                  editable={!isVerifying}
-                />
+                  style={[styles.otpInput, code[index] ? styles.otpInputFilled : null]}
+                >
+                  <ThemedText style={styles.otpDigit}>{code[index] || ''}</ThemedText>
+                </View>
               ))}
-            </View>
+            </TouchableOpacity>
 
             <View style={styles.buttonContainer}>
               <TouchableOpacity
                 style={[styles.verifyButton, isVerifying && styles.buttonDisabled]}
                 onPress={handleVerify}
-                disabled={isVerifying || code.join('').length !== 6}
+                disabled={isVerifying || code.length !== 6}
               >
                 {isVerifying ? (
                   <ActivityIndicator color="#fff" />
@@ -226,6 +228,15 @@ const styles = StyleSheet.create({
     gap: 10,
     marginBottom: 32,
   },
+  hiddenInput: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    opacity: 0,
+    fontSize: 22,
+  },
   otpInput: {
     width: 48,
     height: 56,
@@ -233,13 +244,16 @@ const styles = StyleSheet.create({
     borderWidth: 2,
     borderColor: '#3a3f44',
     backgroundColor: '#2c2f33',
-    textAlign: 'center',
-    fontSize: 22,
-    fontWeight: '700',
-    color: '#fff',
+    justifyContent: 'center',
+    alignItems: 'center',
   },
   otpInputFilled: {
     borderColor: '#c42743',
+  },
+  otpDigit: {
+    fontSize: 22,
+    fontWeight: '700',
+    color: '#fff',
   },
   buttonContainer: {
     width: '100%',

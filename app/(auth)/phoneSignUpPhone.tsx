@@ -8,7 +8,7 @@ import { StyleSheet, TouchableOpacity, View, TextInput, KeyboardAvoidingView, Pl
 export default function PhoneSignUpPhone() {
   const router = useRouter();
   const params = useLocalSearchParams();
-  const [phoneNumber, setPhoneNumber] = useState('');
+  const [phoneNumber, setPhoneNumber] = useState('+44 ');
 
   const isValid = /^\+?[0-9\s\-\(\)]{7,}$/.test(phoneNumber.trim());
 
@@ -52,7 +52,7 @@ export default function PhoneSignUpPhone() {
           <View style={styles.inputContainer}>
             <TextInput
               style={styles.input}
-              placeholder="+1 234 567 8900"
+              placeholder="+44 7123 456789"
               placeholderTextColor="#555"
               value={phoneNumber}
               onChangeText={setPhoneNumber}

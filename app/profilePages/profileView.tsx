@@ -403,8 +403,10 @@ export default function ProfileViewScreen() {
         ...doc.data()
       } as Post));
 
-      // Sort by newest first
-      fetchedPosts = fetchedPosts.sort((a, b) => b.createdAt.toMillis() - a.createdAt.toMillis());
+      // Filter out archived posts and sort by newest first
+      fetchedPosts = fetchedPosts
+        .filter(post => !(post as any).archived)
+        .sort((a, b) => b.createdAt.toMillis() - a.createdAt.toMillis());
 
       setPosts(fetchedPosts);
     } catch (error) {

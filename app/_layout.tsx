@@ -34,10 +34,11 @@ function RootLayoutNav() {
     if (isLoading) return;
 
     const inAuthGroup = segments[0] === '(auth)';
-    const onSignupFlow = segments[1]?.startsWith('googleSignUp') ||
-                         segments[1]?.startsWith('onboardingSignUp') ||
-                         segments[1]?.startsWith('emailSignUp') ||
+    const onSignupFlow = segments[1]?.startsWith('emailSignUp') ||
                          segments[1]?.startsWith('phoneSignUp') ||
+                         segments[1] === 'signUpBirthday' ||
+                         segments[1] === 'signUpUsername' ||
+                         segments[1] === 'signUpPassword' ||
                          segments[1] === 'verifyEmailSignUp' ||
                          segments[1] === 'verifyPhoneSignUp';
     const inProfilePages = segments[0] === 'profilePages';
@@ -55,10 +56,11 @@ function RootLayoutNav() {
       // Not authenticated, redirect to login
       console.log('Redirecting to login');
       router.replace('/(auth)/login');
-    } else if (isAuthenticated && needsUsernameSetup && !onSignupFlow && !inProfilePages) {
-      // Authenticated but needs username setup (allow profilePages for linking accounts during signup)
-      console.log('Redirecting to signUpBirthday (google)');
-      router.replace({ pathname: '/(auth)/signUpBirthday', params: { signupMethod: 'google' } });
+    } else if (isAuthenticated && needsUsernameSetup && !onSignupFlow && !inAuthGroup) {
+      // Authenticated but needs username setup and not in auth screens — redirect to login
+      // (Google sign-in flow will navigate to signUpBirthday explicitly)
+      console.log('Redirecting to login (needs username setup)');
+      router.replace('/(auth)/login');
     } else if (isAuthenticated && !needsUsernameSetup && inAuthGroup) {
       // Authenticated with username set, redirect to main app
       console.log('Redirecting to tabs');
@@ -169,6 +171,11 @@ function RootLayoutNav() {
       if (data.chatId && data.senderId && data.senderUsername) {
         router.push(`/chatPages/chatScreen?chatId=${data.chatId}&otherUserId=${data.senderId}&otherUsername=${data.senderUsername}`);
       }
+    } else if (data.type === 'challenge_invite') {
+      // Navigate to the challenge detail page
+      if (data.partyId && data.game) {
+        router.push(`/partyPages/challengeDetail?id=${data.partyId}&game=${encodeURIComponent(data.game)}`);
+      }
     } else if (data.type === 'party_invite' || data.type === 'party_complete' || data.type === 'party_ranking_change') {
       // Navigate to the party details/leaderboard
       if (data.partyId && data.game) {
@@ -187,6 +194,7 @@ function RootLayoutNav() {
         <Stack.Screen name="index" options={{ headerShown: false }} />
         <Stack.Screen name="(auth)" options={{ headerShown: false }} />
         <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
+        <Stack.Screen name="notifications" options={{ headerShown: false, gestureEnabled: true }} />
         <Stack.Screen name="components/gameStats" options={{ headerShown: false }} />
       </Stack>
       <StatusBar style="auto" />

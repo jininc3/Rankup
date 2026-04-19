@@ -18,6 +18,8 @@ export default function LeaderboardPagesLayout() {
         name="leaderboardDetail"
         options={{
           headerShown: false,
+          animation: 'none',
+          gestureEnabled: false,
         }}
       />
       <Stack.Screen
