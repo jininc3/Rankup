@@ -3,7 +3,7 @@ import rankCard from '@/app/components/rankCard';
 // Alias for JSX usage (React components must start with uppercase)
 const RankCard = rankCard;
 import PostDuoCard from '@/app/components/postDuoCard';
-import { DuoCardData } from '@/app/components/addDuoCard';
+import { DuoCardData } from '@/app/(tabs)/duoFinder';
 import PostViewerModal from '@/app/components/postViewerModal';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';

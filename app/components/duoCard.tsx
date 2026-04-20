@@ -290,7 +290,7 @@ export default function DuoCard({ duo, onPress, onMessage, onViewProfile, onDele
       <View style={styles.bottomSection}>
         {duo.isOwnPost && onDelete ? (
           <TouchableOpacity style={styles.bottomBtn} onPress={onDelete} activeOpacity={0.7}>
-            <ThemedText style={styles.deleteActionText}>Remove Post</ThemedText>
+            <ThemedText style={styles.deleteActionText}>Delete Duo Card</ThemedText>
           </TouchableOpacity>
         ) : (
           <>

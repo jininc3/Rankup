@@ -11,7 +11,7 @@ import { createOrGetChat, subscribeToUserChats } from '@/services/chatService';
 import CommentModal from '@/app/components/commentModal';
 import PostContent from '@/app/components/postContent';
 import PostDuoCard from '@/app/components/postDuoCard';
-import { DuoCardData } from '@/app/components/addDuoCard';
+import { DuoCardData } from '@/app/(tabs)/duoFinder';
 import { collection, getDocs, orderBy, query, Timestamp, where, onSnapshot, limit, startAfter, QueryDocumentSnapshot, DocumentData, doc, getDoc } from 'firebase/firestore';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { ActivityIndicator, Dimensions, Image, ScrollView, StyleSheet, TouchableOpacity, View, Alert, RefreshControl, Modal, Pressable } from 'react-native';

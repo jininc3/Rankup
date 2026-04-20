@@ -14,8 +14,7 @@ import { db } from '@/config/firebase';
 import { useRouter } from 'expo-router';
 import { joinDuoQueue, leaveDuoQueue, subscribeToDuoQueue, getDuoMatch, acceptMatch, declineMatch, subscribeToMatch, DuoMatchCardData, DuoMatch } from '@/services/duoMatchService';
 import { createOrGetChat, sendMessage } from '@/services/chatService';
-import { DuoCardData } from '@/app/components/addDuoCard';
-import AddDuoCard from '@/app/components/addDuoCard';
+import { DuoCardData } from '@/app/(tabs)/duoFinder';
 
 export default function LiveSearchScreen() {
   const { user } = useAuth();
@@ -486,15 +485,6 @@ export default function LiveSearchScreen() {
         )}
       </ScrollView>
 
-      {showAddCard && (
-        <AddDuoCard
-          visible={showAddCard}
-          onClose={() => setShowAddCard(false)}
-          onSave={handleAddCardSave}
-          hasValorantAccount={!!valorantCard}
-          hasLeagueAccount={!!leagueCard}
-        />
-      )}
     </ThemedView>
   );
 }

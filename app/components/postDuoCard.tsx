@@ -18,7 +18,7 @@ import {
   TouchableOpacity,
   View,
 } from 'react-native';
-import { DuoCardData } from './addDuoCard';
+import { DuoCardData } from '@/app/(tabs)/duoFinder';
 import DuoCard from './duoCard';
 
 // Roles

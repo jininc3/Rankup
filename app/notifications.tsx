@@ -12,6 +12,13 @@ import { useFocusEffect } from '@react-navigation/native';
 import PostViewerModal from '@/app/components/postViewerModal';
 import { LinearGradient } from 'expo-linear-gradient';
 
+const GAME_LOGOS: { [key: string]: any } = {
+  'Valorant': require('@/assets/images/valorant-red.png'),
+  'League of Legends': require('@/assets/images/lol-icon.png'),
+  'League': require('@/assets/images/lol-icon.png'),
+  'Apex Legends': require('@/assets/images/apex.png'),
+};
+
 interface Notification {
   id: string;
   type: 'follow' | 'like' | 'comment' | 'tag' | 'party_invite' | 'party_complete' | 'party_ranking_change' | 'challenge_invite';
@@ -784,7 +791,11 @@ export default function NotificationsScreen() {
         )}
         renderItem={({ item: notification }) => (
                 <TouchableOpacity
-                  style={[styles.notificationCard, !notification.read && styles.unreadNotification]}
+                  style={[
+                    styles.notificationCard,
+                    !notification.read && styles.unreadNotification,
+                    (notification.type === 'party_invite' || notification.type === 'challenge_invite') && styles.inviteCard,
+                  ]}
                   onPress={() => handleNotificationPress(notification)}
                   onLongPress={() => handleLongPress(notification.id)}
                   activeOpacity={0.7}
@@ -836,22 +847,8 @@ export default function NotificationsScreen() {
                             {notification.type === 'like' && ' liked your post'}
                             {notification.type === 'tag' && ' tagged you in a post'}
                             {notification.type === 'comment' && ' commented: '}
-                            {notification.type === 'party_invite' && (
-                              <>
-                                {' invited you to '}
-                                <ThemedText style={styles.leaderboardNameText}>
-                                  {(notification.partyName || '').toUpperCase()}
-                                </ThemedText>
-                              </>
-                            )}
-                            {notification.type === 'challenge_invite' && (
-                              <>
-                                {' challenged you in '}
-                                <ThemedText style={styles.leaderboardNameText}>
-                                  {(notification.partyName || '').toUpperCase()}
-                                </ThemedText>
-                              </>
-                            )}
+                            {notification.type === 'party_invite' && ' invited you to join'}
+                            {notification.type === 'challenge_invite' && ' challenged you'}
                             {notification.type === 'party_complete' && (
                               <>
                                 <ThemedText style={styles.leaderboardNameText}>
@@ -885,63 +882,60 @@ export default function NotificationsScreen() {
                         </View>
                       </View>
 
-                      {/* Game tag for party/challenge invites */}
-                      {(notification.type === 'party_invite' || notification.type === 'challenge_invite') && notification.game && (
-                        <ThemedText style={styles.partyGameText}>{notification.game}</ThemedText>
+                      {(notification.type === 'party_invite' || notification.type === 'challenge_invite') ? (
+                        <>
+                          {/* Leaderboard preview card */}
+                          <View style={styles.invitePreviewCard}>
+                            {notification.partyId && partyIcons[notification.partyId] ? (
+                              <Image source={{ uri: partyIcons[notification.partyId] as string }} style={styles.invitePreviewIconImage} />
+                            ) : GAME_LOGOS[notification.game || ''] ? (
+                              <Image source={GAME_LOGOS[notification.game || '']} style={styles.invitePreviewIconImage} resizeMode="contain" />
+                            ) : (
+                              <View style={styles.invitePreviewIconFallback}>
+                                <IconSymbol size={16} name="trophy.fill" color="#A08845" />
+                              </View>
+                            )}
+                            <View style={styles.invitePreviewInfo}>
+                              <ThemedText style={styles.invitePreviewName} numberOfLines={1}>
+                                {notification.partyName || 'Leaderboard'}
+                              </ThemedText>
+                              {notification.game && (
+                                <ThemedText style={styles.invitePreviewGame}>{notification.game}</ThemedText>
+                              )}
+                            </View>
+                            <IconSymbol size={12} name="chevron.right" color="#444" />
+                          </View>
+
+                          {/* Action row */}
+                          <View style={styles.inviteActionRow}>
+                            <TouchableOpacity
+                              style={[styles.inviteAcceptBtn, acceptingInvite === notification.id && styles.acceptButtonLoading]}
+                              onPress={(e) => notification.type === 'party_invite' ? handleAcceptInvite(notification, e) : handleAcceptChallenge(notification, e)}
+                              activeOpacity={0.7}
+                              disabled={acceptingInvite === notification.id}
+                            >
+                              {acceptingInvite === notification.id ? (
+                                <ActivityIndicator size="small" color="#fff" />
+                              ) : (
+                                <ThemedText style={styles.inviteAcceptText}>Accept</ThemedText>
+                              )}
+                            </TouchableOpacity>
+                            <TouchableOpacity
+                              style={[styles.inviteDeclineBtn, acceptingInvite === notification.id && { opacity: 0.5 }]}
+                              onPress={(e) => notification.type === 'party_invite' ? handleDeclineInvite(notification, e) : handleDeclineChallenge(notification, e)}
+                              activeOpacity={0.7}
+                              disabled={acceptingInvite === notification.id}
+                            >
+                              <ThemedText style={styles.inviteDeclineText}>Decline</ThemedText>
+                            </TouchableOpacity>
+                            <ThemedText style={styles.inviteTimeText}>{getTimeAgo(notification.createdAt)}</ThemedText>
+                          </View>
+                        </>
+                      ) : (
+                        <View style={styles.bottomRow}>
+                          <ThemedText style={styles.timeText}>{getTimeAgo(notification.createdAt)}</ThemedText>
+                        </View>
                       )}
-
-                      <View style={styles.bottomRow}>
-                        <ThemedText style={styles.timeText}>{getTimeAgo(notification.createdAt)}</ThemedText>
-
-                        {notification.type === 'party_invite' && (
-                          <View style={styles.inviteActions}>
-                            <TouchableOpacity
-                              style={[styles.acceptButton, acceptingInvite === notification.id && styles.acceptButtonLoading]}
-                              onPress={(e) => handleAcceptInvite(notification, e)}
-                              activeOpacity={0.7}
-                              disabled={acceptingInvite === notification.id}
-                            >
-                              {acceptingInvite === notification.id ? (
-                                <ActivityIndicator size="small" color="#fff" />
-                              ) : (
-                                <ThemedText style={styles.acceptButtonText}>Accept</ThemedText>
-                              )}
-                            </TouchableOpacity>
-                            <TouchableOpacity
-                              style={styles.declineButton}
-                              onPress={(e) => handleDeclineInvite(notification, e)}
-                              activeOpacity={0.7}
-                              disabled={acceptingInvite === notification.id}
-                            >
-                              <IconSymbol size={20} name="xmark" color="#999" />
-                            </TouchableOpacity>
-                          </View>
-                        )}
-                        {notification.type === 'challenge_invite' && (
-                          <View style={styles.inviteActions}>
-                            <TouchableOpacity
-                              style={[styles.acceptButton, acceptingInvite === notification.id && styles.acceptButtonLoading]}
-                              onPress={(e) => handleAcceptChallenge(notification, e)}
-                              activeOpacity={0.7}
-                              disabled={acceptingInvite === notification.id}
-                            >
-                              {acceptingInvite === notification.id ? (
-                                <ActivityIndicator size="small" color="#fff" />
-                              ) : (
-                                <ThemedText style={styles.acceptButtonText}>Accept</ThemedText>
-                              )}
-                            </TouchableOpacity>
-                            <TouchableOpacity
-                              style={styles.declineButton}
-                              onPress={(e) => handleDeclineChallenge(notification, e)}
-                              activeOpacity={0.7}
-                              disabled={acceptingInvite === notification.id}
-                            >
-                              <IconSymbol size={20} name="xmark" color="#999" />
-                            </TouchableOpacity>
-                          </View>
-                        )}
-                      </View>
                     </View>
 
                     {/* Post thumbnail for like/comment/tag notifications */}
@@ -1181,9 +1175,96 @@ const styles = StyleSheet.create({
     fontSize: 13,
     fontWeight: '600',
   },
+  inviteCard: {
+    backgroundColor: '#1a1a1a',
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.06)',
+    borderTopColor: 'rgba(255,255,255,0.09)',
+    marginHorizontal: 12,
+    marginVertical: 4,
+    paddingVertical: 12,
+    paddingHorizontal: 14,
+    borderRadius: 14,
+  },
+  invitePreviewCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#131313',
+    borderRadius: 10,
+    padding: 10,
+    marginTop: 8,
+    gap: 10,
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.04)',
+  },
+  invitePreviewIconImage: {
+    width: 36,
+    height: 36,
+    borderRadius: 10,
+    backgroundColor: '#1a1a1a',
+  },
+  invitePreviewIconFallback: {
+    width: 36,
+    height: 36,
+    borderRadius: 10,
+    backgroundColor: '#1a1a1a',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  invitePreviewInfo: {
+    flex: 1,
+    gap: 2,
+  },
+  invitePreviewName: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#fff',
+  },
+  invitePreviewGame: {
+    fontSize: 11,
+    color: '#666',
+    fontWeight: '500',
+  },
+  inviteActionRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginTop: 10,
+    gap: 8,
+  },
+  inviteAcceptBtn: {
+    flex: 1,
+    backgroundColor: '#A08845',
+    paddingVertical: 8,
+    borderRadius: 8,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  inviteAcceptText: {
+    color: '#fff',
+    fontSize: 13,
+    fontWeight: '700',
+  },
+  inviteDeclineBtn: {
+    flex: 1,
+    backgroundColor: '#2b2d31',
+    paddingVertical: 8,
+    borderRadius: 8,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  inviteDeclineText: {
+    color: '#999',
+    fontSize: 13,
+    fontWeight: '600',
+  },
+  inviteTimeText: {
+    fontSize: 11,
+    color: '#72767d',
+    marginLeft: 4,
+  },
   leaderboardNameText: {
     fontWeight: '700',
-    color: '#fff',
+    color: '#A08845',
     fontSize: 13,
     lineHeight: 18,
   },
