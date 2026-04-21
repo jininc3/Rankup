@@ -210,21 +210,7 @@ export default function ProfileViewScreen() {
     const totalCards = userGames.length;
 
     if (focusedCardIndex !== null) {
-      if (pressedIndex === focusedCardIndex) {
-        // Clicking the focused card - navigate to game stats
-        const game = userGames[pressedIndex];
-        if (game.name === 'Valorant') {
-          router.push({
-            pathname: '/components/valorantGameStats',
-            params: { game: JSON.stringify(game) },
-          });
-        } else if (game.name === 'League of Legends' || game.name === 'TFT') {
-          router.push({
-            pathname: '/components/leagueGameStats',
-            params: { game: JSON.stringify(game) },
-          });
-        }
-      } else {
+      if (pressedIndex !== focusedCardIndex) {
         // Clicking a non-focused card - collapse back to stack
         LayoutAnimation.configureNext(
           LayoutAnimation.create(
