@@ -29,6 +29,7 @@ export const onNotificationCreated = onDocumentCreated(
 
       // Check if user has disabled this type of notification
       if (preferences) {
+        // Social notifications
         if (notification.type === 'like' && preferences.likes === false) {
           console.log('User disabled like notifications');
           return;
@@ -39,6 +40,25 @@ export const onNotificationCreated = onDocumentCreated(
         }
         if (notification.type === 'follow' && preferences.followers === false) {
           console.log('User disabled follower notifications');
+          return;
+        }
+
+        // Gaming activity notifications
+        if (notification.type === 'party_ranking_change' && preferences.rankUps === false) {
+          console.log('User disabled rank update notifications');
+          return;
+        }
+        if (notification.type === 'achievement' && preferences.achievements === false) {
+          console.log('User disabled achievement notifications');
+          return;
+        }
+        if (
+          (notification.type === 'party_invite' ||
+            notification.type === 'challenge_invite' ||
+            notification.type === 'party_complete') &&
+          preferences.challenges === false
+        ) {
+          console.log('User disabled party invite notifications');
           return;
         }
       }

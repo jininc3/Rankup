@@ -1,13 +1,17 @@
 import { ThemedText } from '@/components/themed-text';
 import { IconSymbol } from '@/components/ui/icon-symbol';
-import { LinearGradient } from 'expo-linear-gradient';
 import { StyleSheet, View, ScrollView, Image, TouchableOpacity, Modal, ActivityIndicator } from 'react-native';
 import { useState, useEffect } from 'react';
 import { doc, getDoc } from 'firebase/firestore';
 import { db } from '@/config/firebase';
 import { getRecentMatches } from '@/services/riotService';
 
-// Valorant rank icon mapping
+const GAME_LOGOS: { [key: string]: any } = {
+  'Valorant': require('@/assets/images/valorant-red.png'),
+  'League of Legends': require('@/assets/images/lol-icon.png'),
+  'League': require('@/assets/images/lol-icon.png'),
+};
+
 const VALORANT_RANK_ICONS: { [key: string]: any } = {
   iron: require('@/assets/images/valorantranks/iron.png'),
   bronze: require('@/assets/images/valorantranks/bronze.png'),
@@ -160,20 +164,17 @@ export default function DuoCardDetailModal({ visible, onClose, card }: DuoCardDe
       const cacheKey = `${card.userId}_${card.game}`;
       const cached = matchHistoryCache[cacheKey];
 
-      // Return cached data if still fresh
       if (cached && Date.now() - cached.timestamp < MATCH_CACHE_TTL) {
         setRecentMatches(cached.matches);
         return;
       }
 
-      // Show cached data immediately while fetching fresh
       if (cached) {
         setRecentMatches(cached.matches);
       }
 
       setLoadingMatches(!cached);
       try {
-        // Read match history from Firestore cache
         const userDocRef = doc(db, 'users', card.userId);
         const userDoc = await getDoc(userDocRef);
         let matches: MatchEntry[] = [];
@@ -187,7 +188,6 @@ export default function DuoCardDetailModal({ visible, onClose, card }: DuoCardDe
           }
         }
 
-        // For League only: fall back to Cloud Function if no Firestore data
         if (matches.length === 0 && card.game === 'league') {
           const result = await getRecentMatches(card.userId, card.game);
           if (result.matches?.length > 0) {
@@ -206,7 +206,6 @@ export default function DuoCardDetailModal({ visible, onClose, card }: DuoCardDe
           }
         }
 
-        // Update cache
         matchHistoryCache[cacheKey] = { matches, timestamp: Date.now() };
         setRecentMatches(matches);
       } catch (error) {
@@ -223,10 +222,14 @@ export default function DuoCardDetailModal({ visible, onClose, card }: DuoCardDe
   if (!card) return null;
 
   const isLeague = card.game === 'league';
+  const gameName = isLeague ? 'League of Legends' : 'Valorant';
+  const gameLogo = GAME_LOGOS[gameName];
   const currentRankIcon = getRankIcon(card.currentRank, card.game);
-  const peakRankIcon = getRankIcon(card.peakRank, card.game);
   const agentIcon = !isLeague && card.mainAgent
     ? VALORANT_AGENT_ICONS[card.mainAgent.toLowerCase()] || null
+    : null;
+  const championIconSrc = isLeague && card.mainAgent
+    ? { uri: `https://ddragon.leagueoflegends.com/cdn/14.24.1/img/champion/${card.mainAgent.replace(/[\s'.]/g, '')}.png` }
     : null;
   const roleIcon = !isLeague && card.mainRole
     ? VALORANT_ROLE_ICONS[card.mainRole.toLowerCase()] || null
@@ -234,8 +237,9 @@ export default function DuoCardDetailModal({ visible, onClose, card }: DuoCardDe
   const laneIcon = isLeague && card.mainRole
     ? LEAGUE_LANE_ICONS[card.mainRole.toLowerCase()] || null
     : null;
+  const positionIcon = roleIcon || laneIcon;
+  const characterIcon = agentIcon || championIconSrc;
 
-  // Show up to 10 most recent matches
   const recentValidMatches = recentMatches.slice(0, 10);
 
   return (
@@ -255,124 +259,111 @@ export default function DuoCardDetailModal({ visible, onClose, card }: DuoCardDe
         </View>
 
         <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.scrollContent}>
-          {/* Card Container - matches duoCard outer/inner border style */}
-          <View style={styles.cardContainer}>
-            <LinearGradient
-              colors={['#2a2a2a', '#1a1a1a']}
-              start={{ x: 0, y: 0 }}
-              end={{ x: 0, y: 1 }}
-              style={[styles.cardInner, { borderColor: isLeague ? '#1a3a5c' : '#5c1a1a' }]}
-            >
-              {/* Profile Header */}
-              <View style={styles.profileRow}>
-                <View style={styles.avatarContainer}>
-                  {card.avatar ? (
-                    <Image source={{ uri: card.avatar }} style={styles.avatar} />
+          {/* Main Card — matches duoCard styling */}
+          <View style={styles.card}>
+            {/* Top section */}
+            <View style={styles.topSection}>
+              {/* Name row */}
+              <View style={styles.nameRow}>
+                <View style={styles.avatarWrap}>
+                  {card.inGameIcon ? (
+                    <Image source={{ uri: card.inGameIcon }} style={styles.avatarImg} />
+                  ) : card.avatar ? (
+                    <Image source={{ uri: card.avatar }} style={styles.avatarImg} />
                   ) : (
-                    <ThemedText style={styles.avatarFallback}>
-                      {card.username[0]?.toUpperCase()}
+                    <ThemedText style={styles.avatarLetter}>
+                      {(card.inGameName || card.username)[0].toUpperCase()}
                     </ThemedText>
                   )}
                 </View>
-                <View style={styles.profileInfo}>
-                  <ThemedText style={styles.username}>{card.username}</ThemedText>
-                  {card.inGameName && (
-                    <ThemedText style={styles.inGameName}>{card.inGameName}</ThemedText>
+                <View style={styles.nameCol}>
+                  <ThemedText style={styles.name} numberOfLines={1}>{card.inGameName || card.username}</ThemedText>
+                  {card.inGameName && card.username !== card.inGameName && (
+                    <ThemedText style={styles.subName}>{card.username}</ThemedText>
                   )}
                 </View>
-                <Image
-                  source={isLeague
-                    ? require('@/assets/images/lol-icon.png')
-                    : require('@/assets/images/valorant-red.png')
-                  }
-                  style={styles.gameLogo}
-                  resizeMode="contain"
-                />
+                {gameLogo && (
+                  <Image
+                    source={gameLogo}
+                    style={isLeague ? styles.gameIconCorner : styles.gameIconCornerSmall}
+                    resizeMode="contain"
+                  />
+                )}
               </View>
 
-              {/* Divider */}
-              <View style={styles.cardDivider} />
+              {/* Stats panel — rank + role/agent icons */}
+              <View style={styles.statsPanel}>
+                <View style={styles.statsTopRow}>
+                  <View style={styles.rankBlock}>
+                    <Image source={currentRankIcon} style={styles.rankImg} resizeMode="contain" />
+                    <ThemedText style={styles.rankName} numberOfLines={1}>
+                      {card.currentRank || 'Unranked'}
+                    </ThemedText>
+                  </View>
 
-              {/* Ranks */}
-              <View style={styles.ranksRow}>
-                <View style={styles.rankItem}>
-                  <ThemedText style={styles.rankLabel}>Current</ThemedText>
-                  <Image source={currentRankIcon} style={styles.rankIcon} resizeMode="contain" />
-                  <ThemedText style={styles.rankText}>{card.currentRank || 'Unranked'}</ThemedText>
-                </View>
-                <View style={styles.rankDivider} />
-                <View style={styles.rankItem}>
-                  <ThemedText style={styles.rankLabel}>Peak</ThemedText>
-                  <Image source={peakRankIcon} style={styles.rankIcon} resizeMode="contain" />
-                  <ThemedText style={styles.rankText}>{card.peakRank || 'Unranked'}</ThemedText>
-                </View>
-              </View>
-
-              {/* Divider */}
-              <View style={styles.cardDivider} />
-
-              {/* Player Info */}
-              <View style={styles.infoGrid}>
-                <View style={styles.infoItem}>
-                  <ThemedText style={styles.infoLabel}>{isLeague ? 'Main Champion' : 'Main Agent'}</ThemedText>
-                  {!isLeague && agentIcon ? (
-                    <View style={styles.infoIconRow}>
-                      <Image source={agentIcon} style={styles.infoIcon} resizeMode="contain" />
-                      <ThemedText style={styles.infoValue}>{card.mainAgent}</ThemedText>
+                  {(positionIcon || characterIcon) && (
+                    <View style={styles.iconBlock}>
+                      {positionIcon && (
+                        <View style={styles.iconChip}>
+                          <Image source={positionIcon} style={styles.iconChipImg} resizeMode="contain" />
+                        </View>
+                      )}
+                      {characterIcon && (
+                        <View style={styles.iconChip}>
+                          <Image
+                            source={characterIcon}
+                            style={isLeague ? styles.iconChipImgFill : styles.iconChipImg}
+                            resizeMode={isLeague ? 'cover' : 'contain'}
+                          />
+                        </View>
+                      )}
                     </View>
-                  ) : (
-                    <ThemedText style={styles.infoValue}>{card.mainAgent || 'Any'}</ThemedText>
                   )}
                 </View>
-                <View style={styles.infoItem}>
-                  <ThemedText style={styles.infoLabel}>Main Role</ThemedText>
-                  {roleIcon || laneIcon ? (
-                    <View style={styles.infoIconRow}>
-                      <Image source={roleIcon || laneIcon} style={styles.infoIcon} resizeMode="contain" />
-                      <ThemedText style={styles.infoValue}>{card.mainRole}</ThemedText>
+
+                {(card.winRate !== undefined && card.winRate > 0 || card.gamesPlayed !== undefined && card.gamesPlayed > 0) && (
+                  <View style={styles.statsBottomRow}>
+                    {card.winRate !== undefined && card.winRate > 0 && (
+                      <ThemedText style={styles.winRateInline}>
+                        <ThemedText style={styles.winRateInlineValue}>{card.winRate}% </ThemedText>
+                        <ThemedText style={styles.winRateInlineLabel}>WIN RATE</ThemedText>
+                      </ThemedText>
+                    )}
+                    {card.gamesPlayed !== undefined && card.gamesPlayed > 0 && (
+                      <ThemedText style={styles.winRateInline}>
+                        <ThemedText style={styles.winRateInlineValue}>{card.gamesPlayed} </ThemedText>
+                        <ThemedText style={styles.winRateInlineLabel}>GAMES</ThemedText>
+                      </ThemedText>
+                    )}
+                  </View>
+                )}
+              </View>
+
+              {/* Detail rows */}
+              <View style={styles.detailRows}>
+                {card.peakRank && card.peakRank !== 'Unranked' && (
+                  <View style={styles.detailRow}>
+                    <ThemedText style={styles.detailLabel}>Peak Rank</ThemedText>
+                    <View style={styles.detailValueRow}>
+                      <Image source={getRankIcon(card.peakRank, card.game)} style={styles.detailRankIcon} resizeMode="contain" />
+                      <ThemedText style={styles.detailValue}>{card.peakRank}</ThemedText>
                     </View>
-                  ) : (
-                    <ThemedText style={styles.infoValue}>{card.mainRole || 'Any'}</ThemedText>
-                  )}
-                </View>
-                <View style={styles.infoItem}>
-                  <ThemedText style={styles.infoLabel}>Looking For</ThemedText>
-                  <ThemedText style={styles.infoValue}>{card.lookingFor || 'Any'}</ThemedText>
-                </View>
+                  </View>
+                )}
+                {card.lookingFor && (
+                  <View style={styles.detailRow}>
+                    <ThemedText style={styles.detailLabel}>Looking For</ThemedText>
+                    <ThemedText style={styles.detailValue}>{card.lookingFor}</ThemedText>
+                  </View>
+                )}
               </View>
-
-              {/* Divider */}
-              <View style={styles.cardDivider} />
-
-              {/* Stats */}
-              <View style={styles.statsRow}>
-                <View style={styles.statItem}>
-                  <ThemedText style={styles.statLabel}>Win Rate</ThemedText>
-                  <ThemedText style={[styles.statValue, card.winRate !== undefined && card.winRate >= 50 && styles.winRateGood]}>
-                    {card.winRate !== undefined ? `${card.winRate}%` : 'N/A'}
-                  </ThemedText>
-                </View>
-                <View style={styles.statDivider} />
-                <View style={styles.statItem}>
-                  <ThemedText style={styles.statLabel}>Games Played</ThemedText>
-                  <ThemedText style={styles.statValue}>
-                    {card.gamesPlayed !== undefined ? card.gamesPlayed : 'N/A'}
-                  </ThemedText>
-                </View>
-              </View>
-            </LinearGradient>
+            </View>
           </View>
 
-          {/* Match History - separate card */}
-          <View style={styles.cardContainer}>
-            <LinearGradient
-              colors={['#2a2a2a', '#1a1a1a']}
-              start={{ x: 0, y: 0 }}
-              end={{ x: 0, y: 1 }}
-              style={[styles.cardInner, { borderColor: isLeague ? '#1a3a5c' : '#5c1a1a' }]}
-            >
-              <ThemedText style={styles.sectionTitle}>MATCH HISTORY</ThemedText>
-              <View style={styles.matchHistoryContainer}>
+          {/* Match History Card */}
+          <View style={styles.card}>
+            <View style={styles.matchSection}>
+              <ThemedText style={styles.matchSectionTitle}>MATCH HISTORY</ThemedText>
               {loadingMatches ? (
                 <View style={styles.matchLoadingContainer}>
                   <ActivityIndicator color="#888" size="small" />
@@ -383,7 +374,6 @@ export default function DuoCardDetailModal({ visible, onClose, card }: DuoCardDe
                 </View>
               ) : (
                 <>
-                  {/* Table Header */}
                   <View style={styles.matchTableHeader}>
                     <View style={styles.matchIndicatorSpacer} />
                     <ThemedText style={[styles.matchHeaderText, styles.matchColAgent]}>
@@ -394,8 +384,6 @@ export default function DuoCardDetailModal({ visible, onClose, card }: DuoCardDe
                     <ThemedText style={[styles.matchHeaderText, styles.matchColScore]}>Score</ThemedText>
                     <ThemedText style={[styles.matchHeaderText, styles.matchColDate]}>Date</ThemedText>
                   </View>
-
-                  {/* Match Rows */}
                   {recentValidMatches.map((match, index) => {
                     const rawTs = match.gameStart || match.playedAt || 0;
                     const timestamp = rawTs < 10000000000 ? rawTs * 1000 : rawTs;
@@ -436,7 +424,6 @@ export default function DuoCardDetailModal({ visible, onClose, card }: DuoCardDe
                 </>
               )}
             </View>
-            </LinearGradient>
           </View>
 
           <View style={{ height: 40 }} />
@@ -479,176 +466,181 @@ const styles = StyleSheet.create({
     padding: 16,
     gap: 12,
   },
-  // Card container - matches duoCard outer style
-  cardContainer: {
-    backgroundColor: '#222',
-    borderRadius: 12,
-    padding: 6,
-    shadowColor: '#000',
-    shadowOffset: { width: -3, height: 4 },
-    shadowOpacity: 0.5,
-    shadowRadius: 5,
-    elevation: 8,
-  },
-  cardInner: {
+  // Card — matches duoCard.tsx
+  card: {
+    borderRadius: 16,
+    overflow: 'hidden',
+    backgroundColor: '#161616',
     borderWidth: 1,
-    borderColor: '#333',
-    borderRadius: 8,
-    padding: 12,
-    gap: 10,
+    borderColor: 'rgba(255,255,255,0.04)',
   },
-  cardDivider: {
-    height: 1,
-    backgroundColor: '#2a2a2a',
-    marginHorizontal: 2,
+  topSection: {
+    padding: 16,
+    gap: 12,
   },
-  // Profile
-  profileRow: {
+  nameRow: {
     flexDirection: 'row',
     alignItems: 'center',
+    gap: 10,
   },
-  avatarContainer: {
+  avatarWrap: {
     width: 42,
     height: 42,
-    borderRadius: 10,
-    backgroundColor: '#252525',
+    borderRadius: 21,
+    backgroundColor: 'rgba(255,255,255,0.06)',
     alignItems: 'center',
     justifyContent: 'center',
     overflow: 'hidden',
   },
-  avatar: {
+  avatarImg: {
     width: '100%',
     height: '100%',
   },
-  avatarFallback: {
+  avatarLetter: {
     fontSize: 16,
     fontWeight: '700',
-    color: '#666',
+    color: '#888',
   },
-  profileInfo: {
+  nameCol: {
     flex: 1,
-    marginLeft: 12,
+    gap: 2,
   },
-  username: {
+  name: {
     fontSize: 16,
     fontWeight: '700',
     color: '#fff',
+    letterSpacing: -0.2,
   },
-  inGameName: {
+  subName: {
     fontSize: 12,
-    color: '#888',
-    marginTop: 2,
+    color: '#666',
   },
-  gameLogo: {
-    width: 24,
-    height: 24,
-    opacity: 0.7,
+  gameIconCorner: {
+    width: 50,
+    height: 50,
+    opacity: 0.9,
   },
-  // Section title
-  sectionTitle: {
-    fontSize: 10,
-    fontWeight: '600',
-    color: '#555',
-    textTransform: 'uppercase',
-    letterSpacing: 0.5,
-    marginBottom: 4,
+  gameIconCornerSmall: {
+    width: 28,
+    height: 28,
+    opacity: 0.9,
   },
-  // Ranks
-  ranksRow: {
+  // Stats panel — matches duoCard.tsx
+  statsPanel: {
+    backgroundColor: 'rgba(255,255,255,0.04)',
+    borderRadius: 12,
+    paddingVertical: 10,
+    paddingHorizontal: 12,
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.05)',
+    gap: 8,
+  },
+  statsTopRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingVertical: 6,
+    gap: 12,
   },
-  rankItem: {
-    flex: 1,
+  statsBottomRow: {
+    flexDirection: 'row',
+    gap: 14,
+  },
+  rankBlock: {
+    flexDirection: 'row',
     alignItems: 'center',
-    gap: 6,
+    gap: 8,
+    flexShrink: 1,
   },
-  rankDivider: {
-    width: 1,
-    height: 50,
-    backgroundColor: '#2a2a2a',
+  rankImg: {
+    width: 34,
+    height: 34,
   },
-  rankLabel: {
-    fontSize: 10,
-    fontWeight: '600',
-    color: '#555',
-    textTransform: 'uppercase',
-    letterSpacing: 0.5,
-  },
-  rankIcon: {
-    width: 36,
-    height: 36,
-  },
-  rankText: {
+  rankName: {
     fontSize: 13,
     fontWeight: '700',
     color: '#fff',
+    letterSpacing: 0.5,
+    flexShrink: 1,
+    textTransform: 'uppercase',
   },
-  // Player Info
-  infoGrid: {
-    gap: 12,
-    paddingVertical: 2,
+  iconBlock: {
+    flexDirection: 'row',
+    gap: 6,
   },
-  infoItem: {
+  iconChip: {
+    width: 30,
+    height: 30,
+    borderRadius: 15,
+    backgroundColor: 'rgba(255,255,255,0.07)',
+    alignItems: 'center',
+    justifyContent: 'center',
+    overflow: 'hidden',
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.06)',
+  },
+  iconChipImg: {
+    width: 22,
+    height: 22,
+  },
+  iconChipImgFill: {
+    width: '100%',
+    height: '100%',
+    borderRadius: 999,
+    transform: [{ scale: 1.18 }],
+  },
+  winRateInline: {
+    fontSize: 13,
+    color: '#888',
+  },
+  winRateInlineValue: {
+    fontSize: 14,
+    fontWeight: '800',
+    color: '#fff',
+    letterSpacing: -0.2,
+  },
+  winRateInlineLabel: {
+    fontSize: 9,
+    fontWeight: '700',
+    color: '#888',
+    letterSpacing: 0.6,
+  },
+  // Detail rows (peak rank, looking for)
+  detailRows: {
+    gap: 10,
+  },
+  detailRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
   },
-  infoLabel: {
-    fontSize: 12,
-    color: '#888',
+  detailLabel: {
+    fontSize: 13,
+    color: '#666',
   },
-  infoValue: {
-    fontSize: 12,
+  detailValue: {
+    fontSize: 13,
     fontWeight: '600',
     color: '#fff',
   },
-  infoIconRow: {
+  detailValueRow: {
     flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-  },
-  infoIcon: {
-    width: 22,
-    height: 22,
-    borderRadius: 11,
-  },
-  // Stats
-  statsRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingVertical: 4,
-  },
-  statItem: {
-    flex: 1,
     alignItems: 'center',
     gap: 6,
   },
-  statDivider: {
-    width: 1,
-    height: 30,
-    backgroundColor: '#2a2a2a',
+  detailRankIcon: {
+    width: 20,
+    height: 20,
   },
-  statValue: {
-    fontSize: 14,
+  // Match History section
+  matchSection: {
+    padding: 16,
+    gap: 8,
+  },
+  matchSectionTitle: {
+    fontSize: 9,
     fontWeight: '700',
-    color: '#fff',
-  },
-  statLabel: {
-    fontSize: 10,
     color: '#555',
-    fontWeight: '600',
+    letterSpacing: 0.6,
     textTransform: 'uppercase',
-    letterSpacing: 0.5,
-  },
-  winRateGood: {
-    color: '#4ade80',
-  },
-  // Match History
-  matchHistoryContainer: {
-    borderRadius: 8,
-    overflow: 'hidden',
   },
   matchLoadingContainer: {
     paddingVertical: 30,
@@ -665,11 +657,11 @@ const styles = StyleSheet.create({
   matchTableHeader: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingHorizontal: 16,
+    paddingHorizontal: 4,
     paddingVertical: 10,
     paddingLeft: 20,
     borderBottomWidth: 1,
-    borderBottomColor: 'rgba(255, 255, 255, 0.08)',
+    borderBottomColor: 'rgba(255, 255, 255, 0.06)',
   },
   matchHeaderText: {
     fontSize: 9,
@@ -685,7 +677,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     paddingVertical: 10,
-    paddingHorizontal: 12,
+    paddingHorizontal: 4,
     borderBottomWidth: 1,
     borderBottomColor: 'rgba(255, 255, 255, 0.04)',
   },

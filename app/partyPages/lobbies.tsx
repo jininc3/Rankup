@@ -8,7 +8,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { useRouter } from 'expo-router';
 import { collection, onSnapshot, query, where } from 'firebase/firestore';
 import { useEffect, useState, useRef, useCallback } from 'react';
-import { Modal, ScrollView, StyleSheet, TouchableOpacity, View } from 'react-native';
+import { Image, Modal, ScrollView, StyleSheet, TouchableOpacity, View } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 
 const MINIMUM_SKELETON_TIME = 800;
@@ -69,6 +69,18 @@ export default function LobbiesScreen() {
             };
           })
           .filter(Boolean);
+
+        // Prefetch all remote images so they're cached before cards render
+        updated.forEach((lb: any) => {
+          if (lb.partyIcon) {
+            Image.prefetch(lb.partyIcon).catch(() => {});
+          }
+          const members = lb.memberDetails?.length ? lb.memberDetails : lb.players || [];
+          members.slice(0, 3).forEach((m: any) => {
+            const photo = m?.avatar || m?.photoUrl;
+            if (photo) Image.prefetch(photo).catch(() => {});
+          });
+        });
 
         cachedLeaderboards = updated;
         return updated;

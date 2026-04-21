@@ -2404,7 +2404,7 @@ const styles = StyleSheet.create({
     color: '#666',
   },
   verticalRankCardsContainer: {
-    paddingHorizontal: 6,
+    paddingHorizontal: 16,
     paddingTop: 18,
     paddingBottom: 20,
     gap: 16,

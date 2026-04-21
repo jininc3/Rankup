@@ -252,20 +252,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       });
 
       setPreloadedSearchHistory(history);
-
-      // Prefetch avatar images for instant rendering
-      const avatarUrls: string[] = [];
-      history.forEach(user => {
-        if (user.avatar) {
-          avatarUrls.push(user.avatar);
-        }
-      });
-
-      if (avatarUrls.length > 0) {
-        Promise.all(
-          avatarUrls.map(url => Image.prefetch(url).catch(() => {}))
-        );
-      }
     } catch (error) {
       console.error('Error preloading search history:', error);
       setPreloadedSearchHistory([]);

@@ -717,15 +717,8 @@ export default function ProfileViewScreen() {
         <View style={styles.headerSection}>
           {/* Cover Photo Area */}
           <View style={styles.coverPhotoWrapper}>
-            {viewedUser?.coverPhoto ? (
+            {viewedUser?.coverPhoto && (
               <Image source={{ uri: viewedUser.coverPhoto }} style={styles.coverPhotoImage} />
-            ) : (
-              <LinearGradient
-                colors={['#2c2f33', '#1a1a1a', '#0f0f0f']}
-                start={{ x: 0, y: 0 }}
-                end={{ x: 0, y: 1 }}
-                style={styles.coverPhotoGradient}
-              />
             )}
             {/* Bottom fade */}
             <LinearGradient
@@ -1040,7 +1033,7 @@ export default function ProfileViewScreen() {
           nestedScrollEnabled
         >
         {/* Clips Tab */}
-        <View style={{ width: screenWidth }}>
+        <View style={{ width: screenWidth, minHeight: screenHeight * 0.5 }}>
         <View style={styles.sectionContainer}>
 
         {/* Clips Content */}
@@ -1097,7 +1090,7 @@ export default function ProfileViewScreen() {
         </View>
 
         {/* Achievements Tab */}
-        <View style={{ width: screenWidth }}>
+        <View style={{ width: screenWidth, minHeight: screenHeight * 0.5 }}>
           {!achievementsError && (
           <>
 
@@ -1373,7 +1366,7 @@ const styles = StyleSheet.create({
   coverPhotoWrapper: {
     width: '100%',
     height: 170,
-    backgroundColor: '#1a1a1a',
+    backgroundColor: 'transparent',
     overflow: 'hidden',
   },
   coverPhotoImage: {

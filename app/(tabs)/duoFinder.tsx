@@ -61,6 +61,31 @@ interface DuoPostWithId {
 }
 
 
+// ── Dummy duo posts for visual testing (delete this block when done) ──
+const DUMMY_AVATARS = [
+  Image.resolveAssetSource(require('@/assets/images/avatar1.png')).uri,
+  Image.resolveAssetSource(require('@/assets/images/avatar2.png')).uri,
+  Image.resolveAssetSource(require('@/assets/images/avatar3.png')).uri,
+  Image.resolveAssetSource(require('@/assets/images/avatar4.png')).uri,
+  Image.resolveAssetSource(require('@/assets/images/avatar5.png')).uri,
+];
+const dummyAvatar = (i: number) => DUMMY_AVATARS[i % DUMMY_AVATARS.length];
+
+const DUMMY_DUO_POSTS: DuoPostWithId[] = [
+  { id: 'dummy_1', userId: 'dummy_user_1', username: 'xShadowKing', game: 'valorant', currentRank: 'Diamond 2', peakRank: 'Immortal 1', mainRole: 'Duelist', mainAgent: 'Jett', region: 'NA', lookingFor: 'Any', winRate: 58, gamesPlayed: 312, message: 'Looking for a chill duo to grind ranked tonight, pref controller main', createdAt: { toDate: () => new Date(Date.now() - 1000 * 60 * 15) }, expiresAt: null, inGameName: 'ShadowKing#NA1', avatar: dummyAvatar(0) },
+  { id: 'dummy_2', userId: 'dummy_user_2', username: 'LunaFrost', game: 'valorant', currentRank: 'Platinum 3', peakRank: 'Diamond 1', mainRole: 'Controller', mainAgent: 'Omen', region: 'NA', lookingFor: 'Duelist', winRate: 52, gamesPlayed: 189, message: 'Smoke main LF aggro duelist, mic required', createdAt: { toDate: () => new Date(Date.now() - 1000 * 60 * 45) }, expiresAt: null, inGameName: 'LunaFrost#0000', avatar: dummyAvatar(1) },
+  { id: 'dummy_3', userId: 'dummy_user_3', username: 'T1Faker2', game: 'league', currentRank: 'Master I', peakRank: 'Grandmaster I', mainRole: 'Mid', mainAgent: 'Ahri', region: 'NA', lookingFor: 'Jungle', winRate: 61, gamesPlayed: 540, message: 'Mid main looking for jungle duo, good synergy preferred', createdAt: { toDate: () => new Date(Date.now() - 1000 * 60 * 60 * 2) }, expiresAt: null, inGameName: 'T1Faker2#NA1', avatar: dummyAvatar(2) },
+  { id: 'dummy_4', userId: 'dummy_user_4', username: 'VoidWalker', game: 'valorant', currentRank: 'Ascendant 1', peakRank: 'Ascendant 3', mainRole: 'Initiator', mainAgent: 'Sova', region: 'EU', lookingFor: 'Sentinel', winRate: 55, gamesPlayed: 421, message: '', createdAt: { toDate: () => new Date(Date.now() - 1000 * 60 * 60 * 3) }, expiresAt: null, inGameName: 'VoidWalker#EUW', avatar: dummyAvatar(3) },
+  { id: 'dummy_5', userId: 'dummy_user_5', username: 'RiftQueen', game: 'league', currentRank: 'Diamond IV', peakRank: 'Diamond II', mainRole: 'Support', mainAgent: 'Thresh', region: 'NA', lookingFor: 'Bot', winRate: 54, gamesPlayed: 278, message: 'Supp main, hook champs. Need an ADC who can follow up', createdAt: { toDate: () => new Date(Date.now() - 1000 * 60 * 60 * 5) }, expiresAt: null, inGameName: 'RiftQueen#NA1', avatar: dummyAvatar(4) },
+  { id: 'dummy_6', userId: 'dummy_user_6', username: 'NightOwl', game: 'valorant', currentRank: 'Gold 3', peakRank: 'Platinum 2', mainRole: 'Sentinel', mainAgent: 'Killjoy', region: 'NA', lookingFor: 'Any', winRate: 49, gamesPlayed: 156, message: 'Just trying to get back to plat, no toxicity pls', createdAt: { toDate: () => new Date(Date.now() - 1000 * 60 * 60 * 6) }, expiresAt: null, inGameName: 'NightOwl#5555', avatar: dummyAvatar(0) },
+  { id: 'dummy_7', userId: 'dummy_user_7', username: 'AceSniper', game: 'valorant', currentRank: 'Immortal 2', peakRank: 'Radiant', mainRole: 'Duelist', mainAgent: 'Chamber', region: 'NA', lookingFor: 'Controller', winRate: 63, gamesPlayed: 890, message: 'Radiant peak, need a good smoke player for 5 stack', createdAt: { toDate: () => new Date(Date.now() - 1000 * 60 * 60 * 8) }, expiresAt: null, inGameName: 'AceSniper#GOAT', avatar: dummyAvatar(1) },
+  { id: 'dummy_8', userId: 'dummy_user_8', username: 'JungleGap', game: 'league', currentRank: 'Emerald II', peakRank: 'Diamond IV', mainRole: 'Jungle', mainAgent: 'LeeSin', region: 'NA', lookingFor: 'Mid', winRate: 56, gamesPlayed: 345, message: 'Aggressive early game jungler looking for roaming mid', createdAt: { toDate: () => new Date(Date.now() - 1000 * 60 * 60 * 10) }, expiresAt: null, inGameName: 'JungleGap#0001', avatar: dummyAvatar(2) },
+  { id: 'dummy_9', userId: 'dummy_user_9', username: 'PhoenixRise', game: 'valorant', currentRank: 'Silver 3', peakRank: 'Gold 2', mainRole: 'Duelist', mainAgent: 'Phoenix', region: 'NA', lookingFor: 'Any', winRate: 47, gamesPlayed: 98, message: 'New to comp but improving fast, just want someone to queue with', createdAt: { toDate: () => new Date(Date.now() - 1000 * 60 * 60 * 12) }, expiresAt: null, inGameName: 'PhoenixRise#1234', avatar: dummyAvatar(3) },
+  { id: 'dummy_10', userId: 'dummy_user_10', username: 'BotDiff', game: 'league', currentRank: 'Platinum I', peakRank: 'Emerald III', mainRole: 'Bot', mainAgent: 'Jinx', region: 'NA', lookingFor: 'Support', winRate: 53, gamesPlayed: 410, message: 'ADC looking for enchanter or engage supp', createdAt: { toDate: () => new Date(Date.now() - 1000 * 60 * 60 * 14) }, expiresAt: null, inGameName: 'BotDiff#NA1', avatar: dummyAvatar(4) },
+  { id: 'dummy_11', userId: 'dummy_user_11', username: 'SageMain', game: 'valorant', currentRank: 'Diamond 1', peakRank: 'Diamond 3', mainRole: 'Sentinel', mainAgent: 'Sage', region: 'NA', lookingFor: 'Duelist', winRate: 51, gamesPlayed: 267, message: '', createdAt: { toDate: () => new Date(Date.now() - 1000 * 60 * 60 * 16) }, expiresAt: null, inGameName: 'SageMain#HEAL', avatar: dummyAvatar(0) },
+  { id: 'dummy_12', userId: 'dummy_user_12', username: 'TopGapper', game: 'league', currentRank: 'Gold II', peakRank: 'Platinum IV', mainRole: 'Top', mainAgent: 'Darius', region: 'NA', lookingFor: 'Jungle', winRate: 50, gamesPlayed: 220, message: 'Top laner who needs jungle pressure to carry', createdAt: { toDate: () => new Date(Date.now() - 1000 * 60 * 60 * 20) }, expiresAt: null, inGameName: 'TopGapper#9999', avatar: dummyAvatar(1) },
+];
+
 export default function DuoFinderScreen() {
   const { user } = useAuth();
   const router = useRouter();
@@ -691,8 +716,20 @@ export default function DuoFinderScreen() {
         return true;
       });
 
-      setDuoPosts(filtered);
-      setDisplayedPosts(filtered.slice(0, POSTS_PER_PAGE));
+      // Prefetch remote images so duo cards render all at once
+      filtered.forEach(post => {
+        if (post.inGameIcon) Image.prefetch(post.inGameIcon).catch(() => {});
+        else if (post.avatar && post.avatar.startsWith('http')) Image.prefetch(post.avatar).catch(() => {});
+        // Prefetch League champion icons from DDragon
+        if (post.game === 'league' && post.mainAgent) {
+          Image.prefetch(`https://ddragon.leagueoflegends.com/cdn/14.24.1/img/champion/${post.mainAgent.replace(/[\s'.]/g, '')}.png`).catch(() => {});
+        }
+      });
+
+      // Append dummy posts for visual testing (remove when done)
+      const withDummies = [...filtered, ...DUMMY_DUO_POSTS];
+      setDuoPosts(withDummies);
+      setDisplayedPosts(withDummies.slice(0, POSTS_PER_PAGE));
     } catch (error) {
       console.error('Error fetching duo posts:', error);
     } finally {
@@ -774,34 +811,27 @@ export default function DuoFinderScreen() {
   const hasCards = valorantCard !== null || leagueCard !== null;
 
   const handleCardPress = (game: 'valorant' | 'league') => {
-    // Navigate to detail page with edit capability for own card
     const cardData = game === 'valorant' ? valorantCard : leagueCard;
     if (cardData) {
-      const avatarUrl = user?.avatar || '';
-      const inGameIcon = game === 'valorant' ? valorantInGameIcon : leagueInGameIcon;
-      const inGameName = game === 'valorant' ? valorantInGameName : leagueInGameName;
-      const winRate = game === 'valorant' ? valorantWinRate : leagueWinRate;
-      const gamesPlayed = game === 'valorant' ? valorantGamesPlayed : leagueGamesPlayed;
-      router.push({
-        pathname: '/profilePages/duoCardDetail',
-        params: {
-          game: cardData.game,
-          username: cardData.username,
-          avatar: avatarUrl,
-          inGameIcon: inGameIcon || '',
-          inGameName: inGameName || '',
-          winRate: winRate !== undefined ? String(winRate) : '',
-          gamesPlayed: gamesPlayed !== undefined ? String(gamesPlayed) : '',
-          peakRank: cardData.peakRank,
-          currentRank: cardData.currentRank,
-          region: cardData.region,
-          mainRole: cardData.mainRole,
-          mainAgent: cardData.mainAgent,
-          lookingFor: cardData.lookingFor || 'Any',
-          userId: user?.id || '',
-          isOwnCard: 'true',
-        },
-      });
+      setSelectedDuoCard({
+        id: `${user?.id}_${game}`,
+        userId: user?.id || '',
+        game: cardData.game,
+        username: cardData.username,
+        currentRank: cardData.currentRank,
+        region: cardData.region,
+        mainRole: cardData.mainRole,
+        peakRank: cardData.peakRank,
+        mainAgent: cardData.mainAgent,
+        lookingFor: cardData.lookingFor || 'Any',
+        avatar: user?.avatar,
+        inGameIcon: game === 'valorant' ? valorantInGameIcon : leagueInGameIcon,
+        inGameName: game === 'valorant' ? valorantInGameName : leagueInGameName,
+        winRate: game === 'valorant' ? valorantWinRate : leagueWinRate,
+        gamesPlayed: game === 'valorant' ? valorantGamesPlayed : leagueGamesPlayed,
+        lp: 0,
+        rr: 0,
+      } as DuoCardWithId);
     }
   };
 
@@ -974,7 +1004,7 @@ export default function DuoFinderScreen() {
                   activeOpacity={0.8}
                 >
                   <LinearGradient
-                    colors={['rgba(180, 155, 70, 0.08)', 'rgba(180, 155, 70, 0.02)']}
+                    colors={['rgba(59, 130, 246, 0.08)', 'rgba(59, 130, 246, 0.02)']}
                     start={{ x: 0, y: 0 }}
                     end={{ x: 1, y: 1 }}
                     style={styles.liveSearchBannerGradient}
@@ -985,32 +1015,35 @@ export default function DuoFinderScreen() {
                         Find your duo in real-time
                       </ThemedText>
                     </View>
-                    <IconSymbol size={16} name="chevron.right" color="rgba(180, 155, 70, 0.5)" />
+                    <IconSymbol size={16} name="chevron.right" color="rgba(59, 130, 246, 0.5)" />
                   </LinearGradient>
                 </TouchableOpacity>
 
-                <View style={styles.sectionHeader}>
-                  <View style={styles.sectionHeaderLeft}>
-                    <ThemedText style={styles.sectionHeaderTitle}>FEED</ThemedText>
-                  <ThemedText style={styles.playerCount}>{duoPosts.length}</ThemedText>
+                <View style={styles.feedContainer}>
+                  <View style={styles.sectionHeader}>
+                    <View style={styles.sectionHeaderLeft}>
+                      <ThemedText style={styles.sectionHeaderTitle}>FEED</ThemedText>
+                      <ThemedText style={styles.playerCount}>{duoPosts.length}</ThemedText>
+                    </View>
+                    <View style={styles.headerRightSection}>
+                      <TouchableOpacity
+                        style={styles.postToFeedButton}
+                        onPress={() => setShowPostDuoCard(true)}
+                        activeOpacity={0.7}
+                      >
+                        <ThemedText style={styles.postToFeedText}>Post to Feed</ThemedText>
+                      </TouchableOpacity>
+                      <TouchableOpacity
+                        style={[styles.filterButton, activeFilterCount > 0 && styles.filterButtonActive]}
+                        onPress={() => setShowFilterModal(true)}
+                        activeOpacity={0.7}
+                      >
+                        <IconSymbol size={14} name="line.3.horizontal.decrease" color={activeFilterCount > 0 ? '#fff' : '#999'} />
+                        <ThemedText style={[styles.filterLabel, activeFilterCount > 0 && styles.filterLabelActive]}>Advanced</ThemedText>
+                      </TouchableOpacity>
+                    </View>
+                  </View>
                 </View>
-                <View style={styles.headerRightSection}>
-                  <TouchableOpacity
-                    style={styles.postToFeedButton}
-                    onPress={() => setShowPostDuoCard(true)}
-                    activeOpacity={0.7}
-                  >
-                    <ThemedText style={styles.postToFeedText}>Post to Feed</ThemedText>
-                  </TouchableOpacity>
-                  <TouchableOpacity
-                    onPress={() => setShowFilterModal(true)}
-                    activeOpacity={0.7}
-                    hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-                  >
-                    <IconSymbol size={16} name="line.3.horizontal.decrease" color={activeFilterCount > 0 ? '#A08845' : '#555'} />
-                  </TouchableOpacity>
-                </View>
-              </View>
               </View>
             }
             ListEmptyComponent={
@@ -1395,7 +1428,7 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     alignItems: 'center',
     paddingHorizontal: 16,
-    paddingTop: 61,
+    paddingTop: 56,
     paddingBottom: 4,
   },
   headerTitle: {
@@ -1473,10 +1506,19 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     paddingTop: 20,
   },
+  feedContainer: {
+    backgroundColor: 'rgba(255,255,255,0.03)',
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.06)',
+    paddingTop: 4,
+    paddingBottom: 4,
+    marginBottom: 12,
+  },
   liveSearchBanner: {
     borderRadius: 12,
     borderWidth: 1,
-    borderColor: 'rgba(180, 155, 70, 0.2)',
+    borderColor: 'rgba(59, 130, 246, 0.2)',
     overflow: 'hidden',
     marginBottom: 20,
   },
@@ -1493,7 +1535,7 @@ const styles = StyleSheet.create({
   liveSearchBannerTitle: {
     fontSize: 16,
     fontWeight: '700',
-    color: '#D4A843',
+    color: '#3B82F6',
     letterSpacing: 1,
   },
   liveSearchBannerSubtitle: {
@@ -1509,8 +1551,8 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    paddingHorizontal: 16,
-    paddingTop: 4,
+    paddingHorizontal: 14,
+    paddingTop: 10,
     paddingBottom: 10,
   },
   sectionHeaderLeft: {
@@ -1519,8 +1561,8 @@ const styles = StyleSheet.create({
     gap: 6,
   },
   sectionHeaderTitle: {
-    fontSize: 12,
-    fontWeight: '600',
+    fontSize: 20,
+    fontWeight: '700',
     color: '#fff',
     letterSpacing: 0.5,
   },
@@ -1708,6 +1750,29 @@ const styles = StyleSheet.create({
   postToFeedText: {
     fontSize: 12,
     fontWeight: '600',
+    color: '#fff',
+  },
+  filterButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 5,
+    backgroundColor: 'rgba(255,255,255,0.08)',
+    borderRadius: 14,
+    paddingVertical: 6,
+    paddingHorizontal: 10,
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.1)',
+  },
+  filterButtonActive: {
+    backgroundColor: 'rgba(255,255,255,0.12)',
+    borderColor: 'rgba(255,255,255,0.2)',
+  },
+  filterLabel: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: '#999',
+  },
+  filterLabelActive: {
     color: '#fff',
   },
   emptyState: {

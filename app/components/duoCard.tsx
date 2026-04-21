@@ -1,6 +1,7 @@
+import React from 'react';
 import { ThemedText } from '@/components/themed-text';
 import { IconSymbol } from '@/components/ui/icon-symbol';
-import { Image, StyleSheet, TouchableOpacity, View } from 'react-native';
+import { Animated, Image, StyleSheet, TouchableOpacity, View } from 'react-native';
 
 const GAME_LOGOS: { [key: string]: any } = {
   'Valorant': require('@/assets/images/valorant-red.png'),
@@ -172,7 +173,7 @@ const getRankIcon = (rank: string, game: string) => {
   return VALORANT_RANK_ICONS[fullKey] || VALORANT_RANK_ICONS[tier] || VALORANT_RANK_ICONS.unranked;
 };
 
-export default function DuoCard({ duo, onPress, onMessage, onViewProfile, onDelete, noShadow }: DuoCardProps) {
+function DuoCard({ duo, onPress, onMessage, onViewProfile, onDelete, noShadow }: DuoCardProps) {
   const game = duo.game || 'Valorant';
   const isLeague = game === 'League' || game === 'League of Legends';
   const gameLogo = GAME_LOGOS[game];
@@ -194,17 +195,36 @@ export default function DuoCard({ duo, onPress, onMessage, onViewProfile, onDele
   const positionIcon = roleIcon || laneIcon;
   const characterIcon = agentIcon || championIconSrc;
 
+  // Count remote images that need to load before showing the card
+  const hasRemoteAvatar = !!(duo.inGameIcon || (duo.avatar && duo.avatar.startsWith('http')));
+  const hasRemoteChampion = !!championIconSrc;
+  const remoteImageCount = (hasRemoteAvatar ? 1 : 0) + (hasRemoteChampion ? 1 : 0);
+  const loadedCount = React.useRef(0);
+  const fadeAnim = React.useRef(new Animated.Value(remoteImageCount > 0 ? 0 : 1)).current;
+
+  const onRemoteImageLoad = React.useCallback(() => {
+    loadedCount.current += 1;
+    if (loadedCount.current >= remoteImageCount) {
+      Animated.timing(fadeAnim, {
+        toValue: 1,
+        duration: 200,
+        useNativeDriver: true,
+      }).start();
+    }
+  }, [fadeAnim, remoteImageCount]);
+
   return (
-    <TouchableOpacity style={styles.card} onPress={onPress} activeOpacity={0.8}>
+    <Animated.View style={{ opacity: fadeAnim }}>
+    <TouchableOpacity style={[styles.card, duo.isOwnPost && styles.ownCard]} onPress={onPress} activeOpacity={0.8}>
       {/* Top section */}
       <View style={styles.topSection}>
         {/* Name row */}
         <View style={styles.nameRow}>
           <View style={styles.avatarWrap}>
             {duo.inGameIcon ? (
-              <Image source={{ uri: duo.inGameIcon }} style={styles.avatarImg} />
+              <Image source={{ uri: duo.inGameIcon }} style={styles.avatarImg} onLoad={onRemoteImageLoad} />
             ) : duo.avatar && duo.avatar.startsWith('http') ? (
-              <Image source={{ uri: duo.avatar }} style={styles.avatarImg} />
+              <Image source={{ uri: duo.avatar }} style={styles.avatarImg} onLoad={onRemoteImageLoad} />
             ) : (
               <ThemedText style={styles.avatarLetter}>
                 {(duo.inGameName || duo.username)[0].toUpperCase()}
@@ -249,6 +269,7 @@ export default function DuoCard({ duo, onPress, onMessage, onViewProfile, onDele
                       source={characterIcon}
                       style={isLeague ? styles.iconChipImgFill : styles.iconChipImg}
                       resizeMode={isLeague ? 'cover' : 'contain'}
+                      onLoad={hasRemoteChampion ? onRemoteImageLoad : undefined}
                     />
                   </View>
                 )}
@@ -308,8 +329,11 @@ export default function DuoCard({ duo, onPress, onMessage, onViewProfile, onDele
         )}
       </View>
     </TouchableOpacity>
+    </Animated.View>
   );
 }
+
+export default React.memo(DuoCard);
 
 const styles = StyleSheet.create({
   card: {
@@ -319,6 +343,9 @@ const styles = StyleSheet.create({
     backgroundColor: '#161616',
     borderWidth: 1,
     borderColor: 'rgba(255,255,255,0.04)',
+  },
+  ownCard: {
+    borderColor: 'rgba(255,255,255,0.18)',
   },
   // Top section
   topSection: {

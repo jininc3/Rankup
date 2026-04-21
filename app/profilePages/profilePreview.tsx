@@ -564,16 +564,27 @@ export default function ProfilePreviewScreen() {
 
           {/* Profile Info Section - overlaps cover photo */}
           <View style={styles.profileInfoSection}>
-            {/* Row: Avatar + Stats */}
+            {/* Row: Avatar+Username group (left) + Stats (right) */}
             <View style={styles.avatarStatsRow}>
-              {/* Avatar */}
-              {tierBorderGradient ? (
-                <GradientBorder
-                  colors={tierBorderGradient}
-                  borderWidth={2.5}
-                  borderRadius={38}
-                >
-                  <View style={styles.profileAvatarCircleWithGradient}>
+              <View style={styles.avatarUsernameGroup}>
+                {tierBorderGradient ? (
+                  <GradientBorder
+                    colors={tierBorderGradient}
+                    borderWidth={2.5}
+                    borderRadius={38}
+                  >
+                    <View style={styles.profileAvatarCircleWithGradient}>
+                      {viewedUser?.avatar && viewedUser.avatar.startsWith('http') ? (
+                        <Image source={{ uri: viewedUser.avatar }} style={styles.profileAvatarImage} />
+                      ) : (
+                        <ThemedText style={styles.profileAvatarInitial}>
+                          {viewedUser?.username?.[0]?.toUpperCase() || 'U'}
+                        </ThemedText>
+                      )}
+                    </View>
+                  </GradientBorder>
+                ) : (
+                  <View style={styles.profileAvatarCircle}>
                     {viewedUser?.avatar && viewedUser.avatar.startsWith('http') ? (
                       <Image source={{ uri: viewedUser.avatar }} style={styles.profileAvatarImage} />
                     ) : (
@@ -582,18 +593,9 @@ export default function ProfilePreviewScreen() {
                       </ThemedText>
                     )}
                   </View>
-                </GradientBorder>
-              ) : (
-                <View style={styles.profileAvatarCircle}>
-                  {viewedUser?.avatar && viewedUser.avatar.startsWith('http') ? (
-                    <Image source={{ uri: viewedUser.avatar }} style={styles.profileAvatarImage} />
-                  ) : (
-                    <ThemedText style={styles.profileAvatarInitial}>
-                      {viewedUser?.username?.[0]?.toUpperCase() || 'U'}
-                    </ThemedText>
-                  )}
-                </View>
-              )}
+                )}
+                <ThemedText style={styles.profileUsername} numberOfLines={1}>{viewedUser?.username || 'User'}</ThemedText>
+              </View>
 
               {/* Stats columns */}
               <View style={styles.statsColumns}>
@@ -611,9 +613,6 @@ export default function ProfilePreviewScreen() {
                 </View>
               </View>
             </View>
-
-            {/* Username below avatar */}
-            <ThemedText style={styles.profileUsername} numberOfLines={1}>{viewedUser?.username || 'User'}</ThemedText>
 
             {/* Bio */}
             {viewedUser?.bio && (
@@ -727,38 +726,49 @@ export default function ProfilePreviewScreen() {
           <View style={styles.sectionContainer}>
           <View style={styles.clipsSection}>
             {posts.length > 0 ? (
-              <ScrollView
-                horizontal
-                showsHorizontalScrollIndicator={false}
-                contentContainerStyle={styles.horizontalClipsContainer}
-              >
-                {posts.map((post, index) => (
+              <View style={styles.gridClipsContainer}>
+                {posts.map((post) => (
                   <TouchableOpacity
                     key={post.id}
-                    style={styles.horizontalClipItem}
+                    style={styles.gridClipItem}
                     onPress={() => handlePostPress(post)}
                     activeOpacity={0.9}
                   >
                     <Image
                       source={{ uri: post.mediaType === 'video' && post.thumbnailUrl ? post.thumbnailUrl : post.mediaUrl }}
-                      style={styles.horizontalClipImage}
+                      style={styles.gridClipImage}
                       resizeMode="cover"
                     />
+                    <LinearGradient
+                      colors={['transparent', 'rgba(0,0,0,0.75)']}
+                      locations={[0.5, 1]}
+                      style={styles.gridClipBottomGradient}
+                      pointerEvents="none"
+                    />
                     {post.mediaType === 'video' && (
-                      <View style={styles.videoDuration}>
-                        <ThemedText style={styles.videoDurationText}>
+                      <View style={styles.gridClipMeta}>
+                        <IconSymbol size={10} name="play.fill" color="#fff" />
+                        <ThemedText style={styles.gridClipMetaText}>
                           {formatDuration(post.duration)}
                         </ThemedText>
                       </View>
                     )}
                     {post.mediaUrls && post.mediaUrls.length > 1 && (
-                      <View style={styles.multipleIndicator}>
-                        <IconSymbol size={14} name="square.on.square" color="#fff" />
+                      <View style={styles.gridClipMultiple}>
+                        <IconSymbol size={13} name="square.on.square" color="#fff" />
+                      </View>
+                    )}
+                    {post.likes > 0 && (
+                      <View style={styles.gridClipLikes}>
+                        <IconSymbol size={10} name="heart.fill" color="#fff" />
+                        <ThemedText style={styles.gridClipMetaText}>
+                          {formatCount(post.likes)}
+                        </ThemedText>
                       </View>
                     )}
                   </TouchableOpacity>
                 ))}
-              </ScrollView>
+              </View>
             ) : (
               <View style={styles.emptyState}>
                 <ThemedText style={styles.emptyStateTitle}>No clips yet</ThemedText>
@@ -966,7 +976,7 @@ const styles = StyleSheet.create({
   // Cover photo area - reaches top of screen
   coverPhotoWrapper: {
     width: '100%',
-    height: 180,
+    height: 170,
     backgroundColor: '#1a1a1a',
     overflow: 'hidden',
   },
@@ -992,22 +1002,24 @@ const styles = StyleSheet.create({
   },
   // Profile info section below cover
   profileInfoSection: {
-    marginTop: -32,
+    marginTop: -38,
     paddingHorizontal: 20,
     zIndex: 3,
-  },
-  profileUsername: {
-    fontSize: 26,
-    fontWeight: '800',
-    color: '#fff',
-    letterSpacing: -0.5,
-    marginTop: 10,
-    marginBottom: 2,
   },
   avatarStatsRow: {
     flexDirection: 'row',
     alignItems: 'flex-end',
-    gap: 16,
+    justifyContent: 'space-between',
+  },
+  avatarUsernameGroup: {
+    alignItems: 'flex-start',
+  },
+  profileUsername: {
+    fontSize: 16,
+    fontWeight: '800',
+    color: '#fff',
+    letterSpacing: -0.3,
+    marginTop: 6,
   },
   profileAvatarCircle: {
     width: 76,
@@ -1079,15 +1091,15 @@ const styles = StyleSheet.create({
   followButton: {
     flex: 1,
     paddingVertical: 8,
-    backgroundColor: '#c42743',
-    borderRadius: 8,
+    backgroundColor: 'rgba(255,255,255,0.08)',
+    borderRadius: 20,
     alignItems: 'center',
     justifyContent: 'center',
   },
   followingButton: {
-    backgroundColor: '#1e1e1e',
+    backgroundColor: 'rgba(255,255,255,0.04)',
     borderWidth: 1,
-    borderColor: '#2a2a2a',
+    borderColor: 'rgba(255,255,255,0.1)',
   },
   followButtonText: {
     fontSize: 13,
@@ -1101,10 +1113,8 @@ const styles = StyleSheet.create({
   socialIconButton: {
     width: 36,
     height: 36,
-    borderRadius: 8,
-    backgroundColor: '#1e1e1e',
-    borderWidth: 1,
-    borderColor: '#2a2a2a',
+    borderRadius: 18,
+    backgroundColor: 'rgba(255,255,255,0.08)',
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -1119,7 +1129,7 @@ const styles = StyleSheet.create({
   tabBar: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingTop: 12,
+    paddingTop: 8,
     paddingBottom: 8,
   },
   tabItem: {
@@ -1148,44 +1158,63 @@ const styles = StyleSheet.create({
   rankCardsSection: {
     marginBottom: 8,
   },
-  horizontalClipsContainer: {
-    paddingLeft: 20,
-    paddingRight: 20,
+  gridClipsContainer: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    paddingHorizontal: 12,
     gap: 6,
   },
-  horizontalClipItem: {
-    width: 120,
-    height: 120,
+  gridClipItem: {
+    width: (screenWidth - 30) / 2,
+    aspectRatio: 16 / 9,
     backgroundColor: '#1a1a1a',
-    borderRadius: 4,
+    borderRadius: 10,
     overflow: 'hidden',
     position: 'relative',
   },
-  horizontalClipImage: {
+  gridClipImage: {
     width: '100%',
     height: '100%',
   },
-  videoDuration: {
+  gridClipBottomGradient: {
     position: 'absolute',
-    bottom: 4,
-    right: 4,
-    backgroundColor: 'rgba(0, 0, 0, 0.45)',
-    borderRadius: 3,
-    paddingHorizontal: 4,
-    paddingVertical: 1,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    height: '55%',
   },
-  videoDurationText: {
-    fontSize: 9,
-    fontWeight: '500',
-    color: 'rgba(255, 255, 255, 0.85)',
+  gridClipMeta: {
+    position: 'absolute',
+    bottom: 6,
+    left: 6,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 3,
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderRadius: 10,
+    backgroundColor: 'rgba(0,0,0,0.45)',
   },
-  multipleIndicator: {
+  gridClipMetaText: {
+    fontSize: 10,
+    fontWeight: '600',
+    color: '#fff',
+  },
+  gridClipMultiple: {
     position: 'absolute',
     top: 6,
     right: 6,
-    backgroundColor: 'rgba(0, 0, 0, 0.7)',
-    borderRadius: 4,
-    padding: 4,
+    backgroundColor: 'rgba(0,0,0,0.45)',
+    padding: 5,
+    borderRadius: 6,
+  },
+  gridClipLikes: {
+    position: 'absolute',
+    bottom: 6,
+    right: 6,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 3,
   },
   emptyState: {
     alignItems: 'center',
@@ -1207,7 +1236,7 @@ const styles = StyleSheet.create({
     maxWidth: 240,
   },
   verticalRankCardsContainer: {
-    paddingHorizontal: 6,
+    paddingHorizontal: 16,
     paddingTop: 18,
     paddingBottom: 20,
     gap: 16,

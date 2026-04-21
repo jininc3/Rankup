@@ -1,8 +1,9 @@
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { IconSymbol } from '@/components/ui/icon-symbol';
-import { useState, useEffect, useCallback, useRef } from 'react';
-import { Dimensions, ScrollView, StyleSheet, TextInput, TouchableOpacity, View, Image } from 'react-native';
+import { useState, useEffect, useRef } from 'react';
+import { Dimensions, ScrollView, StyleSheet, TextInput, TouchableOpacity, View } from 'react-native';
+import { Image } from 'expo-image';
 import { useRouter } from 'expo-router';
 import { collection, query, where, getDocs, orderBy, limit, doc, setDoc, deleteDoc, getDoc, Timestamp } from 'firebase/firestore';
 import { db } from '@/config/firebase';
@@ -217,51 +218,16 @@ const SearchResultsSkeletonLoader = () => {
   );
 };
 
-// Avatar component that shows skeleton shimmer until image loads
-const AvatarWithSkeleton = ({ uri, style }: { uri: string; style: any }) => {
-  const [loaded, setLoaded] = useState(false);
-  const shimmerValue = useSharedValue(0);
-
-  useEffect(() => {
-    if (!loaded) {
-      shimmerValue.value = withRepeat(
-        withTiming(1, { duration: 1200 }),
-        -1,
-        false
-      );
-    }
-  }, [loaded]);
-
-  const shimmerStyle = useAnimatedStyle(() => {
-    const translateX = interpolate(
-      shimmerValue.value,
-      [0, 1],
-      [-200, 200]
-    );
-    return { transform: [{ translateX }] };
-  });
-
+// Avatar component using expo-image with disk caching
+const CachedAvatar = ({ uri, style }: { uri: string; style: any }) => {
   return (
-    <View style={{ width: '100%', height: '100%' }}>
-      {!loaded && (
-        <View style={[style, { position: 'absolute', backgroundColor: '#1a1a1a', overflow: 'hidden' }]}>
-          <Animated.View style={[StyleSheet.absoluteFill, shimmerStyle]}>
-            <LinearGradient
-              colors={['transparent', 'rgba(255,255,255,0.08)', 'transparent']}
-              start={{ x: 0, y: 0 }}
-              end={{ x: 1, y: 0 }}
-              style={{ flex: 1, width: 200 }}
-            />
-          </Animated.View>
-        </View>
-      )}
-      <Image
-        source={{ uri }}
-        style={style}
-        onLoad={() => setLoaded(true)}
-        onError={() => setLoaded(true)}
-      />
-    </View>
+    <Image
+      source={uri}
+      style={style}
+      cachePolicy="disk"
+      transition={200}
+      recyclingKey={uri}
+    />
   );
 };
 
@@ -275,26 +241,6 @@ export default function SearchScreen() {
   const [loadingHistory, setLoadingHistory] = useState(true);
   const [hasConsumedPreload, setHasConsumedPreload] = useState(false);
 
-  // Show flags - set to true after data + avatars are prefetched
-  const [showResults, setShowResults] = useState(false);
-  const [showHistory, setShowHistory] = useState(false);
-
-
-  // Prefetch avatar images and resolve when all done (or timeout)
-  const prefetchAvatars = (users: SearchUser[], timeoutMs: number = 2000): Promise<void> => {
-    const avatarUrls = users
-      .map(u => u.avatar)
-      .filter((url): url is string => !!url && url.startsWith('http'));
-
-    if (avatarUrls.length === 0) return Promise.resolve();
-
-    return new Promise<void>((resolve) => {
-      const timeout = setTimeout(resolve, timeoutMs);
-      Promise.all(avatarUrls.map(url => Image.prefetch(url).catch(() => {})))
-        .then(() => { clearTimeout(timeout); resolve(); })
-        .catch(() => { clearTimeout(timeout); resolve(); });
-    });
-  };
 
   // Enrich history entries with fresh rank data from user profiles
   const enrichWithRankData = async (history: SearchUser[]): Promise<SearchUser[]> => {
@@ -365,13 +311,8 @@ export default function SearchScreen() {
       // Enrich with fresh rank data from user profiles
       const enrichedHistory = await enrichWithRankData(history);
       setSearchHistory(enrichedHistory);
-
-      // Prefetch all avatars before revealing
-      await prefetchAvatars(enrichedHistory);
-      setShowHistory(true);
     } catch (error) {
       console.error('Error loading search history:', error);
-      setShowHistory(true);
     } finally {
       setLoadingHistory(false);
     }
@@ -453,8 +394,6 @@ export default function SearchScreen() {
       setSearchHistory([]);
       setHasConsumedPreload(false);
       setLoadingHistory(true);
-      setShowResults(false);
-      setShowHistory(false);
     }
     prevUserIdRef.current = currentUser?.id;
   }, [currentUser?.id]);
@@ -468,12 +407,9 @@ export default function SearchScreen() {
       setHasConsumedPreload(true);
       clearPreloadedSearchHistory();
 
-      // Enrich with fresh rank data, prefetch avatars, then reveal
+      // Enrich with fresh rank data in background
       enrichWithRankData(preloadedSearchHistory).then((enriched) => {
         setSearchHistory(enriched);
-        return prefetchAvatars(enriched);
-      }).then(() => {
-        setShowHistory(true);
       });
     }
   }, [preloadedSearchHistory, hasConsumedPreload, clearPreloadedSearchHistory]);
@@ -495,12 +431,9 @@ export default function SearchScreen() {
 
     if (text.trim() === '') {
       setSearchResults([]);
-      setShowResults(false);
       return;
     }
 
-    // Reset state for new search
-    setShowResults(false);
     setSearching(true);
 
     try {
@@ -547,14 +480,9 @@ export default function SearchScreen() {
 
       setSearchResults(users);
       setSearching(false);
-
-      // Prefetch all avatars before revealing results
-      await prefetchAvatars(users, 1500);
-      setShowResults(true);
     } catch (error) {
       console.error('Error searching users:', error);
       setSearchResults([]);
-      setShowResults(true);
       setSearching(false);
     }
   };
@@ -632,12 +560,12 @@ export default function SearchScreen() {
 
       <ScrollView style={styles.scrollView} showsVerticalScrollIndicator={false}>
         {/* History skeleton - only when initially loading */}
-        {searchQuery.trim() === '' && (loadingHistory || (searchHistory.length > 0 && !showHistory)) && (
+        {searchQuery.trim() === '' && loadingHistory && (
           <SkeletonLoader />
         )}
 
-        {/* Recent searches - stays mounted to keep avatars cached, hidden via display */}
-        <View style={{ display: searchQuery.trim() === '' && searchHistory.length > 0 && showHistory ? 'flex' : 'none' }}>
+        {/* Recent searches */}
+        <View style={{ display: searchQuery.trim() === '' && searchHistory.length > 0 && !loadingHistory ? 'flex' : 'none' }}>
           <View style={styles.historyHeader}>
             <ThemedText style={styles.historyTitle}>Recent</ThemedText>
             <TouchableOpacity onPress={clearHistory}>
@@ -659,7 +587,7 @@ export default function SearchScreen() {
                   tierBorderColor ? { borderWidth: 2, borderColor: tierBorderColor } : {}
                 ]}>
                   {user.avatar && user.avatar.startsWith('http') ? (
-                    <AvatarWithSkeleton uri={user.avatar} style={styles.historyAvatarImage} />
+                    <CachedAvatar uri={user.avatar} style={styles.historyAvatarImage} />
                   ) : (
                     <ThemedText style={styles.historyAvatarInitial}>
                       {user.username[0].toUpperCase()}
@@ -689,13 +617,13 @@ export default function SearchScreen() {
           </View>
         )}
 
-        {/* Search results skeleton - visible while searching or prefetching avatars */}
-        {searchQuery.trim() !== '' && (searching || (searchResults.length > 0 && !showResults)) && (
+        {/* Search results skeleton - visible while searching */}
+        {searchQuery.trim() !== '' && searching && (
           <SearchResultsSkeletonLoader />
         )}
 
-        {/* Search results - stays mounted to keep avatars cached, hidden via display */}
-        <View style={{ display: searchQuery.trim() !== '' && searchResults.length > 0 && showResults ? 'flex' : 'none' }}>
+        {/* Search results */}
+        <View style={{ display: searchQuery.trim() !== '' && searchResults.length > 0 && !searching ? 'flex' : 'none' }}>
           {searchResults.map((user) => {
             const tierBorderColor = calculateTierBorderColor(user.leagueRank, user.valorantRank);
             return (
@@ -711,7 +639,7 @@ export default function SearchScreen() {
                   tierBorderColor ? { borderWidth: 2, borderColor: tierBorderColor } : {}
                 ]}>
                   {user.avatar && user.avatar.startsWith('http') ? (
-                    <AvatarWithSkeleton uri={user.avatar} style={styles.historyAvatarImage} />
+                    <CachedAvatar uri={user.avatar} style={styles.historyAvatarImage} />
                   ) : (
                     <ThemedText style={styles.historyAvatarInitial}>
                       {user.username[0].toUpperCase()}
@@ -726,7 +654,7 @@ export default function SearchScreen() {
         </View>
 
         {/* No results state */}
-        {searchQuery.trim() !== '' && !searching && searchResults.length === 0 && showResults && (
+        {searchQuery.trim() !== '' && !searching && searchResults.length === 0 && (
           <View style={styles.emptyState}>
             <IconSymbol size={48} name="person.slash" color="#333" />
             <ThemedText style={styles.emptyText}>No users found</ThemedText>

@@ -438,7 +438,7 @@ export default function LeaderboardScreen() {
           activeOpacity={0.8}
         >
           <LinearGradient
-            colors={['rgba(180, 155, 70, 0.08)', 'rgba(180, 155, 70, 0.02)']}
+            colors={['rgba(59, 130, 246, 0.08)', 'rgba(59, 130, 246, 0.02)']}
             start={{ x: 0, y: 0 }}
             end={{ x: 1, y: 1 }}
             style={styles.lobbiesBannerGradient}
@@ -447,7 +447,7 @@ export default function LeaderboardScreen() {
               <ThemedText style={styles.lobbiesBannerTitle}>LOBBIES</ThemedText>
               <ThemedText style={styles.lobbiesBannerSubtitle}>Compete with friends in leaderboards</ThemedText>
             </View>
-            <IconSymbol size={16} name="chevron.right" color="rgba(180, 155, 70, 0.5)" />
+            <IconSymbol size={16} name="chevron.right" color="rgba(59, 130, 246, 0.5)" />
           </LinearGradient>
         </TouchableOpacity>
 
@@ -597,7 +597,7 @@ const styles = StyleSheet.create({
   lobbiesBanner: {
     borderRadius: 12,
     borderWidth: 1,
-    borderColor: 'rgba(180, 155, 70, 0.2)',
+    borderColor: 'rgba(59, 130, 246, 0.2)',
     overflow: 'hidden',
     marginBottom: 16,
   },
@@ -614,7 +614,7 @@ const styles = StyleSheet.create({
   lobbiesBannerTitle: {
     fontSize: 16,
     fontWeight: '700',
-    color: '#D4A843',
+    color: '#3B82F6',
     letterSpacing: 1,
   },
   lobbiesBannerSubtitle: {

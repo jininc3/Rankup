@@ -508,7 +508,14 @@ export default function PostContent({
             )}
           </View>
           <View style={styles.userTextContainer}>
-            <ThemedText style={styles.username}>{post.username}</ThemedText>
+            <View style={styles.usernameRow}>
+              <ThemedText style={styles.username}>{post.username}</ThemedText>
+              {post.userId === currentUserId && (
+                <View style={styles.youBadge}>
+                  <ThemedText style={styles.youBadgeText}>You</ThemedText>
+                </View>
+              )}
+            </View>
             <View style={styles.postMetaRow}>
               {post.taggedGame && (
                 <>
@@ -803,10 +810,26 @@ const styles = StyleSheet.create({
     flexDirection: 'column',
     justifyContent: 'center',
   },
+  usernameRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+  },
   username: {
     fontSize: 15,
     fontWeight: '700',
     color: '#fff',
+  },
+  youBadge: {
+    backgroundColor: 'rgba(255, 255, 255, 0.08)',
+    paddingHorizontal: 6,
+    paddingVertical: 1,
+    borderRadius: 4,
+  },
+  youBadgeText: {
+    fontSize: 11,
+    fontWeight: '600',
+    color: '#555',
   },
   postMetaRow: {
     flexDirection: 'row',

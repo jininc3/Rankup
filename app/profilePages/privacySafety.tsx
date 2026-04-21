@@ -12,7 +12,6 @@ export default function PrivacySafetyScreen() {
   // Privacy toggles
   const [privateAccountEnabled, setPrivateAccountEnabled] = useState(false);
   const [showOnlineStatusEnabled, setShowOnlineStatusEnabled] = useState(true);
-  const [showActivityEnabled, setShowActivityEnabled] = useState(true);
   const [allowTagsEnabled, setAllowTagsEnabled] = useState(true);
 
   const privacySettings = [
@@ -35,14 +34,6 @@ export default function PrivacySafetyScreen() {
           subtitle: 'Let others see when you\'re active',
           value: showOnlineStatusEnabled,
           onValueChange: setShowOnlineStatusEnabled,
-        },
-        {
-          id: 3,
-          icon: 'clock',
-          title: 'Show Activity Status',
-          subtitle: 'Let others see your recent activity',
-          value: showActivityEnabled,
-          onValueChange: setShowActivityEnabled,
         },
       ],
     },
@@ -272,7 +263,6 @@ const styles = StyleSheet.create({
     fontSize: 20,
     fontWeight: '700',
     color: '#fff',
-    flex: 1,
     textAlign: 'center',
   },
   headerSpacer: {
