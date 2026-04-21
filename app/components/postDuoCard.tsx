@@ -298,7 +298,7 @@ export default function PostDuoCard({
               <ThemedText style={styles.emptyStateText}>
                 {!valorantCard && !leagueCard
                   ? 'You need to create a duo card first'
-                  : 'Your cards are already posted in the feed. You can post again once they expire after 24 hours.'}
+                  : 'Your cards are already posted in the feed. You can delete active posts in My Cards to post again.'}
               </ThemedText>
             </View>
           ) : (
