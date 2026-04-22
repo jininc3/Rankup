@@ -1,7 +1,8 @@
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { IconSymbol } from '@/components/ui/icon-symbol';
-import { useLocalSearchParams, useRouter } from 'expo-router';
+import { useRouter } from '@/hooks/useRouter';
+import { useLocalSearchParams } from 'expo-router';
 import { ScrollView, StyleSheet, TouchableOpacity, View, Image, Alert, RefreshControl, Modal, ActivityIndicator, TextInput, Animated, PanResponder, Dimensions } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useState, useEffect, useRef } from 'react';
@@ -463,6 +464,7 @@ export default function LeaderboardDetail() {
       });
 
       setInvitedUsers(prev => new Set(prev).add(invitee.id));
+      setPendingInvites(prev => [...prev, { id: invitee.id, username: invitee.username, avatar: invitee.avatar }]);
       setMutuals(prev => prev.filter(m => m.id !== invitee.id));
     } catch (error) {
       console.error('Error inviting user:', error);
@@ -471,6 +473,44 @@ export default function LeaderboardDetail() {
       setInvitingUsers(prev => {
         const newSet = new Set(prev);
         newSet.delete(invitee.id);
+        return newSet;
+      });
+    }
+  };
+
+  const [revokingUsers, setRevokingUsers] = useState<Set<string>>(new Set());
+
+  const handleRevokeInvite = async (inviteeId: string) => {
+    if (!partyDocId) return;
+
+    setRevokingUsers(prev => new Set(prev).add(inviteeId));
+
+    try {
+      const partyRef = doc(db, 'parties', partyDocId);
+      const currentPendingInvites = partyData?.pendingInvites || [];
+      const updatedInvites = currentPendingInvites.filter(
+        (inv: any) => inv.userId !== inviteeId
+      );
+      await updateDoc(partyRef, { pendingInvites: updatedInvites });
+
+      // Move user back to suggestions
+      const revokedUser = pendingInvites.find(u => u.id === inviteeId);
+      setPendingInvites(prev => prev.filter(u => u.id !== inviteeId));
+      setInvitedUsers(prev => {
+        const newSet = new Set(prev);
+        newSet.delete(inviteeId);
+        return newSet;
+      });
+      if (revokedUser) {
+        setMutuals(prev => [...prev, revokedUser]);
+      }
+    } catch (error) {
+      console.error('Error revoking invite:', error);
+      Alert.alert('Error', 'Failed to revoke invite');
+    } finally {
+      setRevokingUsers(prev => {
+        const newSet = new Set(prev);
+        newSet.delete(inviteeId);
         return newSet;
       });
     }
@@ -685,6 +725,7 @@ export default function LeaderboardDetail() {
         const now = new Date();
         const end = new Date(now);
         end.setDate(end.getDate() + duration);
+        end.setHours(23, 59, 59, 999);
 
         const formatDateStr = (date: Date) => {
           const month = String(date.getMonth() + 1).padStart(2, '0');
@@ -693,25 +734,37 @@ export default function LeaderboardDetail() {
           return `${month}/${day}/${year}`;
         };
 
-        // Snapshot starting stats for climbing challenges
+        // Snapshot starting stats (LP/RR + wins/losses for challenge tracking)
         let startingStats: any[] = [];
-        if ((partyData?.challengeType || 'climbing') === 'climbing') {
-          const gameStatsPath = isLeague ? 'league' : 'valorant';
-          const statsPromises = challengeParticipants.map(async (userId: string) => {
-            try {
-              const statsDoc = await getDoc(doc(db, 'users', userId, 'gameStats', gameStatsPath));
-              const stats = statsDoc.data();
-              return {
-                userId,
-                lp: isLeague ? (stats?.lp || 0) : 0,
-                rr: !isLeague ? (stats?.rr || 0) : 0,
-              };
-            } catch {
-              return { userId, lp: 0, rr: 0 };
+        const gameStatsPath = isLeague ? 'league' : 'valorant';
+        const statsPromises = challengeParticipants.map(async (userId: string) => {
+          try {
+            const statsDoc = await getDoc(doc(db, 'users', userId, 'gameStats', gameStatsPath));
+            const stats = statsDoc.data();
+            const userDoc = await getDoc(doc(db, 'users', userId));
+            const userData = userDoc.data();
+
+            let wins = 0, losses = 0;
+            if (isLeague && userData?.riotStats?.rankedSolo) {
+              wins = userData.riotStats.rankedSolo.wins || 0;
+              losses = userData.riotStats.rankedSolo.losses || 0;
+            } else if (!isLeague && userData?.valorantStats) {
+              wins = userData.valorantStats.wins || 0;
+              losses = userData.valorantStats.losses || 0;
             }
-          });
-          startingStats = await Promise.all(statsPromises);
-        }
+
+            return {
+              userId,
+              lp: isLeague ? (stats?.lp || 0) : 0,
+              rr: !isLeague ? (stats?.rr || 0) : 0,
+              wins,
+              losses,
+            };
+          } catch {
+            return { userId, lp: 0, rr: 0, wins: 0, losses: 0 };
+          }
+        });
+        startingStats = await Promise.all(statsPromises);
 
         await updateDoc(partyRef, {
           challengeStatus: 'active',
@@ -1588,7 +1641,22 @@ export default function LeaderboardDetail() {
                     <>
                       <ThemedText style={styles.inviteSectionLabel}>Pending Invites</ThemedText>
                       {pendingInvites.map((userItem) => (
-                        <View key={userItem.id} style={styles.inviteUserItem}>
+                        <TouchableOpacity
+                          key={userItem.id}
+                          style={styles.inviteUserItem}
+                          onPress={() => {
+                            Alert.alert(
+                              'Remove Invite',
+                              `Remove the invite for ${userItem.username}?`,
+                              [
+                                { text: 'Cancel', style: 'cancel' },
+                                { text: 'Remove', style: 'destructive', onPress: () => handleRevokeInvite(userItem.id) },
+                              ]
+                            );
+                          }}
+                          disabled={revokingUsers.has(userItem.id)}
+                          activeOpacity={0.6}
+                        >
                           <View style={styles.inviteUserAvatar}>
                             {userItem.avatar && userItem.avatar.startsWith('http') ? (
                               <Image source={{ uri: userItem.avatar }} style={styles.inviteUserAvatarImage} />
@@ -1599,11 +1667,17 @@ export default function LeaderboardDetail() {
                             )}
                           </View>
                           <ThemedText style={styles.inviteUserName}>{userItem.username}</ThemedText>
-                          <View style={styles.pendingBadge}>
-                            <IconSymbol size={12} name="clock" color="#888" />
-                            <ThemedText style={styles.pendingBadgeText}>Pending</ThemedText>
-                          </View>
-                        </View>
+                          {revokingUsers.has(userItem.id) ? (
+                            <View style={styles.pendingBadge}>
+                              <ActivityIndicator size="small" color="#888" />
+                            </View>
+                          ) : (
+                            <View style={styles.pendingBadge}>
+                              <IconSymbol size={12} name="clock" color="#888" />
+                              <ThemedText style={styles.pendingBadgeText}>Pending</ThemedText>
+                            </View>
+                          )}
+                        </TouchableOpacity>
                       ))}
                     </>
                   )}

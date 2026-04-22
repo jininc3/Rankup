@@ -1,7 +1,7 @@
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { IconSymbol } from '@/components/ui/icon-symbol';
-import { useRouter } from 'expo-router';
+import { useRouter } from '@/hooks/useRouter';
 import { ScrollView, StyleSheet, Switch, TouchableOpacity, View } from 'react-native';
 import { useState } from 'react';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -207,6 +207,10 @@ export default function PrivacySafetyScreen() {
                     styles.settingItem,
                     index === section.items.length - 1 && styles.settingItemLast,
                   ]}
+                  onPress={() => {
+                    if (item.id === 1) router.push('/profilePages/blockedUsers');
+                  }}
+                  activeOpacity={0.7}
                 >
                   <View style={styles.settingLeft}>
                     <View style={styles.iconContainer}>

@@ -1,7 +1,7 @@
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { IconSymbol } from '@/components/ui/icon-symbol';
-import { useRouter } from 'expo-router';
+import { useRouter } from '@/hooks/useRouter';
 import { ScrollView, StyleSheet, Switch, TouchableOpacity, View, ActivityIndicator } from 'react-native';
 import { useState, useEffect } from 'react';
 import { useAuth } from '@/contexts/AuthContext';

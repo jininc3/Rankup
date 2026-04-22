@@ -1,6 +1,6 @@
 import React from 'react';
 import { View, Text, Image, StyleSheet, TouchableOpacity } from 'react-native';
-import { useRouter } from 'expo-router';
+import { useRouter } from '@/hooks/useRouter';
 import { InAppNotificationData, useInAppNotification } from '@/contexts/InAppNotificationContext';
 
 interface InAppNotificationProps {

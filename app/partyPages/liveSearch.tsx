@@ -11,7 +11,7 @@ import { useState, useEffect, useCallback, useRef } from 'react';
 import { Alert, StyleSheet, TouchableOpacity, View, ScrollView, AppState } from 'react-native';
 import { doc, getDoc } from 'firebase/firestore';
 import { db } from '@/config/firebase';
-import { useRouter } from 'expo-router';
+import { useRouter } from '@/hooks/useRouter';
 import { joinDuoQueue, leaveDuoQueue, subscribeToDuoQueue, getDuoMatch, acceptMatch, declineMatch, subscribeToMatch, DuoMatchCardData, DuoMatch } from '@/services/duoMatchService';
 import { createOrGetChat, sendMessage } from '@/services/chatService';
 import { DuoCardData } from '@/app/(tabs)/duoFinder';
@@ -200,10 +200,13 @@ export default function LiveSearchScreen() {
                   // Re-subscribe to queue for new matches
                   const requeueUnsub = subscribeToDuoQueue(user.id!, game, async (requeueData) => {
                     if (requeueData?.status === 'matched' && requeueData.matchId) {
-                      // New match found after re-queue — handled recursively
                       if (unsubscribeQueueRef.current) {
                         unsubscribeQueueRef.current();
                         unsubscribeQueueRef.current = null;
+                      }
+                      if (searchTimeoutRef.current) {
+                        clearTimeout(searchTimeoutRef.current);
+                        searchTimeoutRef.current = null;
                       }
                       const newMatch = await getDuoMatch(requeueData.matchId);
                       if (newMatch) {
@@ -216,8 +219,36 @@ export default function LiveSearchScreen() {
                         setOtherAccepted(false);
                         setMatchState('accepting');
 
-                        // Subscribe to the new match
-                        // (will be handled by the outer flow on next render)
+                        // Subscribe to the new match for accept/decline updates
+                        const newMatchUnsub = subscribeToMatch(requeueData.matchId, (updatedNewMatch) => {
+                          if (!updatedNewMatch) return;
+
+                          const isUser1 = updatedNewMatch.user1Id === user.id;
+                          const myAcc = isUser1 ? updatedNewMatch.user1Accepted : updatedNewMatch.user2Accepted;
+                          const theirAcc = isUser1 ? updatedNewMatch.user2Accepted : updatedNewMatch.user1Accepted;
+
+                          setHasAccepted(myAcc === true);
+                          setOtherAccepted(theirAcc === true);
+
+                          if (updatedNewMatch.status === 'active') {
+                            if (unsubscribeMatchRef.current) {
+                              unsubscribeMatchRef.current();
+                              unsubscribeMatchRef.current = null;
+                            }
+                            setMatchState('matched');
+                          } else if (updatedNewMatch.status === 'declined' || updatedNewMatch.status === 'expired') {
+                            if (unsubscribeMatchRef.current) {
+                              unsubscribeMatchRef.current();
+                              unsubscribeMatchRef.current = null;
+                            }
+                            // Other user declined again — go to idle
+                            setMatchState('idle');
+                            setSearchGame(null);
+                            setMatchedUserCard(null);
+                            setCurrentMatchId(null);
+                          }
+                        });
+                        unsubscribeMatchRef.current = newMatchUnsub;
                       }
                     }
                   });

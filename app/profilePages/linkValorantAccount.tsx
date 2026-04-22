@@ -6,7 +6,8 @@ import {
   Alert, Image, BackHandler, Keyboard, TouchableWithoutFeedback,
 } from 'react-native';
 import { useState, useRef, useEffect } from 'react';
-import { useRouter, useLocalSearchParams, Stack } from 'expo-router';
+import { useRouter } from '@/hooks/useRouter';
+import { useLocalSearchParams, Stack } from 'expo-router';
 import { linkValorantAccount } from '@/services/valorantService';
 import { useValorantStats } from '@/contexts/ValorantStatsContext';
 import { db, auth } from '@/config/firebase';

@@ -12,7 +12,8 @@ import { IconSymbol } from '@/components/ui/icon-symbol';
 import { useAuth } from '@/contexts/AuthContext';
 import { auth } from '@/config/firebase';
 import { sendEmailVerification } from 'firebase/auth';
-import { useRouter, useLocalSearchParams } from 'expo-router';
+import { useRouter } from '@/hooks/useRouter';
+import { useLocalSearchParams } from 'expo-router';
 import { deleteIncompleteAccount } from '@/services/authService';
 
 export default function VerifyEmailSignUp() {

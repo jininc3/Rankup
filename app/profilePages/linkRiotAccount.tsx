@@ -6,7 +6,8 @@ import {
   Alert, Image, BackHandler, Keyboard, TouchableWithoutFeedback,
 } from 'react-native';
 import { useState, useRef, useEffect } from 'react';
-import { useRouter, useLocalSearchParams } from 'expo-router';
+import { useRouter } from '@/hooks/useRouter';
+import { useLocalSearchParams } from 'expo-router';
 import { linkRiotAccount, getLeagueStats } from '@/services/riotService';
 import { db, auth } from '@/config/firebase';
 import { doc, updateDoc, arrayUnion } from 'firebase/firestore';

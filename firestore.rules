@@ -55,6 +55,34 @@ service cloud.firestore {
                       && (request.auth.uid == userId || request.auth.uid == followingId);
       }
 
+      // Blocked users subcollection - who this user has blocked
+      match /blockedUsers/{blockedUserId} {
+        allow read: if request.auth != null && request.auth.uid == userId;
+
+        allow create: if request.auth != null
+                      && request.auth.uid == userId
+                      && request.resource.data.blockedUserId == blockedUserId
+                      && request.resource.data.blockedUsername is string
+                      && request.resource.data.createdAt is timestamp;
+
+        allow delete: if request.auth != null
+                      && request.auth.uid == userId;
+      }
+
+      // Blocked-by subcollection - reverse index of who has blocked this user
+      match /blockedByUsers/{blockerUserId} {
+        allow read: if request.auth != null
+                    && (request.auth.uid == userId || request.auth.uid == blockerUserId);
+
+        allow create: if request.auth != null
+                      && request.auth.uid == blockerUserId
+                      && request.resource.data.blockerUserId == blockerUserId
+                      && request.resource.data.createdAt is timestamp;
+
+        allow delete: if request.auth != null
+                      && request.auth.uid == blockerUserId;
+      }
+
       // Search history subcollection - user's recent searches
       match /searchHistory/{searchedUserId} {
         // Only the user can read their own search history
@@ -88,6 +116,13 @@ service cloud.firestore {
 
         // Only the user can write their own game stats
         allow write: if request.auth != null && request.auth.uid == userId;
+      }
+
+      // Rank history subcollection - daily LP/RR snapshots for graphs
+      match /rankHistory/{docId} {
+        // Anyone can read rank history (for viewing other users' profiles)
+        allow read: if true;
+        // Writes handled by cloud functions via Admin SDK
       }
     }
 
@@ -255,6 +290,11 @@ service cloud.firestore {
       allow read: if request.auth != null
                   && (resource.data.user1Id == request.auth.uid
                       || resource.data.user2Id == request.auth.uid);
+
+      // Users can update matches they are part of (accept/decline)
+      allow update: if request.auth != null
+                    && (resource.data.user1Id == request.auth.uid
+                        || resource.data.user2Id == request.auth.uid);
     }
 
     // Duo Posts collection - time-limited duo card posts in the feed

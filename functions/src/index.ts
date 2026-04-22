@@ -46,10 +46,18 @@ export {refreshPartyStatsFunction as refreshPartyStats} from "./parties/refreshP
 
 // Export User Management functions
 export {updateUsernameFunction as updateUsername} from "./users/updateUsername";
+export {resetPhonePasswordFunction as resetPhonePassword} from "./users/resetPhonePassword";
+export {generateLoginTokenFunction as generateLoginToken} from "./users/generateLoginToken";
+export {setUserPasswordFunction as setUserPassword} from "./users/setUserPassword";
 
 // Export Email Verification functions
 export {sendEmailVerificationCodeFunction as sendEmailVerificationCode} from "./email/emailVerification";
 export {verifyEmailCodeFunction as verifyEmailCode} from "./email/emailVerification";
+export {sendEmailLoginCodeFunction as sendEmailLoginCode} from "./email/emailLoginVerification";
+export {verifyEmailLoginCodeFunction as verifyEmailLoginCode} from "./email/emailLoginVerification";
+
+// Export Rank History functions
+export {dailyRankSnapshotScheduled} from "./rankHistory/dailyRankSnapshot";
 
 // Export Duo Matching functions
 export {onDuoQueueCreated} from "./duo/onDuoQueueCreated";

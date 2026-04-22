@@ -1,7 +1,8 @@
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { IconSymbol } from '@/components/ui/icon-symbol';
-import { useRouter, useLocalSearchParams } from 'expo-router';
+import { useRouter } from '@/hooks/useRouter';
+import { useLocalSearchParams, useNavigation } from 'expo-router';
 import React, { useState } from 'react';
 import { StyleSheet, TouchableOpacity, View, Platform, Alert } from 'react-native';
 import DateTimePicker from '@react-native-community/datetimepicker';
@@ -15,9 +16,12 @@ const PROGRESS: Record<string, string> = {
 export default function SignUpBirthday() {
   const router = useRouter();
   const params = useLocalSearchParams();
+  const navigation = useNavigation();
   const signupMethod = (params.signupMethod as string) || 'email';
   const [dateOfBirth, setDateOfBirth] = useState(new Date(2000, 0, 1));
   const [showPicker, setShowPicker] = useState(Platform.OS === 'ios');
+
+  const canGoBack = navigation.canGoBack();
 
   const getAge = (dob: Date) => {
     const today = new Date();
@@ -48,7 +52,16 @@ export default function SignUpBirthday() {
   return (
     <ThemedView style={styles.container}>
       <View style={styles.headerRow}>
-        <TouchableOpacity style={styles.backButton} onPress={() => router.back()}>
+        <TouchableOpacity
+          style={styles.backButton}
+          onPress={() => {
+            if (canGoBack) {
+              router.back();
+            } else {
+              router.replace('/(auth)/login');
+            }
+          }}
+        >
           <IconSymbol size={22} name="chevron.left" color="#fff" />
         </TouchableOpacity>
         <View style={styles.progress}>

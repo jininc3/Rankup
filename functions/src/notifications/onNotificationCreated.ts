@@ -22,6 +22,18 @@ export const onNotificationCreated = onDocumentCreated(
     const db = getFirestore();
 
     try {
+      // Check if sender is blocked by recipient (skip notification if so)
+      if (notification.fromUserId) {
+        const [blockedDoc, blockedByDoc] = await Promise.all([
+          db.collection('users').doc(userId).collection('blockedUsers').doc(notification.fromUserId).get(),
+          db.collection('users').doc(userId).collection('blockedByUsers').doc(notification.fromUserId).get(),
+        ]);
+        if (blockedDoc.exists || blockedByDoc.exists) {
+          console.log('Notification involves blocked user, skipping push');
+          return;
+        }
+      }
+
       // Get user's notification preferences
       const userDoc = await db.collection('users').doc(userId).get();
       const userData = userDoc.data();

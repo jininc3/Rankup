@@ -1,5 +1,5 @@
 import { useEffect } from 'react';
-import { useRouter } from 'expo-router';
+import { useRouter } from '@/hooks/useRouter';
 import { useAuth } from '@/contexts/AuthContext';
 import { View } from 'react-native';
 

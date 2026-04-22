@@ -16,7 +16,7 @@ import { collection, getDocs, orderBy, query, Timestamp, where, onSnapshot, limi
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { ActivityIndicator, Dimensions, Image, ScrollView, StyleSheet, TouchableOpacity, View, Alert, RefreshControl, Modal, Pressable } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
-import { useRouter } from 'expo-router';
+import { useRouter } from '@/hooks/useRouter';
 import { useFocusEffect } from '@react-navigation/native';
 
 const { width, height: screenHeight } = Dimensions.get('window');
@@ -91,7 +91,8 @@ export default function HomeScreen() {
     newlyFollowedUserId,
     clearNewlyFollowedUserPosts,
     newlyUnfollowedUserId,
-    clearNewlyUnfollowedUserId
+    clearNewlyUnfollowedUserId,
+    isUserBlocked
   } = useAuth();
   const [activeTab, setActiveTab] = useState<'forYou' | 'following'>('following');
   const [followingPosts, setFollowingPosts] = useState<Post[]>([]);
@@ -187,7 +188,7 @@ export default function HomeScreen() {
   // Use preloaded following IDs if available, otherwise fetch
   useEffect(() => {
     if (preloadedFollowingIds) {
-      setFollowingUserIds(preloadedFollowingIds);
+      setFollowingUserIds(preloadedFollowingIds.filter(id => !isUserBlocked(id)));
       return;
     }
 
@@ -197,7 +198,7 @@ export default function HomeScreen() {
       try {
         const followingData = await getFollowing(currentUser.id);
         let userIds = followingData.map(follow => follow.followingId);
-        userIds = userIds.filter(id => id !== currentUser.id);
+        userIds = userIds.filter(id => id !== currentUser.id && !isUserBlocked(id));
         setFollowingUserIds(userIds);
       } catch (error) {
         console.error('Error fetching following:', error);
@@ -210,7 +211,7 @@ export default function HomeScreen() {
   // Consume preloaded posts from AuthContext (already enriched with rank data)
   useEffect(() => {
     if (preloadedPosts && !hasConsumedPreload) {
-      setFollowingPosts(preloadedPosts);
+      setFollowingPosts(preloadedPosts.filter(p => !isUserBlocked(p.userId)));
       setLoading(false);
       setHasConsumedPreload(true);
       clearPreloadedPosts();

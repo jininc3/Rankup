@@ -25,7 +25,7 @@ import { Alert, Dimensions, ScrollView, FlatList, ActivityIndicator, StyleSheet,
 const { width: screenWidth, height: screenHeight } = Dimensions.get('window');
 import { doc, getDoc, setDoc, deleteDoc, serverTimestamp, collection, query, where, getDocs, orderBy, limit, Timestamp } from 'firebase/firestore';
 import { db } from '@/config/firebase';
-import { useRouter } from 'expo-router';
+import { useRouter } from '@/hooks/useRouter';
 import { createOrGetChat } from '@/services/chatService';
 
 interface DuoCardWithId extends DuoCardData {
@@ -87,7 +87,7 @@ const DUMMY_DUO_POSTS: DuoPostWithId[] = [
 ];
 
 export default function DuoFinderScreen() {
-  const { user } = useAuth();
+  const { user, isUserBlocked } = useAuth();
   const router = useRouter();
 
   // Pulse animation for live search banner
@@ -728,8 +728,10 @@ export default function DuoFinderScreen() {
 
       // Append dummy posts for visual testing (remove when done)
       const withDummies = [...filtered, ...DUMMY_DUO_POSTS];
-      setDuoPosts(withDummies);
-      setDisplayedPosts(withDummies.slice(0, POSTS_PER_PAGE));
+      // Filter out blocked users
+      const withoutBlocked = withDummies.filter(post => !isUserBlocked(post.userId));
+      setDuoPosts(withoutBlocked);
+      setDisplayedPosts(withoutBlocked.slice(0, POSTS_PER_PAGE));
     } catch (error) {
       console.error('Error fetching duo posts:', error);
     } finally {

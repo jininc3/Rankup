@@ -5,7 +5,8 @@ import MaterialIcons from '@expo/vector-icons/MaterialIcons';
 import { signInWithEmail, resetPassword } from '@/services/authService';
 import { db } from '@/config/firebase';
 import { collection, getDocs, query, where } from 'firebase/firestore';
-import { useRouter, useLocalSearchParams } from 'expo-router';
+import { useRouter } from '@/hooks/useRouter';
+import { useLocalSearchParams } from 'expo-router';
 import React, { useState, useEffect } from 'react';
 import { StyleSheet, TouchableOpacity, View, TextInput, Alert, KeyboardAvoidingView, Platform, Keyboard } from 'react-native';
 
@@ -26,6 +27,17 @@ export default function LoginPassword() {
 
   const isEmailInput = (input: string) => input.includes('@');
 
+  const isPhoneEmail = (email: string) => email.endsWith('@rankup-phone.internal');
+
+  const getPhoneFromEmail = async (email: string): Promise<string | null> => {
+    try {
+      const q = query(collection(db, 'users'), where('email', '==', email));
+      const snapshot = await getDocs(q);
+      if (!snapshot.empty) return snapshot.docs[0].data().phoneNumber || null;
+      return null;
+    } catch { return null; }
+  };
+
   const handleForgotPassword = async () => {
     try {
       let email = usernameOrEmail;
@@ -37,6 +49,21 @@ export default function LoginPassword() {
         }
         email = resolved;
       }
+
+      // Phone users: send OTP instead of email reset link
+      if (isPhoneEmail(email)) {
+        const phone = await getPhoneFromEmail(email);
+        if (!phone) {
+          Alert.alert('Error', 'Could not find phone number for this account.');
+          return;
+        }
+        router.push({
+          pathname: '/(auth)/resetPasswordPhone',
+          params: { phoneNumber: phone },
+        });
+        return;
+      }
+
       await resetPassword(email);
       Alert.alert('Password Reset', `We sent a reset link to ${email}. Check your email.`);
     } catch (error: any) {
@@ -89,7 +116,11 @@ export default function LoginPassword() {
 
         <View style={styles.content}>
           <ThemedText style={styles.title}>Enter your{'\n'}password</ThemedText>
-          <ThemedText style={styles.subtitle}>Signing in as @{usernameOrEmail}</ThemedText>
+          <ThemedText style={styles.subtitle}>
+            {usernameOrEmail.endsWith('@rankup-phone.internal')
+              ? 'Signing in with phone number'
+              : `Signing in as @${usernameOrEmail}`}
+          </ThemedText>
 
           <View style={styles.inputContainer}>
             <View style={styles.inputWrapper}>

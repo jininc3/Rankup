@@ -3,7 +3,7 @@ import { ThemedView } from '@/components/themed-view';
 import MaterialIcons from '@expo/vector-icons/MaterialIcons';
 import { useGoogleAuth } from '@/hooks/useGoogleAuth';
 import { signInWithGoogleCredential } from '@/services/authService';
-import { useRouter } from 'expo-router';
+import { useRouter } from '@/hooks/useRouter';
 import React, { useEffect, useState } from 'react';
 import {
   Alert,
@@ -71,15 +71,14 @@ export default function LoginScreen() {
 
           {/* Bottom section - Auth buttons */}
           <View style={styles.authSection}>
-            {/* Google login */}
+            {/* Login with username - main CTA */}
             <TouchableOpacity
-              style={[styles.googleButton, isLoading && styles.buttonDisabled]}
-              onPress={handleGoogleLogin}
-              disabled={!googleAuth.request || isLoading}
+              style={styles.usernameButton}
+              onPress={() => router.push('/(auth)/loginUsername')}
               activeOpacity={0.8}
             >
-              <Image source={require('@/assets/images/google.png')} style={styles.socialIcon} />
-              <ThemedText style={styles.googleButtonText}>Continue with Google</ThemedText>
+              <MaterialIcons name="alternate-email" size={20} color="#0f0f0f" />
+              <ThemedText style={styles.usernameButtonText}>Login with username</ThemedText>
             </TouchableOpacity>
 
             {/* Divider */}
@@ -89,15 +88,33 @@ export default function LoginScreen() {
               <View style={styles.dividerLine} />
             </View>
 
-            {/* Login with username */}
-            <TouchableOpacity
-              style={styles.usernameLoginButton}
-              onPress={() => router.push('/(auth)/loginUsername')}
-              activeOpacity={0.8}
-            >
-              <MaterialIcons name="alternate-email" size={20} color="#fff" />
-              <ThemedText style={styles.usernameLoginButtonText}>Login with username</ThemedText>
-            </TouchableOpacity>
+            {/* Circular icon buttons row */}
+            <View style={styles.socialRow}>
+              <TouchableOpacity
+                style={[styles.socialCircle, isLoading && styles.buttonDisabled]}
+                onPress={handleGoogleLogin}
+                disabled={!googleAuth.request || isLoading}
+                activeOpacity={0.7}
+              >
+                <Image source={require('@/assets/images/google.png')} style={styles.socialCircleIcon} />
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                style={styles.socialCircle}
+                onPress={() => router.push('/(auth)/loginPhone')}
+                activeOpacity={0.7}
+              >
+                <IconSymbol size={22} name="phone.fill" color="#fff" />
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                style={styles.socialCircle}
+                onPress={() => router.push('/(auth)/loginEmail')}
+                activeOpacity={0.7}
+              >
+                <MaterialIcons name="email" size={22} color="#fff" />
+              </TouchableOpacity>
+            </View>
 
             {/* Footer */}
             <View style={styles.footer}>
@@ -124,7 +141,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
 
-  // Hero section - centered logo and tagline
+  // Hero section
   heroSection: {
     alignItems: 'center',
     justifyContent: 'center',
@@ -144,13 +161,13 @@ const styles = StyleSheet.create({
     lineHeight: 40,
   },
 
-  // Auth section - pinned to bottom
+  // Auth section
   authSection: {
     paddingHorizontal: 28,
   },
 
-  // Google button
-  googleButton: {
+  // Username button - main CTA (white, where Google used to be)
+  usernameButton: {
     backgroundColor: '#fff',
     borderRadius: 28,
     paddingVertical: 16,
@@ -160,21 +177,17 @@ const styles = StyleSheet.create({
     gap: 10,
     marginBottom: 20,
   },
-  googleButtonText: {
+  usernameButtonText: {
     color: '#0f0f0f',
     fontSize: 16,
     fontWeight: '700',
-  },
-  socialIcon: {
-    width: 20,
-    height: 20,
   },
 
   // Divider
   divider: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginBottom: 20,
+    marginBottom: 24,
   },
   dividerLine: {
     flex: 1,
@@ -187,23 +200,27 @@ const styles = StyleSheet.create({
     fontSize: 13,
   },
 
-  // Username login button
-  usernameLoginButton: {
-    borderRadius: 28,
-    paddingVertical: 16,
+  // Circular icon buttons
+  socialRow: {
     flexDirection: 'row',
-    alignItems: 'center',
     justifyContent: 'center',
-    gap: 10,
-    marginBottom: 20,
+    gap: 20,
+    marginBottom: 28,
+  },
+  socialCircle: {
+    width: 52,
+    height: 52,
+    borderRadius: 26,
     borderWidth: 1,
     borderColor: 'rgba(255, 255, 255, 0.15)',
+    alignItems: 'center',
+    justifyContent: 'center',
   },
-  usernameLoginButtonText: {
-    color: '#fff',
-    fontSize: 16,
-    fontWeight: '600',
+  socialCircleIcon: {
+    width: 22,
+    height: 22,
   },
+
   buttonDisabled: {
     opacity: 0.5,
   },

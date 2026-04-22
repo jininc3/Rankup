@@ -14,7 +14,8 @@ import {
 } from 'react-native';
 
 const { width: screenWidth, height: screenHeight } = Dimensions.get('window');
-import { useRouter, useFocusEffect, useLocalSearchParams } from 'expo-router';
+import { useRouter } from '@/hooks/useRouter';
+import { useFocusEffect, useLocalSearchParams } from 'expo-router';
 import { useAuth } from '@/contexts/AuthContext';
 import { useCallback, useState } from 'react';
 import { db } from '@/config/firebase';

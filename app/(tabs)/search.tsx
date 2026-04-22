@@ -4,7 +4,7 @@ import { IconSymbol } from '@/components/ui/icon-symbol';
 import { useState, useEffect, useRef } from 'react';
 import { Dimensions, ScrollView, StyleSheet, TextInput, TouchableOpacity, View } from 'react-native';
 import { Image } from 'expo-image';
-import { useRouter } from 'expo-router';
+import { useRouter } from '@/hooks/useRouter';
 import { collection, query, where, getDocs, orderBy, limit, doc, setDoc, deleteDoc, getDoc, Timestamp } from 'firebase/firestore';
 import { db } from '@/config/firebase';
 import { useAuth } from '@/contexts/AuthContext';
@@ -233,7 +233,7 @@ const CachedAvatar = ({ uri, style }: { uri: string; style: any }) => {
 
 export default function SearchScreen() {
   const router = useRouter();
-  const { user: currentUser, preloadedSearchHistory, clearPreloadedSearchHistory } = useAuth();
+  const { user: currentUser, preloadedSearchHistory, clearPreloadedSearchHistory, isUserBlocked } = useAuth();
   const [searchQuery, setSearchQuery] = useState('');
   const [searchResults, setSearchResults] = useState<SearchUser[]>([]);
   const [searching, setSearching] = useState(false);
@@ -478,7 +478,7 @@ export default function SearchScreen() {
         }
       });
 
-      setSearchResults(users);
+      setSearchResults(users.filter(u => !isUserBlocked(u.id)));
       setSearching(false);
     } catch (error) {
       console.error('Error searching users:', error);

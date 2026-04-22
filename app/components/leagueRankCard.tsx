@@ -1,11 +1,14 @@
 import { ThemedText } from '@/components/themed-text';
 import { IconSymbol } from '@/components/ui/icon-symbol';
 import WinLossPieChart from './WinLossPieChart';
+import LPLineChart from './LPLineChart';
 import { BlurView } from 'expo-blur';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useEffect, useRef, useState } from 'react';
-import { Animated, Dimensions, Easing, Image, Modal, PanResponder, Pressable, ScrollView, StyleSheet, TouchableOpacity, View } from 'react-native';
+import { Animated, Dimensions, Easing, Image, Modal, NativeScrollEvent, NativeSyntheticEvent, PanResponder, Pressable, ScrollView, StyleSheet, TouchableOpacity, View } from 'react-native';
 import { getProfileIconUrl, getChampionName, getChampionIconUrl, getLeagueStats } from '@/services/riotService';
+import { getRankHistory, RankHistoryEntry } from '@/services/rankHistoryService';
+import { auth } from '@/config/firebase';
 
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
 
@@ -72,8 +75,11 @@ export default function LeagueRankCard({ game, username, viewOnly = false, userI
   const [cardPosition, setCardPosition] = useState({ x: 20, y: SCREEN_HEIGHT - 350, width: 0 });
   const [showMatchHistory, setShowMatchHistory] = useState(false);
   const [matchHistoryExpanded, setMatchHistoryExpanded] = useState(false);
+  const [statsPage, setStatsPage] = useState(0);
+  const [rankHistory, setRankHistory] = useState<RankHistoryEntry[]>([]);
 
   const cardRef = useRef<View>(null);
+  const statsScrollRef = useRef<ScrollView>(null);
   const flipAnimation = useRef(new Animated.Value(0)).current;
   const slideAnimation = useRef(new Animated.Value(0)).current;
   const overlayOpacity = useRef(new Animated.Value(0)).current;
@@ -153,6 +159,14 @@ export default function LeagueRankCard({ game, username, viewOnly = false, userI
       matchHistoryExpandAnimation.setValue(0);
       setShowMatchHistory(true);
       setMatchHistoryExpanded(false);
+      setStatsPage(0);
+      statsScrollRef.current?.scrollTo({ x: 0, animated: false });
+
+      // Fetch rank history for graph
+      const targetUserId = userId || auth.currentUser?.uid;
+      if (targetUserId) {
+        getRankHistory(targetUserId, 'league').then(setRankHistory).catch(() => {});
+      }
 
       // Animation: wait for modal to render, hide stack card, then slide up
       Animated.sequence([
@@ -814,69 +828,105 @@ export default function LeagueRankCard({ game, username, viewOnly = false, userI
               )}
             </View>
 
-            <Animated.View style={[styles.statisticsContent, { opacity: statisticsContentOpacity }]}>
-              <View style={styles.statsWithChart}>
-                <WinLossPieChart
-                  wins={game.wins}
-                  losses={game.losses}
-                  winRate={game.winRate}
-                  size={90}
-                  strokeWidth={9}
-                  winColor="#4ade80"
-                  lossColor="#ef4444"
-                />
-                <View style={styles.statsColumn}>
-                  <View style={styles.statRowItem}>
-                    <View style={[styles.statDot, { backgroundColor: '#4ade80' }]} />
-                    <ThemedText style={styles.statRowLabel}>Wins</ThemedText>
-                    <ThemedText style={styles.statRowValue}>{game.wins}</ThemedText>
-                  </View>
-                  <View style={styles.statRowDivider} />
-                  <View style={styles.statRowItem}>
-                    <View style={[styles.statDot, { backgroundColor: '#ef4444' }]} />
-                    <ThemedText style={styles.statRowLabel}>Losses</ThemedText>
-                    <ThemedText style={styles.statRowValue}>{game.losses}</ThemedText>
-                  </View>
-                  <View style={styles.statRowDivider} />
-                  <View style={styles.statRowItem}>
-                    <View style={[styles.statDot, { backgroundColor: 'rgba(255,255,255,0.3)' }]} />
-                    <ThemedText style={styles.statRowLabel}>Total</ThemedText>
-                    <ThemedText style={styles.statRowValue}>{game.wins + game.losses}</ThemedText>
-                  </View>
-                </View>
+            <Animated.View style={[{ flex: 1 }, { opacity: statisticsContentOpacity }]}>
+              {/* Page indicator dots */}
+              <View style={styles.pageIndicator}>
+                <View style={[styles.dot, statsPage === 0 && styles.dotActive]} />
+                <View style={[styles.dot, statsPage === 1 && styles.dotActive]} />
               </View>
 
-              {/* Top 3 Champions */}
-              {game.topChampions && game.topChampions.length > 0 && (
-                <View style={styles.topChampionsSection}>
-                  <ThemedText style={styles.topChampionsTitle}>MOST PLAYED</ThemedText>
-                  <View style={styles.topChampionsRow}>
-                    {game.topChampions.map((champ, index) => (
-                      <View key={champ.championId} style={styles.topChampionItem}>
-                        <View style={[styles.topChampionImageWrapper, index === 0 && styles.topChampionFirst]}>
-                          <View style={[styles.topChampionImageMask, index === 0 && styles.topChampionImageMaskFirst]}>
-                            <Image
-                              source={{ uri: getChampionIconUrl(champ.championId) }}
-                              style={styles.topChampionImage}
-                              resizeMode="cover"
-                            />
-                          </View>
+              <ScrollView
+                ref={statsScrollRef}
+                horizontal
+                pagingEnabled
+                showsHorizontalScrollIndicator={false}
+                onMomentumScrollEnd={(e: NativeSyntheticEvent<NativeScrollEvent>) => {
+                  const page = Math.round(e.nativeEvent.contentOffset.x / SCREEN_WIDTH);
+                  setStatsPage(page);
+                }}
+                scrollEventThrottle={16}
+                style={{ flex: 1 }}
+              >
+                {/* Page 1: Current Stats */}
+                <View style={{ width: SCREEN_WIDTH }}>
+                  <View style={styles.statisticsContent}>
+                    <View style={styles.statsWithChart}>
+                      <WinLossPieChart
+                        wins={game.wins}
+                        losses={game.losses}
+                        winRate={game.winRate}
+                        size={90}
+                        strokeWidth={9}
+                        winColor="#4ade80"
+                        lossColor="#ef4444"
+                      />
+                      <View style={styles.statsColumn}>
+                        <View style={styles.statRowItem}>
+                          <View style={[styles.statDot, { backgroundColor: '#4ade80' }]} />
+                          <ThemedText style={styles.statRowLabel}>Wins</ThemedText>
+                          <ThemedText style={styles.statRowValue}>{game.wins}</ThemedText>
                         </View>
-                        <ThemedText style={styles.topChampionName} numberOfLines={1}>
-                          {getChampionName(champ.championId)}
-                        </ThemedText>
-                        <ThemedText style={styles.topChampionPoints}>
-                          {champ.championPoints >= 1000000
-                            ? `${(champ.championPoints / 1000000).toFixed(1)}M`
-                            : champ.championPoints >= 1000
-                              ? `${(champ.championPoints / 1000).toFixed(0)}K`
-                              : champ.championPoints}
-                        </ThemedText>
+                        <View style={styles.statRowDivider} />
+                        <View style={styles.statRowItem}>
+                          <View style={[styles.statDot, { backgroundColor: '#ef4444' }]} />
+                          <ThemedText style={styles.statRowLabel}>Losses</ThemedText>
+                          <ThemedText style={styles.statRowValue}>{game.losses}</ThemedText>
+                        </View>
+                        <View style={styles.statRowDivider} />
+                        <View style={styles.statRowItem}>
+                          <View style={[styles.statDot, { backgroundColor: 'rgba(255,255,255,0.3)' }]} />
+                          <ThemedText style={styles.statRowLabel}>Total</ThemedText>
+                          <ThemedText style={styles.statRowValue}>{game.wins + game.losses}</ThemedText>
+                        </View>
                       </View>
-                    ))}
+                    </View>
+
+                    {/* Top 3 Champions */}
+                    {game.topChampions && game.topChampions.length > 0 && (
+                      <View style={styles.topChampionsSection}>
+                        <ThemedText style={styles.topChampionsTitle}>MOST PLAYED</ThemedText>
+                        <View style={styles.topChampionsRow}>
+                          {game.topChampions.map((champ, index) => (
+                            <View key={champ.championId} style={styles.topChampionItem}>
+                              <View style={[styles.topChampionImageWrapper, index === 0 && styles.topChampionFirst]}>
+                                <View style={[styles.topChampionImageMask, index === 0 && styles.topChampionImageMaskFirst]}>
+                                  <Image
+                                    source={{ uri: getChampionIconUrl(champ.championId) }}
+                                    style={styles.topChampionImage}
+                                    resizeMode="cover"
+                                  />
+                                </View>
+                              </View>
+                              <ThemedText style={styles.topChampionName} numberOfLines={1}>
+                                {getChampionName(champ.championId)}
+                              </ThemedText>
+                              <ThemedText style={styles.topChampionPoints}>
+                                {champ.championPoints >= 1000000
+                                  ? `${(champ.championPoints / 1000000).toFixed(1)}M`
+                                  : champ.championPoints >= 1000
+                                    ? `${(champ.championPoints / 1000).toFixed(0)}K`
+                                    : champ.championPoints}
+                              </ThemedText>
+                            </View>
+                          ))}
+                        </View>
+                      </View>
+                    )}
                   </View>
                 </View>
-              )}
+
+                {/* Page 2: LP Graph */}
+                <View style={{ width: SCREEN_WIDTH, paddingHorizontal: 16, paddingTop: 12 }}>
+                  <ThemedText style={styles.graphTitle}>LP PROGRESSION</ThemedText>
+                  <LPLineChart
+                    data={rankHistory.map(e => ({ value: e.value, date: e.timestamp, rank: e.rank }))}
+                    width={SCREEN_WIDTH - 32}
+                    height={200}
+                    lineColor="#4da6ff"
+                    label="LP"
+                  />
+                </View>
+              </ScrollView>
             </Animated.View>
           </Pressable>
         </Animated.View>
@@ -1077,6 +1127,30 @@ const styles = StyleSheet.create({
   statisticsHeaderLeft: { flexDirection: 'row', alignItems: 'center' },
   statisticsTitle: { fontSize: 16, fontWeight: '800', color: '#fff', letterSpacing: -0.3 },
   statisticsContent: { paddingHorizontal: 20, paddingVertical: 20 },
+  pageIndicator: {
+    flexDirection: 'row' as const,
+    justifyContent: 'center' as const,
+    alignItems: 'center' as const,
+    paddingVertical: 8,
+    gap: 6,
+  },
+  dot: {
+    width: 6,
+    height: 6,
+    borderRadius: 3,
+    backgroundColor: 'rgba(255,255,255,0.2)',
+  },
+  dotActive: {
+    backgroundColor: '#4da6ff',
+  },
+  graphTitle: {
+    fontSize: 11,
+    fontWeight: '800' as const,
+    color: 'rgba(255,255,255,0.5)',
+    letterSpacing: 1,
+    textTransform: 'uppercase' as const,
+    marginBottom: 12,
+  },
   statsWithChart: {
     flexDirection: 'row',
     alignItems: 'center',

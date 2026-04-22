@@ -16,6 +16,8 @@ export default function AuthLayout() {
         }}
       />
       <Stack.Screen name="loginUsername" />
+      <Stack.Screen name="loginPhone" />
+      <Stack.Screen name="loginEmail" />
       <Stack.Screen name="loginPassword" />
       <Stack.Screen name="signUp" />
       <Stack.Screen name="signUpBirthday" />
@@ -28,6 +30,8 @@ export default function AuthLayout() {
       <Stack.Screen name="verifyEmailSignUp" />
       <Stack.Screen name="verifyPhoneSignUp" />
       <Stack.Screen name="verifyPhoneLogin" />
+      <Stack.Screen name="verifyEmailLogin" />
+      <Stack.Screen name="resetPasswordPhone" />
     </Stack>
   );
 }

@@ -1,11 +1,14 @@
 import { ThemedText } from '@/components/themed-text';
 import { IconSymbol } from '@/components/ui/icon-symbol';
 import WinLossPieChart from './WinLossPieChart';
+import LPLineChart from './LPLineChart';
 import { BlurView } from 'expo-blur';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useEffect, useRef, useState } from 'react';
-import { Animated, Dimensions, Easing, Image, Modal, PanResponder, Pressable, ScrollView, StyleSheet, TouchableOpacity, View } from 'react-native';
+import { Animated, Dimensions, Easing, Image, Modal, NativeScrollEvent, NativeSyntheticEvent, PanResponder, Pressable, ScrollView, StyleSheet, TouchableOpacity, View } from 'react-native';
 import { getValorantStats } from '@/services/valorantService';
+import { getRankHistory, RankHistoryEntry } from '@/services/rankHistoryService';
+import { auth } from '@/config/firebase';
 
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
 
@@ -166,6 +169,10 @@ export default function ValorantRankCard({ game, username, viewOnly = false, use
   const [cardPosition, setCardPosition] = useState({ x: 20, y: SCREEN_HEIGHT - 350, width: 0 });
   const [showMatchHistory, setShowMatchHistory] = useState(false);
   const [matchHistoryExpanded, setMatchHistoryExpanded] = useState(false);
+  const [statsPage, setStatsPage] = useState(0);
+  const [rankHistory, setRankHistory] = useState<RankHistoryEntry[]>([]);
+
+  const statsScrollRef = useRef<ScrollView>(null);
 
   // Calculate most played agent from match history if not provided
   const mostPlayedAgent = game.mostPlayedAgent || (() => {
@@ -267,6 +274,14 @@ export default function ValorantRankCard({ game, username, viewOnly = false, use
       matchHistoryExpandAnimation.setValue(0);
       setShowMatchHistory(true);
       setMatchHistoryExpanded(false);
+      setStatsPage(0);
+      statsScrollRef.current?.scrollTo({ x: 0, animated: false });
+
+      // Fetch rank history for graph
+      const targetUserId = userId || auth.currentUser?.uid;
+      if (targetUserId) {
+        getRankHistory(targetUserId, 'valorant').then(setRankHistory).catch(() => {});
+      }
 
       // Animation: wait for modal to render, hide stack card, then slide up
       Animated.sequence([
@@ -1056,108 +1071,143 @@ export default function ValorantRankCard({ game, username, viewOnly = false, use
 
           {/* Statistics Content - Scrollable */}
           <Animated.View style={{ flex: 1, opacity: statisticsContentOpacity }}>
+            {/* Page indicator dots */}
+            <View style={styles.pageIndicator}>
+              <View style={[styles.dot, statsPage === 0 && styles.dotActive]} />
+              <View style={[styles.dot, statsPage === 1 && styles.dotActive]} />
+            </View>
+
             <ScrollView
-              style={styles.statisticsContent}
-              contentContainerStyle={styles.statisticsScrollContent}
-              showsVerticalScrollIndicator={false}
+              ref={statsScrollRef}
+              horizontal
+              pagingEnabled
+              showsHorizontalScrollIndicator={false}
+              onMomentumScrollEnd={(e: NativeSyntheticEvent<NativeScrollEvent>) => {
+                const page = Math.round(e.nativeEvent.contentOffset.x / SCREEN_WIDTH);
+                setStatsPage(page);
+              }}
+              scrollEventThrottle={16}
+              style={{ flex: 1 }}
               nestedScrollEnabled
             >
-              <View style={styles.statsWithChart}>
-                <WinLossPieChart
-                  wins={game.wins}
-                  losses={game.losses}
-                  winRate={game.winRate}
-                  size={90}
-                  strokeWidth={9}
-                  winColor="#4ade80"
-                  lossColor="#ef4444"
+              {/* Page 1: Current Stats */}
+              <ScrollView
+                style={{ width: SCREEN_WIDTH }}
+                contentContainerStyle={styles.statisticsScrollContent}
+                showsVerticalScrollIndicator={false}
+                nestedScrollEnabled
+              >
+                <View style={styles.statisticsContent}>
+                  <View style={styles.statsWithChart}>
+                    <WinLossPieChart
+                      wins={game.wins}
+                      losses={game.losses}
+                      winRate={game.winRate}
+                      size={90}
+                      strokeWidth={9}
+                      winColor="#4ade80"
+                      lossColor="#ef4444"
+                    />
+                    <View style={styles.statsColumn}>
+                      <View style={styles.statRowItem}>
+                        <View style={[styles.statDot, { backgroundColor: '#4ade80' }]} />
+                        <ThemedText style={styles.statRowLabel}>Wins</ThemedText>
+                        <ThemedText style={styles.statRowValue}>{game.wins}</ThemedText>
+                      </View>
+                      <View style={styles.statRowDivider} />
+                      <View style={styles.statRowItem}>
+                        <View style={[styles.statDot, { backgroundColor: '#ef4444' }]} />
+                        <ThemedText style={styles.statRowLabel}>Losses</ThemedText>
+                        <ThemedText style={styles.statRowValue}>{game.losses}</ThemedText>
+                      </View>
+                      <View style={styles.statRowDivider} />
+                      <View style={styles.statRowItem}>
+                        <View style={[styles.statDot, { backgroundColor: 'rgba(255,255,255,0.3)' }]} />
+                        <ThemedText style={styles.statRowLabel}>Games</ThemedText>
+                        <ThemedText style={styles.statRowValue}>{game.gamesPlayed || 0}</ThemedText>
+                      </View>
+                      <View style={styles.statRowDivider} />
+                      <View style={styles.statRowItem}>
+                        <View style={[styles.statDot, { backgroundColor: 'rgba(255,255,255,0.3)' }]} />
+                        <ThemedText style={styles.statRowLabel}>MMR</ThemedText>
+                        <ThemedText style={styles.statRowValue}>{game.mmr || 0}</ThemedText>
+                      </View>
+                    </View>
+                  </View>
+
+                  {/* KDA - Last 10 Games */}
+                  {game.matchHistory && game.matchHistory.length > 0 && (() => {
+                    const matches = game.matchHistory!.slice(0, 10);
+                    const totalKills = matches.reduce((sum, m) => sum + m.kills, 0);
+                    const totalDeaths = matches.reduce((sum, m) => sum + m.deaths, 0);
+                    const totalAssists = matches.reduce((sum, m) => sum + m.assists, 0);
+                    const kdaRatio = totalDeaths === 0
+                      ? (totalKills + totalAssists).toFixed(1)
+                      : ((totalKills + totalAssists) / totalDeaths).toFixed(2);
+                    const avgK = (totalKills / matches.length).toFixed(1);
+                    const avgD = (totalDeaths / matches.length).toFixed(1);
+                    const avgA = (totalAssists / matches.length).toFixed(1);
+                    return (
+                      <View style={styles.kdaSection}>
+                        <View style={styles.kdaDivider} />
+                        <ThemedText style={styles.kdaSectionLabel}>KDA — LAST {matches.length} GAMES</ThemedText>
+                        <View style={styles.kdaRow}>
+                          <View style={styles.kdaStatItem}>
+                            <ThemedText style={styles.kdaValue}>{avgK}</ThemedText>
+                            <ThemedText style={styles.kdaLabel}>Kills</ThemedText>
+                          </View>
+                          <ThemedText style={styles.kdaSlash}>/</ThemedText>
+                          <View style={styles.kdaStatItem}>
+                            <ThemedText style={[styles.kdaValue, styles.kdaDeathsText]}>{avgD}</ThemedText>
+                            <ThemedText style={styles.kdaLabel}>Deaths</ThemedText>
+                          </View>
+                          <ThemedText style={styles.kdaSlash}>/</ThemedText>
+                          <View style={styles.kdaStatItem}>
+                            <ThemedText style={styles.kdaValue}>{avgA}</ThemedText>
+                            <ThemedText style={styles.kdaLabel}>Assists</ThemedText>
+                          </View>
+                          <View style={styles.kdaRatioBadge}>
+                            <ThemedText style={styles.kdaRatioValue}>{kdaRatio}</ThemedText>
+                            <ThemedText style={styles.kdaRatioLabel}>KDA</ThemedText>
+                          </View>
+                        </View>
+                      </View>
+                    );
+                  })()}
+
+                  {/* Recently Playing Section */}
+                  {mostPlayedAgent && (
+                    <View style={styles.recentlyPlayingSection}>
+                      <View style={styles.recentlyPlayingDivider} />
+                      <View style={styles.recentlyPlayingContent}>
+                        <View style={styles.recentlyPlayingInfo}>
+                          <ThemedText style={styles.recentlyPlayingLabel}>Recently Playing</ThemedText>
+                          <ThemedText style={styles.recentlyPlayingAgent}>{mostPlayedAgent}</ThemedText>
+                        </View>
+                        {getAgentIcon(mostPlayedAgent) && (
+                          <Image
+                            source={getAgentIcon(mostPlayedAgent)}
+                            style={styles.recentlyPlayingImage}
+                            resizeMode="contain"
+                          />
+                        )}
+                      </View>
+                    </View>
+                  )}
+                </View>
+              </ScrollView>
+
+              {/* Page 2: RR Graph */}
+              <View style={{ width: SCREEN_WIDTH, paddingHorizontal: 16, paddingTop: 12 }}>
+                <ThemedText style={styles.graphTitle}>RR PROGRESSION</ThemedText>
+                <LPLineChart
+                  data={rankHistory.map(e => ({ value: e.value, date: e.timestamp, rank: e.rank }))}
+                  width={SCREEN_WIDTH - 32}
+                  height={200}
+                  lineColor="#ef5466"
+                  label="RR"
                 />
-                <View style={styles.statsColumn}>
-                  <View style={styles.statRowItem}>
-                    <View style={[styles.statDot, { backgroundColor: '#4ade80' }]} />
-                    <ThemedText style={styles.statRowLabel}>Wins</ThemedText>
-                    <ThemedText style={styles.statRowValue}>{game.wins}</ThemedText>
-                  </View>
-                  <View style={styles.statRowDivider} />
-                  <View style={styles.statRowItem}>
-                    <View style={[styles.statDot, { backgroundColor: '#ef4444' }]} />
-                    <ThemedText style={styles.statRowLabel}>Losses</ThemedText>
-                    <ThemedText style={styles.statRowValue}>{game.losses}</ThemedText>
-                  </View>
-                  <View style={styles.statRowDivider} />
-                  <View style={styles.statRowItem}>
-                    <View style={[styles.statDot, { backgroundColor: 'rgba(255,255,255,0.3)' }]} />
-                    <ThemedText style={styles.statRowLabel}>Games</ThemedText>
-                    <ThemedText style={styles.statRowValue}>{game.gamesPlayed || 0}</ThemedText>
-                  </View>
-                  <View style={styles.statRowDivider} />
-                  <View style={styles.statRowItem}>
-                    <View style={[styles.statDot, { backgroundColor: 'rgba(255,255,255,0.3)' }]} />
-                    <ThemedText style={styles.statRowLabel}>MMR</ThemedText>
-                    <ThemedText style={styles.statRowValue}>{game.mmr || 0}</ThemedText>
-                  </View>
-                </View>
               </View>
-
-              {/* KDA - Last 10 Games */}
-              {game.matchHistory && game.matchHistory.length > 0 && (() => {
-                const matches = game.matchHistory!.slice(0, 10);
-                const totalKills = matches.reduce((sum, m) => sum + m.kills, 0);
-                const totalDeaths = matches.reduce((sum, m) => sum + m.deaths, 0);
-                const totalAssists = matches.reduce((sum, m) => sum + m.assists, 0);
-                const kdaRatio = totalDeaths === 0
-                  ? (totalKills + totalAssists).toFixed(1)
-                  : ((totalKills + totalAssists) / totalDeaths).toFixed(2);
-                const avgK = (totalKills / matches.length).toFixed(1);
-                const avgD = (totalDeaths / matches.length).toFixed(1);
-                const avgA = (totalAssists / matches.length).toFixed(1);
-                return (
-                  <View style={styles.kdaSection}>
-                    <View style={styles.kdaDivider} />
-                    <ThemedText style={styles.kdaSectionLabel}>KDA — LAST {matches.length} GAMES</ThemedText>
-                    <View style={styles.kdaRow}>
-                      <View style={styles.kdaStatItem}>
-                        <ThemedText style={styles.kdaValue}>{avgK}</ThemedText>
-                        <ThemedText style={styles.kdaLabel}>Kills</ThemedText>
-                      </View>
-                      <ThemedText style={styles.kdaSlash}>/</ThemedText>
-                      <View style={styles.kdaStatItem}>
-                        <ThemedText style={[styles.kdaValue, styles.kdaDeathsText]}>{avgD}</ThemedText>
-                        <ThemedText style={styles.kdaLabel}>Deaths</ThemedText>
-                      </View>
-                      <ThemedText style={styles.kdaSlash}>/</ThemedText>
-                      <View style={styles.kdaStatItem}>
-                        <ThemedText style={styles.kdaValue}>{avgA}</ThemedText>
-                        <ThemedText style={styles.kdaLabel}>Assists</ThemedText>
-                      </View>
-                      <View style={styles.kdaRatioBadge}>
-                        <ThemedText style={styles.kdaRatioValue}>{kdaRatio}</ThemedText>
-                        <ThemedText style={styles.kdaRatioLabel}>KDA</ThemedText>
-                      </View>
-                    </View>
-                  </View>
-                );
-              })()}
-
-              {/* Recently Playing Section */}
-              {mostPlayedAgent && (
-                <View style={styles.recentlyPlayingSection}>
-                  <View style={styles.recentlyPlayingDivider} />
-                  <View style={styles.recentlyPlayingContent}>
-                    <View style={styles.recentlyPlayingInfo}>
-                      <ThemedText style={styles.recentlyPlayingLabel}>Recently Playing</ThemedText>
-                      <ThemedText style={styles.recentlyPlayingAgent}>{mostPlayedAgent}</ThemedText>
-                    </View>
-                    {getAgentIcon(mostPlayedAgent) && (
-                      <Image
-                        source={getAgentIcon(mostPlayedAgent)}
-                        style={styles.recentlyPlayingImage}
-                        resizeMode="contain"
-                      />
-                    )}
-                  </View>
-                </View>
-              )}
             </ScrollView>
           </Animated.View>
         </Animated.View>
@@ -1826,6 +1876,30 @@ const styles = StyleSheet.create({
   statisticsScrollContent: {
     paddingTop: 12,
     paddingBottom: 250,
+  },
+  pageIndicator: {
+    flexDirection: 'row' as const,
+    justifyContent: 'center' as const,
+    alignItems: 'center' as const,
+    paddingVertical: 8,
+    gap: 6,
+  },
+  dot: {
+    width: 6,
+    height: 6,
+    borderRadius: 3,
+    backgroundColor: 'rgba(255,255,255,0.2)',
+  },
+  dotActive: {
+    backgroundColor: '#ef5466',
+  },
+  graphTitle: {
+    fontSize: 11,
+    fontWeight: '800' as const,
+    color: 'rgba(255,255,255,0.5)',
+    letterSpacing: 1,
+    textTransform: 'uppercase' as const,
+    marginBottom: 12,
   },
   statsWithChart: {
     flexDirection: 'row',

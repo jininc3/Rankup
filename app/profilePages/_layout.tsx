@@ -130,6 +130,12 @@ export default function ProfilePagesLayout() {
         }}
       />
       <Stack.Screen
+        name="blockedUsers"
+        options={{
+          headerShown: false,
+        }}
+      />
+      <Stack.Screen
         name="deleteAccount"
         options={{
           headerShown: false,

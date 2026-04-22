@@ -4,7 +4,7 @@ import MaterialIcons from '@expo/vector-icons/MaterialIcons';
 import { IconSymbol } from '@/components/ui/icon-symbol';
 import { useGoogleAuth } from '@/hooks/useGoogleAuth';
 import { signInWithGoogleCredential } from '@/services/authService';
-import { useRouter } from 'expo-router';
+import { useRouter } from '@/hooks/useRouter';
 import React, { useEffect, useState } from 'react';
 import {
   Alert,

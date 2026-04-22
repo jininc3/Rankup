@@ -45,6 +45,16 @@ export const followUser = async (
     throw new Error('You cannot follow yourself');
   }
 
+  // Block check
+  const { isBlocked, isBlockedBy } = await import('./blockService');
+  const [blockedByTarget, hasBlockedTarget] = await Promise.all([
+    isBlockedBy(currentUserId, targetUserId),
+    isBlocked(currentUserId, targetUserId),
+  ]);
+  if (blockedByTarget || hasBlockedTarget) {
+    throw new Error('Unable to follow this user');
+  }
+
   const now = Timestamp.now();
 
   // Add to target user's followers subcollection

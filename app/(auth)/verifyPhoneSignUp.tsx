@@ -15,7 +15,8 @@ import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { IconSymbol } from '@/components/ui/icon-symbol';
 import { useAuth } from '@/contexts/AuthContext';
-import { useRouter, useLocalSearchParams } from 'expo-router';
+import { useRouter } from '@/hooks/useRouter';
+import { useLocalSearchParams } from 'expo-router';
 import { deleteIncompleteAccount, createPhoneAuthAccount, tryResumePhoneSignup } from '@/services/authService';
 import rnfbAuth, { FirebaseAuthTypes } from '@react-native-firebase/auth';
 

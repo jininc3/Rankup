@@ -2,12 +2,15 @@ import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { IconSymbol } from '@/components/ui/icon-symbol';
 import { LinearGradient } from 'expo-linear-gradient';
-import { useLocalSearchParams, useRouter } from 'expo-router';
+import { useRouter } from '@/hooks/useRouter';
+import { useLocalSearchParams } from 'expo-router';
 import { ScrollView, StyleSheet, TouchableOpacity, View, Image, Alert, ActivityIndicator, Modal, Animated, PanResponder, Dimensions } from 'react-native';
 import { useState, useEffect, useRef } from 'react';
 import { db } from '@/config/firebase';
 import { doc, onSnapshot, getDoc, updateDoc, collection, query, where, getDocs, deleteDoc, addDoc, serverTimestamp, arrayUnion } from 'firebase/firestore';
 import { useAuth } from '@/contexts/AuthContext';
+import { getRankHistorySince, RankHistoryEntry } from '@/services/rankHistoryService';
+import LPLineChart from '@/app/components/LPLineChart';
 
 const LEAGUE_RANK_ICONS: { [key: string]: any } = {
   iron: require('@/assets/images/leagueranks/iron.png'),
@@ -54,6 +57,11 @@ const getValorantRankIcon = (rank: string) => {
   return VALORANT_RANK_ICONS[tier] || VALORANT_RANK_ICONS.unranked;
 };
 
+const GRAPH_COLORS = [
+  '#ff4655', '#3B82F6', '#22C55E', '#F59E0B', '#A855F7',
+  '#EC4899', '#14B8A6', '#F97316', '#6366F1', '#EF4444',
+];
+
 const getLeagueRankValue = (currentRank: string, lp: number): number => {
   const rankOrder: { [key: string]: number } = {
     'CHALLENGER': 10, 'GRANDMASTER': 9, 'MASTER': 8, 'DIAMOND': 7,
@@ -82,6 +90,9 @@ interface Player {
   currentRank: string;
   lp?: number;
   rr?: number;
+  challengeWins?: number;
+  challengeLosses?: number;
+  challengeKDA?: string;
 }
 
 export default function ChallengeDetail() {
@@ -101,6 +112,10 @@ export default function ChallengeDetail() {
   const [showInviteModal, setShowInviteModal] = useState(false);
   const [invitingUsers, setInvitingUsers] = useState<Set<string>>(new Set());
   const [invitedUsers, setInvitedUsers] = useState<Set<string>>(new Set());
+  const [showGraphModal, setShowGraphModal] = useState(false);
+  const [selectedGraphUser, setSelectedGraphUser] = useState<string | null>(null);
+  const [graphData, setGraphData] = useState<{ [userId: string]: { value: number; date: Date; rank: string }[] }>({});
+  const [graphLoading, setGraphLoading] = useState(false);
   const inviteModalY = useRef(new Animated.Value(0)).current;
   const invitePanResponder = useRef(
     PanResponder.create({
@@ -115,6 +130,24 @@ export default function ChallengeDetail() {
           });
         } else {
           Animated.spring(inviteModalY, { toValue: 0, useNativeDriver: true }).start();
+        }
+      },
+    })
+  ).current;
+
+  const graphModalY = useRef(new Animated.Value(0)).current;
+  const graphPanResponder = useRef(
+    PanResponder.create({
+      onStartShouldSetPanResponder: () => true,
+      onMoveShouldSetPanResponder: (_, g) => g.dy > 5,
+      onPanResponderMove: (_, g) => { if (g.dy > 0) graphModalY.setValue(g.dy); },
+      onPanResponderRelease: (_, g) => {
+        if (g.dy > 100 || g.vy > 0.5) {
+          Animated.timing(graphModalY, { toValue: Dimensions.get('window').height, duration: 200, useNativeDriver: true }).start(() => {
+            setShowGraphModal(false);
+          });
+        } else {
+          Animated.spring(graphModalY, { toValue: 0, useNativeDriver: true }).start();
         }
       },
     })
@@ -164,7 +197,7 @@ export default function ChallengeDetail() {
     const msLeft = Math.max(0, end.getTime() - today.getTime());
     const hoursLeft = Math.floor(msLeft / (1000 * 60 * 60));
     const minutesLeft = Math.floor((msLeft % (1000 * 60 * 60)) / (1000 * 60));
-    const daysLeft = Math.ceil(msLeft / (1000 * 60 * 60 * 24));
+    const daysLeft = Math.floor(msLeft / (1000 * 60 * 60 * 24));
     return { currentDay: Math.max(0, Math.min(completedDays, totalDays)), totalDays, daysLeft, hoursLeft, minutesLeft };
   };
 
@@ -184,6 +217,9 @@ export default function ChallengeDetail() {
       const allMemberIds: string[] = data.members || [];
 
       // Fetch stats for all members
+      const startingStatsArr: any[] = data.startingStats || [];
+      const challengeStartDate = convertToDate(data.startDate);
+
       const fetchPlayer = async (userId: string): Promise<Player> => {
         const member = memberDetails.find((m: any) => m.userId === userId);
         try {
@@ -195,9 +231,10 @@ export default function ChallengeDetail() {
           let lp = stats?.lp || 0;
           let rr = stats?.rr || 0;
 
+          const userDoc = await getDoc(doc(db, 'users', userId));
+          const userData = userDoc.data();
+
           if (!stats?.currentRank) {
-            const userDoc = await getDoc(doc(db, 'users', userId));
-            const userData = userDoc.data();
             if (isLeague && userData?.riotStats?.rankedSolo) {
               currentRank = `${userData.riotStats.rankedSolo.tier} ${userData.riotStats.rankedSolo.rank}`;
               lp = userData.riotStats.rankedSolo.leaguePoints || 0;
@@ -207,7 +244,50 @@ export default function ChallengeDetail() {
             }
           }
 
-          return { rank: 0, userId, username: member?.username || 'Unknown', avatar: member?.avatar || '', isCurrentUser: userId === user?.id, currentRank, lp, rr };
+          // Calculate challenge W/L and KDA since challenge start
+          let challengeWins = 0;
+          let challengeLosses = 0;
+          let challengeKDA: string | undefined;
+
+          const startingStat = startingStatsArr.find((s: any) => s.userId === userId);
+
+          if (isLeague && userData?.riotStats?.rankedSolo) {
+            const currentWins = userData.riotStats.rankedSolo.wins || 0;
+            const currentLosses = userData.riotStats.rankedSolo.losses || 0;
+            const startW = startingStat?.wins ?? currentWins;
+            const startL = startingStat?.losses ?? currentLosses;
+            challengeWins = Math.max(0, currentWins - startW);
+            challengeLosses = Math.max(0, currentLosses - startL);
+          } else if (!isLeague && userData?.valorantStats) {
+            const currentWins = userData.valorantStats.wins || 0;
+            const currentLosses = userData.valorantStats.losses || 0;
+            const startW = startingStat?.wins ?? currentWins;
+            const startL = startingStat?.losses ?? currentLosses;
+            challengeWins = Math.max(0, currentWins - startW);
+            challengeLosses = Math.max(0, currentLosses - startL);
+          }
+
+          // Calculate KDA from match history played during the challenge
+          if (!isLeague && userData?.valorantStats?.matchHistory && challengeStartDate) {
+            const challengeMatches = (userData.valorantStats.matchHistory as any[]).filter((m: any) => {
+              const playedAt = m.playedAt || (m.gameStart ? m.gameStart * 1000 : 0);
+              return playedAt >= challengeStartDate.getTime();
+            });
+            if (challengeMatches.length > 0) {
+              const totals = challengeMatches.reduce((acc: any, m: any) => ({
+                kills: acc.kills + (m.kills || 0),
+                deaths: acc.deaths + (m.deaths || 0),
+                assists: acc.assists + (m.assists || 0),
+              }), { kills: 0, deaths: 0, assists: 0 });
+              const avg = (v: number) => (v / challengeMatches.length).toFixed(1);
+              const kdaRatio = totals.deaths === 0
+                ? (totals.kills + totals.assists).toFixed(1)
+                : ((totals.kills + totals.assists) / totals.deaths).toFixed(1);
+              challengeKDA = `${avg(totals.kills)} / ${avg(totals.deaths)} / ${avg(totals.assists)}  (${kdaRatio} KDA)`;
+            }
+          }
+
+          return { rank: 0, userId, username: member?.username || 'Unknown', avatar: member?.avatar || '', isCurrentUser: userId === user?.id, currentRank, lp, rr, challengeWins, challengeLosses, challengeKDA };
         } catch {
           return { rank: 0, userId, username: member?.username || 'Unknown', avatar: member?.avatar || '', isCurrentUser: userId === user?.id, currentRank: 'Unranked', lp: 0, rr: 0 };
         }
@@ -343,19 +423,36 @@ export default function ChallengeDetail() {
           const now = new Date();
           const end = new Date(now);
           end.setDate(end.getDate() + duration);
+          end.setHours(23, 59, 59, 999);
           const fmt = (d: Date) => `${String(d.getMonth() + 1).padStart(2, '0')}/${String(d.getDate()).padStart(2, '0')}/${d.getFullYear()}`;
 
           let startingStats: any[] = [];
-          if ((partyData?.challengeType || 'climbing') === 'climbing') {
-            const gameStatsPath = isLeague ? 'league' : 'valorant';
-            startingStats = await Promise.all(challengeParticipants.map(async (userId: string) => {
-              try {
-                const statsDoc = await getDoc(doc(db, 'users', userId, 'gameStats', gameStatsPath));
-                const stats = statsDoc.data();
-                return { userId, lp: isLeague ? (stats?.lp || 0) : 0, rr: !isLeague ? (stats?.rr || 0) : 0 };
-              } catch { return { userId, lp: 0, rr: 0 }; }
-            }));
-          }
+          const gameStatsPath = isLeague ? 'league' : 'valorant';
+          startingStats = await Promise.all(challengeParticipants.map(async (userId: string) => {
+            try {
+              const statsDoc = await getDoc(doc(db, 'users', userId, 'gameStats', gameStatsPath));
+              const stats = statsDoc.data();
+              const userDoc = await getDoc(doc(db, 'users', userId));
+              const userData = userDoc.data();
+
+              let wins = 0, losses = 0;
+              if (isLeague && userData?.riotStats?.rankedSolo) {
+                wins = userData.riotStats.rankedSolo.wins || 0;
+                losses = userData.riotStats.rankedSolo.losses || 0;
+              } else if (!isLeague && userData?.valorantStats) {
+                wins = userData.valorantStats.wins || 0;
+                losses = userData.valorantStats.losses || 0;
+              }
+
+              return {
+                userId,
+                lp: isLeague ? (stats?.lp || 0) : 0,
+                rr: !isLeague ? (stats?.rr || 0) : 0,
+                wins,
+                losses,
+              };
+            } catch { return { userId, lp: 0, rr: 0, wins: 0, losses: 0 }; }
+          }));
 
           await updateDoc(partyRef, {
             challengeStatus: 'active',
@@ -386,6 +483,46 @@ export default function ChallengeDetail() {
       router.push('/(tabs)/profile');
     } else {
       router.push(`/profilePages/profileView?userId=${player.userId}`);
+    }
+  };
+
+  const handleOpenGraph = async () => {
+    graphModalY.setValue(0);
+    setShowGraphModal(true);
+    if (!selectedGraphUser && participants.length > 0) {
+      setSelectedGraphUser(participants[0].userId);
+    }
+
+    const startDate = convertToDate(partyData?.startDate);
+    if (!startDate || participants.length === 0) return;
+
+    setGraphLoading(true);
+    try {
+      const gameName = isLeague ? 'league' : 'valorant';
+      const results: { [userId: string]: { value: number; date: Date; rank: string }[] } = {};
+
+      await Promise.all(participants.map(async (p) => {
+        const history = await getRankHistorySince(p.userId, gameName, startDate);
+        const startingStat = (partyData?.startingStats || []).find((s: any) => s.userId === p.userId);
+        const startingValue = isLeague ? (startingStat?.lp || 0) : (startingStat?.rr || 0);
+
+        // Prepend starting stat as first data point if history doesn't include it
+        const chartData: { value: number; date: Date; rank: string }[] = [];
+        if (history.length === 0 || history[0].timestamp.getTime() > startDate.getTime()) {
+          chartData.push({ value: startingValue, date: startDate, rank: p.currentRank });
+        }
+        history.forEach(entry => {
+          chartData.push({ value: entry.value, date: entry.timestamp, rank: entry.rank });
+        });
+
+        results[p.userId] = chartData;
+      }));
+
+      setGraphData(results);
+    } catch (error) {
+      console.error('Error fetching graph data:', error);
+    } finally {
+      setGraphLoading(false);
     }
   };
 
@@ -452,6 +589,18 @@ export default function ChallengeDetail() {
                 <View style={[styles.progressBarFill, { width: `${progress}%` }]} />
               </View>
             </View>
+          )}
+
+          {/* Stats button for active challenges */}
+          {isActive && (
+            <TouchableOpacity
+              style={styles.graphButton}
+              onPress={handleOpenGraph}
+              activeOpacity={0.8}
+            >
+              <IconSymbol size={14} name="chart.line.uptrend.xyaxis" color="#fff" />
+              <ThemedText style={styles.graphButtonText}>Stats</ThemedText>
+            </TouchableOpacity>
           )}
 
           {/* Accept button for invited users */}
@@ -692,6 +841,123 @@ export default function ChallengeDetail() {
                       </View>
                     ))
                 )}
+              </ScrollView>
+            </TouchableOpacity>
+          </Animated.View>
+        </TouchableOpacity>
+      </Modal>
+      {/* Stats Modal */}
+      <Modal visible={showGraphModal} transparent animationType="none" onRequestClose={() => setShowGraphModal(false)}>
+        <TouchableOpacity style={styles.modalOverlay} activeOpacity={1} onPress={() => {
+          Animated.timing(graphModalY, { toValue: Dimensions.get('window').height, duration: 200, useNativeDriver: true }).start(() => {
+            setShowGraphModal(false);
+          });
+        }}>
+          <Animated.View
+            style={[styles.graphModalSheet, { transform: [{ translateY: graphModalY }] }]}
+            {...graphPanResponder.panHandlers}
+          >
+            <TouchableOpacity activeOpacity={1}>
+              <View style={styles.modalHandle} />
+              <ThemedText style={styles.modalTitle}>Stats</ThemedText>
+
+              {/* Participant selector */}
+              <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.graphUserSelector}>
+                {participants.map((p, i) => {
+                  const color = GRAPH_COLORS[i % GRAPH_COLORS.length];
+                  const isSelected = selectedGraphUser === p.userId;
+                  return (
+                    <TouchableOpacity
+                      key={p.userId}
+                      style={[
+                        styles.graphUserPill,
+                        isSelected && styles.graphUserPillActive,
+                      ]}
+                      onPress={() => setSelectedGraphUser(p.userId)}
+                      activeOpacity={0.7}
+                    >
+                      <View style={[styles.graphUserPillAvatarWrap, { borderColor: color }]}>
+                        {p.avatar && p.avatar.startsWith('http') ? (
+                          <Image source={{ uri: p.avatar }} style={styles.graphUserPillAvatar} />
+                        ) : (
+                          <ThemedText style={styles.graphUserPillInitial}>{p.username?.[0]?.toUpperCase()}</ThemedText>
+                        )}
+                      </View>
+                      <ThemedText
+                        style={[
+                          styles.graphUserPillText,
+                          isSelected && styles.graphUserPillTextActive,
+                        ]}
+                        numberOfLines={1}
+                      >
+                        {p.username}
+                      </ThemedText>
+                    </TouchableOpacity>
+                  );
+                })}
+              </ScrollView>
+
+              <ScrollView showsVerticalScrollIndicator={false} style={{ maxHeight: Dimensions.get('window').height * 0.55 }}>
+                {/* W/L, Win Rate, Games, KDA */}
+                {(() => {
+                  const selectedPlayer = participants.find(p => p.userId === selectedGraphUser);
+                  if (!selectedPlayer) return null;
+                  const w = selectedPlayer.challengeWins || 0;
+                  const l = selectedPlayer.challengeLosses || 0;
+                  const total = w + l;
+                  return (
+                    <View style={styles.statsCardsRow}>
+                      <View style={styles.statsCard}>
+                        <ThemedText style={styles.statsCardLabel}>Record</ThemedText>
+                        <ThemedText style={styles.statsCardValue}>
+                          <ThemedText style={styles.challengeStatWin}>{w}W</ThemedText>
+                          {'  '}
+                          <ThemedText style={styles.challengeStatLoss}>{l}L</ThemedText>
+                        </ThemedText>
+                      </View>
+                      <View style={styles.statsCard}>
+                        <ThemedText style={styles.statsCardLabel}>Win Rate</ThemedText>
+                        <ThemedText style={styles.statsCardValue}>
+                          {total > 0 ? `${Math.round((w / total) * 100)}%` : '-'}
+                        </ThemedText>
+                      </View>
+                      <View style={styles.statsCard}>
+                        <ThemedText style={styles.statsCardLabel}>Games</ThemedText>
+                        <ThemedText style={styles.statsCardValue}>{total}</ThemedText>
+                      </View>
+                      <View style={styles.statsCardFull}>
+                        <ThemedText style={styles.statsCardLabel}>Avg KDA</ThemedText>
+                        <ThemedText style={styles.statsCardValue}>{selectedPlayer.challengeKDA || '-'}</ThemedText>
+                      </View>
+                    </View>
+                  );
+                })()}
+
+                {/* LP/RR Chart — all participants on same graph */}
+                <ThemedText style={styles.statsChartLabel}>{isLeague ? 'LP' : 'RR'} Progression</ThemedText>
+                <View style={styles.graphChartContainer}>
+                  {graphLoading ? (
+                    <View style={styles.graphLoadingContainer}>
+                      <ActivityIndicator size="small" color="#fff" />
+                    </View>
+                  ) : Object.keys(graphData).length > 0 ? (
+                    <LPLineChart
+                      series={participants.map((p, i) => ({
+                        data: graphData[p.userId] || [],
+                        color: GRAPH_COLORS[i % GRAPH_COLORS.length],
+                        username: p.username,
+                      }))}
+                      width={Dimensions.get('window').width - 56}
+                      height={200}
+                      label={isLeague ? 'LP' : 'RR'}
+                      highlightIndex={participants.findIndex(p => p.userId === selectedGraphUser)}
+                    />
+                  ) : (
+                    <View style={styles.graphLoadingContainer}>
+                      <ThemedText style={styles.graphEmptyText}>No data available</ThemedText>
+                    </View>
+                  )}
+                </View>
               </ScrollView>
             </TouchableOpacity>
           </Animated.View>
@@ -958,6 +1224,60 @@ const styles = StyleSheet.create({
     color: '#666',
     lineHeight: 13,
   },
+  challengeStatWin: {
+    fontSize: 15,
+    fontWeight: '700',
+    color: '#22C55E',
+  },
+  challengeStatLoss: {
+    fontSize: 15,
+    fontWeight: '700',
+    color: '#EF4444',
+  },
+  statsCardsRow: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8,
+    marginBottom: 20,
+  },
+  statsCard: {
+    flex: 1,
+    minWidth: '28%',
+    backgroundColor: 'rgba(255,255,255,0.05)',
+    borderRadius: 12,
+    paddingVertical: 12,
+    paddingHorizontal: 14,
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.06)',
+  },
+  statsCardFull: {
+    width: '100%',
+    backgroundColor: 'rgba(255,255,255,0.05)',
+    borderRadius: 12,
+    paddingVertical: 12,
+    paddingHorizontal: 14,
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.06)',
+  },
+  statsCardLabel: {
+    fontSize: 11,
+    fontWeight: '500',
+    color: '#666',
+    marginBottom: 4,
+  },
+  statsCardValue: {
+    fontSize: 15,
+    fontWeight: '700',
+    color: '#fff',
+  },
+  statsChartLabel: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: '#666',
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
+    marginBottom: 8,
+  },
   spectatorsSection: {
     marginTop: 16,
   },
@@ -1127,5 +1447,89 @@ const styles = StyleSheet.create({
     fontSize: 13,
     fontWeight: '600',
     color: '#0f0f0f',
+  },
+  graphButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 6,
+    backgroundColor: 'rgba(255,255,255,0.08)',
+    paddingVertical: 12,
+    borderRadius: 24,
+    marginTop: 12,
+  },
+  graphButtonText: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#fff',
+  },
+  graphModalSheet: {
+    backgroundColor: '#1a1a1a',
+    borderTopLeftRadius: 20,
+    borderTopRightRadius: 20,
+    paddingHorizontal: 20,
+    paddingBottom: 40,
+    maxHeight: Dimensions.get('window').height * 0.75,
+  },
+  graphUserSelector: {
+    flexDirection: 'row',
+    marginBottom: 16,
+    maxHeight: 38,
+  },
+  graphUserPill: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    paddingVertical: 4,
+    paddingLeft: 4,
+    paddingRight: 14,
+    borderRadius: 20,
+    backgroundColor: 'rgba(255,255,255,0.08)',
+    marginRight: 8,
+  },
+  graphUserPillActive: {
+    backgroundColor: '#fff',
+  },
+  graphUserPillAvatarWrap: {
+    width: 28,
+    height: 28,
+    borderRadius: 14,
+    backgroundColor: 'rgba(255,255,255,0.1)',
+    alignItems: 'center',
+    justifyContent: 'center',
+    overflow: 'hidden',
+    borderWidth: 2,
+  },
+  graphUserPillAvatar: {
+    width: '100%',
+    height: '100%',
+    borderRadius: 14,
+  },
+  graphUserPillInitial: {
+    fontSize: 13,
+    fontWeight: '700',
+    color: '#888',
+  },
+  graphUserPillText: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: '#888',
+  },
+  graphUserPillTextActive: {
+    color: '#0f0f0f',
+  },
+  graphChartContainer: {
+    alignItems: 'center',
+    minHeight: 200,
+    justifyContent: 'center',
+  },
+  graphLoadingContainer: {
+    height: 200,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  graphEmptyText: {
+    fontSize: 13,
+    color: 'rgba(255,255,255,0.4)',
   },
 });

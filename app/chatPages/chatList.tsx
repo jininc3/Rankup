@@ -13,7 +13,7 @@ import {
   TextInput,
   Modal,
 } from 'react-native';
-import { useRouter } from 'expo-router';
+import { useRouter } from '@/hooks/useRouter';
 import { useAuth } from '@/contexts/AuthContext';
 import { subscribeToUserChats, Chat, createOrGetChat } from '@/services/chatService';
 import { getFollowing, FollowingData } from '@/services/followService';
@@ -22,7 +22,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 
 export default function ChatListScreen() {
   const router = useRouter();
-  const { user: currentUser } = useAuth();
+  const { user: currentUser, isUserBlocked } = useAuth();
   const [chats, setChats] = useState<Chat[]>([]);
   const [filteredChats, setFilteredChats] = useState<Chat[]>([]);
   const [loading, setLoading] = useState(true);
@@ -41,8 +41,12 @@ export default function ChatListScreen() {
     if (!currentUser?.id) return;
 
     const unsubscribe = subscribeToUserChats(currentUser.id, (userChats) => {
-      setChats(userChats);
-      setFilteredChats(userChats);
+      const filtered = userChats.filter(chat => {
+        const otherUserId = chat.participants.find((id: string) => id !== currentUser?.id);
+        return !otherUserId || !isUserBlocked(otherUserId);
+      });
+      setChats(filtered);
+      setFilteredChats(filtered);
       setLoading(false);
     });
 

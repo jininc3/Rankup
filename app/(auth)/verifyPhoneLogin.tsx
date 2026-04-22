@@ -6,12 +6,20 @@ import {
   Alert,
   ActivityIndicator,
   TextInput,
+  KeyboardAvoidingView,
+  Platform,
+  Keyboard,
+  TouchableWithoutFeedback,
 } from 'react-native';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { IconSymbol } from '@/components/ui/icon-symbol';
-import { useRouter, useLocalSearchParams } from 'expo-router';
+import { useRouter } from '@/hooks/useRouter';
+import { useLocalSearchParams } from 'expo-router';
 import rnfbAuth, { FirebaseAuthTypes } from '@react-native-firebase/auth';
+import { auth, functions } from '@/config/firebase';
+import { signInWithEmailAndPassword } from 'firebase/auth';
+import { httpsCallable } from 'firebase/functions';
 
 export default function VerifyPhoneLogin() {
   const router = useRouter();
@@ -65,14 +73,31 @@ export default function VerifyPhoneLogin() {
 
     try {
       setIsVerifying(true);
-      // This signs in the user with the native Firebase SDK
+      // Verify OTP via native SDK
       await confirmation.confirm(code);
-      // AuthContext will detect the sign-in via onAuthStateChanged
-      // Navigation handled automatically
+      // Sign out of native SDK — it's a separate instance from the web SDK
+      await rnfbAuth().signOut();
+
+      // Get temp credentials from Cloud Function and sign in via web SDK
+      const generateLogin = httpsCallable(functions, 'generateLoginToken');
+      const result = await generateLogin({ phoneNumber });
+      const { authEmail, tempPassword } = result.data as { authEmail: string; tempPassword: string };
+
+      await signInWithEmailAndPassword(auth, authEmail, tempPassword);
+      // AuthContext detects the sign-in via onAuthStateChanged and navigates automatically
     } catch (error: any) {
       console.error('Verification error:', error);
       if (error.code === 'auth/invalid-verification-code') {
         Alert.alert('Error', 'Invalid verification code. Please try again.');
+      } else if (error?.details?.code === 'not-found' || error?.message?.includes('No account found')) {
+        Alert.alert(
+          'No Account Found',
+          'No account is linked to this phone number. Would you like to sign up?',
+          [
+            { text: 'Cancel', style: 'cancel' },
+            { text: 'Sign Up', onPress: () => router.replace('/(auth)/signUp') },
+          ]
+        );
       } else {
         Alert.alert('Error', 'Failed to verify code. Please try again.');
       }
@@ -90,143 +115,93 @@ export default function VerifyPhoneLogin() {
 
   return (
     <ThemedView style={styles.container}>
-      <TouchableOpacity style={styles.backButton} onPress={() => router.back()}>
-        <IconSymbol size={20} name="chevron.left" color="#fff" />
-      </TouchableOpacity>
+      <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
+        <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={{ flex: 1 }}>
+          <TouchableOpacity style={styles.backButton} onPress={() => router.back()}>
+            <IconSymbol size={22} name="chevron.left" color="#fff" />
+          </TouchableOpacity>
 
-      <View style={styles.content}>
-        <View style={styles.iconContainer}>
-          <IconSymbol size={80} name="phone.fill" color="#fff" />
-        </View>
+          <View style={styles.content}>
+            <ThemedText style={styles.title}>Verify your{'\n'}phone number</ThemedText>
+            <ThemedText style={styles.subtitle}>
+              We sent a code to {phoneNumber}
+            </ThemedText>
 
-        <View style={styles.textContainer}>
-          <ThemedText style={styles.title}>Enter Code</ThemedText>
-          <ThemedText style={styles.subtitle}>
-            We sent a verification code to
-          </ThemedText>
-          <ThemedText style={styles.phone}>{phoneNumber}</ThemedText>
-        </View>
+            {isSending && !codeSent ? (
+              <View style={styles.loadingContainer}>
+                <ActivityIndicator size="large" color="#fff" />
+                <ThemedText style={styles.loadingText}>Sending code...</ThemedText>
+              </View>
+            ) : (
+              <TouchableOpacity
+                style={styles.otpContainer}
+                activeOpacity={1}
+                onPress={() => hiddenInputRef.current?.focus()}
+              >
+                <TextInput
+                  ref={hiddenInputRef}
+                  value={code}
+                  onChangeText={handleCodeChange}
+                  keyboardType="number-pad"
+                  textContentType="oneTimeCode"
+                  autoComplete="sms-otp"
+                  maxLength={6}
+                  editable={!isVerifying}
+                  autoFocus
+                  style={styles.hiddenInput}
+                />
+                {[0, 1, 2, 3, 4, 5].map((index) => (
+                  <View
+                    key={index}
+                    style={[styles.otpInput, code[index] ? styles.otpInputFilled : null]}
+                  >
+                    <ThemedText style={styles.otpDigit}>{code[index] || ''}</ThemedText>
+                  </View>
+                ))}
+              </TouchableOpacity>
+            )}
 
-        {isSending && !codeSent ? (
-          <View style={styles.loadingContainer}>
-            <ActivityIndicator size="large" color="#c42743" />
-            <ThemedText style={styles.loadingText}>Sending code...</ThemedText>
-          </View>
-        ) : (
-          <>
             <TouchableOpacity
-              style={styles.otpContainer}
-              activeOpacity={1}
-              onPress={() => hiddenInputRef.current?.focus()}
+              onPress={handleResend}
+              disabled={isSending}
             >
-              <TextInput
-                ref={hiddenInputRef}
-                value={code}
-                onChangeText={handleCodeChange}
-                keyboardType="number-pad"
-                textContentType="oneTimeCode"
-                autoComplete="sms-otp"
-                maxLength={6}
-                editable={!isVerifying}
-                autoFocus
-                style={styles.hiddenInput}
-              />
-              {[0, 1, 2, 3, 4, 5].map((index) => (
-                <View
-                  key={index}
-                  style={[styles.otpInput, code[index] ? styles.otpInputFilled : null]}
-                >
-                  <ThemedText style={styles.otpDigit}>{code[index] || ''}</ThemedText>
-                </View>
-              ))}
+              <ThemedText style={styles.resendText}>
+                {isSending ? 'Sending...' : 'Resend code'}
+              </ThemedText>
             </TouchableOpacity>
+          </View>
 
-            <View style={styles.buttonContainer}>
-              <TouchableOpacity
-                style={[styles.verifyButton, isVerifying && styles.buttonDisabled]}
-                onPress={handleVerify}
-                disabled={isVerifying || code.length !== 6}
-              >
-                {isVerifying ? (
-                  <ActivityIndicator color="#fff" />
-                ) : (
-                  <ThemedText style={styles.verifyButtonText}>Sign In</ThemedText>
-                )}
-              </TouchableOpacity>
-
-              <TouchableOpacity
-                style={[styles.resendButton, isSending && styles.buttonDisabled]}
-                onPress={handleResend}
-                disabled={isSending}
-              >
-                <ThemedText style={styles.resendButtonText}>
-                  {isSending ? 'Sending...' : 'Resend Code'}
-                </ThemedText>
-              </TouchableOpacity>
-            </View>
-          </>
-        )}
-      </View>
+          <View style={styles.bottomSection}>
+            <TouchableOpacity
+              style={[styles.continueButton, (isVerifying || code.length !== 6) && styles.buttonDisabled]}
+              onPress={handleVerify}
+              disabled={isVerifying || code.length !== 6}
+              activeOpacity={0.8}
+            >
+              <ThemedText style={styles.continueButtonText}>
+                {isVerifying ? 'Verifying...' : 'Continue'}
+              </ThemedText>
+            </TouchableOpacity>
+          </View>
+        </KeyboardAvoidingView>
+      </TouchableWithoutFeedback>
     </ThemedView>
   );
 }
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: '#0f0f0f',
-  },
-  backButton: {
-    position: 'absolute',
-    top: 60,
-    left: 24,
-    zIndex: 10,
-    padding: 8,
-  },
-  content: {
-    flex: 1,
-    padding: 24,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  iconContainer: {
-    marginBottom: 32,
-  },
-  textContainer: {
-    alignItems: 'center',
-    marginBottom: 32,
-  },
-  title: {
-    fontSize: 28,
-    fontWeight: 'bold',
-    marginBottom: 12,
-    color: '#fff',
-  },
-  subtitle: {
-    fontSize: 16,
-    color: '#ccc',
-    textAlign: 'center',
-    marginBottom: 8,
-  },
-  phone: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: '#fff',
-  },
-  loadingContainer: {
-    alignItems: 'center',
-    gap: 12,
-    marginBottom: 32,
-  },
-  loadingText: {
-    fontSize: 14,
-    color: '#999',
-  },
+  container: { flex: 1, backgroundColor: '#0f0f0f' },
+  backButton: { position: 'absolute', top: 60, left: 16, zIndex: 10, padding: 8 },
+  content: { flex: 1, paddingHorizontal: 28, paddingTop: 120 },
+  title: { fontSize: 28, fontWeight: '800', color: '#fff', lineHeight: 36, marginBottom: 8 },
+  subtitle: { fontSize: 15, color: '#555', marginBottom: 32 },
+  loadingContainer: { alignItems: 'center', gap: 12, marginTop: 32 },
+  loadingText: { fontSize: 14, color: '#555' },
   otpContainer: {
     flexDirection: 'row',
-    justifyContent: 'center',
+    justifyContent: 'space-between',
     gap: 10,
-    marginBottom: 32,
+    marginBottom: 24,
   },
   hiddenInput: {
     position: 'absolute',
@@ -238,50 +213,26 @@ const styles = StyleSheet.create({
     fontSize: 22,
   },
   otpInput: {
-    width: 48,
+    flex: 1,
     height: 56,
     borderRadius: 12,
-    borderWidth: 2,
-    borderColor: '#3a3f44',
-    backgroundColor: '#2c2f33',
+    backgroundColor: 'rgba(255,255,255,0.06)',
+    borderWidth: 0.5,
+    borderColor: 'rgba(255,255,255,0.1)',
     justifyContent: 'center',
     alignItems: 'center',
   },
   otpInputFilled: {
-    borderColor: '#c42743',
+    borderColor: '#fff',
   },
   otpDigit: {
     fontSize: 22,
     fontWeight: '700',
     color: '#fff',
   },
-  buttonContainer: {
-    width: '100%',
-    gap: 12,
-  },
-  verifyButton: {
-    backgroundColor: '#c42743',
-    borderRadius: 12,
-    padding: 16,
-    alignItems: 'center',
-  },
-  verifyButtonText: {
-    color: '#fff',
-    fontSize: 16,
-    fontWeight: '600',
-  },
-  resendButton: {
-    backgroundColor: '#2c2f33',
-    borderRadius: 12,
-    padding: 16,
-    alignItems: 'center',
-  },
-  resendButtonText: {
-    color: '#fff',
-    fontSize: 16,
-    fontWeight: '600',
-  },
-  buttonDisabled: {
-    opacity: 0.5,
-  },
+  resendText: { fontSize: 13, fontWeight: '600', color: '#1a73e8' },
+  bottomSection: { paddingHorizontal: 28, paddingBottom: 40 },
+  continueButton: { backgroundColor: '#fff', borderRadius: 28, paddingVertical: 16, alignItems: 'center' },
+  continueButtonText: { color: '#0f0f0f', fontSize: 16, fontWeight: '700' },
+  buttonDisabled: { opacity: 0.4 },
 });

@@ -1,6 +1,6 @@
 import { ThemedText } from '@/components/themed-text';
 import { getProfileIconUrl } from '@/services/riotService';
-import { useRouter } from 'expo-router';
+import { useRouter } from '@/hooks/useRouter';
 import { useEffect, useRef } from 'react';
 import { Animated, Dimensions, Easing, Image, StyleSheet, TouchableOpacity, View } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';

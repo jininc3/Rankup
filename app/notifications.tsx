@@ -4,7 +4,7 @@ import { IconSymbol } from '@/components/ui/icon-symbol';
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { SectionList, StyleSheet, TouchableOpacity, View, Image, ActivityIndicator, Animated, Alert } from 'react-native';
 // Long-press to delete replaces swipe-to-delete
-import { useRouter } from 'expo-router';
+import { useRouter } from '@/hooks/useRouter';
 import { collection, query, orderBy, limit, onSnapshot, doc, updateDoc, deleteDoc, where, Timestamp, getDocs, writeBatch, getDoc, startAfter, QueryDocumentSnapshot, DocumentData } from 'firebase/firestore';
 import { db } from '@/config/firebase';
 import { useAuth } from '@/contexts/AuthContext';
@@ -59,7 +59,7 @@ interface Post {
 
 export default function NotificationsScreen() {
   const router = useRouter();
-  const { user: currentUser } = useAuth();
+  const { user: currentUser, isUserBlocked } = useAuth();
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [loading, setLoading] = useState(true);
   const [selectedPost, setSelectedPost] = useState<Post | null>(null);
@@ -151,9 +151,9 @@ export default function NotificationsScreen() {
         }
       }
 
-      // Filter out notifications from deleted users (keep system notifications without fromUserId)
+      // Filter out notifications from deleted or blocked users
       const filteredNotifs = notifs.filter(
-        (notif) => !notif.fromUserId || !deletedUserIds.has(notif.fromUserId)
+        (notif) => !notif.fromUserId || (!deletedUserIds.has(notif.fromUserId) && !isUserBlocked(notif.fromUserId))
       );
 
       setNotifications(filteredNotifs);

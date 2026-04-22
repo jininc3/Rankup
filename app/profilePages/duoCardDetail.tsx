@@ -1,7 +1,8 @@
 import { ThemedText } from '@/components/themed-text';
 import { IconSymbol } from '@/components/ui/icon-symbol';
 import { Image, StyleSheet, TouchableOpacity, View, ScrollView, Alert } from 'react-native';
-import { useRouter, useLocalSearchParams } from 'expo-router';
+import { useRouter } from '@/hooks/useRouter';
+import { useLocalSearchParams } from 'expo-router';
 import { useState, useEffect } from 'react';
 import { getRecentMatches, RecentMatchResult } from '@/services/riotService';
 import { doc, setDoc, getDoc, serverTimestamp } from 'firebase/firestore';
@@ -186,6 +187,7 @@ export default function DuoCardDetailScreen() {
 
   const [recentMatches, setRecentMatches] = useState<RecentMatchResult[]>([]);
   const [loadingMatches, setLoadingMatches] = useState(true);
+  const [rankUpUsername, setRankUpUsername] = useState<string | null>(null);
 
   // Editable state for own card
   const [mainRole, setMainRole] = useState(initialMainRole);
@@ -232,6 +234,19 @@ export default function DuoCardDetailScreen() {
       setIsSaving(false);
     }
   };
+
+  useEffect(() => {
+    if (!userId) return;
+    const fetchUsername = async () => {
+      try {
+        const userDoc = await getDoc(doc(db, 'users', userId));
+        if (userDoc.exists()) {
+          setRankUpUsername(userDoc.data().username || null);
+        }
+      } catch {}
+    };
+    fetchUsername();
+  }, [userId]);
 
   useEffect(() => {
     const fetchMatches = async () => {
@@ -336,9 +351,9 @@ export default function DuoCardDetailScreen() {
               </View>
             )}
           </View>
-          <ThemedText style={styles.username}>{inGameName || username}</ThemedText>
-          {inGameName && inGameName !== username && (
-            <ThemedText style={styles.inGameName}>{username}</ThemedText>
+          <ThemedText style={styles.username}>{rankUpUsername || username}</ThemedText>
+          {inGameName && (
+            <ThemedText style={styles.inGameName}>{inGameName}</ThemedText>
           )}
         </TouchableOpacity>
 

@@ -1,7 +1,7 @@
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { IconSymbol } from '@/components/ui/icon-symbol';
-import { useRouter } from 'expo-router';
+import { useRouter } from '@/hooks/useRouter';
 import { ScrollView, StyleSheet, TouchableOpacity, View, Image } from 'react-native';
 import GradientBorder from '@/components/GradientBorder';
 import { TIER_GRADIENTS } from '@/utils/tierBorderUtils';

@@ -3,11 +3,13 @@ import { ThemedView } from '@/components/themed-view';
 import { IconSymbol } from '@/components/ui/icon-symbol';
 import { completeEmailSignup, completePhoneSignup } from '@/services/authService';
 import { uploadProfilePicture } from '@/services/storageService';
-import { auth, db } from '@/config/firebase';
+import { auth, db, functions } from '@/config/firebase';
 
-import { useRouter, useLocalSearchParams } from 'expo-router';
+import { useRouter } from '@/hooks/useRouter';
+import { useLocalSearchParams } from 'expo-router';
 import { doc, updateDoc } from 'firebase/firestore';
-import { updateProfile, updatePassword as fbUpdatePassword } from 'firebase/auth';
+import { updateProfile } from 'firebase/auth';
+import { httpsCallable } from 'firebase/functions';
 import React, { useState } from 'react';
 import { StyleSheet, TouchableOpacity, View, TextInput, Alert, KeyboardAvoidingView, Platform } from 'react-native';
 
@@ -70,11 +72,9 @@ export default function SignUpPassword() {
 
         await updateProfile(user, { displayName: params.username as string });
 
-        try {
-          await fbUpdatePassword(user, password);
-        } catch {
-          // May fail if Google-only account can't add password
-        }
+        // Set password via Admin SDK (works regardless of session age)
+        const setPasswordFn = httpsCallable(functions, 'setUserPassword');
+        await setPasswordFn({ password });
 
         await updateDoc(doc(db, 'users', user.uid), {
           username: params.username as string,

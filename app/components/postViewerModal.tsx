@@ -8,7 +8,7 @@ import { likePost, unlikePost, isPostLiked } from '@/services/likeService';
 import CommentModal from '@/app/components/commentModal';
 import PostContent from '@/app/components/postContent';
 import { useAuth } from '@/contexts/AuthContext';
-import { useRouter } from 'expo-router';
+import { useRouter } from '@/hooks/useRouter';
 
 const { width: screenWidth, height: screenHeight } = Dimensions.get('window');
 

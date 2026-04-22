@@ -5,7 +5,8 @@ const RankCard = rankCard;
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { IconSymbol } from '@/components/ui/icon-symbol';
-import { useRouter, useLocalSearchParams } from 'expo-router';
+import { useRouter } from '@/hooks/useRouter';
+import { useLocalSearchParams } from 'expo-router';
 import { useRef, useState, useEffect, useCallback } from 'react';
 import { Dimensions, Image, ScrollView, StyleSheet, TouchableOpacity, View, ActivityIndicator, Alert, Linking, Modal, LayoutAnimation, Platform, UIManager, Animated } from 'react-native';
 import * as Clipboard from 'expo-clipboard';
@@ -14,6 +15,7 @@ import { useFocusEffect } from '@react-navigation/native';
 import { db } from '@/config/firebase';
 import { collection, query, where, getDocs, Timestamp, doc, getDoc, setDoc, deleteDoc, updateDoc, increment } from 'firebase/firestore';
 import { followUser, unfollowUser, isFollowing as checkIsFollowing, getUserRecentPosts } from '@/services/followService';
+import { blockUser } from '@/services/blockService';
 import { createOrGetChat } from '@/services/chatService';
 import PostViewerModal from '@/app/components/postViewerModal';
 import { calculateTierBorderColor, calculateTierBorderGradient } from '@/utils/tierBorderUtils';
@@ -74,7 +76,7 @@ interface Post {
 export default function ProfileViewScreen() {
   const router = useRouter();
   const params = useLocalSearchParams();
-  const { user: currentUser, refreshUser, setNewlyFollowedUserPosts, setNewlyUnfollowedUserId } = useAuth();
+  const { user: currentUser, refreshUser, setNewlyFollowedUserPosts, setNewlyUnfollowedUserId, isUserBlocked, addBlockedUser } = useAuth();
   const [viewedUser, setViewedUser] = useState<ViewedUser | null>(null);
   const [loadingUser, setLoadingUser] = useState(true);
   const [posts, setPosts] = useState<Post[]>([]);
@@ -97,6 +99,7 @@ export default function ProfileViewScreen() {
   const [achievementsError, setAchievementsError] = useState(false);
   const [userNotFound, setUserNotFound] = useState(false);
   const [activeTab, setActiveTab] = useState<'clips' | 'achievements'>('clips');
+  const [showMoreOptions, setShowMoreOptions] = useState(false);
 
   const tabs: ('clips' | 'achievements')[] = ['clips', 'achievements'];
   const tabScrollRef = useRef<ScrollView>(null);
@@ -601,8 +604,38 @@ export default function ProfileViewScreen() {
     valorantStats?.currentRank
   );
 
-  // Show "user not found" screen for deleted accounts
-  if (userNotFound) {
+  const handleBlock = () => {
+    setShowMoreOptions(false);
+    Alert.alert(
+      'Block User',
+      `Are you sure you want to block ${viewedUser?.username}? They won't be able to see your content or message you.`,
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Block',
+          style: 'destructive',
+          onPress: async () => {
+            if (!currentUser?.id || !viewedUser) return;
+            try {
+              await blockUser(currentUser.id, viewedUser.id, viewedUser.username, viewedUser.avatar);
+              addBlockedUser(viewedUser.id);
+              setNewlyUnfollowedUserId(viewedUser.id);
+              router.back();
+            } catch (error) {
+              console.error('Error blocking user:', error);
+              Alert.alert('Error', 'Failed to block user');
+            }
+          },
+        },
+      ]
+    );
+  };
+
+  // Check if this user is blocked
+  const blocked = userId ? isUserBlocked(userId) : false;
+
+  // Show "user not found" screen for deleted accounts or blocked users
+  if (userNotFound || blocked) {
     return (
       <ThemedView style={styles.container}>
         {/* Background shimmer — matches tabs pages */}
@@ -655,8 +688,9 @@ export default function ProfileViewScreen() {
             This account may have been deleted or is no longer available.
           </ThemedText>
           <TouchableOpacity
-            style={{ marginTop: 24, paddingHorizontal: 24, paddingVertical: 10, backgroundColor: '#c42743', borderRadius: 8 }}
+            style={{ marginTop: 24, paddingHorizontal: 28, paddingVertical: 10, backgroundColor: 'rgba(255,255,255,0.08)', borderRadius: 20, borderWidth: 1, borderColor: 'rgba(255,255,255,0.1)' }}
             onPress={() => router.back()}
+            activeOpacity={0.7}
           >
             <ThemedText style={{ fontSize: 14, fontWeight: '600', color: '#fff' }}>Go Back</ThemedText>
           </TouchableOpacity>
@@ -725,6 +759,13 @@ export default function ProfileViewScreen() {
                 <IconSymbol size={20} name="chevron.left" color="#fff" />
               </TouchableOpacity>
               <View style={styles.headerIconsSpacer} />
+              <TouchableOpacity
+                style={styles.headerIconButton}
+                onPress={() => setShowMoreOptions(true)}
+                activeOpacity={0.7}
+              >
+                <IconSymbol size={20} name="ellipsis" color="#fff" />
+              </TouchableOpacity>
             </View>
           </View>
 
@@ -1271,6 +1312,90 @@ export default function ProfileViewScreen() {
               </TouchableOpacity>
             </TouchableOpacity>
           </View>
+        </TouchableOpacity>
+      </Modal>
+
+      {/* More Options Bottom Sheet */}
+      <Modal
+        visible={showMoreOptions}
+        transparent={true}
+        animationType="slide"
+        onRequestClose={() => setShowMoreOptions(false)}
+      >
+        <TouchableOpacity
+          style={styles.moreOverlay}
+          activeOpacity={1}
+          onPress={() => setShowMoreOptions(false)}
+        >
+          <TouchableOpacity activeOpacity={1} style={styles.moreSheet}>
+            {/* Handle */}
+            <View style={styles.moreHandleRow}>
+              <View style={styles.moreHandle} />
+            </View>
+
+            {/* Options group */}
+            <View style={styles.moreOptionsGroup}>
+              {/* Share Profile */}
+              <TouchableOpacity
+                style={styles.moreOptionItem}
+                onPress={async () => {
+                  setShowMoreOptions(false);
+                  if (viewedUser?.username) {
+                    await Clipboard.setStringAsync(viewedUser.username);
+                    Alert.alert('Copied', `@${viewedUser.username} copied to clipboard`);
+                  }
+                }}
+                activeOpacity={0.6}
+              >
+                <View style={styles.moreOptionIcon}>
+                  <IconSymbol size={18} name="square.and.arrow.up" color="#fff" />
+                </View>
+                <ThemedText style={styles.moreOptionLabel}>Share Profile</ThemedText>
+              </TouchableOpacity>
+
+              <View style={styles.moreOptionDivider} />
+
+              {/* Report */}
+              <TouchableOpacity
+                style={styles.moreOptionItem}
+                onPress={() => {
+                  setShowMoreOptions(false);
+                  Alert.alert('Report', 'This user has been reported. We will review your report shortly.');
+                }}
+                activeOpacity={0.6}
+              >
+                <View style={styles.moreOptionIcon}>
+                  <IconSymbol size={18} name="exclamationmark.triangle" color="#fff" />
+                </View>
+                <ThemedText style={styles.moreOptionLabel}>Report</ThemedText>
+              </TouchableOpacity>
+
+              <View style={styles.moreOptionDivider} />
+
+              {/* Block */}
+              <TouchableOpacity
+                style={styles.moreOptionItem}
+                onPress={handleBlock}
+                activeOpacity={0.6}
+              >
+                <View style={[styles.moreOptionIcon, styles.moreOptionIconDestructive]}>
+                  <IconSymbol size={18} name="hand.raised.fill" color="#ff453a" />
+                </View>
+                <ThemedText style={styles.moreOptionLabelDestructive}>
+                  Block @{viewedUser?.username}
+                </ThemedText>
+              </TouchableOpacity>
+            </View>
+
+            {/* Cancel */}
+            <TouchableOpacity
+              style={styles.moreCancelButton}
+              onPress={() => setShowMoreOptions(false)}
+              activeOpacity={0.7}
+            >
+              <ThemedText style={styles.moreCancelText}>Cancel</ThemedText>
+            </TouchableOpacity>
+          </TouchableOpacity>
         </TouchableOpacity>
       </Modal>
     </ThemedView>
@@ -2045,5 +2170,84 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     color: '#72767d',
     marginTop: 4,
+  },
+  // More Options sheet
+  moreOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.65)',
+    justifyContent: 'flex-end',
+  },
+  moreSheet: {
+    backgroundColor: '#161616',
+    borderTopLeftRadius: 20,
+    borderTopRightRadius: 20,
+    paddingBottom: 36,
+    borderTopWidth: 1,
+    borderTopColor: 'rgba(255,255,255,0.08)',
+  },
+  moreHandleRow: {
+    alignItems: 'center',
+    paddingTop: 10,
+    paddingBottom: 18,
+  },
+  moreHandle: {
+    width: 36,
+    height: 4,
+    borderRadius: 2,
+    backgroundColor: 'rgba(255,255,255,0.15)',
+  },
+  moreOptionsGroup: {
+    marginHorizontal: 16,
+    backgroundColor: '#1a1a1a',
+    borderRadius: 14,
+    overflow: 'hidden',
+  },
+  moreOptionItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 14,
+    paddingVertical: 14,
+    paddingHorizontal: 16,
+  },
+  moreOptionDivider: {
+    height: 1,
+    backgroundColor: '#252525',
+    marginLeft: 62,
+  },
+  moreOptionIcon: {
+    width: 32,
+    height: 32,
+    borderRadius: 8,
+    backgroundColor: '#252525',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  moreOptionIconDestructive: {
+    backgroundColor: 'rgba(255, 69, 58, 0.12)',
+  },
+  moreOptionLabel: {
+    fontSize: 15,
+    fontWeight: '500',
+    color: '#fff',
+    letterSpacing: -0.2,
+  },
+  moreOptionLabelDestructive: {
+    fontSize: 15,
+    fontWeight: '500',
+    color: '#ff453a',
+    letterSpacing: -0.2,
+  },
+  moreCancelButton: {
+    marginHorizontal: 16,
+    marginTop: 10,
+    paddingVertical: 14,
+    backgroundColor: '#1a1a1a',
+    borderRadius: 14,
+    alignItems: 'center',
+  },
+  moreCancelText: {
+    fontSize: 15,
+    fontWeight: '600',
+    color: '#fff',
   },
 });

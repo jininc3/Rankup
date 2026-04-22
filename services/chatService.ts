@@ -62,6 +62,16 @@ export const createOrGetChat = async (
   otherUsername: string,
   otherUserAvatar: string | undefined
 ): Promise<string> => {
+  // Block check
+  const { isBlocked, isBlockedBy } = await import('./blockService');
+  const [blocked, blockedBy] = await Promise.all([
+    isBlocked(currentUserId, otherUserId),
+    isBlockedBy(currentUserId, otherUserId),
+  ]);
+  if (blocked || blockedBy) {
+    throw new Error('Unable to message this user');
+  }
+
   // Check if chat already exists
   const chatsRef = collection(db, 'chats');
   const q = query(

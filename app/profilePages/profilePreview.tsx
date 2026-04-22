@@ -1,14 +1,11 @@
-import rankCard from '@/app/components/rankCard';
-
-// Alias for JSX usage (React components must start with uppercase)
-const RankCard = rankCard;
 import PostViewerModal from '@/app/components/postViewerModal';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { IconSymbol } from '@/components/ui/icon-symbol';
-import { useRouter, useLocalSearchParams } from 'expo-router';
+import { useRouter } from '@/hooks/useRouter';
+import { useLocalSearchParams } from 'expo-router';
 import { useRef, useState, useEffect, useCallback } from 'react';
-import { Dimensions, Image, ScrollView, StyleSheet, TouchableOpacity, View, ActivityIndicator, Alert, Linking, LayoutAnimation, Platform, UIManager } from 'react-native';
+import { Dimensions, Image, ScrollView, StyleSheet, TouchableOpacity, View, ActivityIndicator, Alert, Linking } from 'react-native';
 import * as Clipboard from 'expo-clipboard';
 import { useAuth } from '@/contexts/AuthContext';
 import { useFocusEffect } from '@react-navigation/native';
@@ -19,6 +16,7 @@ import { calculateTierBorderColor, calculateTierBorderGradient } from '@/utils/t
 import { formatCount } from '@/utils/formatCount';
 import GradientBorder from '@/components/GradientBorder';
 import { LinearGradient } from 'expo-linear-gradient';
+import { BlurView } from 'expo-blur';
 
 interface ViewedUser {
   id: string;
@@ -52,10 +50,6 @@ interface ViewedUser {
 }
 
 const { width: screenWidth, height: screenHeight } = Dimensions.get('window');
-const CARD_PADDING = 20;
-const CARD_GAP = 16;
-const CARD_WIDTH = screenWidth - (CARD_PADDING * 2);
-
 interface Post {
   id: string;
   userId: string;
@@ -106,10 +100,9 @@ export default function ProfilePreviewScreen() {
   const [valorantAccount, setValorantAccount] = useState<any>(null);
   const [enabledRankCards, setEnabledRankCards] = useState<string[]>([]);
   const [achievements, setAchievements] = useState<{ partyName: string; game: string; placement: number; endDate: string }[]>([]);
-  const [cardsExpanded, setCardsExpanded] = useState(false);
   const [userNotFound, setUserNotFound] = useState(false);
-  const [activeTab, setActiveTab] = useState<'clips' | 'rankCards' | 'achievements'>('clips');
-  const tabs: ('clips' | 'rankCards' | 'achievements')[] = ['clips', 'rankCards', 'achievements'];
+  const [activeTab, setActiveTab] = useState<'clips' | 'achievements'>('clips');
+  const tabs: ('clips' | 'achievements')[] = ['clips', 'achievements'];
   const tabScrollRef = useRef<ScrollView>(null);
 
   const handleTabScroll = useCallback((event: any) => {
@@ -121,16 +114,9 @@ export default function ProfilePreviewScreen() {
     }
   }, []);
 
-  const scrollToTab = useCallback((tab: 'clips' | 'rankCards' | 'achievements') => {
+  const scrollToTab = useCallback((tab: 'clips' | 'achievements') => {
     const index = tabs.indexOf(tab);
     tabScrollRef.current?.scrollTo({ x: index * screenWidth, animated: true });
-  }, []);
-
-  // Enable LayoutAnimation on Android
-  useEffect(() => {
-    if (Platform.OS === 'android' && UIManager.setLayoutAnimationEnabledExperimental) {
-      UIManager.setLayoutAnimationEnabledExperimental(true);
-    }
   }, []);
 
   // Get userId from params
@@ -198,18 +184,6 @@ export default function ProfilePreviewScreen() {
       })
       .filter((game): game is NonNullable<typeof game> => game !== null)
     : [];
-
-  // Toggle card stack expansion
-  const toggleCardExpansion = () => {
-    LayoutAnimation.configureNext(
-      LayoutAnimation.create(
-        300,
-        LayoutAnimation.Types.easeInEaseOut,
-        LayoutAnimation.Properties.opacity
-      )
-    );
-    setCardsExpanded(!cardsExpanded);
-  };
 
   // Fetch viewed user's profile data
   const fetchUserProfile = async () => {
@@ -686,6 +660,113 @@ export default function ProfilePreviewScreen() {
             </View>
           </View>
 
+          {/* Rank Cards Banner */}
+          {userGames.length > 0 && (
+            <TouchableOpacity
+              style={styles.rankCardsBanner}
+              onPress={() => router.push({
+                pathname: '/profilePages/rankCards',
+                params: { userId: viewedUser?.id || '', username: viewedUser?.username || '' },
+              })}
+              activeOpacity={0.85}
+            >
+              <BlurView
+                intensity={40}
+                tint="dark"
+                style={StyleSheet.absoluteFillObject}
+                pointerEvents="none"
+              />
+              <LinearGradient
+                colors={['rgba(38,38,38,0.55)', 'rgba(24,24,24,0.55)']}
+                start={{ x: 0, y: 0 }}
+                end={{ x: 1, y: 1 }}
+                style={StyleSheet.absoluteFillObject}
+                pointerEvents="none"
+              />
+              <LinearGradient
+                colors={['transparent', 'rgba(255,255,255,0.04)', 'transparent']}
+                locations={[0.4, 0.5, 0.6]}
+                start={{ x: 0, y: 0 }}
+                end={{ x: 1, y: 1 }}
+                style={StyleSheet.absoluteFillObject}
+                pointerEvents="none"
+              />
+              <LinearGradient
+                colors={['rgba(255,255,255,0.07)', 'transparent']}
+                start={{ x: 0, y: 0 }}
+                end={{ x: 1, y: 0 }}
+                style={styles.rankCardsBannerTopEdge}
+                pointerEvents="none"
+              />
+
+              {/* Stacked mini rank card teaser */}
+              <View style={styles.rankCardsBannerPeek}>
+                {(() => {
+                  const cardOrder = enabledRankCards
+                    .filter(c => c === 'valorant' || c === 'league' || c === 'tft')
+                    .slice(0, 3);
+                  const total = cardOrder.length;
+                  return cardOrder.map((card, idx) => {
+                    const reverseIdx = total - 1 - idx;
+                    const accent =
+                      card === 'valorant' ? 'rgba(196,39,67,0.35)' :
+                      card === 'league' ? 'rgba(59,130,246,0.30)' :
+                      'rgba(212,168,67,0.30)';
+                    const img =
+                      card === 'valorant' ? require('@/assets/images/valorant-red.png') :
+                      card === 'league' ? require('@/assets/images/lol-icon.png') :
+                      require('@/assets/images/tft.png');
+                    return (
+                      <View
+                        key={card}
+                        style={[
+                          styles.rankCardsBannerMini,
+                          {
+                            left: reverseIdx * 8,
+                            top: reverseIdx * -5,
+                            zIndex: idx + 1,
+                          },
+                        ]}
+                      >
+                        <LinearGradient
+                          colors={['#2a2a2a', '#1a1a1a']}
+                          start={{ x: 0, y: 0 }}
+                          end={{ x: 1, y: 1 }}
+                          style={StyleSheet.absoluteFillObject}
+                        />
+                        <LinearGradient
+                          colors={[accent, 'transparent']}
+                          start={{ x: 0, y: 0 }}
+                          end={{ x: 1, y: 1 }}
+                          style={StyleSheet.absoluteFillObject}
+                        />
+                        <LinearGradient
+                          colors={['rgba(255,255,255,0.18)', 'transparent']}
+                          start={{ x: 0, y: 0 }}
+                          end={{ x: 1, y: 0.4 }}
+                          style={styles.rankCardsBannerMiniGloss}
+                        />
+                        <Image
+                          source={img}
+                          style={styles.rankCardsBannerMiniLogo}
+                          resizeMode="contain"
+                        />
+                      </View>
+                    );
+                  });
+                })()}
+              </View>
+
+              <View style={styles.rankCardsBannerTextContainer}>
+                <ThemedText style={styles.rankCardsBannerTitle}>Rank Cards</ThemedText>
+                <ThemedText style={styles.rankCardsBannerSubtext}>
+                  Tap to view stacked cards
+                </ThemedText>
+              </View>
+              <IconSymbol size={14} name="chevron.right" color="#aaa" />
+            </TouchableOpacity>
+          )}
+
           {/* Tab Bar */}
           <View style={styles.tabBar}>
             <TouchableOpacity
@@ -694,13 +775,6 @@ export default function ProfilePreviewScreen() {
               activeOpacity={0.7}
             >
               <ThemedText style={[styles.tabText, activeTab === 'clips' && styles.tabTextActive]}>CLIPS</ThemedText>
-            </TouchableOpacity>
-            <TouchableOpacity
-              style={styles.tabItem}
-              onPress={() => scrollToTab('rankCards')}
-              activeOpacity={0.7}
-            >
-              <ThemedText style={[styles.tabText, activeTab === 'rankCards' && styles.tabTextActive]}>RANKS</ThemedText>
             </TouchableOpacity>
             <TouchableOpacity
               style={styles.tabItem}
@@ -776,91 +850,6 @@ export default function ProfilePreviewScreen() {
                   This user hasn't posted any clips
                 </ThemedText>
               </View>
-            )}
-          </View>
-          </View>
-          </View>
-
-          {/* Rank Cards Tab */}
-          <View style={{ width: screenWidth }}>
-          <View style={[styles.sectionContainer, {
-            paddingBottom: userGames.length > 2 ? 10 : userGames.length > 1 ? 8 : 4
-          }]}>
-          <View style={styles.rankCardsSection}>
-            {!riotAccount && !valorantAccount ? (
-              <View style={styles.emptyState}>
-                <ThemedText style={styles.emptyStateTitle}>No rank cards yet</ThemedText>
-                <ThemedText style={styles.emptyStateSubtext}>
-                  This user hasn't linked any gaming accounts
-                </ThemedText>
-              </View>
-            ) : userGames.length === 1 ? (
-              <View style={styles.verticalRankCardsContainer}>
-                {(() => {
-                  const game = userGames[0];
-                  let displayUsername = viewedUser?.username || 'User';
-
-                  if (game.name === 'Valorant' && valorantAccount) {
-                    displayUsername = `${valorantAccount.gameName}#${valorantAccount.tag}`;
-                  } else if ((game.name === 'League of Legends' || game.name === 'TFT') && riotAccount) {
-                    displayUsername = `${riotAccount.gameName}#${riotAccount.tagLine}`;
-                  }
-
-                  return (
-                    <View key={game.id} style={styles.verticalCardWrapper}>
-                      <RankCard game={game} username={displayUsername} viewOnly={true} />
-                    </View>
-                  );
-                })()}
-              </View>
-            ) : (
-              (() => {
-                const totalCards = userGames.length;
-                const CARD_HEIGHT = 240;
-                const STACK_OFFSET = 50;
-                const containerHeight = CARD_HEIGHT;
-                const stackMarginTop = (totalCards - 1) * STACK_OFFSET;
-
-                return (
-                  <View style={[styles.verticalRankCardsContainer, { paddingBottom: 0 }]}>
-                    <View style={[styles.stackedCardsWrapper, { height: containerHeight, marginTop: stackMarginTop }]}>
-                      {userGames.map((game, index) => {
-                        let displayUsername = viewedUser?.username || 'User';
-
-                        if (game.name === 'Valorant' && valorantAccount) {
-                          displayUsername = `${valorantAccount.gameName}#${valorantAccount.tag}`;
-                        } else if ((game.name === 'League of Legends' || game.name === 'TFT') && riotAccount) {
-                          displayUsername = `${riotAccount.gameName}#${riotAccount.tagLine}`;
-                        }
-
-                        const reverseIndex = totalCards - 1 - index;
-                        const topOffset = reverseIndex * -STACK_OFFSET;
-                        const scale = 1 - (reverseIndex * 0.02);
-                        const cardZIndex = index + 1;
-
-                        return (
-                          <View
-                            key={game.id}
-                            style={[
-                              styles.stackedCardItem,
-                              {
-                                bottom: 0,
-                                top: topOffset,
-                                transform: [{ scale }],
-                                zIndex: cardZIndex,
-                              }
-                            ]}
-                          >
-                            <View style={{ width: '100%' }}>
-                              <RankCard game={game} username={displayUsername} viewOnly={true} />
-                            </View>
-                          </View>
-                        );
-                      })}
-                    </View>
-                  </View>
-                );
-              })()
             )}
           </View>
           </View>
@@ -1125,6 +1114,85 @@ const styles = StyleSheet.create({
     width: 18,
     height: 18,
   },
+  // Rank Cards Banner
+  rankCardsBanner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: 'transparent',
+    borderRadius: 14,
+    paddingVertical: 16,
+    paddingHorizontal: 18,
+    marginHorizontal: 16,
+    marginTop: 16,
+    marginBottom: 4,
+    gap: 16,
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.14)',
+    overflow: 'hidden',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.35,
+    shadowRadius: 8,
+    elevation: 6,
+  },
+  rankCardsBannerTopEdge: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    height: 1.5,
+  },
+  rankCardsBannerPeek: {
+    width: 86,
+    height: 60,
+    position: 'relative',
+  },
+  rankCardsBannerMini: {
+    position: 'absolute',
+    width: 70,
+    height: 46,
+    borderRadius: 7,
+    overflow: 'hidden',
+    borderWidth: 0.5,
+    borderColor: 'rgba(255,255,255,0.18)',
+    alignItems: 'center',
+    justifyContent: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 2, height: 3 },
+    shadowOpacity: 0.5,
+    shadowRadius: 3,
+  },
+  rankCardsBannerMiniGloss: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    height: '55%',
+  },
+  rankCardsBannerMiniLogo: {
+    width: 30,
+    height: 30,
+  },
+  rankCardsBannerTextContainer: {
+    flex: 1,
+  },
+  rankCardsBannerTitle: {
+    fontSize: 20,
+    fontWeight: '800',
+    color: '#fff',
+    marginBottom: 3,
+    letterSpacing: -0.3,
+    lineHeight: 24,
+    textShadowColor: 'rgba(0,0,0,0.5)',
+    textShadowOffset: { width: 0, height: 1 },
+    textShadowRadius: 3,
+  },
+  rankCardsBannerSubtext: {
+    fontSize: 12,
+    color: '#9a9a9a',
+    fontWeight: '500',
+    letterSpacing: 0.1,
+  },
   // Tab bar
   tabBar: {
     flexDirection: 'row',
@@ -1153,9 +1221,6 @@ const styles = StyleSheet.create({
     marginBottom: 4,
   },
   clipsSection: {
-    marginBottom: 8,
-  },
-  rankCardsSection: {
     marginBottom: 8,
   },
   gridClipsContainer: {
@@ -1234,41 +1299,6 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     lineHeight: 17,
     maxWidth: 240,
-  },
-  verticalRankCardsContainer: {
-    paddingHorizontal: 16,
-    paddingTop: 18,
-    paddingBottom: 20,
-    gap: 16,
-  },
-  stackedCardsWrapper: {
-    position: 'relative',
-    height: 320,
-    width: '100%',
-  },
-  stackedCardItem: {
-    position: 'absolute',
-    width: '100%',
-    left: 0,
-    shadowColor: '#000',
-    shadowOffset: {
-      width: 8,
-      height: 12,
-    },
-    shadowOpacity: 0.6,
-    shadowRadius: 16,
-    elevation: 16,
-  },
-  verticalCardWrapper: {
-    width: '100%',
-    shadowColor: '#000',
-    shadowOffset: {
-      width: 8,
-      height: 12,
-    },
-    shadowOpacity: 0.6,
-    shadowRadius: 16,
-    elevation: 16,
   },
   achievementsSection: {
     marginBottom: 8,
