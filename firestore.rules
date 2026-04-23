@@ -26,12 +26,12 @@ service cloud.firestore {
         // Anyone can read followers
         allow read: if true;
 
-        // Only the follower can create their follow relationship
+        // The follower can create their follow, OR the target user can create when accepting a follow request
         allow create: if request.auth != null
-                      && request.auth.uid == followerId
                       && request.resource.data.followerId == followerId
                       && request.resource.data.followerUsername is string
-                      && request.resource.data.createdAt is timestamp;
+                      && request.resource.data.createdAt is timestamp
+                      && (request.auth.uid == followerId || request.auth.uid == userId);
 
         // Allow the follower to delete their own follow OR the user to delete from their own followers list
         allow delete: if request.auth != null
@@ -43,16 +43,34 @@ service cloud.firestore {
         // Anyone can read following
         allow read: if true;
 
-        // Only the user themselves can create their following relationships
+        // The user can create their following, OR the followed user can create when accepting a follow request
         allow create: if request.auth != null
-                      && request.auth.uid == userId
                       && request.resource.data.followingId == followingId
                       && request.resource.data.followingUsername is string
-                      && request.resource.data.createdAt is timestamp;
+                      && request.resource.data.createdAt is timestamp
+                      && (request.auth.uid == userId || request.auth.uid == followingId);
 
         // Allow the user to delete their own following OR the followed user to remove them
         allow delete: if request.auth != null
                       && (request.auth.uid == userId || request.auth.uid == followingId);
+      }
+
+      // Follow requests subcollection - pending follow requests for private accounts
+      match /followRequests/{requesterId} {
+        // Target user can read all their follow requests, requester can read their own request
+        allow read: if request.auth != null
+                    && (request.auth.uid == userId || request.auth.uid == requesterId);
+
+        // The requester can create their own request
+        allow create: if request.auth != null
+                      && request.auth.uid == requesterId
+                      && request.resource.data.requesterId == requesterId
+                      && request.resource.data.requesterUsername is string
+                      && request.resource.data.createdAt is timestamp;
+
+        // Target user can delete (accept/decline), OR requester can cancel
+        allow delete: if request.auth != null
+                      && (request.auth.uid == userId || request.auth.uid == requesterId);
       }
 
       // Reported posts subcollection - tracks which posts a user reported (for feed hiding)
@@ -112,9 +130,7 @@ service cloud.firestore {
 
         // Any authenticated user can create notifications (for others)
         allow create: if request.auth != null
-                      && request.resource.data.type in ['follow', 'like', 'comment', 'tag', 'party_invite', 'challenge_invite']
-                      && request.resource.data.fromUserId is string
-                      && request.resource.data.fromUsername is string
+                      && request.resource.data.type in ['follow', 'like', 'comment', 'tag', 'party_invite', 'challenge_invite', 'party_complete', 'party_ranking_change', 'achievement', 'follow_request']
                       && request.resource.data.read is bool
                       && request.resource.data.createdAt is timestamp;
       }

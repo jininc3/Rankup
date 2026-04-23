@@ -67,6 +67,7 @@ interface Post {
   likes: number;
   commentsCount?: number;
   duration?: number;
+  categories?: string[];
 }
 
 // Helper function to format video duration

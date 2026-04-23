@@ -38,6 +38,7 @@ export interface UserProfile {
   followersCount?: number;
   followingCount?: number;
   needsUsernameSetup?: boolean;
+  isPrivate?: boolean;
   createdAt: Date;
   updatedAt: Date;
 }

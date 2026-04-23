@@ -189,3 +189,154 @@ export const getUserRecentPosts = async (userId: string): Promise<any[]> => {
     ...doc.data()
   }));
 };
+
+// ─── Follow Requests (Private Accounts) ──────────────────────────────────
+
+/**
+ * Send a follow request to a private account
+ */
+export const sendFollowRequest = async (
+  currentUserId: string,
+  currentUsername: string,
+  currentUserAvatar: string | undefined,
+  targetUserId: string,
+): Promise<void> => {
+  if (currentUserId === targetUserId) {
+    throw new Error('You cannot follow yourself');
+  }
+
+  // Block check
+  const { isBlocked, isBlockedBy } = await import('./blockService');
+  const [blockedByTarget, hasBlockedTarget] = await Promise.all([
+    isBlockedBy(currentUserId, targetUserId),
+    isBlocked(currentUserId, targetUserId),
+  ]);
+  if (blockedByTarget || hasBlockedTarget) {
+    throw new Error('Unable to follow this user');
+  }
+
+  // Check if already following
+  const followingDoc = await getDoc(doc(db, `users/${currentUserId}/following/${targetUserId}`));
+  if (followingDoc.exists()) return;
+
+  // Check if request already exists
+  const requestDoc = await getDoc(doc(db, `users/${targetUserId}/followRequests/${currentUserId}`));
+  if (requestDoc.exists()) return;
+
+  const now = Timestamp.now();
+
+  // Create follow request
+  const requestRef = doc(db, `users/${targetUserId}/followRequests/${currentUserId}`);
+  await setDoc(requestRef, {
+    requesterId: currentUserId,
+    requesterUsername: currentUsername,
+    requesterAvatar: currentUserAvatar || null,
+    createdAt: now,
+  });
+
+  // Create follow_request notification
+  const notifRef = doc(db, `users/${targetUserId}/notifications/${currentUserId}_follow_request_${Date.now()}`);
+  await setDoc(notifRef, {
+    type: 'follow_request',
+    fromUserId: currentUserId,
+    fromUsername: currentUsername,
+    fromUserAvatar: currentUserAvatar || null,
+    read: false,
+    createdAt: now,
+  });
+};
+
+/**
+ * Cancel a pending follow request
+ */
+export const cancelFollowRequest = async (
+  currentUserId: string,
+  targetUserId: string,
+): Promise<void> => {
+  // Delete the follow request doc
+  await deleteDoc(doc(db, `users/${targetUserId}/followRequests/${currentUserId}`));
+
+  // Delete follow_request notifications from this user
+  const notifsRef = collection(db, `users/${targetUserId}/notifications`);
+  const q = query(notifsRef, where('type', '==', 'follow_request'), where('fromUserId', '==', currentUserId));
+  const snapshot = await getDocs(q);
+  for (const notifDoc of snapshot.docs) {
+    await deleteDoc(notifDoc.ref);
+  }
+};
+
+/**
+ * Accept a follow request — converts it into a real follow
+ */
+export const acceptFollowRequest = async (
+  currentUserId: string,
+  currentUsername: string,
+  currentUserAvatar: string | undefined,
+  requesterId: string,
+  requesterUsername: string,
+  requesterAvatar: string | undefined,
+): Promise<void> => {
+  const now = Timestamp.now();
+
+  // Delete the follow request doc
+  await deleteDoc(doc(db, `users/${currentUserId}/followRequests/${requesterId}`));
+
+  // Create the actual follow relationship (requester follows current user)
+  const followerRef = doc(db, `users/${currentUserId}/followers/${requesterId}`);
+  const followerData: any = {
+    followerId: requesterId,
+    followerUsername: requesterUsername,
+    createdAt: now,
+  };
+  if (requesterAvatar) followerData.followerAvatar = requesterAvatar;
+  await setDoc(followerRef, followerData);
+
+  const followingRef = doc(db, `users/${requesterId}/following/${currentUserId}`);
+  const followingData: any = {
+    followingId: currentUserId,
+    followingUsername: currentUsername,
+    createdAt: now,
+  };
+  if (currentUserAvatar) followingData.followingAvatar = currentUserAvatar;
+  await setDoc(followingRef, followingData);
+
+  // Counts are automatically updated by Cloud Functions
+
+  // Delete follow_request notifications from this requester
+  const notifsRef = collection(db, `users/${currentUserId}/notifications`);
+  const q = query(notifsRef, where('type', '==', 'follow_request'), where('fromUserId', '==', requesterId));
+  const snapshot = await getDocs(q);
+  for (const notifDoc of snapshot.docs) {
+    await deleteDoc(notifDoc.ref);
+  }
+};
+
+/**
+ * Decline a follow request
+ */
+export const declineFollowRequest = async (
+  currentUserId: string,
+  requesterId: string,
+): Promise<void> => {
+  // Delete the follow request doc
+  await deleteDoc(doc(db, `users/${currentUserId}/followRequests/${requesterId}`));
+
+  // Delete follow_request notifications from this requester
+  const notifsRef = collection(db, `users/${currentUserId}/notifications`);
+  const q = query(notifsRef, where('type', '==', 'follow_request'), where('fromUserId', '==', requesterId));
+  const snapshot = await getDocs(q);
+  for (const notifDoc of snapshot.docs) {
+    await deleteDoc(notifDoc.ref);
+  }
+};
+
+/**
+ * Check if a follow request is pending
+ */
+export const hasFollowRequest = async (
+  currentUserId: string,
+  targetUserId: string,
+): Promise<boolean> => {
+  const requestDoc = await getDoc(doc(db, `users/${targetUserId}/followRequests/${currentUserId}`));
+  return requestDoc.exists();
+};

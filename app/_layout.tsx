@@ -2,8 +2,8 @@ import { DarkTheme, DefaultTheme, ThemeProvider } from '@react-navigation/native
 import { useRouter } from '@/hooks/useRouter';
 import { Stack, useSegments } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
-import { useEffect } from 'react';
-import { StyleSheet } from 'react-native';
+import { useEffect, useRef } from 'react';
+import { AppState, StyleSheet } from 'react-native';
 import 'react-native-reanimated';
 import * as Notifications from 'expo-notifications';
 
@@ -12,13 +12,13 @@ import { AuthProvider, useAuth } from '@/contexts/AuthContext';
 import { ValorantStatsProvider } from '@/contexts/ValorantStatsContext';
 import { Platform } from 'react-native';
 import { useColorScheme } from '@/hooks/use-color-scheme';
-import { addNotificationTapListener, addNotificationReceivedListener } from '@/services/notificationService';
+import { addNotificationTapListener, addNotificationReceivedListener, registerForPushNotificationsAsync } from '@/services/notificationService';
 import { InAppNotificationProvider, useInAppNotification } from '@/contexts/InAppNotificationContext';
 import InAppNotificationContainer from '@/app/components/InAppNotificationContainer';
 
 function RootLayoutNav() {
   const colorScheme = useColorScheme();
-  const { isAuthenticated, isLoading, needsUsernameSetup } = useAuth();
+  const { isAuthenticated, isLoading, needsUsernameSetup, user } = useAuth();
   const segments = useSegments();
   const router = useRouter();
   const { showNotification } = useInAppNotification();
@@ -30,6 +30,21 @@ function RootLayoutNav() {
       Notifications.getDevicePushTokenAsync().catch(() => {});
     }
   }, []);
+
+  // Refresh push token when app comes to foreground (tokens can expire/change)
+  const appState = useRef(AppState.currentState);
+  useEffect(() => {
+    if (!isAuthenticated || !user?.id) return;
+
+    const subscription = AppState.addEventListener('change', (nextAppState) => {
+      if (appState.current.match(/inactive|background/) && nextAppState === 'active') {
+        registerForPushNotificationsAsync(user.id).catch(() => {});
+      }
+      appState.current = nextAppState;
+    });
+
+    return () => subscription.remove();
+  }, [isAuthenticated, user?.id]);
 
   useEffect(() => {
     if (isLoading) return;
@@ -125,6 +140,8 @@ function RootLayoutNav() {
         message = `invited you to join "${data.partyName || 'a leaderboard'}"${data.game ? ` for ${data.game}` : ''}!`;
       } else if (data.type === 'challenge_invite') {
         message = `challenged you in "${data.partyName || 'a leaderboard'}"! Accept to compete.`;
+      } else if (data.type === 'follow_request') {
+        message = 'wants to follow you';
       } else if (data.type === 'party_complete') {
         message = data.winnerUsername ? `${data.winnerUsername} won the leaderboard!` : 'Leaderboard completed!';
       } else if (data.type === 'party_ranking_change') {
@@ -172,6 +189,9 @@ function RootLayoutNav() {
       if (data.chatId && data.senderId && data.senderUsername) {
         router.push(`/chatPages/chatScreen?chatId=${data.chatId}&otherUserId=${data.senderId}&otherUsername=${data.senderUsername}`);
       }
+    } else if (data.type === 'follow_request') {
+      // Navigate to notifications page to accept/decline
+      router.push('/notifications');
     } else if (data.type === 'challenge_invite') {
       // Navigate to the challenge detail page
       if (data.partyId && data.game) {

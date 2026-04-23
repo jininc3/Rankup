@@ -3,19 +3,25 @@ import { ThemedView } from '@/components/themed-view';
 import { IconSymbol } from '@/components/ui/icon-symbol';
 import { useRouter } from '@/hooks/useRouter';
 import { useAuth } from '@/contexts/AuthContext';
-import { ScrollView, StyleSheet, Switch, TouchableOpacity, View } from 'react-native';
-import { useState } from 'react';
+import { Alert, ScrollView, StyleSheet, Switch, TouchableOpacity, View } from 'react-native';
+import { useState, useEffect } from 'react';
 import { LinearGradient } from 'expo-linear-gradient';
+import { doc, updateDoc } from 'firebase/firestore';
+import { db } from '@/config/firebase';
 
 const ADMIN_IDS = ['VljkZhdkF3gCQI0clVkbQ0XCIxp1'];
 
 export default function PrivacySafetyScreen() {
   const router = useRouter();
-  const { user } = useAuth();
+  const { user, refreshUser } = useAuth();
   const isAdmin = user?.id ? ADMIN_IDS.includes(user.id) : false;
 
   // Privacy toggles
-  const [privateAccountEnabled, setPrivateAccountEnabled] = useState(false);
+  const [privateAccountEnabled, setPrivateAccountEnabled] = useState(user?.isPrivate || false);
+
+  useEffect(() => {
+    setPrivateAccountEnabled(user?.isPrivate || false);
+  }, [user?.isPrivate]);
   const [showOnlineStatusEnabled, setShowOnlineStatusEnabled] = useState(true);
   const [allowTagsEnabled, setAllowTagsEnabled] = useState(true);
 
@@ -30,7 +36,42 @@ export default function PrivacySafetyScreen() {
           title: 'Private Account',
           subtitle: 'Only approved followers can see your posts',
           value: privateAccountEnabled,
-          onValueChange: setPrivateAccountEnabled,
+          onValueChange: (newValue: boolean) => {
+            if (newValue) {
+              Alert.alert(
+                'Switch to Private Account?',
+                'Only approved followers will be able to see your posts. Your existing followers will not be affected.',
+                [
+                  { text: 'Cancel', style: 'cancel' },
+                  {
+                    text: 'Go Private',
+                    onPress: async () => {
+                      setPrivateAccountEnabled(true);
+                      if (user?.id) {
+                        try {
+                          await updateDoc(doc(db, 'users', user.id), { isPrivate: true });
+                          if (refreshUser) await refreshUser();
+                        } catch (error) {
+                          console.error('Error updating privacy setting:', error);
+                          setPrivateAccountEnabled(false);
+                        }
+                      }
+                    },
+                  },
+                ]
+              );
+            } else {
+              setPrivateAccountEnabled(false);
+              if (user?.id) {
+                updateDoc(doc(db, 'users', user.id), { isPrivate: false })
+                  .then(() => refreshUser?.())
+                  .catch((error) => {
+                    console.error('Error updating privacy setting:', error);
+                    setPrivateAccountEnabled(true);
+                  });
+              }
+            }
+          },
         },
         {
           id: 2,

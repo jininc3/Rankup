@@ -25,6 +25,7 @@ interface User {
   followersCount?: number;
   followingCount?: number;
   needsUsernameSetup?: boolean;
+  isPrivate?: boolean;
   provider: 'email' | 'google' | 'discord' | 'instagram';
 }
 
@@ -46,6 +47,7 @@ interface Post {
   commentsCount?: number;
   leagueRank?: string;
   valorantRank?: string;
+  categories?: string[];
 }
 
 interface SearchUser {
@@ -378,6 +380,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
               followersCount: userProfile.followersCount || 0,
               followingCount: userProfile.followingCount || 0,
               needsUsernameSetup: userProfile.needsUsernameSetup || false,
+              isPrivate: userProfile.isPrivate || false,
               provider: userProfile.provider,
             });
 
@@ -500,6 +503,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           followersCount: userProfile.followersCount || 0,
           followingCount: userProfile.followingCount || 0,
           needsUsernameSetup: userProfile.needsUsernameSetup || false,
+          isPrivate: userProfile.isPrivate || false,
           provider: userProfile.provider,
         });
       }

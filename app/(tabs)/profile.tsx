@@ -5,6 +5,8 @@ const RankCard = rankCard;
 import PostDuoCard from '@/app/components/postDuoCard';
 import { DuoCardData } from '@/app/(tabs)/duoFinder';
 import PostViewerModal from '@/app/components/postViewerModal';
+import ManageCategoriesModal from '@/app/components/manageCategoriesModal';
+import AssignCategoryModal from '@/app/components/assignCategoryModal';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { IconSymbol } from '@/components/ui/icon-symbol';
@@ -51,6 +53,7 @@ interface Post {
   likes: number;
   commentsCount?: number;
   duration?: number; // Video duration in seconds
+  categories?: string[];
 }
 
 // Helper function to format video duration
@@ -119,6 +122,13 @@ export default function ProfileScreen() {
 
   // Combined loading state - all data fetched, ready to reveal everything together
   const [allContentLoaded, setAllContentLoaded] = useState(false);
+
+  // Category state
+  const [clipCategories, setClipCategories] = useState<string[]>([]);
+  const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
+  const [showManageCategories, setShowManageCategories] = useState(false);
+  const [showAssignCategory, setShowAssignCategory] = useState(false);
+  const [categorizingPost, setCategorizingPost] = useState<Post | null>(null);
 
   // Create modal state
   const [showCreateModal, setShowCreateModal] = useState(false);
@@ -303,6 +313,7 @@ export default function ProfileScreen() {
           setValorantAccount(null);
         }
         setEnabledRankCards(updatedCards);
+        setClipCategories(data.clipCategories || []);
       }
     } catch (error) {
       console.error('Error fetching enabled rank cards:', error);
@@ -816,6 +827,51 @@ export default function ProfileScreen() {
       Alert.alert('Error', 'Failed to update caption');
     }
   };
+
+  // Category handlers
+  const handleCategorize = (post: Post) => {
+    setCategorizingPost(post);
+    setShowAssignCategory(true);
+  };
+
+  const handleSavePostCategories = async (newCategories: string[]) => {
+    if (!categorizingPost) return;
+    try {
+      await updateDoc(doc(db, 'posts', categorizingPost.id), {
+        categories: newCategories,
+      });
+      setPosts(prev =>
+        prev.map(p => p.id === categorizingPost.id ? { ...p, categories: newCategories } : p)
+      );
+      if (selectedPost?.id === categorizingPost.id) {
+        setSelectedPost(prev => prev ? { ...prev, categories: newCategories } : null);
+      }
+    } catch (error) {
+      console.error('Error updating post categories:', error);
+      Alert.alert('Error', 'Failed to update categories');
+    }
+  };
+
+  const handleSaveCategories = async (newCategories: string[]) => {
+    if (!user?.id) return;
+    try {
+      await updateDoc(doc(db, 'users', user.id), {
+        clipCategories: newCategories,
+      });
+      setClipCategories(newCategories);
+      // If the selected filter was removed, reset to All
+      if (selectedCategory && !newCategories.includes(selectedCategory)) {
+        setSelectedCategory(null);
+      }
+    } catch (error) {
+      console.error('Error updating categories:', error);
+      Alert.alert('Error', 'Failed to update categories');
+    }
+  };
+
+  const filteredPosts = selectedCategory
+    ? posts.filter(p => p.categories?.includes(selectedCategory))
+    : posts;
 
   const handleArchivePost = (post: Post) => {
     Alert.alert(
@@ -1362,11 +1418,61 @@ export default function ProfileScreen() {
           <View style={{ width: screenWidth, minHeight: TAB_CONTENT_MIN_HEIGHT }}>
           <View style={styles.sectionContainer}>
 
+          {/* Category Filter Row */}
+          {clipCategories.length > 0 && posts.length > 0 && (
+            <ScrollView
+              horizontal
+              showsHorizontalScrollIndicator={false}
+              contentContainerStyle={styles.categoryFilterRow}
+            >
+              <TouchableOpacity
+                style={[styles.categoryPill, selectedCategory === null && styles.categoryPillActive]}
+                onPress={() => setSelectedCategory(null)}
+                activeOpacity={0.7}
+              >
+                <ThemedText style={[styles.categoryPillText, selectedCategory === null && styles.categoryPillTextActive]}>All</ThemedText>
+              </TouchableOpacity>
+              {clipCategories.map((cat) => (
+                <TouchableOpacity
+                  key={cat}
+                  style={[styles.categoryPill, selectedCategory === cat && styles.categoryPillActive]}
+                  onPress={() => setSelectedCategory(cat)}
+                  activeOpacity={0.7}
+                >
+                  <ThemedText style={[styles.categoryPillText, selectedCategory === cat && styles.categoryPillTextActive]}>{cat}</ThemedText>
+                </TouchableOpacity>
+              ))}
+              <TouchableOpacity
+                style={styles.categoryManageButton}
+                onPress={() => setShowManageCategories(true)}
+                activeOpacity={0.7}
+              >
+                <IconSymbol size={14} name="pencil" color="#888" />
+              </TouchableOpacity>
+            </ScrollView>
+          )}
+
+          {/* Manage categories button when no categories exist yet */}
+          {clipCategories.length === 0 && posts.length > 0 && (
+            <TouchableOpacity
+              style={styles.addCategoryButton}
+              onPress={() => setShowManageCategories(true)}
+              activeOpacity={0.7}
+            >
+              <IconSymbol size={14} name="plus" color="#888" />
+              <ThemedText style={styles.addCategoryText}>Add Categories</ThemedText>
+            </TouchableOpacity>
+          )}
+
           {/* Clips Content */}
           <View style={styles.clipsSection}>
-          {posts.length > 0 ? (
+          {posts.length > 0 && filteredPosts.length === 0 && selectedCategory ? (
+            <View style={styles.emptyCategoryState}>
+              <ThemedText style={styles.emptyCategoryText}>No clips in "{selectedCategory}"</ThemedText>
+            </View>
+          ) : filteredPosts.length > 0 ? (
             <View style={styles.gridClipsContainer}>
-              {posts.map((post) => (
+              {filteredPosts.map((post) => (
                 <TouchableOpacity
                   key={post.id}
                   style={styles.gridClipItem}
@@ -1520,7 +1626,30 @@ export default function ProfileScreen() {
         onDelete={handleDeletePost}
         onEditCaption={handleEditCaption}
         onArchive={handleArchivePost}
+        onCategorize={handleCategorize}
       />
+
+      {/* Manage Categories Modal */}
+      <ManageCategoriesModal
+        visible={showManageCategories}
+        categories={clipCategories}
+        onClose={() => setShowManageCategories(false)}
+        onSave={handleSaveCategories}
+      />
+
+      {/* Assign Category Modal */}
+      {categorizingPost && (
+        <AssignCategoryModal
+          visible={showAssignCategory}
+          categories={clipCategories}
+          selectedCategories={categorizingPost.categories || []}
+          onClose={() => {
+            setShowAssignCategory(false);
+            setCategorizingPost(null);
+          }}
+          onSave={handleSavePostCategories}
+        />
+      )}
 
       {/* Post Duo Card Modal */}
       <PostDuoCard
@@ -2040,6 +2169,67 @@ const styles = StyleSheet.create({
     height: '100%',
   },
   // 2-column landscape grid
+  categoryFilterRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    paddingHorizontal: 16,
+    paddingBottom: 12,
+    paddingTop: 4,
+  },
+  categoryPill: {
+    paddingVertical: 6,
+    paddingHorizontal: 14,
+    borderRadius: 16,
+    backgroundColor: '#1a1a1a',
+    borderWidth: 1,
+    borderColor: '#1a1a1a',
+  },
+  categoryPillActive: {
+    backgroundColor: 'rgba(196, 39, 67, 0.15)',
+    borderColor: 'rgba(196, 39, 67, 0.4)',
+  },
+  categoryPillText: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: '#555',
+  },
+  categoryPillTextActive: {
+    color: '#fff',
+  },
+  categoryManageButton: {
+    width: 30,
+    height: 30,
+    borderRadius: 15,
+    backgroundColor: '#1a1a1a',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  addCategoryButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    alignSelf: 'flex-start',
+    marginLeft: 16,
+    marginBottom: 12,
+    paddingVertical: 6,
+    paddingHorizontal: 12,
+    borderRadius: 16,
+    backgroundColor: '#1a1a1a',
+  },
+  addCategoryText: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: '#888',
+  },
+  emptyCategoryState: {
+    alignItems: 'center',
+    paddingVertical: 40,
+  },
+  emptyCategoryText: {
+    fontSize: 14,
+    color: '#555',
+  },
   gridClipsContainer: {
     flexDirection: 'row',
     flexWrap: 'wrap',

@@ -289,6 +289,7 @@ interface Post {
   commentsCount?: number;
   leagueRank?: string;
   valorantRank?: string;
+  categories?: string[];
 }
 
 // Like Burst Animation Component
@@ -344,6 +345,7 @@ interface PostContentProps {
   onEditCaption?: (post: Post, newCaption: string) => void;
   onArchive?: (post: Post) => void;
   onReport?: (post: Post) => void;
+  onCategorize?: (post: Post) => void;
   onVideoReady?: () => void;
 }
 
@@ -367,6 +369,7 @@ export default function PostContent({
   onEditCaption,
   onArchive,
   onReport,
+  onCategorize,
   onVideoReady
 }: PostContentProps) {
   // Calculate tier border color
@@ -457,6 +460,12 @@ export default function PostContent({
         options.push({
           text: 'Edit Caption',
           onPress: handleStartEditCaption
+        });
+      }
+      if (onCategorize) {
+        options.push({
+          text: 'Categorize',
+          onPress: () => onCategorize(post)
         });
       }
       if (onArchive) {

@@ -78,6 +78,7 @@ interface Post {
   commentsCount?: number;
   leagueRank?: string;
   valorantRank?: string;
+  categories?: string[];
 }
 
 export default function HomeScreen() {

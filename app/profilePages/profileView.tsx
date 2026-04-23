@@ -14,7 +14,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { useFocusEffect } from '@react-navigation/native';
 import { db } from '@/config/firebase';
 import { collection, query, where, getDocs, Timestamp, doc, getDoc, setDoc, deleteDoc, updateDoc, increment } from 'firebase/firestore';
-import { followUser, unfollowUser, isFollowing as checkIsFollowing, getUserRecentPosts } from '@/services/followService';
+import { followUser, unfollowUser, isFollowing as checkIsFollowing, getUserRecentPosts, sendFollowRequest, cancelFollowRequest, hasFollowRequest } from '@/services/followService';
 import { blockUser } from '@/services/blockService';
 import { createOrGetChat } from '@/services/chatService';
 import PostViewerModal from '@/app/components/postViewerModal';
@@ -72,6 +72,7 @@ interface Post {
   likes: number;
   commentsCount?: number;
   duration?: number; // Video duration in seconds
+  categories?: string[];
 }
 
 export default function ProfileViewScreen() {
@@ -87,6 +88,8 @@ export default function ProfileViewScreen() {
   const [showPostViewer, setShowPostViewer] = useState(false);
   const [isFollowing, setIsFollowing] = useState(params.preloadedFollowing === 'true');
   const [followLoading, setFollowLoading] = useState(false);
+  const [isTargetPrivate, setIsTargetPrivate] = useState(false);
+  const [hasRequested, setHasRequested] = useState(false);
   const [riotAccount, setRiotAccount] = useState<any>(null);
   const [valorantAccount, setValorantAccount] = useState<any>(null);
   const [riotStats, setRiotStats] = useState<any>(null);
@@ -103,6 +106,8 @@ export default function ProfileViewScreen() {
   const [userNotFound, setUserNotFound] = useState(false);
   const [activeTab, setActiveTab] = useState<'clips' | 'achievements'>('clips');
   const [showMoreOptions, setShowMoreOptions] = useState(false);
+  const [clipCategories, setClipCategories] = useState<string[]>([]);
+  const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
 
   const tabs: ('clips' | 'achievements')[] = ['clips', 'achievements'];
   const tabScrollRef = useRef<ScrollView>(null);
@@ -315,14 +320,15 @@ export default function ProfileViewScreen() {
     if (!userId || !currentUser?.id) return;
 
     try {
-      // Fetch user profile, posts, and follow status in parallel
-      const [userDoc, postsSnapshot, followStatus] = await Promise.all([
+      // Fetch user profile, posts, follow status, and pending request in parallel
+      const [userDoc, postsSnapshot, followStatus, pendingRequest] = await Promise.all([
         getDoc(doc(db, 'users', userId)),
         getDocs(query(
           collection(db, 'posts'),
           where('userId', '==', userId)
         )),
-        checkIsFollowing(currentUser.id, userId)
+        checkIsFollowing(currentUser.id, userId),
+        hasFollowRequest(currentUser.id, userId),
       ]);
 
       // Update user profile
@@ -348,6 +354,9 @@ export default function ProfileViewScreen() {
         setRiotStats(data.riotStats || null);
         setValorantStats(data.valorantStats || null);
         setEnabledRankCards(data.enabledRankCards || []);
+        setClipCategories(data.clipCategories || []);
+        setIsTargetPrivate(data.isPrivate === true);
+        setHasRequested(pendingRequest);
 
         setLoadingUser(false);
       } else {
@@ -524,8 +533,21 @@ export default function ProfileViewScreen() {
 
         // Signal to remove this user's posts from feed
         setNewlyUnfollowedUserId(userId);
+      } else if (hasRequested) {
+        // Cancel follow request
+        await cancelFollowRequest(currentUser.id, userId);
+        setHasRequested(false);
+      } else if (isTargetPrivate) {
+        // Send follow request to private account
+        await sendFollowRequest(
+          currentUser.id,
+          currentUser.username || currentUser.email?.split('@')[0] || 'User',
+          currentUser.avatar,
+          userId,
+        );
+        setHasRequested(true);
       } else {
-        // Follow
+        // Instant follow (public account)
         await followUser(
           currentUser.id,
           currentUser.username || currentUser.email?.split('@')[0] || 'User',
@@ -549,7 +571,6 @@ export default function ProfileViewScreen() {
           setNewlyFollowedUserPosts(recentPosts, userId);
         } catch (error) {
           console.error('Error fetching newly followed user posts:', error);
-          // Don't block the follow operation if fetching posts fails
         }
       }
 
@@ -852,13 +873,13 @@ export default function ProfileViewScreen() {
             {/* Action Row: Follow Button + Social Icons */}
             <View style={styles.actionRow}>
               <TouchableOpacity
-                style={[styles.followButton, isFollowing && styles.followButtonFollowing]}
+                style={[styles.followButton, (isFollowing || hasRequested) && styles.followButtonFollowing]}
                 onPress={handleFollowToggle}
                 disabled={followLoading}
                 activeOpacity={0.7}
               >
                 <ThemedText style={styles.followButtonText}>
-                  {followLoading ? '...' : isFollowing ? 'Following' : 'Follow'}
+                  {followLoading ? '...' : isFollowing ? 'Following' : hasRequested ? 'Requested' : 'Follow'}
                 </ThemedText>
               </TouchableOpacity>
 
@@ -929,8 +950,19 @@ export default function ProfileViewScreen() {
           </View>
         </View>
 
+        {/* Private Account Message */}
+        {isTargetPrivate && !isFollowing && userId !== currentUser?.id && (
+          <View style={styles.privateAccountMessage}>
+            <IconSymbol size={40} name="lock.fill" color="#555" />
+            <ThemedText style={styles.privateAccountTitle}>This Account is Private</ThemedText>
+            <ThemedText style={styles.privateAccountSubtext}>
+              Follow this account to see their posts and achievements
+            </ThemedText>
+          </View>
+        )}
+
         {/* Rank Cards Banner */}
-        {userGames.length > 0 && (
+        {(!isTargetPrivate || isFollowing || userId === currentUser?.id) && userGames.length > 0 && (
           <TouchableOpacity
             style={styles.rankCardsBanner}
             onPress={() => router.push({
@@ -1036,7 +1068,8 @@ export default function ProfileViewScreen() {
           </TouchableOpacity>
         )}
 
-        {/* Tab Bar */}
+        {/* Tab Bar + Content — hidden for non-followers of private accounts */}
+        {(!isTargetPrivate || isFollowing || userId === currentUser?.id) && <>
         <View style={styles.tabBar}>
           <TouchableOpacity
             style={styles.tabItem}
@@ -1068,11 +1101,42 @@ export default function ProfileViewScreen() {
         <View style={{ width: screenWidth, minHeight: screenHeight * 0.5 }}>
         <View style={styles.sectionContainer}>
 
+        {/* Category Filter Row */}
+        {clipCategories.length > 0 && posts.length > 0 && (
+          <ScrollView
+            horizontal
+            showsHorizontalScrollIndicator={false}
+            contentContainerStyle={styles.categoryFilterRow}
+          >
+            <TouchableOpacity
+              style={[styles.categoryPill, selectedCategory === null && styles.categoryPillActive]}
+              onPress={() => setSelectedCategory(null)}
+              activeOpacity={0.7}
+            >
+              <ThemedText style={[styles.categoryPillText, selectedCategory === null && styles.categoryPillTextActive]}>All</ThemedText>
+            </TouchableOpacity>
+            {clipCategories.map((cat) => (
+              <TouchableOpacity
+                key={cat}
+                style={[styles.categoryPill, selectedCategory === cat && styles.categoryPillActive]}
+                onPress={() => setSelectedCategory(cat)}
+                activeOpacity={0.7}
+              >
+                <ThemedText style={[styles.categoryPillText, selectedCategory === cat && styles.categoryPillTextActive]}>{cat}</ThemedText>
+              </TouchableOpacity>
+            ))}
+          </ScrollView>
+        )}
+
         {/* Clips Content */}
         <View style={styles.clipsSection}>
-          {posts.length > 0 ? (
+          {(() => {
+            const filteredPosts = selectedCategory
+              ? posts.filter(p => p.categories?.includes(selectedCategory))
+              : posts;
+            return filteredPosts.length > 0 ? (
             <View style={styles.gridClipsContainer}>
-              {posts.map((post, index) => (
+              {filteredPosts.map((post, index) => (
                 <TouchableOpacity
                   key={post.id}
                   style={styles.gridClipItem}
@@ -1111,12 +1175,13 @@ export default function ProfileViewScreen() {
             </View>
           ) : (
             <View style={styles.emptyState}>
-              <ThemedText style={styles.emptyStateTitle}>No clips yet</ThemedText>
+              <ThemedText style={styles.emptyStateTitle}>{selectedCategory ? 'No clips in this category' : 'No clips yet'}</ThemedText>
               <ThemedText style={styles.emptyStateSubtext}>
-                This user hasn't posted any clips
+                {selectedCategory ? 'Try selecting a different category' : "This user hasn't posted any clips"}
               </ThemedText>
             </View>
-          )}
+          );
+          })()}
         </View>
         </View>
         </View>
@@ -1190,6 +1255,7 @@ export default function ProfileViewScreen() {
         )}
         </View>
         </ScrollView>
+        </>}
       </ScrollView>
 
       {/* Post Viewer Modal */}
@@ -1434,6 +1500,23 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: '#0f0f0f',
+  },
+  privateAccountMessage: {
+    alignItems: 'center',
+    paddingVertical: 48,
+    paddingHorizontal: 32,
+    gap: 10,
+  },
+  privateAccountTitle: {
+    fontSize: 17,
+    fontWeight: '700',
+    color: '#fff',
+    marginTop: 4,
+  },
+  privateAccountSubtext: {
+    fontSize: 14,
+    color: '#666',
+    textAlign: 'center',
   },
   backgroundGlow: {
     ...StyleSheet.absoluteFillObject,
@@ -1890,6 +1973,34 @@ const styles = StyleSheet.create({
     letterSpacing: 0.1,
   },
   // 2-column landscape clips grid
+  categoryFilterRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    paddingHorizontal: 16,
+    paddingBottom: 12,
+    paddingTop: 4,
+  },
+  categoryPill: {
+    paddingVertical: 6,
+    paddingHorizontal: 14,
+    borderRadius: 16,
+    backgroundColor: '#1a1a1a',
+    borderWidth: 1,
+    borderColor: '#1a1a1a',
+  },
+  categoryPillActive: {
+    backgroundColor: 'rgba(196, 39, 67, 0.15)',
+    borderColor: 'rgba(196, 39, 67, 0.4)',
+  },
+  categoryPillText: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: '#555',
+  },
+  categoryPillTextActive: {
+    color: '#fff',
+  },
   gridClipsContainer: {
     flexDirection: 'row',
     flexWrap: 'wrap',

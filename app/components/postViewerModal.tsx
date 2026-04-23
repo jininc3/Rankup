@@ -28,6 +28,7 @@ interface Post {
   createdAt: Timestamp;
   likes: number;
   commentsCount?: number;
+  categories?: string[];
 }
 
 interface PostViewerModalProps {
@@ -43,6 +44,7 @@ interface PostViewerModalProps {
   onEditCaption?: (post: Post, newCaption: string) => void;
   onArchive?: (post: Post) => void;
   onReport?: (post: Post) => void;
+  onCategorize?: (post: Post) => void;
 }
 
 export default function PostViewerModal({
@@ -58,6 +60,7 @@ export default function PostViewerModal({
   onEditCaption,
   onArchive,
   onReport,
+  onCategorize,
 }: PostViewerModalProps) {
   const router = useRouter();
   const { user: currentUser } = useAuth();
@@ -385,6 +388,7 @@ export default function PostViewerModal({
         onEditCaption={onEditCaption}
         onArchive={onArchive}
         onReport={onReport}
+        onCategorize={onCategorize}
       />
     );
   };

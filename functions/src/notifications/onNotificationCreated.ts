@@ -50,7 +50,7 @@ export const onNotificationCreated = onDocumentCreated(
           console.log('User disabled comment notifications');
           return;
         }
-        if (notification.type === 'follow' && preferences.followers === false) {
+        if ((notification.type === 'follow' || notification.type === 'follow_request') && preferences.followers === false) {
           console.log('User disabled follower notifications');
           return;
         }
@@ -104,6 +104,10 @@ export const onNotificationCreated = onDocumentCreated(
 
         case 'challenge_invite':
           body = `${notification.fromUsername} challenged you in "${notification.partyName}"! Accept to compete.`;
+          break;
+
+        case 'follow_request':
+          body = `${notification.fromUsername} wants to follow you`;
           break;
 
         case 'party_complete':
