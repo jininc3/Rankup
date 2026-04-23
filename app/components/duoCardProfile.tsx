@@ -114,6 +114,7 @@ interface DuoCardDetailModalProps {
     lookingFor?: string;
     winRate?: number;
     gamesPlayed?: number;
+    rankUpUsername?: string;
     userId: string;
   } | null;
 }
@@ -278,8 +279,8 @@ export default function DuoCardDetailModal({ visible, onClose, card }: DuoCardDe
                 </View>
                 <View style={styles.nameCol}>
                   <ThemedText style={styles.name} numberOfLines={1}>{card.inGameName || card.username}</ThemedText>
-                  {card.inGameName && card.username !== card.inGameName && (
-                    <ThemedText style={styles.subName}>{card.username}</ThemedText>
+                  {card.rankUpUsername && (
+                    <ThemedText style={styles.subName}>{card.rankUpUsername}</ThemedText>
                   )}
                 </View>
                 {gameLogo && (

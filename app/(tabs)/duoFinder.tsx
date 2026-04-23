@@ -12,7 +12,7 @@ export interface DuoCardData {
 }
 import EditDuoCard from '@/app/components/editDuoCard';
 import DuoFilterModal, { DuoFilterOptions } from '@/app/profilePages/duoFilterModal';
-import DuoCardDetailModal from '@/app/components/duoCardDetailModal';
+import DuoCardDetailModal from '@/app/components/duoCardProfile';
 import PostDuoCard from '@/app/components/postDuoCard';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
@@ -37,6 +37,7 @@ interface DuoCardWithId extends DuoCardData {
   inGameName?: string;
   winRate?: number;
   gamesPlayed?: number;
+  rankUpUsername?: string;
 }
 
 interface DuoPostWithId {
@@ -554,12 +555,14 @@ export default function DuoFinderScreen() {
               let inGameName = undefined;
               let winRate = undefined;
               let gamesPlayed = undefined;
+              let rankUpUsername = undefined;
               try {
                 const userDocRef = doc(db, 'users', cardData.userId);
                 const userDoc = await getDoc(userDocRef);
                 if (userDoc.exists()) {
                   const userData = userDoc.data();
                   avatar = userData?.avatar;
+                  rankUpUsername = userData?.username;
                   // Get in-game icon, name, and stats based on game type
                   if (cardData.game === 'valorant') {
                     if (userData?.valorantStats?.card?.small) {
@@ -621,6 +624,7 @@ export default function DuoFinderScreen() {
                 inGameName: inGameName,
                 winRate: winRate,
                 gamesPlayed: gamesPlayed,
+                rankUpUsername: rankUpUsername,
               };
             })
         ) as DuoCardWithId[];
@@ -831,6 +835,7 @@ export default function DuoFinderScreen() {
         inGameName: game === 'valorant' ? valorantInGameName : leagueInGameName,
         winRate: game === 'valorant' ? valorantWinRate : leagueWinRate,
         gamesPlayed: game === 'valorant' ? valorantGamesPlayed : leagueGamesPlayed,
+        rankUpUsername: user?.username,
         lp: 0,
         rr: 0,
       } as DuoCardWithId);
@@ -1372,6 +1377,7 @@ export default function DuoFinderScreen() {
           lookingFor: selectedDuoCard.lookingFor,
           winRate: selectedDuoCard.winRate,
           gamesPlayed: selectedDuoCard.gamesPlayed,
+          rankUpUsername: selectedDuoCard.rankUpUsername,
           userId: selectedDuoCard.userId,
         } : null}
       />
