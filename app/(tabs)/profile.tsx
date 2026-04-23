@@ -986,22 +986,17 @@ export default function ProfileScreen() {
                     onLoad={() => setCoverPhotoLoaded(true)}
                     onError={() => setCoverPhotoLoaded(true)}
                   />
-                ) : (
+                ) : null}
+                {/* Bottom fade into background - only when cover photo exists */}
+                {user?.coverPhoto && (
                   <LinearGradient
-                    colors={['#2c2f33', '#1a1a1a', '#0f0f0f']}
-                    start={{ x: 0, y: 0 }}
-                    end={{ x: 0, y: 1 }}
-                    style={styles.coverPhotoGradient}
+                    colors={['transparent', '#0f0f0f']}
+                    start={{ x: 0.5, y: 0 }}
+                    end={{ x: 0.5, y: 1 }}
+                    style={styles.coverPhotoBottomFade}
+                    pointerEvents="none"
                   />
                 )}
-                {/* Bottom fade into background */}
-                <LinearGradient
-                  colors={['transparent', '#0f0f0f']}
-                  start={{ x: 0.5, y: 0 }}
-                  end={{ x: 0.5, y: 1 }}
-                  style={styles.coverPhotoBottomFade}
-                  pointerEvents="none"
-                />
                 {/* Header Icons overlaid on cover photo */}
                 <View style={[styles.headerIconsRow, { top: insets.top - 10 }]}>
                   <TouchableOpacity
@@ -1740,7 +1735,7 @@ const styles = StyleSheet.create({
   },
   coverPhotoInner: {
     height: 170,
-    backgroundColor: 'rgba(255,255,255,0.04)',
+    backgroundColor: 'transparent',
     overflow: 'hidden',
   },
   coverPhotoFallbackBorder: {

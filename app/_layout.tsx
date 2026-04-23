@@ -177,7 +177,10 @@ function RootLayoutNav() {
       if (data.partyId && data.game) {
         router.push(`/partyPages/challengeDetail?id=${data.partyId}&game=${encodeURIComponent(data.game)}`);
       }
-    } else if (data.type === 'party_invite' || data.type === 'party_complete' || data.type === 'party_ranking_change') {
+    } else if (data.type === 'party_invite') {
+      // Navigate to notifications page to accept/decline
+      router.push('/notifications');
+    } else if (data.type === 'party_complete' || data.type === 'party_ranking_change') {
       // Navigate to the party details/leaderboard
       if (data.partyId && data.game) {
         router.push(`/partyPages/leaderboardDetail?id=${data.partyId}&game=${encodeURIComponent(data.game)}`);

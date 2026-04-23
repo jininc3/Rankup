@@ -10,6 +10,7 @@ import { db } from '@/config/firebase';
 import { useAuth } from '@/contexts/AuthContext';
 import { useFocusEffect } from '@react-navigation/native';
 import PostViewerModal from '@/app/components/postViewerModal';
+import ReportPostModal from '@/app/components/reportPostModal';
 import { LinearGradient } from 'expo-linear-gradient';
 
 const GAME_LOGOS: { [key: string]: any } = {
@@ -59,11 +60,13 @@ interface Post {
 
 export default function NotificationsScreen() {
   const router = useRouter();
-  const { user: currentUser, isUserBlocked } = useAuth();
+  const { user: currentUser, isUserBlocked, addReportedPost } = useAuth();
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [loading, setLoading] = useState(true);
   const [selectedPost, setSelectedPost] = useState<Post | null>(null);
   const [showPostViewer, setShowPostViewer] = useState(false);
+  const [reportingPost, setReportingPost] = useState<Post | null>(null);
+  const [showReportModal, setShowReportModal] = useState(false);
   const [loadingPost, setLoadingPost] = useState(false);
   const [partyIcons, setPartyIcons] = useState<{ [partyId: string]: string | null }>({});
   // Swipeable refs removed — using long-press to delete
@@ -562,7 +565,9 @@ export default function NotificationsScreen() {
           game: notification.game || '',
         },
       });
-    } else if ((notification.type === 'party_invite' || notification.type === 'party_complete' || notification.type === 'party_ranking_change') && notification.partyId) {
+    } else if (notification.type === 'party_invite') {
+      // No navigation — accept/decline on notifications page
+    } else if ((notification.type === 'party_complete' || notification.type === 'party_ranking_change') && notification.partyId) {
       // Navigate to leaderboard detail
       router.push({
         pathname: '/partyPages/leaderboardDetail',
@@ -903,30 +908,38 @@ export default function NotificationsScreen() {
                                 <ThemedText style={styles.invitePreviewGame}>{notification.game}</ThemedText>
                               )}
                             </View>
-                            <IconSymbol size={12} name="chevron.right" color="#444" />
+                            {notification.type !== 'party_invite' && (
+                              <IconSymbol size={12} name="chevron.right" color="#444" />
+                            )}
                           </View>
 
                           {/* Action row */}
                           <View style={styles.inviteActionRow}>
                             <TouchableOpacity
-                              style={[styles.inviteAcceptBtn, acceptingInvite === notification.id && styles.acceptButtonLoading]}
+                              style={[
+                                notification.type === 'party_invite' ? styles.partyInviteAcceptBtn : styles.inviteAcceptBtn,
+                                acceptingInvite === notification.id && styles.acceptButtonLoading,
+                              ]}
                               onPress={(e) => notification.type === 'party_invite' ? handleAcceptInvite(notification, e) : handleAcceptChallenge(notification, e)}
                               activeOpacity={0.7}
                               disabled={acceptingInvite === notification.id}
                             >
                               {acceptingInvite === notification.id ? (
-                                <ActivityIndicator size="small" color="#fff" />
+                                <ActivityIndicator size="small" color={notification.type === 'party_invite' ? '#0f0f0f' : '#fff'} />
                               ) : (
-                                <ThemedText style={styles.inviteAcceptText}>Accept</ThemedText>
+                                <ThemedText style={notification.type === 'party_invite' ? styles.partyInviteAcceptText : styles.inviteAcceptText}>Accept</ThemedText>
                               )}
                             </TouchableOpacity>
                             <TouchableOpacity
-                              style={[styles.inviteDeclineBtn, acceptingInvite === notification.id && { opacity: 0.5 }]}
+                              style={[
+                                notification.type === 'party_invite' ? styles.partyInviteDeclineBtn : styles.inviteDeclineBtn,
+                                acceptingInvite === notification.id && { opacity: 0.5 },
+                              ]}
                               onPress={(e) => notification.type === 'party_invite' ? handleDeclineInvite(notification, e) : handleDeclineChallenge(notification, e)}
                               activeOpacity={0.7}
                               disabled={acceptingInvite === notification.id}
                             >
-                              <ThemedText style={styles.inviteDeclineText}>Decline</ThemedText>
+                              <ThemedText style={notification.type === 'party_invite' ? styles.partyInviteDeclineText : styles.inviteDeclineText}>Decline</ThemedText>
                             </TouchableOpacity>
                             <ThemedText style={styles.inviteTimeText}>{getTimeAgo(notification.createdAt)}</ThemedText>
                           </View>
@@ -962,8 +975,29 @@ export default function NotificationsScreen() {
             setShowPostViewer(false);
             setSelectedPost(null);
           }}
-          onCommentAdded={() => {
-            // Optionally refresh data if needed
+          onCommentAdded={() => {}}
+          onReport={(post) => {
+            setReportingPost(post);
+            setShowReportModal(true);
+          }}
+        />
+      )}
+
+      {/* Report Post Modal */}
+      {reportingPost && (
+        <ReportPostModal
+          visible={showReportModal}
+          postId={reportingPost.id}
+          postOwnerId={reportingPost.userId}
+          postOwnerUsername={reportingPost.username}
+          onClose={() => {
+            setShowReportModal(false);
+            setReportingPost(null);
+          }}
+          onReported={(postId) => {
+            addReportedPost(postId);
+            setShowPostViewer(false);
+            setSelectedPost(null);
           }}
         />
       )}
@@ -1254,6 +1288,34 @@ const styles = StyleSheet.create({
   },
   inviteDeclineText: {
     color: '#999',
+    fontSize: 13,
+    fontWeight: '600',
+  },
+  partyInviteAcceptBtn: {
+    flex: 1,
+    backgroundColor: '#fff',
+    paddingVertical: 8,
+    borderRadius: 8,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  partyInviteAcceptText: {
+    color: '#0f0f0f',
+    fontSize: 13,
+    fontWeight: '700',
+  },
+  partyInviteDeclineBtn: {
+    flex: 1,
+    backgroundColor: '#1a1a1a',
+    paddingVertical: 8,
+    borderRadius: 8,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 0.5,
+    borderColor: 'rgba(255,255,255,0.1)',
+  },
+  partyInviteDeclineText: {
+    color: '#fff',
     fontSize: 13,
     fontWeight: '600',
   },

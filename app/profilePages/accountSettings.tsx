@@ -145,6 +145,7 @@ export default function AccountSettingsScreen() {
                   onPress={() => {
                     if (item.id === 1) handleEditUsername();
                     else if (item.id === 2) handleEditEmail();
+                    else if (item.id === 3) router.push('/profilePages/editPhone');
                     else if (item.id === 4) router.push('/profilePages/changePassword');
                     else if (item.id === 8) router.push('/profilePages/deleteAccount');
                   }}

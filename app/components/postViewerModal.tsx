@@ -42,6 +42,7 @@ interface PostViewerModalProps {
   onDelete?: (post: Post) => void;
   onEditCaption?: (post: Post, newCaption: string) => void;
   onArchive?: (post: Post) => void;
+  onReport?: (post: Post) => void;
 }
 
 export default function PostViewerModal({
@@ -56,6 +57,7 @@ export default function PostViewerModal({
   onDelete,
   onEditCaption,
   onArchive,
+  onReport,
 }: PostViewerModalProps) {
   const router = useRouter();
   const { user: currentUser } = useAuth();
@@ -382,6 +384,7 @@ export default function PostViewerModal({
         onDelete={onDelete}
         onEditCaption={onEditCaption}
         onArchive={onArchive}
+        onReport={onReport}
       />
     );
   };

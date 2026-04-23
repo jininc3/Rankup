@@ -6,6 +6,7 @@ import type { UserProfile } from '@/services/authService';
 import { collection, query, where, getDocs, orderBy, limit, Timestamp } from 'firebase/firestore';
 import { getFollowing } from '@/services/followService';
 import { getBlockedUsers, getBlockedByUserIds } from '@/services/blockService';
+import { getReportedPostIds } from '@/services/reportService';
 import { Image } from 'react-native';
 import { registerForPushNotificationsAsync } from '@/services/notificationService';
 import { clearLeagueStatsCache } from '@/services/riotService';
@@ -85,6 +86,8 @@ interface AuthContextType {
   isUserBlocked: (userId: string) => boolean;
   addBlockedUser: (userId: string) => void;
   removeBlockedUser: (userId: string) => void;
+  isPostReported: (postId: string) => boolean;
+  addReportedPost: (postId: string) => void;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -102,6 +105,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [newlyUnfollowedUserId, setNewlyUnfollowedUserIdState] = useState<string | null>(null);
   const [blockedUserIds, setBlockedUserIds] = useState<Set<string>>(new Set());
   const [blockedByUserIds, setBlockedByUserIds] = useState<Set<string>>(new Set());
+  const [reportedPostIds, setReportedPostIds] = useState<Set<string>>(new Set());
   // Immediately transition to home screen (skeleton shimmer shows there)
   const setLoadingFalse = () => {
     setIsLoading(false);
@@ -379,20 +383,22 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
             // Preload feed before showing home page; others run in background
             if (!userProfile.needsUsernameSetup) {
-              // Load block lists before feed so blocked users are filtered
+              // Load block lists and reported posts before feed so they are filtered
               let blocked = new Set<string>();
               let blockedBy = new Set<string>();
               try {
-                const [blockedData, blockedByData] = await Promise.all([
+                const [blockedData, blockedByData, reportedIds] = await Promise.all([
                   getBlockedUsers(userProfile.id),
                   getBlockedByUserIds(userProfile.id),
+                  getReportedPostIds(userProfile.id),
                 ]);
                 blocked = new Set(blockedData.map(b => b.blockedUserId));
                 blockedBy = new Set(blockedByData);
                 setBlockedUserIds(blocked);
                 setBlockedByUserIds(blockedBy);
+                setReportedPostIds(new Set(reportedIds));
               } catch (e) {
-                console.log('Block lists not available yet, continuing without filtering');
+                console.log('Block/report lists not available yet, continuing without filtering');
               }
 
               await preloadFeed(userProfile.id, blocked, blockedBy);
@@ -431,16 +437,18 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
               let blocked = new Set<string>();
               let blockedBy = new Set<string>();
               try {
-                const [blockedData, blockedByData] = await Promise.all([
+                const [blockedData, blockedByData, reportedIds] = await Promise.all([
                   getBlockedUsers(firebaseUser.uid),
                   getBlockedByUserIds(firebaseUser.uid),
+                  getReportedPostIds(firebaseUser.uid),
                 ]);
                 blocked = new Set(blockedData.map(b => b.blockedUserId));
                 blockedBy = new Set(blockedByData);
                 setBlockedUserIds(blocked);
                 setBlockedByUserIds(blockedBy);
+                setReportedPostIds(new Set(reportedIds));
               } catch (e) {
-                console.log('Block lists not available yet, continuing without filtering');
+                console.log('Block/report lists not available yet, continuing without filtering');
               }
 
               await preloadFeed(firebaseUser.uid, blocked, blockedBy);
@@ -516,6 +524,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       setPreloadedRiotStats(null);
       setBlockedUserIds(new Set());
       setBlockedByUserIds(new Set());
+      setReportedPostIds(new Set());
     } catch (error) {
       console.error('Failed to sign out:', error);
       throw error;
@@ -569,6 +578,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     });
   };
 
+  const isPostReported = (postId: string): boolean => {
+    return reportedPostIds.has(postId);
+  };
+
+  const addReportedPost = (postId: string) => {
+    setReportedPostIds(prev => new Set([...prev, postId]));
+  };
+
   return (
     <AuthContext.Provider
       value={{
@@ -597,6 +614,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         isUserBlocked,
         addBlockedUser,
         removeBlockedUser,
+        isPostReported,
+        addReportedPost,
       }}
     >
       {children}

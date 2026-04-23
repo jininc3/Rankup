@@ -716,33 +716,21 @@ export default function EditProfileScreen() {
         <View style={styles.headerSection}>
           {/* Cover Photo Area */}
           <View style={styles.coverPhotoWrapper}>
-            {pendingRemoveCoverPhoto ? (
-              <LinearGradient
-                colors={['#2c2f33', '#1a1a1a', '#0f0f0f']}
-                start={{ x: 0, y: 0 }}
-                end={{ x: 0, y: 1 }}
-                style={styles.coverPhotoGradient}
-              />
-            ) : pendingCoverPhotoUri ? (
+            {pendingRemoveCoverPhoto ? null : pendingCoverPhotoUri ? (
               <Image source={{ uri: pendingCoverPhotoUri }} style={styles.coverPhotoImage} />
             ) : coverPhoto ? (
               <Image source={{ uri: coverPhoto }} style={styles.coverPhotoImage} />
-            ) : (
+            ) : null}
+            {/* Bottom fade - only when a cover photo is visible */}
+            {!pendingRemoveCoverPhoto && (pendingCoverPhotoUri || coverPhoto) && (
               <LinearGradient
-                colors={['#2c2f33', '#1a1a1a', '#0f0f0f']}
+                colors={['transparent', 'rgba(15, 15, 15, 0.15)', 'rgba(15, 15, 15, 0.45)', 'rgba(15, 15, 15, 0.75)', '#0f0f0f']}
+                locations={[0, 0.25, 0.5, 0.75, 1]}
                 start={{ x: 0, y: 0 }}
                 end={{ x: 0, y: 1 }}
-                style={styles.coverPhotoGradient}
+                style={styles.coverPhotoFadeBottom}
               />
             )}
-            {/* Bottom fade */}
-            <LinearGradient
-              colors={['transparent', 'rgba(15, 15, 15, 0.15)', 'rgba(15, 15, 15, 0.45)', 'rgba(15, 15, 15, 0.75)', '#0f0f0f']}
-              locations={[0, 0.25, 0.5, 0.75, 1]}
-              start={{ x: 0, y: 0 }}
-              end={{ x: 0, y: 1 }}
-              style={styles.coverPhotoFadeBottom}
-            />
 
             {/* Header Icons overlaid on cover photo */}
             <View style={styles.headerIconsRow}>
@@ -1073,7 +1061,7 @@ const styles = StyleSheet.create({
   coverPhotoWrapper: {
     width: '100%',
     height: 180,
-    backgroundColor: '#1a1a1a',
+    backgroundColor: 'transparent',
     overflow: 'hidden',
   },
   coverPhotoImage: {

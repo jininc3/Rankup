@@ -55,6 +55,16 @@ service cloud.firestore {
                       && (request.auth.uid == userId || request.auth.uid == followingId);
       }
 
+      // Reported posts subcollection - tracks which posts a user reported (for feed hiding)
+      match /reportedPosts/{postId} {
+        allow read: if request.auth != null && request.auth.uid == userId;
+
+        allow create: if request.auth != null
+                      && request.auth.uid == userId
+                      && request.resource.data.postId == postId
+                      && request.resource.data.createdAt is timestamp;
+      }
+
       // Blocked users subcollection - who this user has blocked
       match /blockedUsers/{blockedUserId} {
         allow read: if request.auth != null && request.auth.uid == userId;
@@ -339,6 +349,24 @@ service cloud.firestore {
       // Only the card owner can delete their own duo card
       allow delete: if request.auth != null
                     && resource.data.userId == request.auth.uid;
+    }
+
+    // Reports collection - post reports from users
+    match /reports/{reportId} {
+      // Admin can read all reports; regular users cannot
+      allow read: if request.auth != null
+                  && request.auth.uid == 'VljkZhdkF3gCQI0clVkbQ0XCIxp1';
+
+      // Any authenticated user can create a report
+      allow create: if request.auth != null
+                    && request.resource.data.reporterId == request.auth.uid
+                    && request.resource.data.reason in ['spam', 'harassment', 'inappropriate', 'other']
+                    && request.resource.data.status == 'pending'
+                    && request.resource.data.createdAt is timestamp;
+
+      // Only admin can update report status
+      allow update: if request.auth != null
+                    && request.auth.uid == 'VljkZhdkF3gCQI0clVkbQ0XCIxp1';
     }
 
     // Default: deny all other access

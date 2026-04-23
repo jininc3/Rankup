@@ -1,4 +1,5 @@
 import PostViewerModal from '@/app/components/postViewerModal';
+import ReportPostModal from '@/app/components/reportPostModal';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { IconSymbol } from '@/components/ui/icon-symbol';
@@ -84,7 +85,7 @@ const formatRank = (tier: string, rank: string) => {
 export default function ProfilePreviewScreen() {
   const router = useRouter();
   const params = useLocalSearchParams();
-  const { user: currentUser, refreshUser } = useAuth();
+  const { user: currentUser, refreshUser, addReportedPost } = useAuth();
   const [viewedUser, setViewedUser] = useState<ViewedUser | null>(null);
   const [loadingUser, setLoadingUser] = useState(true);
   const [posts, setPosts] = useState<Post[]>([]);
@@ -92,6 +93,8 @@ export default function ProfilePreviewScreen() {
   const [selectedPost, setSelectedPost] = useState<Post | null>(null);
   const [selectedPostIndex, setSelectedPostIndex] = useState(0);
   const [showPostViewer, setShowPostViewer] = useState(false);
+  const [reportingPost, setReportingPost] = useState<Post | null>(null);
+  const [showReportModal, setShowReportModal] = useState(false);
   const [isFollowing, setIsFollowing] = useState(false);
   const [followLoading, setFollowLoading] = useState(false);
   const [riotStats, setRiotStats] = useState<any>(null);
@@ -506,22 +509,17 @@ export default function ProfilePreviewScreen() {
                 source={{ uri: viewedUser.coverPhoto }}
                 style={styles.coverPhotoImage}
               />
-            ) : (
+            ) : null}
+            {/* Bottom fade - only when cover photo exists */}
+            {viewedUser?.coverPhoto && (
               <LinearGradient
-                colors={['#2c2f33', '#1a1a1a', '#0f0f0f']}
+                colors={['transparent', 'rgba(15, 15, 15, 0.15)', 'rgba(15, 15, 15, 0.45)', 'rgba(15, 15, 15, 0.75)', '#0f0f0f']}
+                locations={[0, 0.25, 0.5, 0.75, 1]}
                 start={{ x: 0, y: 0 }}
                 end={{ x: 0, y: 1 }}
-                style={styles.coverPhotoGradient}
+                style={styles.coverPhotoFadeBottom}
               />
             )}
-            {/* Bottom fade */}
-            <LinearGradient
-              colors={['transparent', 'rgba(15, 15, 15, 0.15)', 'rgba(15, 15, 15, 0.45)', 'rgba(15, 15, 15, 0.75)', '#0f0f0f']}
-              locations={[0, 0.25, 0.5, 0.75, 1]}
-              start={{ x: 0, y: 0 }}
-              end={{ x: 0, y: 1 }}
-              style={styles.coverPhotoFadeBottom}
-            />
 
             {/* Header Icons overlaid on cover photo */}
             <View style={styles.headerIconsRow}>
@@ -908,7 +906,30 @@ export default function ProfilePreviewScreen() {
         userAvatar={viewedUser?.avatar}
         onClose={closePostViewer}
         onNavigate={handleNavigatePost}
+        onReport={(post) => {
+          setReportingPost(post);
+          setShowReportModal(true);
+        }}
       />
+
+      {/* Report Post Modal */}
+      {reportingPost && (
+        <ReportPostModal
+          visible={showReportModal}
+          postId={reportingPost.id}
+          postOwnerId={reportingPost.userId}
+          postOwnerUsername={reportingPost.username}
+          onClose={() => {
+            setShowReportModal(false);
+            setReportingPost(null);
+          }}
+          onReported={(postId) => {
+            addReportedPost(postId);
+            setPosts(prev => prev.filter(p => p.id !== postId));
+            setShowPostViewer(false);
+          }}
+        />
+      )}
     </ThemedView>
   );
 }
@@ -966,7 +987,7 @@ const styles = StyleSheet.create({
   coverPhotoWrapper: {
     width: '100%',
     height: 170,
-    backgroundColor: '#1a1a1a',
+    backgroundColor: 'transparent',
     overflow: 'hidden',
   },
   coverPhotoImage: {

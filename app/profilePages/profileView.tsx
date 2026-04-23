@@ -18,6 +18,7 @@ import { followUser, unfollowUser, isFollowing as checkIsFollowing, getUserRecen
 import { blockUser } from '@/services/blockService';
 import { createOrGetChat } from '@/services/chatService';
 import PostViewerModal from '@/app/components/postViewerModal';
+import ReportPostModal from '@/app/components/reportPostModal';
 import { calculateTierBorderColor, calculateTierBorderGradient } from '@/utils/tierBorderUtils';
 import { formatCount } from '@/utils/formatCount';
 import GradientBorder from '@/components/GradientBorder';
@@ -76,7 +77,7 @@ interface Post {
 export default function ProfileViewScreen() {
   const router = useRouter();
   const params = useLocalSearchParams();
-  const { user: currentUser, refreshUser, setNewlyFollowedUserPosts, setNewlyUnfollowedUserId, isUserBlocked, addBlockedUser } = useAuth();
+  const { user: currentUser, refreshUser, setNewlyFollowedUserPosts, setNewlyUnfollowedUserId, isUserBlocked, addBlockedUser, addReportedPost } = useAuth();
   const [viewedUser, setViewedUser] = useState<ViewedUser | null>(null);
   const [loadingUser, setLoadingUser] = useState(true);
   const [posts, setPosts] = useState<Post[]>([]);
@@ -96,6 +97,8 @@ export default function ProfileViewScreen() {
   const cardAnimations = useRef<Animated.Value[]>([]).current;
   const [achievements, setAchievements] = useState<{ partyName: string; game: string; placement: number; endDate: string }[]>([]);
   const [loadingAchievements, setLoadingAchievements] = useState(false);
+  const [reportingPost, setReportingPost] = useState<Post | null>(null);
+  const [showReportModal, setShowReportModal] = useState(false);
   const [achievementsError, setAchievementsError] = useState(false);
   const [userNotFound, setUserNotFound] = useState(false);
   const [activeTab, setActiveTab] = useState<'clips' | 'achievements'>('clips');
@@ -740,14 +743,16 @@ export default function ProfileViewScreen() {
             {viewedUser?.coverPhoto && (
               <Image source={{ uri: viewedUser.coverPhoto }} style={styles.coverPhotoImage} />
             )}
-            {/* Bottom fade */}
-            <LinearGradient
-              colors={['transparent', 'rgba(15, 15, 15, 0.15)', 'rgba(15, 15, 15, 0.45)', 'rgba(15, 15, 15, 0.75)', '#0f0f0f']}
-              locations={[0, 0.25, 0.5, 0.75, 1]}
-              start={{ x: 0, y: 0 }}
-              end={{ x: 0, y: 1 }}
-              style={styles.coverPhotoFadeBottom}
-            />
+            {/* Bottom fade - only when cover photo exists */}
+            {viewedUser?.coverPhoto && (
+              <LinearGradient
+                colors={['transparent', 'rgba(15, 15, 15, 0.15)', 'rgba(15, 15, 15, 0.45)', 'rgba(15, 15, 15, 0.75)', '#0f0f0f']}
+                locations={[0, 0.25, 0.5, 0.75, 1]}
+                start={{ x: 0, y: 0 }}
+                end={{ x: 0, y: 1 }}
+                style={styles.coverPhotoFadeBottom}
+              />
+            )}
 
             {/* Header Icons overlaid on cover photo */}
             <View style={styles.headerIconsRow}>
@@ -1196,7 +1201,30 @@ export default function ProfileViewScreen() {
         userAvatar={viewedUser?.avatar}
         onClose={closePostViewer}
         onCommentAdded={fetchPosts}
+        onReport={(post) => {
+          setReportingPost(post);
+          setShowReportModal(true);
+        }}
       />
+
+      {/* Report Post Modal */}
+      {reportingPost && (
+        <ReportPostModal
+          visible={showReportModal}
+          postId={reportingPost.id}
+          postOwnerId={reportingPost.userId}
+          postOwnerUsername={reportingPost.username}
+          onClose={() => {
+            setShowReportModal(false);
+            setReportingPost(null);
+          }}
+          onReported={(postId) => {
+            addReportedPost(postId);
+            setPosts(prev => prev.filter(p => p.id !== postId));
+            setShowPostViewer(false);
+          }}
+        />
+      )}
 
       {/* Socials Bottom Sheet */}
       <Modal

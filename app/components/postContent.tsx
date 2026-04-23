@@ -34,24 +34,29 @@ const formatPostDate = (timestamp: any): string => {
   const date = timestamp.toDate ? timestamp.toDate() : new Date(timestamp);
   const diffInMs = now.getTime() - date.getTime();
   const diffInSeconds = Math.floor(diffInMs / 1000);
-  const diffInDays = Math.floor(diffInMs / (1000 * 60 * 60 * 24));
 
-  // Within the last minute
+  // Under 1 minute
   if (diffInSeconds < 60) {
     return 'now';
   }
 
-  // Check if it's today (same calendar day)
-  const isToday = date.getDate() === now.getDate() &&
-                  date.getMonth() === now.getMonth() &&
-                  date.getFullYear() === now.getFullYear();
+  const diffInMinutes = Math.floor(diffInSeconds / 60);
+  const diffInHours = Math.floor(diffInMinutes / 60);
 
-  if (isToday) {
-    // Show time for today's posts
-    return date.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true });
+  // Under 24 hours
+  if (diffInHours < 24) {
+    if (diffInHours < 1) {
+      return diffInMinutes === 1 ? '1 min ago' : `${diffInMinutes} mins ago`;
+    }
+    return diffInHours === 1 ? '1 hour ago' : `${diffInHours} hours ago`;
   }
 
-  // Within a week (1-7 days ago)
+  // Use calendar day difference for day-level display
+  const nowMidnight = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+  const dateMidnight = new Date(date.getFullYear(), date.getMonth(), date.getDate());
+  const diffInDays = Math.round((nowMidnight.getTime() - dateMidnight.getTime()) / (1000 * 60 * 60 * 24));
+
+  // 1-6 days ago
   if (diffInDays < 7) {
     return diffInDays === 1 ? '1 day ago' : `${diffInDays} days ago`;
   }
@@ -338,6 +343,7 @@ interface PostContentProps {
   onDelete?: (post: Post) => void;
   onEditCaption?: (post: Post, newCaption: string) => void;
   onArchive?: (post: Post) => void;
+  onReport?: (post: Post) => void;
   onVideoReady?: () => void;
 }
 
@@ -360,6 +366,7 @@ export default function PostContent({
   onDelete,
   onEditCaption,
   onArchive,
+  onReport,
   onVideoReady
 }: PostContentProps) {
   // Calculate tier border color
@@ -442,31 +449,37 @@ export default function PostContent({
 
   // Handle post options menu
   const handlePostOptions = () => {
+    const isOwner = post.userId === currentUserId;
     const options = [];
 
-    // Add Edit Caption option if callback is provided
-    if (onEditCaption) {
-      options.push({
-        text: 'Edit Caption',
-        onPress: handleStartEditCaption
-      });
-    }
-
-    // Add Archive option if callback is provided
-    if (onArchive) {
-      options.push({
-        text: 'Archive',
-        onPress: () => onArchive(post)
-      });
-    }
-
-    // Add Delete option if callback is provided
-    if (onDelete) {
-      options.push({
-        text: 'Delete Post',
-        style: 'destructive' as const,
-        onPress: () => onDelete(post)
-      });
+    if (isOwner) {
+      if (onEditCaption) {
+        options.push({
+          text: 'Edit Caption',
+          onPress: handleStartEditCaption
+        });
+      }
+      if (onArchive) {
+        options.push({
+          text: 'Archive',
+          onPress: () => onArchive(post)
+        });
+      }
+      if (onDelete) {
+        options.push({
+          text: 'Delete Post',
+          style: 'destructive' as const,
+          onPress: () => onDelete(post)
+        });
+      }
+    } else {
+      if (onReport) {
+        options.push({
+          text: 'Report Post',
+          style: 'destructive' as const,
+          onPress: () => onReport(post)
+        });
+      }
     }
 
     options.push({
@@ -530,7 +543,11 @@ export default function PostContent({
         <View style={styles.headerRight}>
           <TouchableOpacity
             style={styles.menuButton}
-            onPress={post.userId === currentUserId && (onDelete || onEditCaption || onArchive) ? handlePostOptions : undefined}
+            onPress={
+              (post.userId === currentUserId && (onDelete || onEditCaption || onArchive)) || (post.userId !== currentUserId && onReport)
+                ? handlePostOptions
+                : undefined
+            }
             activeOpacity={0.6}
             hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
           >

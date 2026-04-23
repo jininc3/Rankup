@@ -7,6 +7,7 @@ import { doc, getDoc } from 'firebase/firestore';
 import { db } from '@/config/firebase';
 import { useAuth } from '@/contexts/AuthContext';
 import PostViewerModal from '@/app/components/postViewerModal';
+import ReportPostModal from '@/app/components/reportPostModal';
 import { Timestamp } from 'firebase/firestore';
 import { LinearGradient } from 'expo-linear-gradient';
 
@@ -31,10 +32,12 @@ interface Post {
 export default function PostViewerScreen() {
   const router = useRouter();
   const params = useLocalSearchParams();
-  const { user: currentUser } = useAuth();
+  const { user: currentUser, addReportedPost } = useAuth();
   const [post, setPost] = useState<Post | null>(null);
   const [loading, setLoading] = useState(true);
   const [showModal, setShowModal] = useState(false);
+  const [reportingPost, setReportingPost] = useState<Post | null>(null);
+  const [showReportModal, setShowReportModal] = useState(false);
 
   const postId = params.postId as string;
 
@@ -131,6 +134,27 @@ export default function PostViewerScreen() {
           currentIndex={0}
           userAvatar={currentUser?.avatar}
           onClose={handleClose}
+          onReport={(p) => {
+            setReportingPost(p);
+            setShowReportModal(true);
+          }}
+        />
+      )}
+
+      {reportingPost && (
+        <ReportPostModal
+          visible={showReportModal}
+          postId={reportingPost.id}
+          postOwnerId={reportingPost.userId}
+          postOwnerUsername={reportingPost.username}
+          onClose={() => {
+            setShowReportModal(false);
+            setReportingPost(null);
+          }}
+          onReported={(postId) => {
+            addReportedPost(postId);
+            handleClose();
+          }}
         />
       )}
     </ThemedView>

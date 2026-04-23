@@ -9,6 +9,7 @@ import { getFollowing } from '@/services/followService';
 import { likePost, unlikePost, isPostLiked } from '@/services/likeService';
 import { createOrGetChat, subscribeToUserChats } from '@/services/chatService';
 import CommentModal from '@/app/components/commentModal';
+import ReportPostModal from '@/app/components/reportPostModal';
 import PostContent from '@/app/components/postContent';
 import PostDuoCard from '@/app/components/postDuoCard';
 import { DuoCardData } from '@/app/(tabs)/duoFinder';
@@ -92,7 +93,9 @@ export default function HomeScreen() {
     clearNewlyFollowedUserPosts,
     newlyUnfollowedUserId,
     clearNewlyUnfollowedUserId,
-    isUserBlocked
+    isUserBlocked,
+    isPostReported,
+    addReportedPost,
   } = useAuth();
   const [activeTab, setActiveTab] = useState<'forYou' | 'following'>('following');
   const [followingPosts, setFollowingPosts] = useState<Post[]>([]);
@@ -111,6 +114,8 @@ export default function HomeScreen() {
   const [likingInProgress, setLikingInProgress] = useState<Set<string>>(new Set());
   const [commentingPost, setCommentingPost] = useState<Post | null>(null);
   const [showCommentModal, setShowCommentModal] = useState(false);
+  const [reportingPost, setReportingPost] = useState<Post | null>(null);
+  const [showReportModal, setShowReportModal] = useState(false);
   const [isScreenFocused, setIsScreenFocused] = useState(true);
   const [lastDoc, setLastDoc] = useState<QueryDocumentSnapshot<DocumentData> | null>(null);
   const [hasMore, setHasMore] = useState(true);
@@ -211,7 +216,7 @@ export default function HomeScreen() {
   // Consume preloaded posts from AuthContext (already enriched with rank data)
   useEffect(() => {
     if (preloadedPosts && !hasConsumedPreload) {
-      setFollowingPosts(preloadedPosts.filter(p => !isUserBlocked(p.userId)));
+      setFollowingPosts(preloadedPosts.filter(p => !isUserBlocked(p.userId) && !isPostReported(p.id)));
       setLoading(false);
       setHasConsumedPreload(true);
       clearPreloadedPosts();
@@ -618,6 +623,22 @@ export default function HomeScreen() {
   const handleCloseComments = () => {
     setShowCommentModal(false);
     setCommentingPost(null);
+  };
+
+  // Handle report post
+  const handleReport = (post: Post) => {
+    setReportingPost(post);
+    setShowReportModal(true);
+  };
+
+  const handlePostReported = (postId: string) => {
+    addReportedPost(postId);
+    // Remove the post from the feed immediately
+    if (activeTab === 'following') {
+      setFollowingPosts(prev => prev.filter(p => p.id !== postId));
+    } else {
+      setForYouPosts(prev => prev.filter(p => p.id !== postId));
+    }
   };
 
   // Pull to refresh
@@ -1097,6 +1118,7 @@ export default function HomeScreen() {
                   isLiking={likingInProgress.has(post.id)}
                   onPlayerReady={handlePlayerReady}
                   showRecentComments={true}
+                  onReport={handleReport}
                 />
               );
 
@@ -1158,6 +1180,21 @@ export default function HomeScreen() {
           }
           onClose={handleCloseComments}
           onCommentAdded={handleCommentAdded}
+        />
+      )}
+
+      {/* Report Post Modal */}
+      {reportingPost && (
+        <ReportPostModal
+          visible={showReportModal}
+          postId={reportingPost.id}
+          postOwnerId={reportingPost.userId}
+          postOwnerUsername={reportingPost.username}
+          onClose={() => {
+            setShowReportModal(false);
+            setReportingPost(null);
+          }}
+          onReported={handlePostReported}
         />
       )}
 

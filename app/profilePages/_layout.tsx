@@ -136,6 +136,12 @@ export default function ProfilePagesLayout() {
         }}
       />
       <Stack.Screen
+        name="adminReports"
+        options={{
+          headerShown: false,
+        }}
+      />
+      <Stack.Screen
         name="deleteAccount"
         options={{
           headerShown: false,
@@ -143,6 +149,18 @@ export default function ProfilePagesLayout() {
       />
       <Stack.Screen
         name="changePassword"
+        options={{
+          headerShown: false,
+        }}
+      />
+      <Stack.Screen
+        name="editPhone"
+        options={{
+          headerShown: false,
+        }}
+      />
+      <Stack.Screen
+        name="verifyPhone"
         options={{
           headerShown: false,
         }}

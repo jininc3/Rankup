@@ -2,12 +2,17 @@ import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { IconSymbol } from '@/components/ui/icon-symbol';
 import { useRouter } from '@/hooks/useRouter';
+import { useAuth } from '@/contexts/AuthContext';
 import { ScrollView, StyleSheet, Switch, TouchableOpacity, View } from 'react-native';
 import { useState } from 'react';
 import { LinearGradient } from 'expo-linear-gradient';
 
+const ADMIN_IDS = ['VljkZhdkF3gCQI0clVkbQ0XCIxp1'];
+
 export default function PrivacySafetyScreen() {
   const router = useRouter();
+  const { user } = useAuth();
+  const isAdmin = user?.id ? ADMIN_IDS.includes(user.id) : false;
 
   // Privacy toggles
   const [privateAccountEnabled, setPrivateAccountEnabled] = useState(false);
@@ -79,6 +84,13 @@ export default function PrivacySafetyScreen() {
           subtitle: 'Filter sensitive content',
           hasChevron: true,
         },
+        ...(isAdmin ? [{
+          id: 10,
+          icon: 'flag' as const,
+          title: 'Reports (Admin)',
+          subtitle: 'Review reported posts',
+          hasChevron: true,
+        }] : []),
       ],
     },
     {
@@ -209,6 +221,7 @@ export default function PrivacySafetyScreen() {
                   ]}
                   onPress={() => {
                     if (item.id === 1) router.push('/profilePages/blockedUsers');
+                    if (item.id === 10) router.push('/profilePages/adminReports');
                   }}
                   activeOpacity={0.7}
                 >
