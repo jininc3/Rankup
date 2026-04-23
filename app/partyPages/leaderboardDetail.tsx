@@ -287,7 +287,7 @@ export default function LeaderboardDetail() {
                 const partyRef = doc(db, 'parties', partyDocId);
                 await deleteDoc(partyRef);
                 Alert.alert('Leaderboard Deleted', 'The leaderboard has been deleted.');
-                router.replace('/(tabs)/leaderboards');
+                router.replace('/partyPages/lobbies');
               } catch (error) {
                 console.error('Error deleting leaderboard:', error);
                 Alert.alert('Error', 'Failed to delete leaderboard. Please try again.');
@@ -319,7 +319,7 @@ export default function LeaderboardDetail() {
               if (updatedMembers.length === 0) {
                 await deleteDoc(partyRef);
                 Alert.alert('Leaderboard Deleted', 'You were the last member. The leaderboard has been deleted.');
-                router.replace('/(tabs)/leaderboards');
+                router.replace('/partyPages/lobbies');
                 return;
               }
 
@@ -1095,7 +1095,7 @@ export default function LeaderboardDetail() {
         <View style={styles.coverPhotoSection}>
           {/* Header Icons */}
           <View style={styles.headerIconsRow}>
-            <TouchableOpacity style={styles.backButton} onPress={() => router.back()}>
+            <TouchableOpacity style={styles.backButton} onPress={() => router.replace('/partyPages/lobbies')}>
               <IconSymbol size={20} name="chevron.left" color="#fff" />
             </TouchableOpacity>
             <View style={styles.headerRightButtons}>

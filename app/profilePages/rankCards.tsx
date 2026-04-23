@@ -8,6 +8,7 @@ import {
   View,
   TouchableOpacity,
   ScrollView,
+  FlatList,
   Image,
   ActivityIndicator,
   Dimensions,
@@ -17,7 +18,7 @@ const { width: screenWidth, height: screenHeight } = Dimensions.get('window');
 import { useRouter } from '@/hooks/useRouter';
 import { useFocusEffect, useLocalSearchParams } from 'expo-router';
 import { useAuth } from '@/contexts/AuthContext';
-import { useCallback, useState } from 'react';
+import { useCallback, useRef, useState } from 'react';
 import { db } from '@/config/firebase';
 import { doc, getDoc } from 'firebase/firestore';
 import { useValorantStats } from '@/contexts/ValorantStatsContext';
@@ -42,6 +43,8 @@ export default function RankCardsScreen() {
   const [enabledRankCards, setEnabledRankCards] = useState<string[]>([]);
   const [fetchedUsername, setFetchedUsername] = useState<string>('User');
   const [loading, setLoading] = useState(true);
+  const [viewMode, setViewMode] = useState<'stacked' | 'swipe'>('stacked');
+  const [activeCardIndex, setActiveCardIndex] = useState(0);
 
   const fetchData = useCallback(async () => {
     if (!targetUserId) { setLoading(false); return; }
@@ -63,10 +66,15 @@ export default function RankCardsScreen() {
     }
   }, [targetUserId, params.username]);
 
+  const lastRankFetch = useRef<number>(0);
   useFocusEffect(
     useCallback(() => {
-      setLoading(true);
-      fetchData();
+      const now = Date.now();
+      if (now - lastRankFetch.current > 30000) {
+        lastRankFetch.current = now;
+        setLoading(true);
+        fetchData();
+      }
     }, [fetchData])
   );
 
@@ -98,6 +106,9 @@ export default function RankCardsScreen() {
               profileIconId: riotStats.profileIconId,
               topChampions: riotStats.topChampions || [],
               summonerLevel: riotStats.summonerLevel,
+              peakRank: riotStats.peakRank
+                ? { tier: `${riotStats.peakRank.tier} ${riotStats.peakRank.rank}`, season: riotStats.peakRank.season || '' }
+                : undefined,
             };
           }
           if (gameType === 'tft') {
@@ -182,10 +193,20 @@ export default function RankCardsScreen() {
             <IconSymbol size={22} name="chevron.left" color="#fff" />
           </TouchableOpacity>
           <View style={{ flex: 1 }} />
-          {isOwnProfile && (
-            <TouchableOpacity style={styles.addButton} onPress={() => router.push('/profilePages/linkRiotAccount')}>
-              <IconSymbol size={27} name="plus.app" color="#fff" />
+          {userGames.length > 1 && (
+            <TouchableOpacity style={styles.viewToggle} onPress={() => setViewMode(v => v === 'stacked' ? 'swipe' : 'stacked')}>
+              <IconSymbol size={18} name={viewMode === 'stacked' ? 'rectangle.split.1x2' : 'square.stack.3d.up'} color="#fff" />
             </TouchableOpacity>
+          )}
+          {isOwnProfile && (
+            <>
+              <TouchableOpacity style={styles.addButton} onPress={() => router.push('/profilePages/linkRiotAccount')}>
+                <IconSymbol size={27} name="plus.app" color="#fff" />
+              </TouchableOpacity>
+              <TouchableOpacity style={styles.settingsButton} onPress={() => router.push('/profilePages/newRankCard')}>
+                <IconSymbol size={22} name="gearshape" color="#fff" />
+              </TouchableOpacity>
+            </>
           )}
         </View>
 
@@ -268,12 +289,10 @@ export default function RankCardsScreen() {
           </View>
         )}
 
-        {!loading && userGames.length > 1 && (() => {
+        {!loading && userGames.length > 1 && viewMode === 'stacked' && (() => {
           const totalCards = userGames.length;
           const CARD_HEIGHT = 240;
           const STACK_OFFSET = 50;
-          // Wrapper contains all cards within its bounds so back-card peek regions
-          // are hit-testable (RN can't receive touches outside parent bounds).
           const containerHeight = CARD_HEIGHT + (totalCards - 1) * STACK_OFFSET;
 
           return (
@@ -289,8 +308,6 @@ export default function RankCardsScreen() {
                   }
 
                   const reverseIndex = totalCards - 1 - index;
-                  // Back cards sit at the top of the wrapper, front card lowest — gives
-                  // the "peek from above" look without negative offsets.
                   const topOffset = index * STACK_OFFSET;
                   const scale = 1 - (reverseIndex * 0.02);
                   const cardZIndex = index + 1;
@@ -317,6 +334,42 @@ export default function RankCardsScreen() {
             </View>
           );
         })()}
+
+        {!loading && userGames.length > 1 && viewMode === 'swipe' && (
+          <>
+            <FlatList
+              data={userGames}
+              horizontal
+              pagingEnabled
+              showsHorizontalScrollIndicator={false}
+              keyExtractor={(item) => item.id.toString()}
+              onMomentumScrollEnd={(e) => {
+                const index = Math.round(e.nativeEvent.contentOffset.x / (screenWidth - 32));
+                setActiveCardIndex(index);
+              }}
+              contentContainerStyle={styles.swipeContainer}
+              renderItem={({ item: game }) => {
+                let displayUsername = (isOwnProfile ? user?.username : fetchedUsername) || 'User';
+                if (game.name === 'Valorant' && valorantAccount) {
+                  displayUsername = `${valorantAccount.gameName}#${valorantAccount.tag}`;
+                } else if ((game.name === 'League of Legends' || game.name === 'TFT') && riotAccount) {
+                  displayUsername = `${riotAccount.gameName}#${riotAccount.tagLine}`;
+                }
+                return (
+                  <View style={styles.swipeCard}>
+                    <RankCard game={game} username={displayUsername} viewOnly={false} userId={viewingUserId || undefined} isFocused={true} onRefresh={handleRankCardRefresh} />
+                  </View>
+                );
+              }}
+            />
+            {/* Page indicators */}
+            <View style={styles.swipeDots}>
+              {userGames.map((_, index) => (
+                <View key={index} style={[styles.swipeDot, activeCardIndex === index && styles.swipeDotActive]} />
+              ))}
+            </View>
+          </>
+        )}
 
         <View style={{ height: 80 }} />
       </ScrollView>
@@ -361,7 +414,13 @@ const styles = StyleSheet.create({
   backButton: {
     padding: 8,
   },
+  viewToggle: {
+    padding: 8,
+  },
   addButton: {
+    padding: 8,
+  },
+  settingsButton: {
     padding: 8,
   },
   content: {
@@ -406,6 +465,34 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.6,
     shadowRadius: 16,
     elevation: 16,
+  },
+  // Swipe view
+  swipeContainer: {
+    paddingTop: 18,
+  },
+  swipeCard: {
+    width: screenWidth - 32,
+    marginHorizontal: 16,
+  },
+  swipeDots: {
+    flexDirection: 'row',
+    justifyContent: 'center',
+    alignItems: 'center',
+    gap: 8,
+    paddingTop: 16,
+    paddingBottom: 8,
+  },
+  swipeDot: {
+    width: 6,
+    height: 6,
+    borderRadius: 3,
+    backgroundColor: 'rgba(255,255,255,0.2)',
+  },
+  swipeDotActive: {
+    backgroundColor: '#fff',
+    width: 8,
+    height: 8,
+    borderRadius: 4,
   },
   verticalCardWrapper: {
     width: '100%',

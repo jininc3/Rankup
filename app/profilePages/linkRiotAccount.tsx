@@ -63,7 +63,7 @@ export default function LinkRiotAccountScreen() {
         } else {
           setPreparingCard(true);
           try { await getLeagueStats(true); } catch {}
-          router.replace('/(tabs)/profile');
+          router.replace('/profilePages/rankCards');
         }
       }
     } catch (error: any) {

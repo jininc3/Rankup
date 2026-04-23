@@ -48,7 +48,21 @@ interface ViewedUser {
       winRate: number;
     };
   };
+  createdAt?: Date;
 }
+
+const formatJoinDate = (date: Date): string => {
+  const now = new Date();
+  const diffMs = now.getTime() - date.getTime();
+  const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
+  if (diffDays === 0) return 'Joined today';
+  if (diffDays === 1) return 'Joined yesterday';
+  if (diffDays < 30) return `Joined ${diffDays} days ago`;
+  const day = date.getDate();
+  const month = date.toLocaleDateString('en-US', { month: 'short' });
+  const year = date.getFullYear().toString().slice(-2);
+  return `Joined ${day} ${month} ${year}`;
+};
 
 const { width: screenWidth, height: screenHeight } = Dimensions.get('window');
 interface Post {
@@ -145,7 +159,11 @@ export default function ProfilePreviewScreen() {
             winRate: riotStats.rankedSolo?.winRate || 0,
             recentMatches: ['+15', '-18', '+20', '+17', '-14'],
             profileIconId: riotStats.profileIconId,
+            topChampions: riotStats.topChampions || [],
             summonerLevel: riotStats.summonerLevel,
+            peakRank: riotStats.peakRank
+              ? { tier: `${riotStats.peakRank.tier} ${riotStats.peakRank.rank}`, season: riotStats.peakRank.season || '' }
+              : undefined,
           };
         }
         if (gameType === 'tft' && riotStats) {
@@ -211,6 +229,7 @@ export default function ProfilePreviewScreen() {
           followersCount: data.followersCount || 0,
           followingCount: data.followingCount || 0,
           gamesPlayed: data.gamesPlayed,
+          createdAt: data.createdAt ? (data.createdAt.toDate ? data.createdAt.toDate() : new Date(data.createdAt)) : undefined,
         });
 
         // Fetch riot and valorant stats for tier border and rank cards
@@ -568,6 +587,9 @@ export default function ProfilePreviewScreen() {
                   </View>
                 )}
                 <ThemedText style={styles.profileUsername} numberOfLines={1}>{viewedUser?.username || 'User'}</ThemedText>
+                {viewedUser?.createdAt && (
+                  <ThemedText style={styles.joinedText}>{formatJoinDate(viewedUser.createdAt)}</ThemedText>
+                )}
               </View>
 
               {/* Stats columns */}
@@ -659,6 +681,9 @@ export default function ProfilePreviewScreen() {
             </View>
           </View>
 
+          {/* Section Divider */}
+          <View style={styles.profileSectionDivider} />
+
           {/* Rank Cards Banner */}
           {userGames.length > 0 && (
             <TouchableOpacity
@@ -669,34 +694,10 @@ export default function ProfilePreviewScreen() {
               })}
               activeOpacity={0.85}
             >
-              <BlurView
-                intensity={40}
-                tint="dark"
-                style={StyleSheet.absoluteFillObject}
-                pointerEvents="none"
-              />
-              <LinearGradient
-                colors={['rgba(38,38,38,0.55)', 'rgba(24,24,24,0.55)']}
-                start={{ x: 0, y: 0 }}
-                end={{ x: 1, y: 1 }}
-                style={StyleSheet.absoluteFillObject}
-                pointerEvents="none"
-              />
-              <LinearGradient
-                colors={['transparent', 'rgba(255,255,255,0.04)', 'transparent']}
-                locations={[0.4, 0.5, 0.6]}
-                start={{ x: 0, y: 0 }}
-                end={{ x: 1, y: 1 }}
-                style={StyleSheet.absoluteFillObject}
-                pointerEvents="none"
-              />
-              <LinearGradient
-                colors={['rgba(255,255,255,0.07)', 'transparent']}
-                start={{ x: 0, y: 0 }}
-                end={{ x: 1, y: 0 }}
-                style={styles.rankCardsBannerTopEdge}
-                pointerEvents="none"
-              />
+              {/* Dark base + subtle red shimmer */}
+              <LinearGradient colors={['#161616', '#1a1a1a']} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={StyleSheet.absoluteFillObject} pointerEvents="none" />
+              <LinearGradient colors={['transparent', 'rgba(196,39,67,0.12)', 'transparent']} locations={[0.3, 0.5, 0.7]} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={StyleSheet.absoluteFillObject} pointerEvents="none" />
+              <LinearGradient colors={['rgba(255,255,255,0.07)', 'transparent']} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }} style={styles.rankCardsBannerTopEdge} pointerEvents="none" />
 
               {/* Stacked mini rank card teaser */}
               <View style={styles.rankCardsBannerPeek}>
@@ -727,29 +728,10 @@ export default function ProfilePreviewScreen() {
                           },
                         ]}
                       >
-                        <LinearGradient
-                          colors={['#2a2a2a', '#1a1a1a']}
-                          start={{ x: 0, y: 0 }}
-                          end={{ x: 1, y: 1 }}
-                          style={StyleSheet.absoluteFillObject}
-                        />
-                        <LinearGradient
-                          colors={[accent, 'transparent']}
-                          start={{ x: 0, y: 0 }}
-                          end={{ x: 1, y: 1 }}
-                          style={StyleSheet.absoluteFillObject}
-                        />
-                        <LinearGradient
-                          colors={['rgba(255,255,255,0.18)', 'transparent']}
-                          start={{ x: 0, y: 0 }}
-                          end={{ x: 1, y: 0.4 }}
-                          style={styles.rankCardsBannerMiniGloss}
-                        />
-                        <Image
-                          source={img}
-                          style={styles.rankCardsBannerMiniLogo}
-                          resizeMode="contain"
-                        />
+                        <LinearGradient colors={['#2a2a2a', '#1a1a1a']} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={StyleSheet.absoluteFillObject} />
+                        <LinearGradient colors={[accent, 'transparent']} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={StyleSheet.absoluteFillObject} />
+                        <LinearGradient colors={['rgba(255,255,255,0.18)', 'transparent']} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0.4 }} style={styles.rankCardsBannerMiniGloss} />
+                        <Image source={img} style={styles.rankCardsBannerMiniLogo} resizeMode="contain" />
                       </View>
                     );
                   });
@@ -758,143 +740,46 @@ export default function ProfilePreviewScreen() {
 
               <View style={styles.rankCardsBannerTextContainer}>
                 <ThemedText style={styles.rankCardsBannerTitle}>Rank Cards</ThemedText>
-                <ThemedText style={styles.rankCardsBannerSubtext}>
-                  Tap to view stacked cards
-                </ThemedText>
+                <ThemedText style={styles.rankCardsBannerSubtext}>Tap to view stacked cards</ThemedText>
               </View>
               <IconSymbol size={14} name="chevron.right" color="#aaa" />
             </TouchableOpacity>
           )}
 
-          {/* Tab Bar */}
-          <View style={styles.tabBar}>
+          {/* Clips & Achievements Banners */}
+          <View style={styles.bannerRow}>
             <TouchableOpacity
-              style={styles.tabItem}
-              onPress={() => scrollToTab('clips')}
-              activeOpacity={0.7}
+              style={styles.miniBanner}
+              onPress={() => router.push({ pathname: '/profilePages/clips', params: { userId: viewedUser?.id || '' } })}
+              activeOpacity={0.85}
             >
-              <ThemedText style={[styles.tabText, activeTab === 'clips' && styles.tabTextActive]}>CLIPS</ThemedText>
+              <LinearGradient colors={['#161616', '#1a1a1a']} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={StyleSheet.absoluteFillObject} pointerEvents="none" />
+              <LinearGradient colors={['transparent', 'rgba(59,130,246,0.12)', 'transparent']} locations={[0.3, 0.5, 0.7]} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={StyleSheet.absoluteFillObject} pointerEvents="none" />
+              <LinearGradient colors={['rgba(255,255,255,0.06)', 'transparent']} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }} style={styles.miniBannerTopEdge} pointerEvents="none" />
+              <View style={styles.miniBannerContent}>
+                <IconSymbol size={28} name="video.fill" color="#fff" />
+                <ThemedText style={styles.miniBannerTitle}>Clips</ThemedText>
+                <ThemedText style={styles.miniBannerCount}>{posts.length} {posts.length === 1 ? 'clip' : 'clips'}</ThemedText>
+              </View>
+              <IconSymbol size={12} name="chevron.right" color="rgba(255,255,255,0.4)" style={styles.miniBannerChevron} />
             </TouchableOpacity>
+
             <TouchableOpacity
-              style={styles.tabItem}
-              onPress={() => scrollToTab('achievements')}
-              activeOpacity={0.7}
+              style={styles.miniBanner}
+              onPress={() => router.push({ pathname: '/profilePages/achievementsBadges', params: { userId: viewedUser?.id || '' } })}
+              activeOpacity={0.85}
             >
-              <ThemedText style={[styles.tabText, activeTab === 'achievements' && styles.tabTextActive]}>ACHIEVEMENTS</ThemedText>
+              <LinearGradient colors={['#161616', '#1a1a1a']} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={StyleSheet.absoluteFillObject} pointerEvents="none" />
+              <LinearGradient colors={['transparent', 'rgba(212,168,67,0.12)', 'transparent']} locations={[0.3, 0.5, 0.7]} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={StyleSheet.absoluteFillObject} pointerEvents="none" />
+              <LinearGradient colors={['rgba(255,255,255,0.06)', 'transparent']} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }} style={styles.miniBannerTopEdge} pointerEvents="none" />
+              <View style={styles.miniBannerContent}>
+                <IconSymbol size={28} name="trophy.fill" color="#D4A843" />
+                <ThemedText style={styles.miniBannerTitle}>Achievements</ThemedText>
+                <ThemedText style={styles.miniBannerCount}>{achievements.length} {achievements.length === 1 ? 'badge' : 'badges'}</ThemedText>
+              </View>
+              <IconSymbol size={12} name="chevron.right" color="rgba(255,255,255,0.4)" style={styles.miniBannerChevron} />
             </TouchableOpacity>
           </View>
-
-          {/* Tab Content */}
-          <ScrollView
-            ref={tabScrollRef}
-            horizontal
-            pagingEnabled
-            showsHorizontalScrollIndicator={false}
-            onScroll={handleTabScroll}
-            scrollEventThrottle={16}
-            nestedScrollEnabled
-          >
-          {/* Clips Tab */}
-          <View style={{ width: screenWidth }}>
-          <View style={styles.sectionContainer}>
-          <View style={styles.clipsSection}>
-            {posts.length > 0 ? (
-              <View style={styles.gridClipsContainer}>
-                {posts.map((post) => (
-                  <TouchableOpacity
-                    key={post.id}
-                    style={styles.gridClipItem}
-                    onPress={() => handlePostPress(post)}
-                    activeOpacity={0.9}
-                  >
-                    <Image
-                      source={{ uri: post.mediaType === 'video' && post.thumbnailUrl ? post.thumbnailUrl : post.mediaUrl }}
-                      style={styles.gridClipImage}
-                      resizeMode="cover"
-                    />
-                    <LinearGradient
-                      colors={['transparent', 'rgba(0,0,0,0.75)']}
-                      locations={[0.5, 1]}
-                      style={styles.gridClipBottomGradient}
-                      pointerEvents="none"
-                    />
-                    {post.mediaType === 'video' && (
-                      <View style={styles.gridClipMeta}>
-                        <IconSymbol size={10} name="play.fill" color="#fff" />
-                        <ThemedText style={styles.gridClipMetaText}>
-                          {formatDuration(post.duration)}
-                        </ThemedText>
-                      </View>
-                    )}
-                    {post.mediaUrls && post.mediaUrls.length > 1 && (
-                      <View style={styles.gridClipMultiple}>
-                        <IconSymbol size={13} name="square.on.square" color="#fff" />
-                      </View>
-                    )}
-                    {post.likes > 0 && (
-                      <View style={styles.gridClipLikes}>
-                        <IconSymbol size={10} name="heart.fill" color="#fff" />
-                        <ThemedText style={styles.gridClipMetaText}>
-                          {formatCount(post.likes)}
-                        </ThemedText>
-                      </View>
-                    )}
-                  </TouchableOpacity>
-                ))}
-              </View>
-            ) : (
-              <View style={styles.emptyState}>
-                <ThemedText style={styles.emptyStateTitle}>No clips yet</ThemedText>
-                <ThemedText style={styles.emptyStateSubtext}>
-                  This user hasn't posted any clips
-                </ThemedText>
-              </View>
-            )}
-          </View>
-          </View>
-          </View>
-
-          {/* Achievements Tab */}
-          <View style={{ width: screenWidth }}>
-          <View style={styles.sectionContainer}>
-          <View style={styles.achievementsSection}>
-            {achievements.length > 0 ? (
-              <ScrollView
-                horizontal
-                showsHorizontalScrollIndicator={false}
-                contentContainerStyle={styles.horizontalAchievementsContainer}
-              >
-                {achievements.map((achievement, index) => (
-                  <View key={index} style={styles.achievementCard}>
-                    <ThemedText style={styles.achievementMedal}>
-                      {achievement.placement === 1 ? '\u{1F947}' : achievement.placement === 2 ? '\u{1F948}' : '\u{1F949}'}
-                    </ThemedText>
-                    <ThemedText style={styles.achievementPlacement}>
-                      {achievement.placement === 1 ? '1st Place' : achievement.placement === 2 ? '2nd Place' : '3rd Place'}
-                    </ThemedText>
-                    <ThemedText style={styles.achievementPartyName} numberOfLines={2}>
-                      {achievement.partyName}
-                    </ThemedText>
-                    <ThemedText style={styles.achievementGame}>
-                      {achievement.game}
-                    </ThemedText>
-                  </View>
-                ))}
-              </ScrollView>
-            ) : (
-              <View style={styles.emptyState}>
-                <IconSymbol size={36} name="trophy" color="#72767d" />
-                <ThemedText style={styles.emptyStateTitle}>No achievements yet</ThemedText>
-                <ThemedText style={styles.emptyStateSubtext}>
-                  Place top 3 in a leaderboard to earn achievements
-                </ThemedText>
-              </View>
-            )}
-          </View>
-          </View>
-          </View>
-
-          </ScrollView>
         </View>
       </ScrollView>
 
@@ -1032,6 +917,12 @@ const styles = StyleSheet.create({
     letterSpacing: -0.3,
     marginTop: 6,
   },
+  joinedText: {
+    fontSize: 12,
+    fontWeight: '500',
+    color: '#555',
+    marginTop: 2,
+  },
   profileAvatarCircle: {
     width: 76,
     height: 76,
@@ -1137,12 +1028,71 @@ const styles = StyleSheet.create({
     height: 18,
   },
   // Rank Cards Banner
+  profileSectionDivider: {
+    height: 1,
+    backgroundColor: 'rgba(255,255,255,0.15)',
+    marginHorizontal: 20,
+    marginTop: 16,
+  },
+  bannerRow: {
+    flexDirection: 'row',
+    gap: 8,
+    marginHorizontal: 16,
+    marginTop: 10,
+    marginBottom: 16,
+  },
+  miniBanner: {
+    flex: 1,
+    aspectRatio: 0.75,
+    backgroundColor: 'transparent',
+    borderRadius: 14,
+    paddingVertical: 24,
+    paddingHorizontal: 14,
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.14)',
+    overflow: 'hidden',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.35,
+    shadowRadius: 8,
+    elevation: 6,
+  },
+  miniBannerTopEdge: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    height: 1.5,
+  },
+  miniBannerContent: {
+    gap: 4,
+  },
+  miniBannerTitle: {
+    fontSize: 22,
+    fontWeight: '800',
+    color: '#fff',
+    letterSpacing: -0.3,
+    marginTop: 6,
+    textShadowColor: 'rgba(0,0,0,0.5)',
+    textShadowOffset: { width: 0, height: 1 },
+    textShadowRadius: 3,
+  },
+  miniBannerCount: {
+    fontSize: 12,
+    color: '#9a9a9a',
+    fontWeight: '500',
+  },
+  miniBannerChevron: {
+    position: 'absolute',
+    top: 16,
+    right: 14,
+  },
   rankCardsBanner: {
     flexDirection: 'row',
     alignItems: 'center',
     backgroundColor: 'transparent',
     borderRadius: 14,
-    paddingVertical: 16,
+    paddingVertical: 36,
     paddingHorizontal: 18,
     marginHorizontal: 16,
     marginTop: 16,
@@ -1165,14 +1115,14 @@ const styles = StyleSheet.create({
     height: 1.5,
   },
   rankCardsBannerPeek: {
-    width: 86,
-    height: 60,
+    width: 110,
+    height: 78,
     position: 'relative',
   },
   rankCardsBannerMini: {
     position: 'absolute',
-    width: 70,
-    height: 46,
+    width: 90,
+    height: 60,
     borderRadius: 7,
     overflow: 'hidden',
     borderWidth: 0.5,
@@ -1192,8 +1142,8 @@ const styles = StyleSheet.create({
     height: '55%',
   },
   rankCardsBannerMiniLogo: {
-    width: 30,
-    height: 30,
+    width: 40,
+    height: 40,
   },
   rankCardsBannerTextContainer: {
     flex: 1,

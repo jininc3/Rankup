@@ -38,6 +38,7 @@ export default function LeaderboardPagesLayout() {
         name="lobbies"
         options={{
           headerShown: false,
+          animation: 'none',
         }}
       />
       <Stack.Screen

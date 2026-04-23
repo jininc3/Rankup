@@ -256,6 +256,9 @@ export default function ProfileScreen() {
             profileIconId: riotStats.profileIconId,
             topChampions: riotStats.topChampions || [],
             summonerLevel: riotStats.summonerLevel,
+            peakRank: riotStats.peakRank
+              ? { tier: `${riotStats.peakRank.tier} ${riotStats.peakRank.rank}`, season: riotStats.peakRank.season || '' }
+              : undefined,
           };
         }
         // TFT (Placeholder - TODO: Implement TFT API)
@@ -550,12 +553,17 @@ export default function ProfileScreen() {
 
   // Refresh user data and rank cards on tab focus
   // fetchRiotData() picks up newly linked accounts and uses client cache for stats (no redundant API calls)
+  const lastProfileFetch = useRef<number>(0);
   useFocusEffect(
     useCallback(() => {
       if (user?.id) {
-        refreshUser();
-        fetchRiotData();
-        fetchPosts();
+        const now = Date.now();
+        if (now - lastProfileFetch.current > 30000) {
+          lastProfileFetch.current = now;
+          refreshUser();
+          fetchRiotData();
+          fetchPosts();
+        }
       }
     }, [user?.id])
   );
@@ -564,6 +572,7 @@ export default function ProfileScreen() {
   // This forces a refresh of account data when returning from account linking
   useEffect(() => {
     if (refresh === 'true' && user?.id) {
+      lastProfileFetch.current = Date.now();
       console.log('Refresh parameter detected, forcing data refresh');
       // Force refresh to get the newly linked account
       fetchRiotData(true);

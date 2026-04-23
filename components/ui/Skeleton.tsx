@@ -792,12 +792,16 @@ export const ProfileAchievementsSkeleton: React.FC = () => (
 // Matches profile.tsx layout: cover photo, username+avatar, followers, socials, bio, tab bar, clips tab content
 export const ProfilePageSkeleton: React.FC = () => (
   <View style={profilePageStyles.container}>
-    {/* Profile Info Section - overlaps cover */}
+    {/* Profile Info Section */}
     <View style={profilePageStyles.profileInfoSection}>
       {/* Avatar + Stats row */}
       <View style={profilePageStyles.avatarStatsRow}>
-        {/* Avatar */}
-        <Skeleton width={76} height={76} borderRadius={38} style={profilePageStyles.avatar} />
+        <View>
+          <Skeleton width={76} height={76} borderRadius={38} style={profilePageStyles.avatar} />
+          {/* Username + joined */}
+          <Skeleton width={90} height={14} borderRadius={4} style={{ marginTop: 8 }} />
+          <Skeleton width={70} height={10} borderRadius={3} style={{ marginTop: 4 }} />
+        </View>
 
         {/* Stats columns */}
         <View style={profilePageStyles.statsColumns}>
@@ -829,21 +833,29 @@ export const ProfilePageSkeleton: React.FC = () => (
       </View>
     </View>
 
-    {/* Tab Bar */}
-    <View style={profilePageStyles.tabBar}>
-      <Skeleton width={50} height={20} borderRadius={4} />
-      <View style={profilePageStyles.tabDivider} />
-      <Skeleton width={52} height={20} borderRadius={4} />
-      <View style={profilePageStyles.tabDivider} />
-      <Skeleton width={110} height={20} borderRadius={4} />
+    {/* Section Divider */}
+    <View style={profilePageStyles.divider} />
+
+    {/* Rank Cards Banner placeholder */}
+    <View style={profilePageStyles.rankCardsBannerSkeleton}>
+      <Skeleton width={70} height={46} borderRadius={7} />
+      <View style={{ flex: 1, gap: 6 }}>
+        <Skeleton width={90} height={16} borderRadius={4} />
+        <Skeleton width={130} height={11} borderRadius={3} />
+      </View>
     </View>
 
-    {/* Clips Tab Content */}
-    <View style={profilePageStyles.clipsTabContent}>
-      <View style={profilePageStyles.clipsRow}>
-        {[0, 1, 2].map(i => (
-          <Skeleton key={i} width={120} height={120} borderRadius={4} />
-        ))}
+    {/* Clips & Achievements Banner row */}
+    <View style={profilePageStyles.bannerRow}>
+      <View style={profilePageStyles.miniBannerSkeleton}>
+        <Skeleton width={28} height={28} borderRadius={6} />
+        <Skeleton width={50} height={16} borderRadius={4} style={{ marginTop: 8 }} />
+        <Skeleton width={40} height={10} borderRadius={3} style={{ marginTop: 4 }} />
+      </View>
+      <View style={profilePageStyles.miniBannerSkeleton}>
+        <Skeleton width={28} height={28} borderRadius={6} />
+        <Skeleton width={90} height={16} borderRadius={4} style={{ marginTop: 8 }} />
+        <Skeleton width={50} height={10} borderRadius={3} style={{ marginTop: 4 }} />
       </View>
     </View>
   </View>
@@ -891,27 +903,41 @@ const profilePageStyles = StyleSheet.create({
   editButtonSkeleton: {
     flex: 1,
   },
-  tabBar: {
+  divider: {
+    height: 1,
+    backgroundColor: 'rgba(255,255,255,0.15)',
+    marginHorizontal: 20,
+    marginTop: 16,
+  },
+  rankCardsBannerSkeleton: {
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'center',
-    paddingHorizontal: 20,
-    paddingTop: 12,
-    paddingBottom: 8,
     gap: 16,
+    marginHorizontal: 16,
+    marginTop: 16,
+    backgroundColor: 'rgba(255,255,255,0.03)',
+    borderRadius: 14,
+    paddingVertical: 24,
+    paddingHorizontal: 18,
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.06)',
   },
-  tabDivider: {
-    width: 1,
-    height: 16,
-    backgroundColor: '#1e1e1e',
-  },
-  clipsTabContent: {
-    paddingTop: 4,
-  },
-  clipsRow: {
+  bannerRow: {
     flexDirection: 'row',
-    paddingHorizontal: 20,
-    gap: 6,
+    gap: 8,
+    marginHorizontal: 16,
+    marginTop: 10,
+    marginBottom: 16,
+  },
+  miniBannerSkeleton: {
+    flex: 1,
+    aspectRatio: 0.75,
+    backgroundColor: 'rgba(255,255,255,0.03)',
+    borderRadius: 14,
+    paddingVertical: 24,
+    paddingHorizontal: 14,
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.06)',
   },
 });
 

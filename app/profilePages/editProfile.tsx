@@ -36,6 +36,19 @@ interface RankCardData {
   isEnabled: boolean;
 }
 
+const formatJoinDate = (date: Date): string => {
+  const now = new Date();
+  const diffMs = now.getTime() - date.getTime();
+  const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
+  if (diffDays === 0) return 'Joined today';
+  if (diffDays === 1) return 'Joined yesterday';
+  if (diffDays < 30) return `Joined ${diffDays} days ago`;
+  const day = date.getDate();
+  const month = date.toLocaleDateString('en-US', { month: 'short' });
+  const year = date.getFullYear().toString().slice(-2);
+  return `Joined ${day} ${month} ${year}`;
+};
+
 export default function EditProfileScreen() {
   const router = useRouter();
   const navigation = useNavigation();
@@ -75,6 +88,7 @@ export default function EditProfileScreen() {
   const [enabledRankCards, setEnabledRankCards] = useState<string[]>([]);
   const [originalEnabledRankCards, setOriginalEnabledRankCards] = useState<string[]>([]);
   const [loadingRankCards, setLoadingRankCards] = useState(true);
+  const [joinedAt, setJoinedAt] = useState<Date | null>(null);
 
   useEffect(() => {
     if (user) {
@@ -128,6 +142,9 @@ export default function EditProfileScreen() {
           }
           setEnabledRankCards(updatedCards);
           setOriginalEnabledRankCards(updatedCards);
+          if (data.createdAt) {
+            setJoinedAt(data.createdAt.toDate ? data.createdAt.toDate() : new Date(data.createdAt));
+          }
         }
       } catch (error) {
         console.error('Error fetching rank cards data:', error);
@@ -790,6 +807,9 @@ export default function EditProfileScreen() {
                   placeholderTextColor="#72767d"
                   autoCapitalize="none"
                 />
+                {joinedAt && (
+                  <ThemedText style={styles.joinedText}>{formatJoinDate(joinedAt)}</ThemedText>
+                )}
               </View>
 
               {/* Stats columns */}
@@ -857,44 +877,6 @@ export default function EditProfileScreen() {
                 />
               </TouchableOpacity>
             </View>
-          </View>
-
-          {/* Rank Cards Section */}
-          <View style={styles.rankCardsSectionOuter}>
-            <View style={styles.rankCardsSectionHeader}>
-              <ThemedText style={styles.rankCardsSectionTitle}>Rank Cards</ThemedText>
-              <TouchableOpacity
-                style={styles.linkAccountButton}
-                onPress={() => router.push('/profilePages/newRankCard')}
-                activeOpacity={0.7}
-              >
-                <ThemedText style={styles.linkAccountText}>Manage</ThemedText>
-                <IconSymbol size={11} name="chevron.right" color="#888" />
-              </TouchableOpacity>
-            </View>
-
-            {loadingRankCards ? (
-              <View style={styles.rankCardsLoading}>
-                <ActivityIndicator size="small" color="#fff" />
-              </View>
-            ) : !riotAccount && !valorantAccount ? (
-              <View style={styles.noAccountsContainer}>
-                <ThemedText style={styles.noAccountsText}>
-                  No accounts linked
-                </ThemedText>
-              </View>
-            ) : (
-              <GestureHandlerRootView>
-                <DraggableFlatList
-                  data={getAvailableCards()}
-                  onDragEnd={handleDragEnd}
-                  keyExtractor={(item) => item.type}
-                  renderItem={renderRankCardItem}
-                  scrollEnabled={false}
-                  contentContainerStyle={styles.rankCardsList}
-                />
-              </GestureHandlerRootView>
-            )}
           </View>
 
           {/* Save Button — flows with content */}
@@ -1195,19 +1177,31 @@ const styles = StyleSheet.create({
     height: 20,
     lineHeight: 20,
     includeFontPadding: false,
+  },
+  joinedText: {
+    fontSize: 12,
+    fontWeight: '500',
+    color: '#555',
+    marginTop: 2,
     textAlignVertical: 'center',
   },
   // Bio section
   bioSection: {
+    marginTop: 16,
     marginBottom: 12,
+    backgroundColor: 'rgba(255,255,255,0.06)',
+    borderRadius: 12,
+    borderWidth: 0.5,
+    borderColor: 'rgba(255,255,255,0.1)',
+    padding: 14,
   },
   bioText: {
     fontSize: 14,
-    color: '#b9bbbe',
+    color: '#fff',
     lineHeight: 20,
     padding: 0,
     textAlignVertical: 'top',
-    minHeight: 40,
+    minHeight: 50,
   },
   characterCount: {
     fontSize: 11,

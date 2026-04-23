@@ -5,6 +5,7 @@ const RankCard = rankCard;
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { IconSymbol } from '@/components/ui/icon-symbol';
+import { ProfilePageSkeleton } from '@/components/ui/Skeleton';
 import { useRouter } from '@/hooks/useRouter';
 import { useLocalSearchParams } from 'expo-router';
 import { useRef, useState, useEffect, useCallback } from 'react';
@@ -164,7 +165,11 @@ export default function ProfileViewScreen() {
             winRate: riotStats.rankedSolo ? Math.round((riotStats.rankedSolo.wins / (riotStats.rankedSolo.wins + riotStats.rankedSolo.losses)) * 100) : 0,
             recentMatches: [],
             profileIconId: riotStats.profileIconId,
+            topChampions: riotStats.topChampions || [],
             summonerLevel: riotStats.summonerLevel,
+            peakRank: riotStats.peakRank
+              ? { tier: `${riotStats.peakRank.tier} ${riotStats.peakRank.rank}`, season: riotStats.peakRank.season || '' }
+              : undefined,
           };
         }
         // TFT (Placeholder - TODO: Implement TFT API)
@@ -821,6 +826,10 @@ export default function ProfileViewScreen() {
             </View>
           </View>
 
+          {loadingUser ? (
+            <ProfilePageSkeleton />
+          ) : (
+          <>
           {/* Profile Info Section - overlaps cover photo */}
           <View style={styles.profileInfoSection}>
             {/* Row: Avatar+Username group (left) + Stats (right) */}
@@ -982,7 +991,6 @@ export default function ProfileViewScreen() {
               </View>
             </View>
           </View>
-        </View>
 
         {/* Private Account Message */}
         {isTargetPrivate && !isFollowing && userId !== currentUser?.id && (
@@ -1138,6 +1146,9 @@ export default function ProfileViewScreen() {
             </TouchableOpacity>
           </View>
         )}
+        </>
+        )}
+        </View>
       </ScrollView>
 
       {/* Post Viewer Modal */}
