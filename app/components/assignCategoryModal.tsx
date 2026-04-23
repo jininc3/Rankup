@@ -38,6 +38,8 @@ export default function AssignCategoryModal({
       if (next.has(cat)) {
         next.delete(cat);
       } else {
+        // One category per clip
+        next.clear();
         next.add(cat);
       }
       return next;

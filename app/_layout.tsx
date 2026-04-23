@@ -13,6 +13,8 @@ import { ValorantStatsProvider } from '@/contexts/ValorantStatsContext';
 import { Platform } from 'react-native';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { addNotificationTapListener, addNotificationReceivedListener, registerForPushNotificationsAsync } from '@/services/notificationService';
+import { doc, updateDoc, serverTimestamp } from 'firebase/firestore';
+import { db } from '@/config/firebase';
 import { InAppNotificationProvider, useInAppNotification } from '@/contexts/InAppNotificationContext';
 import InAppNotificationContainer from '@/app/components/InAppNotificationContainer';
 
@@ -31,19 +33,43 @@ function RootLayoutNav() {
     }
   }, []);
 
-  // Refresh push token when app comes to foreground (tokens can expire/change)
+  // Refresh push token + update presence when app comes to foreground
   const appState = useRef(AppState.currentState);
+  const presenceInterval = useRef<NodeJS.Timeout | null>(null);
+
+  const updatePresence = (userId: string) => {
+    updateDoc(doc(db, 'users', userId), { lastActiveAt: serverTimestamp() }).catch(() => {});
+  };
+
   useEffect(() => {
     if (!isAuthenticated || !user?.id) return;
+
+    // Set active immediately
+    updatePresence(user.id);
+
+    // Heartbeat every 60s while app is active
+    presenceInterval.current = setInterval(() => {
+      updatePresence(user.id);
+    }, 60000);
 
     const subscription = AppState.addEventListener('change', (nextAppState) => {
       if (appState.current.match(/inactive|background/) && nextAppState === 'active') {
         registerForPushNotificationsAsync(user.id).catch(() => {});
+        updatePresence(user.id);
+        // Restart heartbeat
+        if (presenceInterval.current) clearInterval(presenceInterval.current);
+        presenceInterval.current = setInterval(() => updatePresence(user.id), 60000);
+      } else if (nextAppState.match(/inactive|background/)) {
+        // Stop heartbeat when backgrounded
+        if (presenceInterval.current) clearInterval(presenceInterval.current);
       }
       appState.current = nextAppState;
     });
 
-    return () => subscription.remove();
+    return () => {
+      subscription.remove();
+      if (presenceInterval.current) clearInterval(presenceInterval.current);
+    };
   }, [isAuthenticated, user?.id]);
 
   useEffect(() => {

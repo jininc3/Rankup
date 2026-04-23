@@ -31,32 +31,9 @@ export default function CreatePostShare() {
   const caption = (params.caption as string) || '';
   const taggedUsers = params.taggedUsers ? JSON.parse(params.taggedUsers as string) : [];
 
-  const [thumbnailOption, setThumbnailOption] = useState<'auto' | 'frame' | 'custom'>('auto');
+  const [thumbnailOption, setThumbnailOption] = useState<'auto' | 'custom'>('auto');
   const [selectedThumbnailUri, setSelectedThumbnailUri] = useState<string | null>(null);
-  const [videoFrames, setVideoFrames] = useState<string[]>([]);
-  const [generatingFrames, setGeneratingFrames] = useState(false);
   const [uploading, setUploading] = useState(false);
-
-  const generateFrames = async () => {
-    if (mediaType !== 'video') return;
-    setGeneratingFrames(true);
-    const durationSec = duration ? duration / 1000 : 30;
-    const frames: string[] = [];
-    const timePoints = [0, 0.2, 0.4, 0.6, 0.8, 0.9];
-    try {
-      for (const point of timePoints) {
-        const timeMs = Math.floor(durationSec * point * 1000);
-        const { uri } = await VideoThumbnails.getThumbnailAsync(mediaUri, { time: timeMs, quality: 0.8 });
-        frames.push(uri);
-      }
-      setVideoFrames(frames);
-    } catch (error) {
-      console.error('Error generating frames:', error);
-      Alert.alert('Error', 'Failed to generate video frames.');
-    } finally {
-      setGeneratingFrames(false);
-    }
-  };
 
   const pickCustomThumbnail = async () => {
     const result = await ImagePicker.launchImageLibraryAsync({
@@ -275,37 +252,10 @@ export default function CreatePostShare() {
               >
                 <ThemedText style={[styles.thumbnailBtnText, thumbnailOption === 'auto' && styles.thumbnailBtnTextSelected]}>Auto</ThemedText>
               </TouchableOpacity>
-              <TouchableOpacity
-                style={styles.thumbnailBtn}
-                onPress={generateFrames}
-                disabled={generatingFrames}
-              >
-                {generatingFrames ? (
-                  <ActivityIndicator size="small" color="#fff" />
-                ) : (
-                  <ThemedText style={styles.thumbnailBtnText}>Frame</ThemedText>
-                )}
-              </TouchableOpacity>
               <TouchableOpacity style={styles.thumbnailBtn} onPress={pickCustomThumbnail}>
                 <ThemedText style={styles.thumbnailBtnText}>Custom</ThemedText>
               </TouchableOpacity>
             </View>
-
-            {videoFrames.length > 0 && (
-              <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.framesScroll}>
-                <View style={styles.framesRow}>
-                  {videoFrames.map((frame, i) => (
-                    <TouchableOpacity
-                      key={i}
-                      onPress={() => { setSelectedThumbnailUri(frame); setThumbnailOption('frame'); }}
-                      style={[styles.frameItem, selectedThumbnailUri === frame && thumbnailOption === 'frame' && styles.frameItemSelected]}
-                    >
-                      <Image source={{ uri: frame }} style={styles.frameImage} resizeMode="cover" />
-                    </TouchableOpacity>
-                  ))}
-                </View>
-              </ScrollView>
-            )}
           </View>
         )}
 
@@ -378,11 +328,6 @@ const styles = StyleSheet.create({
   thumbnailBtnSelected: { borderColor: '#fff', backgroundColor: 'rgba(255,255,255,0.08)' },
   thumbnailBtnText: { fontSize: 13, fontWeight: '600', color: '#999' },
   thumbnailBtnTextSelected: { color: '#fff' },
-  framesScroll: { marginTop: 12 },
-  framesRow: { flexDirection: 'row', gap: 8 },
-  frameItem: { width: 80, height: 60, borderRadius: 8, overflow: 'hidden', borderWidth: 2, borderColor: 'transparent' },
-  frameItemSelected: { borderColor: '#fff' },
-  frameImage: { width: '100%', height: '100%' },
   bottomSection: { paddingHorizontal: 28, paddingBottom: 40 },
   shareButton: {
     backgroundColor: 'rgba(255,255,255,0.08)',

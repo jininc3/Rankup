@@ -130,6 +130,12 @@ export default function ProfilePagesLayout() {
         }}
       />
       <Stack.Screen
+        name="achievementsBadges"
+        options={{
+          headerShown: false,
+        }}
+      />
+      <Stack.Screen
         name="blockedUsers"
         options={{
           headerShown: false,

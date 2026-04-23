@@ -181,6 +181,12 @@ export default function RankCardsScreen() {
           <TouchableOpacity style={styles.backButton} onPress={() => router.back()}>
             <IconSymbol size={22} name="chevron.left" color="#fff" />
           </TouchableOpacity>
+          <View style={{ flex: 1 }} />
+          {isOwnProfile && (
+            <TouchableOpacity style={styles.addButton} onPress={() => router.push('/profilePages/linkRiotAccount')}>
+              <IconSymbol size={27} name="plus.app" color="#fff" />
+            </TouchableOpacity>
+          )}
         </View>
 
         <View style={styles.content}>
@@ -353,6 +359,9 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
   },
   backButton: {
+    padding: 8,
+  },
+  addButton: {
     padding: 8,
   },
   content: {

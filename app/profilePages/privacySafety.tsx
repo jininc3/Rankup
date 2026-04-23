@@ -25,6 +25,24 @@ export default function PrivacySafetyScreen() {
   const [showOnlineStatusEnabled, setShowOnlineStatusEnabled] = useState(true);
   const [allowTagsEnabled, setAllowTagsEnabled] = useState(true);
 
+  // Load showOnlineStatus from Firestore
+  useEffect(() => {
+    const loadOnlineStatus = async () => {
+      if (!user?.id) return;
+      try {
+        const { getDoc } = await import('firebase/firestore');
+        const userDoc = await getDoc(doc(db, 'users', user.id));
+        if (userDoc.exists()) {
+          const data = userDoc.data();
+          setShowOnlineStatusEnabled(data.showOnlineStatus !== false); // default true
+        }
+      } catch (error) {
+        console.error('Error loading online status setting:', error);
+      }
+    };
+    loadOnlineStatus();
+  }, [user?.id]);
+
   const privacySettings = [
     {
       id: 'account',
@@ -79,7 +97,17 @@ export default function PrivacySafetyScreen() {
           title: 'Show Online Status',
           subtitle: 'Let others see when you\'re active',
           value: showOnlineStatusEnabled,
-          onValueChange: setShowOnlineStatusEnabled,
+          onValueChange: async (newValue: boolean) => {
+            setShowOnlineStatusEnabled(newValue);
+            if (user?.id) {
+              try {
+                await updateDoc(doc(db, 'users', user.id), { showOnlineStatus: newValue });
+              } catch (error) {
+                console.error('Error updating online status setting:', error);
+                setShowOnlineStatusEnabled(!newValue);
+              }
+            }
+          },
         },
       ],
     },

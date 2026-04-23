@@ -56,6 +56,22 @@ interface Post {
   categories?: string[];
 }
 
+// Helper function to format join date
+const formatJoinDate = (date: Date): string => {
+  const now = new Date();
+  const diffMs = now.getTime() - date.getTime();
+  const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
+
+  if (diffDays === 0) return 'Joined today';
+  if (diffDays === 1) return 'Joined yesterday';
+  if (diffDays < 30) return `Joined ${diffDays} days ago`;
+
+  const day = date.getDate();
+  const month = date.toLocaleDateString('en-US', { month: 'short' });
+  const year = date.getFullYear().toString().slice(-2);
+  return `Joined ${day} ${month} ${year}`;
+};
+
 // Helper function to format video duration
 const formatDuration = (seconds?: number): string => {
   if (!seconds) return '0:00';
@@ -106,6 +122,7 @@ export default function ProfileScreen() {
   const [tftStats, setTftStats] = useState<any>(null);
   const [enabledRankCards, setEnabledRankCards] = useState<string[]>([]);
   const [loadingRankCards, setLoadingRankCards] = useState(true);
+  const [joinedAt, setJoinedAt] = useState<Date | null>(null);
   const [hasConsumedPreloadPosts, setHasConsumedPreloadPosts] = useState(false);
   const [hasConsumedPreloadRiot, setHasConsumedPreloadRiot] = useState(false);
   const [showSocialsDropdown, setShowSocialsDropdown] = useState(false);
@@ -314,6 +331,9 @@ export default function ProfileScreen() {
         }
         setEnabledRankCards(updatedCards);
         setClipCategories(data.clipCategories || []);
+        if (data.createdAt) {
+          setJoinedAt(data.createdAt.toDate ? data.createdAt.toDate() : new Date(data.createdAt));
+        }
       }
     } catch (error) {
       console.error('Error fetching enabled rank cards:', error);
@@ -350,6 +370,10 @@ export default function ProfileScreen() {
           updatedCards = updatedCards.filter(c => c !== 'valorant');
         }
         setEnabledRankCards(updatedCards);
+
+        if (data.createdAt) {
+          setJoinedAt(data.createdAt.toDate ? data.createdAt.toDate() : new Date(data.createdAt));
+        }
 
         if (data.riotAccount) {
           setRiotAccount(data.riotAccount);
@@ -859,9 +883,43 @@ export default function ProfileScreen() {
         clipCategories: newCategories,
       });
       setClipCategories(newCategories);
-      // If the selected filter was removed, reset to All
       if (selectedCategory && !newCategories.includes(selectedCategory)) {
         setSelectedCategory(null);
+      }
+    } catch (error) {
+      console.error('Error updating categories:', error);
+      Alert.alert('Error', 'Failed to update categories');
+    }
+  };
+
+  const handleSaveCategoriesWithPosts = async (
+    newCategories: string[],
+    postUpdates: { postId: string; categories: string[] }[]
+  ) => {
+    if (!user?.id) return;
+    try {
+      // Update user's category list
+      await updateDoc(doc(db, 'users', user.id), {
+        clipCategories: newCategories,
+      });
+      setClipCategories(newCategories);
+      if (selectedCategory && !newCategories.includes(selectedCategory)) {
+        setSelectedCategory(null);
+      }
+
+      // Update each modified post
+      for (const update of postUpdates) {
+        await updateDoc(doc(db, 'posts', update.postId), {
+          categories: update.categories,
+        });
+      }
+
+      // Update local post state
+      if (postUpdates.length > 0) {
+        const updateMap = new Map(postUpdates.map(u => [u.postId, u.categories]));
+        setPosts(prev =>
+          prev.map(p => updateMap.has(p.id) ? { ...p, categories: updateMap.get(p.id) } : p)
+        );
       }
     } catch (error) {
       console.error('Error updating categories:', error);
@@ -1003,13 +1061,6 @@ export default function ProfileScreen() {
                   pointerEvents="none"
                 />
                 <View style={[styles.headerIconsRow, { top: insets.top - 10 }]}>
-                  <TouchableOpacity
-                    style={styles.headerIconButton}
-                    onPress={() => setShowCreateModal(true)}
-                    activeOpacity={0.7}
-                  >
-                    <IconSymbol size={27} name="plus.app" color="#fff" />
-                  </TouchableOpacity>
                   <View style={styles.headerIconsSpacer} />
                   <TouchableOpacity
                     style={styles.headerIconButton}
@@ -1055,13 +1106,6 @@ export default function ProfileScreen() {
                 )}
                 {/* Header Icons overlaid on cover photo */}
                 <View style={[styles.headerIconsRow, { top: insets.top - 10 }]}>
-                  <TouchableOpacity
-                    style={styles.headerIconButton}
-                    onPress={() => setShowCreateModal(true)}
-                    activeOpacity={0.7}
-                  >
-                    <IconSymbol size={27} name="plus.app" color="#fff" />
-                  </TouchableOpacity>
                   <View style={styles.headerIconsSpacer} />
                   <TouchableOpacity
                     style={styles.headerIconButton}
@@ -1137,7 +1181,13 @@ export default function ProfileScreen() {
                     </View>
                   )}
                 </TouchableOpacity>
-                <ThemedText style={styles.profileUsername} numberOfLines={1}>{user?.username || 'User'}</ThemedText>
+                <View style={styles.usernameRow}>
+                  <ThemedText style={styles.profileUsername} numberOfLines={1}>{user?.username || 'User'}</ThemedText>
+                  <View style={styles.onlineDot} />
+                </View>
+                {joinedAt && (
+                  <ThemedText style={styles.joinedText}>{formatJoinDate(joinedAt)}</ThemedText>
+                )}
               </View>
 
               {/* Right side: Stats */}
@@ -1251,25 +1301,17 @@ export default function ProfileScreen() {
               onPress={() => router.push('/profilePages/rankCards')}
               activeOpacity={0.85}
             >
-              {/* Frosted glass blur */}
-              <BlurView
-                intensity={40}
-                tint="dark"
-                style={StyleSheet.absoluteFillObject}
-                pointerEvents="none"
-              />
-              {/* Glass tint — translucent face so blur shows through */}
+              {/* Dark base + subtle red shimmer */}
               <LinearGradient
-                colors={['rgba(38,38,38,0.55)', 'rgba(24,24,24,0.55)']}
+                colors={['#161616', '#1a1a1a']}
                 start={{ x: 0, y: 0 }}
                 end={{ x: 1, y: 1 }}
                 style={StyleSheet.absoluteFillObject}
                 pointerEvents="none"
               />
-              {/* Diagonal shimmer sheen */}
               <LinearGradient
-                colors={['transparent', 'rgba(255,255,255,0.04)', 'transparent']}
-                locations={[0.4, 0.5, 0.6]}
+                colors={['transparent', 'rgba(196,39,67,0.12)', 'transparent']}
+                locations={[0.3, 0.5, 0.7]}
                 start={{ x: 0, y: 0 }}
                 end={{ x: 1, y: 1 }}
                 style={StyleSheet.absoluteFillObject}
@@ -1386,228 +1428,42 @@ export default function ProfileScreen() {
             </TouchableOpacity>
           )}
 
-          {/* Tab Bar */}
-          <View style={styles.tabBar}>
+          {/* Clips & Achievements Banners */}
+          <View style={styles.bannerRow}>
             <TouchableOpacity
-              style={styles.tabItem}
-              onPress={() => scrollToTab('clips')}
-              activeOpacity={0.7}
+              style={styles.miniBanner}
+              onPress={() => router.push({ pathname: '/profilePages/clips', params: { userId: user?.id || '' } })}
+              activeOpacity={0.85}
             >
-              <ThemedText style={[styles.tabText, activeTab === 'clips' && styles.tabTextActive]}>CLIPS</ThemedText>
+              {/* Dark base + subtle blue shimmer */}
+              <LinearGradient colors={['#161616', '#1a1a1a']} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={StyleSheet.absoluteFillObject} pointerEvents="none" />
+              <LinearGradient colors={['transparent', 'rgba(59,130,246,0.12)', 'transparent']} locations={[0.3, 0.5, 0.7]} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={StyleSheet.absoluteFillObject} pointerEvents="none" />
+              <LinearGradient colors={['rgba(255,255,255,0.06)', 'transparent']} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }} style={styles.miniBannerTopEdge} pointerEvents="none" />
+              <View style={styles.miniBannerContent}>
+                <IconSymbol size={28} name="video.fill" color="#fff" />
+                <ThemedText style={styles.miniBannerTitle} numberOfLines={1}>Clips</ThemedText>
+                <ThemedText style={styles.miniBannerCount}>{posts.length} {posts.length === 1 ? 'clip' : 'clips'}</ThemedText>
+              </View>
+              <IconSymbol size={12} name="chevron.right" color="rgba(255,255,255,0.4)" style={styles.miniBannerChevron} />
             </TouchableOpacity>
+
             <TouchableOpacity
-              style={styles.tabItem}
-              onPress={() => scrollToTab('achievements')}
-              activeOpacity={0.7}
+              style={styles.miniBanner}
+              onPress={() => router.push({ pathname: '/profilePages/achievementsBadges', params: { userId: user?.id || '' } })}
+              activeOpacity={0.85}
             >
-              <ThemedText style={[styles.tabText, activeTab === 'achievements' && styles.tabTextActive]}>ACHIEVEMENTS</ThemedText>
+              {/* Dark base + subtle gold shimmer */}
+              <LinearGradient colors={['#161616', '#1a1a1a']} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={StyleSheet.absoluteFillObject} pointerEvents="none" />
+              <LinearGradient colors={['transparent', 'rgba(212,168,67,0.12)', 'transparent']} locations={[0.3, 0.5, 0.7]} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={StyleSheet.absoluteFillObject} pointerEvents="none" />
+              <LinearGradient colors={['rgba(255,255,255,0.06)', 'transparent']} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }} style={styles.miniBannerTopEdge} pointerEvents="none" />
+              <View style={styles.miniBannerContent}>
+                <IconSymbol size={28} name="trophy.fill" color="#D4A843" />
+                <ThemedText style={styles.miniBannerTitle} numberOfLines={1}>Achievements</ThemedText>
+                <ThemedText style={styles.miniBannerCount}>{achievements.length} {achievements.length === 1 ? 'badge' : 'badges'}</ThemedText>
+              </View>
+              <IconSymbol size={12} name="chevron.right" color="rgba(255,255,255,0.4)" style={styles.miniBannerChevron} />
             </TouchableOpacity>
           </View>
-
-          {/* Tab Content */}
-          <ScrollView
-            ref={tabScrollRef}
-            horizontal
-            pagingEnabled
-            showsHorizontalScrollIndicator={false}
-            onScroll={handleTabScroll}
-            scrollEventThrottle={16}
-            nestedScrollEnabled
-          >
-          {/* Clips Tab */}
-          <View style={{ width: screenWidth, minHeight: TAB_CONTENT_MIN_HEIGHT }}>
-          <View style={styles.sectionContainer}>
-
-          {/* Category Filter Row */}
-          {clipCategories.length > 0 && posts.length > 0 && (
-            <ScrollView
-              horizontal
-              showsHorizontalScrollIndicator={false}
-              contentContainerStyle={styles.categoryFilterRow}
-            >
-              <TouchableOpacity
-                style={[styles.categoryPill, selectedCategory === null && styles.categoryPillActive]}
-                onPress={() => setSelectedCategory(null)}
-                activeOpacity={0.7}
-              >
-                <ThemedText style={[styles.categoryPillText, selectedCategory === null && styles.categoryPillTextActive]}>All</ThemedText>
-              </TouchableOpacity>
-              {clipCategories.map((cat) => (
-                <TouchableOpacity
-                  key={cat}
-                  style={[styles.categoryPill, selectedCategory === cat && styles.categoryPillActive]}
-                  onPress={() => setSelectedCategory(cat)}
-                  activeOpacity={0.7}
-                >
-                  <ThemedText style={[styles.categoryPillText, selectedCategory === cat && styles.categoryPillTextActive]}>{cat}</ThemedText>
-                </TouchableOpacity>
-              ))}
-              <TouchableOpacity
-                style={styles.categoryManageButton}
-                onPress={() => setShowManageCategories(true)}
-                activeOpacity={0.7}
-              >
-                <IconSymbol size={14} name="pencil" color="#888" />
-              </TouchableOpacity>
-            </ScrollView>
-          )}
-
-          {/* Manage categories button when no categories exist yet */}
-          {clipCategories.length === 0 && posts.length > 0 && (
-            <TouchableOpacity
-              style={styles.addCategoryButton}
-              onPress={() => setShowManageCategories(true)}
-              activeOpacity={0.7}
-            >
-              <IconSymbol size={14} name="plus" color="#888" />
-              <ThemedText style={styles.addCategoryText}>Add Categories</ThemedText>
-            </TouchableOpacity>
-          )}
-
-          {/* Clips Content */}
-          <View style={styles.clipsSection}>
-          {posts.length > 0 && filteredPosts.length === 0 && selectedCategory ? (
-            <View style={styles.emptyCategoryState}>
-              <ThemedText style={styles.emptyCategoryText}>No clips in "{selectedCategory}"</ThemedText>
-            </View>
-          ) : filteredPosts.length > 0 ? (
-            <View style={styles.gridClipsContainer}>
-              {filteredPosts.map((post) => (
-                <TouchableOpacity
-                  key={post.id}
-                  style={styles.gridClipItem}
-                  onPress={() => handlePostPress(post)}
-                  activeOpacity={0.9}
-                >
-                  <Image
-                    source={{ uri: post.mediaType === 'video' && post.thumbnailUrl ? post.thumbnailUrl : post.mediaUrl }}
-                    style={styles.gridClipImage}
-                    resizeMode="cover"
-                  />
-                  {/* Bottom gradient for overlay legibility */}
-                  <LinearGradient
-                    colors={['transparent', 'rgba(0,0,0,0.75)']}
-                    locations={[0.5, 1]}
-                    style={styles.gridClipBottomGradient}
-                    pointerEvents="none"
-                  />
-                  {/* Bottom-left: play icon + duration */}
-                  {post.mediaType === 'video' && (
-                    <View style={styles.gridClipMeta}>
-                      <IconSymbol size={10} name="play.fill" color="#fff" />
-                      <ThemedText style={styles.gridClipMetaText}>
-                        {formatDuration(post.duration)}
-                      </ThemedText>
-                    </View>
-                  )}
-                  {/* Top-right: multi-item badge */}
-                  {post.mediaUrls && post.mediaUrls.length > 1 && (
-                    <View style={styles.gridClipMultiple}>
-                      <IconSymbol size={13} name="square.on.square" color="#fff" />
-                    </View>
-                  )}
-                  {/* Bottom-right: like count */}
-                  {post.likes > 0 && (
-                    <View style={styles.gridClipLikes}>
-                      <IconSymbol size={10} name="heart.fill" color="#fff" />
-                      <ThemedText style={styles.gridClipMetaText}>
-                        {formatCount(post.likes)}
-                      </ThemedText>
-                    </View>
-                  )}
-                </TouchableOpacity>
-              ))}
-            </View>
-          ) : (
-            <TouchableOpacity
-              style={styles.emptyBanner}
-              onPress={() => router.push('/postPages/createPostVideo')}
-              activeOpacity={0.8}
-            >
-              <View style={styles.emptyBannerIconRow}>
-                <View style={styles.emptyBannerIconCircle}>
-                  <IconSymbol size={16} name="photo.fill" color="#72767d" />
-                </View>
-                <View style={[styles.emptyBannerIconCircle, styles.emptyBannerIconCircleCenter]}>
-                  <IconSymbol size={20} name="video.fill" color="#fff" />
-                </View>
-                <View style={styles.emptyBannerIconCircle}>
-                  <IconSymbol size={16} name="sparkles" color="#72767d" />
-                </View>
-              </View>
-              <View style={styles.emptyBannerTextContainer}>
-                <ThemedText style={styles.emptyBannerTitle}>Share your clips</ThemedText>
-                <ThemedText style={styles.emptyBannerSubtext}>Post your best gaming moments</ThemedText>
-              </View>
-            </TouchableOpacity>
-          )}
-          </View>
-          </View>
-          </View>
-
-          {/* Achievements Tab */}
-          <View style={{ width: screenWidth, minHeight: TAB_CONTENT_MIN_HEIGHT }}>
-          <View style={styles.sectionContainer}>
-
-          {/* Achievements Content */}
-          <View style={styles.achievementsSection}>
-            {achievements.length > 0 ? (
-              <View style={styles.achievementsBadgesGrid}>
-                {achievements.map((achievement, index) => {
-                  const isGold = achievement.placement === 1;
-                  const isSilver = achievement.placement === 2;
-                  const gradient = isGold
-                    ? ['#FBE28A', '#D4A843', '#8C6A1A']
-                    : isSilver
-                    ? ['#EDEDED', '#B5B5B5', '#7A7A7A']
-                    : ['#EBB98C', '#B07A4B', '#6E4320'];
-                  const accentColor = isGold ? '#D4A843' : isSilver ? '#C7C7C7' : '#B07A4B';
-                  const medal = isGold ? '\u{1F947}' : isSilver ? '\u{1F948}' : '\u{1F949}';
-                  const placementLabel = isGold ? '1st' : isSilver ? '2nd' : '3rd';
-                  return (
-                    <View key={index} style={styles.achievementBadgeWrapper}>
-                      <View style={[styles.achievementBadge, { shadowColor: accentColor }]}>
-                        <LinearGradient
-                          colors={gradient}
-                          start={{ x: 0, y: 0 }}
-                          end={{ x: 1, y: 1 }}
-                          style={StyleSheet.absoluteFillObject}
-                        />
-                        <LinearGradient
-                          colors={['rgba(255,255,255,0.55)', 'transparent']}
-                          start={{ x: 0.3, y: 0 }}
-                          end={{ x: 0.7, y: 0.6 }}
-                          style={styles.achievementBadgeShine}
-                          pointerEvents="none"
-                        />
-                        <View style={styles.achievementBadgeInner}>
-                          <ThemedText style={styles.achievementBadgeMedal}>{medal}</ThemedText>
-                        </View>
-                      </View>
-                      <ThemedText style={styles.achievementBadgeName} numberOfLines={1}>
-                        {achievement.partyName}
-                      </ThemedText>
-                      <ThemedText style={[styles.achievementBadgePlacement, { color: accentColor }]}>
-                        {placementLabel}
-                      </ThemedText>
-                    </View>
-                  );
-                })}
-              </View>
-            ) : (
-              <View style={styles.emptyState}>
-                <IconSymbol size={36} name="trophy" color="#72767d" />
-                <ThemedText style={styles.emptyStateTitle}>No achievements yet</ThemedText>
-                <ThemedText style={styles.emptyStateSubtext}>
-                  Place top 3 in a leaderboard to earn achievements
-                </ThemedText>
-              </View>
-            )}
-          </View>
-          </View>
-          </View>
-
-          </ScrollView>
           </>
           )}
         </View>
@@ -1633,8 +1489,9 @@ export default function ProfileScreen() {
       <ManageCategoriesModal
         visible={showManageCategories}
         categories={clipCategories}
+        posts={posts}
         onClose={() => setShowManageCategories(false)}
-        onSave={handleSaveCategories}
+        onSave={handleSaveCategoriesWithPosts}
       />
 
       {/* Assign Category Modal */}
@@ -1908,7 +1765,24 @@ const styles = StyleSheet.create({
     fontWeight: '800',
     color: '#fff',
     letterSpacing: -0.3,
+  },
+  joinedText: {
+    fontSize: 12,
+    fontWeight: '500',
+    color: '#555',
+    marginTop: 2,
+  },
+  usernameRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
     marginTop: 6,
+  },
+  onlineDot: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+    backgroundColor: '#22C55E',
   },
   profileAvatarButton: {
   },
@@ -1965,8 +1839,8 @@ const styles = StyleSheet.create({
   },
   // Action row: Edit Profile + Social icons
   profileSectionDivider: {
-    height: StyleSheet.hairlineWidth,
-    backgroundColor: 'rgba(255,255,255,0.08)',
+    height: 1,
+    backgroundColor: 'rgba(255,255,255,0.15)',
     marginHorizontal: 20,
     marginTop: 16,
   },
@@ -2340,12 +2214,65 @@ const styles = StyleSheet.create({
     borderWidth: 0.5,
     borderColor: 'rgba(255,255,255,0.06)',
   },
+  bannerRow: {
+    flexDirection: 'row',
+    gap: 8,
+    marginHorizontal: 16,
+    marginTop: 10,
+    marginBottom: 16,
+  },
+  miniBanner: {
+    flex: 1,
+    aspectRatio: 0.75,
+    backgroundColor: 'transparent',
+    borderRadius: 14,
+    paddingVertical: 24,
+    paddingHorizontal: 14,
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.14)',
+    overflow: 'hidden',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.35,
+    shadowRadius: 8,
+    elevation: 6,
+  },
+  miniBannerTopEdge: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    height: 1.5,
+  },
+  miniBannerContent: {
+    gap: 4,
+  },
+  miniBannerTitle: {
+    fontSize: 18,
+    fontWeight: '800',
+    color: '#fff',
+    letterSpacing: -0.3,
+    marginTop: 6,
+    textShadowColor: 'rgba(0,0,0,0.5)',
+    textShadowOffset: { width: 0, height: 1 },
+    textShadowRadius: 3,
+  },
+  miniBannerCount: {
+    fontSize: 12,
+    color: '#9a9a9a',
+    fontWeight: '500',
+  },
+  miniBannerChevron: {
+    position: 'absolute',
+    top: 16,
+    right: 14,
+  },
   rankCardsBanner: {
     flexDirection: 'row',
     alignItems: 'center',
     backgroundColor: 'transparent',
     borderRadius: 14,
-    paddingVertical: 16,
+    paddingVertical: 36,
     paddingHorizontal: 18,
     marginHorizontal: 16,
     marginTop: 16,
@@ -2368,14 +2295,14 @@ const styles = StyleSheet.create({
     height: 1.5,
   },
   rankCardsBannerPeek: {
-    width: 86,
-    height: 60,
+    width: 110,
+    height: 78,
     position: 'relative',
   },
   rankCardsBannerMini: {
     position: 'absolute',
-    width: 70,
-    height: 46,
+    width: 90,
+    height: 60,
     borderRadius: 7,
     overflow: 'hidden',
     borderWidth: 0.5,
@@ -2395,8 +2322,8 @@ const styles = StyleSheet.create({
     height: '55%',
   },
   rankCardsBannerMiniLogo: {
-    width: 30,
-    height: 30,
+    width: 40,
+    height: 40,
   },
   rankCardsBannerTitle: {
     fontSize: 20,
