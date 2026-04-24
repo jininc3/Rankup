@@ -53,8 +53,8 @@ export {setUserPasswordFunction as setUserPassword} from "./users/setUserPasswor
 // Export Email Verification functions
 export {sendEmailVerificationCodeFunction as sendEmailVerificationCode} from "./email/emailVerification";
 export {verifyEmailCodeFunction as verifyEmailCode} from "./email/emailVerification";
-export {sendEmailLoginCodeFunction as sendEmailLoginCode} from "./email/emailLoginVerification";
-export {verifyEmailLoginCodeFunction as verifyEmailLoginCode} from "./email/emailLoginVerification";
+export {checkEmailAccountExistsFunction as checkEmailAccountExists} from "./email/emailLoginVerification";
+export {generateEmailLoginTokenFunction as generateEmailLoginToken} from "./email/emailLoginVerification";
 
 // Export Rank History functions
 export {dailyRankSnapshotScheduled} from "./rankHistory/dailyRankSnapshot";

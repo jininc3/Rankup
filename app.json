@@ -14,7 +14,10 @@
       "buildNumber": "16",
       "googleServicesFile": "./GoogleService-Info.plist",
       "entitlements": {
-        "aps-environment": "development"
+        "aps-environment": "development",
+        "com.apple.developer.associated-domains": [
+          "applinks:rankup-a2a8a.firebaseapp.com"
+        ]
       },
       "infoPlist": {
         "ITSAppUsesNonExemptEncryption": false,
@@ -32,6 +35,20 @@
         "backgroundImage": "./assets/images/rankup-black.png",
         "monochromeImage": "./assets/images/rankup-black.png"
       },
+      "intentFilters": [
+        {
+          "action": "VIEW",
+          "autoVerify": true,
+          "data": [
+            {
+              "scheme": "https",
+              "host": "rankup-a2a8a.firebaseapp.com",
+              "pathPrefix": "/__/auth/action"
+            }
+          ],
+          "category": ["BROWSABLE", "DEFAULT"]
+        }
+      ],
       "edgeToEdgeEnabled": true,
       "predictiveBackGestureEnabled": false,
       "package": "com.jininc3.RankUp"

@@ -260,6 +260,7 @@ const styles = StyleSheet.create({
   socialCircleIcon: {
     width: 22,
     height: 22,
+    resizeMode: 'contain',
   },
 
   buttonDisabled: {

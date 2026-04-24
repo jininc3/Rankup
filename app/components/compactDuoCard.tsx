@@ -41,13 +41,37 @@ const LEAGUE_RANK_ICONS: { [key: string]: any } = {
 // Valorant rank icon mapping
 const VALORANT_RANK_ICONS: { [key: string]: any } = {
   iron: require('@/assets/images/valorantranks/iron.png'),
+  iron1: require('@/assets/images/valorantranks/iron1.png'),
+  iron2: require('@/assets/images/valorantranks/iron2.png'),
+  iron3: require('@/assets/images/valorantranks/iron3.png'),
   bronze: require('@/assets/images/valorantranks/bronze.png'),
+  bronze1: require('@/assets/images/valorantranks/bronze1.png'),
+  bronze2: require('@/assets/images/valorantranks/bronze2.png'),
+  bronze3: require('@/assets/images/valorantranks/bronze3.png'),
   silver: require('@/assets/images/valorantranks/silver.png'),
+  silver1: require('@/assets/images/valorantranks/silver1.png'),
+  silver2: require('@/assets/images/valorantranks/silver2.png'),
+  silver3: require('@/assets/images/valorantranks/silver3.png'),
   gold: require('@/assets/images/valorantranks/gold.png'),
+  gold1: require('@/assets/images/valorantranks/gold1.png'),
+  gold2: require('@/assets/images/valorantranks/gold2.png'),
+  gold3: require('@/assets/images/valorantranks/gold3.png'),
   platinum: require('@/assets/images/valorantranks/platinum.png'),
+  platinum1: require('@/assets/images/valorantranks/platinum1.png'),
+  platinum2: require('@/assets/images/valorantranks/platinum2.png'),
+  platinum3: require('@/assets/images/valorantranks/platinum3.png'),
   diamond: require('@/assets/images/valorantranks/diamond.png'),
+  diamond1: require('@/assets/images/valorantranks/diamond1.png'),
+  diamond2: require('@/assets/images/valorantranks/diamond2.png'),
+  diamond3: require('@/assets/images/valorantranks/diamond3.png'),
   ascendant: require('@/assets/images/valorantranks/ascendant.png'),
+  ascendant1: require('@/assets/images/valorantranks/ascendant1.png'),
+  ascendant2: require('@/assets/images/valorantranks/ascendant2.png'),
+  ascendant3: require('@/assets/images/valorantranks/ascendant3.png'),
   immortal: require('@/assets/images/valorantranks/immortal.png'),
+  immortal1: require('@/assets/images/valorantranks/immortal1.png'),
+  immortal2: require('@/assets/images/valorantranks/immortal2.png'),
+  immortal3: require('@/assets/images/valorantranks/immortal3.png'),
   radiant: require('@/assets/images/valorantranks/radiant.png'),
   unranked: require('@/assets/images/valorantranks/unranked.png'),
 };
@@ -111,10 +135,14 @@ export default function CompactDuoCard({
     if (!rank || rank === 'Unranked') {
       return game === 'valorant' ? VALORANT_RANK_ICONS.unranked : LEAGUE_RANK_ICONS.unranked;
     }
-    const tier = rank.split(' ')[0].toLowerCase();
-    return game === 'valorant'
-      ? (VALORANT_RANK_ICONS[tier] || VALORANT_RANK_ICONS.unranked)
-      : (LEAGUE_RANK_ICONS[tier] || LEAGUE_RANK_ICONS.unranked);
+    const parts = rank.split(' ');
+    const tier = parts[0].toLowerCase();
+    const division = parts[1] || '';
+    const fullKey = (tier + division).toLowerCase();
+    if (game === 'valorant') {
+      return VALORANT_RANK_ICONS[fullKey] || VALORANT_RANK_ICONS[tier] || VALORANT_RANK_ICONS.unranked;
+    }
+    return LEAGUE_RANK_ICONS[tier] || LEAGUE_RANK_ICONS.unranked;
   };
 
   const getLaneIcon = (role: string) => {

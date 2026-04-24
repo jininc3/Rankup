@@ -217,7 +217,7 @@ export async function completePhoneSignup(data: {
 
     const userProfile: UserProfile = {
       id: user.uid,
-      email: user.email!,
+      email: '',
       username: data.username,
       usernameLower: data.username.toLowerCase(),
       avatar: data.avatar || '',

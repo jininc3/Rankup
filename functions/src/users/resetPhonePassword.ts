@@ -30,12 +30,25 @@ export const resetPhonePasswordFunction = onCall(
     }
 
     try {
+      logger.info(`resetPhonePassword called with phoneNumber: "${phoneNumber}"`);
+
       // Find user by phone number in Firestore
-      const usersSnapshot = await admin.firestore()
+      let usersSnapshot = await admin.firestore()
         .collection("users")
         .where("phoneNumber", "==", phoneNumber)
         .limit(1)
         .get();
+
+      // Fallback: look up by the generated internal email
+      if (usersSnapshot.empty) {
+        const sanitized = phoneNumber.replace(/[^0-9]/g, "");
+        const generatedEmail = `phone_${sanitized}@rankup-phone.internal`;
+        usersSnapshot = await admin.firestore()
+          .collection("users")
+          .where("email", "==", generatedEmail)
+          .limit(1)
+          .get();
+      }
 
       if (usersSnapshot.empty) {
         throw new HttpsError(
@@ -45,8 +58,10 @@ export const resetPhonePasswordFunction = onCall(
       }
 
       const userId = usersSnapshot.docs[0].id;
-      const userData = usersSnapshot.docs[0].data();
-      const email = userData.email;
+
+      // Get the auth email from Firebase Auth (Firestore email may be empty for phone users)
+      const authUser = await admin.auth().getUser(userId);
+      const email = authUser.email;
 
       if (!email) {
         throw new HttpsError(

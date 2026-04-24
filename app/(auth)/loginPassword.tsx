@@ -31,9 +31,18 @@ export default function LoginPassword() {
 
   const getPhoneFromEmail = async (email: string): Promise<string | null> => {
     try {
-      const q = query(collection(db, 'users'), where('email', '==', email));
-      const snapshot = await getDocs(q);
+      // Try by Firestore email first
+      let q = query(collection(db, 'users'), where('email', '==', email));
+      let snapshot = await getDocs(q);
       if (!snapshot.empty) return snapshot.docs[0].data().phoneNumber || null;
+      // Phone users have empty email — extract phone digits from internal email and match
+      if (email.endsWith('@rankup-phone.internal')) {
+        const digits = email.replace('phone_', '').replace('@rankup-phone.internal', '');
+        const phoneWithPlus = '+' + digits;
+        q = query(collection(db, 'users'), where('phoneNumber', '==', phoneWithPlus));
+        snapshot = await getDocs(q);
+        if (!snapshot.empty) return snapshot.docs[0].data().phoneNumber || null;
+      }
       return null;
     } catch { return null; }
   };
@@ -75,7 +84,15 @@ export default function LoginPassword() {
     try {
       const q = query(collection(db, 'users'), where('usernameLower', '==', username.toLowerCase()));
       const snapshot = await getDocs(q);
-      if (!snapshot.empty) return snapshot.docs[0].data().email;
+      if (!snapshot.empty) {
+        const data = snapshot.docs[0].data();
+        if (data.email) return data.email;
+        // Phone users have empty email in Firestore — derive auth email from phone number
+        if (data.phoneNumber) {
+          const sanitized = data.phoneNumber.replace(/[^0-9]/g, '');
+          return `phone_${sanitized}@rankup-phone.internal`;
+        }
+      }
       return null;
     } catch { return null; }
   };

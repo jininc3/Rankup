@@ -797,6 +797,7 @@ export default function LeagueRankCard({ game, username, viewOnly = false, userI
           {...statisticsSwipePanResponder.panHandlers}
         >
           <Pressable
+            style={{ flex: 1 }}
             onPress={() => {
               if (matchHistoryExpanded) {
                 setMatchHistoryExpanded(false);
@@ -882,9 +883,9 @@ export default function LeagueRankCard({ game, username, viewOnly = false, userI
                     </View>
 
                     {/* Top 3 Champions */}
-                    {game.topChampions && game.topChampions.length > 0 && (
-                      <View style={styles.topChampionsSection}>
-                        <ThemedText style={styles.topChampionsTitle}>MOST PLAYED</ThemedText>
+                    <View style={styles.topChampionsSection}>
+                      <ThemedText style={styles.topChampionsTitle}>MOST PLAYED</ThemedText>
+                      {game.topChampions && game.topChampions.length > 0 ? (
                         <View style={styles.topChampionsRow}>
                           {game.topChampions.map((champ, index) => (
                             <View key={champ.championId} style={styles.topChampionItem}>
@@ -910,8 +911,12 @@ export default function LeagueRankCard({ game, username, viewOnly = false, userI
                             </View>
                           ))}
                         </View>
-                      </View>
-                    )}
+                      ) : (
+                        <ThemedText style={{ fontSize: 12, color: 'rgba(255,255,255,0.3)', textAlign: 'center', paddingVertical: 12 }}>
+                          No champion data available
+                        </ThemedText>
+                      )}
+                    </View>
                   </View>
                 </View>
 

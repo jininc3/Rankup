@@ -32,7 +32,10 @@ function generateCode(): string {
 export const sendEmailVerificationCodeFunction = onCall(
   {invoker: "public", secrets: [resendApiKey]},
   async (request) => {
-    const {email} = request.data as {email: string};
+    const {email, skipRegisteredCheck} = request.data as {
+      email: string;
+      skipRegisteredCheck?: boolean;
+    };
 
     if (!email || typeof email !== "string") {
       throw new HttpsError("invalid-argument", "Email is required.");
@@ -46,18 +49,20 @@ export const sendEmailVerificationCodeFunction = onCall(
     const normalizedEmail = email.toLowerCase().trim();
     const db = admin.firestore();
 
-    // Check if email is already registered (has a Firestore profile)
-    const usersQuery = await db
-      .collection("users")
-      .where("email", "==", normalizedEmail)
-      .limit(1)
-      .get();
+    // Check if email is already registered (skip for existing users adding email)
+    if (!skipRegisteredCheck) {
+      const usersQuery = await db
+        .collection("users")
+        .where("email", "==", normalizedEmail)
+        .limit(1)
+        .get();
 
-    if (!usersQuery.empty) {
-      throw new HttpsError(
-        "already-exists",
-        "This email is already registered."
-      );
+      if (!usersQuery.empty) {
+        throw new HttpsError(
+          "already-exists",
+          "This email is already registered."
+        );
+      }
     }
 
     // Generate code and store in Firestore

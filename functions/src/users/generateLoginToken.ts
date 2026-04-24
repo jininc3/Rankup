@@ -23,10 +23,20 @@ export const generateLoginTokenFunction = onCall(
 
     const db = admin.firestore();
 
-    const snapshot = await db.collection("users")
+    let snapshot = await db.collection("users")
       .where("phoneNumber", "==", phoneNumber)
       .limit(1)
       .get();
+
+    // Fallback: look up by the generated internal email
+    if (snapshot.empty) {
+      const sanitized = phoneNumber.replace(/[^0-9]/g, "");
+      const generatedEmail = `phone_${sanitized}@rankup-phone.internal`;
+      snapshot = await db.collection("users")
+        .where("email", "==", generatedEmail)
+        .limit(1)
+        .get();
+    }
 
     if (snapshot.empty) {
       throw new HttpsError("not-found", "No account found with this phone number.");

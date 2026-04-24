@@ -4,20 +4,15 @@ import { IconSymbol } from '@/components/ui/icon-symbol';
 import { useRouter } from '@/hooks/useRouter';
 import { ScrollView, StyleSheet, TouchableOpacity, View, Alert } from 'react-native';
 import { useAuth } from '@/contexts/AuthContext';
-import { useState, useEffect } from 'react';
-import { auth } from '@/config/firebase';
-import { useGoogleAuth } from '@/hooks/useGoogleAuth';
-import { useAppleAuth } from '@/hooks/useAppleAuth';
-import { GoogleAuthProvider, OAuthProvider, reauthenticateWithCredential } from 'firebase/auth';
 import { LinearGradient } from 'expo-linear-gradient';
 
-const accountSettingsData = [
+const getAccountSettingsData = (provider?: string, email?: string) => [
   {
     id: 'profile',
     title: 'Profile Information',
     items: [
       { id: 1, icon: 'person', title: 'Edit Username', subtitle: 'Change your display name', hasChevron: true },
-      { id: 2, icon: 'envelope', title: 'Email Address', subtitle: 'Update your email', hasChevron: true },
+      { id: 2, icon: 'envelope', title: 'Email Address', subtitle: provider === 'phone' && !email ? 'Add your email' : 'Update your email', hasChevron: true },
       { id: 3, icon: 'phone', title: 'Phone Number', subtitle: 'Add or change phone', hasChevron: true },
       { id: 4, icon: 'lock', title: 'Change Password', subtitle: 'Update your password', hasChevron: true },
     ],
@@ -35,98 +30,9 @@ const accountSettingsData = [
 export default function AccountSettingsScreen() {
   const router = useRouter();
   const { user } = useAuth();
-  const [authProvider, setAuthProvider] = useState<'password' | 'google.com' | 'apple.com' | 'phone' | null>(null);
-  const googleAuth = useGoogleAuth();
-  const appleAuth = useAppleAuth();
-  const [isEditUsernameFlow, setIsEditUsernameFlow] = useState(false);
 
-  useEffect(() => {
-    const currentUser = auth.currentUser;
-    if (currentUser && currentUser.providerData.length > 0) {
-      setAuthProvider(currentUser.providerData[0]?.providerId as any);
-    }
-  }, []);
-
-  useEffect(() => {
-    if (googleAuth.response?.type === 'success' && isEditUsernameFlow) {
-      handleGoogleEditUsernameSuccess(googleAuth.response);
-    }
-  }, [googleAuth.response]);
-
-  const handleEditUsername = async () => {
-    if (user?.provider === 'google') {
-      Alert.alert(
-        'Verify Your Identity',
-        'Please sign in with your Google account to verify your identity.',
-        [
-          { text: 'Cancel', style: 'cancel' },
-          {
-            text: 'Sign In with Google',
-            onPress: async () => {
-              try {
-                setIsEditUsernameFlow(true);
-                await googleAuth.promptAsync();
-              } catch (error: any) {
-                Alert.alert('Error', 'Failed to open Google sign-in.');
-                setIsEditUsernameFlow(false);
-              }
-            },
-          },
-        ]
-      );
-      return;
-    }
-    if (user?.provider === 'apple') {
-      Alert.alert(
-        'Verify Your Identity',
-        'Please sign in with your Apple account to verify your identity.',
-        [
-          { text: 'Cancel', style: 'cancel' },
-          {
-            text: 'Sign In with Apple',
-            onPress: async () => {
-              try {
-                const { appleCredential, rawNonce } = await appleAuth.signIn();
-                if (appleCredential.identityToken) {
-                  const currentUser = auth.currentUser;
-                  if (!currentUser) return;
-                  const appleProvider = new OAuthProvider('apple.com');
-                  const credential = appleProvider.credential({
-                    idToken: appleCredential.identityToken,
-                    rawNonce,
-                  });
-                  await reauthenticateWithCredential(currentUser, credential);
-                  router.push('/profilePages/editUsername');
-                }
-              } catch (error: any) {
-                if (error.code !== 'ERR_REQUEST_CANCELED') {
-                  Alert.alert('Error', 'Failed to verify your identity.');
-                }
-              }
-            },
-          },
-        ]
-      );
-      return;
-    }
+  const handleEditUsername = () => {
     router.push('/profilePages/editUsername');
-  };
-
-  const handleGoogleEditUsernameSuccess = async (response: any) => {
-    try {
-      const { id_token } = response.params;
-      if (id_token) {
-        const currentUser = auth.currentUser;
-        if (!currentUser) { setIsEditUsernameFlow(false); return; }
-        const googleCredential = GoogleAuthProvider.credential(id_token);
-        await reauthenticateWithCredential(currentUser, googleCredential);
-        setIsEditUsernameFlow(false);
-        router.push('/profilePages/editUsername');
-      }
-    } catch (error: any) {
-      Alert.alert('Error', 'Failed to verify your identity.');
-      setIsEditUsernameFlow(false);
-    }
   };
 
   const handleEditEmail = async () => {
@@ -134,7 +40,7 @@ export default function AccountSettingsScreen() {
       Alert.alert('Not Available', `Email editing is not available for ${user?.provider === 'apple' ? 'Apple' : 'Google'} accounts.`);
       return;
     }
-    router.push('/profilePages/editEmail');
+    router.push('/profilePages/editEmail' as any);
   };
 
   return (
@@ -157,7 +63,7 @@ export default function AccountSettingsScreen() {
       </View>
 
       <ScrollView showsVerticalScrollIndicator={false}>
-        {accountSettingsData.map((section) => {
+        {getAccountSettingsData(user?.provider, user?.email).map((section) => {
           const filteredItems = section.items;
           return (
           <View key={section.id} style={styles.section}>

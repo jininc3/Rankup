@@ -119,6 +119,7 @@ export default function ResetPasswordPhone() {
       setIsResetting(true);
 
       // Call Cloud Function to reset the password (uses Admin SDK, no old password needed)
+      console.log('Resetting password for phone:', JSON.stringify(phoneNumber));
       const resetFn = httpsCallable(functions, 'resetPhonePassword');
       const result = await resetFn({ phoneNumber, newPassword });
       const { email } = result.data as { email: string };

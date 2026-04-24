@@ -26,7 +26,7 @@ interface User {
   followingCount?: number;
   needsUsernameSetup?: boolean;
   isPrivate?: boolean;
-  provider: 'email' | 'google' | 'apple' | 'discord' | 'instagram';
+  provider: 'email' | 'google' | 'apple' | 'phone' | 'discord' | 'instagram';
 }
 
 interface Post {
