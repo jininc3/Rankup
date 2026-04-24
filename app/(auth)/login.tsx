@@ -2,12 +2,14 @@ import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import MaterialIcons from '@expo/vector-icons/MaterialIcons';
 import { useGoogleAuth } from '@/hooks/useGoogleAuth';
-import { signInWithGoogleCredential } from '@/services/authService';
+import { useAppleAuth } from '@/hooks/useAppleAuth';
+import { signInWithGoogleCredential, signInWithAppleCredential } from '@/services/authService';
 import { useRouter } from '@/hooks/useRouter';
 import React, { useEffect, useState } from 'react';
 import {
   Alert,
   Image,
+  Platform,
   ScrollView,
   StyleSheet,
   TouchableOpacity,
@@ -19,6 +21,7 @@ export default function LoginScreen() {
   const router = useRouter();
   const [isLoading, setIsLoading] = useState(false);
   const googleAuth = useGoogleAuth();
+  const appleAuth = useAppleAuth();
 
   useEffect(() => {
     if (googleAuth.response?.type === 'success') {
@@ -52,6 +55,33 @@ export default function LoginScreen() {
     } catch (error: any) {
       Alert.alert('Google Sign In Failed', error.message);
       console.error(error);
+    }
+  };
+
+  const handleAppleLogin = async () => {
+    try {
+      setIsLoading(true);
+      const { appleCredential, rawNonce } = await appleAuth.signIn();
+
+      if (!appleCredential.identityToken) {
+        throw new Error('No identity token returned from Apple');
+      }
+
+      const profile = await signInWithAppleCredential(
+        appleCredential.identityToken,
+        rawNonce
+      );
+
+      if (profile.needsUsernameSetup) {
+        router.replace({ pathname: '/(auth)/signUpBirthday', params: { signupMethod: 'apple' } });
+      }
+    } catch (error: any) {
+      if (error.code !== 'ERR_REQUEST_CANCELED') {
+        Alert.alert('Apple Sign In Failed', error.message);
+        console.error(error);
+      }
+    } finally {
+      setIsLoading(false);
     }
   };
 
@@ -90,6 +120,17 @@ export default function LoginScreen() {
 
             {/* Circular icon buttons row */}
             <View style={styles.socialRow}>
+              {Platform.OS === 'ios' && (
+                <TouchableOpacity
+                  style={[styles.socialCircle, isLoading && styles.buttonDisabled]}
+                  onPress={handleAppleLogin}
+                  disabled={isLoading}
+                  activeOpacity={0.7}
+                >
+                  <Image source={require('@/assets/images/apple.png')} style={styles.socialCircleIcon} />
+                </TouchableOpacity>
+              )}
+
               <TouchableOpacity
                 style={[styles.socialCircle, isLoading && styles.buttonDisabled]}
                 onPress={handleGoogleLogin}

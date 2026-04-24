@@ -4,6 +4,7 @@ import {
   signOut as firebaseSignOut,
   updateProfile,
   GoogleAuthProvider,
+  OAuthProvider,
   signInWithCredential,
   User as FirebaseUser,
   deleteUser,
@@ -33,7 +34,7 @@ export interface UserProfile {
   instagramLink?: string;
   phoneNumber?: string;
   phoneVerified?: boolean;
-  provider: 'email' | 'google' | 'phone';
+  provider: 'email' | 'google' | 'phone' | 'apple';
   postsCount?: number;
   followersCount?: number;
   followingCount?: number;
@@ -356,6 +357,50 @@ export async function signInWithGoogleCredential(idToken: string): Promise<UserP
   } catch (error: any) {
     console.error('Google sign in error:', error);
     throw new Error('Failed to sign in with Google');
+  }
+}
+
+// ─── Apple sign-in ────────────────────────────────────────────────────────
+
+export async function signInWithAppleCredential(
+  identityToken: string,
+  rawNonce: string
+): Promise<UserProfile> {
+  try {
+    const appleProvider = new OAuthProvider('apple.com');
+    const oauthCredential = appleProvider.credential({
+      idToken: identityToken,
+      rawNonce: rawNonce,
+    });
+    const userCredential = await signInWithCredential(auth, oauthCredential);
+    const user = userCredential.user;
+
+    let userProfile = await getUserProfile(user.uid);
+
+    if (!userProfile) {
+      userProfile = {
+        id: user.uid,
+        email: user.email || '',
+        username: user.displayName || user.email?.split('@')[0] || 'User',
+        usernameLower: (user.displayName || user.email?.split('@')[0] || 'user').toLowerCase(),
+        bio: '',
+        discordLink: '',
+        instagramLink: '',
+        provider: 'apple',
+        postsCount: 0,
+        followersCount: 0,
+        followingCount: 0,
+        needsUsernameSetup: true,
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      };
+      await setDoc(doc(db, 'users', user.uid), userProfile);
+    }
+
+    return userProfile;
+  } catch (error: any) {
+    console.error('Apple sign in error:', error);
+    throw new Error('Failed to sign in with Apple');
   }
 }
 

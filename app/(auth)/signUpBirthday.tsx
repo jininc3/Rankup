@@ -11,6 +11,7 @@ const PROGRESS: Record<string, string> = {
   email: '14.3%',
   phone: '14.3%',
   google: '33.3%',
+  apple: '33.3%',
 };
 
 export default function SignUpBirthday() {

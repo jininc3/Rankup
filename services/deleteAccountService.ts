@@ -18,6 +18,7 @@ import {
   deleteUser,
   reauthenticateWithCredential,
   GoogleAuthProvider,
+  OAuthProvider,
 } from 'firebase/auth';
 import { deleteProfilePicture, deleteCoverPhoto, deletePostMedia } from './storageService';
 
@@ -29,7 +30,9 @@ import { deleteProfilePicture, deleteCoverPhoto, deletePostMedia } from './stora
  */
 export async function reauthenticateUser(
   googleIdToken?: string,
-  password?: string
+  password?: string,
+  appleIdentityToken?: string,
+  appleRawNonce?: string
 ): Promise<void> {
   const currentUser = auth.currentUser;
   if (!currentUser) {
@@ -42,8 +45,17 @@ export async function reauthenticateUser(
     if (providerId === 'google.com' && googleIdToken) {
       const credential = GoogleAuthProvider.credential(googleIdToken);
       await reauthenticateWithCredential(currentUser, credential);
+    } else if (providerId === 'apple.com' && appleIdentityToken && appleRawNonce) {
+      const appleProvider = new OAuthProvider('apple.com');
+      const credential = appleProvider.credential({
+        idToken: appleIdentityToken,
+        rawNonce: appleRawNonce,
+      });
+      await reauthenticateWithCredential(currentUser, credential);
     } else if (providerId === 'google.com') {
       throw new Error('Google re-authentication required');
+    } else if (providerId === 'apple.com') {
+      throw new Error('Apple re-authentication required');
     } else if (password && currentUser.email) {
       // Email/phone users — re-authenticate with password
       const { EmailAuthProvider } = await import('firebase/auth');
@@ -90,13 +102,15 @@ export async function reauthenticateUser(
 export async function deleteUserAccount(
   userId: string,
   googleIdToken?: string,
-  password?: string
+  password?: string,
+  appleIdentityToken?: string,
+  appleRawNonce?: string
 ): Promise<void> {
   try {
     console.log(`Starting account deletion for user: ${userId}`);
 
     // 0. Re-authenticate user before deletion (required by Firebase for Google users)
-    await reauthenticateUser(googleIdToken, password);
+    await reauthenticateUser(googleIdToken, password, appleIdentityToken, appleRawNonce);
 
     // 1. Delete all user's posts (including their likes and comments subcollections) and media
     await deleteUserPosts(userId);

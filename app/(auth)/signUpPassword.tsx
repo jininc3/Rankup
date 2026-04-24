@@ -17,6 +17,7 @@ const PROGRESS: Record<string, string> = {
   email: '71.4%',
   phone: '71.4%',
   google: '66.6%',
+  apple: '66.6%',
 };
 
 export default function SignUpPassword() {
@@ -62,7 +63,7 @@ export default function SignUpPassword() {
       let avatarUrl = '';
       const avatarUri = params.avatarUri as string;
 
-      if (signupMethod === 'google') {
+      if (signupMethod === 'google' || signupMethod === 'apple') {
         const user = auth.currentUser;
         if (!user) throw new Error('No authenticated user');
 

@@ -14,6 +14,7 @@ const PROGRESS: Record<string, string> = {
   email: '57.1%',
   phone: '57.1%',
   google: '50%',
+  apple: '50%',
 };
 
 const DEFAULT_AVATARS = [

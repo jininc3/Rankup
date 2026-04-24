@@ -7,7 +7,8 @@ import { useAuth } from '@/contexts/AuthContext';
 import { useState, useEffect } from 'react';
 import { auth } from '@/config/firebase';
 import { useGoogleAuth } from '@/hooks/useGoogleAuth';
-import { GoogleAuthProvider, reauthenticateWithCredential } from 'firebase/auth';
+import { useAppleAuth } from '@/hooks/useAppleAuth';
+import { GoogleAuthProvider, OAuthProvider, reauthenticateWithCredential } from 'firebase/auth';
 import { LinearGradient } from 'expo-linear-gradient';
 
 const accountSettingsData = [
@@ -18,7 +19,7 @@ const accountSettingsData = [
       { id: 1, icon: 'person', title: 'Edit Username', subtitle: 'Change your display name', hasChevron: true },
       { id: 2, icon: 'envelope', title: 'Email Address', subtitle: 'Update your email', hasChevron: true },
       { id: 3, icon: 'phone', title: 'Phone Number', subtitle: 'Add or change phone', hasChevron: true },
-      { id: 4, icon: 'lock', title: 'Change Password', subtitle: 'Update your password', hasChevron: true, passwordOnly: true },
+      { id: 4, icon: 'lock', title: 'Change Password', subtitle: 'Update your password', hasChevron: true },
     ],
   },
   {
@@ -34,8 +35,9 @@ const accountSettingsData = [
 export default function AccountSettingsScreen() {
   const router = useRouter();
   const { user } = useAuth();
-  const [authProvider, setAuthProvider] = useState<'password' | 'google.com' | 'phone' | null>(null);
+  const [authProvider, setAuthProvider] = useState<'password' | 'google.com' | 'apple.com' | 'phone' | null>(null);
   const googleAuth = useGoogleAuth();
+  const appleAuth = useAppleAuth();
   const [isEditUsernameFlow, setIsEditUsernameFlow] = useState(false);
 
   useEffect(() => {
@@ -74,6 +76,39 @@ export default function AccountSettingsScreen() {
       );
       return;
     }
+    if (user?.provider === 'apple') {
+      Alert.alert(
+        'Verify Your Identity',
+        'Please sign in with your Apple account to verify your identity.',
+        [
+          { text: 'Cancel', style: 'cancel' },
+          {
+            text: 'Sign In with Apple',
+            onPress: async () => {
+              try {
+                const { appleCredential, rawNonce } = await appleAuth.signIn();
+                if (appleCredential.identityToken) {
+                  const currentUser = auth.currentUser;
+                  if (!currentUser) return;
+                  const appleProvider = new OAuthProvider('apple.com');
+                  const credential = appleProvider.credential({
+                    idToken: appleCredential.identityToken,
+                    rawNonce,
+                  });
+                  await reauthenticateWithCredential(currentUser, credential);
+                  router.push('/profilePages/editUsername');
+                }
+              } catch (error: any) {
+                if (error.code !== 'ERR_REQUEST_CANCELED') {
+                  Alert.alert('Error', 'Failed to verify your identity.');
+                }
+              }
+            },
+          },
+        ]
+      );
+      return;
+    }
     router.push('/profilePages/editUsername');
   };
 
@@ -95,8 +130,8 @@ export default function AccountSettingsScreen() {
   };
 
   const handleEditEmail = async () => {
-    if (user?.provider === 'google') {
-      Alert.alert('Not Available', 'Email editing is not available for Google accounts.');
+    if (user?.provider === 'google' || user?.provider === 'apple') {
+      Alert.alert('Not Available', `Email editing is not available for ${user?.provider === 'apple' ? 'Apple' : 'Google'} accounts.`);
       return;
     }
     router.push('/profilePages/editEmail');
@@ -123,8 +158,7 @@ export default function AccountSettingsScreen() {
 
       <ScrollView showsVerticalScrollIndicator={false}>
         {accountSettingsData.map((section) => {
-          const filteredItems = section.items.filter((item: any) => !item.passwordOnly || authProvider === 'password');
-          if (filteredItems.length === 0) return null;
+          const filteredItems = section.items;
           return (
           <View key={section.id} style={styles.section}>
             {section.title && (

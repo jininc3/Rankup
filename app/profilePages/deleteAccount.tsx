@@ -11,6 +11,7 @@ import { deleteUserAccount } from '@/services/deleteAccountService';
 import { useState, useEffect, useRef } from 'react';
 import { auth } from '@/config/firebase';
 import { useGoogleAuth } from '@/hooks/useGoogleAuth';
+import { useAppleAuth } from '@/hooks/useAppleAuth';
 import { LinearGradient } from 'expo-linear-gradient';
 
 export default function DeleteAccountScreen() {
@@ -20,8 +21,9 @@ export default function DeleteAccountScreen() {
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const scrollRef = useRef<ScrollView>(null);
-  const [authProvider, setAuthProvider] = useState<'password' | 'google.com' | 'phone' | null>(null);
+  const [authProvider, setAuthProvider] = useState<'password' | 'google.com' | 'apple.com' | 'phone' | null>(null);
   const googleAuth = useGoogleAuth();
+  const appleAuth = useAppleAuth();
 
   useEffect(() => {
     const currentUser = auth.currentUser;
@@ -59,7 +61,8 @@ export default function DeleteAccountScreen() {
   };
 
   const isGoogle = authProvider === 'google.com';
-  const canDelete = isGoogle || password.length > 0;
+  const isApple = authProvider === 'apple.com';
+  const canDelete = isGoogle || isApple || password.length > 0;
 
   const handleDelete = () => {
     if (!canDelete) return;
@@ -78,12 +81,20 @@ export default function DeleteAccountScreen() {
             try {
               if (isGoogle) {
                 await googleAuth.promptAsync();
+              } else if (isApple) {
+                const { appleCredential, rawNonce } = await appleAuth.signIn();
+                if (appleCredential.identityToken && user?.id) {
+                  await deleteUserAccount(user.id, undefined, undefined, appleCredential.identityToken, rawNonce);
+                  handleDeleteSuccess();
+                }
               } else {
                 await deleteUserAccount(user.id, undefined, password);
                 handleDeleteSuccess();
               }
             } catch (error: any) {
-              Alert.alert('Error', error.message || 'Failed to delete account.');
+              if (error.code !== 'ERR_REQUEST_CANCELED') {
+                Alert.alert('Error', error.message || 'Failed to delete account.');
+              }
               setIsDeleting(false);
             }
           },
@@ -137,13 +148,13 @@ export default function DeleteAccountScreen() {
             ))}
           </View>
 
-          {isGoogle && (
+          {(isGoogle || isApple) && (
             <ThemedText style={styles.notice}>
-              You will be prompted to sign in with Google to confirm.
+              You will be prompted to sign in with {isApple ? 'Apple' : 'Google'} to confirm.
             </ThemedText>
           )}
 
-          {!isGoogle && (
+          {!isGoogle && !isApple && (
             <View style={styles.passwordSection}>
               <ThemedText style={styles.label}>Enter your password to confirm</ThemedText>
               <View style={styles.inputWrapper}>

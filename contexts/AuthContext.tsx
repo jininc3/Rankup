@@ -26,7 +26,7 @@ interface User {
   followingCount?: number;
   needsUsernameSetup?: boolean;
   isPrivate?: boolean;
-  provider: 'email' | 'google' | 'discord' | 'instagram';
+  provider: 'email' | 'google' | 'apple' | 'discord' | 'instagram';
 }
 
 interface Post {
@@ -417,6 +417,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           } else {
             // Fallback if profile doesn't exist (new user or race condition)
             const isGoogleUser = firebaseUser.providerData.some(p => p.providerId === 'google.com');
+            const isAppleUser = firebaseUser.providerData.some(p => p.providerId === 'apple.com');
             const isEmailProvider = firebaseUser.providerData.some(p => p.providerId === 'password');
 
             // Email users without verified email should not get user state (skip phone users)
@@ -431,12 +432,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
               username: firebaseUser.displayName || firebaseUser.email?.split('@')[0] || 'User',
               email: firebaseUser.email || '',
               avatar: firebaseUser.photoURL || undefined,
-              needsUsernameSetup: isGoogleUser, // New Google users need username setup
-              provider: isGoogleUser ? 'google' : 'email',
+              needsUsernameSetup: isGoogleUser || isAppleUser,
+              provider: isAppleUser ? 'apple' : isGoogleUser ? 'google' : 'email',
             });
 
             // Preload feed before showing home page; others run in background
-            if (!isGoogleUser) {
+            if (!isGoogleUser && !isAppleUser) {
               let blocked = new Set<string>();
               let blockedBy = new Set<string>();
               try {
