@@ -588,9 +588,12 @@ export default function NotificationsScreen() {
   };
 
   // Navigate to user profile
-  const handleUserPress = (userId: string, event: any) => {
+  const handleUserPress = (userId: string, event: any, username?: string, avatar?: string) => {
     event.stopPropagation();
-    router.push(`/profilePages/profileView?userId=${userId}`);
+    router.push({
+      pathname: '/profilePages/profileView',
+      params: { userId, username: username || '', avatar: avatar || '' },
+    });
   };
 
   // Navigate to appropriate page based on notification type
@@ -599,7 +602,10 @@ export default function NotificationsScreen() {
       // No navigation — accept/decline on notifications page
     } else if (notification.type === 'follow' && notification.fromUserId) {
       // Navigate to user profile for follow notifications
-      router.push(`/profilePages/profileView?userId=${notification.fromUserId}`);
+      router.push({
+        pathname: '/profilePages/profileView',
+        params: { userId: notification.fromUserId, username: notification.fromUsername || '', avatar: notification.fromUserAvatar || '' },
+      });
     } else if ((notification.type === 'like' || notification.type === 'comment' || notification.type === 'tag') && notification.postId) {
       // Show post viewer for like/comment/tag notifications
       fetchAndShowPost(notification.postId);
@@ -858,7 +864,7 @@ export default function NotificationsScreen() {
                     {notification.fromUserId ? (
                       <TouchableOpacity
                         style={styles.avatar}
-                        onPress={(e) => handleUserPress(notification.fromUserId, e)}
+                        onPress={(e) => handleUserPress(notification.fromUserId, e, notification.fromUsername, notification.fromUserAvatar)}
                         activeOpacity={0.7}
                       >
                         {notification.fromUserAvatar && notification.fromUserAvatar.startsWith('http') ? (
@@ -890,7 +896,7 @@ export default function NotificationsScreen() {
                             {notification.fromUsername && notification.fromUserId ? (
                               <ThemedText
                                 style={styles.usernameText}
-                                onPress={(e) => handleUserPress(notification.fromUserId, e)}
+                                onPress={(e) => handleUserPress(notification.fromUserId, e, notification.fromUsername, notification.fromUserAvatar)}
                               >
                                 {notification.fromUsername}
                               </ThemedText>

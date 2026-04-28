@@ -13,7 +13,6 @@ import { doc, getDoc } from 'firebase/firestore';
 import { db } from '@/config/firebase';
 import { useRouter } from '@/hooks/useRouter';
 import { joinDuoQueue, leaveDuoQueue, subscribeToDuoQueue, getDuoMatch, acceptMatch, declineMatch, subscribeToMatch, DuoMatchCardData, DuoMatch } from '@/services/duoMatchService';
-import { createOrGetChat, sendMessage } from '@/services/chatService';
 import { DuoCardData } from '@/app/(tabs)/duoFinder';
 
 export default function LiveSearchScreen() {
@@ -360,39 +359,22 @@ export default function LiveSearchScreen() {
     });
   };
 
-  const handleSendUsername = async () => {
+  const handleSendUsername = () => {
     if (!user?.id || !matchedUserCard || !searchGame) return;
 
-    try {
-      const myInGameName = searchGame === 'valorant' ? valorantInGameName : leagueInGameName;
-      const chatId = await createOrGetChat(
-        user.id,
-        user.username || '',
-        user.avatar,
-        matchedUserCard.userId,
-        matchedUserCard.username,
-        matchedUserCard.avatar || undefined,
-      );
+    const myInGameName = searchGame === 'valorant' ? valorantInGameName : leagueInGameName;
+    const gameLabel = searchGame === 'valorant' ? 'Valorant' : 'League';
+    const autoMessage = myInGameName ? `My ${gameLabel} username: ${myInGameName}` : '';
 
-      // Auto-send in-game username as first message
-      if (myInGameName) {
-        const gameLabel = searchGame === 'valorant' ? 'Valorant' : 'League';
-        await sendMessage(chatId, user.id, `My ${gameLabel} username: ${myInGameName}`);
-      }
-
-      router.push({
-        pathname: '/chatPages/chatScreen',
-        params: {
-          chatId,
-          otherUserId: matchedUserCard.userId,
-          otherUsername: matchedUserCard.username,
-          otherUserAvatar: matchedUserCard.avatar || '',
-        },
-      });
-    } catch (error) {
-      console.error('Error sending username:', error);
-      Alert.alert('Error', 'Failed to start chat. Please try again.');
-    }
+    router.push({
+      pathname: '/chatPages/chatScreen',
+      params: {
+        otherUserId: matchedUserCard.userId,
+        otherUsername: matchedUserCard.username,
+        otherUserAvatar: matchedUserCard.avatar || '',
+        autoMessage,
+      },
+    });
   };
 
   // Auto-decline when accept timer expires

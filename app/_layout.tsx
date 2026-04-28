@@ -204,7 +204,10 @@ function RootLayoutNav() {
   const handleNotificationNavigation = (data: any) => {
     if (data.type === 'follow') {
       // Navigate to the user's profile who followed you
-      router.push(`/profilePages/profileView?userId=${data.fromUserId}`);
+      router.push({
+        pathname: '/profilePages/profileView',
+        params: { userId: data.fromUserId, username: data.fromUsername || '', avatar: data.fromUserAvatar || '' },
+      });
     } else if (data.type === 'like' || data.type === 'comment' || data.type === 'tag') {
       // Navigate to the post that was liked/commented/tagged
       if (data.postId) {
@@ -239,6 +242,8 @@ function RootLayoutNav() {
       <Stack
         screenOptions={{
           headerShown: false,
+          gestureEnabled: true,
+          fullScreenGestureEnabled: true,
         }}
       >
         <Stack.Screen name="index" options={{ headerShown: false }} />

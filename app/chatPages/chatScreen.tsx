@@ -12,6 +12,7 @@ import {
   Image,
   ActivityIndicator,
   Alert,
+  InteractionManager,
 } from 'react-native';
 import { useRouter } from '@/hooks/useRouter';
 import { useLocalSearchParams } from 'expo-router';
@@ -24,6 +25,7 @@ import {
   getOlderMessages,
   subscribeToNewMessages,
   subscribeToReadStatus,
+  createOrGetChat,
   ChatMessage,
   Chat,
 } from '@/services/chatService';
@@ -50,11 +52,48 @@ export default function ChatScreen() {
 
   const [otherUserHasRead, setOtherUserHasRead] = useState(false);
 
-  const chatId = params.chatId as string;
+  const chatIdParam = params.chatId as string | undefined;
   const otherUserId = params.otherUserId as string;
   const otherUsername = params.otherUsername as string;
   const focusInput = params.focusInput === 'true';
+  const autoMessage = params.autoMessage as string | undefined;
   const inputRef = useRef<TextInput>(null);
+  const autoMessageSent = useRef(false);
+
+  // Resolve chatId: use param if provided, otherwise create/get chat on mount
+  const [chatId, setChatId] = useState<string | null>(chatIdParam || null);
+  const [resolvingChat, setResolvingChat] = useState(!chatIdParam);
+
+  useEffect(() => {
+    if (chatIdParam || chatId) return; // Already have a chatId
+    if (!otherUserId || !currentUser?.id) return;
+
+    const resolveChat = async () => {
+      try {
+        const resolved = await createOrGetChat(
+          currentUser.id,
+          currentUser.username || currentUser.email?.split('@')[0] || 'User',
+          currentUser.avatar,
+          otherUserId,
+          otherUsername,
+          params.otherUserAvatar as string | undefined
+        );
+        setChatId(resolved);
+      } catch (error) {
+        console.error('Error resolving chat:', error);
+        Alert.alert('Error', 'Failed to start chat');
+        router.back();
+      } finally {
+        setResolvingChat(false);
+      }
+    };
+
+    // Defer Firestore work until after slide animation completes
+    const task = InteractionManager.runAfterInteractions(() => {
+      resolveChat();
+    });
+    return () => task.cancel();
+  }, [chatIdParam, otherUserId, currentUser?.id]);
 
   // Get avatar from chat data (more reliable than URL params)
   const otherUserAvatar = chat?.participantDetails?.[otherUserId]?.avatar || params.otherUserAvatar as string | undefined;
@@ -65,6 +104,13 @@ export default function ChatScreen() {
       setTimeout(() => inputRef.current?.focus(), 300);
     }
   }, [focusInput, loading]);
+
+  // Auto-send message (e.g., in-game username from duo match)
+  useEffect(() => {
+    if (!autoMessage || !chatId || !currentUser?.id || autoMessageSent.current) return;
+    autoMessageSent.current = true;
+    sendMessage(chatId, currentUser.id, autoMessage).catch(console.error);
+  }, [autoMessage, chatId, currentUser?.id]);
 
   // Load chat details
   useEffect(() => {
@@ -337,7 +383,7 @@ export default function ChatScreen() {
 
         <TouchableOpacity
           style={styles.headerUser}
-          onPress={() => router.push(`/profilePages/profileView?userId=${otherUserId}`)}
+          onPress={() => router.push({ pathname: '/profilePages/profileView', params: { userId: otherUserId, username: otherUsername || '', avatar: otherUserAvatar || '' } })}
         >
           <View style={styles.headerAvatar}>
             {otherUserAvatar && otherUserAvatar.startsWith('http') ? (

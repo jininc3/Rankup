@@ -19,7 +19,7 @@ export default function InAppNotification({ notification }: InAppNotificationPro
     const { navigationData } = notification;
 
     if (navigationData.type === 'follow') {
-      router.push(`/profilePages/profileView?userId=${navigationData.fromUserId}`);
+      router.push({ pathname: '/profilePages/profileView', params: { userId: navigationData.fromUserId, username: navigationData.fromUsername || '', avatar: navigationData.fromUserAvatar || '' } });
     } else if (navigationData.type === 'like' || navigationData.type === 'comment' || navigationData.type === 'tag') {
       if (navigationData.postId) {
         router.push(`/postViewer?postId=${navigationData.postId}`);

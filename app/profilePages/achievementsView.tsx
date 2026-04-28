@@ -171,7 +171,7 @@ export default function AchievementsView() {
     if (entry.userId === user?.id) {
       router.push('/(tabs)/profile');
     } else {
-      router.push(`/profilePages/profileView?userId=${entry.userId}`);
+      router.push({ pathname: '/profilePages/profileView', params: { userId: entry.userId, username: entry.username || '', avatar: entry.avatar || '' } });
     }
   };
 

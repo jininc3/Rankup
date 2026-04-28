@@ -7,7 +7,7 @@ import { db } from '@/config/firebase';
 import { useAuth } from '@/contexts/AuthContext';
 import { getFollowing } from '@/services/followService';
 import { likePost, unlikePost, isPostLiked } from '@/services/likeService';
-import { createOrGetChat, subscribeToUserChats } from '@/services/chatService';
+import { subscribeToUserChats } from '@/services/chatService';
 import CommentModal from '@/app/components/commentModal';
 import ReportPostModal from '@/app/components/reportPostModal';
 import PostContent from '@/app/components/postContent';
@@ -914,38 +914,29 @@ export default function HomeScreen() {
     });
   };
 
-  const handleUserPress = async (userId: string) => {
-    // Mark screen as unfocused to prevent videos from auto-playing
-    setIsScreenFocused(false);
-
-    // Stop all videos immediately by setting state
-    setPlayingVideoId(null);
-
-    // Pause all videos before navigating
-    try {
-      Object.values(videoPlayers.current).forEach((player) => {
-        if (player) {
-          try {
-            player.pause();
-          } catch (error) {
-            // Video already paused or unmounted
-          }
-        }
-      });
-    } catch (error) {
-      // Video cleanup error
-    }
-
-    // Check if clicking on own profile
+  const handleUserPress = (userId: string, username?: string, avatar?: string) => {
+    // Navigate immediately first
     if (userId === currentUser?.id) {
       router.push('/(tabs)/profile');
     } else {
-      router.push(`/profilePages/profileView?userId=${userId}`);
+      router.push({
+        pathname: '/profilePages/profileView',
+        params: { userId, username: username || '', avatar: avatar || '' },
+      });
     }
+
+    // Clean up videos after navigation is triggered
+    setIsScreenFocused(false);
+    setPlayingVideoId(null);
+    try {
+      Object.values(videoPlayers.current).forEach((player) => {
+        try { player?.pause(); } catch (e) {}
+      });
+    } catch (e) {}
   };
 
   // Handle direct message
-  const handleDirectMessage = async (post: Post) => {
+  const handleDirectMessage = (post: Post) => {
     if (!currentUser?.id) {
       Alert.alert('Error', 'You must be logged in to send messages');
       return;
@@ -957,29 +948,14 @@ export default function HomeScreen() {
       return;
     }
 
-    try {
-      const chatId = await createOrGetChat(
-        currentUser.id,
-        currentUser.username || currentUser.email?.split('@')[0] || 'User',
-        currentUser.avatar,
-        post.userId,
-        post.username,
-        post.avatar
-      );
-
-      router.push({
-        pathname: '/chatPages/chatScreen',
-        params: {
-          chatId,
-          otherUserId: post.userId,
-          otherUsername: post.username,
-          otherUserAvatar: post.avatar || '',
-        },
-      });
-    } catch (error) {
-      console.error('Error creating chat:', error);
-      Alert.alert('Error', 'Failed to start chat');
-    }
+    router.push({
+      pathname: '/chatPages/chatScreen',
+      params: {
+        otherUserId: post.userId,
+        otherUsername: post.username,
+        otherUserAvatar: post.avatar || '',
+      },
+    });
   };
 
   return (

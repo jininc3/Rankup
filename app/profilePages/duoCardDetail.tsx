@@ -317,7 +317,7 @@ export default function DuoCardDetailScreen() {
 
   const handleUserPress = () => {
     if (userId) {
-      router.push(`/profilePages/profileView?userId=${userId}`);
+      router.push({ pathname: '/profilePages/profileView', params: { userId, username: username || '', avatar: avatar || '' } });
     }
   };
 

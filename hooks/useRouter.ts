@@ -1,7 +1,7 @@
 import { useRouter as useExpoRouter } from 'expo-router';
 import { useRef, useMemo } from 'react';
 
-const DEBOUNCE_MS = 600;
+const DEBOUNCE_MS = 300;
 
 /**
  * Drop-in replacement for expo-router's useRouter that prevents

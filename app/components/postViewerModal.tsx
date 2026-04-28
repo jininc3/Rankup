@@ -3,7 +3,6 @@ import { IconSymbol } from '@/components/ui/icon-symbol';
 import { Timestamp } from 'firebase/firestore';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { Animated, Dimensions, FlatList, Modal, PanResponder, StyleSheet, TouchableOpacity, View, Alert } from 'react-native';
-import { createOrGetChat } from '@/services/chatService';
 import { likePost, unlikePost, isPostLiked } from '@/services/likeService';
 import CommentModal from '@/app/components/commentModal';
 import PostContent from '@/app/components/postContent';
@@ -321,7 +320,7 @@ export default function PostViewerModal({
   };
 
   // Handle direct message
-  const handleDirectMessage = async (post: Post) => {
+  const handleDirectMessage = (post: Post) => {
     if (!currentUser?.id) {
       Alert.alert('Error', 'You must be logged in to send messages');
       return;
@@ -333,33 +332,18 @@ export default function PostViewerModal({
       return;
     }
 
-    try {
-      const chatId = await createOrGetChat(
-        currentUser.id,
-        currentUser.username || currentUser.email?.split('@')[0] || 'User',
-        currentUser.avatar,
-        post.userId,
-        post.username,
-        post.avatar
-      );
+    // Close the modal first
+    onClose();
 
-      // Close the modal first
-      onClose();
-
-      // Then navigate to chat
-      router.push({
-        pathname: '/chatPages/chatScreen',
-        params: {
-          chatId,
-          otherUserId: post.userId,
-          otherUsername: post.username,
-          otherUserAvatar: post.avatar || '',
-        },
-      });
-    } catch (error) {
-      console.error('Error creating chat:', error);
-      Alert.alert('Error', 'Failed to start chat');
-    }
+    // Then navigate to chat
+    router.push({
+      pathname: '/chatPages/chatScreen',
+      params: {
+        otherUserId: post.userId,
+        otherUsername: post.username,
+        otherUserAvatar: post.avatar || '',
+      },
+    });
   };
 
   if (!post || posts.length === 0) return null;

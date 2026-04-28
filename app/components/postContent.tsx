@@ -333,7 +333,7 @@ interface PostContentProps {
   onOpenComments: (post: Post) => void;
   onDirectMessage?: (post: Post) => void;
   onLikeToggle: (post: Post) => void;
-  onUserPress?: (userId: string) => void;
+  onUserPress?: (userId: string, username?: string, avatar?: string) => void;
   formatTimeAgo: (timestamp: any) => string;
   currentUserId?: string;
   isLiked: boolean;
@@ -513,7 +513,7 @@ export default function PostContent({
       <View style={styles.postHeader}>
         <TouchableOpacity
           style={styles.userInfo}
-          onPress={() => onUserPress?.(post.userId)}
+          onPress={() => onUserPress?.(post.userId, post.username, post.avatar)}
           activeOpacity={0.7}
           disabled={!onUserPress}
         >
@@ -744,7 +744,7 @@ export default function PostContent({
           {post.taggedUsers.map((user, index) => (
             <TouchableOpacity
               key={user.userId}
-              onPress={() => onUserPress && onUserPress(user.userId)}
+              onPress={() => onUserPress && onUserPress(user.userId, user.username)}
               activeOpacity={0.7}
             >
               <ThemedText style={styles.taggedUsername}>

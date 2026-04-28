@@ -488,12 +488,15 @@ export default function SearchScreen() {
   };
 
 
-  const handleUserClick = async (user: SearchUser) => {
+  const handleUserClick = (user: SearchUser) => {
     // Navigate to profile immediately
     if (user.id === currentUser?.id) {
       router.push('/(tabs)/profile');
     } else {
-      router.push(`/profilePages/profileView?userId=${user.id}`);
+      router.push({
+        pathname: '/profilePages/profileView',
+        params: { userId: user.id, username: user.username || '', avatar: user.avatar || '' },
+      });
     }
 
     // Save to history in background (don't await)

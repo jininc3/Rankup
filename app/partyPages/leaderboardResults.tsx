@@ -375,7 +375,7 @@ export default function LeaderboardResults() {
     if (player.userId === user?.id) {
       router.push('/(tabs)/profile');
     } else {
-      router.push(`/profilePages/profileView?userId=${player.userId}`);
+      router.push({ pathname: '/profilePages/profileView', params: { userId: player.userId, username: player.username || '', avatar: player.avatar || '' } });
     }
   };
 

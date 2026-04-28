@@ -8,8 +8,8 @@ import { IconSymbol } from '@/components/ui/icon-symbol';
 import { ProfilePageSkeleton } from '@/components/ui/Skeleton';
 import { useRouter } from '@/hooks/useRouter';
 import { useLocalSearchParams } from 'expo-router';
-import { useRef, useState, useEffect, useCallback } from 'react';
-import { Dimensions, Image, ScrollView, StyleSheet, TouchableOpacity, View, ActivityIndicator, Alert, Linking, Modal, LayoutAnimation, Platform, UIManager, Animated } from 'react-native';
+import { useRef, useState, useEffect, useCallback, useMemo } from 'react';
+import { Dimensions, Image, ScrollView, StyleSheet, TouchableOpacity, View, ActivityIndicator, Alert, Linking, Modal, LayoutAnimation, Platform, UIManager, Animated, InteractionManager } from 'react-native';
 import * as Clipboard from 'expo-clipboard';
 import { useAuth } from '@/contexts/AuthContext';
 import { useFocusEffect } from '@react-navigation/native';
@@ -17,7 +17,6 @@ import { db } from '@/config/firebase';
 import { collection, query, where, getDocs, Timestamp, doc, getDoc, setDoc, deleteDoc, updateDoc, increment } from 'firebase/firestore';
 import { followUser, unfollowUser, isFollowing as checkIsFollowing, getUserRecentPosts, sendFollowRequest, cancelFollowRequest, hasFollowRequest } from '@/services/followService';
 import { blockUser } from '@/services/blockService';
-import { createOrGetChat } from '@/services/chatService';
 import PostViewerModal from '@/app/components/postViewerModal';
 import ReportPostModal from '@/app/components/reportPostModal';
 import { calculateTierBorderColor, calculateTierBorderGradient } from '@/utils/tierBorderUtils';
@@ -146,7 +145,7 @@ export default function ProfileViewScreen() {
 
   // Dynamic games array based on Riot data and enabled rank cards
   // Cards are ordered according to the enabledRankCards array
-  const userGames = (riotAccount || valorantAccount) ?
+  const userGames = useMemo(() => (riotAccount || valorantAccount) ?
     enabledRankCards
       .map(gameType => {
         // League of Legends
@@ -212,7 +211,7 @@ export default function ProfileViewScreen() {
         return null;
       })
       .filter((game): game is NonNullable<typeof game> => game !== null)
-    : [];
+    : [], [riotAccount, valorantAccount, riotStats, valorantStats, enabledRankCards]);
 
   // Get userId from params - this is required for profileView
   const userId = params.userId as string;
@@ -221,13 +220,6 @@ export default function ProfileViewScreen() {
   const preloadedUsername = params.username as string | undefined;
   const preloadedAvatar = params.avatar as string | undefined;
   const preloadedFollowing = params.preloadedFollowing as string | undefined;
-
-  // Enable LayoutAnimation on Android
-  useEffect(() => {
-    if (Platform.OS === 'android' && UIManager.setLayoutAnimationEnabledExperimental) {
-      UIManager.setLayoutAnimationEnabledExperimental(true);
-    }
-  }, []);
 
   // Initialize card animations when userGames changes
   useEffect(() => {
@@ -241,6 +233,10 @@ export default function ProfileViewScreen() {
 
   // Handle card press - Apple Wallet style focus
   const handleCardPress = (pressedIndex: number) => {
+    // Enable LayoutAnimation only when needed (not globally, to avoid interfering with navigation)
+    if (Platform.OS === 'android' && UIManager.setLayoutAnimationEnabledExperimental) {
+      UIManager.setLayoutAnimationEnabledExperimental(true);
+    }
     const totalCards = userGames.length;
 
     if (focusedCardIndex !== null) {
@@ -464,11 +460,13 @@ export default function ProfileViewScreen() {
     }
   }, [userId, preloadedUsername, preloadedAvatar]);
 
-  // Fetch all data when component mounts (only once)
+  // Fetch all data after navigation animation completes for smooth transitions
   useEffect(() => {
-    if (userId && currentUser?.id) {
+    if (!userId || !currentUser?.id) return;
+    const task = InteractionManager.runAfterInteractions(() => {
       fetchAllData();
-    }
+    });
+    return () => task.cancel();
   }, [userId, currentUser?.id]);
 
   // Fetch achievements (completed parties where viewed user placed top 3)
@@ -524,7 +522,10 @@ export default function ProfileViewScreen() {
       }
     };
 
-    fetchAchievements();
+    const task = InteractionManager.runAfterInteractions(() => {
+      fetchAchievements();
+    });
+    return () => task.cancel();
   }, [userId]);
 
   const handlePostPress = (post: Post, index: number) => {
@@ -616,48 +617,33 @@ export default function ProfileViewScreen() {
   };
 
   // Handle message button
-  const handleMessage = async () => {
+  const handleMessage = () => {
     if (!currentUser?.id || !viewedUser) {
       Alert.alert('Error', 'Unable to start chat');
       return;
     }
 
-    try {
-      const chatId = await createOrGetChat(
-        currentUser.id,
-        currentUser.username || currentUser.email?.split('@')[0] || 'User',
-        currentUser.avatar,
-        viewedUser.id,
-        viewedUser.username,
-        viewedUser.avatar
-      );
-
-      router.push({
-        pathname: '/chatPages/chatScreen',
-        params: {
-          chatId,
-          otherUserId: viewedUser.id,
-          otherUsername: viewedUser.username,
-          otherUserAvatar: viewedUser.avatar || '',
-        },
-      });
-    } catch (error) {
-      console.error('Error creating chat:', error);
-      Alert.alert('Error', 'Failed to start chat');
-    }
+    router.push({
+      pathname: '/chatPages/chatScreen',
+      params: {
+        otherUserId: viewedUser.id,
+        otherUsername: viewedUser.username,
+        otherUserAvatar: viewedUser.avatar || '',
+      },
+    });
   };
 
   // Calculate tier border color based on current ranks
-  const tierBorderColor = calculateTierBorderColor(
+  const tierBorderColor = useMemo(() => calculateTierBorderColor(
     riotStats?.rankedSolo ? formatRank(riotStats.rankedSolo.tier, riotStats.rankedSolo.rank) : undefined,
     valorantStats?.currentRank
-  );
+  ), [riotStats?.rankedSolo?.tier, riotStats?.rankedSolo?.rank, valorantStats?.currentRank]);
 
   // Calculate tier border gradient based on current ranks
-  const tierBorderGradient = calculateTierBorderGradient(
+  const tierBorderGradient = useMemo(() => calculateTierBorderGradient(
     riotStats?.rankedSolo ? formatRank(riotStats.rankedSolo.tier, riotStats.rankedSolo.rank) : undefined,
     valorantStats?.currentRank
-  );
+  ), [riotStats?.rankedSolo?.tier, riotStats?.rankedSolo?.rank, valorantStats?.currentRank]);
 
   const handleBlock = () => {
     setShowMoreOptions(false);
@@ -1152,19 +1138,21 @@ export default function ProfileViewScreen() {
       </ScrollView>
 
       {/* Post Viewer Modal */}
-      <PostViewerModal
-        visible={showPostViewer}
-        post={selectedPost}
-        posts={posts}
-        currentIndex={selectedPostIndex}
-        userAvatar={viewedUser?.avatar}
-        onClose={closePostViewer}
-        onCommentAdded={fetchPosts}
-        onReport={(post) => {
-          setReportingPost(post);
-          setShowReportModal(true);
-        }}
-      />
+      {showPostViewer && (
+        <PostViewerModal
+          visible={showPostViewer}
+          post={selectedPost}
+          posts={posts}
+          currentIndex={selectedPostIndex}
+          userAvatar={viewedUser?.avatar}
+          onClose={closePostViewer}
+          onCommentAdded={fetchPosts}
+          onReport={(post) => {
+            setReportingPost(post);
+            setShowReportModal(true);
+          }}
+        />
+      )}
 
       {/* Report Post Modal */}
       {reportingPost && (

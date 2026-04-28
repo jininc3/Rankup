@@ -26,7 +26,6 @@ const { width: screenWidth, height: screenHeight } = Dimensions.get('window');
 import { doc, getDoc, setDoc, deleteDoc, serverTimestamp, collection, query, where, getDocs, orderBy, limit, Timestamp } from 'firebase/firestore';
 import { db } from '@/config/firebase';
 import { useRouter } from '@/hooks/useRouter';
-import { createOrGetChat } from '@/services/chatService';
 
 interface DuoCardWithId extends DuoCardData {
   id: string;
@@ -787,31 +786,17 @@ export default function DuoFinderScreen() {
   };
 
   // Message a duo post user
-  const handleDuoPostMessage = async (post: DuoPostWithId) => {
+  const handleDuoPostMessage = (post: DuoPostWithId) => {
     if (!user?.id) return;
-    try {
-      const chatId = await createOrGetChat(
-        user.id,
-        user.username || '',
-        user.avatar,
-        post.userId,
-        post.username,
-        post.avatar,
-      );
-      router.push({
-        pathname: '/chatPages/chatScreen',
-        params: {
-          chatId,
-          otherUserId: post.userId,
-          otherUsername: post.username,
-          otherUserAvatar: post.avatar || '',
-          focusInput: 'true',
-        },
-      });
-    } catch (error) {
-      console.error('Error starting chat:', error);
-      Alert.alert('Error', 'Failed to start chat');
-    }
+    router.push({
+      pathname: '/chatPages/chatScreen',
+      params: {
+        otherUserId: post.userId,
+        otherUsername: post.username,
+        otherUserAvatar: post.avatar || '',
+        focusInput: 'true',
+      },
+    });
   };
 
   const hasCards = valorantCard !== null || leagueCard !== null;
@@ -846,31 +831,17 @@ export default function DuoFinderScreen() {
     setSelectedDuoCard(card);
   };
 
-  const handleDuoCardMessage = async (card: DuoCardWithId) => {
+  const handleDuoCardMessage = (card: DuoCardWithId) => {
     if (!user?.id) return;
-    try {
-      const chatId = await createOrGetChat(
-        user.id,
-        user.username || '',
-        user.avatar,
-        card.userId,
-        card.username,
-        card.avatar,
-      );
-      router.push({
-        pathname: '/chatPages/chatScreen',
-        params: {
-          chatId,
-          otherUserId: card.userId,
-          otherUsername: card.username,
-          otherUserAvatar: card.avatar || '',
-          focusInput: 'true',
-        },
-      });
-    } catch (error) {
-      console.error('Error starting chat:', error);
-      Alert.alert('Error', 'Failed to start chat. Please try again.');
-    }
+    router.push({
+      pathname: '/chatPages/chatScreen',
+      params: {
+        otherUserId: card.userId,
+        otherUsername: card.username,
+        otherUserAvatar: card.avatar || '',
+        focusInput: 'true',
+      },
+    });
   };
 
   const handleSaveEdit = async (mainRole: string, mainAgent: string, lookingFor: string) => {

@@ -15,7 +15,7 @@ import {
 } from 'react-native';
 import { useRouter } from '@/hooks/useRouter';
 import { useAuth } from '@/contexts/AuthContext';
-import { subscribeToUserChats, Chat, createOrGetChat } from '@/services/chatService';
+import { subscribeToUserChats, Chat } from '@/services/chatService';
 import { getFollowing, FollowingData } from '@/services/followService';
 import { Timestamp } from 'firebase/firestore';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -140,37 +140,20 @@ export default function ChatListScreen() {
     });
   };
 
-  const handleSelectUser = async (user: FollowingData) => {
-    if (!currentUser?.id || creatingChat) return;
+  const handleSelectUser = (user: FollowingData) => {
+    if (!currentUser?.id) return;
 
-    setCreatingChat(true);
-    try {
-      const chatId = await createOrGetChat(
-        currentUser.id,
-        currentUser.username || '',
-        currentUser.avatar,
-        user.followingId,
-        user.followingUsername,
-        user.followingAvatar
-      );
+    setShowNewMessageModal(false);
+    setNewMessageSearch('');
 
-      setShowNewMessageModal(false);
-      setNewMessageSearch('');
-
-      router.push({
-        pathname: '/chatPages/chatScreen',
-        params: {
-          chatId,
-          otherUserId: user.followingId,
-          otherUsername: user.followingUsername,
-          otherUserAvatar: user.followingAvatar || '',
-        },
-      });
-    } catch (error) {
-      console.error('Error creating chat:', error);
-    } finally {
-      setCreatingChat(false);
-    }
+    router.push({
+      pathname: '/chatPages/chatScreen',
+      params: {
+        otherUserId: user.followingId,
+        otherUsername: user.followingUsername,
+        otherUserAvatar: user.followingAvatar || '',
+      },
+    });
   };
 
   const renderChat = ({ item }: { item: Chat }) => {
