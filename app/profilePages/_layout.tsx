@@ -12,7 +12,7 @@ export default function ProfilePagesLayout() {
         animationDuration: 200,
       }}
     >
-      <Stack.Screen name="tierBorders" options={{ fullScreenGestureEnabled: false }} />
+      <Stack.Screen name="tierBorders" options={{ fullScreenGestureEnabled: false, gestureResponseDistance: 20 }} />
     </Stack>
   );
 }

@@ -13,6 +13,7 @@ import { useRouter } from '@/hooks/useRouter';
 import { useEffect, useState } from 'react';
 import { ActivityIndicator, Alert, StyleSheet, TouchableOpacity, View, ScrollView } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
+import { getFunctions, httpsCallable } from 'firebase/functions';
 
 const ADMIN_IDS = ['VljkZhdkF3gCQI0clVkbQ0XCIxp1'];
 
@@ -117,6 +118,54 @@ export default function AdminReportsScreen() {
             } catch (error) {
               Alert.alert('Error', 'Failed to delete post');
             }
+          },
+        },
+      ]
+    );
+  };
+
+  const [deletingAll, setDeletingAll] = useState(false);
+
+  const handleDeleteAllAccounts = () => {
+    Alert.alert(
+      'Delete ALL Accounts',
+      'This will permanently delete every user account, all data, and all auth accounts — including your own. This CANNOT be undone.\n\nAre you absolutely sure?',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Delete Everything',
+          style: 'destructive',
+          onPress: () => {
+            // Second confirmation
+            Alert.alert(
+              'Final Confirmation',
+              'Type-confirm: This will wipe the entire database. Proceed?',
+              [
+                { text: 'Cancel', style: 'cancel' },
+                {
+                  text: 'YES, DELETE ALL',
+                  style: 'destructive',
+                  onPress: async () => {
+                    setDeletingAll(true);
+                    try {
+                      const functions = getFunctions();
+                      const deleteAll = httpsCallable(functions, 'deleteAllAccounts');
+                      const result = await deleteAll();
+                      const data = result.data as any;
+                      Alert.alert(
+                        'Complete',
+                        `Deleted ${data.deletedCount} accounts. ${data.errorCount} errors.`
+                      );
+                    } catch (error: any) {
+                      console.error('Delete all accounts error:', error);
+                      Alert.alert('Error', error.message || 'Failed to delete accounts.');
+                    } finally {
+                      setDeletingAll(false);
+                    }
+                  },
+                },
+              ]
+            );
           },
         },
       ]
@@ -274,6 +323,36 @@ export default function AdminReportsScreen() {
             </View>
           </View>
         )}
+
+        {/* Danger Zone */}
+        <View style={styles.dangerSection}>
+          <View style={styles.sectionHeader}>
+            <IconSymbol size={18} name="exclamationmark.triangle.fill" color="#c42743" />
+            <ThemedText style={[styles.sectionHeaderTitle, { color: '#c42743' }]}>
+              Danger Zone
+            </ThemedText>
+          </View>
+          <View style={styles.settingsGroup}>
+            <TouchableOpacity
+              style={styles.dangerButton}
+              onPress={handleDeleteAllAccounts}
+              activeOpacity={0.7}
+              disabled={deletingAll}
+            >
+              {deletingAll ? (
+                <View style={styles.dangerButtonRow}>
+                  <ActivityIndicator size="small" color="#fff" />
+                  <ThemedText style={styles.dangerButtonText}>Deleting all accounts...</ThemedText>
+                </View>
+              ) : (
+                <View style={styles.dangerButtonRow}>
+                  <IconSymbol size={16} name="trash" color="#fff" />
+                  <ThemedText style={styles.dangerButtonText}>Delete All Accounts</ThemedText>
+                </View>
+              )}
+            </TouchableOpacity>
+          </View>
+        </View>
 
         <View style={styles.bottomSpacer} />
       </ScrollView>
@@ -504,6 +583,28 @@ const styles = StyleSheet.create({
   deleteText: {
     fontSize: 13,
     fontWeight: '600',
+    color: '#fff',
+  },
+  dangerSection: {
+    marginTop: 24,
+  },
+  dangerButton: {
+    paddingVertical: 14,
+    paddingHorizontal: 16,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#c42743',
+    borderRadius: 12,
+    marginHorizontal: 16,
+  },
+  dangerButtonRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  dangerButtonText: {
+    fontSize: 15,
+    fontWeight: '700',
     color: '#fff',
   },
   bottomSpacer: {

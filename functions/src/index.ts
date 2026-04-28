@@ -49,6 +49,7 @@ export {updateUsernameFunction as updateUsername} from "./users/updateUsername";
 export {resetPhonePasswordFunction as resetPhonePassword} from "./users/resetPhonePassword";
 export {generateLoginTokenFunction as generateLoginToken} from "./users/generateLoginToken";
 export {setUserPasswordFunction as setUserPassword} from "./users/setUserPassword";
+export {deleteAllAccountsFunction as deleteAllAccounts} from "./users/deleteAllAccounts";
 
 // Export Email Verification functions
 export {sendEmailVerificationCodeFunction as sendEmailVerificationCode} from "./email/emailVerification";

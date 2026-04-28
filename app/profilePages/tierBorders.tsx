@@ -23,73 +23,95 @@ const leagueRankImages: { [key: string]: any } = {
   'Challenger': require('@/assets/images/leagueranks/challenger.png'),
 };
 
-// Valorant rank images mapping (using rank3 versions)
+// Valorant rank images mapping (specific subdivisions)
 const valorantRankImages: { [key: string]: any } = {
   'Unranked': require('@/assets/images/valorantranks/unranked.png'),
-  'Iron': require('@/assets/images/valorantranks/iron3.png'),
-  'Bronze': require('@/assets/images/valorantranks/bronze3.png'),
-  'Silver': require('@/assets/images/valorantranks/silver3.png'),
-  'Gold': require('@/assets/images/valorantranks/gold3.png'),
-  'Platinum': require('@/assets/images/valorantranks/platinum3.png'),
-  'Diamond': require('@/assets/images/valorantranks/diamond3.png'),
-  'Ascendant': require('@/assets/images/valorantranks/ascendant3.png'),
-  'Immortal': require('@/assets/images/valorantranks/immortal3.png'),
+  'Iron 1': require('@/assets/images/valorantranks/iron1.png'),
+  'Iron 2': require('@/assets/images/valorantranks/iron2.png'),
+  'Iron 3': require('@/assets/images/valorantranks/iron3.png'),
+  'Bronze 1': require('@/assets/images/valorantranks/bronze1.png'),
+  'Bronze 2': require('@/assets/images/valorantranks/bronze2.png'),
+  'Bronze 3': require('@/assets/images/valorantranks/bronze3.png'),
+  'Silver 1': require('@/assets/images/valorantranks/silver1.png'),
+  'Silver 2': require('@/assets/images/valorantranks/silver2.png'),
+  'Silver 3': require('@/assets/images/valorantranks/silver3.png'),
+  'Gold 1': require('@/assets/images/valorantranks/gold1.png'),
+  'Gold 2': require('@/assets/images/valorantranks/gold2.png'),
+  'Gold 3': require('@/assets/images/valorantranks/gold3.png'),
+  'Platinum 1': require('@/assets/images/valorantranks/platinum1.png'),
+  'Platinum 2': require('@/assets/images/valorantranks/platinum2.png'),
+  'Platinum 3': require('@/assets/images/valorantranks/platinum3.png'),
+  'Diamond 1': require('@/assets/images/valorantranks/diamond1.png'),
+  'Diamond 2': require('@/assets/images/valorantranks/diamond2.png'),
+  'Diamond 3': require('@/assets/images/valorantranks/diamond3.png'),
+  'Ascendant 1': require('@/assets/images/valorantranks/ascendant1.png'),
+  'Ascendant 2': require('@/assets/images/valorantranks/ascendant2.png'),
+  'Ascendant 3': require('@/assets/images/valorantranks/ascendant3.png'),
+  'Immortal 1': require('@/assets/images/valorantranks/immortal1.png'),
+  'Immortal 2': require('@/assets/images/valorantranks/immortal2.png'),
+  'Immortal 3': require('@/assets/images/valorantranks/immortal3.png'),
   'Radiant': require('@/assets/images/valorantranks/radiant.png'),
 };
 
 const tierData = [
   {
     tier: 'S' as const,
-    color: '#FFD700',
     name: 'S Tier',
+    subtitle: 'Gold Chrome',
     ranks: {
       lol: ['Grandmaster', 'Challenger'],
-      valorant: ['Immortal', 'Radiant'],
+      lolNote: '',
+      valorant: ['Immortal 2', 'Immortal 3', 'Radiant'],
     },
   },
   {
     tier: 'A' as const,
-    color: '#C0C0C0',
     name: 'A Tier',
+    subtitle: 'Royal Purple',
     ranks: {
-      lol: ['Master'],
-      valorant: ['Ascendant'],
+      lol: ['Diamond', 'Master'],
+      lolNote: 'Diamond I – Masters',
+      valorant: ['Ascendant 2', 'Ascendant 3', 'Immortal 1'],
     },
   },
   {
     tier: 'B' as const,
-    color: '#A855F7',
     name: 'B Tier',
+    subtitle: 'Royal Azure',
     ranks: {
-      lol: ['Diamond'],
-      valorant: ['Diamond'],
+      lol: ['Emerald', 'Diamond'],
+      lolNote: 'Emerald I – Diamond II',
+      valorant: ['Platinum 3', 'Diamond 1', 'Diamond 2', 'Diamond 3', 'Ascendant 1'],
     },
   },
   {
     tier: 'C' as const,
-    color: '#3B82F6',
     name: 'C Tier',
+    subtitle: 'Green',
     ranks: {
       lol: ['Platinum', 'Emerald'],
-      valorant: ['Platinum'],
+      lolNote: 'Platinum – Emerald II',
+      valorant: ['Gold 1', 'Gold 2', 'Gold 3', 'Platinum 1', 'Platinum 2'],
     },
   },
   {
     tier: 'D' as const,
-    color: '#22C55E',
     name: 'D Tier',
+    subtitle: 'Royal Peach',
     ranks: {
       lol: ['Silver', 'Gold'],
-      valorant: ['Silver', 'Gold'],
+      lolNote: '',
+      valorant: ['Silver 1', 'Silver 2', 'Silver 3'],
     },
   },
   {
     tier: 'F' as const,
-    color: '#EF4444',
     name: 'F Tier',
+    subtitle: 'Grey / Brown',
     ranks: {
       lol: ['Unranked', 'Iron', 'Bronze'],
-      valorant: ['Unranked', 'Iron', 'Bronze'],
+      lolNote: '',
+      valorant: ['Unranked', 'Iron 1', 'Iron 2', 'Iron 3', 'Bronze 1', 'Bronze 2', 'Bronze 3'],
     },
   },
 ];
@@ -153,7 +175,7 @@ export default function TierBordersScreen() {
               <View style={styles.tierInfo}>
                 <ThemedText style={styles.tierName}>{tier.name}</ThemedText>
                 <ThemedText style={styles.tierSubtext}>
-                  Gradient: {TIER_GRADIENTS[tier.tier][0]} → {TIER_GRADIENTS[tier.tier][1]}
+                  {tier.subtitle}
                 </ThemedText>
               </View>
             </View>
@@ -166,6 +188,9 @@ export default function TierBordersScreen() {
                   <IconSymbol size={16} name="gamecontroller" color="#888" />
                   <ThemedText style={styles.gameTitle}>League of Legends</ThemedText>
                 </View>
+                {tier.ranks.lolNote && (
+                  <ThemedText style={styles.rankNote}>{tier.ranks.lolNote}</ThemedText>
+                )}
                 <View style={styles.ranksList}>
                   {tier.ranks.lol.map((rank, idx) => (
                     <View key={idx} style={styles.rankImageContainer}>
@@ -328,6 +353,11 @@ const styles = StyleSheet.create({
     color: '#888',
     textTransform: 'uppercase',
     letterSpacing: 0.5,
+  },
+  rankNote: {
+    fontSize: 11,
+    color: '#555',
+    marginBottom: 4,
   },
   ranksList: {
     flexDirection: 'row',

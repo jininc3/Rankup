@@ -1,21 +1,21 @@
 // Tier border colors (solid)
 export const TIER_COLORS = {
-  S: '#FFD700', // Gold
-  A: '#C0C0C0', // Silver/Grey
-  B: '#A855F7', // Purple
-  C: '#3B82F6', // Blue
-  D: '#22C55E', // Green
-  F: '#EF4444', // Red
+  S: '#D4A843', // Gold Chrome
+  A: '#7B5EA7', // Royal Purple
+  B: '#3D6F9E', // Royal Azure
+  C: '#4A8C5C', // Green
+  D: '#C9A84C', // Royal Peach / Yellow
+  F: '#8B7355', // Brown/Grey
 };
 
 // Tier border gradients (for enhanced visual effect)
 export const TIER_GRADIENTS = {
-  S: ['#FFD700', '#FFA500', '#FFD700'], // Gold gradient
-  A: ['#E8E8E8', '#A8A8A8', '#E8E8E8'], // Silver gradient
-  B: ['#C084FC', '#9333EA', '#C084FC'], // Purple gradient
-  C: ['#60A5FA', '#2563EB', '#60A5FA'], // Blue gradient
-  D: ['#4ADE80', '#16A34A', '#4ADE80'], // Green gradient
-  F: ['#F87171', '#DC2626', '#F87171'], // Red gradient
+  S: ['#D4A843', '#F5D675', '#B8942E', '#F5D675', '#D4A843'], // Gold Chrome gradient
+  A: ['#7B5EA7', '#9B7FCC', '#6A4D93', '#9B7FCC', '#7B5EA7'], // Royal Purple gradient
+  B: ['#3D6F9E', '#5A9FD4', '#2C5578', '#5A9FD4', '#3D6F9E'], // Royal Azure gradient
+  C: ['#4A8C5C', '#6AB87A', '#3A7048', '#6AB87A', '#4A8C5C'], // Green gradient
+  D: ['#C9A84C', '#E8CC7A', '#A8893A', '#E8CC7A', '#C9A84C'], // Royal Peach gradient
+  F: ['#8B7355', '#A89070', '#6E5A42', '#A89070', '#8B7355'], // Brown/Grey gradient
 };
 
 // Tier ranking by value (higher is better)
@@ -28,71 +28,76 @@ const TIER_VALUES = {
   F: 1,
 };
 
+// Parse subdivision number from rank string (e.g. "Gold 1" → 1, "Diamond IV" → 4)
+const parseSubdivision = (rank: string): number => {
+  const parts = rank.trim().split(/\s+/);
+  if (parts.length < 2) return 0;
+  const sub = parts[parts.length - 1];
+  // Handle numeric: "1", "2", "3"
+  const num = parseInt(sub, 10);
+  if (!isNaN(num)) return num;
+  // Handle roman: "I", "II", "III", "IV"
+  const roman: { [key: string]: number } = { i: 1, ii: 2, iii: 3, iv: 4 };
+  return roman[sub.toLowerCase()] || 0;
+};
+
 // Map League of Legends ranks to tiers
+// F: Unranked - Bronze | D: Silver - Gold | C: Plat - Emerald 2 | B: Emerald 1 - Diamond 2 | A: Diamond 1 - Masters | S: GrandMasters - Challenger
 const mapLeagueRankToTier = (rank: string | undefined): 'F' | 'D' | 'C' | 'B' | 'A' | 'S' => {
   if (!rank) return 'F';
 
   const normalizedRank = rank.toLowerCase();
+  const subdivision = parseSubdivision(rank);
 
   // S Tier: Grandmaster, Challenger
-  if (normalizedRank.includes('grandmaster') || normalizedRank.includes('challenger')) {
-    return 'S';
-  }
+  if (normalizedRank.includes('grandmaster') || normalizedRank.includes('challenger')) return 'S';
 
-  // A Tier: Master
-  if (normalizedRank.includes('master')) {
-    return 'A';
-  }
+  // A Tier: Diamond 1, Masters (League: I=1 is highest)
+  if (normalizedRank.includes('master')) return 'A';
+  if (normalizedRank.includes('diamond') && subdivision === 1) return 'A';
 
-  // B Tier: Diamond
-  if (normalizedRank.includes('diamond')) {
-    return 'B';
-  }
+  // B Tier: Emerald 1, Diamond 2-4
+  if (normalizedRank.includes('diamond')) return 'B'; // Diamond 2-4
+  if (normalizedRank.includes('emerald') && subdivision === 1) return 'B';
 
-  // C Tier: Platinum, Emerald
-  if (normalizedRank.includes('platinum') || normalizedRank.includes('emerald')) {
-    return 'C';
-  }
+  // C Tier: Platinum, Emerald 2-4
+  if (normalizedRank.includes('emerald')) return 'C'; // Emerald 2-4
+  if (normalizedRank.includes('platinum')) return 'C';
 
   // D Tier: Silver, Gold
-  if (normalizedRank.includes('silver') || normalizedRank.includes('gold')) {
-    return 'D';
-  }
+  if (normalizedRank.includes('silver') || normalizedRank.includes('gold')) return 'D';
 
   // F Tier: Unranked, Iron, Bronze
   return 'F';
 };
 
 // Map Valorant ranks to tiers
+// F: Unranked - Bronze | D: Silver | C: Gold 1 - Plat 2 | B: Plat 3 - Asc 1 | A: Asc 2 - Immo 1 | S: Immo 2 - Radiant
 const mapValorantRankToTier = (rank: string | undefined): 'F' | 'D' | 'C' | 'B' | 'A' | 'S' => {
   if (!rank) return 'F';
 
   const normalizedRank = rank.toLowerCase();
+  const subdivision = parseSubdivision(rank);
 
-  // S Tier: Immortal, Radiant
-  if (normalizedRank.includes('immortal') || normalizedRank.includes('radiant')) {
-    return 'S';
-  }
+  // S Tier: Immortal 2, Immortal 3, Radiant
+  if (normalizedRank.includes('radiant')) return 'S';
+  if (normalizedRank.includes('immortal') && subdivision >= 2) return 'S';
 
-  // A Tier: Ascendant
-  if (normalizedRank.includes('ascendant')) {
-    return 'A';
-  }
+  // A Tier: Ascendant 2, Ascendant 3, Immortal 1
+  if (normalizedRank.includes('immortal')) return 'A'; // Immortal 1 (subdivision < 2 handled above)
+  if (normalizedRank.includes('ascendant') && subdivision >= 2) return 'A';
 
-  // B Tier: Diamond
-  if (normalizedRank.includes('diamond')) {
-    return 'B';
-  }
+  // B Tier: Platinum 3, Diamond 1-3, Ascendant 1
+  if (normalizedRank.includes('ascendant')) return 'B'; // Ascendant 1
+  if (normalizedRank.includes('diamond')) return 'B';
+  if (normalizedRank.includes('platinum') && subdivision >= 3) return 'B';
 
-  // C Tier: Platinum
-  if (normalizedRank.includes('platinum')) {
-    return 'C';
-  }
+  // C Tier: Gold 1, Gold 2, Gold 3, Platinum 1, Platinum 2
+  if (normalizedRank.includes('platinum')) return 'C'; // Plat 1-2
+  if (normalizedRank.includes('gold')) return 'C';
 
-  // D Tier: Silver, Gold
-  if (normalizedRank.includes('silver') || normalizedRank.includes('gold')) {
-    return 'D';
-  }
+  // D Tier: Silver
+  if (normalizedRank.includes('silver')) return 'D';
 
   // F Tier: Unranked, Iron, Bronze
   return 'F';
