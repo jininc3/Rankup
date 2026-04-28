@@ -54,7 +54,7 @@ export const onDuoMatchUpdated = onDocumentUpdated(
 
       // Re-queue user2 if they accepted or haven't responded yet
       if (after.user2Accepted !== "declined") {
-        await requeueUser(db, after.user2Id, after.game, after.user2Card);
+        await requeueUser(db, after.user2Id, after.game, after.user2Card, after.mode || "duo");
       }
 
       return;
@@ -71,7 +71,7 @@ export const onDuoMatchUpdated = onDocumentUpdated(
 
       // Re-queue user1 if they accepted or haven't responded yet
       if (after.user1Accepted !== "declined") {
-        await requeueUser(db, after.user1Id, after.game, after.user1Card);
+        await requeueUser(db, after.user1Id, after.game, after.user1Card, after.mode || "duo");
       }
 
       return;
@@ -87,11 +87,13 @@ async function requeueUser(
   userId: string,
   game: string,
   cardData: any,
+  mode: string = "duo",
 ) {
   const queueRef = db.collection("duoQueue").doc(`${userId}_${game}`);
   await queueRef.set({
     userId,
     game,
+    mode,
     status: "searching",
     matchedWith: null,
     matchId: null,

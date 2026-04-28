@@ -1046,4 +1046,183 @@ const profileStyles = StyleSheet.create({
   },
 });
 
+// Clips page skeleton - grid and list view variants
+const ClipsCategoryPillsSkeleton = () => (
+  <View style={clipsStyles.categoryRow}>
+    <Skeleton width={42} height={29} borderRadius={20} />
+    <Skeleton width={72} height={29} borderRadius={20} />
+    <Skeleton width={60} height={29} borderRadius={20} />
+  </View>
+);
+
+export const ClipsGridSkeleton: React.FC<{ count?: number }> = ({ count = 4 }) => (
+  <View>
+    <ClipsCategoryPillsSkeleton />
+    <View style={clipsStyles.grid}>
+      {Array.from({ length: count }).map((_, i) => (
+        <Skeleton key={i} width={'100%'} height={(screenWidth - 32) * 9 / 16} borderRadius={14} />
+      ))}
+    </View>
+  </View>
+);
+
+export const ClipsListSkeleton: React.FC<{ count?: number }> = ({ count = 5 }) => {
+  const captionWidths = React.useMemo(
+    () => Array.from({ length: count }, () => 100 + Math.floor(Math.random() * 80)),
+    [count]
+  );
+  return (
+    <View>
+    <ClipsCategoryPillsSkeleton />
+    <View style={clipsStyles.listContainer}>
+      {Array.from({ length: count }).map((_, i) => (
+        <View key={i} style={clipsStyles.listItem}>
+          <Skeleton width={110} height={110 * 9 / 16} borderRadius={10} />
+          <View style={clipsStyles.listInfo}>
+            <Skeleton width={captionWidths[i]} height={14} borderRadius={4} />
+            <View style={clipsStyles.listMeta}>
+              <Skeleton width={40} height={12} borderRadius={3} />
+              <Skeleton width={30} height={12} borderRadius={3} />
+            </View>
+          </View>
+          <Skeleton width={14} height={14} borderRadius={3} />
+        </View>
+      ))}
+    </View>
+    </View>
+  );
+};
+
+const clipsStyles = StyleSheet.create({
+  categoryRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    paddingHorizontal: 16,
+    paddingBottom: 24,
+    paddingTop: 4,
+  },
+  grid: {
+    gap: 10,
+    paddingHorizontal: 16,
+    paddingBottom: 40,
+  },
+  listContainer: {
+    gap: 1,
+    paddingHorizontal: 16,
+    paddingBottom: 40,
+  },
+  listItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 10,
+    gap: 12,
+    borderBottomWidth: 0.5,
+    borderBottomColor: 'rgba(255,255,255,0.06)',
+  },
+  listInfo: {
+    flex: 1,
+    gap: 6,
+  },
+  listMeta: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+  },
+});
+
+// Notification skeleton - matches notification card structure (avatar 36x36 + text lines)
+export const NotificationSkeleton: React.FC<{ count?: number }> = ({ count = 6 }) => {
+  const textWidths = React.useMemo(
+    () => Array.from({ length: count }, () => ({
+      main: 140 + Math.floor(Math.random() * 80),
+      sub: 60 + Math.floor(Math.random() * 40),
+    })),
+    [count]
+  );
+
+  return (
+    <View>
+      {/* Section header skeleton */}
+      <View style={notifStyles.sectionHeader}>
+        <Skeleton width={60} height={16} borderRadius={4} />
+      </View>
+      {Array.from({ length: count }).map((_, index) => (
+        <View key={index} style={notifStyles.card}>
+          <Skeleton width={36} height={36} borderRadius={18} />
+          <View style={notifStyles.content}>
+            <Skeleton width={textWidths[index].main} height={13} borderRadius={3} />
+            <Skeleton width={textWidths[index].sub} height={11} borderRadius={3} />
+          </View>
+        </View>
+      ))}
+    </View>
+  );
+};
+
+const notifStyles = StyleSheet.create({
+  sectionHeader: {
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+  },
+  card: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 10,
+    paddingHorizontal: 16,
+    gap: 10,
+  },
+  content: {
+    flex: 1,
+    gap: 6,
+  },
+});
+
+// Follower/Following list skeleton - matches followerItem/userItem structure
+export const FollowListSkeleton: React.FC<{ count?: number }> = ({ count = 6 }) => {
+  const nameWidths = React.useMemo(
+    () => Array.from({ length: count }, () => 70 + Math.floor(Math.random() * 60)),
+    [count]
+  );
+
+  return (
+    <View style={followStyles.list}>
+      {Array.from({ length: count }).map((_, index) => (
+        <View key={index} style={followStyles.item}>
+          <View style={followStyles.left}>
+            <Skeleton width={36} height={36} borderRadius={18} />
+            <Skeleton width={nameWidths[index]} height={15} borderRadius={4} />
+          </View>
+          <Skeleton width={75} height={28} borderRadius={6} />
+        </View>
+      ))}
+    </View>
+  );
+};
+
+const followStyles = StyleSheet.create({
+  list: {
+    paddingVertical: 8,
+  },
+  item: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    marginHorizontal: 16,
+    marginVertical: 4,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.06)',
+    backgroundColor: '#1a1a1a',
+  },
+  left: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    flex: 1,
+  },
+});
+
 export default Skeleton;

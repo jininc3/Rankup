@@ -2,6 +2,7 @@ import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { IconSymbol } from '@/components/ui/icon-symbol';
 import { LeaderboardsTabSkeleton } from '@/components/ui/Skeleton';
+import CachedImage from '@/components/ui/CachedImage';
 import { db } from '@/config/firebase';
 import { useAuth } from '@/contexts/AuthContext';
 import { useRouter } from '@/hooks/useRouter';
@@ -274,16 +275,18 @@ export default function LeaderboardScreen() {
 
     return (
       <View style={styles.mutualSection}>
-        <TouchableOpacity
-          style={styles.mutualSectionHeader}
-          onPress={() => otherPlayers.length > 0 && setShowGameDropdown(true)}
-          activeOpacity={0.7}
-        >
-          <Image source={gameLogo} style={styles.gameLogoSmall} resizeMode="contain" />
-          <ThemedText style={styles.mutualSectionTitle}>{title}</ThemedText>
-          {otherPlayers.length > 0 && (
-            <IconSymbol size={18} name="chevron.down" color="#888" />
-          )}
+        <View style={styles.mutualSectionHeader}>
+          <TouchableOpacity
+            style={styles.gameSwitchButton}
+            onPress={() => otherPlayers.length > 0 && setShowGameDropdown(true)}
+            activeOpacity={0.7}
+          >
+            <Image source={gameLogo} style={styles.gameLogoSmall} resizeMode="contain" />
+            <ThemedText style={styles.mutualSectionTitle}>{title}</ThemedText>
+            {otherPlayers.length > 0 && (
+              <IconSymbol size={18} name="chevron.down" color="#888" />
+            )}
+          </TouchableOpacity>
           <View style={{ flex: 1 }} />
           <TouchableOpacity
             style={[styles.updateButton, updatingStats && { opacity: 0.5 }]}
@@ -300,7 +303,7 @@ export default function LeaderboardScreen() {
               {updatingStats ? 'Updating...' : 'Update'}
             </ThemedText>
           </TouchableOpacity>
-        </TouchableOpacity>
+        </View>
 
         {/* Column Headers */}
         <View style={styles.columnHeaders}>
@@ -352,7 +355,7 @@ export default function LeaderboardScreen() {
                 <View style={styles.playerInfo}>
                   <View style={styles.playerAvatar}>
                     {player.avatar ? (
-                      <Image source={{ uri: player.avatar }} style={styles.playerAvatarImage} />
+                      <CachedImage uri={player.avatar} style={styles.playerAvatarImage} />
                     ) : (
                       <ThemedText style={styles.avatarText}>
                         {player.username.charAt(0).toUpperCase()}
@@ -707,6 +710,13 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: 8,
     marginBottom: 10,
+  },
+  gameSwitchButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    paddingVertical: 8,
+    paddingRight: 12,
   },
   gameLogoSmall: {
     width: 24,

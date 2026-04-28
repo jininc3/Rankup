@@ -103,9 +103,19 @@ export const getValorantStatsFunction = onCall(
         );
       }
 
-      const {gameName, tag: rawTag, region} = valorantAccount;
+      const {gameName: storedName, tag: rawTag, region} = valorantAccount;
       // Ensure tag is a string (might be stored as number in Firestore)
-      const tag = String(rawTag);
+      const storedTag = String(rawTag || "");
+      // Henrik API sometimes returns empty name/tag; if stored values are empty,
+      // the user needs to re-link so the fallback in valorantApi can fix it
+      if (!storedName || !storedTag) {
+        throw new HttpsError(
+          "failed-precondition",
+          "Your Valorant account data is incomplete. Please unlink and re-link your account."
+        );
+      }
+      const gameName = storedName;
+      const tag = storedTag;
 
       // Check cache (stats updated in last 3 hours)
       const cachedStats = userData?.valorantStats;

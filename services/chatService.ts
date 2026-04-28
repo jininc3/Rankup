@@ -390,7 +390,7 @@ export const subscribeToUserChats = (
       } as Chat);
     });
     callback(chats);
-  });
+  }, () => {});
 };
 
 /**

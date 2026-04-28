@@ -36,6 +36,13 @@ const settingsData = [
         hasChevron: true,
         route: '/profilePages/archivedPosts',
       },
+      {
+        id: 7,
+        icon: 'gamecontroller.fill',
+        title: 'Game Preferences',
+        hasChevron: true,
+        route: '/profilePages/gamePreferences',
+      },
     ],
   },
   {

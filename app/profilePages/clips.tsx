@@ -9,10 +9,11 @@ import { useRouter } from '@/hooks/useRouter';
 import { useLocalSearchParams } from 'expo-router';
 import { db } from '@/config/firebase';
 import { collection, getDocs, query, where, doc, getDoc, updateDoc, Timestamp } from 'firebase/firestore';
-import { useEffect, useState } from 'react';
-import { ActivityIndicator, Alert, Dimensions, Image, ScrollView, StyleSheet, TouchableOpacity, View } from 'react-native';
+import { useCallback, useEffect, useRef, useState } from 'react';
+import { Alert, Dimensions, Image, ScrollView, StyleSheet, TouchableOpacity, View } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { formatCount } from '@/utils/formatCount';
+import { ClipsGridSkeleton, ClipsListSkeleton } from '@/components/ui/Skeleton';
 
 const { width: screenWidth } = Dimensions.get('window');
 const GRID_PADDING = 16;
@@ -64,6 +65,16 @@ export default function ClipsPage() {
   const [showAssignCategory, setShowAssignCategory] = useState(false);
   const [categorizingPost, setCategorizingPost] = useState<Post | null>(null);
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('list');
+  const [thumbnailsReady, setThumbnailsReady] = useState(false);
+  const loadedCountRef = useRef(0);
+  const expectedCountRef = useRef(0);
+
+  const onThumbnailLoadOrError = useCallback(() => {
+    loadedCountRef.current += 1;
+    if (loadedCountRef.current >= expectedCountRef.current) {
+      setThumbnailsReady(true);
+    }
+  }, []);
 
   useEffect(() => {
     if (!userId) return;
@@ -73,6 +84,8 @@ export default function ClipsPage() {
   const fetchData = async () => {
     if (!userId) return;
     setLoading(true);
+    setThumbnailsReady(false);
+    loadedCountRef.current = 0;
     try {
       const [postsSnapshot, userDoc] = await Promise.all([
         getDocs(query(collection(db, 'posts'), where('userId', '==', userId))),
@@ -83,13 +96,25 @@ export default function ClipsPage() {
       fetchedPosts = fetchedPosts
         .filter(p => !(p as any).archived)
         .sort((a, b) => b.createdAt.toMillis() - a.createdAt.toMillis());
-      setPosts(fetchedPosts);
 
       if (userDoc.exists()) {
         setClipCategories(userDoc.data().clipCategories || []);
       }
+
+      // Prefetch all thumbnails before rendering
+      const thumbUrls = fetchedPosts.map(p =>
+        p.mediaType === 'video' && p.thumbnailUrl ? p.thumbnailUrl : p.mediaUrl
+      ).filter(Boolean);
+      await Promise.all(thumbUrls.map(url => Image.prefetch(url).catch(() => {})));
+
+      expectedCountRef.current = fetchedPosts.length;
+      if (fetchedPosts.length === 0) {
+        setThumbnailsReady(true);
+      }
+      setPosts(fetchedPosts);
     } catch (error) {
       console.error('Error fetching clips:', error);
+      setThumbnailsReady(true);
     } finally {
       setLoading(false);
     }
@@ -155,25 +180,33 @@ export default function ClipsPage() {
           <ThemedText style={styles.headerTitle}>Clips</ThemedText>
         </View>
         <View style={styles.headerRight}>
+          {isOwnProfile && (
+            <TouchableOpacity style={styles.newClipButton} onPress={() => router.push('/postPages/createPostVideo')}>
+              <IconSymbol size={14} name="plus" color="#fff" />
+              <ThemedText style={styles.newClipButtonText}>New Clip</ThemedText>
+            </TouchableOpacity>
+          )}
           <TouchableOpacity style={styles.viewToggle} onPress={() => setViewMode(v => v === 'grid' ? 'list' : 'grid')}>
             <IconSymbol size={18} name={viewMode === 'grid' ? 'list.bullet' : 'square.grid.2x2'} color="#fff" />
           </TouchableOpacity>
-          {isOwnProfile && (
-            <TouchableOpacity style={styles.addPostButton} onPress={() => router.push('/postPages/createPostVideo')}>
-              <IconSymbol size={27} name="plus.app" color="#fff" />
-            </TouchableOpacity>
-          )}
         </View>
       </View>
 
       {loading ? (
-        <View style={styles.centered}>
-          <ActivityIndicator size="small" color="#fff" />
-        </View>
-      ) : filteredPosts.length > 0 ? (
+        <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingTop: 12 }}>
+          {viewMode === 'grid' ? <ClipsGridSkeleton count={4} /> : <ClipsListSkeleton count={6} />}
+        </ScrollView>
+      ) : posts.length > 0 ? (
         <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.scrollContent}>
+          {/* Skeleton overlay while thumbnails decode from cache */}
+          {!thumbnailsReady && (
+            <View style={styles.skeletonOverlay} pointerEvents="none">
+              {viewMode === 'grid' ? <ClipsGridSkeleton count={4} /> : <ClipsListSkeleton count={6} />}
+            </View>
+          )}
+          <View style={{ opacity: thumbnailsReady ? 1 : 0 }}>
           {/* Category Filter */}
-          {clipCategories.length > 0 && posts.length > 0 && (
+          {clipCategories.length > 0 && (
             <ScrollView
               horizontal
               showsHorizontalScrollIndicator={false}
@@ -207,106 +240,114 @@ export default function ClipsPage() {
               )}
             </ScrollView>
           )}
-          {viewMode === 'grid' ? (
-            <View style={styles.grid}>
-              {filteredPosts.map((post) => {
-                const thumbUri = post.mediaType === 'video' && post.thumbnailUrl ? post.thumbnailUrl : post.mediaUrl;
-                return (
-                  <TouchableOpacity
-                    key={post.id}
-                    style={styles.gridItem}
-                    onPress={() => handlePostPress(post)}
-                    onLongPress={isOwnProfile ? () => handleCategorize(post) : undefined}
-                    activeOpacity={0.85}
-                  >
-                    <Image source={{ uri: thumbUri }} style={styles.gridImage} resizeMode="cover" />
-                    <LinearGradient
-                      colors={['transparent', 'rgba(0,0,0,0.8)']}
-                      locations={[0.4, 1]}
-                      style={styles.gridItemGradient}
-                      pointerEvents="none"
-                    />
-                    <View style={styles.gridItemBorder} pointerEvents="none" />
-                    {post.mediaType === 'video' && (
-                      <View style={styles.durationBadge}>
-                        <IconSymbol size={9} name="play.fill" color="#fff" />
-                        <ThemedText style={styles.durationText}>{formatDuration(post.duration)}</ThemedText>
-                      </View>
-                    )}
-                    {post.mediaUrls && post.mediaUrls.length > 1 && (
-                      <View style={styles.multiBadge}>
-                        <IconSymbol size={12} name="square.on.square" color="#fff" />
-                      </View>
-                    )}
-                    {post.likes > 0 && (
-                      <View style={styles.likesBadge}>
-                        <IconSymbol size={9} name="heart.fill" color="#fff" />
-                        <ThemedText style={styles.likesText}>{formatCount(post.likes)}</ThemedText>
-                      </View>
-                    )}
-                  </TouchableOpacity>
-                );
-              })}
-            </View>
-          ) : (
-            <View style={styles.listContainer}>
-              {filteredPosts.map((post) => {
-                const thumbUri = post.mediaType === 'video' && post.thumbnailUrl ? post.thumbnailUrl : post.mediaUrl;
-                return (
-                  <TouchableOpacity
-                    key={post.id}
-                    style={styles.listItem}
-                    onPress={() => handlePostPress(post)}
-                    onLongPress={isOwnProfile ? () => handleCategorize(post) : undefined}
-                    activeOpacity={0.85}
-                  >
-                    <View style={styles.listThumbWrap}>
-                      <Image source={{ uri: thumbUri }} style={styles.listThumb} resizeMode="cover" />
+          {filteredPosts.length > 0 ? (
+            viewMode === 'grid' ? (
+              <View style={styles.grid}>
+                {filteredPosts.map((post) => {
+                  const thumbUri = post.mediaType === 'video' && post.thumbnailUrl ? post.thumbnailUrl : post.mediaUrl;
+                  return (
+                    <TouchableOpacity
+                      key={post.id}
+                      style={styles.gridItem}
+                      onPress={() => handlePostPress(post)}
+                      onLongPress={isOwnProfile ? () => handleCategorize(post) : undefined}
+                      activeOpacity={0.85}
+                    >
+                      <Image source={{ uri: thumbUri }} style={styles.gridImage} resizeMode="cover" onLoad={onThumbnailLoadOrError} onError={onThumbnailLoadOrError} />
+                      <LinearGradient
+                        colors={['transparent', 'rgba(0,0,0,0.8)']}
+                        locations={[0.4, 1]}
+                        style={styles.gridItemGradient}
+                        pointerEvents="none"
+                      />
+                      <View style={styles.gridItemBorder} pointerEvents="none" />
                       {post.mediaType === 'video' && (
-                        <View style={styles.listPlayBadge}>
-                          <IconSymbol size={8} name="play.fill" color="#fff" />
-                          <ThemedText style={styles.listPlayText}>{formatDuration(post.duration)}</ThemedText>
+                        <View style={styles.durationBadge}>
+                          <IconSymbol size={9} name="play.fill" color="#fff" />
+                          <ThemedText style={styles.durationText}>{formatDuration(post.duration)}</ThemedText>
                         </View>
                       )}
-                    </View>
-                    <View style={styles.listInfo}>
-                      <ThemedText style={styles.listCaption} numberOfLines={2}>
-                        {post.caption || 'No caption'}
-                      </ThemedText>
-                      <View style={styles.listMeta}>
-                        {post.likes > 0 && (
-                          <View style={styles.listMetaItem}>
-                            <IconSymbol size={10} name="heart.fill" color="#666" />
-                            <ThemedText style={styles.listMetaText}>{formatCount(post.likes)}</ThemedText>
-                          </View>
-                        )}
-                        {(post.commentsCount ?? 0) > 0 && (
-                          <View style={styles.listMetaItem}>
-                            <IconSymbol size={10} name="bubble.left.fill" color="#666" />
-                            <ThemedText style={styles.listMetaText}>{post.commentsCount}</ThemedText>
+                      {post.mediaUrls && post.mediaUrls.length > 1 && (
+                        <View style={styles.multiBadge}>
+                          <IconSymbol size={12} name="square.on.square" color="#fff" />
+                        </View>
+                      )}
+                      {post.likes > 0 && (
+                        <View style={styles.likesBadge}>
+                          <IconSymbol size={9} name="heart.fill" color="#fff" />
+                          <ThemedText style={styles.likesText}>{formatCount(post.likes)}</ThemedText>
+                        </View>
+                      )}
+                    </TouchableOpacity>
+                  );
+                })}
+              </View>
+            ) : (
+              <View style={styles.listContainer}>
+                {filteredPosts.map((post) => {
+                  const thumbUri = post.mediaType === 'video' && post.thumbnailUrl ? post.thumbnailUrl : post.mediaUrl;
+                  return (
+                    <TouchableOpacity
+                      key={post.id}
+                      style={styles.listItem}
+                      onPress={() => handlePostPress(post)}
+                      onLongPress={isOwnProfile ? () => handleCategorize(post) : undefined}
+                      activeOpacity={0.85}
+                    >
+                      <View style={styles.listThumbWrap}>
+                        <Image source={{ uri: thumbUri }} style={styles.listThumb} resizeMode="cover" onLoad={onThumbnailLoadOrError} onError={onThumbnailLoadOrError} />
+                        {post.mediaType === 'video' && (
+                          <View style={styles.listPlayBadge}>
+                            <IconSymbol size={8} name="play.fill" color="#fff" />
+                            <ThemedText style={styles.listPlayText}>{formatDuration(post.duration)}</ThemedText>
                           </View>
                         )}
                       </View>
-                    </View>
-                    <IconSymbol size={14} name="chevron.right" color="#444" />
-                  </TouchableOpacity>
-                );
-              })}
+                      <View style={styles.listInfo}>
+                        <ThemedText style={styles.listCaption} numberOfLines={2}>
+                          {post.caption || 'No caption'}
+                        </ThemedText>
+                        <View style={styles.listMeta}>
+                          {post.likes > 0 && (
+                            <View style={styles.listMetaItem}>
+                              <IconSymbol size={10} name="heart.fill" color="#666" />
+                              <ThemedText style={styles.listMetaText}>{formatCount(post.likes)}</ThemedText>
+                            </View>
+                          )}
+                          {(post.commentsCount ?? 0) > 0 && (
+                            <View style={styles.listMetaItem}>
+                              <IconSymbol size={10} name="bubble.left.fill" color="#666" />
+                              <ThemedText style={styles.listMetaText}>{post.commentsCount}</ThemedText>
+                            </View>
+                          )}
+                        </View>
+                      </View>
+                      <IconSymbol size={14} name="chevron.right" color="#444" />
+                    </TouchableOpacity>
+                  );
+                })}
+              </View>
+            )
+          ) : (
+            <View style={styles.emptyCategoryState}>
+              <ThemedText style={styles.emptyCategoryText}>
+                No clips in "{selectedCategory}"
+              </ThemedText>
+              <ThemedText style={styles.emptyCategorySubtext}>
+                Try a different category
+              </ThemedText>
             </View>
           )}
+          </View>
         </ScrollView>
       ) : (
         <View style={styles.emptyState}>
           <View style={styles.emptyIconWrap}>
             <IconSymbol size={32} name="video" color="#555" />
           </View>
-          <ThemedText style={styles.emptyTitle}>
-            {selectedCategory ? `No clips in "${selectedCategory}"` : 'No clips yet'}
-          </ThemedText>
+          <ThemedText style={styles.emptyTitle}>No clips yet</ThemedText>
           <ThemedText style={styles.emptySubtext}>
-            {selectedCategory
-              ? 'Try a different category'
-              : isOwnProfile
+            {isOwnProfile
               ? 'Your gaming highlights will appear here'
               : "This user hasn't posted any clips"}
           </ThemedText>
@@ -382,8 +423,21 @@ const styles = StyleSheet.create({
   viewToggle: {
     padding: 8,
   },
-  addPostButton: {
-    padding: 8,
+  newClipButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 5,
+    paddingVertical: 6,
+    paddingHorizontal: 12,
+    borderRadius: 8,
+    backgroundColor: 'rgba(255,255,255,0.08)',
+    borderWidth: 0.5,
+    borderColor: 'rgba(255,255,255,0.12)',
+  },
+  newClipButtonText: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: '#fff',
   },
 
   // Category filter pills — glassmorphic
@@ -426,6 +480,14 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
 
+  skeletonOverlay: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    zIndex: 1,
+    paddingTop: 12,
+  },
   centered: {
     flex: 1,
     alignItems: 'center',
@@ -537,6 +599,26 @@ const styles = StyleSheet.create({
     color: '#555',
     textAlign: 'center',
     lineHeight: 20,
+  },
+
+  // Empty category state (inside ScrollView, below pills)
+  emptyCategoryState: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 60,
+    paddingHorizontal: 40,
+    gap: 8,
+  },
+  emptyCategoryText: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#fff',
+    textAlign: 'center',
+  },
+  emptyCategorySubtext: {
+    fontSize: 14,
+    color: '#555',
+    textAlign: 'center',
   },
 
   // List view

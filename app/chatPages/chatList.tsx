@@ -2,13 +2,13 @@ import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { IconSymbol } from '@/components/ui/icon-symbol';
 import { Skeleton } from '@/components/ui/Skeleton';
+import CachedImage from '@/components/ui/CachedImage';
 import { useState, useEffect } from 'react';
 import {
   View,
   StyleSheet,
   TouchableOpacity,
   FlatList,
-  Image,
   ActivityIndicator,
   TextInput,
   Modal,
@@ -194,7 +194,7 @@ export default function ChatListScreen() {
             >
               <View style={styles.avatarInner}>
                 {otherUser.avatar && otherUser.avatar.startsWith('http') ? (
-                  <Image source={{ uri: otherUser.avatar }} style={styles.avatarImage} />
+                  <CachedImage uri={otherUser.avatar} style={styles.avatarImage} />
                 ) : (
                   <View style={styles.avatarPlaceholder}>
                     <ThemedText style={styles.avatarInitial}>
@@ -207,7 +207,7 @@ export default function ChatListScreen() {
           ) : (
             <View style={styles.avatarWrapper}>
               {otherUser.avatar && otherUser.avatar.startsWith('http') ? (
-                <Image source={{ uri: otherUser.avatar }} style={styles.avatarImage} />
+                <CachedImage uri={otherUser.avatar} style={styles.avatarImage} />
               ) : (
                 <View style={styles.avatarPlaceholder}>
                   <ThemedText style={styles.avatarInitial}>
@@ -249,7 +249,7 @@ export default function ChatListScreen() {
     >
       <View style={styles.suggestedAvatarWrapper}>
         {item.followingAvatar && item.followingAvatar.startsWith('http') ? (
-          <Image source={{ uri: item.followingAvatar }} style={styles.suggestedAvatar} />
+          <CachedImage uri={item.followingAvatar} style={styles.suggestedAvatar} />
         ) : (
           <View style={styles.suggestedAvatarPlaceholder}>
             <ThemedText style={styles.suggestedAvatarInitial}>

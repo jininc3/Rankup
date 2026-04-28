@@ -12,6 +12,7 @@ import {
 export interface DuoQueueEntry {
   userId: string;
   game: 'valorant' | 'league';
+  mode: 'lfg' | 'duo';
   status: 'searching' | 'matched' | 'expired';
   matchedWith: string | null;
   matchId: string | null;
@@ -38,6 +39,7 @@ export interface DuoMatchCardData {
 
 export interface DuoMatch {
   game: 'valorant' | 'league';
+  mode: 'lfg' | 'duo';
   user1Id: string;
   user2Id: string;
   user1Card: DuoMatchCardData;
@@ -55,6 +57,7 @@ export interface DuoMatch {
 export const joinDuoQueue = async (
   userId: string,
   game: 'valorant' | 'league',
+  mode: 'lfg' | 'duo',
   cardData: {
     username: string;
     avatar?: string;
@@ -69,6 +72,7 @@ export const joinDuoQueue = async (
   await setDoc(queueDocRef, {
     userId,
     game,
+    mode,
     status: 'searching',
     matchedWith: null,
     matchId: null,

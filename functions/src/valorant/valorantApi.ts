@@ -134,7 +134,12 @@ export async function getValorantAccountByRiotId(
       );
     }
 
-    return response.data.data;
+    const accountData = response.data.data;
+    // Henrik API sometimes returns empty name/tag (Riot privacy changes)
+    // Fall back to the user-provided values
+    if (!accountData.name) accountData.name = gameName;
+    if (!accountData.tag) accountData.tag = tag;
+    return accountData;
   } catch (error: any) {
     if (error instanceof HttpsError) {
       throw error;

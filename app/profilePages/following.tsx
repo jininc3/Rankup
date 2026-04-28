@@ -3,10 +3,12 @@ import { ThemedView } from '@/components/themed-view';
 import { IconSymbol } from '@/components/ui/icon-symbol';
 import { useRouter } from '@/hooks/useRouter';
 import { useState, useEffect } from 'react';
-import { ScrollView, StyleSheet, TextInput, TouchableOpacity, View, Image, Alert, ActivityIndicator } from 'react-native';
+import { ScrollView, StyleSheet, TextInput, TouchableOpacity, View, Alert } from 'react-native';
+import CachedImage from '@/components/ui/CachedImage';
 import { useAuth } from '@/contexts/AuthContext';
 import { getFollowing, unfollowUser, FollowingData } from '@/services/followService';
 import { LinearGradient } from 'expo-linear-gradient';
+import { FollowListSkeleton } from '@/components/ui/Skeleton';
 
 interface Following {
   id: string;
@@ -110,10 +112,7 @@ export default function FollowingScreen() {
 
       <ScrollView showsVerticalScrollIndicator={false}>
         {loading ? (
-          <View style={styles.emptyState}>
-            <ActivityIndicator size="large" color="#c42743" />
-            <ThemedText style={styles.loadingText}>Loading following...</ThemedText>
-          </View>
+          <FollowListSkeleton count={6} />
         ) : filteredFollowing.length > 0 ? (
           <View style={styles.listContainer}>
             {filteredFollowing.map((user) => (
@@ -125,7 +124,7 @@ export default function FollowingScreen() {
                 >
                   <View style={styles.avatar}>
                     {user.avatar && user.avatar.startsWith('http') ? (
-                      <Image source={{ uri: user.avatar }} style={styles.avatarImage} />
+                      <CachedImage uri={user.avatar} style={styles.avatarImage} />
                     ) : (
                       <ThemedText style={styles.avatarInitial}>
                         {user.username[0].toUpperCase()}
@@ -291,10 +290,5 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: '#b9bbbe',
     textAlign: 'center',
-  },
-  loadingText: {
-    fontSize: 14,
-    color: '#b9bbbe',
-    marginTop: 12,
   },
 });

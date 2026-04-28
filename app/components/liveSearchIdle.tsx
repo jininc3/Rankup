@@ -17,6 +17,8 @@ interface LiveSearchIdleProps {
   hasCards: boolean;
   valorantCard: any;
   leagueCard: any;
+  searchModePick: 'lfg' | 'duo' | null;
+  onPickMode: (mode: 'lfg' | 'duo') => void;
   searchGamePick: 'valorant' | 'league' | null;
   onPickGame: (game: 'valorant' | 'league') => void;
   onSearch: () => void;
@@ -27,6 +29,8 @@ export default function LiveSearchIdle({
   hasCards,
   valorantCard,
   leagueCard,
+  searchModePick,
+  onPickMode,
   searchGamePick,
   onPickGame,
   onSearch,
@@ -76,14 +80,52 @@ export default function LiveSearchIdle({
         <Animated.View style={[styles.titleGroup, contentStyle]}>
           <ThemedText style={styles.title}>Ready Up</ThemedText>
           <ThemedText style={styles.subtitle}>
-            Find a duo in your rank range
+            {searchModePick === 'lfg'
+              ? 'Find a group — any rank welcome'
+              : searchModePick === 'duo'
+              ? 'Find a duo in your rank range'
+              : 'Pick a mode to get started'}
           </ThemedText>
         </Animated.View>
       </View>
 
       <Animated.View style={[styles.content, contentStyle]}>
-        {/* Game Picker */}
+        {/* Mode Picker */}
         {hasCards && (
+          <View style={styles.modePicker}>
+            <TouchableOpacity
+              style={[
+                styles.modeCard,
+                searchModePick === 'lfg' && styles.modeCardActive,
+              ]}
+              onPress={() => onPickMode('lfg')}
+              activeOpacity={0.7}
+            >
+              <IconSymbol size={24} name="person.3.fill" color={searchModePick === 'lfg' ? '#ccc' : '#444'} />
+              <ThemedText style={[
+                styles.modeCardText,
+                searchModePick === 'lfg' && styles.modeCardTextActive,
+              ]}>LFG</ThemedText>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={[
+                styles.modeCard,
+                searchModePick === 'duo' && styles.modeCardActive,
+              ]}
+              onPress={() => onPickMode('duo')}
+              activeOpacity={0.7}
+            >
+              <IconSymbol size={24} name="person.2.fill" color={searchModePick === 'duo' ? '#ccc' : '#444'} />
+              <ThemedText style={[
+                styles.modeCardText,
+                searchModePick === 'duo' && styles.modeCardTextActive,
+              ]}>Find Duo</ThemedText>
+            </TouchableOpacity>
+          </View>
+        )}
+
+        {/* Game Picker */}
+        {hasCards && searchModePick && (
           <View style={styles.gamePicker}>
             {valorantCard && (
               <TouchableOpacity
@@ -132,12 +174,12 @@ export default function LiveSearchIdle({
 
         {/* Search Button */}
         <TouchableOpacity
-          style={[styles.searchBtn, !searchGamePick && styles.searchBtnDisabled]}
+          style={[styles.searchBtn, (!searchGamePick || !searchModePick) && styles.searchBtnDisabled]}
           onPress={onSearch}
           activeOpacity={0.8}
-          disabled={!searchGamePick}
+          disabled={!searchGamePick || !searchModePick}
         >
-          <ThemedText style={[styles.searchBtnText, searchGamePick && styles.searchBtnTextActive]}>
+          <ThemedText style={[styles.searchBtnText, searchGamePick && searchModePick && styles.searchBtnTextActive]}>
             Search now
           </ThemedText>
         </TouchableOpacity>
@@ -196,6 +238,34 @@ const styles = StyleSheet.create({
     color: '#666',
     textAlign: 'center',
     marginBottom: 28,
+  },
+  modePicker: {
+    flexDirection: 'row',
+    justifyContent: 'center',
+    gap: 12,
+    marginBottom: 16,
+    width: '100%',
+    maxWidth: 280,
+  },
+  modeCard: {
+    flex: 1,
+    borderRadius: 14,
+    backgroundColor: '#1a1a1a',
+    alignItems: 'center',
+    paddingVertical: 16,
+    gap: 8,
+  },
+  modeCardActive: {
+    backgroundColor: '#222',
+  },
+  modeCardText: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: '#555',
+    letterSpacing: 0.5,
+  },
+  modeCardTextActive: {
+    color: '#ccc',
   },
   gamePicker: {
     flexDirection: 'row',

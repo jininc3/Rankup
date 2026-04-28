@@ -5,8 +5,10 @@ import { useAuth } from '@/contexts/AuthContext';
 import { FollowerData, followUser, getFollowers, isFollowing, unfollowUser } from '@/services/followService';
 import { useRouter } from '@/hooks/useRouter';
 import { useEffect, useState } from 'react';
-import { ActivityIndicator, Alert, Image, ScrollView, StyleSheet, TextInput, TouchableOpacity, View } from 'react-native';
+import { Alert, ScrollView, StyleSheet, TextInput, TouchableOpacity, View } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
+import CachedImage from '@/components/ui/CachedImage';
+import { FollowListSkeleton } from '@/components/ui/Skeleton';
 
 interface Follower {
   id: string;
@@ -138,10 +140,7 @@ export default function FollowersScreen() {
 
       <ScrollView showsVerticalScrollIndicator={false}>
         {loading ? (
-          <View style={styles.emptyState}>
-            <ActivityIndicator size="large" color="#c42743" />
-            <ThemedText style={styles.loadingText}>Loading followers...</ThemedText>
-          </View>
+          <FollowListSkeleton count={6} />
         ) : filteredFollowers.length > 0 ? (
           <View style={styles.listContainer}>
             {filteredFollowers.map((follower) => (
@@ -153,7 +152,7 @@ export default function FollowersScreen() {
                 >
                   <View style={styles.avatar}>
                     {follower.avatar && follower.avatar.startsWith('http') ? (
-                      <Image source={{ uri: follower.avatar }} style={styles.avatarImage} />
+                      <CachedImage uri={follower.avatar} style={styles.avatarImage} />
                     ) : (
                       <ThemedText style={styles.avatarInitial}>
                         {follower.username[0].toUpperCase()}
@@ -337,10 +336,5 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: '#b9bbbe',
     textAlign: 'center',
-  },
-  loadingText: {
-    fontSize: 14,
-    color: '#b9bbbe',
-    marginTop: 12,
   },
 });

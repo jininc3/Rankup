@@ -89,13 +89,13 @@ export default function EmailSignUpInterests() {
 
       <View style={styles.bottomSection}>
         <TouchableOpacity
-          style={[styles.continueButton, isLoading && styles.buttonDisabled]}
+          style={[styles.continueButton, (isLoading || selected.size === 0) && styles.buttonDisabled]}
           onPress={handleFinish}
-          disabled={isLoading}
+          disabled={isLoading || selected.size === 0}
           activeOpacity={0.8}
         >
           <ThemedText style={styles.continueButtonText}>
-            {isLoading ? 'Finishing...' : selected.size > 0 ? 'Finish' : 'Skip & Finish'}
+            {isLoading ? 'Finishing...' : 'Finish'}
           </ThemedText>
         </TouchableOpacity>
       </View>

@@ -27,6 +27,7 @@ interface User {
   needsUsernameSetup?: boolean;
   isPrivate?: boolean;
   provider: 'email' | 'google' | 'apple' | 'phone' | 'discord' | 'instagram';
+  interests?: string[];
 }
 
 interface Post {
@@ -382,6 +383,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
               needsUsernameSetup: userProfile.needsUsernameSetup || false,
               isPrivate: userProfile.isPrivate || false,
               provider: userProfile.provider,
+              interests: (userProfile as any).interests || [],
             });
 
             // Preload feed before showing home page; others run in background
@@ -434,6 +436,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
               avatar: firebaseUser.photoURL || undefined,
               needsUsernameSetup: isGoogleUser || isAppleUser,
               provider: isAppleUser ? 'apple' : isGoogleUser ? 'google' : 'email',
+              interests: [],
             });
 
             // Preload feed before showing home page; others run in background
@@ -506,6 +509,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           needsUsernameSetup: userProfile.needsUsernameSetup || false,
           isPrivate: userProfile.isPrivate || false,
           provider: userProfile.provider,
+          interests: (userProfile as any).interests || [],
         });
       }
     } catch (error) {

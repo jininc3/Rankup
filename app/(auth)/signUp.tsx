@@ -92,7 +92,7 @@ export default function SignUpScreen() {
       >
         {/* Top section - Logo & tagline */}
         <View style={styles.heroSection}>
-          <Image source={require('@/assets/images/rankup-white.png')} style={styles.logo} />
+          <Image source={require('@/assets/images/rankuplogo.png')} style={styles.logo} />
           <ThemedText style={styles.tagline}>
             Join the{'\n'}community
           </ThemedText>
@@ -182,8 +182,8 @@ const styles = StyleSheet.create({
     paddingBottom: 80,
   },
   logo: {
-    width: 180,
-    height: 55,
+    width: 400,
+    height: 180,
     resizeMode: 'contain',
     marginBottom: 24,
   },

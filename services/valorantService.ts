@@ -154,6 +154,16 @@ export const getValorantStats = async (
 
     return result.data;
   } catch (error: any) {
+    // "Rank data not found" is normal for unranked accounts — not a real error
+    if (error.message?.includes('Rank data not found')) {
+      const noRankResponse: GetValorantStatsResponse = {
+        success: true,
+        message: 'No rank data available for this account',
+      };
+      valorantStatsCache = { data: noRankResponse, timestamp: Date.now() };
+      return noRankResponse;
+    }
+
     console.error('Error fetching Valorant stats:', error);
 
     // Return stale cache on error if available

@@ -12,6 +12,7 @@ import * as ImagePicker from 'expo-image-picker';
 import { db } from '@/config/firebase';
 import { doc, getDoc } from 'firebase/firestore';
 import { getLeagueStats, formatRank } from '@/services/riotService';
+import CachedImage from '@/components/ui/CachedImage';
 import { LinearGradient } from 'expo-linear-gradient';
 import { formatCount } from '@/utils/formatCount';
 import DraggableFlatList, { ScaleDecorator, RenderItemParams } from 'react-native-draggable-flatlist';
@@ -734,9 +735,9 @@ export default function EditProfileScreen() {
           {/* Cover Photo Area */}
           <View style={styles.coverPhotoWrapper}>
             {pendingRemoveCoverPhoto ? null : pendingCoverPhotoUri ? (
-              <Image source={{ uri: pendingCoverPhotoUri }} style={styles.coverPhotoImage} />
+              <CachedImage uri={pendingCoverPhotoUri} style={styles.coverPhotoImage} />
             ) : coverPhoto ? (
-              <Image source={{ uri: coverPhoto }} style={styles.coverPhotoImage} />
+              <CachedImage uri={coverPhoto} style={styles.coverPhotoImage} />
             ) : null}
             {/* Bottom fade - only when a cover photo is visible */}
             {!pendingRemoveCoverPhoto && (pendingCoverPhotoUri || coverPhoto) && (
@@ -786,9 +787,9 @@ export default function EditProfileScreen() {
                     ) : pendingDefaultAvatarIndex !== null ? (
                       <Image source={defaultAvatars[pendingDefaultAvatarIndex]} style={styles.profileAvatarImage} />
                     ) : pendingProfileImageUri ? (
-                      <Image source={{ uri: pendingProfileImageUri }} style={styles.profileAvatarImage} />
+                      <CachedImage uri={pendingProfileImageUri} style={styles.profileAvatarImage} />
                     ) : profileImage ? (
-                      <Image source={{ uri: profileImage }} style={styles.profileAvatarImage} />
+                      <CachedImage uri={profileImage} style={styles.profileAvatarImage} />
                     ) : (
                       <ThemedText style={styles.profileAvatarInitial}>{avatar}</ThemedText>
                     )}

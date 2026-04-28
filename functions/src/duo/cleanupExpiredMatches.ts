@@ -46,10 +46,10 @@ export const cleanupExpiredMatchesScheduled = onSchedule(
 
         // Re-queue users who accepted (the other person timed out)
         if (data.user1Accepted === true && data.user2Accepted !== true) {
-          await requeueUser(db, data.user1Id, data.game, data.user1Card);
+          await requeueUser(db, data.user1Id, data.game, data.user1Card, data.mode || "duo");
         }
         if (data.user2Accepted === true && data.user1Accepted !== true) {
-          await requeueUser(db, data.user2Id, data.game, data.user2Card);
+          await requeueUser(db, data.user2Id, data.game, data.user2Card, data.mode || "duo");
         }
 
         console.log(`Expired match ${matchDoc.id}`);
@@ -67,11 +67,13 @@ async function requeueUser(
   userId: string,
   game: string,
   cardData: any,
+  mode: string = "duo",
 ) {
   const queueRef = db.collection("duoQueue").doc(`${userId}_${game}`);
   await queueRef.set({
     userId,
     game,
+    mode,
     status: "searching",
     matchedWith: null,
     matchId: null,

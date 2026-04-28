@@ -22,8 +22,9 @@ export const onDuoQueueCreated = onDocumentCreated(
     const newEntryRef = snapshot.ref;
     const newUserId = newEntry.userId;
     const game = newEntry.game;
+    const mode = newEntry.mode || "duo";
 
-    logger.info(`Duo queue entry created: ${newUserId} searching for ${game}`);
+    logger.info(`Duo queue entry created: ${newUserId} searching for ${game} (${mode})`);
 
     const db = admin.firestore();
 
@@ -32,7 +33,8 @@ export const onDuoQueueCreated = onDocumentCreated(
       const candidatesQuery = db
         .collection("duoQueue")
         .where("status", "==", "searching")
-        .where("game", "==", game);
+        .where("game", "==", game)
+        .where("mode", "==", mode);
 
       const candidatesSnapshot = await candidatesQuery.get();
 
@@ -43,8 +45,10 @@ export const onDuoQueueCreated = onDocumentCreated(
       const candidates = candidatesSnapshot.docs
         .filter((doc) => doc.data().userId !== newUserId)
         .filter((doc) => {
+          // LFG mode: no rank restriction (match anyone)
+          if (mode === "lfg") return true;
+          // Duo mode: existing rank proximity filter
           const candidateRank = doc.data().currentRank || null;
-          // If either user has no rank, allow the match
           if (!currentRank || !candidateRank) return true;
           return getRankDistance(game, currentRank, candidateRank) <= tierRange;
         })
@@ -95,6 +99,7 @@ export const onDuoQueueCreated = onDocumentCreated(
 
         const matchData = {
           game: game,
+          mode: mode,
           user1Id: newUserId,
           user2Id: candidateData.userId,
           user1Card: {

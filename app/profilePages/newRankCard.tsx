@@ -183,7 +183,7 @@ export default function NewRankCardScreen() {
           </View>
           {isLinked ? (
             <ThemedText style={styles.accountName}>
-              {account.gameName}#{account.tagLine || account.tag}
+              {account.gameName || account.name}#{account.tagLine || account.tag}
             </ThemedText>
           ) : (
             <ThemedText style={styles.notLinkedText}>Tap to link your account</ThemedText>

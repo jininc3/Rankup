@@ -3,6 +3,7 @@ import { ThemedView } from '@/components/themed-view';
 import { IconSymbol } from '@/components/ui/icon-symbol';
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { SectionList, StyleSheet, TouchableOpacity, View, Image, ActivityIndicator, Animated, Alert } from 'react-native';
+import { NotificationSkeleton } from '@/components/ui/Skeleton';
 // Long-press to delete replaces swipe-to-delete
 import { useRouter } from '@/hooks/useRouter';
 import { collection, query, orderBy, limit, onSnapshot, doc, updateDoc, deleteDoc, where, Timestamp, getDocs, writeBatch, getDoc, startAfter, QueryDocumentSnapshot, DocumentData } from 'firebase/firestore';
@@ -822,10 +823,7 @@ export default function NotificationsScreen() {
         onEndReachedThreshold={0.5}
         stickySectionHeadersEnabled={false}
         ListHeaderComponent={loading ? (
-          <View style={styles.loadingContainer}>
-            <ActivityIndicator size="large" color="#c42743" />
-            <ThemedText style={styles.loadingText}>Loading notifications...</ThemedText>
-          </View>
+          <NotificationSkeleton count={8} />
         ) : null}
         ListFooterComponent={loadingMore ? (
           <View style={styles.loadingMoreContainer}>
@@ -1122,16 +1120,6 @@ const styles = StyleSheet.create({
     fontSize: 13,
     fontWeight: '500',
     color: '#555',
-  },
-  loadingContainer: {
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingTop: 100,
-    gap: 12,
-  },
-  loadingText: {
-    fontSize: 16,
-    color: '#b9bbbe',
   },
   deleteButtonText: {
     fontSize: 11,

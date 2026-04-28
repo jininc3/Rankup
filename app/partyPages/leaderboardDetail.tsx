@@ -13,6 +13,7 @@ import * as Clipboard from 'expo-clipboard';
 import * as ImagePicker from 'expo-image-picker';
 import { uploadPartyIcon, uploadPartyCoverPhoto } from '@/services/storageService';
 import { useAuth } from '@/contexts/AuthContext';
+import CachedImage from '@/components/ui/CachedImage';
 
 // Game logo mapping
 const GAME_LOGOS: { [key: string]: any } = {
@@ -1239,7 +1240,7 @@ export default function LeaderboardDetail() {
                     activeOpacity={0.7}
                   >
                     {player.avatar && player.avatar.startsWith('http') ? (
-                      <Image source={{ uri: player.avatar }} style={styles.playerAvatarImage} />
+                      <CachedImage uri={player.avatar} style={styles.playerAvatarImage} />
                     ) : (
                       <ThemedText style={styles.avatarText}>
                         {player.avatar || player.username[0].toUpperCase()}
@@ -1434,7 +1435,7 @@ export default function LeaderboardDetail() {
                     >
                       <View style={styles.challengeMemberInfo}>
                         {member.avatar && member.avatar.startsWith('http') ? (
-                          <Image source={{ uri: member.avatar }} style={styles.challengeMemberAvatar} />
+                          <CachedImage uri={member.avatar} style={styles.challengeMemberAvatar} />
                         ) : (
                           <View style={styles.challengeMemberAvatarPlaceholder}>
                             <ThemedText style={styles.challengeMemberAvatarText}>
@@ -1659,7 +1660,7 @@ export default function LeaderboardDetail() {
                         >
                           <View style={styles.inviteUserAvatar}>
                             {userItem.avatar && userItem.avatar.startsWith('http') ? (
-                              <Image source={{ uri: userItem.avatar }} style={styles.inviteUserAvatarImage} />
+                              <CachedImage uri={userItem.avatar} style={styles.inviteUserAvatarImage} />
                             ) : (
                               <ThemedText style={styles.inviteUserAvatarText}>
                                 {userItem.username[0].toUpperCase()}
@@ -1701,7 +1702,7 @@ export default function LeaderboardDetail() {
                       <View key={userItem.id} style={styles.inviteUserItem}>
                         <View style={styles.inviteUserAvatar}>
                           {userItem.avatar && userItem.avatar.startsWith('http') ? (
-                            <Image source={{ uri: userItem.avatar }} style={styles.inviteUserAvatarImage} />
+                            <CachedImage uri={userItem.avatar} style={styles.inviteUserAvatarImage} />
                           ) : (
                             <ThemedText style={styles.inviteUserAvatarText}>
                               {userItem.username[0].toUpperCase()}
@@ -1772,7 +1773,7 @@ export default function LeaderboardDetail() {
                   <View key={player.userId} style={styles.manageMemberItem}>
                     <View style={styles.manageMemberAvatar}>
                       {player.avatar && player.avatar.startsWith('http') ? (
-                        <Image source={{ uri: player.avatar }} style={styles.manageMemberAvatarImage} />
+                        <CachedImage uri={player.avatar} style={styles.manageMemberAvatarImage} />
                       ) : (
                         <ThemedText style={styles.manageMemberAvatarText}>
                           {player.username[0].toUpperCase()}

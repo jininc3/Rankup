@@ -163,7 +163,8 @@ export default function LobbiesScreen() {
           onPress={() => setShowCreateModal(true)}
           activeOpacity={0.7}
         >
-          <IconSymbol size={18} name="plus" color="#fff" />
+          <IconSymbol size={14} name="plus" color="#fff" />
+          <ThemedText style={styles.createButtonText}>New</ThemedText>
         </TouchableOpacity>
       </View>
 
@@ -268,12 +269,20 @@ const styles = StyleSheet.create({
     color: '#fff',
   },
   createButton: {
-    width: 32,
-    height: 32,
-    borderRadius: 16,
-    backgroundColor: 'rgba(255,255,255,0.08)',
+    flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'center',
+    gap: 5,
+    paddingVertical: 6,
+    paddingHorizontal: 12,
+    borderRadius: 8,
+    backgroundColor: 'rgba(255,255,255,0.08)',
+    borderWidth: 0.5,
+    borderColor: 'rgba(255,255,255,0.12)',
+  },
+  createButtonText: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: '#fff',
   },
   scrollContent: {
     paddingHorizontal: 16,

@@ -1,5 +1,6 @@
 import { ThemedText } from '@/components/themed-text';
 import { IconSymbol } from '@/components/ui/icon-symbol';
+import CachedImage from '@/components/ui/CachedImage';
 import { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import {
   View,
@@ -9,7 +10,6 @@ import {
   FlatList,
   KeyboardAvoidingView,
   Platform,
-  Image,
   ActivityIndicator,
   Alert,
   InteractionManager,
@@ -387,7 +387,7 @@ export default function ChatScreen() {
         >
           <View style={styles.headerAvatar}>
             {otherUserAvatar && otherUserAvatar.startsWith('http') ? (
-              <Image source={{ uri: otherUserAvatar }} style={styles.avatarImage} />
+              <CachedImage uri={otherUserAvatar} style={styles.avatarImage} />
             ) : (
               <ThemedText style={styles.avatarInitial}>
                 {otherUsername?.[0]?.toUpperCase() || 'U'}

@@ -33,6 +33,8 @@ export default function LiveSearchScreen() {
   const [matchState, setMatchState] = useState<'idle' | 'searching' | 'accepting' | 'matched'>('idle');
   const [searchGame, setSearchGame] = useState<'valorant' | 'league' | null>(null);
   const [searchGamePick, setSearchGamePick] = useState<'valorant' | 'league' | null>(null);
+  const [searchModePick, setSearchModePick] = useState<'lfg' | 'duo' | null>(null);
+  const [searchMode, setSearchMode] = useState<'lfg' | 'duo' | null>(null);
   const [matchedUserCard, setMatchedUserCard] = useState<DuoMatchCardData | null>(null);
   const [matchedUserId, setMatchedUserId] = useState<string | null>(null);
   const [currentMatchId, setCurrentMatchId] = useState<string | null>(null);
@@ -110,13 +112,14 @@ export default function LiveSearchScreen() {
     }
   }, []);
 
-  const startLiveSearch = async (game: 'valorant' | 'league') => {
+  const startLiveSearch = async (game: 'valorant' | 'league', mode: 'lfg' | 'duo' = 'duo') => {
     if (!user?.id) return;
 
     const cardData = game === 'valorant' ? valorantCard : leagueCard;
     if (!cardData) return;
 
     setSearchGame(game);
+    setSearchMode(mode);
     setMatchState('searching');
     setMatchedUserCard(null);
     setMatchedUserId(null);
@@ -139,7 +142,7 @@ export default function LiveSearchScreen() {
     lastCardDataRef.current = queueCardData;
 
     try {
-      await joinDuoQueue(user.id, game, queueCardData);
+      await joinDuoQueue(user.id, game, mode, queueCardData);
 
       const unsubscribe = subscribeToDuoQueue(user.id, game, async (data) => {
         if (data?.status === 'matched' && data.matchId) {
@@ -243,6 +246,7 @@ export default function LiveSearchScreen() {
                             // Other user declined again — go to idle
                             setMatchState('idle');
                             setSearchGame(null);
+                            setSearchMode(null);
                             setMatchedUserCard(null);
                             setCurrentMatchId(null);
                           }
@@ -262,6 +266,7 @@ export default function LiveSearchScreen() {
                   // I declined or timed out — go to idle
                   setMatchState('idle');
                   setSearchGame(null);
+                  setSearchMode(null);
                   setMatchedUserCard(null);
                   setCurrentMatchId(null);
                 }
@@ -281,6 +286,7 @@ export default function LiveSearchScreen() {
       console.error('Error starting live search:', error);
       setMatchState('idle');
       setSearchGame(null);
+      setSearchMode(null);
       Alert.alert('Error', 'Failed to start searching. Please try again.');
     }
   };
@@ -292,6 +298,7 @@ export default function LiveSearchScreen() {
     }
     setMatchState('idle');
     setSearchGame(null);
+    setSearchMode(null);
   }, [user?.id, searchGame, cleanupSearch]);
 
   const handleAccept = async () => {
@@ -315,6 +322,7 @@ export default function LiveSearchScreen() {
     cleanupSearch();
     setMatchState('idle');
     setSearchGame(null);
+    setSearchMode(null);
     setMatchedUserCard(null);
     setMatchedUserId(null);
     setCurrentMatchId(null);
@@ -331,6 +339,7 @@ export default function LiveSearchScreen() {
     cleanupSearch();
     setMatchState('idle');
     setSearchGame(null);
+    setSearchMode(null);
     setMatchedUserCard(null);
     setMatchedUserId(null);
     setCurrentMatchId(null);
@@ -338,12 +347,12 @@ export default function LiveSearchScreen() {
   };
 
   const handleSearchAgain = () => {
-    if (searchGame) {
+    if (searchGame && searchMode) {
       setMatchState('idle');
       setMatchedUserCard(null);
       setMatchedUserId(null);
       setCurrentMatchId(null);
-      setTimeout(() => startLiveSearch(searchGame), 300);
+      setTimeout(() => startLiveSearch(searchGame, searchMode), 300);
     }
   };
 
@@ -490,9 +499,11 @@ export default function LiveSearchScreen() {
             hasCards={hasCards}
             valorantCard={valorantCard}
             leagueCard={leagueCard}
+            searchModePick={searchModePick}
+            onPickMode={(mode) => setSearchModePick(mode)}
             searchGamePick={searchGamePick}
             onPickGame={(game) => setSearchGamePick(game)}
-            onSearch={() => searchGamePick && startLiveSearch(searchGamePick)}
+            onSearch={() => searchGamePick && searchModePick && startLiveSearch(searchGamePick, searchModePick)}
             onCreateCard={() => setShowAddCard(true)}
           />
         )}

@@ -123,6 +123,13 @@ export default function HomeScreen() {
   const [loadingMore, setLoadingMore] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
   const [hasConsumedPreload, setHasConsumedPreload] = useState(false);
+
+  // For You pagination state
+  const [forYouLastDoc, setForYouLastDoc] = useState<QueryDocumentSnapshot<DocumentData> | null>(null);
+  const [forYouHasMore, setForYouHasMore] = useState(true);
+  const [forYouLoadingMore, setForYouLoadingMore] = useState(false);
+  const [forYouLoading, setForYouLoading] = useState(false);
+  const [forYouFetched, setForYouFetched] = useState(false);
   const [showNewPost, setShowNewPost] = useState(false);
   const [showNewClip, setShowNewClip] = useState(false);
 
@@ -159,6 +166,10 @@ export default function HomeScreen() {
       setHasConsumedPreload(false);
       setLoading(true);
       setSelectedGameFilter(null);
+      setForYouLastDoc(null);
+      setForYouHasMore(true);
+      setForYouFetched(false);
+      setForYouLoading(false);
     }
     prevUserIdRef.current = currentUser?.id;
   }, [currentUser?.id]);
@@ -172,7 +183,7 @@ export default function HomeScreen() {
 
     const unsubscribe = onSnapshot(q, (snapshot) => {
       setUnreadNotificationCount(snapshot.size);
-    });
+    }, () => {});
 
     return () => unsubscribe();
   }, [currentUser?.id]);
@@ -346,13 +357,6 @@ export default function HomeScreen() {
     }
 
     try {
-      // Fetch all posts for "For You" tab (empty for now)
-      if (activeTab === 'forYou') {
-        setForYouPosts([]);
-        setLoading(false);
-        return;
-      }
-
       // If no following users, show empty state
       if (followingUserIds.length === 0) {
         setFollowingPosts([]);
@@ -484,30 +488,150 @@ export default function HomeScreen() {
       setLoading(false);
       setLoadingMore(false);
     }
-  }, [currentUser?.id, followingUserIds, activeTab, selectedGameFilter, hasMore, loadingMore, lastDoc]);
+  }, [currentUser?.id, followingUserIds, selectedGameFilter, hasMore, loadingMore, lastDoc]);
+
+  // Fetch For You posts with pagination
+  const fetchForYouPosts = useCallback(async (isLoadMore: boolean = false) => {
+    if (!currentUser?.id) return;
+    if (isLoadMore && (!forYouHasMore || forYouLoadingMore)) return;
+
+    const interests = currentUser.interests || [];
+
+    if (isLoadMore) {
+      setForYouLoadingMore(true);
+    } else {
+      setForYouLoading(true);
+      setForYouLastDoc(null);
+      setForYouHasMore(true);
+    }
+
+    try {
+      // Build base query constraints
+      const constraints: any[] = [
+        orderBy('createdAt', 'desc'),
+        limit(POSTS_PER_PAGE * 2) // Fetch extra to account for filtering
+      ];
+
+      // Filter by user's game interests if they have any
+      if (interests.length > 0 && interests.length <= 10) {
+        constraints.unshift(where('taggedGame', 'in', interests));
+      }
+
+      if (isLoadMore && forYouLastDoc) {
+        constraints.push(startAfter(forYouLastDoc));
+      }
+
+      const q = query(collection(db, 'posts'), ...constraints);
+      const snapshot = await getDocs(q);
+
+      let allPosts = snapshot.docs.map(docSnap => ({
+        id: docSnap.id,
+        ...docSnap.data()
+      } as Post));
+
+      // Filter out archived, blocked, reported, and own posts
+      allPosts = allPosts.filter(post =>
+        !(post as any).archived &&
+        !isUserBlocked(post.userId) &&
+        !isPostReported(post.id) &&
+        post.userId !== currentUser.id
+      );
+
+      // Apply game filter row if selected
+      if (selectedGameFilter) {
+        allPosts = allPosts.filter(post => post.taggedGame === selectedGameFilter);
+      }
+
+      // Take only what we need
+      const postsToShow = allPosts.slice(0, POSTS_PER_PAGE);
+
+      // Enrich with avatar, rank data, and filter out private accounts
+      const enrichedPosts: Post[] = [];
+      for (const post of postsToShow) {
+        try {
+          const userDoc = await getDoc(doc(db, 'users', post.userId));
+          if (userDoc.exists()) {
+            const userData = userDoc.data();
+
+            // Skip posts from private accounts
+            if (userData.isPrivate) continue;
+
+            let leagueRank = undefined;
+            let valorantRank = undefined;
+
+            if (userData.riotStats?.rankedSolo) {
+              leagueRank = `${userData.riotStats.rankedSolo.tier} ${userData.riotStats.rankedSolo.rank}`;
+            }
+            if (userData.valorantStats?.currentRank) {
+              valorantRank = userData.valorantStats.currentRank;
+            }
+
+            enrichedPosts.push({
+              ...post,
+              avatar: userData.avatar || post.avatar || undefined,
+              leagueRank,
+              valorantRank,
+            });
+          } else {
+            enrichedPosts.push(post);
+          }
+        } catch (error) {
+          console.error(`Error enriching For You post ${post.id}:`, error);
+          enrichedPosts.push(post);
+        }
+      }
+
+      if (isLoadMore) {
+        setForYouPosts(prev => {
+          const existingIds = new Set(prev.map(p => p.id));
+          const newPosts = enrichedPosts.filter(p => !existingIds.has(p.id));
+          return [...prev, ...newPosts];
+        });
+      } else {
+        setForYouPosts(enrichedPosts);
+      }
+
+      // Update pagination state
+      setForYouHasMore(enrichedPosts.length === POSTS_PER_PAGE);
+      if (snapshot.docs.length > 0) {
+        setForYouLastDoc(snapshot.docs[snapshot.docs.length - 1]);
+      }
+      setForYouFetched(true);
+
+    } catch (error) {
+      console.error('Error fetching For You posts:', error);
+    } finally {
+      setForYouLoading(false);
+      setForYouLoadingMore(false);
+    }
+  }, [currentUser?.id, currentUser?.interests, selectedGameFilter, forYouHasMore, forYouLoadingMore, forYouLastDoc, isUserBlocked, isPostReported]);
 
   // Initial fetch when dependencies change
   // Note: Don't fetch if we just consumed preloaded posts (hasConsumedPreload && no filter)
   useEffect(() => {
-    // Skip initial fetch if we have preloaded posts and no filters applied
-    if (hasConsumedPreload && selectedGameFilter === null && activeTab === 'following') {
-      return;
-    }
+    if (activeTab === 'following') {
+      // Skip initial fetch if we have preloaded posts and no filters applied
+      if (hasConsumedPreload && selectedGameFilter === null) {
+        return;
+      }
 
-    // Reset hasConsumedPreload when switching tabs or filters (so subsequent changes fetch fresh data)
-    if (activeTab === 'forYou' || selectedGameFilter !== null) {
-      setHasConsumedPreload(false);
-    }
+      // Reset hasConsumedPreload when switching filters
+      if (selectedGameFilter !== null) {
+        setHasConsumedPreload(false);
+      }
 
-    if (followingUserIds.length > 0 || activeTab === 'forYou') {
-      fetchPostsWithPagination(false);
-    } else if (activeTab === 'following') {
-      // No one followed — nothing to load, show empty state
-      setLoading(false);
-    } else if (preloadedPosts !== null && preloadedPosts.length === 0) {
-      setLoading(false);
+      if (followingUserIds.length > 0) {
+        fetchPostsWithPagination(false);
+      } else {
+        setLoading(false);
+      }
+    } else if (activeTab === 'forYou') {
+      // Fetch For You on first switch or when filter changes
+      if (!forYouFetched || selectedGameFilter !== null) {
+        fetchForYouPosts(false);
+      }
     }
-  }, [currentUser?.id, followingUserIds, activeTab, selectedGameFilter, hasConsumedPreload, preloadedPosts]);
+  }, [currentUser?.id, followingUserIds, activeTab, selectedGameFilter, hasConsumedPreload, preloadedPosts, forYouFetched, fetchForYouPosts]);
 
   // Check which posts are liked by the current user
   useEffect(() => {
@@ -645,16 +769,27 @@ export default function HomeScreen() {
   // Pull to refresh
   const handleRefresh = useCallback(async () => {
     setRefreshing(true);
-    await fetchPostsWithPagination(false);
+    if (activeTab === 'forYou') {
+      setForYouFetched(false);
+      await fetchForYouPosts(false);
+    } else {
+      await fetchPostsWithPagination(false);
+    }
     setRefreshing(false);
-  }, [fetchPostsWithPagination]);
+  }, [activeTab, fetchPostsWithPagination, fetchForYouPosts]);
 
   // Load more posts when scrolling to bottom
   const handleLoadMore = useCallback(() => {
-    if (hasMore && !loadingMore && !loading) {
-      fetchPostsWithPagination(true);
+    if (activeTab === 'forYou') {
+      if (forYouHasMore && !forYouLoadingMore && !forYouLoading) {
+        fetchForYouPosts(true);
+      }
+    } else {
+      if (hasMore && !loadingMore && !loading) {
+        fetchPostsWithPagination(true);
+      }
     }
-  }, [hasMore, loadingMore, loading, fetchPostsWithPagination]);
+  }, [activeTab, hasMore, loadingMore, loading, fetchPostsWithPagination, forYouHasMore, forYouLoadingMore, forYouLoading, fetchForYouPosts]);
 
   // Detect when user scrolls to bottom
   const handleScrollEnd = useCallback((event: any) => {
@@ -995,7 +1130,20 @@ export default function HomeScreen() {
       </View>
 
       <View style={styles.header}>
-        <ThemedText style={styles.headerTitle}>Following</ThemedText>
+        <View style={styles.headerTabs}>
+          <TouchableOpacity onPress={() => setActiveTab('following')} style={styles.headerTab} activeOpacity={0.7}>
+            <ThemedText style={[styles.headerTabText, activeTab === 'following' && styles.headerTabTextActive]}>
+              Following
+            </ThemedText>
+            {activeTab === 'following' && <View style={styles.headerTabUnderline} />}
+          </TouchableOpacity>
+          <TouchableOpacity onPress={() => setActiveTab('forYou')} style={styles.headerTab} activeOpacity={0.7}>
+            <ThemedText style={[styles.headerTabText, activeTab === 'forYou' && styles.headerTabTextActive]}>
+              For You
+            </ThemedText>
+            {activeTab === 'forYou' && <View style={styles.headerTabUnderline} />}
+          </TouchableOpacity>
+        </View>
         <View style={styles.headerActions}>
           <TouchableOpacity
             style={styles.headerIconButton}
@@ -1071,7 +1219,7 @@ export default function HomeScreen() {
           </TouchableOpacity>
         </View>
 
-        {loading ? (
+        {(activeTab === 'following' ? loading : forYouLoading) ? (
           <FeedSkeleton count={3} />
         ) : currentPosts.length > 0 ? (
           <>
@@ -1116,13 +1264,13 @@ export default function HomeScreen() {
 
               return postContent;
             })}
-            {loadingMore && (
+            {(activeTab === 'following' ? loadingMore : forYouLoadingMore) && (
               <View style={styles.loadingMoreContainer}>
                 <ActivityIndicator size="small" color="#000" />
                 <ThemedText style={styles.loadingMoreText}>Loading more posts...</ThemedText>
               </View>
             )}
-            {!hasMore && currentPosts.length > 0 && (
+            {!(activeTab === 'following' ? hasMore : forYouHasMore) && currentPosts.length > 0 && (
               <View style={styles.endOfFeedContainer}>
                 <ThemedText style={styles.endOfFeedText}>You're all caught up!</ThemedText>
               </View>
@@ -1314,6 +1462,32 @@ const styles = StyleSheet.create({
     color: '#fff',
     letterSpacing: 0.3,
     textTransform: 'uppercase',
+  },
+  headerTabs: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 20,
+  },
+  headerTab: {
+    alignItems: 'center',
+    paddingVertical: 4,
+  },
+  headerTabText: {
+    fontSize: 20,
+    fontWeight: '600',
+    color: '#555',
+    letterSpacing: 0.3,
+    textTransform: 'uppercase',
+  },
+  headerTabTextActive: {
+    color: '#fff',
+  },
+  headerTabUnderline: {
+    marginTop: 4,
+    width: '100%',
+    height: 2,
+    backgroundColor: '#C9A84C',
+    borderRadius: 1,
   },
   headerActions: {
     flexDirection: 'row',

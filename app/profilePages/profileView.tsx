@@ -24,6 +24,7 @@ import { formatCount } from '@/utils/formatCount';
 import GradientBorder from '@/components/GradientBorder';
 import { LinearGradient } from 'expo-linear-gradient';
 import { BlurView } from 'expo-blur';
+import CachedImage from '@/components/ui/CachedImage';
 
 interface ViewedUser {
   id: string;
@@ -779,7 +780,7 @@ export default function ProfileViewScreen() {
           {/* Cover Photo Area */}
           <View style={styles.coverPhotoWrapper}>
             {viewedUser?.coverPhoto && (
-              <Image source={{ uri: viewedUser.coverPhoto }} style={styles.coverPhotoImage} />
+              <CachedImage uri={viewedUser.coverPhoto} style={styles.coverPhotoImage} />
             )}
             {/* Bottom fade - only when cover photo exists */}
             {viewedUser?.coverPhoto && (
@@ -830,7 +831,7 @@ export default function ProfileViewScreen() {
                     >
                       <View style={styles.profileAvatarCircleWithGradient}>
                         {viewedUser?.avatar && viewedUser.avatar.startsWith('http') ? (
-                          <Image source={{ uri: viewedUser.avatar }} style={styles.profileAvatarImage} />
+                          <CachedImage uri={viewedUser.avatar} style={styles.profileAvatarImage} />
                         ) : (
                           <ThemedText style={styles.profileAvatarInitial}>
                             {viewedUser?.username?.[0]?.toUpperCase() || 'U'}
@@ -841,7 +842,7 @@ export default function ProfileViewScreen() {
                   ) : (
                     <View style={styles.profileAvatarCircle}>
                       {viewedUser?.avatar && viewedUser.avatar.startsWith('http') ? (
-                        <Image source={{ uri: viewedUser.avatar }} style={styles.profileAvatarImage} />
+                        <CachedImage uri={viewedUser.avatar} style={styles.profileAvatarImage} />
                       ) : (
                         <ThemedText style={styles.profileAvatarInitial}>
                           {viewedUser?.username?.[0]?.toUpperCase() || 'U'}

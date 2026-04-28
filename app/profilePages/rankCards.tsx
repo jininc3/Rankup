@@ -198,21 +198,22 @@ export default function RankCardsScreen() {
               <IconSymbol size={18} name={viewMode === 'stacked' ? 'rectangle.split.1x2' : 'square.stack.3d.up'} color="#fff" />
             </TouchableOpacity>
           )}
-          {isOwnProfile && (
-            <>
-              <TouchableOpacity style={styles.addButton} onPress={() => router.push('/profilePages/linkRiotAccount')}>
-                <IconSymbol size={27} name="plus.app" color="#fff" />
-              </TouchableOpacity>
-              <TouchableOpacity style={styles.settingsButton} onPress={() => router.push('/profilePages/newRankCard')}>
-                <IconSymbol size={22} name="gearshape" color="#fff" />
-              </TouchableOpacity>
-            </>
-          )}
         </View>
 
         <View style={styles.content}>
           <ThemedText style={styles.step}>{isOwnProfile ? 'Profile' : `@${fetchedUsername}`}</ThemedText>
           <ThemedText style={styles.title}>Rank Cards</ThemedText>
+          {isOwnProfile && (
+            <TouchableOpacity
+              style={styles.newCardButton}
+              onPress={() => router.push('/profilePages/newRankCard')}
+            >
+              <IconSymbol size={14} name={riotAccount && valorantAccount ? 'gearshape' : 'plus'} color="#fff" />
+              <ThemedText style={styles.newCardButtonText}>
+                {riotAccount && valorantAccount ? 'Manage Cards' : 'New Card'}
+              </ThemedText>
+            </TouchableOpacity>
+          )}
 
           {loading && (
             <View style={styles.loadingContainer}>
@@ -417,11 +418,23 @@ const styles = StyleSheet.create({
   viewToggle: {
     padding: 8,
   },
-  addButton: {
-    padding: 8,
+  newCardButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    alignSelf: 'flex-start',
+    gap: 5,
+    paddingVertical: 6,
+    paddingHorizontal: 12,
+    borderRadius: 8,
+    backgroundColor: 'rgba(255,255,255,0.08)',
+    borderWidth: 0.5,
+    borderColor: 'rgba(255,255,255,0.12)',
+    marginBottom: 16,
   },
-  settingsButton: {
-    padding: 8,
+  newCardButtonText: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: '#fff',
   },
   content: {
     paddingHorizontal: 28,
@@ -437,7 +450,7 @@ const styles = StyleSheet.create({
     fontWeight: '800',
     color: '#fff',
     lineHeight: 36,
-    marginBottom: 32,
+    marginBottom: 12,
   },
   loadingContainer: {
     paddingVertical: 100,
