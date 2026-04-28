@@ -301,14 +301,6 @@ export const acceptFollowRequest = async (
   await setDoc(followingRef, followingData);
 
   // Counts are automatically updated by Cloud Functions
-
-  // Delete follow_request notifications from this requester
-  const notifsRef = collection(db, `users/${currentUserId}/notifications`);
-  const q = query(notifsRef, where('type', '==', 'follow_request'), where('fromUserId', '==', requesterId));
-  const snapshot = await getDocs(q);
-  for (const notifDoc of snapshot.docs) {
-    await deleteDoc(notifDoc.ref);
-  }
 };
 
 /**
@@ -320,14 +312,6 @@ export const declineFollowRequest = async (
 ): Promise<void> => {
   // Delete the follow request doc
   await deleteDoc(doc(db, `users/${currentUserId}/followRequests/${requesterId}`));
-
-  // Delete follow_request notifications from this requester
-  const notifsRef = collection(db, `users/${currentUserId}/notifications`);
-  const q = query(notifsRef, where('type', '==', 'follow_request'), where('fromUserId', '==', requesterId));
-  const snapshot = await getDocs(q);
-  for (const notifDoc of snapshot.docs) {
-    await deleteDoc(notifDoc.ref);
-  }
 };
 
 /**

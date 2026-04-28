@@ -133,6 +133,14 @@ export default function HomeScreen() {
   const [showNewPost, setShowNewPost] = useState(false);
   const [showNewClip, setShowNewClip] = useState(false);
 
+  // Track the last game filter used for For You fetches to avoid infinite re-fetch loops
+  const prevForYouFilterRef = useRef<string | null | undefined>(undefined);
+
+  // Cache posts per game filter for instant tab switching
+  const forYouCacheRef = useRef<Record<string, Post[]>>({});
+  const followingCacheRef = useRef<Record<string, Post[]>>({});
+  const prevFollowingFilterRef = useRef<string | null | undefined>(undefined);
+
   // Duo card state for posting
   const [valorantCard, setValorantCard] = useState<DuoCardData | null>(null);
   const [leagueCard, setLeagueCard] = useState<DuoCardData | null>(null);
@@ -170,6 +178,10 @@ export default function HomeScreen() {
       setForYouHasMore(true);
       setForYouFetched(false);
       setForYouLoading(false);
+      forYouCacheRef.current = {};
+      prevForYouFilterRef.current = undefined;
+      followingCacheRef.current = {};
+      prevFollowingFilterRef.current = undefined;
     }
     prevUserIdRef.current = currentUser?.id;
   }, [currentUser?.id]);
@@ -228,7 +240,9 @@ export default function HomeScreen() {
   // Consume preloaded posts from AuthContext (already enriched with rank data)
   useEffect(() => {
     if (preloadedPosts && !hasConsumedPreload) {
-      setFollowingPosts(preloadedPosts.filter(p => !isUserBlocked(p.userId) && !isPostReported(p.id)));
+      const filtered = preloadedPosts.filter(p => !isUserBlocked(p.userId) && !isPostReported(p.id));
+      setFollowingPosts(filtered);
+      followingCacheRef.current['_all'] = filtered;
       setLoading(false);
       setHasConsumedPreload(true);
       clearPreloadedPosts();
@@ -351,7 +365,11 @@ export default function HomeScreen() {
     if (isLoadMore) {
       setLoadingMore(true);
     } else {
-      setLoading(true);
+      // Only show skeleton if we have no cached posts for this filter
+      const cacheKey = selectedGameFilter || '_all';
+      if (!followingCacheRef.current[cacheKey]?.length) {
+        setLoading(true);
+      }
       setLastDoc(null);
       setHasMore(true);
     }
@@ -455,15 +473,19 @@ export default function HomeScreen() {
         })
       );
 
+      const cacheKey = selectedGameFilter || '_all';
       if (isLoadMore) {
         setFollowingPosts(prev => {
           // Filter out duplicates by checking if post ID already exists
           const existingIds = new Set(prev.map(p => p.id));
           const newPosts = postsWithAvatars.filter(p => !existingIds.has(p.id));
-          return [...prev, ...newPosts];
+          const updated = [...prev, ...newPosts];
+          followingCacheRef.current[cacheKey] = updated;
+          return updated;
         });
       } else {
         setFollowingPosts(postsWithAvatars);
+        followingCacheRef.current[cacheKey] = postsWithAvatars;
       }
 
       // Update pagination state - if we got fewer posts than requested, there are no more
@@ -500,7 +522,11 @@ export default function HomeScreen() {
     if (isLoadMore) {
       setForYouLoadingMore(true);
     } else {
-      setForYouLoading(true);
+      // Only show skeleton if we have no cached posts for this filter
+      const cacheKey = selectedGameFilter || '_all';
+      if (!forYouCacheRef.current[cacheKey]?.length) {
+        setForYouLoading(true);
+      }
       setForYouLastDoc(null);
       setForYouHasMore(true);
     }
@@ -581,14 +607,18 @@ export default function HomeScreen() {
         }
       }
 
+      const cacheKey = selectedGameFilter || '_all';
       if (isLoadMore) {
         setForYouPosts(prev => {
           const existingIds = new Set(prev.map(p => p.id));
           const newPosts = enrichedPosts.filter(p => !existingIds.has(p.id));
-          return [...prev, ...newPosts];
+          const updated = [...prev, ...newPosts];
+          forYouCacheRef.current[cacheKey] = updated;
+          return updated;
         });
       } else {
         setForYouPosts(enrichedPosts);
+        forYouCacheRef.current[cacheKey] = enrichedPosts;
       }
 
       // Update pagination state
@@ -615,23 +645,45 @@ export default function HomeScreen() {
         return;
       }
 
-      // Reset hasConsumedPreload when switching filters
-      if (selectedGameFilter !== null) {
+      const filterChanged = prevFollowingFilterRef.current !== selectedGameFilter;
+      if (filterChanged) {
+        // Instantly show cached posts for this filter (no skeleton flash)
+        const cacheKey = selectedGameFilter || '_all';
+        const cached = followingCacheRef.current[cacheKey];
+        if (cached && cached.length > 0) {
+          setFollowingPosts(cached);
+        }
+        scrollViewRef.current?.scrollTo({ y: 0, animated: false });
+        prevFollowingFilterRef.current = selectedGameFilter;
         setHasConsumedPreload(false);
       }
 
       if (followingUserIds.length > 0) {
-        fetchPostsWithPagination(false);
+        if (!hasConsumedPreload || filterChanged) {
+          fetchPostsWithPagination(false);
+        }
       } else {
         setLoading(false);
       }
     } else if (activeTab === 'forYou') {
-      // Fetch For You on first switch or when filter changes
-      if (!forYouFetched || selectedGameFilter !== null) {
+      // Fetch For You on first switch or when the game filter actually changes
+      const filterChanged = prevForYouFilterRef.current !== selectedGameFilter;
+      if (filterChanged) {
+        // Instantly show cached posts for this filter (no skeleton flash)
+        const cacheKey = selectedGameFilter || '_all';
+        const cached = forYouCacheRef.current[cacheKey];
+        if (cached && cached.length > 0) {
+          setForYouPosts(cached);
+        }
+        scrollViewRef.current?.scrollTo({ y: 0, animated: false });
+      }
+      if (!forYouFetched || filterChanged) {
+        prevForYouFilterRef.current = selectedGameFilter;
         fetchForYouPosts(false);
       }
     }
-  }, [currentUser?.id, followingUserIds, activeTab, selectedGameFilter, hasConsumedPreload, preloadedPosts, forYouFetched, fetchForYouPosts]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [currentUser?.id, followingUserIds, activeTab, selectedGameFilter, hasConsumedPreload, preloadedPosts, forYouFetched]);
 
   // Check which posts are liked by the current user
   useEffect(() => {

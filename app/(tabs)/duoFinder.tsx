@@ -20,6 +20,7 @@ import { IconSymbol } from '@/components/ui/icon-symbol';
 import { DuoCardSkeleton, DuoFeedCardSkeleton } from '@/components/ui/Skeleton';
 import { useAuth } from '@/contexts/AuthContext';
 import { useState, useEffect, useCallback, useRef } from 'react';
+import { useFocusEffect } from 'expo-router';
 import { Alert, Dimensions, ScrollView, FlatList, ActivityIndicator, StyleSheet, TouchableOpacity, View, RefreshControl, Image, Modal, Animated, Easing } from 'react-native';
 
 const { width: screenWidth, height: screenHeight } = Dimensions.get('window');
@@ -438,42 +439,39 @@ export default function DuoFinderScreen() {
 
 
   // Check if user has Valorant or League accounts (RankCards)
-  useEffect(() => {
-    const checkLinkedAccounts = async () => {
-      if (!user?.id) return;
+  useFocusEffect(
+    useCallback(() => {
+      const checkLinkedAccounts = async () => {
+        if (!user?.id) return;
 
-      try {
-        // Get user's document to check their linked accounts
-        const userDocRef = doc(db, 'users', user.id);
-        const userDoc = await getDoc(userDocRef);
+        try {
+          const userDocRef = doc(db, 'users', user.id);
+          const userDoc = await getDoc(userDocRef);
 
-        if (userDoc.exists()) {
-          const userData = userDoc.data();
+          if (userDoc.exists()) {
+            const userData = userDoc.data();
+            const hasLeague = !!userData.riotAccount;
+            const hasValorant = !!userData.valorantAccount;
 
-          // Check if user has riotAccount (League of Legends)
-          const hasLeague = !!userData.riotAccount;
-
-          // Check if user has valorantAccount
-          const hasValorant = !!userData.valorantAccount;
-
-          setHasValorantAccount(hasValorant);
-          setHasLeagueAccount(hasLeague);
-          setEnabledRankCards(userData.enabledRankCards || []);
-
-          console.log('Linked accounts check:', { hasValorant, hasLeague });
+            setHasValorantAccount(hasValorant);
+            setHasLeagueAccount(hasLeague);
+            setEnabledRankCards(userData.enabledRankCards || []);
+          }
+        } catch (error) {
+          console.error('Error checking linked accounts:', error);
         }
-      } catch (error) {
-        console.error('Error checking linked accounts:', error);
-      }
-    };
+      };
 
-    checkLinkedAccounts();
-  }, [user?.id]);
+      checkLinkedAccounts();
+    }, [user?.id])
+  );
 
-  // Load duo cards once on mount
-  useEffect(() => {
-    syncDuoCardsWithStats(false);
-  }, [user?.id]);
+  // Re-sync duo cards every time the tab gains focus (picks up newly added rank cards)
+  useFocusEffect(
+    useCallback(() => {
+      syncDuoCardsWithStats(false);
+    }, [user?.id])
+  );
 
   // Handle pull-to-refresh
   const onRefresh = useCallback(() => {

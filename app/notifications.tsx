@@ -25,6 +25,7 @@ const GAME_LOGOS: { [key: string]: any } = {
 interface Notification {
   id: string;
   type: 'follow' | 'like' | 'comment' | 'tag' | 'party_invite' | 'party_complete' | 'party_ranking_change' | 'challenge_invite' | 'follow_request';
+  status?: 'pending' | 'accepted' | 'declined';
   fromUserId?: string; // Optional for system notifications like party_complete
   fromUsername?: string; // Optional for system notifications like party_complete
   fromUserAvatar?: string;
@@ -103,6 +104,7 @@ export default function NotificationsScreen() {
         notifs.push({
           id: doc.id,
           type: data.type,
+          status: data.status,
           fromUserId: data.fromUserId,
           fromUsername: data.fromUsername,
           fromUserAvatar: data.fromUserAvatar || data.fromAvatar,
@@ -213,23 +215,26 @@ export default function NotificationsScreen() {
   // Mark all notifications as read when screen comes into focus
   useFocusEffect(
     useCallback(() => {
-      if (currentUser?.id && notifications.length > 0) {
+      if (currentUser?.id) {
         markAllAsRead();
       }
-    }, [currentUser?.id, notifications])
+    }, [currentUser?.id])
   );
 
-  // Mark all notifications as read
+  // Mark all notifications as read (queries Firestore directly to catch all pages)
   const markAllAsRead = async () => {
     if (!currentUser?.id) return;
 
     try {
-      const batch = writeBatch(db);
-      const unreadNotifications = notifications.filter(n => !n.read);
+      const notificationsRef = collection(db, 'users', currentUser.id, 'notifications');
+      const unreadQuery = query(notificationsRef, where('read', '==', false));
+      const unreadSnapshot = await getDocs(unreadQuery);
 
-      unreadNotifications.forEach((notification) => {
-        const notifRef = doc(db, 'users', currentUser.id, 'notifications', notification.id);
-        batch.update(notifRef, { read: true });
+      if (unreadSnapshot.empty) return;
+
+      const batch = writeBatch(db);
+      unreadSnapshot.forEach((docSnap) => {
+        batch.update(docSnap.ref, { read: true });
       });
 
       await batch.commit();
@@ -387,8 +392,8 @@ export default function NotificationsScreen() {
         pendingInvites: updatedPendingInvites,
       });
 
-      // Delete the notification
-      await deleteNotification(notification.id);
+      // Update the notification status to accepted
+      await updateDoc(doc(db, 'users', currentUser.id, 'notifications', notification.id), { status: 'accepted' });
 
       console.log('Successfully joined party:', notification.partyName);
 
@@ -454,8 +459,8 @@ export default function NotificationsScreen() {
         });
       }
 
-      // Delete the notification
-      await deleteNotification(notification.id);
+      // Update the notification status to declined
+      await updateDoc(doc(db, 'users', currentUser.id, 'notifications', notification.id), { status: 'declined' });
 
       console.log('Declined party invitation:', notification.partyName);
     } catch (error) {
@@ -498,7 +503,8 @@ export default function NotificationsScreen() {
         challengeParticipants: updatedParticipants,
       });
 
-      await deleteNotification(notification.id);
+      // Update the notification status to accepted
+      await updateDoc(doc(db, 'users', currentUser.id, 'notifications', notification.id), { status: 'accepted' });
 
       // Navigate to leaderboard detail
       router.push({
@@ -538,7 +544,8 @@ export default function NotificationsScreen() {
         });
       }
 
-      await deleteNotification(notification.id);
+      // Update the notification status to declined
+      await updateDoc(doc(db, 'users', currentUser.id, 'notifications', notification.id), { status: 'declined' });
     } catch (error) {
       console.error('Error declining challenge:', error);
     }
@@ -568,6 +575,9 @@ export default function NotificationsScreen() {
         requestData.requesterUsername,
         requestData.requesterAvatar,
       );
+
+      // Update the notification status to accepted
+      await updateDoc(doc(db, 'users', currentUser.id, 'notifications', notification.id), { status: 'accepted' });
     } catch (error) {
       console.error('Error accepting follow request:', error);
       Alert.alert('Error', 'Failed to accept follow request.');
@@ -583,6 +593,9 @@ export default function NotificationsScreen() {
 
     try {
       await declineFollowRequest(currentUser.id, notification.fromUserId);
+
+      // Update the notification status to declined
+      await updateDoc(doc(db, 'users', currentUser.id, 'notifications', notification.id), { status: 'declined' });
     } catch (error) {
       console.error('Error declining follow request:', error);
     }
@@ -600,7 +613,13 @@ export default function NotificationsScreen() {
   // Navigate to appropriate page based on notification type
   const handleNotificationPress = async (notification: Notification) => {
     if (notification.type === 'follow_request') {
-      // No navigation — accept/decline on notifications page
+      if (notification.status === 'accepted' && notification.fromUserId) {
+        router.push({
+          pathname: '/profilePages/profileView',
+          params: { userId: notification.fromUserId, username: notification.fromUsername || '', avatar: notification.fromUserAvatar || '' },
+        });
+      }
+      // No navigation for pending/declined — accept/decline on notifications page
     } else if (notification.type === 'follow' && notification.fromUserId) {
       // Navigate to user profile for follow notifications
       router.push({
@@ -619,8 +638,18 @@ export default function NotificationsScreen() {
           game: notification.game || '',
         },
       });
-    } else if (notification.type === 'party_invite') {
-      // No navigation — accept/decline on notifications page
+    } else if (notification.type === 'party_invite' && notification.partyId) {
+      if (notification.status === 'accepted') {
+        router.push({
+          pathname: '/partyPages/leaderboardDetail',
+          params: {
+            id: notification.partyId,
+            name: notification.partyName || 'Leaderboard',
+            game: notification.game || '',
+          },
+        });
+      }
+      // No navigation for pending/declined — accept/decline on notifications page
     } else if ((notification.type === 'party_complete' || notification.type === 'party_ranking_change') && notification.partyId) {
       // Navigate to leaderboard detail
       router.push({
@@ -684,6 +713,7 @@ export default function NotificationsScreen() {
         newNotifs.push({
           id: doc.id,
           type: data.type,
+          status: data.status,
           fromUserId: data.fromUserId,
           fromUsername: data.fromUsername,
           fromUserAvatar: data.fromUserAvatar || data.fromAvatar,
@@ -850,7 +880,7 @@ export default function NotificationsScreen() {
                   style={[
                     styles.notificationCard,
                     !notification.read && styles.unreadNotification,
-                    (notification.type === 'party_invite' || notification.type === 'challenge_invite' || notification.type === 'follow_request') && styles.inviteCard,
+                    (notification.type === 'party_invite' || notification.type === 'challenge_invite' || notification.type === 'follow_request') && !notification.status && styles.inviteCard,
                   ]}
                   onPress={() => handleNotificationPress(notification)}
                   onLongPress={() => handleLongPress(notification.id)}
@@ -903,9 +933,27 @@ export default function NotificationsScreen() {
                             {notification.type === 'like' && ' liked your post'}
                             {notification.type === 'tag' && ' tagged you in a post'}
                             {notification.type === 'comment' && ' commented: '}
-                            {notification.type === 'party_invite' && ' invited you to join'}
-                            {notification.type === 'challenge_invite' && ' challenged you'}
-                            {notification.type === 'follow_request' && ' wants to follow you'}
+                            {notification.type === 'party_invite' && (
+                              notification.status === 'accepted'
+                                ? <>{' '}Joined <ThemedText style={styles.leaderboardNameText}>{notification.partyName || 'Leaderboard'}</ThemedText></>
+                                : notification.status === 'declined'
+                                  ? <>{' '}Declined <ThemedText style={styles.leaderboardNameText}>{notification.partyName || 'Leaderboard'}</ThemedText></>
+                                  : ' invited you to join'
+                            )}
+                            {notification.type === 'challenge_invite' && (
+                              notification.status === 'accepted'
+                                ? <>{' '}Joined <ThemedText style={styles.leaderboardNameText}>{notification.partyName || 'Challenge'}</ThemedText></>
+                                : notification.status === 'declined'
+                                  ? <>{' '}Declined <ThemedText style={styles.leaderboardNameText}>{notification.partyName || 'Challenge'}</ThemedText></>
+                                  : ' challenged you'
+                            )}
+                            {notification.type === 'follow_request' && (
+                              notification.status === 'accepted'
+                                ? ' is now following you'
+                                : notification.status === 'declined'
+                                  ? ' follow request declined'
+                                  : ' wants to follow you'
+                            )}
                             {notification.type === 'party_complete' && (
                               <>
                                 <ThemedText style={styles.leaderboardNameText}>
@@ -940,89 +988,101 @@ export default function NotificationsScreen() {
                       </View>
 
                       {notification.type === 'follow_request' ? (
-                        <>
-                          {/* Follow request — accept/decline only, no preview card */}
-                          <View style={styles.inviteActionRow}>
-                            <TouchableOpacity
-                              style={[styles.partyInviteAcceptBtn, acceptingInvite === notification.id && styles.acceptButtonLoading]}
-                              onPress={(e) => handleAcceptFollowRequest(notification, e)}
-                              activeOpacity={0.7}
-                              disabled={acceptingInvite === notification.id}
-                            >
-                              {acceptingInvite === notification.id ? (
-                                <ActivityIndicator size="small" color="#0f0f0f" />
-                              ) : (
-                                <ThemedText style={styles.partyInviteAcceptText}>Accept</ThemedText>
-                              )}
-                            </TouchableOpacity>
-                            <TouchableOpacity
-                              style={[styles.partyInviteDeclineBtn, acceptingInvite === notification.id && { opacity: 0.5 }]}
-                              onPress={(e) => handleDeclineFollowRequest(notification, e)}
-                              activeOpacity={0.7}
-                              disabled={acceptingInvite === notification.id}
-                            >
-                              <ThemedText style={styles.partyInviteDeclineText}>Decline</ThemedText>
-                            </TouchableOpacity>
-                            <ThemedText style={styles.inviteTimeText}>{getTimeAgo(notification.createdAt)}</ThemedText>
+                        notification.status ? (
+                          <View style={styles.bottomRow}>
+                            <ThemedText style={styles.timeText}>{getTimeAgo(notification.createdAt)}</ThemedText>
                           </View>
-                        </>
+                        ) : (
+                          <>
+                            {/* Follow request — accept/decline only, no preview card */}
+                            <View style={styles.inviteActionRow}>
+                              <TouchableOpacity
+                                style={[styles.partyInviteAcceptBtn, acceptingInvite === notification.id && styles.acceptButtonLoading]}
+                                onPress={(e) => handleAcceptFollowRequest(notification, e)}
+                                activeOpacity={0.7}
+                                disabled={acceptingInvite === notification.id}
+                              >
+                                {acceptingInvite === notification.id ? (
+                                  <ActivityIndicator size="small" color="#0f0f0f" />
+                                ) : (
+                                  <ThemedText style={styles.partyInviteAcceptText}>Accept</ThemedText>
+                                )}
+                              </TouchableOpacity>
+                              <TouchableOpacity
+                                style={[styles.partyInviteDeclineBtn, acceptingInvite === notification.id && { opacity: 0.5 }]}
+                                onPress={(e) => handleDeclineFollowRequest(notification, e)}
+                                activeOpacity={0.7}
+                                disabled={acceptingInvite === notification.id}
+                              >
+                                <ThemedText style={styles.partyInviteDeclineText}>Decline</ThemedText>
+                              </TouchableOpacity>
+                              <ThemedText style={styles.inviteTimeText}>{getTimeAgo(notification.createdAt)}</ThemedText>
+                            </View>
+                          </>
+                        )
                       ) : (notification.type === 'party_invite' || notification.type === 'challenge_invite') ? (
-                        <>
-                          {/* Leaderboard preview card */}
-                          <View style={styles.invitePreviewCard}>
-                            {notification.partyId && partyIcons[notification.partyId] ? (
-                              <Image source={{ uri: partyIcons[notification.partyId] as string }} style={styles.invitePreviewIconImage} />
-                            ) : GAME_LOGOS[notification.game || ''] ? (
-                              <Image source={GAME_LOGOS[notification.game || '']} style={styles.invitePreviewIconImage} resizeMode="contain" />
-                            ) : (
-                              <View style={styles.invitePreviewIconFallback}>
-                                <IconSymbol size={16} name="trophy.fill" color="#A08845" />
+                        notification.status ? (
+                          <View style={styles.bottomRow}>
+                            <ThemedText style={styles.timeText}>{getTimeAgo(notification.createdAt)}</ThemedText>
+                          </View>
+                        ) : (
+                          <>
+                            {/* Leaderboard preview card */}
+                            <View style={styles.invitePreviewCard}>
+                              {notification.partyId && partyIcons[notification.partyId] ? (
+                                <Image source={{ uri: partyIcons[notification.partyId] as string }} style={styles.invitePreviewIconImage} />
+                              ) : GAME_LOGOS[notification.game || ''] ? (
+                                <Image source={GAME_LOGOS[notification.game || '']} style={styles.invitePreviewIconImage} resizeMode="contain" />
+                              ) : (
+                                <View style={styles.invitePreviewIconFallback}>
+                                  <IconSymbol size={16} name="trophy.fill" color="#A08845" />
+                                </View>
+                              )}
+                              <View style={styles.invitePreviewInfo}>
+                                <ThemedText style={styles.invitePreviewName} numberOfLines={1}>
+                                  {notification.partyName || 'Leaderboard'}
+                                </ThemedText>
+                                {notification.game && (
+                                  <ThemedText style={styles.invitePreviewGame}>{notification.game}</ThemedText>
+                                )}
                               </View>
-                            )}
-                            <View style={styles.invitePreviewInfo}>
-                              <ThemedText style={styles.invitePreviewName} numberOfLines={1}>
-                                {notification.partyName || 'Leaderboard'}
-                              </ThemedText>
-                              {notification.game && (
-                                <ThemedText style={styles.invitePreviewGame}>{notification.game}</ThemedText>
+                              {notification.type !== 'party_invite' && (
+                                <IconSymbol size={12} name="chevron.right" color="#444" />
                               )}
                             </View>
-                            {notification.type !== 'party_invite' && (
-                              <IconSymbol size={12} name="chevron.right" color="#444" />
-                            )}
-                          </View>
 
-                          {/* Action row */}
-                          <View style={styles.inviteActionRow}>
-                            <TouchableOpacity
-                              style={[
-                                notification.type === 'party_invite' ? styles.partyInviteAcceptBtn : styles.inviteAcceptBtn,
-                                acceptingInvite === notification.id && styles.acceptButtonLoading,
-                              ]}
-                              onPress={(e) => notification.type === 'party_invite' ? handleAcceptInvite(notification, e) : handleAcceptChallenge(notification, e)}
-                              activeOpacity={0.7}
-                              disabled={acceptingInvite === notification.id}
-                            >
-                              {acceptingInvite === notification.id ? (
-                                <ActivityIndicator size="small" color={notification.type === 'party_invite' ? '#0f0f0f' : '#fff'} />
-                              ) : (
-                                <ThemedText style={notification.type === 'party_invite' ? styles.partyInviteAcceptText : styles.inviteAcceptText}>Accept</ThemedText>
-                              )}
-                            </TouchableOpacity>
-                            <TouchableOpacity
-                              style={[
-                                notification.type === 'party_invite' ? styles.partyInviteDeclineBtn : styles.inviteDeclineBtn,
-                                acceptingInvite === notification.id && { opacity: 0.5 },
-                              ]}
-                              onPress={(e) => notification.type === 'party_invite' ? handleDeclineInvite(notification, e) : handleDeclineChallenge(notification, e)}
-                              activeOpacity={0.7}
-                              disabled={acceptingInvite === notification.id}
-                            >
-                              <ThemedText style={notification.type === 'party_invite' ? styles.partyInviteDeclineText : styles.inviteDeclineText}>Decline</ThemedText>
-                            </TouchableOpacity>
-                            <ThemedText style={styles.inviteTimeText}>{getTimeAgo(notification.createdAt)}</ThemedText>
-                          </View>
-                        </>
+                            {/* Action row */}
+                            <View style={styles.inviteActionRow}>
+                              <TouchableOpacity
+                                style={[
+                                  notification.type === 'party_invite' ? styles.partyInviteAcceptBtn : styles.inviteAcceptBtn,
+                                  acceptingInvite === notification.id && styles.acceptButtonLoading,
+                                ]}
+                                onPress={(e) => notification.type === 'party_invite' ? handleAcceptInvite(notification, e) : handleAcceptChallenge(notification, e)}
+                                activeOpacity={0.7}
+                                disabled={acceptingInvite === notification.id}
+                              >
+                                {acceptingInvite === notification.id ? (
+                                  <ActivityIndicator size="small" color={notification.type === 'party_invite' ? '#0f0f0f' : '#fff'} />
+                                ) : (
+                                  <ThemedText style={notification.type === 'party_invite' ? styles.partyInviteAcceptText : styles.inviteAcceptText}>Accept</ThemedText>
+                                )}
+                              </TouchableOpacity>
+                              <TouchableOpacity
+                                style={[
+                                  notification.type === 'party_invite' ? styles.partyInviteDeclineBtn : styles.inviteDeclineBtn,
+                                  acceptingInvite === notification.id && { opacity: 0.5 },
+                                ]}
+                                onPress={(e) => notification.type === 'party_invite' ? handleDeclineInvite(notification, e) : handleDeclineChallenge(notification, e)}
+                                activeOpacity={0.7}
+                                disabled={acceptingInvite === notification.id}
+                              >
+                                <ThemedText style={notification.type === 'party_invite' ? styles.partyInviteDeclineText : styles.inviteDeclineText}>Decline</ThemedText>
+                              </TouchableOpacity>
+                              <ThemedText style={styles.inviteTimeText}>{getTimeAgo(notification.createdAt)}</ThemedText>
+                            </View>
+                          </>
+                        )
                       ) : (
                         <View style={styles.bottomRow}>
                           <ThemedText style={styles.timeText}>{getTimeAgo(notification.createdAt)}</ThemedText>

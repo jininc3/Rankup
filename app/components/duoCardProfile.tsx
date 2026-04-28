@@ -125,6 +125,7 @@ interface MatchEntry {
 interface DuoCardDetailModalProps {
   visible: boolean;
   onClose: () => void;
+  expiresAt?: Date;
   card: {
     game: 'valorant' | 'league';
     username: string;
@@ -178,9 +179,23 @@ const getAgentIcon = (agent: string) => {
 const MATCH_CACHE_TTL = 30 * 60 * 1000;
 const matchHistoryCache: { [key: string]: { matches: MatchEntry[]; timestamp: number } } = {};
 
-export default function DuoCardDetailModal({ visible, onClose, card }: DuoCardDetailModalProps) {
+export default function DuoCardDetailModal({ visible, onClose, expiresAt, card }: DuoCardDetailModalProps) {
   const [recentMatches, setRecentMatches] = useState<MatchEntry[]>([]);
   const [loadingMatches, setLoadingMatches] = useState(false);
+  const [timeLeft, setTimeLeft] = useState(0);
+
+  useEffect(() => {
+    if (!expiresAt || !visible) {
+      setTimeLeft(0);
+      return;
+    }
+    const interval = setInterval(() => {
+      const remaining = Math.max(0, Math.ceil((expiresAt.getTime() - Date.now()) / 1000));
+      setTimeLeft(remaining);
+      if (remaining <= 0) clearInterval(interval);
+    }, 100);
+    return () => clearInterval(interval);
+  }, [expiresAt, visible]);
 
   useEffect(() => {
     const fetchMatchHistory = async () => {
@@ -285,6 +300,21 @@ export default function DuoCardDetailModal({ visible, onClose, card }: DuoCardDe
             <IconSymbol size={22} name="xmark" color="#fff" />
           </TouchableOpacity>
         </View>
+
+        {expiresAt && timeLeft > 0 && (
+          <View style={styles.timerSection}>
+            <View style={styles.timerBarBg}>
+              <View style={[
+                styles.timerBarFill,
+                { width: `${(timeLeft / 60) * 100}%` },
+                timeLeft <= 10 && styles.timerBarUrgent,
+              ]} />
+            </View>
+            <ThemedText style={[styles.timerText, timeLeft <= 10 && styles.timerTextUrgent]}>
+              {timeLeft}s
+            </ThemedText>
+          </View>
+        )}
 
         <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.scrollContent}>
           {/* Main Card — matches duoCard styling */}
@@ -465,6 +495,39 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: '#0f0f0f',
+  },
+  timerSection: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    paddingHorizontal: 16,
+    paddingTop: 8,
+    paddingBottom: 4,
+  },
+  timerBarBg: {
+    flex: 1,
+    height: 3,
+    backgroundColor: '#1a1a1a',
+    borderRadius: 2,
+    overflow: 'hidden',
+  },
+  timerBarFill: {
+    height: '100%',
+    backgroundColor: '#D4A843',
+    borderRadius: 2,
+  },
+  timerBarUrgent: {
+    backgroundColor: '#ef4444',
+  },
+  timerText: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#D4A843',
+    minWidth: 30,
+    textAlign: 'right',
+  },
+  timerTextUrgent: {
+    color: '#ef4444',
   },
   header: {
     flexDirection: 'row',

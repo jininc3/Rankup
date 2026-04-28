@@ -1,6 +1,7 @@
 import DuoSearchingAnimation from '@/app/components/duoSearchingAnimation';
 import DuoMatchResult from '@/app/components/duoMatchResult';
 import DuoAcceptScreen from '@/app/components/duoAcceptScreen';
+import DuoCardDetailModal from '@/app/components/duoCardProfile';
 import LiveSearchIdle from '@/app/components/liveSearchIdle';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
@@ -22,6 +23,7 @@ export default function LiveSearchScreen() {
   const [valorantCard, setValorantCard] = useState<DuoCardData | null>(null);
   const [leagueCard, setLeagueCard] = useState<DuoCardData | null>(null);
   const [showAddCard, setShowAddCard] = useState(false);
+  const [showDuoProfile, setShowDuoProfile] = useState(false);
 
   // In-game info
   const [valorantInGameIcon, setValorantInGameIcon] = useState<string | undefined>(undefined);
@@ -261,7 +263,7 @@ export default function LiveSearchScreen() {
                   searchTimeoutRef.current = setTimeout(() => {
                     cancelSearch();
                     Alert.alert('No Players Found', 'No one is searching right now. Try again later!');
-                  }, 60000);
+                  }, 30000);
                 } else {
                   // I declined or timed out — go to idle
                   setMatchState('idle');
@@ -281,7 +283,7 @@ export default function LiveSearchScreen() {
       searchTimeoutRef.current = setTimeout(() => {
         cancelSearch();
         Alert.alert('No Players Found', 'No one is searching right now. Try again later!');
-      }, 60000);
+      }, 30000);
     } catch (error) {
       console.error('Error starting live search:', error);
       setMatchState('idle');
@@ -358,14 +360,7 @@ export default function LiveSearchScreen() {
 
   const handleMatchViewProfile = () => {
     if (!matchedUserCard) return;
-    router.push({
-      pathname: '/profilePages/profileView',
-      params: {
-        userId: matchedUserCard.userId,
-        username: matchedUserCard.username,
-        avatar: matchedUserCard.avatar || '',
-      },
-    });
+    setShowDuoProfile(true);
   };
 
   const handleSendUsername = () => {
@@ -467,23 +462,7 @@ export default function LiveSearchScreen() {
             otherAccepted={otherAccepted}
             onAccept={handleAccept}
             onDecline={handleDecline}
-            onViewProfile={() => {
-              router.push({
-                pathname: '/profilePages/duoCardDetail',
-                params: {
-                  game: searchGame,
-                  username: matchedUserCard.username,
-                  avatar: matchedUserCard.avatar || '',
-                  inGameIcon: matchedUserCard.inGameIcon || '',
-                  inGameName: matchedUserCard.inGameName || '',
-                  currentRank: matchedUserCard.currentRank || '',
-                  mainRole: matchedUserCard.mainRole || '',
-                  mainAgent: matchedUserCard.mainAgent || '',
-                  userId: matchedUserCard.userId,
-                  isOwnCard: 'false',
-                },
-              });
-            }}
+            onViewProfile={() => setShowDuoProfile(true)}
           />
         ) : matchState === 'matched' && matchedUserCard && searchGame ? (
           <DuoMatchResult
@@ -509,6 +488,23 @@ export default function LiveSearchScreen() {
         )}
       </ScrollView>
 
+      <DuoCardDetailModal
+        visible={showDuoProfile}
+        onClose={() => setShowDuoProfile(false)}
+        expiresAt={matchState === 'accepting' && matchExpiresAt ? matchExpiresAt : undefined}
+        card={matchedUserCard && searchGame ? {
+          game: searchGame,
+          username: matchedUserCard.username,
+          avatar: matchedUserCard.avatar || undefined,
+          inGameIcon: matchedUserCard.inGameIcon || undefined,
+          inGameName: matchedUserCard.inGameName || undefined,
+          currentRank: matchedUserCard.currentRank || 'Unranked',
+          peakRank: '',
+          mainRole: matchedUserCard.mainRole || '',
+          mainAgent: matchedUserCard.mainAgent || undefined,
+          userId: matchedUserCard.userId,
+        } : null}
+      />
     </ThemedView>
   );
 }
