@@ -17,7 +17,7 @@ import PostDuoCard from '@/app/components/postDuoCard';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { IconSymbol } from '@/components/ui/icon-symbol';
-import { DuoCardSkeleton } from '@/components/ui/Skeleton';
+import { DuoCardSkeleton, DuoFeedCardSkeleton } from '@/components/ui/Skeleton';
 import { useAuth } from '@/contexts/AuthContext';
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { Alert, Dimensions, ScrollView, FlatList, ActivityIndicator, StyleSheet, TouchableOpacity, View, RefreshControl, Image, Modal, Animated, Easing } from 'react-native';
@@ -1025,7 +1025,13 @@ export default function DuoFinderScreen() {
               </View>
             }
             ListEmptyComponent={
-              !loadingDuoPosts ? (
+              loadingDuoPosts ? (
+                <View style={{ paddingHorizontal: 16 }}>
+                  {[1, 2, 3].map((i) => (
+                    <DuoFeedCardSkeleton key={i} />
+                  ))}
+                </View>
+              ) : (
                 <View style={styles.emptyState}>
                   <ThemedText style={styles.emptyTitle}>No duo posts{'\n'}yet</ThemedText>
                   <ThemedText style={styles.emptySubtitle}>
@@ -1043,7 +1049,7 @@ export default function DuoFinderScreen() {
                     </TouchableOpacity>
                   )}
                 </View>
-              ) : null
+              )
             }
             renderItem={({ item: post }) => {
               const isOwn = post.userId === user?.id;

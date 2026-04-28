@@ -287,7 +287,93 @@ export const DuoCardListSkeleton: React.FC<{ count?: number }> = ({ count = 2 })
   );
 };
 
-// Duo card styles - matches duoCard.tsx layout
+// Duo feed card skeleton - matches duoCard.tsx (not compactDuoCard)
+export const DuoFeedCardSkeleton: React.FC = () => {
+  return (
+    <View style={duoFeedStyles.card}>
+      {/* Top section */}
+      <View style={duoFeedStyles.topSection}>
+        {/* Name row: avatar + name + game logo */}
+        <View style={duoFeedStyles.nameRow}>
+          <Skeleton width={42} height={42} borderRadius={21} />
+          <View style={{ flex: 1, gap: 4 }}>
+            <Skeleton width={120} height={14} borderRadius={4} />
+            <Skeleton width={50} height={10} borderRadius={3} />
+          </View>
+          <Skeleton width={28} height={28} borderRadius={6} />
+        </View>
+
+        {/* Stats panel */}
+        <View style={duoFeedStyles.statsPanel}>
+          <View style={duoFeedStyles.statsTopRow}>
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+              <Skeleton width={28} height={28} borderRadius={6} />
+              <Skeleton width={70} height={13} borderRadius={4} />
+            </View>
+            <View style={{ flexDirection: 'row', gap: 6 }}>
+              <Skeleton width={30} height={30} borderRadius={8} />
+              <Skeleton width={30} height={30} borderRadius={8} />
+            </View>
+          </View>
+          <View style={{ flexDirection: 'row', gap: 16, marginTop: 6 }}>
+            <Skeleton width={80} height={11} borderRadius={3} />
+            <Skeleton width={60} height={11} borderRadius={3} />
+          </View>
+        </View>
+
+        {/* Message placeholder */}
+        <Skeleton width={'85%'} height={12} borderRadius={3} />
+      </View>
+
+      {/* Bottom action bar */}
+      <View style={duoFeedStyles.bottomSection}>
+        <Skeleton width={'45%'} height={14} borderRadius={4} />
+        <Skeleton width={'45%'} height={14} borderRadius={4} />
+      </View>
+    </View>
+  );
+};
+
+const duoFeedStyles = StyleSheet.create({
+  card: {
+    borderRadius: 16,
+    overflow: 'hidden',
+    marginBottom: 12,
+    backgroundColor: '#161616',
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.04)',
+  },
+  topSection: {
+    padding: 16,
+    gap: 12,
+  },
+  nameRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+  },
+  statsPanel: {
+    backgroundColor: 'rgba(255,255,255,0.03)',
+    borderRadius: 12,
+    padding: 12,
+  },
+  statsTopRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+  bottomSection: {
+    flexDirection: 'row',
+    justifyContent: 'space-around',
+    alignItems: 'center',
+    backgroundColor: 'rgba(255,255,255,0.03)',
+    paddingVertical: 12,
+    borderTopWidth: 1,
+    borderTopColor: 'rgba(255,255,255,0.04)',
+  },
+});
+
+// Duo card styles - matches compactDuoCard.tsx layout
 const duoStyles = StyleSheet.create({
   cardsList: {
     gap: 10,

@@ -11,10 +11,11 @@ import { useEffect, useState, useRef, useCallback } from 'react';
 import { Image, Modal, ScrollView, StyleSheet, TouchableOpacity, View } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 
-const MINIMUM_SKELETON_TIME = 800;
+const MINIMUM_SKELETON_TIME = 400;
 
 // Module-level cache so data persists across navigation remounts
 let cachedLeaderboards: any[] | null = null;
+let prefetchedImages = new Set<string>();
 
 export default function LobbiesScreen() {
   const router = useRouter();
@@ -70,19 +71,26 @@ export default function LobbiesScreen() {
           })
           .filter(Boolean);
 
-        // Prefetch all remote images so they're cached before cards render
-        updated.forEach((lb: any) => {
-          if (lb.partyIcon) {
-            Image.prefetch(lb.partyIcon).catch(() => {});
-          }
-          const members = lb.memberDetails?.length ? lb.memberDetails : lb.players || [];
-          members.slice(0, 3).forEach((m: any) => {
-            const photo = m?.avatar || m?.photoUrl;
-            if (photo) Image.prefetch(photo).catch(() => {});
+        cachedLeaderboards = updated;
+
+        // Prefetch new images in background (don't block state update)
+        requestAnimationFrame(() => {
+          updated.forEach((lb: any) => {
+            if (lb.partyIcon && !prefetchedImages.has(lb.partyIcon)) {
+              prefetchedImages.add(lb.partyIcon);
+              Image.prefetch(lb.partyIcon).catch(() => {});
+            }
+            const members = lb.memberDetails?.length ? lb.memberDetails : lb.players || [];
+            members.slice(0, 3).forEach((m: any) => {
+              const photo = m?.avatar || m?.photoUrl;
+              if (photo && !prefetchedImages.has(photo)) {
+                prefetchedImages.add(photo);
+                Image.prefetch(photo).catch(() => {});
+              }
+            });
           });
         });
 
-        cachedLeaderboards = updated;
         return updated;
       });
 

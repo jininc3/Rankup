@@ -82,22 +82,8 @@ function LeaderboardCard({ leaderboard, onPress }: LeaderboardCardProps) {
     (m: any) => m && (m.avatar || m.photoUrl || m.username || m.displayName)
   ).slice(0, 3);
 
-  // Count how many remote images need to load (partyIcon + avatar URLs)
-  const avatarUrls = topPlayers.map((p: any) => p.avatar || p.photoUrl).filter(Boolean);
-  const remoteImageCount = (leaderboard.partyIcon ? 1 : 0) + avatarUrls.length;
-  const loadedCount = React.useRef(0);
-  const fadeAnim = React.useRef(new Animated.Value(remoteImageCount > 0 ? 0 : 1)).current;
-
-  const onRemoteImageLoad = React.useCallback(() => {
-    loadedCount.current += 1;
-    if (loadedCount.current >= remoteImageCount) {
-      Animated.timing(fadeAnim, {
-        toValue: 1,
-        duration: 200,
-        useNativeDriver: true,
-      }).start();
-    }
-  }, [fadeAnim, remoteImageCount]);
+  // Start fully visible — images are cached by the system after first load
+  const fadeAnim = React.useRef(new Animated.Value(1)).current;
 
   const onPressIn = () => {
     Animated.spring(scaleAnim, {
@@ -145,7 +131,7 @@ function LeaderboardCard({ leaderboard, onPress }: LeaderboardCardProps) {
         {/* Main content */}
         <View style={styles.mainSection}>
           {leaderboard.partyIcon ? (
-            <Image source={{ uri: leaderboard.partyIcon }} style={styles.icon} resizeMode="cover" onLoad={onRemoteImageLoad} />
+            <Image source={{ uri: leaderboard.partyIcon }} style={styles.icon} resizeMode="cover" />
           ) : gameLogo ? (
             <Image source={gameLogo} style={styles.icon} resizeMode="contain" />
           ) : (
@@ -182,7 +168,7 @@ function LeaderboardCard({ leaderboard, onPress }: LeaderboardCardProps) {
                       style={[styles.avatarWrap, { marginLeft: index === 0 ? 0 : -8, zIndex: 5 - index }]}
                     >
                       {photo ? (
-                        <Image source={{ uri: photo }} style={styles.avatarImg} onLoad={onRemoteImageLoad} />
+                        <Image source={{ uri: photo }} style={styles.avatarImg} />
                       ) : (
                         <View style={styles.avatarFallback}>
                           <ThemedText style={styles.avatarFallbackText}>

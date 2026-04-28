@@ -1,7 +1,7 @@
 import React from 'react';
 import { ThemedText } from '@/components/themed-text';
 import { IconSymbol } from '@/components/ui/icon-symbol';
-import { Animated, Image, StyleSheet, TouchableOpacity, View } from 'react-native';
+import { Image, StyleSheet, TouchableOpacity, View } from 'react-native';
 
 const GAME_LOGOS: { [key: string]: any } = {
   'Valorant': require('@/assets/images/valorant-red.png'),
@@ -195,26 +195,8 @@ function DuoCard({ duo, onPress, onMessage, onViewProfile, onDelete, noShadow }:
   const positionIcon = roleIcon || laneIcon;
   const characterIcon = agentIcon || championIconSrc;
 
-  // Count remote images that need to load before showing the card
-  const hasRemoteAvatar = !!(duo.inGameIcon || (duo.avatar && duo.avatar.startsWith('http')));
-  const hasRemoteChampion = !!championIconSrc;
-  const remoteImageCount = (hasRemoteAvatar ? 1 : 0) + (hasRemoteChampion ? 1 : 0);
-  const loadedCount = React.useRef(0);
-  const fadeAnim = React.useRef(new Animated.Value(remoteImageCount > 0 ? 0 : 1)).current;
-
-  const onRemoteImageLoad = React.useCallback(() => {
-    loadedCount.current += 1;
-    if (loadedCount.current >= remoteImageCount) {
-      Animated.timing(fadeAnim, {
-        toValue: 1,
-        duration: 200,
-        useNativeDriver: true,
-      }).start();
-    }
-  }, [fadeAnim, remoteImageCount]);
-
   return (
-    <Animated.View style={{ opacity: fadeAnim }}>
+    <View>
     <TouchableOpacity style={[styles.card, duo.isOwnPost && styles.ownCard]} onPress={onPress} activeOpacity={0.8}>
       {/* Top section */}
       <View style={styles.topSection}>
@@ -222,9 +204,9 @@ function DuoCard({ duo, onPress, onMessage, onViewProfile, onDelete, noShadow }:
         <View style={styles.nameRow}>
           <View style={styles.avatarWrap}>
             {duo.inGameIcon ? (
-              <Image source={{ uri: duo.inGameIcon }} style={styles.avatarImg} onLoad={onRemoteImageLoad} />
+              <Image source={{ uri: duo.inGameIcon }} style={styles.avatarImg} />
             ) : duo.avatar && duo.avatar.startsWith('http') ? (
-              <Image source={{ uri: duo.avatar }} style={styles.avatarImg} onLoad={onRemoteImageLoad} />
+              <Image source={{ uri: duo.avatar }} style={styles.avatarImg} />
             ) : (
               <ThemedText style={styles.avatarLetter}>
                 {(duo.inGameName || duo.username)[0].toUpperCase()}
@@ -269,7 +251,6 @@ function DuoCard({ duo, onPress, onMessage, onViewProfile, onDelete, noShadow }:
                       source={characterIcon}
                       style={isLeague ? styles.iconChipImgFill : styles.iconChipImg}
                       resizeMode={isLeague ? 'cover' : 'contain'}
-                      onLoad={hasRemoteChampion ? onRemoteImageLoad : undefined}
                     />
                   </View>
                 )}
@@ -329,7 +310,7 @@ function DuoCard({ duo, onPress, onMessage, onViewProfile, onDelete, noShadow }:
         )}
       </View>
     </TouchableOpacity>
-    </Animated.View>
+    </View>
   );
 }
 
