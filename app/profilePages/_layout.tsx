@@ -11,6 +11,8 @@ export default function ProfilePagesLayout() {
         animation: 'simple_push',
         animationDuration: 200,
       }}
-    />
+    >
+      <Stack.Screen name="tierBorders" options={{ fullScreenGestureEnabled: false }} />
+    </Stack>
   );
 }

@@ -104,6 +104,8 @@ interface PostDuoCardProps {
   leagueInGameIcon?: string;
   leagueInGameName?: string;
   leagueWinRate?: number;
+  valorantGamesPlayed?: number;
+  leagueGamesPlayed?: number;
 }
 
 export default function PostDuoCard({
@@ -119,6 +121,8 @@ export default function PostDuoCard({
   leagueInGameIcon,
   leagueInGameName,
   leagueWinRate,
+  valorantGamesPlayed,
+  leagueGamesPlayed,
 }: PostDuoCardProps) {
   const { user } = useAuth();
   const [selectedGame, setSelectedGame] = useState<'valorant' | 'league' | null>(null);
@@ -202,6 +206,7 @@ export default function PostDuoCard({
   const getInGameIcon = () => selectedGame === 'valorant' ? valorantInGameIcon : leagueInGameIcon;
   const getInGameName = () => selectedGame === 'valorant' ? valorantInGameName : leagueInGameName;
   const getWinRate = () => selectedGame === 'valorant' ? (valorantWinRate || 0) : (leagueWinRate || 0);
+  const getGamesPlayed = () => selectedGame === 'valorant' ? (valorantGamesPlayed || 0) : (leagueGamesPlayed || 0);
 
   const handlePost = async () => {
     if (!user?.id || !selectedCard || !selectedGame) return;
@@ -236,7 +241,7 @@ export default function PostDuoCard({
             })()
           : (userData?.riotAccount?.gameName ? `${userData.riotAccount.gameName}${userData?.riotAccount?.tagLine ? '#' + userData.riotAccount.tagLine : ''}` : ''),
         winRate: getWinRate(),
-        gamesPlayed: 0,
+        gamesPlayed: getGamesPlayed(),
         message: message.trim(),
         createdAt: Timestamp.fromDate(now),
         expiresAt: Timestamp.fromDate(expiresAt),
@@ -334,7 +339,7 @@ export default function PostDuoCard({
                       favoriteAgent: selectedGame === 'valorant' ? selectedAgent : (valorantCard.mainAgent || ''),
                       favoriteRole: selectedGame === 'valorant' ? selectedRole : (valorantCard.mainRole || ''),
                       winRate: valorantWinRate || 0,
-                      gamesPlayed: 0,
+                      gamesPlayed: valorantGamesPlayed || 0,
                       game: 'Valorant',
                       avatar: userAvatar,
                       inGameIcon: valorantInGameIcon,
@@ -366,7 +371,7 @@ export default function PostDuoCard({
                       favoriteAgent: selectedGame === 'league' ? selectedAgent : (leagueCard.mainAgent || ''),
                       favoriteRole: selectedGame === 'league' ? selectedRole : (leagueCard.mainRole || ''),
                       winRate: leagueWinRate || 0,
-                      gamesPlayed: 0,
+                      gamesPlayed: leagueGamesPlayed || 0,
                       game: 'League of Legends',
                       avatar: userAvatar,
                       inGameIcon: leagueInGameIcon,

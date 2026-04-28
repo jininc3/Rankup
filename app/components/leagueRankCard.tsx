@@ -774,9 +774,23 @@ export default function LeagueRankCard({ game, username, viewOnly = false, userI
           disabled={!isFocused && viewOnly}
         >
           {/* Stack card always shows front — no flip animation */}
-          <View style={[styles.rankCard, { borderColor: `rgba(${rgb}, 0.5)` }]}>
-            {renderCardContent(true)}
-          </View>
+          <LinearGradient
+            colors={[
+              `rgba(${rgb}, 0.9)`,
+              `rgba(${rgb}, 0.3)`,
+              `rgba(${rgb}, 0.6)`,
+              `rgba(${rgb}, 0.2)`,
+              `rgba(${rgb}, 0.8)`,
+            ]}
+            locations={[0, 0.25, 0.5, 0.75, 1]}
+            start={{ x: 0, y: 0 }}
+            end={{ x: 1, y: 1 }}
+            style={styles.rankCard}
+          >
+            <View style={styles.rankCardInner}>
+              {renderCardContent(true)}
+            </View>
+          </LinearGradient>
         </TouchableOpacity>
       </Animated.View>
 
@@ -797,8 +811,24 @@ export default function LeagueRankCard({ game, username, viewOnly = false, userI
           <View style={styles.shadow3} />
           <View style={styles.shadow2} />
           <View style={styles.shadow1} />
-          <TouchableOpacity style={[styles.rankCard, { borderColor: `rgba(${rgb}, 0.5)` }]} onPress={handleCardFlip} activeOpacity={0.95}>
-            {renderCardContent()}
+          <TouchableOpacity onPress={handleCardFlip} activeOpacity={0.95}>
+            <LinearGradient
+              colors={[
+                `rgba(${rgb}, 0.9)`,
+                `rgba(${rgb}, 0.3)`,
+                `rgba(${rgb}, 0.6)`,
+                `rgba(${rgb}, 0.2)`,
+                `rgba(${rgb}, 0.8)`,
+              ]}
+              locations={[0, 0.25, 0.5, 0.75, 1]}
+              start={{ x: 0, y: 0 }}
+              end={{ x: 1, y: 1 }}
+              style={styles.rankCard}
+            >
+              <View style={styles.rankCardInner}>
+                {renderCardContent()}
+              </View>
+            </LinearGradient>
           </TouchableOpacity>
         </Animated.View>
 
@@ -1010,7 +1040,8 @@ const styles = StyleSheet.create({
   shadow3: { position: 'absolute', top: 10, left: -10, right: 14, bottom: -10, backgroundColor: '#000', borderRadius: 18, opacity: 0.2 },
   shadow2: { position: 'absolute', top: 6, left: -6, right: 10, bottom: -6, backgroundColor: '#000', borderRadius: 17, opacity: 0.25 },
   shadow1: { position: 'absolute', top: 3, left: -3, right: 5, bottom: -3, backgroundColor: '#000', borderRadius: 16, opacity: 0.3 },
-  rankCard: { borderRadius: 16, height: 220, borderWidth: 1.5, borderColor: 'rgba(30, 100, 200, 0.5)', overflow: 'hidden' },
+  rankCard: { borderRadius: 16, height: 220, padding: 1.5, overflow: 'hidden' },
+  rankCardInner: { flex: 1, borderRadius: 14.5, overflow: 'hidden' },
   cardBackground: { flex: 1, borderRadius: 12, overflow: 'hidden' },
   staticShimmer: { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, zIndex: 5 },
   staticShimmerRight: { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, zIndex: 6 },

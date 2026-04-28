@@ -66,15 +66,10 @@ export default function RankCardsScreen() {
     }
   }, [targetUserId, params.username]);
 
-  const lastRankFetch = useRef<number>(0);
   useFocusEffect(
     useCallback(() => {
-      const now = Date.now();
-      if (now - lastRankFetch.current > 30000) {
-        lastRankFetch.current = now;
-        setLoading(true);
-        fetchData();
-      }
+      setLoading(true);
+      fetchData();
     }, [fetchData])
   );
 

@@ -318,6 +318,8 @@ export default function DuoFinderScreen() {
           };
           await setDoc(valorantCardRef, newCard);
           setValorantCard({ game: 'valorant', username, currentRank: newCard.currentRank as string, peakRank, region, mainRole: '', mainAgent: '', lookingFor: 'Any' });
+        } else {
+          setValorantCard(null);
         }
 
         // Load and sync League card
@@ -415,6 +417,8 @@ export default function DuoFinderScreen() {
           };
           await setDoc(leagueCardRef, newCard);
           setLeagueCard({ game: 'league', username, currentRank, peakRank: currentRank, region, mainRole: '', mainAgent: '', lookingFor: 'Any' });
+        } else {
+          setLeagueCard(null);
         }
 
         // Check if user has active duo posts in the feed

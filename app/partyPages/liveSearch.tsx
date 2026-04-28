@@ -14,6 +14,7 @@ import { doc, getDoc } from 'firebase/firestore';
 import { db } from '@/config/firebase';
 import { useRouter } from '@/hooks/useRouter';
 import { joinDuoQueue, leaveDuoQueue, subscribeToDuoQueue, getDuoMatch, acceptMatch, declineMatch, subscribeToMatch, DuoMatchCardData, DuoMatch } from '@/services/duoMatchService';
+import { createOrGetChat, sendMessage } from '@/services/chatService';
 import { DuoCardData } from '@/app/(tabs)/duoFinder';
 
 export default function LiveSearchScreen() {
@@ -245,12 +246,16 @@ export default function LiveSearchScreen() {
                               unsubscribeMatchRef.current();
                               unsubscribeMatchRef.current = null;
                             }
-                            // Other user declined again — go to idle
-                            setMatchState('idle');
-                            setSearchGame(null);
-                            setSearchMode(null);
+                            // Other user declined again — auto-restart search
                             setMatchedUserCard(null);
                             setCurrentMatchId(null);
+                            if (game && mode) {
+                              startLiveSearch(game, mode);
+                            } else {
+                              setMatchState('idle');
+                              setSearchGame(null);
+                              setSearchMode(null);
+                            }
                           }
                         });
                         unsubscribeMatchRef.current = newMatchUnsub;
@@ -259,18 +264,26 @@ export default function LiveSearchScreen() {
                   });
                   unsubscribeQueueRef.current = requeueUnsub;
 
-                  // Set new timeout for re-queue
+                  // Set new timeout for re-queue — auto-restart if no match
                   searchTimeoutRef.current = setTimeout(() => {
-                    cancelSearch();
-                    Alert.alert('No Players Found', 'No one is searching right now. Try again later!');
+                    cleanupSearch();
+                    if (user?.id) {
+                      leaveDuoQueue(user.id, game).then(() => {
+                        startLiveSearch(game, mode);
+                      });
+                    }
                   }, 30000);
                 } else {
-                  // I declined or timed out — go to idle
-                  setMatchState('idle');
-                  setSearchGame(null);
-                  setSearchMode(null);
+                  // I declined or timed out — auto-restart search
                   setMatchedUserCard(null);
                   setCurrentMatchId(null);
+                  if (game && mode) {
+                    startLiveSearch(game, mode);
+                  } else {
+                    setMatchState('idle');
+                    setSearchGame(null);
+                    setSearchMode(null);
+                  }
                 }
               }
             });
@@ -281,8 +294,13 @@ export default function LiveSearchScreen() {
       unsubscribeQueueRef.current = unsubscribe;
 
       searchTimeoutRef.current = setTimeout(() => {
-        cancelSearch();
-        Alert.alert('No Players Found', 'No one is searching right now. Try again later!');
+        // No match found — restart the queue automatically
+        cleanupSearch();
+        if (user?.id) {
+          leaveDuoQueue(user.id, game).then(() => {
+            startLiveSearch(game, mode);
+          });
+        }
       }, 30000);
     } catch (error) {
       console.error('Error starting live search:', error);
@@ -320,7 +338,7 @@ export default function LiveSearchScreen() {
     } catch (error) {
       console.error('Error declining match:', error);
     }
-    // Cloud Function re-queues the other user; reset local state to idle
+    // I declined — go back to idle; Cloud Function re-queues the other user
     cleanupSearch();
     setMatchState('idle');
     setSearchGame(null);
@@ -331,7 +349,7 @@ export default function LiveSearchScreen() {
   };
 
   const handleAcceptTimeout = async () => {
-    // Timer expired — treat as decline and reset to idle
+    // Timer expired — treat as decline and auto-restart search
     if (!currentMatchId || !user?.id) return;
     try {
       await declineMatch(currentMatchId, user.id);
@@ -339,13 +357,16 @@ export default function LiveSearchScreen() {
       console.error('Error on timeout decline:', error);
     }
     cleanupSearch();
-    setMatchState('idle');
-    setSearchGame(null);
-    setSearchMode(null);
     setMatchedUserCard(null);
     setMatchedUserId(null);
     setCurrentMatchId(null);
-    Alert.alert('Match Expired', 'The match timed out. Try searching again!');
+    if (searchGame && searchMode) {
+      startLiveSearch(searchGame, searchMode);
+    } else {
+      setMatchState('idle');
+      setSearchGame(null);
+      setSearchMode(null);
+    }
   };
 
   const handleSearchAgain = () => {
@@ -363,22 +384,47 @@ export default function LiveSearchScreen() {
     setShowDuoProfile(true);
   };
 
-  const handleSendUsername = () => {
+  const handleAutoNavigateToChat = async () => {
     if (!user?.id || !matchedUserCard || !searchGame) return;
 
     const myInGameName = searchGame === 'valorant' ? valorantInGameName : leagueInGameName;
     const gameLabel = searchGame === 'valorant' ? 'Valorant' : 'League';
-    const autoMessage = myInGameName ? `My ${gameLabel} username: ${myInGameName}` : '';
+    const usernameMessage = myInGameName ? `My ${gameLabel} username: ${myInGameName}` : '';
 
-    router.push({
-      pathname: '/chatPages/chatScreen',
-      params: {
-        otherUserId: matchedUserCard.userId,
-        otherUsername: matchedUserCard.username,
-        otherUserAvatar: matchedUserCard.avatar || '',
-        autoMessage,
-      },
-    });
+    try {
+      const chatId = await createOrGetChat(
+        user.id,
+        user.username || '',
+        user.avatar,
+        matchedUserCard.userId,
+        matchedUserCard.username,
+        matchedUserCard.avatar || undefined,
+      );
+
+      if (usernameMessage) {
+        await sendMessage(chatId, user.id, usernameMessage);
+      }
+
+      router.push({
+        pathname: '/chatPages/chatScreen',
+        params: {
+          chatId,
+          otherUserId: matchedUserCard.userId,
+          otherUsername: matchedUserCard.username,
+          otherUserAvatar: matchedUserCard.avatar || '',
+        },
+      });
+    } catch (error) {
+      console.error('Error auto-navigating to chat:', error);
+      router.push({
+        pathname: '/chatPages/chatScreen',
+        params: {
+          otherUserId: matchedUserCard.userId,
+          otherUsername: matchedUserCard.username,
+          otherUserAvatar: matchedUserCard.avatar || '',
+        },
+      });
+    }
   };
 
   // Auto-decline when accept timer expires
@@ -469,7 +515,7 @@ export default function LiveSearchScreen() {
             game={searchGame}
             matchedUser={matchedUserCard}
             myInGameName={searchGame === 'valorant' ? valorantInGameName : leagueInGameName}
-            onSendUsername={handleSendUsername}
+            onAutoNavigate={handleAutoNavigateToChat}
             onViewProfile={handleMatchViewProfile}
             onSearchAgain={handleSearchAgain}
           />

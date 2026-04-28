@@ -983,9 +983,23 @@ export default function ValorantRankCard({ game, username, viewOnly = false, use
           disabled={!isFocused && viewOnly}
         >
         {/* Stack card always shows front — no flip animation */}
-        <View style={[styles.rankCard, { borderColor: `rgba(${rgb}, 0.5)` }]}>
-          {renderCardContent(true)}
-        </View>
+        <LinearGradient
+          colors={[
+            `rgba(${rgb}, 0.9)`,
+            `rgba(${rgb}, 0.3)`,
+            `rgba(${rgb}, 0.6)`,
+            `rgba(${rgb}, 0.2)`,
+            `rgba(${rgb}, 0.8)`,
+          ]}
+          locations={[0, 0.25, 0.5, 0.75, 1]}
+          start={{ x: 0, y: 0 }}
+          end={{ x: 1, y: 1 }}
+          style={styles.rankCard}
+        >
+          <View style={styles.rankCardInner}>
+            {renderCardContent(true)}
+          </View>
+        </LinearGradient>
         </TouchableOpacity>
       </Animated.View>
 
@@ -1026,11 +1040,26 @@ export default function ValorantRankCard({ game, username, viewOnly = false, use
           <View style={styles.shadow1} />
 
           <TouchableOpacity
-            style={[styles.rankCard, { borderColor: `rgba(${rgb}, 0.5)` }]}
             onPress={handleCardFlip}
             activeOpacity={0.95}
           >
-            {renderCardContent()}
+            <LinearGradient
+              colors={[
+                `rgba(${rgb}, 0.9)`,
+                `rgba(${rgb}, 0.3)`,
+                `rgba(${rgb}, 0.6)`,
+                `rgba(${rgb}, 0.2)`,
+                `rgba(${rgb}, 0.8)`,
+              ]}
+              locations={[0, 0.25, 0.5, 0.75, 1]}
+              start={{ x: 0, y: 0 }}
+              end={{ x: 1, y: 1 }}
+              style={styles.rankCard}
+            >
+              <View style={styles.rankCardInner}>
+                {renderCardContent()}
+              </View>
+            </LinearGradient>
           </TouchableOpacity>
         </Animated.View>
 
@@ -1400,8 +1429,12 @@ const styles = StyleSheet.create({
   rankCard: {
     borderRadius: 16,
     height: 220,
-    borderWidth: 1.5,
-    borderColor: 'rgba(239, 84, 102, 0.5)',
+    padding: 1.5,
+    overflow: 'hidden',
+  },
+  rankCardInner: {
+    flex: 1,
+    borderRadius: 14.5,
     overflow: 'hidden',
   },
   cardBackground: {

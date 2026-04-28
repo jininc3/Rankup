@@ -1,6 +1,5 @@
 import CompactDuoCard from '@/app/components/compactDuoCard';
 import { ThemedText } from '@/components/themed-text';
-import { IconSymbol } from '@/components/ui/icon-symbol';
 import { StyleSheet, View, TouchableOpacity, ActivityIndicator } from 'react-native';
 import Animated, {
   useSharedValue,
@@ -11,14 +10,14 @@ import Animated, {
   withSpring,
   Easing,
 } from 'react-native-reanimated';
-import { useEffect, useState } from 'react';
+import { useEffect, useRef } from 'react';
 import { DuoMatchCardData } from '@/services/duoMatchService';
 
 interface DuoMatchResultProps {
   game: 'valorant' | 'league';
   matchedUser: DuoMatchCardData;
   myInGameName?: string;
-  onSendUsername: () => Promise<void>;
+  onAutoNavigate: () => void;
   onViewProfile: () => void;
   onSearchAgain: () => void;
 }
@@ -27,12 +26,11 @@ export default function DuoMatchResult({
   game,
   matchedUser,
   myInGameName,
-  onSendUsername,
+  onAutoNavigate,
   onViewProfile,
   onSearchAgain,
 }: DuoMatchResultProps) {
-  const [sending, setSending] = useState(false);
-  const [sent, setSent] = useState(false);
+  const autoNavTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // Animations
   const matchedScale = useSharedValue(0);
@@ -42,6 +40,7 @@ export default function DuoMatchResult({
   const cardOpacity = useSharedValue(0);
   const cardTranslateY = useSharedValue(30);
   const buttonsOpacity = useSharedValue(0);
+  const statusOpacity = useSharedValue(0);
 
   useEffect(() => {
     // Ring burst
@@ -51,7 +50,7 @@ export default function DuoMatchResult({
       withDelay(200, withTiming(0, { duration: 400 })),
     );
 
-    // "Matched!" text pop
+    // "Duo Accepted!" text pop
     matchedOpacity.value = withDelay(100, withTiming(1, { duration: 300 }));
     matchedScale.value = withDelay(100, withSpring(1, { damping: 8, stiffness: 150 }));
 
@@ -61,7 +60,26 @@ export default function DuoMatchResult({
 
     // Buttons fade in
     buttonsOpacity.value = withDelay(700, withTiming(1, { duration: 350 }));
+
+    // "Opening chat..." fade in
+    statusOpacity.value = withDelay(1500, withTiming(1, { duration: 400 }));
+
+    // Auto-navigate after 2 seconds
+    autoNavTimer.current = setTimeout(() => {
+      onAutoNavigate();
+    }, 2000);
+
+    return () => {
+      if (autoNavTimer.current) clearTimeout(autoNavTimer.current);
+    };
   }, []);
+
+  const cancelAutoNav = () => {
+    if (autoNavTimer.current) {
+      clearTimeout(autoNavTimer.current);
+      autoNavTimer.current = null;
+    }
+  };
 
   const ringStyle = useAnimatedStyle(() => ({
     transform: [{ scale: ringScale.value }],
@@ -82,18 +100,9 @@ export default function DuoMatchResult({
     opacity: buttonsOpacity.value,
   }));
 
-  const handleSendUsername = async () => {
-    if (sending || sent) return;
-    setSending(true);
-    try {
-      await onSendUsername();
-      setSent(true);
-    } catch {
-      // error handled by parent
-    } finally {
-      setSending(false);
-    }
-  };
+  const statusStyle = useAnimatedStyle(() => ({
+    opacity: statusOpacity.value,
+  }));
 
   return (
     <View style={styles.container}>
@@ -102,9 +111,9 @@ export default function DuoMatchResult({
         <Animated.View style={[styles.ring, ringStyle]} />
       </View>
 
-      {/* Matched! header */}
+      {/* Duo Accepted! header */}
       <Animated.View style={[styles.headerContainer, matchedStyle]}>
-        <ThemedText style={styles.matchedText}>Matched!</ThemedText>
+        <ThemedText style={styles.matchedText}>Duo Accepted!</ThemedText>
       </Animated.View>
 
       {/* Matched user card */}
@@ -117,52 +126,41 @@ export default function DuoMatchResult({
           currentRank={matchedUser.currentRank || undefined}
           mainRole={matchedUser.mainRole || undefined}
           mainAgent={matchedUser.mainAgent || undefined}
-          onViewProfile={onViewProfile}
+          onViewProfile={() => {
+            cancelAutoNav();
+            onViewProfile();
+          }}
           showContent={true}
         />
       </Animated.View>
 
+      {/* Opening chat indicator */}
+      <Animated.View style={[styles.statusContainer, statusStyle]}>
+        <ActivityIndicator size="small" color="#888" />
+        <ThemedText style={styles.statusText}>Opening chat...</ThemedText>
+      </Animated.View>
+
       {/* Buttons */}
       <Animated.View style={[styles.buttonsContainer, buttonsStyle]}>
-        {myInGameName ? (
-          <TouchableOpacity
-            style={[styles.primaryButton, sent && styles.primaryButtonSent]}
-            onPress={handleSendUsername}
-            activeOpacity={0.8}
-            disabled={sending || sent}
-          >
-            {sending ? (
-              <ActivityIndicator size="small" color="#0f0f0f" />
-            ) : sent ? (
-              <View style={styles.primaryButtonRow}>
-                <IconSymbol size={16} name="checkmark" color="#0f0f0f" />
-                <ThemedText style={styles.primaryButtonText}>Username Sent</ThemedText>
-              </View>
-            ) : (
-              <View style={styles.primaryButtonRow}>
-                <IconSymbol size={16} name="paperplane.fill" color="#0f0f0f" />
-                <ThemedText style={styles.primaryButtonText}>Send Game Username</ThemedText>
-              </View>
-            )}
-          </TouchableOpacity>
-        ) : (
-          <TouchableOpacity
-            style={styles.primaryButton}
-            onPress={handleSendUsername}
-            activeOpacity={0.8}
-          >
-            <View style={styles.primaryButtonRow}>
-              <IconSymbol size={16} name="bubble.left.fill" color="#0f0f0f" />
-              <ThemedText style={styles.primaryButtonText}>Start Chat</ThemedText>
-            </View>
-          </TouchableOpacity>
-        )}
-
         <View style={styles.secondaryRow}>
-          <TouchableOpacity style={styles.secondaryButton} onPress={onViewProfile} activeOpacity={0.7}>
+          <TouchableOpacity
+            style={styles.secondaryButton}
+            onPress={() => {
+              cancelAutoNav();
+              onViewProfile();
+            }}
+            activeOpacity={0.7}
+          >
             <ThemedText style={styles.secondaryButtonText}>View Profile</ThemedText>
           </TouchableOpacity>
-          <TouchableOpacity style={styles.secondaryButton} onPress={onSearchAgain} activeOpacity={0.7}>
+          <TouchableOpacity
+            style={styles.secondaryButton}
+            onPress={() => {
+              cancelAutoNav();
+              onSearchAgain();
+            }}
+            activeOpacity={0.7}
+          >
             <ThemedText style={styles.secondaryButtonText}>Search Again</ThemedText>
           </TouchableOpacity>
         </View>
@@ -202,30 +200,21 @@ const styles = StyleSheet.create({
     width: '100%',
     paddingHorizontal: 4,
   },
-  buttonsContainer: {
-    width: '100%',
-    gap: 10,
-    marginTop: 20,
-  },
-  primaryButton: {
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingVertical: 16,
-    backgroundColor: '#fff',
-    borderRadius: 28,
-  },
-  primaryButtonSent: {
-    opacity: 0.7,
-  },
-  primaryButtonRow: {
+  statusContainer: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 8,
+    marginTop: 16,
   },
-  primaryButtonText: {
-    fontSize: 16,
-    fontWeight: '700',
-    color: '#0f0f0f',
+  statusText: {
+    fontSize: 14,
+    color: '#888',
+    fontWeight: '500',
+  },
+  buttonsContainer: {
+    width: '100%',
+    gap: 10,
+    marginTop: 16,
   },
   secondaryRow: {
     flexDirection: 'row',

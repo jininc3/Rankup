@@ -132,6 +132,9 @@ export default function HomeScreen() {
   const [forYouFetched, setForYouFetched] = useState(false);
   const [showNewPost, setShowNewPost] = useState(false);
   const [showNewClip, setShowNewClip] = useState(false);
+  const [hasNewPosts, setHasNewPosts] = useState(false);
+  const newestPostTimestampRef = useRef<Timestamp | null>(null);
+  const newPostsUnsubRef = useRef<(() => void) | null>(null);
 
   // Track the last game filter used for For You fetches to avoid infinite re-fetch loops
   const prevForYouFilterRef = useRef<string | null | undefined>(undefined);
@@ -150,6 +153,8 @@ export default function HomeScreen() {
   const [leagueInGameIcon, setLeagueInGameIcon] = useState<string | undefined>(undefined);
   const [leagueInGameName, setLeagueInGameName] = useState<string | undefined>(undefined);
   const [leagueWinRate, setLeagueWinRate] = useState<number | undefined>(undefined);
+  const [valorantGamesPlayed, setValorantGamesPlayed] = useState<number | undefined>(undefined);
+  const [leagueGamesPlayed, setLeagueGamesPlayed] = useState<number | undefined>(undefined);
 
   const currentPosts = activeTab === 'forYou' ? forYouPosts : followingPosts;
 
@@ -248,6 +253,60 @@ export default function HomeScreen() {
       clearPreloadedPosts();
     }
   }, [preloadedPosts, hasConsumedPreload, clearPreloadedPosts]);
+
+  // Track the newest post timestamp whenever followingPosts changes
+  useEffect(() => {
+    if (followingPosts.length > 0) {
+      const newest = followingPosts[0]?.createdAt;
+      if (newest && (!newestPostTimestampRef.current || newest.toMillis() > newestPostTimestampRef.current.toMillis())) {
+        newestPostTimestampRef.current = newest;
+      }
+    }
+  }, [followingPosts]);
+
+  // Lightweight listener for new posts from followed users
+  useEffect(() => {
+    if (!currentUser?.id || followingUserIds.length === 0) return;
+
+    // Clean up previous listener
+    if (newPostsUnsubRef.current) {
+      newPostsUnsubRef.current();
+      newPostsUnsubRef.current = null;
+    }
+
+    // Only listen to a small batch (Firestore 'in' limit is 30)
+    const listenIds = followingUserIds.slice(0, 30);
+
+    // Start listening from now (or the newest post we have)
+    const since = newestPostTimestampRef.current || Timestamp.now();
+
+    const q = query(
+      collection(db, 'posts'),
+      where('userId', 'in', listenIds),
+      where('createdAt', '>', since),
+      orderBy('createdAt', 'desc'),
+      limit(1)
+    );
+
+    const unsubscribe = onSnapshot(q, (snapshot) => {
+      if (!snapshot.empty) {
+        const newPost = snapshot.docs[0].data();
+        // Don't show banner for own posts
+        if (newPost.userId !== currentUser?.id) {
+          setHasNewPosts(true);
+        }
+      }
+    }, () => {});
+
+    newPostsUnsubRef.current = unsubscribe;
+
+    return () => {
+      if (newPostsUnsubRef.current) {
+        newPostsUnsubRef.current();
+        newPostsUnsubRef.current = null;
+      }
+    };
+  }, [currentUser?.id, followingUserIds]);
 
   // Smart merge logic for newly followed user posts
   useEffect(() => {
@@ -821,6 +880,7 @@ export default function HomeScreen() {
   // Pull to refresh
   const handleRefresh = useCallback(async () => {
     setRefreshing(true);
+    setHasNewPosts(false);
     if (activeTab === 'forYou') {
       setForYouFetched(false);
       await fetchForYouPosts(false);
@@ -896,6 +956,9 @@ export default function HomeScreen() {
           if (userData.valorantStats?.winRate !== undefined) {
             setValorantWinRate(userData.valorantStats.winRate);
           }
+          if (userData.valorantStats?.gamesPlayed !== undefined) {
+            setValorantGamesPlayed(userData.valorantStats.gamesPlayed);
+          }
           if (userData.riotStats?.profileIconId) {
             setLeagueInGameIcon(`https://ddragon.leagueoflegends.com/cdn/14.24.1/img/profileicon/${userData.riotStats.profileIconId}.png`);
           }
@@ -905,6 +968,9 @@ export default function HomeScreen() {
           }
           if (userData.riotStats?.rankedSolo?.winRate !== undefined) {
             setLeagueWinRate(userData.riotStats.rankedSolo.winRate);
+          }
+          if (userData.riotStats?.rankedSolo?.wins !== undefined) {
+            setLeagueGamesPlayed((userData.riotStats.rankedSolo.wins || 0) + (userData.riotStats.rankedSolo.losses || 0));
           }
         }
 
@@ -1244,8 +1310,8 @@ export default function HomeScreen() {
           <RefreshControl
             refreshing={refreshing}
             onRefresh={handleRefresh}
-            tintColor="#000"
-            colors={['#000']}
+            tintColor="#888"
+            colors={['#888']}
           />
         }
       >
@@ -1270,6 +1336,20 @@ export default function HomeScreen() {
             {selectedGameFilter === 'league' && <View style={styles.gameFilterUnderline} />}
           </TouchableOpacity>
         </View>
+
+        {hasNewPosts && activeTab === 'following' && !loading && (
+          <TouchableOpacity
+            style={styles.newPostsBanner}
+            onPress={() => {
+              scrollViewRef.current?.scrollTo({ y: 0, animated: true });
+              handleRefresh();
+            }}
+            activeOpacity={0.8}
+          >
+            <IconSymbol size={14} name="arrow.up" color="#fff" />
+            <ThemedText style={styles.newPostsBannerText}>New posts</ThemedText>
+          </TouchableOpacity>
+        )}
 
         {(activeTab === 'following' ? loading : forYouLoading) ? (
           <FeedSkeleton count={3} />
@@ -1404,6 +1484,8 @@ export default function HomeScreen() {
         leagueInGameIcon={leagueInGameIcon}
         leagueInGameName={leagueInGameName}
         leagueWinRate={leagueWinRate}
+        valorantGamesPlayed={valorantGamesPlayed}
+        leagueGamesPlayed={leagueGamesPlayed}
       />
 
       {/* Game Filter Bottom Sheet */}
@@ -1612,6 +1694,23 @@ const styles = StyleSheet.create({
     width: 20,
     borderRadius: 1,
     backgroundColor: '#C4A44E',
+  },
+  newPostsBanner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    alignSelf: 'center',
+    gap: 6,
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    backgroundColor: '#c42743',
+    borderRadius: 20,
+    marginBottom: 12,
+  },
+  newPostsBannerText: {
+    fontSize: 13,
+    fontWeight: '700',
+    color: '#fff',
   },
   gameFilterTabText: {
     fontSize: 12,

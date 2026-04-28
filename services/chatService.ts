@@ -102,8 +102,10 @@ export const createOrGetChat = async (
   }
 
   // Create new chat if it doesn't exist
+  // Use deterministic ID so both clients racing create the same document
   const now = Timestamp.now();
-  const newChatRef = doc(collection(db, 'chats'));
+  const chatDocId = [currentUserId, otherUserId].sort().join('_');
+  const newChatRef = doc(db, 'chats', chatDocId);
 
   await setDoc(newChatRef, {
     participants: [currentUserId, otherUserId],

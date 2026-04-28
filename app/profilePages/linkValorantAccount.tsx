@@ -59,7 +59,7 @@ export default function LinkValorantAccountScreen() {
         } else {
           setPreparingCard(true);
           try { await fetchValorantStatsContext(true); } catch {}
-          router.replace('/profilePages/rankCards');
+          router.back();
         }
       }
     } catch (error: any) {

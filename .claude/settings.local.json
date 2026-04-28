@@ -80,7 +80,8 @@
       "Bash(grep -rn \"from ''''@/hooks/useRouter''''\" --include=\"*.tsx\" --include=\"*.ts\")",
       "Bash(grep -rn \"useRouter.*from ''''expo-router''''\" --include=\"*.tsx\" --include=\"*.ts\")",
       "Bash(find /c/Users/jinha/Desktop/RankUp/functions -type f \\\\\\(-name *.ts -o -name *.js \\\\\\))",
-      "Bash(firebase functions:secrets:access HENRIK_API_KEY)"
+      "Bash(firebase functions:secrets:access HENRIK_API_KEY)",
+      "Bash(find /c/Users/jinha/Desktop/RankUp -path \"*/app/\\(tabs\\)/index.tsx\" -o -path \"*/types/*\" -o -path \"*/contexts/*\")"
     ],
     "deny": [],
     "ask": []

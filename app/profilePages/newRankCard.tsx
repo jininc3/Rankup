@@ -14,7 +14,7 @@ import { useFocusEffect } from 'expo-router';
 import { useAuth } from '@/contexts/AuthContext';
 import { useState, useCallback } from 'react';
 import { db } from '@/config/firebase';
-import { doc, getDoc, updateDoc, arrayUnion } from 'firebase/firestore';
+import { doc, getDoc, updateDoc, arrayUnion, deleteDoc } from 'firebase/firestore';
 import { useValorantStats } from '@/contexts/ValorantStatsContext';
 import { unlinkRiotAccount } from '@/services/riotService';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -74,7 +74,7 @@ export default function NewRankCardScreen() {
           console.error('Error adding rank card:', error);
         }
       } else {
-        router.push('/profilePages/linkValorantAccount');
+        router.replace('/profilePages/linkValorantAccount');
       }
       return;
     }
@@ -88,15 +88,29 @@ export default function NewRankCardScreen() {
         console.error('Error adding rank card:', error);
       }
     } else {
-      router.push({ pathname: '/profilePages/linkRiotAccount', params: { selectedGame: game } });
+      router.replace({ pathname: '/profilePages/linkRiotAccount', params: { selectedGame: game } });
     }
   };
 
-  const handleUnlinkRiotAccount = () => {
-    if (!riotAccount) return;
+  const handleUnlinkRiotAccount = async () => {
+    if (!riotAccount || !user?.id) return;
+
+    // Check for active duo post in feed
+    let hasActiveDuoPost = false;
+    try {
+      const duoPostDoc = await getDoc(doc(db, 'duoPosts', `${user.id}_league`));
+      if (duoPostDoc.exists()) {
+        const data = duoPostDoc.data();
+        hasActiveDuoPost = !!(data.expiresAt && data.expiresAt.toDate() > new Date());
+      }
+    } catch {}
+
+    const message = `Are you sure you want to unlink ${riotAccount?.gameName}#${riotAccount?.tagLine}? All League and TFT rank cards will be removed.`
+      + (hasActiveDuoPost ? '\n\nYour active League duo card in the feed will also be deleted.' : '');
+
     Alert.alert(
       'Unlink League of Legends Account',
-      `Are you sure you want to unlink ${riotAccount?.gameName}#${riotAccount?.tagLine}? All League and TFT rank cards will be removed.`,
+      message,
       [
         { text: 'Cancel', style: 'cancel' },
         {
@@ -113,6 +127,9 @@ export default function NewRankCardScreen() {
                   await updateDoc(doc(db, 'users', user.id), { enabledRankCards: updatedCards });
                   setEnabledRankCards(updatedCards);
                 }
+                // Remove league duo card and active duo post
+                await deleteDoc(doc(db, 'duoCards', `${user.id}_league`)).catch(() => {});
+                await deleteDoc(doc(db, 'duoPosts', `${user.id}_league`)).catch(() => {});
               }
               setRiotAccount(null);
               setRiotStats(null);
@@ -125,11 +142,25 @@ export default function NewRankCardScreen() {
     );
   };
 
-  const handleUnlinkValorantAccount = () => {
-    if (!valorantAccount) return;
+  const handleUnlinkValorantAccount = async () => {
+    if (!valorantAccount || !user?.id) return;
+
+    // Check for active duo post in feed
+    let hasActiveDuoPost = false;
+    try {
+      const duoPostDoc = await getDoc(doc(db, 'duoPosts', `${user.id}_valorant`));
+      if (duoPostDoc.exists()) {
+        const data = duoPostDoc.data();
+        hasActiveDuoPost = !!(data.expiresAt && data.expiresAt.toDate() > new Date());
+      }
+    } catch {}
+
+    const message = `Are you sure you want to unlink ${valorantAccount?.gameName}#${valorantAccount?.tag || valorantAccount?.tagLine || ''}? Your Valorant rank card will be removed.`
+      + (hasActiveDuoPost ? '\n\nYour active Valorant duo card in the feed will also be deleted.' : '');
+
     Alert.alert(
       'Unlink Valorant Account',
-      `Are you sure you want to unlink ${valorantAccount?.gameName}#${valorantAccount?.tag || valorantAccount?.tagLine || ''}?`,
+      message,
       [
         { text: 'Cancel', style: 'cancel' },
         {
@@ -146,6 +177,9 @@ export default function NewRankCardScreen() {
                   await updateDoc(doc(db, 'users', user.id), { enabledRankCards: updatedCards });
                   setEnabledRankCards(updatedCards);
                 }
+                // Remove valorant duo card and active duo post
+                await deleteDoc(doc(db, 'duoCards', `${user.id}_valorant`)).catch(() => {});
+                await deleteDoc(doc(db, 'duoPosts', `${user.id}_valorant`)).catch(() => {});
               }
               setValorantAccount(null);
               setValorantStats(null);
