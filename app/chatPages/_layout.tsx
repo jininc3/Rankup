@@ -5,9 +5,11 @@ export default function ChatLayout() {
     <Stack
       screenOptions={{
         headerShown: false,
-        animation: 'slide_from_right',
         gestureEnabled: true,
         fullScreenGestureEnabled: true,
+        animationMatchesGesture: true,
+        animation: 'simple_push',
+        animationDuration: 200,
       }}
     />
   );

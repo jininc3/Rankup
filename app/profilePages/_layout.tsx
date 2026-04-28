@@ -7,6 +7,9 @@ export default function ProfilePagesLayout() {
         headerShown: false,
         gestureEnabled: true,
         fullScreenGestureEnabled: true,
+        animationMatchesGesture: true,
+        animation: 'simple_push',
+        animationDuration: 200,
       }}
     />
   );

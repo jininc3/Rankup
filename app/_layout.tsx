@@ -244,6 +244,9 @@ function RootLayoutNav() {
           headerShown: false,
           gestureEnabled: true,
           fullScreenGestureEnabled: true,
+          animationMatchesGesture: true,
+          animation: 'simple_push',
+          animationDuration: 200,
         }}
       >
         <Stack.Screen name="index" options={{ headerShown: false }} />
