@@ -4,11 +4,12 @@ import WinLossPieChart from './WinLossPieChart';
 import LPLineChart from './LPLineChart';
 import { BlurView } from 'expo-blur';
 import { LinearGradient } from 'expo-linear-gradient';
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { Animated, Dimensions, Easing, Image, Modal, NativeScrollEvent, NativeSyntheticEvent, PanResponder, Pressable, ScrollView, StyleSheet, TouchableOpacity, View } from 'react-native';
 import { getValorantStats } from '@/services/valorantService';
 import { getRankHistory, RankHistoryEntry } from '@/services/rankHistoryService';
 import { auth } from '@/config/firebase';
+import { calculateTierBorderColor } from '@/utils/tierBorderUtils';
 
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
 
@@ -205,6 +206,16 @@ export default function ValorantRankCard({ game, username, viewOnly = false, use
   const stackCardOpacity = useRef(new Animated.Value(1)).current;
   const modalCardOpacity = useRef(new Animated.Value(1)).current;
   const dragY = useRef(new Animated.Value(0)).current;
+
+  // Derive accent color from tier (matches profile icon border)
+  const tierColor = useMemo(() => calculateTierBorderColor(undefined, game.rank) || '#ef5466', [game.rank]);
+  const hexToRgb = (hex: string) => {
+    const r = parseInt(hex.slice(1, 3), 16);
+    const g = parseInt(hex.slice(3, 5), 16);
+    const b = parseInt(hex.slice(5, 7), 16);
+    return `${r}, ${g}, ${b}`;
+  };
+  const rgb = useMemo(() => hexToRgb(tierColor), [tierColor]);
 
   // Prefetch valorant player card so it loads instantly when card is flipped
   useEffect(() => {
@@ -847,14 +858,14 @@ export default function ValorantRankCard({ game, username, viewOnly = false, use
       </Animated.View>
 
       {/* Inside border */}
-      <View style={styles.innerBorder} />
+      <View style={[styles.innerBorder, { borderColor: `rgba(${rgb}, 0.18)` }]} />
 
       {showBack && !forceShowFront ? (
         /* Back content - Hero Rank layout */
         <View style={styles.cardBackContent}>
           {/* Decorative corner accents */}
-          <View style={styles.techCornerTL} />
-          <View style={styles.techCornerBR} />
+          <View style={[styles.techCornerTL, { borderColor: `rgba(${rgb}, 0.3)` }]} />
+          <View style={[styles.techCornerBR, { borderColor: `rgba(${rgb}, 0.3)` }]} />
 
           {/* Header Row - Profile */}
           <View style={styles.heroHeader}>
@@ -911,9 +922,9 @@ export default function ValorantRankCard({ game, username, viewOnly = false, use
           {/* Dark glass overlay */}
           <LinearGradient
             colors={[
-              'rgba(239,84,102,0.06)',
+              `rgba(${rgb},0.06)`,
               'rgba(0,0,0,0.1)',
-              'rgba(239,84,102,0.03)',
+              `rgba(${rgb},0.03)`,
               'rgba(0,0,0,0.1)',
             ]}
             start={{ x: 0, y: 0 }}
@@ -923,18 +934,18 @@ export default function ValorantRankCard({ game, username, viewOnly = false, use
 
           {/* Background triangle pattern */}
           <View style={styles.trianglePattern}>
-            <View style={[styles.triangle, { top: 25, left: 30 }]} />
-            <View style={[styles.triangle, { top: 25, left: 70 }]} />
-            <View style={[styles.triangle, { top: 25, right: 70 }]} />
-            <View style={[styles.triangle, { top: 25, right: 30 }]} />
-            <View style={[styles.triangleInverted, { top: 55, left: 50 }]} />
-            <View style={[styles.triangleInverted, { top: 55, right: 50 }]} />
-            <View style={[styles.triangle, { bottom: 55, left: 30 }]} />
-            <View style={[styles.triangle, { bottom: 55, left: 70 }]} />
-            <View style={[styles.triangle, { bottom: 55, right: 70 }]} />
-            <View style={[styles.triangle, { bottom: 55, right: 30 }]} />
-            <View style={[styles.triangleInverted, { bottom: 25, left: 50 }]} />
-            <View style={[styles.triangleInverted, { bottom: 25, right: 50 }]} />
+            <View style={[styles.triangle, { top: 25, left: 30, borderBottomColor: `rgba(${rgb}, 0.06)` }]} />
+            <View style={[styles.triangle, { top: 25, left: 70, borderBottomColor: `rgba(${rgb}, 0.06)` }]} />
+            <View style={[styles.triangle, { top: 25, right: 70, borderBottomColor: `rgba(${rgb}, 0.06)` }]} />
+            <View style={[styles.triangle, { top: 25, right: 30, borderBottomColor: `rgba(${rgb}, 0.06)` }]} />
+            <View style={[styles.triangleInverted, { top: 55, left: 50, borderTopColor: `rgba(${rgb}, 0.04)` }]} />
+            <View style={[styles.triangleInverted, { top: 55, right: 50, borderTopColor: `rgba(${rgb}, 0.04)` }]} />
+            <View style={[styles.triangle, { bottom: 55, left: 30, borderBottomColor: `rgba(${rgb}, 0.06)` }]} />
+            <View style={[styles.triangle, { bottom: 55, left: 70, borderBottomColor: `rgba(${rgb}, 0.06)` }]} />
+            <View style={[styles.triangle, { bottom: 55, right: 70, borderBottomColor: `rgba(${rgb}, 0.06)` }]} />
+            <View style={[styles.triangle, { bottom: 55, right: 30, borderBottomColor: `rgba(${rgb}, 0.06)` }]} />
+            <View style={[styles.triangleInverted, { bottom: 25, left: 50, borderTopColor: `rgba(${rgb}, 0.04)` }]} />
+            <View style={[styles.triangleInverted, { bottom: 25, right: 50, borderTopColor: `rgba(${rgb}, 0.04)` }]} />
           </View>
 
           {/* Valorant logo watermark */}
@@ -946,16 +957,16 @@ export default function ValorantRankCard({ game, username, viewOnly = false, use
 
           {/* Center diamond */}
           <View style={styles.diamondContainer}>
-            <View style={styles.diamond}>
-              <View style={styles.diamondDot} />
+            <View style={[styles.diamond, { borderColor: `rgba(${rgb}, 0.3)` }]}>
+              <View style={[styles.diamondDot, { backgroundColor: `rgba(${rgb}, 0.4)` }]} />
             </View>
           </View>
 
-          {/* Corner accents - red */}
-          <View style={styles.cornerAccentTL} />
-          <View style={styles.cornerAccentTR} />
-          <View style={styles.cornerAccentBL} />
-          <View style={styles.cornerAccentBR} />
+          {/* Corner accents */}
+          <View style={[styles.cornerAccentTL, { borderColor: `rgba(${rgb}, 0.4)` }]} />
+          <View style={[styles.cornerAccentTR, { borderColor: `rgba(${rgb}, 0.4)` }]} />
+          <View style={[styles.cornerAccentBL, { borderColor: `rgba(${rgb}, 0.4)` }]} />
+          <View style={[styles.cornerAccentBR, { borderColor: `rgba(${rgb}, 0.4)` }]} />
         </View>
       )}
     </LinearGradient>
@@ -972,7 +983,7 @@ export default function ValorantRankCard({ game, username, viewOnly = false, use
           disabled={!isFocused && viewOnly}
         >
         {/* Stack card always shows front — no flip animation */}
-        <View style={styles.rankCard}>
+        <View style={[styles.rankCard, { borderColor: `rgba(${rgb}, 0.5)` }]}>
           {renderCardContent(true)}
         </View>
         </TouchableOpacity>
@@ -1015,7 +1026,7 @@ export default function ValorantRankCard({ game, username, viewOnly = false, use
           <View style={styles.shadow1} />
 
           <TouchableOpacity
-            style={styles.rankCard}
+            style={[styles.rankCard, { borderColor: `rgba(${rgb}, 0.5)` }]}
             onPress={handleCardFlip}
             activeOpacity={0.95}
           >
@@ -1028,6 +1039,7 @@ export default function ValorantRankCard({ game, username, viewOnly = false, use
           style={[
             styles.statisticsCard,
             {
+              borderTopColor: `rgba(${rgb}, 0.4)`,
               top: Animated.add(statisticsTop, dragY),
               bottom: 0,
               opacity: cardsContentOpacity,
@@ -1217,6 +1229,7 @@ export default function ValorantRankCard({ game, username, viewOnly = false, use
           style={[
             styles.matchHistoryCard,
             {
+              borderTopColor: `rgba(${rgb}, 0.3)`,
               height: matchHistoryHeight,
               opacity: cardsContentOpacity,
             }

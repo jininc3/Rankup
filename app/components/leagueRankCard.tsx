@@ -4,11 +4,12 @@ import WinLossPieChart from './WinLossPieChart';
 import LPLineChart from './LPLineChart';
 import { BlurView } from 'expo-blur';
 import { LinearGradient } from 'expo-linear-gradient';
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { Animated, Dimensions, Easing, Image, Modal, NativeScrollEvent, NativeSyntheticEvent, PanResponder, Pressable, ScrollView, StyleSheet, TouchableOpacity, View } from 'react-native';
 import { getProfileIconUrl, getChampionName, getChampionIconUrl, getLeagueStats } from '@/services/riotService';
 import { getRankHistory, RankHistoryEntry } from '@/services/rankHistoryService';
 import { auth } from '@/config/firebase';
+import { calculateTierBorderColor } from '@/utils/tierBorderUtils';
 
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
 
@@ -90,6 +91,16 @@ export default function LeagueRankCard({ game, username, viewOnly = false, userI
   const stackCardOpacity = useRef(new Animated.Value(1)).current;
   const modalCardOpacity = useRef(new Animated.Value(1)).current;
   const dragY = useRef(new Animated.Value(0)).current;
+
+  // Derive accent color from tier (matches profile icon border)
+  const tierColor = useMemo(() => calculateTierBorderColor(game.rank) || '#1e64c8', [game.rank]);
+  const hexToRgb = (hex: string) => {
+    const r = parseInt(hex.slice(1, 3), 16);
+    const g = parseInt(hex.slice(3, 5), 16);
+    const b = parseInt(hex.slice(5, 7), 16);
+    return `${r}, ${g}, ${b}`;
+  };
+  const rgb = useMemo(() => hexToRgb(tierColor), [tierColor]);
 
   // Prefetch profile icon so it loads instantly when card is flipped
   useEffect(() => {
@@ -658,12 +669,12 @@ export default function LeagueRankCard({ game, username, viewOnly = false, userI
         />
       </Animated.View>
 
-      <View style={styles.innerBorder} />
+      <View style={[styles.innerBorder, { borderColor: `rgba(${rgb}, 0.18)` }]} />
 
       {showBack && !forceShowFront ? (
         <View style={styles.cardBackContent}>
-          <View style={styles.techCornerTL} />
-          <View style={styles.techCornerBR} />
+          <View style={[styles.techCornerTL, { borderColor: `rgba(${rgb}, 0.3)` }]} />
+          <View style={[styles.techCornerBR, { borderColor: `rgba(${rgb}, 0.3)` }]} />
 
           {/* Header Row - Profile */}
           <View style={styles.heroHeader}>
@@ -719,7 +730,7 @@ export default function LeagueRankCard({ game, username, viewOnly = false, userI
         <View style={styles.cardFront}>
           {/* Glass overlay */}
           <LinearGradient
-            colors={['rgba(30,100,200,0.06)', 'rgba(0,0,0,0.1)', 'rgba(201,168,76,0.03)', 'rgba(0,0,0,0.1)']}
+            colors={[`rgba(${rgb},0.06)`, 'rgba(0,0,0,0.1)', `rgba(${rgb},0.03)`, 'rgba(0,0,0,0.1)']}
             start={{ x: 0, y: 0 }}
             end={{ x: 1, y: 1 }}
             style={styles.glassOverlay}
@@ -728,25 +739,25 @@ export default function LeagueRankCard({ game, username, viewOnly = false, userI
           {/* Crosshatch pattern */}
           <View style={styles.crosshatchPattern}>
             {/* Diagonal lines going top-left to bottom-right */}
-            <View style={[styles.crossLine, { top: -20, left: 30 }]} />
-            <View style={[styles.crossLineGold, { top: -20, left: 60 }]} />
-            <View style={[styles.crossLineGold, { top: -20, right: 60 }]} />
-            <View style={[styles.crossLine, { top: -20, right: 30 }]} />
+            <View style={[styles.crossLine, { top: -20, left: 30, backgroundColor: `rgba(${rgb}, 0.06)` }]} />
+            <View style={[styles.crossLine, { top: -20, left: 60, backgroundColor: `rgba(${rgb}, 0.04)` }]} />
+            <View style={[styles.crossLine, { top: -20, right: 60, backgroundColor: `rgba(${rgb}, 0.04)` }]} />
+            <View style={[styles.crossLine, { top: -20, right: 30, backgroundColor: `rgba(${rgb}, 0.06)` }]} />
             {/* Diagonal lines going top-right to bottom-left */}
-            <View style={[styles.crossLineReverse, { top: -20, left: 30 }]} />
-            <View style={[styles.crossLineReverseGold, { top: -20, left: 60 }]} />
-            <View style={[styles.crossLineReverseGold, { top: -20, right: 60 }]} />
-            <View style={[styles.crossLineReverse, { top: -20, right: 30 }]} />
+            <View style={[styles.crossLineReverse, { top: -20, left: 30, backgroundColor: `rgba(${rgb}, 0.06)` }]} />
+            <View style={[styles.crossLineReverse, { top: -20, left: 60, backgroundColor: `rgba(${rgb}, 0.04)` }]} />
+            <View style={[styles.crossLineReverse, { top: -20, right: 60, backgroundColor: `rgba(${rgb}, 0.04)` }]} />
+            <View style={[styles.crossLineReverse, { top: -20, right: 30, backgroundColor: `rgba(${rgb}, 0.06)` }]} />
           </View>
 
           {/* Logo watermark */}
           <Image source={require('@/assets/images/lol.png')} style={styles.backgroundLogo} resizeMode="contain" />
 
           {/* Corner accents */}
-          <View style={styles.cornerAccentTL} />
-          <View style={styles.cornerAccentTR} />
-          <View style={styles.cornerAccentBL} />
-          <View style={styles.cornerAccentBR} />
+          <View style={[styles.cornerAccentTL, { borderColor: `rgba(${rgb}, 0.4)` }]} />
+          <View style={[styles.cornerAccentTR, { borderColor: `rgba(${rgb}, 0.4)` }]} />
+          <View style={[styles.cornerAccentBL, { borderColor: `rgba(${rgb}, 0.4)` }]} />
+          <View style={[styles.cornerAccentBR, { borderColor: `rgba(${rgb}, 0.4)` }]} />
         </View>
       )}
     </LinearGradient>
@@ -763,7 +774,7 @@ export default function LeagueRankCard({ game, username, viewOnly = false, userI
           disabled={!isFocused && viewOnly}
         >
           {/* Stack card always shows front — no flip animation */}
-          <View style={styles.rankCard}>
+          <View style={[styles.rankCard, { borderColor: `rgba(${rgb}, 0.5)` }]}>
             {renderCardContent(true)}
           </View>
         </TouchableOpacity>
@@ -786,14 +797,14 @@ export default function LeagueRankCard({ game, username, viewOnly = false, userI
           <View style={styles.shadow3} />
           <View style={styles.shadow2} />
           <View style={styles.shadow1} />
-          <TouchableOpacity style={styles.rankCard} onPress={handleCardFlip} activeOpacity={0.95}>
+          <TouchableOpacity style={[styles.rankCard, { borderColor: `rgba(${rgb}, 0.5)` }]} onPress={handleCardFlip} activeOpacity={0.95}>
             {renderCardContent()}
           </TouchableOpacity>
         </Animated.View>
 
         {/* Statistics Card */}
         <Animated.View
-          style={[styles.statisticsCard, { top: Animated.add(statisticsTop, dragY), bottom: 0, opacity: cardsContentOpacity }]}
+          style={[styles.statisticsCard, { borderTopColor: `rgba(${rgb}, 0.4)`, top: Animated.add(statisticsTop, dragY), bottom: 0, opacity: cardsContentOpacity }]}
           {...statisticsSwipePanResponder.panHandlers}
         >
           <Pressable
@@ -938,7 +949,7 @@ export default function LeagueRankCard({ game, username, viewOnly = false, userI
 
         {/* Match History Card */}
         <Animated.View
-          style={[styles.matchHistoryCard, { height: matchHistoryHeight, opacity: cardsContentOpacity }]}
+          style={[styles.matchHistoryCard, { borderTopColor: `rgba(${rgb}, 0.3)`, height: matchHistoryHeight, opacity: cardsContentOpacity }]}
           {...matchHistorySwipeUpPanResponder.panHandlers}
         >
           <View style={styles.matchHistoryHeader} {...matchHistorySwipeDownPanResponder.panHandlers}>
