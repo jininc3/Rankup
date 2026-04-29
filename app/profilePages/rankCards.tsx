@@ -188,6 +188,9 @@ export default function RankCardsScreen() {
             <IconSymbol size={22} name="chevron.left" color="#fff" />
           </TouchableOpacity>
           <View style={{ flex: 1 }} />
+          <TouchableOpacity style={styles.viewToggle} onPress={() => router.push('/profilePages/tierCards')}>
+            <IconSymbol size={18} name="sparkles" color="#fff" />
+          </TouchableOpacity>
           {userGames.length > 1 && (
             <TouchableOpacity style={styles.viewToggle} onPress={() => setViewMode(v => v === 'stacked' ? 'swipe' : 'stacked')}>
               <IconSymbol size={18} name={viewMode === 'stacked' ? 'rectangle.split.1x2' : 'square.stack.3d.up'} color="#fff" />

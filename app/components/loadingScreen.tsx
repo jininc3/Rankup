@@ -18,7 +18,7 @@ export default function LoadingScreen({ style }: LoadingScreenProps) {
   return (
     <View style={[styles.container, style]}>
       <Image
-        source={require('@/assets/images/rankup-black.png')}
+        source={require('@/assets/images/rankuplogo.png')}
         style={styles.logo}
         resizeMode="contain"
       />
