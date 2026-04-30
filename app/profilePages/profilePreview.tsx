@@ -13,7 +13,7 @@ import { useFocusEffect } from '@react-navigation/native';
 import { db } from '@/config/firebase';
 import { collection, query, where, getDocs, Timestamp, doc, getDoc } from 'firebase/firestore';
 import { followUser, unfollowUser, isFollowing as checkIsFollowing } from '@/services/followService';
-import { calculateTierBorderColor, calculateTierBorderGradient } from '@/utils/tierBorderUtils';
+import { calculateTierBorderColor, calculateTierBorderGradient, calculateTier } from '@/utils/tierBorderUtils';
 import { formatCount } from '@/utils/formatCount';
 import GradientBorder from '@/components/GradientBorder';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -427,6 +427,14 @@ export default function ProfilePreviewScreen() {
     valorantStats?.currentRank
   ) || ['#333', '#333', '#333'];
 
+  const tierShine = (() => {
+    const tier = calculateTier(
+      riotStats?.rankedSolo ? formatRank(riotStats.rankedSolo.tier, riotStats.rankedSolo.rank) : undefined,
+      valorantStats?.currentRank
+    );
+    return tier === 'B' || tier === 'A' || tier === 'S';
+  })();
+
   // Show "user not found" screen for deleted accounts
   if (userNotFound) {
     return (
@@ -564,6 +572,7 @@ export default function ProfilePreviewScreen() {
                     colors={tierBorderGradient}
                     borderWidth={2.5}
                     borderRadius={38}
+                    shine={tierShine}
                   >
                     <View style={styles.profileAvatarCircleWithGradient}>
                       {viewedUser?.avatar && viewedUser.avatar.startsWith('http') ? (

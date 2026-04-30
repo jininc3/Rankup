@@ -35,7 +35,7 @@ export default function SignUpBirthday() {
   const handleContinue = () => {
     const age = getAge(dateOfBirth);
     if (age < 13) {
-      Alert.alert('Age Requirement', 'You must be at least 13 years old to use RankUp.');
+      Alert.alert('Age Requirement', 'You must be at least 13 years old to use RankdUp.');
       return;
     }
 

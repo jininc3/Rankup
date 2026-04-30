@@ -19,7 +19,7 @@ import { followUser, unfollowUser, isFollowing as checkIsFollowing, getUserRecen
 import { blockUser } from '@/services/blockService';
 import PostViewerModal from '@/app/components/postViewerModal';
 import ReportPostModal from '@/app/components/reportPostModal';
-import { calculateTierBorderColor, calculateTierBorderGradient } from '@/utils/tierBorderUtils';
+import { calculateTierBorderColor, calculateTierBorderGradient, calculateTier } from '@/utils/tierBorderUtils';
 import { formatCount } from '@/utils/formatCount';
 import GradientBorder from '@/components/GradientBorder';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -646,6 +646,14 @@ export default function ProfileViewScreen() {
     valorantStats?.currentRank
   ), [riotStats?.rankedSolo?.tier, riotStats?.rankedSolo?.rank, valorantStats?.currentRank]);
 
+  const tierShine = useMemo(() => {
+    const tier = calculateTier(
+      riotStats?.rankedSolo ? formatRank(riotStats.rankedSolo.tier, riotStats.rankedSolo.rank) : undefined,
+      valorantStats?.currentRank
+    );
+    return tier === 'B' || tier === 'A' || tier === 'S';
+  }, [riotStats?.rankedSolo?.tier, riotStats?.rankedSolo?.rank, valorantStats?.currentRank]);
+
   const handleBlock = () => {
     setShowMoreOptions(false);
     Alert.alert(
@@ -828,6 +836,7 @@ export default function ProfileViewScreen() {
                       colors={tierBorderGradient}
                       borderWidth={2.5}
                       borderRadius={38}
+                      shine={tierShine}
                     >
                       <View style={styles.profileAvatarCircleWithGradient}>
                         {viewedUser?.avatar && viewedUser.avatar.startsWith('http') ? (

@@ -1522,7 +1522,7 @@ const styles = StyleSheet.create({
   liveSearchBannerTitle: {
     fontSize: 16,
     fontWeight: '700',
-    color: '#3B82F6',
+    color: '#fff',
     letterSpacing: 1,
   },
   liveSearchBannerSubtitle: {

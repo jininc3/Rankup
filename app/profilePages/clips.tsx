@@ -19,6 +19,9 @@ const { width: screenWidth } = Dimensions.get('window');
 const GRID_PADDING = 16;
 const GRID_GAP = 10;
 
+// Module-level cache so data persists across navigations
+const clipsCache: Record<string, { posts: Post[]; clipCategories: string[] }> = {};
+
 interface Post {
   id: string;
   userId: string;
@@ -52,9 +55,10 @@ export default function ClipsPage() {
   const userId = params.userId || currentUser?.id;
   const isOwnProfile = userId === currentUser?.id;
 
-  const [posts, setPosts] = useState<Post[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [clipCategories, setClipCategories] = useState<string[]>([]);
+  const cached = userId ? clipsCache[userId] : undefined;
+  const [posts, setPosts] = useState<Post[]>(cached?.posts ?? []);
+  const [loading, setLoading] = useState(!cached);
+  const [clipCategories, setClipCategories] = useState<string[]>(cached?.clipCategories ?? []);
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
 
   const [selectedPost, setSelectedPost] = useState<Post | null>(null);
@@ -65,7 +69,7 @@ export default function ClipsPage() {
   const [showAssignCategory, setShowAssignCategory] = useState(false);
   const [categorizingPost, setCategorizingPost] = useState<Post | null>(null);
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('list');
-  const [thumbnailsReady, setThumbnailsReady] = useState(false);
+  const [thumbnailsReady, setThumbnailsReady] = useState(!!cached);
   const loadedCountRef = useRef(0);
   const expectedCountRef = useRef(0);
 
@@ -78,14 +82,21 @@ export default function ClipsPage() {
 
   useEffect(() => {
     if (!userId) return;
-    fetchData();
+    if (clipsCache[userId]) {
+      // Already showing cached data, refresh in background
+      fetchData(true);
+    } else {
+      fetchData();
+    }
   }, [userId]);
 
-  const fetchData = async () => {
+  const fetchData = async (background = false) => {
     if (!userId) return;
-    setLoading(true);
-    setThumbnailsReady(false);
-    loadedCountRef.current = 0;
+    if (!background) {
+      setLoading(true);
+      setThumbnailsReady(false);
+      loadedCountRef.current = 0;
+    }
     try {
       const [postsSnapshot, userDoc] = await Promise.all([
         getDocs(query(collection(db, 'posts'), where('userId', '==', userId))),
@@ -97,9 +108,7 @@ export default function ClipsPage() {
         .filter(p => !(p as any).archived)
         .sort((a, b) => b.createdAt.toMillis() - a.createdAt.toMillis());
 
-      if (userDoc.exists()) {
-        setClipCategories(userDoc.data().clipCategories || []);
-      }
+      const categories = userDoc.exists() ? (userDoc.data().clipCategories || []) : [];
 
       // Prefetch all thumbnails before rendering
       const thumbUrls = fetchedPosts.map(p =>
@@ -107,16 +116,22 @@ export default function ClipsPage() {
       ).filter(Boolean);
       await Promise.all(thumbUrls.map(url => Image.prefetch(url).catch(() => {})));
 
-      expectedCountRef.current = fetchedPosts.length;
-      if (fetchedPosts.length === 0) {
-        setThumbnailsReady(true);
+      if (!background) {
+        expectedCountRef.current = fetchedPosts.length;
+        if (fetchedPosts.length === 0) {
+          setThumbnailsReady(true);
+        }
       }
       setPosts(fetchedPosts);
+      setClipCategories(categories);
+
+      // Update cache
+      clipsCache[userId] = { posts: fetchedPosts, clipCategories: categories };
     } catch (error) {
       console.error('Error fetching clips:', error);
-      setThumbnailsReady(true);
+      if (!background) setThumbnailsReady(true);
     } finally {
-      setLoading(false);
+      if (!background) setLoading(false);
     }
   };
 
@@ -140,7 +155,11 @@ export default function ClipsPage() {
     if (!categorizingPost) return;
     try {
       await updateDoc(doc(db, 'posts', categorizingPost.id), { categories: newCategories });
-      setPosts(prev => prev.map(p => p.id === categorizingPost.id ? { ...p, categories: newCategories } : p));
+      setPosts(prev => {
+        const updated = prev.map(p => p.id === categorizingPost.id ? { ...p, categories: newCategories } : p);
+        if (userId) clipsCache[userId] = { posts: updated, clipCategories };
+        return updated;
+      });
     } catch (error) {
       Alert.alert('Error', 'Failed to update categories');
     }
@@ -162,7 +181,13 @@ export default function ClipsPage() {
       }
       if (postUpdates.length > 0) {
         const updateMap = new Map(postUpdates.map(u => [u.postId, u.categories]));
-        setPosts(prev => prev.map(p => updateMap.has(p.id) ? { ...p, categories: updateMap.get(p.id) } : p));
+        setPosts(prev => {
+          const updated = prev.map(p => updateMap.has(p.id) ? { ...p, categories: updateMap.get(p.id) } : p);
+          if (userId) clipsCache[userId] = { posts: updated, clipCategories: newCategories };
+          return updated;
+        });
+      } else if (userId) {
+        clipsCache[userId] = { ...clipsCache[userId], clipCategories: newCategories };
       }
     } catch (error) {
       Alert.alert('Error', 'Failed to update categories');

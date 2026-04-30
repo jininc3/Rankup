@@ -1,5 +1,6 @@
-import React from 'react';
-import { View, StyleSheet, ViewStyle } from 'react-native';
+import React, { useEffect, useRef } from 'react';
+import { Animated, Easing, View, StyleSheet, ViewStyle } from 'react-native';
+import { LinearGradient } from 'expo-linear-gradient';
 
 interface GradientBorderProps {
   colors: string[];
@@ -7,6 +8,7 @@ interface GradientBorderProps {
   borderRadius: number;
   children: React.ReactNode;
   style?: ViewStyle;
+  shine?: boolean;
 }
 
 /**
@@ -19,7 +21,32 @@ export default function GradientBorder({
   borderRadius,
   children,
   style,
+  shine = false,
 }: GradientBorderProps) {
+  const shimmerAnim = useRef(new Animated.Value(0)).current;
+
+  useEffect(() => {
+    if (!shine) return;
+    const loop = Animated.loop(
+      Animated.sequence([
+        Animated.timing(shimmerAnim, { toValue: 1, duration: 2500, easing: Easing.inOut(Easing.ease), useNativeDriver: true }),
+        Animated.delay(2000),
+        Animated.timing(shimmerAnim, { toValue: 0, duration: 0, useNativeDriver: true }),
+      ])
+    );
+    loop.start();
+    return () => loop.stop();
+  }, [shine]);
+
+  const shimmerRotate = shimmerAnim.interpolate({
+    inputRange: [0, 1],
+    outputRange: ['-45deg', '45deg'],
+  });
+
+  const shimmerOpacity = shimmerAnim.interpolate({
+    inputRange: [0, 0.3, 0.5, 0.7, 1],
+    outputRange: [0, 0.6, 1, 0.6, 0],
+  });
   if (colors.length < 2) {
     // Fallback to solid border if not enough colors
     return (
@@ -80,6 +107,41 @@ export default function GradientBorder({
             zIndex: 1,
           }}
         />
+        {/* Animated shine sweep for higher tiers */}
+        {shine && (
+          <Animated.View
+            pointerEvents="none"
+            style={{
+              position: 'absolute',
+              top: -borderWidth,
+              left: -borderWidth,
+              right: -borderWidth,
+              bottom: -borderWidth,
+              borderRadius,
+              overflow: 'hidden',
+              zIndex: 2,
+              opacity: shimmerOpacity,
+            }}
+          >
+            <Animated.View
+              style={{
+                position: 'absolute',
+                top: '-50%',
+                left: '-50%',
+                right: '-50%',
+                bottom: '-50%',
+                transform: [{ rotate: shimmerRotate }],
+              }}
+            >
+              <LinearGradient
+                colors={['transparent', 'rgba(255,255,255,0.35)', 'rgba(255,255,255,0.5)', 'rgba(255,255,255,0.35)', 'transparent']}
+                start={{ x: 0, y: 0 }}
+                end={{ x: 0, y: 1 }}
+                style={{ width: '100%', height: '100%' }}
+              />
+            </Animated.View>
+          </Animated.View>
+        )}
         {children}
       </View>
     </View>

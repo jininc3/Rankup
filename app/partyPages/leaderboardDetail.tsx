@@ -5,6 +5,7 @@ import { useRouter } from '@/hooks/useRouter';
 import { useLocalSearchParams } from 'expo-router';
 import { ScrollView, StyleSheet, TouchableOpacity, View, Image, Alert, RefreshControl, Modal, ActivityIndicator, TextInput, Animated, PanResponder, Dimensions } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
+import { formatRankDisplay } from '@/utils/formatRankDisplay';
 import { useState, useEffect, useRef } from 'react';
 import { db, functions } from '@/config/firebase';
 import { doc, getDoc, updateDoc, deleteDoc, onSnapshot, collection, getDocs, addDoc, serverTimestamp } from 'firebase/firestore';
@@ -1269,7 +1270,7 @@ export default function LeaderboardDetail() {
                   <Image source={rankIcon} style={styles.rankIconSmall} resizeMode="contain" />
                   <View style={styles.rankTextContainer}>
                     <ThemedText style={styles.currentRankText}>
-                      {player.currentRank}{' '}
+                      {formatRankDisplay(player.currentRank)}{' '}
                       <ThemedText style={styles.rankPointsText}>
                         {isLeague ? `(${player.lp || 0} LP)` : `(${player.rr || 0} RR)`}
                       </ThemedText>
@@ -1783,7 +1784,7 @@ export default function LeaderboardDetail() {
                     <View style={styles.manageMemberInfo}>
                       <ThemedText style={styles.manageMemberName}>{player.username}</ThemedText>
                       <ThemedText style={styles.manageMemberRank}>
-                        Rank #{player.rank} • {player.currentRank}
+                        Rank #{player.rank} • {formatRankDisplay(player.currentRank)}
                       </ThemedText>
                     </View>
                     <View style={styles.manageMemberActions}>
@@ -2660,9 +2661,12 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     paddingVertical: 10,
     marginBottom: 0,
+    marginHorizontal: 6,
     backgroundColor: '#1a1a1a',
     borderBottomWidth: 1,
     borderBottomColor: 'rgba(255,255,255,0.06)',
+    borderTopLeftRadius: 12,
+    borderTopRightRadius: 12,
   },
   columnHeaderText: {
     fontSize: 10,
@@ -2676,6 +2680,10 @@ const styles = StyleSheet.create({
   },
   playerList: {
     paddingHorizontal: 0,
+    marginHorizontal: 6,
+    borderBottomLeftRadius: 12,
+    borderBottomRightRadius: 12,
+    overflow: 'hidden',
   },
   playerRow: {
     flexDirection: 'row',

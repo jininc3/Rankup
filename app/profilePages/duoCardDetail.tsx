@@ -7,6 +7,7 @@ import { useState, useEffect } from 'react';
 import { getRecentMatches, RecentMatchResult } from '@/services/riotService';
 import { doc, setDoc, getDoc, serverTimestamp } from 'firebase/firestore';
 import { db } from '@/config/firebase';
+import { formatRankDisplay } from '@/utils/formatRankDisplay';
 
 // League rank icon mapping
 const LEAGUE_RANK_ICONS: { [key: string]: any } = {
@@ -375,7 +376,7 @@ export default function DuoCardDetailScreen() {
               style={styles.rankIcon}
               resizeMode="contain"
             />
-            <ThemedText style={styles.rankValue} numberOfLines={1}>{currentRank}</ThemedText>
+            <ThemedText style={styles.rankValue} numberOfLines={1}>{formatRankDisplay(currentRank)}</ThemedText>
             <ThemedText style={styles.rankLabel}>CURRENT RANK</ThemedText>
           </View>
         </View>

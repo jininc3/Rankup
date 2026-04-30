@@ -2,6 +2,7 @@ import React from 'react';
 import { ThemedText } from '@/components/themed-text';
 import { IconSymbol } from '@/components/ui/icon-symbol';
 import { Image, StyleSheet, TouchableOpacity, View } from 'react-native';
+import { formatRankDisplay } from '@/utils/formatRankDisplay';
 
 const GAME_LOGOS: { [key: string]: any } = {
   'Valorant': require('@/assets/images/valorant-red.png'),
@@ -234,7 +235,7 @@ function DuoCard({ duo, onPress, onMessage, onViewProfile, onDelete, noShadow }:
             <View style={styles.rankBlock}>
               <Image source={currentRankIcon} style={styles.rankImg} resizeMode="contain" />
               <ThemedText style={styles.rankName} numberOfLines={1}>
-                {duo.currentRank || 'Unranked'}
+                {formatRankDisplay(duo.currentRank || 'Unranked')}
               </ThemedText>
             </View>
 

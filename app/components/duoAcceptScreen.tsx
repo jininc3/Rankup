@@ -2,6 +2,7 @@ import { ThemedText } from '@/components/themed-text';
 import { useEffect, useRef, useState } from 'react';
 import { Animated, Easing, Image, StyleSheet, TouchableOpacity, View } from 'react-native';
 import { DuoMatchCardData } from '@/services/duoMatchService';
+import { formatRankDisplay } from '@/utils/formatRankDisplay';
 
 interface DuoAcceptScreenProps {
   matchedUser: DuoMatchCardData;
@@ -83,7 +84,7 @@ export default function DuoAcceptScreen({
           </View>
         )}
         <ThemedText style={styles.username}>{matchedUser.username}</ThemedText>
-        <ThemedText style={styles.rank}>{matchedUser.currentRank || 'Unranked'}</ThemedText>
+        <ThemedText style={styles.rank}>{formatRankDisplay(matchedUser.currentRank || 'Unranked')}</ThemedText>
         {onViewProfile && (
           <ThemedText style={styles.viewProfileHint}>Tap to view duo profile</ThemedText>
         )}

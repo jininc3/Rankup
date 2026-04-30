@@ -4,6 +4,7 @@ const RankCard = rankCard;
 import { ThemedText } from '@/components/themed-text';
 import { IconSymbol } from '@/components/ui/icon-symbol';
 import {
+  Animated,
   StyleSheet,
   View,
   TouchableOpacity,
@@ -44,7 +45,7 @@ export default function RankCardsScreen() {
   const [fetchedUsername, setFetchedUsername] = useState<string>('User');
   const [loading, setLoading] = useState(true);
   const [viewMode, setViewMode] = useState<'stacked' | 'swipe'>('stacked');
-  const [activeCardIndex, setActiveCardIndex] = useState(0);
+  const swipeScrollX = useRef(new Animated.Value(0)).current;
 
   const fetchData = useCallback(async () => {
     if (!targetUserId) { setLoading(false); return; }
@@ -336,16 +337,17 @@ export default function RankCardsScreen() {
 
         {!loading && userGames.length > 1 && viewMode === 'swipe' && (
           <>
-            <FlatList
+            <Animated.FlatList
               data={userGames}
               horizontal
               pagingEnabled
               showsHorizontalScrollIndicator={false}
               keyExtractor={(item) => item.id.toString()}
-              onMomentumScrollEnd={(e) => {
-                const index = Math.round(e.nativeEvent.contentOffset.x / (screenWidth - 32));
-                setActiveCardIndex(index);
-              }}
+              onScroll={Animated.event(
+                [{ nativeEvent: { contentOffset: { x: swipeScrollX } } }],
+                { useNativeDriver: false }
+              )}
+              scrollEventThrottle={16}
               contentContainerStyle={styles.swipeContainer}
               renderItem={({ item: game }) => {
                 let displayUsername = (isOwnProfile ? user?.username : fetchedUsername) || 'User';
@@ -363,9 +365,25 @@ export default function RankCardsScreen() {
             />
             {/* Page indicators */}
             <View style={styles.swipeDots}>
-              {userGames.map((_, index) => (
-                <View key={index} style={[styles.swipeDot, activeCardIndex === index && styles.swipeDotActive]} />
-              ))}
+              {userGames.map((_, index) => {
+                const cardWidth = screenWidth - 32;
+                const dotScale = swipeScrollX.interpolate({
+                  inputRange: [(index - 1) * cardWidth, index * cardWidth, (index + 1) * cardWidth],
+                  outputRange: [1, 1.35, 1],
+                  extrapolate: 'clamp',
+                });
+                const dotOpacity = swipeScrollX.interpolate({
+                  inputRange: [(index - 1) * cardWidth, index * cardWidth, (index + 1) * cardWidth],
+                  outputRange: [0.3, 1, 0.3],
+                  extrapolate: 'clamp',
+                });
+                return (
+                  <Animated.View
+                    key={index}
+                    style={[styles.swipeDot, { opacity: dotOpacity, transform: [{ scale: dotScale }] }]}
+                  />
+                );
+              })}
             </View>
           </>
         )}
@@ -494,16 +512,10 @@ const styles = StyleSheet.create({
     paddingBottom: 8,
   },
   swipeDot: {
-    width: 6,
-    height: 6,
-    borderRadius: 3,
-    backgroundColor: 'rgba(255,255,255,0.2)',
-  },
-  swipeDotActive: {
+    width: 7,
+    height: 7,
+    borderRadius: 3.5,
     backgroundColor: '#fff',
-    width: 8,
-    height: 8,
-    borderRadius: 4,
   },
   verticalCardWrapper: {
     width: '100%',

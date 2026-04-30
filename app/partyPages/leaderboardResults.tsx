@@ -5,6 +5,7 @@ import { useRouter } from '@/hooks/useRouter';
 import { useLocalSearchParams } from 'expo-router';
 import { ScrollView, StyleSheet, TouchableOpacity, View, Image, RefreshControl } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
+import { formatRankDisplay } from '@/utils/formatRankDisplay';
 import { useState, useEffect } from 'react';
 import { db } from '@/config/firebase';
 import { doc, getDoc, onSnapshot } from 'firebase/firestore';
@@ -529,7 +530,7 @@ export default function LeaderboardResults() {
                       {/* Rank Info Row */}
                       <View style={styles.topCardRankRow}>
                         <Image source={rankIcon} style={styles.topCardRankIcon} resizeMode="contain" />
-                        <ThemedText style={styles.topCardRankText}>{player.currentRank}</ThemedText>
+                        <ThemedText style={styles.topCardRankText}>{formatRankDisplay(player.currentRank)}</ThemedText>
                         <View style={styles.topCardDot} />
                         <ThemedText style={styles.topCardPoints}>
                           {isLeague ? `${player.lp || 0} LP` : `${player.rr || 0} RR`}
@@ -620,7 +621,7 @@ export default function LeaderboardResults() {
                       <Image source={rankIcon} style={styles.participantRankIcon} resizeMode="contain" />
                       <View style={styles.participantRankTextContainer}>
                         <ThemedText style={styles.participantCurrentRank}>
-                          {player.currentRank}
+                          {formatRankDisplay(player.currentRank)}
                         </ThemedText>
                         <ThemedText style={styles.participantPoints}>
                           {isLeague ? `${player.lp || 0} LP` : `${player.rr || 0} RR`}

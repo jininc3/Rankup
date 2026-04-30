@@ -37,6 +37,11 @@ export default function TierCardsScreen() {
 
   // Shared shimmer animation
   const shimmerAnim = useRef(new Animated.Value(0)).current;
+  // Second shimmer for S tier (crosses the first)
+  const shimmerAnim2 = useRef(new Animated.Value(0)).current;
+  // Glow pulse for S tier
+  const glowAnim = useRef(new Animated.Value(0)).current;
+
   useEffect(() => {
     const loop = Animated.loop(
       Animated.sequence([
@@ -45,12 +50,42 @@ export default function TierCardsScreen() {
       ])
     );
     loop.start();
-    return () => loop.stop();
+
+    // Second shimmer — offset timing, opposite direction
+    const loop2 = Animated.loop(
+      Animated.sequence([
+        Animated.delay(1500),
+        Animated.timing(shimmerAnim2, { toValue: 1, duration: 3000, easing: Easing.inOut(Easing.ease), useNativeDriver: true }),
+        Animated.timing(shimmerAnim2, { toValue: 0, duration: 0, useNativeDriver: true }),
+      ])
+    );
+    loop2.start();
+
+    // Slow glow pulse
+    const glowLoop = Animated.loop(
+      Animated.sequence([
+        Animated.timing(glowAnim, { toValue: 1, duration: 2500, easing: Easing.inOut(Easing.ease), useNativeDriver: true }),
+        Animated.timing(glowAnim, { toValue: 0, duration: 2500, easing: Easing.inOut(Easing.ease), useNativeDriver: true }),
+      ])
+    );
+    glowLoop.start();
+
+    return () => { loop.stop(); loop2.stop(); glowLoop.stop(); };
   }, []);
 
   const shimmerTranslate = shimmerAnim.interpolate({
     inputRange: [0, 1],
     outputRange: [-screenWidth * 1.5, screenWidth * 1.5],
+  });
+
+  const shimmerTranslate2 = shimmerAnim2.interpolate({
+    inputRange: [0, 1],
+    outputRange: [screenWidth * 1.5, -screenWidth * 1.5],
+  });
+
+  const glowOpacity = glowAnim.interpolate({
+    inputRange: [0, 1],
+    outputRange: [0.3, 0.7],
   });
 
   return (
@@ -120,182 +155,222 @@ export default function TierCardsScreen() {
                 {/* Card */}
                 <View style={styles.cardWrapper}>
                   <LinearGradient
-                    colors={[
-                      `rgba(${rgb}, 0.9)`,
-                      `rgba(${rgb}, 0.3)`,
-                      `rgba(${rgb}, 0.6)`,
-                      `rgba(${rgb}, 0.2)`,
-                      `rgba(${rgb}, 0.8)`,
-                    ]}
+                    colors={
+                      level === 6
+                        ? [`rgba(${rgb}, 1)`, `rgba(${rgb}, 0.5)`, `rgba(${rgb}, 0.8)`, `rgba(${rgb}, 0.4)`, `rgba(${rgb}, 1)`]
+                        : [`rgba(${rgb}, 0.9)`, `rgba(${rgb}, 0.3)`, `rgba(${rgb}, 0.6)`, `rgba(${rgb}, 0.2)`, `rgba(${rgb}, 0.8)`]
+                    }
                     locations={[0, 0.25, 0.5, 0.75, 1]}
                     start={{ x: 0, y: 0 }}
                     end={{ x: 1, y: 1 }}
-                    style={styles.rankCard}
+                    style={[styles.rankCard, level === 6 && { padding: 2 }]}
                   >
                     <View style={styles.rankCardInner}>
                       <LinearGradient
-                        colors={['#1a1a1a', '#1e1e1e', '#222222']}
+                        colors={level === 6 ? ['#1c1a14', '#1e1c16', '#201e18', '#1e1c16', '#1c1a14'] : ['#1a1a1a', '#1e1e1e', '#222222']}
+                        locations={level === 6 ? [0, 0.25, 0.5, 0.75, 1] : undefined}
                         start={{ x: 0, y: 0 }}
                         end={{ x: 1, y: 1 }}
                         style={styles.cardBackground}
                       >
-                        {/* Shimmer for B+ tiers */}
-                        {level >= 4 && (
-                          <Animated.View
-                            style={[
-                              styles.shimmerContainer,
-                              { transform: [{ translateX: shimmerTranslate }, { rotate: '20deg' }] },
-                            ]}
-                            pointerEvents="none"
-                          >
-                            <LinearGradient
-                              colors={[
-                                'transparent',
-                                'rgba(255,255,255,0.03)',
-                                `rgba(255,255,255,${level === 6 ? '0.15' : '0.10'})`,
-                                `rgba(255,255,255,${level === 6 ? '0.25' : '0.20'})`,
-                                `rgba(255,255,255,${level === 6 ? '0.15' : '0.10'})`,
-                                'rgba(255,255,255,0.03)',
-                                'transparent',
-                              ]}
-                              start={{ x: 0, y: 0.5 }}
-                              end={{ x: 1, y: 0.5 }}
-                              style={styles.shimmerGradient}
-                            />
-                          </Animated.View>
-                        )}
-
-                        {/* Inner border */}
-                        <View
-                          style={[
-                            styles.innerBorder,
-                            {
-                              borderColor: `rgba(${rgb}, ${
-                                level === 1 ? 0.08 : level === 2 ? 0.12 : level <= 4 ? 0.18 : level === 5 ? 0.22 : 0.28
-                              })`,
-                            },
-                          ]}
-                        />
-
-                        {/* Glass overlay for C+ */}
-                        {level >= 3 && (
-                          <LinearGradient
-                            colors={[
-                              `rgba(${rgb}, ${level === 6 ? 0.08 : 0.05})`,
-                              'rgba(0,0,0,0.1)',
-                              `rgba(${rgb}, ${level === 6 ? 0.06 : 0.03})`,
-                              'rgba(0,0,0,0.1)',
-                            ]}
-                            start={{ x: 0, y: 0 }}
-                            end={{ x: 1, y: 1 }}
-                            style={styles.glassOverlay}
-                          />
-                        )}
-
-                        {/* Crosshatch pattern for B+ */}
-                        {level >= 4 && (
-                          <View style={styles.patternContainer}>
-                            <View style={[styles.crossLine, { top: -20, left: 30, backgroundColor: `rgba(${rgb}, 0.06)` }]} />
-                            <View style={[styles.crossLine, { top: -20, left: 80, backgroundColor: `rgba(${rgb}, 0.04)` }]} />
-                            <View style={[styles.crossLine, { top: -20, right: 80, backgroundColor: `rgba(${rgb}, 0.04)` }]} />
-                            <View style={[styles.crossLine, { top: -20, right: 30, backgroundColor: `rgba(${rgb}, 0.06)` }]} />
-                            {/* Reverse lines for A+ */}
-                            {level >= 5 && (
-                              <>
-                                <View style={[styles.crossLineReverse, { top: -20, left: 30, backgroundColor: `rgba(${rgb}, 0.06)` }]} />
-                                <View style={[styles.crossLineReverse, { top: -20, left: 80, backgroundColor: `rgba(${rgb}, 0.04)` }]} />
-                                <View style={[styles.crossLineReverse, { top: -20, right: 80, backgroundColor: `rgba(${rgb}, 0.04)` }]} />
-                                <View style={[styles.crossLineReverse, { top: -20, right: 30, backgroundColor: `rgba(${rgb}, 0.06)` }]} />
-                              </>
-                            )}
-                            {/* Extra dense lines for S */}
-                            {level === 6 && (
-                              <>
-                                <View style={[styles.crossLine, { top: -20, left: 55, backgroundColor: `rgba(${rgb}, 0.05)` }]} />
-                                <View style={[styles.crossLine, { top: -20, right: 55, backgroundColor: `rgba(${rgb}, 0.05)` }]} />
-                                <View style={[styles.crossLineReverse, { top: -20, left: 55, backgroundColor: `rgba(${rgb}, 0.05)` }]} />
-                                <View style={[styles.crossLineReverse, { top: -20, right: 55, backgroundColor: `rgba(${rgb}, 0.05)` }]} />
-                              </>
-                            )}
-                          </View>
-                        )}
-
-                        {/* Corner accents */}
-                        {level >= 2 && (
+                        {/* === S TIER: Completely unique design === */}
+                        {level === 6 ? (
                           <>
-                            <View
-                              style={[
-                                styles.cornerTL,
-                                {
-                                  borderColor: `rgba(${rgb}, ${level <= 2 ? 0.25 : level <= 4 ? 0.35 : level === 5 ? 0.4 : 0.5})`,
-                                  borderTopWidth: level === 6 ? 2 : 1.5,
-                                  borderLeftWidth: level === 6 ? 2 : 1.5,
-                                },
-                              ]}
-                            />
-                            {level >= 3 && (
-                              <View
-                                style={[
-                                  styles.cornerTR,
-                                  {
-                                    borderColor: `rgba(${rgb}, ${level <= 4 ? 0.35 : level === 5 ? 0.4 : 0.5})`,
-                                    borderTopWidth: level === 6 ? 2 : 1.5,
-                                    borderRightWidth: level === 6 ? 2 : 1.5,
-                                  },
-                                ]}
-                              />
-                            )}
-                            {level >= 3 && (
-                              <View
-                                style={[
-                                  styles.cornerBL,
-                                  {
-                                    borderColor: `rgba(${rgb}, ${level <= 4 ? 0.35 : level === 5 ? 0.4 : 0.5})`,
-                                    borderBottomWidth: level === 6 ? 2 : 1.5,
-                                    borderLeftWidth: level === 6 ? 2 : 1.5,
-                                  },
-                                ]}
-                              />
-                            )}
-                            <View
-                              style={[
-                                styles.cornerBR,
-                                {
-                                  borderColor: `rgba(${rgb}, ${level <= 2 ? 0.25 : level <= 4 ? 0.35 : level === 5 ? 0.4 : 0.5})`,
-                                  borderBottomWidth: level === 6 ? 2 : 1.5,
-                                  borderRightWidth: level === 6 ? 2 : 1.5,
-                                },
-                              ]}
-                            />
-                          </>
-                        )}
-
-                        {/* Center diamond for A+ */}
-                        {level >= 5 && (
-                          <View style={styles.diamondContainer}>
-                            <View
-                              style={[
-                                styles.diamond,
-                                { borderColor: `rgba(${rgb}, ${level === 6 ? 0.5 : 0.3})` },
-                              ]}
+                            {/* Primary shimmer sweep */}
+                            <Animated.View
+                              style={[styles.shimmerContainer, { transform: [{ translateX: shimmerTranslate }, { rotate: '20deg' }] }]}
+                              pointerEvents="none"
                             >
-                              {level === 6 && (
-                                <View
-                                  style={[
-                                    styles.diamondDot,
-                                    { backgroundColor: `rgba(${rgb}, 0.7)` },
-                                  ]}
-                                />
-                              )}
-                            </View>
-                          </View>
-                        )}
+                              <LinearGradient
+                                colors={['transparent', `rgba(${rgb}, 0.04)`, `rgba(${rgb}, 0.18)`, 'rgba(255,255,255,0.30)', `rgba(${rgb}, 0.18)`, `rgba(${rgb}, 0.04)`, 'transparent']}
+                                start={{ x: 0, y: 0.5 }}
+                                end={{ x: 1, y: 0.5 }}
+                                style={styles.shimmerGradient}
+                              />
+                            </Animated.View>
 
-                        {/* Horizontal accent lines for S tier */}
-                        {level === 6 && (
+                            {/* Second crossing shimmer */}
+                            <Animated.View
+                              style={[styles.shimmerContainer, { transform: [{ translateX: shimmerTranslate2 }, { rotate: '-25deg' }] }]}
+                              pointerEvents="none"
+                            >
+                              <LinearGradient
+                                colors={['transparent', `rgba(${rgb}, 0.03)`, `rgba(${rgb}, 0.12)`, 'rgba(255,255,255,0.18)', `rgba(${rgb}, 0.12)`, `rgba(${rgb}, 0.03)`, 'transparent']}
+                                start={{ x: 0, y: 0.5 }}
+                                end={{ x: 1, y: 0.5 }}
+                                style={styles.shimmerGradient}
+                              />
+                            </Animated.View>
+
+                            {/* Radial glow from center */}
+                            <Animated.View style={[styles.radialGlow, { opacity: glowOpacity }]} pointerEvents="none">
+                              <LinearGradient
+                                colors={[`rgba(${rgb}, 0.12)`, `rgba(${rgb}, 0.04)`, 'transparent']}
+                                start={{ x: 0.5, y: 0.5 }}
+                                end={{ x: 1, y: 1 }}
+                                style={StyleSheet.absoluteFill}
+                              />
+                            </Animated.View>
+
+                            {/* Rich glass overlay */}
+                            <LinearGradient
+                              colors={[`rgba(${rgb}, 0.10)`, 'rgba(0,0,0,0.05)', `rgba(${rgb}, 0.08)`, 'rgba(0,0,0,0.05)', `rgba(${rgb}, 0.06)`]}
+                              locations={[0, 0.25, 0.5, 0.75, 1]}
+                              start={{ x: 0, y: 0 }}
+                              end={{ x: 1, y: 1 }}
+                              style={styles.glassOverlay}
+                            />
+
+                            {/* Outer inner border */}
+                            <View style={[styles.innerBorder, { top: 6, left: 6, right: 6, bottom: 6, borderRadius: 11, borderColor: `rgba(${rgb}, 0.12)` }]} />
+                            {/* Inner inner border */}
+                            <View style={[styles.innerBorder, { borderColor: `rgba(${rgb}, 0.30)` }]} />
+
+                            {/* Concentric diamond rings radiating from center */}
+                            {[72, 110, 160, 220, 300].map((size, i) => (
+                              <View
+                                key={`ring${i}`}
+                                style={[
+                                  styles.concentricRing,
+                                  {
+                                    width: size,
+                                    height: size,
+                                    marginTop: -size / 2,
+                                    marginLeft: -size / 2,
+                                    borderColor: `rgba(${rgb}, ${[0.14, 0.10, 0.07, 0.05, 0.03][i]})`,
+                                  },
+                                ]}
+                              />
+                            ))}
+
+                            {/* Large corner brackets */}
+                            <View style={[styles.cornerTL, { width: 28, height: 28, borderTopWidth: 2.5, borderLeftWidth: 2.5, borderColor: `rgba(${rgb}, 0.55)` }]} />
+                            <View style={[styles.cornerTR, { width: 28, height: 28, borderTopWidth: 2.5, borderRightWidth: 2.5, borderColor: `rgba(${rgb}, 0.55)` }]} />
+                            <View style={[styles.cornerBL, { width: 28, height: 28, borderBottomWidth: 2.5, borderLeftWidth: 2.5, borderColor: `rgba(${rgb}, 0.55)` }]} />
+                            <View style={[styles.cornerBR, { width: 28, height: 28, borderBottomWidth: 2.5, borderRightWidth: 2.5, borderColor: `rgba(${rgb}, 0.55)` }]} />
+
+                            {/* Corner accent dots */}
+                            <View style={[styles.accentDot, { top: 20, left: 42, backgroundColor: `rgba(${rgb}, 0.35)` }]} />
+                            <View style={[styles.accentDot, { top: 42, left: 20, backgroundColor: `rgba(${rgb}, 0.35)` }]} />
+                            <View style={[styles.accentDot, { top: 20, right: 42, backgroundColor: `rgba(${rgb}, 0.35)` }]} />
+                            <View style={[styles.accentDot, { top: 42, right: 20, backgroundColor: `rgba(${rgb}, 0.35)` }]} />
+                            <View style={[styles.accentDot, { bottom: 20, left: 42, backgroundColor: `rgba(${rgb}, 0.35)` }]} />
+                            <View style={[styles.accentDot, { bottom: 42, left: 20, backgroundColor: `rgba(${rgb}, 0.35)` }]} />
+                            <View style={[styles.accentDot, { bottom: 20, right: 42, backgroundColor: `rgba(${rgb}, 0.35)` }]} />
+                            <View style={[styles.accentDot, { bottom: 42, right: 20, backgroundColor: `rgba(${rgb}, 0.35)` }]} />
+
+                            {/* Edge midpoint dots */}
+                            <Animated.View style={[styles.edgeDot, { top: 8, left: '50%', marginLeft: -3, backgroundColor: `rgba(${rgb}, 0.5)`, opacity: glowOpacity }]} />
+                            <Animated.View style={[styles.edgeDot, { bottom: 8, left: '50%', marginLeft: -3, backgroundColor: `rgba(${rgb}, 0.5)`, opacity: glowOpacity }]} />
+                            <Animated.View style={[styles.edgeDot, { left: 8, top: '50%', marginTop: -3, backgroundColor: `rgba(${rgb}, 0.5)`, opacity: glowOpacity }]} />
+                            <Animated.View style={[styles.edgeDot, { right: 8, top: '50%', marginTop: -3, backgroundColor: `rgba(${rgb}, 0.5)`, opacity: glowOpacity }]} />
+
+                            {/* Nested center diamond */}
+                            <View style={styles.sDiamondContainer}>
+                              {/* Outer diamond */}
+                              <Animated.View style={[styles.sDiamondOuter, { borderColor: `rgba(${rgb}, 0.25)`, opacity: glowOpacity }]} />
+                              {/* Middle diamond */}
+                              <View style={[styles.sDiamondMiddle, { borderColor: `rgba(${rgb}, 0.45)` }]}>
+                                {/* Inner glowing dot */}
+                                <Animated.View style={[styles.sDiamondDot, { backgroundColor: `rgba(${rgb}, 0.8)`, opacity: glowOpacity }]} />
+                              </View>
+                            </View>
+                          </>
+                        ) : (
                           <>
-                            <View style={[styles.horizLine, { top: '33%', backgroundColor: `rgba(${rgb}, 0.06)` }]} />
-                            <View style={[styles.horizLine, { top: '66%', backgroundColor: `rgba(${rgb}, 0.06)` }]} />
+                            {/* === TIERS F–A === */}
+                            {/* Shimmer for B+ tiers */}
+                            {level >= 4 && (
+                              <Animated.View
+                                style={[styles.shimmerContainer, { transform: [{ translateX: shimmerTranslate }, { rotate: '20deg' }] }]}
+                                pointerEvents="none"
+                              >
+                                <LinearGradient
+                                  colors={['transparent', 'rgba(255,255,255,0.03)', 'rgba(255,255,255,0.10)', 'rgba(255,255,255,0.20)', 'rgba(255,255,255,0.10)', 'rgba(255,255,255,0.03)', 'transparent']}
+                                  start={{ x: 0, y: 0.5 }}
+                                  end={{ x: 1, y: 0.5 }}
+                                  style={styles.shimmerGradient}
+                                />
+                              </Animated.View>
+                            )}
+
+                            {/* Inner border */}
+                            <View
+                              style={[
+                                styles.innerBorder,
+                                { borderColor: `rgba(${rgb}, ${level === 1 ? 0.08 : level === 2 ? 0.12 : level <= 4 ? 0.18 : 0.22})` },
+                              ]}
+                            />
+
+                            {/* Glass overlay for C+ */}
+                            {level >= 3 && (
+                              <LinearGradient
+                                colors={[`rgba(${rgb}, 0.05)`, 'rgba(0,0,0,0.1)', `rgba(${rgb}, 0.03)`, 'rgba(0,0,0,0.1)']}
+                                start={{ x: 0, y: 0 }}
+                                end={{ x: 1, y: 1 }}
+                                style={styles.glassOverlay}
+                              />
+                            )}
+
+                            {/* Crosshatch pattern for B+ */}
+                            {level >= 4 && (
+                              <View style={styles.patternContainer}>
+                                <View style={[styles.crossLine, { top: -20, left: 30, backgroundColor: `rgba(${rgb}, 0.06)` }]} />
+                                <View style={[styles.crossLine, { top: -20, left: 80, backgroundColor: `rgba(${rgb}, 0.04)` }]} />
+                                <View style={[styles.crossLine, { top: -20, right: 80, backgroundColor: `rgba(${rgb}, 0.04)` }]} />
+                                <View style={[styles.crossLine, { top: -20, right: 30, backgroundColor: `rgba(${rgb}, 0.06)` }]} />
+                                {level >= 5 && (
+                                  <>
+                                    <View style={[styles.crossLineReverse, { top: -20, left: 30, backgroundColor: `rgba(${rgb}, 0.06)` }]} />
+                                    <View style={[styles.crossLineReverse, { top: -20, left: 80, backgroundColor: `rgba(${rgb}, 0.04)` }]} />
+                                    <View style={[styles.crossLineReverse, { top: -20, right: 80, backgroundColor: `rgba(${rgb}, 0.04)` }]} />
+                                    <View style={[styles.crossLineReverse, { top: -20, right: 30, backgroundColor: `rgba(${rgb}, 0.06)` }]} />
+                                  </>
+                                )}
+                              </View>
+                            )}
+
+                            {/* Horizontal accent lines for B+ */}
+                            {level >= 4 && (
+                              <>
+                                <View style={[styles.horizLine, { top: '30%', backgroundColor: `rgba(${rgb}, 0.05)` }]} />
+                                <View style={[styles.horizLine, { top: '70%', backgroundColor: `rgba(${rgb}, 0.05)` }]} />
+                              </>
+                            )}
+
+                            {/* Corner accents */}
+                            {level >= 2 && (
+                              <>
+                                <View style={[styles.cornerTL, { borderColor: `rgba(${rgb}, ${level <= 2 ? 0.25 : level <= 4 ? 0.35 : 0.4})`, borderTopWidth: 1.5, borderLeftWidth: 1.5 }]} />
+                                {level >= 3 && <View style={[styles.cornerTR, { borderColor: `rgba(${rgb}, ${level <= 4 ? 0.35 : 0.4})`, borderTopWidth: 1.5, borderRightWidth: 1.5 }]} />}
+                                {level >= 3 && <View style={[styles.cornerBL, { borderColor: `rgba(${rgb}, ${level <= 4 ? 0.35 : 0.4})`, borderBottomWidth: 1.5, borderLeftWidth: 1.5 }]} />}
+                                <View style={[styles.cornerBR, { borderColor: `rgba(${rgb}, ${level <= 2 ? 0.25 : level <= 4 ? 0.35 : 0.4})`, borderBottomWidth: 1.5, borderRightWidth: 1.5 }]} />
+                              </>
+                            )}
+
+                            {/* Corner tick dots for B+ */}
+                            {level >= 4 && (
+                              <>
+                                <View style={[styles.accentDot, { top: 19, left: 38, backgroundColor: `rgba(${rgb}, 0.3)` }]} />
+                                <View style={[styles.accentDot, { top: 19, right: 38, backgroundColor: `rgba(${rgb}, 0.3)` }]} />
+                                <View style={[styles.accentDot, { bottom: 19, left: 38, backgroundColor: `rgba(${rgb}, 0.3)` }]} />
+                                <View style={[styles.accentDot, { bottom: 19, right: 38, backgroundColor: `rgba(${rgb}, 0.3)` }]} />
+                              </>
+                            )}
+
+                            {/* Center dot for B */}
+                            {level === 4 && (
+                              <View style={styles.centerDotContainer}>
+                                <View style={[styles.centerDot, { backgroundColor: `rgba(${rgb}, 0.25)` }]} />
+                              </View>
+                            )}
+
+                            {/* Center diamond for A */}
+                            {level === 5 && (
+                              <View style={styles.diamondContainer}>
+                                <View style={[styles.diamond, { borderColor: `rgba(${rgb}, 0.3)` }]} />
+                              </View>
+                            )}
                           </>
                         )}
                       </LinearGradient>
@@ -528,5 +603,87 @@ const styles = StyleSheet.create({
     left: 24,
     right: 24,
     height: 1,
+  },
+  // B Tier center dot
+  centerDotContainer: {
+    position: 'absolute',
+    top: '50%',
+    left: '50%',
+    marginTop: -5,
+    marginLeft: -5,
+    width: 10,
+    height: 10,
+    alignItems: 'center',
+    justifyContent: 'center',
+    zIndex: 3,
+  },
+  centerDot: {
+    width: 7,
+    height: 7,
+    borderRadius: 3.5,
+  },
+  // S Tier exclusive styles
+  concentricRing: {
+    position: 'absolute',
+    top: '50%',
+    left: '50%',
+    borderWidth: 1,
+    transform: [{ rotate: '45deg' }],
+    zIndex: 2,
+  },
+  radialGlow: {
+    position: 'absolute',
+    top: '20%',
+    left: '20%',
+    right: '20%',
+    bottom: '20%',
+    borderRadius: 100,
+    zIndex: 1,
+  },
+  accentDot: {
+    position: 'absolute',
+    width: 3,
+    height: 3,
+    borderRadius: 1.5,
+    zIndex: 4,
+  },
+  edgeDot: {
+    position: 'absolute',
+    width: 6,
+    height: 6,
+    borderRadius: 3,
+    zIndex: 4,
+  },
+  sDiamondContainer: {
+    position: 'absolute',
+    top: '50%',
+    left: '50%',
+    marginTop: -28,
+    marginLeft: -28,
+    width: 56,
+    height: 56,
+    alignItems: 'center',
+    justifyContent: 'center',
+    zIndex: 5,
+  },
+  sDiamondOuter: {
+    position: 'absolute',
+    width: 46,
+    height: 46,
+    borderWidth: 1,
+    transform: [{ rotate: '45deg' }],
+  },
+  sDiamondMiddle: {
+    width: 28,
+    height: 28,
+    borderWidth: 1.5,
+    transform: [{ rotate: '45deg' }],
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  sDiamondDot: {
+    width: 6,
+    height: 6,
+    borderRadius: 3,
   },
 });

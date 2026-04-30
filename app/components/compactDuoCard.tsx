@@ -1,6 +1,7 @@
 import { ThemedText } from '@/components/themed-text';
 import { StyleSheet, View, Image, TouchableOpacity, Dimensions } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
+import { formatRankDisplay } from '@/utils/formatRankDisplay';
 import { useState, useEffect } from 'react';
 
 const { width: screenWidth } = Dimensions.get('window');
@@ -205,7 +206,7 @@ export default function CompactDuoCard({
             style={styles.rankIcon}
             resizeMode="contain"
           />
-          <ThemedText style={styles.rankText}>{currentRank}</ThemedText>
+          <ThemedText style={styles.rankText}>{formatRankDisplay(currentRank)}</ThemedText>
           {/* Game-specific info inline */}
           {game === 'valorant' ? (
             <View style={styles.agentsRow}>

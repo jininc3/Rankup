@@ -39,7 +39,7 @@ export default function EmailSignUpFriends() {
             </View>
             <View style={styles.optionText}>
               <ThemedText style={styles.optionTitle}>Sync Contacts</ThemedText>
-              <ThemedText style={styles.optionSubtitle}>Find friends already on RankUp</ThemedText>
+              <ThemedText style={styles.optionSubtitle}>Find friends already on RankdUp</ThemedText>
             </View>
             <View style={styles.comingSoon}>
               <ThemedText style={styles.comingSoonText}>Soon</ThemedText>

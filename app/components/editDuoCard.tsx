@@ -13,6 +13,7 @@ import {
   TouchableOpacity,
   View,
 } from 'react-native';
+import { formatRankDisplay } from '@/utils/formatRankDisplay';
 
 interface EditDuoCardProps {
   visible: boolean;
@@ -298,7 +299,7 @@ export default function EditDuoCard({
                       resizeMode="contain"
                     />
                     <ThemedText style={styles.rankLabel}>Current Rank</ThemedText>
-                    <ThemedText style={styles.rankValue}>{currentRank}</ThemedText>
+                    <ThemedText style={styles.rankValue}>{formatRankDisplay(currentRank)}</ThemedText>
                   </View>
                 </View>
 

@@ -5,6 +5,7 @@ import { useState, useEffect } from 'react';
 import { doc, getDoc } from 'firebase/firestore';
 import { db } from '@/config/firebase';
 import { getRecentMatches } from '@/services/riotService';
+import { formatRankDisplay } from '@/utils/formatRankDisplay';
 
 const GAME_LOGOS: { [key: string]: any } = {
   'Valorant': require('@/assets/images/valorant-red.png'),
@@ -355,7 +356,7 @@ export default function DuoCardDetailModal({ visible, onClose, expiresAt, card }
                   <View style={styles.rankBlock}>
                     <Image source={currentRankIcon} style={styles.rankImg} resizeMode="contain" />
                     <ThemedText style={styles.rankName} numberOfLines={1}>
-                      {card.currentRank || 'Unranked'}
+                      {formatRankDisplay(card.currentRank || 'Unranked')}
                     </ThemedText>
                   </View>
 

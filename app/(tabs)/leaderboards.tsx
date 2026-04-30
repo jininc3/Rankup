@@ -10,6 +10,7 @@ import { collection, doc, getDoc, getDocs, query } from 'firebase/firestore';
 import { useEffect, useState } from 'react';
 import { ActivityIndicator, Dimensions, Image, Modal, ScrollView, StyleSheet, TouchableOpacity, View } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
+import { formatRankDisplay } from '@/utils/formatRankDisplay';
 
 const { width: screenWidth, height: screenHeight } = Dimensions.get('window');
 
@@ -374,7 +375,7 @@ export default function LeaderboardScreen() {
                   <Image source={rankIcon} style={styles.rankIconSmall} resizeMode="contain" />
                   <View style={styles.rankTextContainer}>
                     <ThemedText style={styles.currentRankText}>
-                      {player.currentRank}{' '}
+                      {formatRankDisplay(player.currentRank)}{' '}
                       <ThemedText style={styles.rankPointsText}>
                         {isLeague ? `(${player.lp || 0} LP)` : `(${player.rr || 0} RR)`}
                       </ThemedText>
@@ -594,7 +595,7 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   pageContent: {
-    paddingHorizontal: 16,
+    paddingHorizontal: 6,
     paddingTop: 20,
   },
   lobbiesBanner: {
@@ -617,7 +618,7 @@ const styles = StyleSheet.create({
   lobbiesBannerTitle: {
     fontSize: 16,
     fontWeight: '700',
-    color: '#3B82F6',
+    color: '#fff',
     letterSpacing: 1,
   },
   lobbiesBannerSubtitle: {
@@ -845,8 +846,8 @@ const styles = StyleSheet.create({
   rankInfoContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'flex-end',
     gap: 8,
+    width: 145,
     marginLeft: 'auto',
   },
   rankIconSmall: {
@@ -854,7 +855,8 @@ const styles = StyleSheet.create({
     height: 26,
   },
   rankTextContainer: {
-    alignItems: 'flex-end',
+    flex: 1,
+    alignItems: 'flex-start',
   },
   currentRankText: {
     fontSize: 11,

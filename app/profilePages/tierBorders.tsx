@@ -160,6 +160,7 @@ export default function TierBordersScreen() {
                 colors={TIER_GRADIENTS[tier.tier]}
                 borderWidth={4}
                 borderRadius={32}
+                shine={tier.tier === 'S' || tier.tier === 'A' || tier.tier === 'B'}
               >
                 <View style={styles.tierAvatarPlaceholder}>
                   {user?.avatar ? (

@@ -9,7 +9,8 @@ import { Animated, Dimensions, Easing, Image, Modal, NativeScrollEvent, NativeSy
 import { getValorantStats } from '@/services/valorantService';
 import { getRankHistory, RankHistoryEntry } from '@/services/rankHistoryService';
 import { auth } from '@/config/firebase';
-import { calculateTierBorderColor } from '@/utils/tierBorderUtils';
+import { calculateTierBorderColor, calculateTier } from '@/utils/tierBorderUtils';
+import { formatRankDisplay } from '@/utils/formatRankDisplay';
 
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
 
@@ -216,6 +217,13 @@ export default function ValorantRankCard({ game, username, viewOnly = false, use
     return `${r}, ${g}, ${b}`;
   };
   const rgb = useMemo(() => hexToRgb(tierColor), [tierColor]);
+
+  const tierLevel = useMemo(() => {
+    const tier = calculateTier(undefined, game.rank);
+    if (!tier) return 1;
+    const levels: Record<string, number> = { F: 1, D: 2, C: 3, B: 4, A: 5, S: 6 };
+    return levels[tier];
+  }, [game.rank]);
 
   // Prefetch valorant player card so it loads instantly when card is flipped
   useEffect(() => {
@@ -858,7 +866,7 @@ export default function ValorantRankCard({ game, username, viewOnly = false, use
       </Animated.View>
 
       {/* Inside border */}
-      <View style={[styles.innerBorder, { borderColor: `rgba(${rgb}, 0.18)` }]} />
+      <View style={[styles.innerBorder, { borderColor: `rgba(${rgb}, ${tierLevel === 1 ? 0.08 : tierLevel === 2 ? 0.12 : tierLevel <= 4 ? 0.18 : 0.22})` }]} />
 
       {showBack && !forceShowFront ? (
         /* Back content - Hero Rank layout */
@@ -898,7 +906,7 @@ export default function ValorantRankCard({ game, username, viewOnly = false, use
                 style={styles.rankBoxIcon}
                 resizeMode="contain"
               />
-              <ThemedText style={styles.rankBoxName}>{game.rank || 'Unranked'}</ThemedText>
+              <ThemedText style={styles.rankBoxName}>{formatRankDisplay(game.rank || 'Unranked')}</ThemedText>
               <ThemedText style={styles.rankBoxSub}>{game.trophies} RR</ThemedText>
             </View>
 
@@ -912,41 +920,48 @@ export default function ValorantRankCard({ game, username, viewOnly = false, use
                 style={styles.rankBoxIcon}
                 resizeMode="contain"
               />
-              <ThemedText style={styles.rankBoxName}>{game.peakRank?.tier || 'N/A'}</ThemedText>
+              <ThemedText style={styles.rankBoxName}>{formatRankDisplay(game.peakRank?.tier || 'N/A')}</ThemedText>
             </View>
           </View>
         </View>
       ) : (
-        /* Front content - Night Market Diamond */
+        /* Front content */
         <View style={styles.cardFront}>
-          {/* Dark glass overlay */}
-          <LinearGradient
-            colors={[
-              `rgba(${rgb},0.06)`,
-              'rgba(0,0,0,0.1)',
-              `rgba(${rgb},0.03)`,
-              'rgba(0,0,0,0.1)',
-            ]}
-            start={{ x: 0, y: 0 }}
-            end={{ x: 1, y: 1 }}
-            style={styles.glassOverlay}
-          />
+          {/* Glass overlay for C+ */}
+          {tierLevel >= 3 && (
+            <LinearGradient
+              colors={[`rgba(${rgb},0.06)`, 'rgba(0,0,0,0.1)', `rgba(${rgb},0.03)`, 'rgba(0,0,0,0.1)']}
+              start={{ x: 0, y: 0 }}
+              end={{ x: 1, y: 1 }}
+              style={styles.glassOverlay}
+            />
+          )}
 
-          {/* Background triangle pattern */}
-          <View style={styles.trianglePattern}>
-            <View style={[styles.triangle, { top: 25, left: 30, borderBottomColor: `rgba(${rgb}, 0.06)` }]} />
-            <View style={[styles.triangle, { top: 25, left: 70, borderBottomColor: `rgba(${rgb}, 0.06)` }]} />
-            <View style={[styles.triangle, { top: 25, right: 70, borderBottomColor: `rgba(${rgb}, 0.06)` }]} />
-            <View style={[styles.triangle, { top: 25, right: 30, borderBottomColor: `rgba(${rgb}, 0.06)` }]} />
-            <View style={[styles.triangleInverted, { top: 55, left: 50, borderTopColor: `rgba(${rgb}, 0.04)` }]} />
-            <View style={[styles.triangleInverted, { top: 55, right: 50, borderTopColor: `rgba(${rgb}, 0.04)` }]} />
-            <View style={[styles.triangle, { bottom: 55, left: 30, borderBottomColor: `rgba(${rgb}, 0.06)` }]} />
-            <View style={[styles.triangle, { bottom: 55, left: 70, borderBottomColor: `rgba(${rgb}, 0.06)` }]} />
-            <View style={[styles.triangle, { bottom: 55, right: 70, borderBottomColor: `rgba(${rgb}, 0.06)` }]} />
-            <View style={[styles.triangle, { bottom: 55, right: 30, borderBottomColor: `rgba(${rgb}, 0.06)` }]} />
-            <View style={[styles.triangleInverted, { bottom: 25, left: 50, borderTopColor: `rgba(${rgb}, 0.04)` }]} />
-            <View style={[styles.triangleInverted, { bottom: 25, right: 50, borderTopColor: `rgba(${rgb}, 0.04)` }]} />
-          </View>
+          {/* Background triangle pattern for B+ */}
+          {tierLevel >= 4 && (
+            <View style={styles.trianglePattern}>
+              <View style={[styles.triangle, { top: 25, left: 30, borderBottomColor: `rgba(${rgb}, 0.06)` }]} />
+              <View style={[styles.triangle, { top: 25, left: 70, borderBottomColor: `rgba(${rgb}, 0.06)` }]} />
+              <View style={[styles.triangle, { top: 25, right: 70, borderBottomColor: `rgba(${rgb}, 0.06)` }]} />
+              <View style={[styles.triangle, { top: 25, right: 30, borderBottomColor: `rgba(${rgb}, 0.06)` }]} />
+              <View style={[styles.triangleInverted, { top: 55, left: 50, borderTopColor: `rgba(${rgb}, 0.04)` }]} />
+              <View style={[styles.triangleInverted, { top: 55, right: 50, borderTopColor: `rgba(${rgb}, 0.04)` }]} />
+              <View style={[styles.triangle, { bottom: 55, left: 30, borderBottomColor: `rgba(${rgb}, 0.06)` }]} />
+              <View style={[styles.triangle, { bottom: 55, left: 70, borderBottomColor: `rgba(${rgb}, 0.06)` }]} />
+              <View style={[styles.triangle, { bottom: 55, right: 70, borderBottomColor: `rgba(${rgb}, 0.06)` }]} />
+              <View style={[styles.triangle, { bottom: 55, right: 30, borderBottomColor: `rgba(${rgb}, 0.06)` }]} />
+              <View style={[styles.triangleInverted, { bottom: 25, left: 50, borderTopColor: `rgba(${rgb}, 0.04)` }]} />
+              <View style={[styles.triangleInverted, { bottom: 25, right: 50, borderTopColor: `rgba(${rgb}, 0.04)` }]} />
+            </View>
+          )}
+
+          {/* Horizontal accent lines for B+ */}
+          {tierLevel >= 4 && (
+            <>
+              <View style={{ position: 'absolute', left: 24, right: 24, top: '30%', height: 1, backgroundColor: `rgba(${rgb}, 0.05)` }} />
+              <View style={{ position: 'absolute', left: 24, right: 24, top: '70%', height: 1, backgroundColor: `rgba(${rgb}, 0.05)` }} />
+            </>
+          )}
 
           {/* Valorant logo watermark */}
           <Image
@@ -955,18 +970,43 @@ export default function ValorantRankCard({ game, username, viewOnly = false, use
             resizeMode="contain"
           />
 
-          {/* Center diamond */}
-          <View style={styles.diamondContainer}>
-            <View style={[styles.diamond, { borderColor: `rgba(${rgb}, 0.3)` }]}>
-              <View style={[styles.diamondDot, { backgroundColor: `rgba(${rgb}, 0.4)` }]} />
-            </View>
-          </View>
+          {/* Corner accents: D=TL+BR, C+=all four */}
+          {tierLevel >= 2 && (
+            <>
+              <View style={[styles.cornerAccentTL, { borderColor: `rgba(${rgb}, ${tierLevel <= 2 ? 0.25 : tierLevel <= 4 ? 0.35 : 0.4})` }]} />
+              {tierLevel >= 3 && (
+                <View style={[styles.cornerAccentTR, { borderColor: `rgba(${rgb}, ${tierLevel <= 4 ? 0.35 : 0.4})` }]} />
+              )}
+              {tierLevel >= 3 && (
+                <View style={[styles.cornerAccentBL, { borderColor: `rgba(${rgb}, ${tierLevel <= 4 ? 0.35 : 0.4})` }]} />
+              )}
+              <View style={[styles.cornerAccentBR, { borderColor: `rgba(${rgb}, ${tierLevel <= 2 ? 0.25 : tierLevel <= 4 ? 0.35 : 0.4})` }]} />
+            </>
+          )}
 
-          {/* Corner accents */}
-          <View style={[styles.cornerAccentTL, { borderColor: `rgba(${rgb}, 0.4)` }]} />
-          <View style={[styles.cornerAccentTR, { borderColor: `rgba(${rgb}, 0.4)` }]} />
-          <View style={[styles.cornerAccentBL, { borderColor: `rgba(${rgb}, 0.4)` }]} />
-          <View style={[styles.cornerAccentBR, { borderColor: `rgba(${rgb}, 0.4)` }]} />
+          {/* B Tier: center dot */}
+          {tierLevel === 4 && (
+            <View style={{ position: 'absolute', top: '50%', left: '50%', marginTop: -3.5, marginLeft: -3.5, width: 7, height: 7, borderRadius: 3.5, backgroundColor: `rgba(${rgb}, 0.25)`, zIndex: 3 }} />
+          )}
+
+          {/* A+ Tier: center diamond */}
+          {tierLevel >= 5 && (
+            <View style={styles.diamondContainer}>
+              <View style={[styles.diamond, { borderColor: `rgba(${rgb}, 0.3)` }]}>
+                <View style={[styles.diamondDot, { backgroundColor: `rgba(${rgb}, 0.4)` }]} />
+              </View>
+            </View>
+          )}
+
+          {/* B+ Corner tick dots */}
+          {tierLevel >= 4 && (
+            <>
+              <View style={{ position: 'absolute', top: 19, left: 38, width: 3, height: 3, borderRadius: 1.5, backgroundColor: `rgba(${rgb}, 0.3)`, zIndex: 4 }} />
+              <View style={{ position: 'absolute', top: 19, right: 38, width: 3, height: 3, borderRadius: 1.5, backgroundColor: `rgba(${rgb}, 0.3)`, zIndex: 4 }} />
+              <View style={{ position: 'absolute', bottom: 19, left: 38, width: 3, height: 3, borderRadius: 1.5, backgroundColor: `rgba(${rgb}, 0.3)`, zIndex: 4 }} />
+              <View style={{ position: 'absolute', bottom: 19, right: 38, width: 3, height: 3, borderRadius: 1.5, backgroundColor: `rgba(${rgb}, 0.3)`, zIndex: 4 }} />
+            </>
+          )}
         </View>
       )}
     </LinearGradient>
@@ -1582,6 +1622,18 @@ const styles = StyleSheet.create({
     borderRightColor: 'transparent',
     borderTopColor: 'rgba(239, 84, 102, 0.04)',
   },
+  crossLine: {
+    position: 'absolute',
+    width: 1,
+    height: 300,
+    transform: [{ rotate: '45deg' }],
+  },
+  crossLineReverse: {
+    position: 'absolute',
+    width: 1,
+    height: 300,
+    transform: [{ rotate: '-45deg' }],
+  },
   diamondContainer: {
     position: 'absolute',
     top: '50%',
@@ -1725,12 +1777,12 @@ const styles = StyleSheet.create({
     marginBottom: 4,
   },
   rankBoxIcon: {
-    width: 52,
-    height: 52,
+    width: 64,
+    height: 64,
     marginBottom: 3,
   },
   rankBoxName: {
-    fontSize: 9,
+    fontSize: 12,
     fontWeight: '700',
     color: '#fff',
     textAlign: 'center',

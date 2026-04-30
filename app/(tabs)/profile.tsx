@@ -24,7 +24,7 @@ import { getLeagueStats, getTftStats, formatRank } from '@/services/riotService'
 import { useValorantStats } from '@/contexts/ValorantStatsContext';
 import { deletePostMedia } from '@/services/storageService';
 import { deleteDoc } from 'firebase/firestore';
-import { calculateTierBorderColor, calculateTierBorderGradient } from '@/utils/tierBorderUtils';
+import { calculateTierBorderColor, calculateTierBorderGradient, calculateTier } from '@/utils/tierBorderUtils';
 import { formatCount } from '@/utils/formatCount';
 import { ProfilePageSkeleton } from '@/components/ui/Skeleton';
 import GradientBorder from '@/components/GradientBorder';
@@ -990,6 +990,15 @@ export default function ProfileScreen() {
     valorantStats?.currentRank
   );
 
+  // Shine on B tier and above
+  const tierShine = (() => {
+    const tier = calculateTier(
+      riotStats?.rankedSolo ? formatRank(riotStats.rankedSolo.tier, riotStats.rankedSolo.rank) : undefined,
+      valorantStats?.currentRank
+    );
+    return tier === 'B' || tier === 'A' || tier === 'S';
+  })();
+
   // Interpolate scroll position to create overlap effect
   const profileCardTranslateY = scrollY.interpolate({
     inputRange: [0, 100],
@@ -1149,6 +1158,7 @@ export default function ProfileScreen() {
                       colors={tierBorderGradient}
                       borderWidth={2.5}
                       borderRadius={38}
+                      shine={tierShine}
                     >
                       <View style={styles.profileAvatarCircleWithGradient}>
                         {user?.avatar && user.avatar.startsWith('http') && !avatarError ? (
@@ -1611,6 +1621,7 @@ export default function ProfileScreen() {
                 colors={tierBorderGradient}
                 borderWidth={4}
                 borderRadius={100}
+                shine={tierShine}
               >
                 <View style={styles.avatarModalCircleWithGradient}>
                   {user?.avatar && user.avatar.startsWith('http') && !avatarError ? (

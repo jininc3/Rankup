@@ -1152,7 +1152,7 @@ const styles = StyleSheet.create({
     backgroundColor: '#1a1a1a',
     borderBottomWidth: 1,
     borderBottomColor: '#252525',
-    marginHorizontal: 16,
+    marginHorizontal: 6,
     borderTopLeftRadius: 12,
     borderTopRightRadius: 12,
   },
@@ -1164,7 +1164,7 @@ const styles = StyleSheet.create({
     textTransform: 'uppercase',
   },
   playerList: {
-    marginHorizontal: 16,
+    marginHorizontal: 6,
     borderBottomLeftRadius: 12,
     borderBottomRightRadius: 12,
     overflow: 'hidden',
