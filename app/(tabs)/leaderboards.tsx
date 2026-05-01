@@ -10,7 +10,6 @@ import { collection, doc, getDoc, getDocs, query } from 'firebase/firestore';
 import { useEffect, useState } from 'react';
 import { ActivityIndicator, Dimensions, Image, Modal, ScrollView, StyleSheet, TouchableOpacity, View } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
-import { BlurView } from 'expo-blur';
 import { formatRankDisplay } from '@/utils/formatRankDisplay';
 
 const { width: screenWidth, height: screenHeight } = Dimensions.get('window');
@@ -442,18 +441,9 @@ export default function LeaderboardScreen() {
           onPress={() => router.push('/partyPages/lobbies')}
           activeOpacity={0.8}
         >
-          <Image
-            source={require('@/assets/images/lol-background.png')}
-            style={StyleSheet.absoluteFill}
-            resizeMode="cover"
-          />
-          <BlurView intensity={60} tint="dark" style={StyleSheet.absoluteFill} />
-          <LinearGradient
-            colors={['rgba(0,0,0,0.4)', 'rgba(0,0,0,0.2)']}
-            start={{ x: 0, y: 0 }}
-            end={{ x: 1, y: 1 }}
-            style={StyleSheet.absoluteFill}
-          />
+          <LinearGradient colors={['#161616', '#1a1a1a']} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={StyleSheet.absoluteFillObject} pointerEvents="none" />
+          <LinearGradient colors={['transparent', 'rgba(59,130,246,0.12)', 'transparent']} locations={[0.3, 0.5, 0.7]} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={StyleSheet.absoluteFillObject} pointerEvents="none" />
+          <LinearGradient colors={['rgba(255,255,255,0.06)', 'transparent']} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }} style={{ position: 'absolute', top: 0, left: 0, right: 0, height: 1 }} pointerEvents="none" />
           <View style={styles.lobbiesBannerGradient}>
             <View style={styles.lobbiesBannerText}>
               <ThemedText style={styles.lobbiesBannerTitle}>LOBBIES</ThemedText>
