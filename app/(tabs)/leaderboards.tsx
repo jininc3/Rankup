@@ -10,6 +10,7 @@ import { collection, doc, getDoc, getDocs, query } from 'firebase/firestore';
 import { useEffect, useState } from 'react';
 import { ActivityIndicator, Dimensions, Image, Modal, ScrollView, StyleSheet, TouchableOpacity, View } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
+import { BlurView } from 'expo-blur';
 import { formatRankDisplay } from '@/utils/formatRankDisplay';
 
 const { width: screenWidth, height: screenHeight } = Dimensions.get('window');
@@ -441,18 +442,25 @@ export default function LeaderboardScreen() {
           onPress={() => router.push('/partyPages/lobbies')}
           activeOpacity={0.8}
         >
+          <Image
+            source={require('@/assets/images/lol-background.png')}
+            style={StyleSheet.absoluteFill}
+            resizeMode="cover"
+          />
+          <BlurView intensity={60} tint="dark" style={StyleSheet.absoluteFill} />
           <LinearGradient
-            colors={['rgba(59, 130, 246, 0.08)', 'rgba(59, 130, 246, 0.02)']}
+            colors={['rgba(0,0,0,0.4)', 'rgba(0,0,0,0.2)']}
             start={{ x: 0, y: 0 }}
             end={{ x: 1, y: 1 }}
-            style={styles.lobbiesBannerGradient}
-          >
+            style={StyleSheet.absoluteFill}
+          />
+          <View style={styles.lobbiesBannerGradient}>
             <View style={styles.lobbiesBannerText}>
               <ThemedText style={styles.lobbiesBannerTitle}>LOBBIES</ThemedText>
               <ThemedText style={styles.lobbiesBannerSubtitle}>Compete with friends in leaderboards</ThemedText>
             </View>
-            <IconSymbol size={16} name="chevron.right" color="rgba(59, 130, 246, 0.5)" />
-          </LinearGradient>
+            <IconSymbol size={16} name="chevron.right" color="rgba(255,255,255,0.5)" />
+          </View>
         </TouchableOpacity>
 
         {mutualLoading ? (
@@ -601,14 +609,16 @@ const styles = StyleSheet.create({
   lobbiesBanner: {
     borderRadius: 12,
     borderWidth: 1,
-    borderColor: 'rgba(59, 130, 246, 0.2)',
+    borderColor: 'rgba(255, 255, 255, 0.12)',
     overflow: 'hidden',
     marginBottom: 16,
+    height: 100,
   },
   lobbiesBannerGradient: {
+    flex: 1,
     flexDirection: 'row',
     alignItems: 'center',
-    paddingVertical: 16,
+    paddingVertical: 20,
     paddingHorizontal: 16,
     gap: 12,
   },

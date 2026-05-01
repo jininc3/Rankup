@@ -110,12 +110,6 @@ export default function ClipsPage() {
 
       const categories = userDoc.exists() ? (userDoc.data().clipCategories || []) : [];
 
-      // Prefetch all thumbnails before rendering
-      const thumbUrls = fetchedPosts.map(p =>
-        p.mediaType === 'video' && p.thumbnailUrl ? p.thumbnailUrl : p.mediaUrl
-      ).filter(Boolean);
-      await Promise.all(thumbUrls.map(url => Image.prefetch(url).catch(() => {})));
-
       if (!background) {
         expectedCountRef.current = fetchedPosts.length;
         if (fetchedPosts.length === 0) {

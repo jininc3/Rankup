@@ -2,22 +2,27 @@ import { ThemedText } from '@/components/themed-text';
 import { IconSymbol } from '@/components/ui/icon-symbol';
 import { useAuth } from '@/contexts/AuthContext';
 import { addComment, deleteComment, getComments, CommentData } from '@/services/commentService';
-import React, { useEffect, useState, useRef } from 'react';
+import React, { useEffect, useState, useRef, useCallback } from 'react';
 import {
   View,
   StyleSheet,
   Modal,
   TouchableOpacity,
-  ScrollView,
   TextInput,
   Image,
   ActivityIndicator,
   Alert,
   KeyboardAvoidingView,
   Platform,
-  PanResponder,
-  Animated,
 } from 'react-native';
+import { Gesture, GestureDetector, GestureHandlerRootView, ScrollView } from 'react-native-gesture-handler';
+import Animated, {
+  useSharedValue,
+  useAnimatedStyle,
+  withSpring,
+  withTiming,
+  runOnJS,
+} from 'react-native-reanimated';
 
 interface CommentModalProps {
   visible: boolean;
@@ -42,13 +47,17 @@ export default function CommentModal({
   const [loading, setLoading] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [isInputFocused, setIsInputFocused] = useState(false);
-  const panY = useRef(new Animated.Value(0)).current;
+
+  const translateY = useSharedValue(0);
+  const scrollOffset = useSharedValue(0);
+  const startY = useSharedValue(0);
+  const panGestureRef = useRef(null);
 
   // Fetch comments when modal opens
   useEffect(() => {
     if (visible && postId) {
-      // Reset pan animation when opening
-      panY.setValue(0);
+      translateY.value = 0;
+      scrollOffset.value = 0;
       fetchComments();
       setIsInputFocused(false);
     } else if (!visible) {
@@ -56,38 +65,50 @@ export default function CommentModal({
     }
   }, [visible, postId]);
 
-  // Pan responder for swipe down to close
-  const panResponder = useRef(
-    PanResponder.create({
-      onStartShouldSetPanResponder: () => true,
-      onMoveShouldSetPanResponder: (_, gestureState) => {
-        return gestureState.dy > 5;
-      },
-      onPanResponderMove: (_, gestureState) => {
-        if (gestureState.dy > 0) {
-          panY.setValue(gestureState.dy);
-        }
-      },
-      onPanResponderRelease: (_, gestureState) => {
-        if (gestureState.dy > 100 || gestureState.vy > 0.5) {
-          // Close modal if dragged down enough
-          Animated.timing(panY, {
-            toValue: 500,
-            duration: 200,
-            useNativeDriver: true,
-          }).start(() => {
-            onClose();
-          });
-        } else {
-          // Snap back
-          Animated.spring(panY, {
-            toValue: 0,
-            useNativeDriver: true,
-          }).start();
-        }
-      },
+  const handleClose = useCallback(() => {
+    onClose();
+  }, [onClose]);
+
+  // Pan gesture to drag the modal sheet down when ScrollView is at top
+  // Uses manualActivation so we can decide at the native level:
+  //   - At top + swipe down → activate pan (drag modal)
+  //   - Otherwise → fail pan (let ScrollView scroll)
+  const panGesture = Gesture.Pan()
+    .withRef(panGestureRef)
+    .manualActivation(true)
+    .onTouchesDown((e) => {
+      'worklet';
+      startY.value = e.allTouches[0].absoluteY;
     })
-  ).current;
+    .onTouchesMove((e, stateManager) => {
+      'worklet';
+      const dy = e.allTouches[0].absoluteY - startY.value;
+      if (scrollOffset.value <= 1 && dy > 8) {
+        stateManager.activate();
+      } else if (dy < -8 || scrollOffset.value > 1) {
+        stateManager.fail();
+      }
+    })
+    .onUpdate((e) => {
+      'worklet';
+      if (e.translationY > 0) {
+        translateY.value = e.translationY;
+      }
+    })
+    .onEnd((e) => {
+      'worklet';
+      if (e.translationY > 100 || e.velocityY > 500) {
+        translateY.value = withTiming(600, { duration: 200 }, () => {
+          runOnJS(handleClose)();
+        });
+      } else {
+        translateY.value = withSpring(0, { damping: 20, stiffness: 300 });
+      }
+    });
+
+  const animatedStyle = useAnimatedStyle(() => ({
+    transform: [{ translateY: translateY.value }],
+  }));
 
   const fetchComments = async () => {
     setLoading(true);
@@ -195,14 +216,15 @@ export default function CommentModal({
       transparent={true}
       onRequestClose={onClose}
     >
+      <GestureHandlerRootView style={{ flex: 1 }}>
       <View style={styles.modalOverlay}>
         <Animated.View
           style={[
             styles.modalContent,
             {
               height: isInputFocused ? '95%' : '70%',
-              transform: [{ translateY: panY }],
             },
+            animatedStyle,
           ]}
         >
           <KeyboardAvoidingView
@@ -210,107 +232,116 @@ export default function CommentModal({
             behavior="padding"
             keyboardVerticalOffset={Platform.OS === 'ios' ? 20 : 40}
           >
-            {/* Drag Handle and Header - swipeable area */}
-            <View {...panResponder.panHandlers}>
-              <View style={styles.dragHandle} />
+            <GestureDetector gesture={panGesture}>
+              <Animated.View style={{ flex: 1 }}>
+                <View style={styles.dragHandle} />
 
-              {/* Header */}
-              <View style={styles.header}>
-                <ThemedText style={styles.headerTitle}>Comments</ThemedText>
-              </View>
-            </View>
-
-        {/* Comments List */}
-        <ScrollView
-          style={styles.commentsList}
-          contentContainerStyle={styles.commentsListContent}
-          keyboardShouldPersistTaps="handled"
-        >
-          {loading ? (
-            <View style={styles.loadingContainer}>
-              <ActivityIndicator size="large" color="#c42743" />
-              <ThemedText style={styles.loadingText}>Loading comments...</ThemedText>
-            </View>
-          ) : comments.length > 0 ? (
-            comments.map((comment) => (
-              <View key={comment.id} style={styles.commentItem}>
-                <View style={styles.commentAvatar}>
-                  {comment.userAvatar && comment.userAvatar.startsWith('http') ? (
-                    <Image source={{ uri: comment.userAvatar }} style={styles.avatarImage} />
-                  ) : (
-                    <ThemedText style={styles.avatarInitial}>
-                      {comment.username[0].toUpperCase()}
-                    </ThemedText>
-                  )}
+                {/* Header */}
+                <View style={styles.header}>
+                  <ThemedText style={styles.headerTitle}>Comments</ThemedText>
                 </View>
 
-                <View style={styles.commentContent}>
-                  <View style={styles.commentHeader}>
-                    <View style={styles.commentHeaderLeft}>
-                      <ThemedText style={styles.commentUsername}>{comment.username}</ThemedText>
-                      <ThemedText style={styles.commentTime}>{formatTimeAgo(comment.createdAt)}</ThemedText>
+                {/* Comments List */}
+                <ScrollView
+                  style={styles.commentsList}
+                  contentContainerStyle={styles.commentsListContent}
+                  keyboardShouldPersistTaps="handled"
+                  bounces={false}
+                  overScrollMode="never"
+                  waitFor={panGestureRef}
+                  onScroll={(e) => {
+                    scrollOffset.value = e.nativeEvent.contentOffset.y;
+                  }}
+                  scrollEventThrottle={16}
+                >
+                  {loading ? (
+                    <View style={styles.loadingContainer}>
+                      <ActivityIndicator size="large" color="#fff" />
+                      <ThemedText style={styles.loadingText}>Loading comments...</ThemedText>
                     </View>
-                    {/* Delete button (only for own comments) */}
-                    {currentUser?.id === comment.userId && (
-                      <TouchableOpacity
-                        style={styles.deleteCommentButton}
-                        onPress={() => handleDeleteComment(comment.id)}
-                      >
-                        <ThemedText style={styles.deleteCommentText}>Delete</ThemedText>
-                      </TouchableOpacity>
-                    )}
-                  </View>
-                  <ThemedText style={styles.commentText}>{comment.text}</ThemedText>
-                </View>
-              </View>
-            ))
-          ) : (
-            <View style={styles.emptyState}>
-              <IconSymbol size={64} name="bubble.left" color="#fff" />
-              <ThemedText style={styles.emptyText}>No comments yet</ThemedText>
-              <ThemedText style={styles.emptySubtext}>Be the first to comment!</ThemedText>
-            </View>
-          )}
-        </ScrollView>
+                  ) : comments.length > 0 ? (
+                    comments.map((comment) => (
+                      <View key={comment.id} style={styles.commentItem}>
+                        <View style={styles.commentAvatar}>
+                          {comment.userAvatar && comment.userAvatar.startsWith('http') ? (
+                            <Image source={{ uri: comment.userAvatar }} style={styles.avatarImage} />
+                          ) : (
+                            <ThemedText style={styles.avatarInitial}>
+                              {comment.username[0].toUpperCase()}
+                            </ThemedText>
+                          )}
+                        </View>
 
-        {/* Comment Input */}
-        <View style={styles.inputContainer}>
-          <View style={styles.inputAvatar}>
-            {currentUser?.avatar && currentUser.avatar.startsWith('http') ? (
-              <Image source={{ uri: currentUser.avatar }} style={styles.inputAvatarImage} />
-            ) : (
-              <ThemedText style={styles.inputAvatarInitial}>
-                {currentUser?.username?.[0]?.toUpperCase() || 'U'}
-              </ThemedText>
-            )}
-          </View>
-          <TextInput
-            style={styles.input}
-            placeholder="Add a comment..."
-            placeholderTextColor="#72767d"
-            value={commentText}
-            onChangeText={setCommentText}
-            onFocus={() => setIsInputFocused(true)}
-            onBlur={() => setIsInputFocused(false)}
-            multiline
-            maxLength={500}
-            editable={!submitting}
-          />
-          <TouchableOpacity
-            style={[styles.sendButton, (!commentText.trim() || submitting) && styles.sendButtonDisabled]}
-            onPress={handleAddComment}
-            disabled={!commentText.trim() || submitting}
-          >
-            {submitting ? (
-              <ActivityIndicator size="small" color="#c42743" />
-            ) : (
-              <IconSymbol size={24} name="paperplane.fill" color={commentText.trim() ? "#c42743" : "#888"} />
-            )}
-          </TouchableOpacity>
-        </View>
+                        <View style={styles.commentContent}>
+                          <View style={styles.commentHeader}>
+                            <View style={styles.commentHeaderLeft}>
+                              <ThemedText style={styles.commentUsername}>{comment.username}</ThemedText>
+                              <ThemedText style={styles.commentTime}>{formatTimeAgo(comment.createdAt)}</ThemedText>
+                            </View>
+                            {/* Delete button (only for own comments) */}
+                            {currentUser?.id === comment.userId && (
+                              <TouchableOpacity
+                                style={styles.deleteCommentButton}
+                                onPress={() => handleDeleteComment(comment.id)}
+                              >
+                                <ThemedText style={styles.deleteCommentText}>Delete</ThemedText>
+                              </TouchableOpacity>
+                            )}
+                          </View>
+                          <ThemedText style={styles.commentText}>{comment.text}</ThemedText>
+                        </View>
+                      </View>
+                    ))
+                  ) : (
+                    <View style={styles.emptyState}>
+                      <IconSymbol size={64} name="bubble.left" color="#fff" />
+                      <ThemedText style={styles.emptyText}>No comments yet</ThemedText>
+                      <ThemedText style={styles.emptySubtext}>Be the first to comment!</ThemedText>
+                    </View>
+                  )}
+                </ScrollView>
+              </Animated.View>
+            </GestureDetector>
+
+            {/* Comment Input */}
+            <View style={styles.inputContainer}>
+              <View style={styles.inputAvatar}>
+                {currentUser?.avatar && currentUser.avatar.startsWith('http') ? (
+                  <Image source={{ uri: currentUser.avatar }} style={styles.inputAvatarImage} />
+                ) : (
+                  <ThemedText style={styles.inputAvatarInitial}>
+                    {currentUser?.username?.[0]?.toUpperCase() || 'U'}
+                  </ThemedText>
+                )}
+              </View>
+              <TextInput
+                style={styles.input}
+                placeholder="Add a comment..."
+                placeholderTextColor="#72767d"
+                value={commentText}
+                onChangeText={setCommentText}
+                onFocus={() => setIsInputFocused(true)}
+                onBlur={() => setIsInputFocused(false)}
+                multiline
+                maxLength={500}
+                editable={!submitting}
+              />
+              <TouchableOpacity
+                style={[styles.sendButton, (!commentText.trim() || submitting) && styles.sendButtonDisabled]}
+                onPress={handleAddComment}
+                disabled={!commentText.trim() || submitting}
+              >
+                {submitting ? (
+                  <ActivityIndicator size="small" color="#fff" />
+                ) : (
+                  <IconSymbol size={24} name="paperplane.fill" color={commentText.trim() ? "#fff" : "#888"} />
+                )}
+              </TouchableOpacity>
+            </View>
           </KeyboardAvoidingView>
         </Animated.View>
       </View>
+      </GestureHandlerRootView>
     </Modal>
   );
 }
@@ -431,7 +462,7 @@ const styles = StyleSheet.create({
   },
   deleteCommentText: {
     fontSize: 13,
-    color: '#c42743',
+    color: '#fff',
     fontWeight: '500',
   },
   emptyState: {

@@ -1034,7 +1034,7 @@ const styles = StyleSheet.create({
   leftActions: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 2,
+    gap: 12,
   },
   actionButton: {
     padding: 4,

@@ -131,6 +131,7 @@ interface Duo {
   inGameName?: string;
   message?: string;
   isOwnPost?: boolean;
+  disabled?: boolean;
   createdAt?: any;
 }
 
@@ -153,7 +154,7 @@ interface DuoCardProps {
   onPress?: () => void;
   onMessage?: () => void;
   onViewProfile?: () => void;
-  onDelete?: () => void;
+  onDisable?: () => void;
   noShadow?: boolean;
 }
 
@@ -174,7 +175,7 @@ const getRankIcon = (rank: string, game: string) => {
   return VALORANT_RANK_ICONS[fullKey] || VALORANT_RANK_ICONS[tier] || VALORANT_RANK_ICONS.unranked;
 };
 
-function DuoCard({ duo, onPress, onMessage, onViewProfile, onDelete, noShadow }: DuoCardProps) {
+function DuoCard({ duo, onPress, onMessage, onViewProfile, onDisable, noShadow }: DuoCardProps) {
   const game = duo.game || 'Valorant';
   const isLeague = game === 'League' || game === 'League of Legends';
   const gameLogo = GAME_LOGOS[game];
@@ -197,8 +198,8 @@ function DuoCard({ duo, onPress, onMessage, onViewProfile, onDelete, noShadow }:
   const characterIcon = agentIcon || championIconSrc;
 
   return (
-    <View>
-    <TouchableOpacity style={[styles.card, duo.isOwnPost && styles.ownCard]} onPress={onPress} activeOpacity={0.8}>
+    <View style={duo.disabled ? styles.disabledWrapper : undefined}>
+    <TouchableOpacity style={[styles.card, duo.isOwnPost && styles.ownCard, duo.disabled && styles.disabledCard]} onPress={onPress} activeOpacity={0.8}>
       {/* Top section */}
       <View style={styles.topSection}>
         {/* Name row */}
@@ -291,9 +292,11 @@ function DuoCard({ duo, onPress, onMessage, onViewProfile, onDelete, noShadow }:
 
       {/* Bottom section — dark actions */}
       <View style={styles.bottomSection}>
-        {duo.isOwnPost && onDelete ? (
-          <TouchableOpacity style={styles.bottomBtn} onPress={onDelete} activeOpacity={0.7}>
-            <ThemedText style={styles.deleteActionText}>Delete Duo Card</ThemedText>
+        {duo.isOwnPost && onDisable ? (
+          <TouchableOpacity style={styles.bottomBtn} onPress={onDisable} activeOpacity={0.7}>
+            <ThemedText style={duo.disabled ? styles.enableActionText : styles.disableActionText}>
+              {duo.disabled ? 'Enable Duo Card' : 'Disable Duo Card'}
+            </ThemedText>
           </TouchableOpacity>
         ) : (
           <>
@@ -496,9 +499,20 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     color: '#fff',
   },
-  deleteActionText: {
+  disabledWrapper: {
+    opacity: 0.5,
+  },
+  disabledCard: {
+    borderColor: 'rgba(255,255,255,0.08)',
+  },
+  disableActionText: {
     fontSize: 13,
     fontWeight: '600',
-    color: '#ff6b6b',
+    color: '#ff9500',
+  },
+  enableActionText: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: '#4ade80',
   },
 });

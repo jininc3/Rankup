@@ -9,6 +9,7 @@ export interface DuoCardData {
   peakRank: string;
   mainAgent?: string;
   lookingFor?: string;
+  disabled?: boolean;
 }
 import EditDuoCard from '@/app/components/editDuoCard';
 import DuoFilterModal, { DuoFilterOptions } from '@/app/profilePages/duoFilterModal';
@@ -24,7 +25,7 @@ import { useFocusEffect } from 'expo-router';
 import { Alert, Dimensions, ScrollView, FlatList, ActivityIndicator, StyleSheet, TouchableOpacity, View, RefreshControl, Image, Modal, Animated, Easing } from 'react-native';
 
 const { width: screenWidth, height: screenHeight } = Dimensions.get('window');
-import { doc, getDoc, setDoc, deleteDoc, serverTimestamp, collection, query, where, getDocs, orderBy, limit, Timestamp } from 'firebase/firestore';
+import { doc, getDoc, setDoc, deleteDoc, updateDoc, serverTimestamp, collection, query, where, getDocs, orderBy, limit, Timestamp } from 'firebase/firestore';
 import { db } from '@/config/firebase';
 import { useRouter } from '@/hooks/useRouter';
 
@@ -269,6 +270,7 @@ export default function DuoFinderScreen() {
                 peakRank: updatedCardData.peakRank,
                 mainAgent: updatedCardData.mainAgent,
                 lookingFor: updatedCardData.lookingFor || 'Any',
+                disabled: cardData.disabled || false,
               });
             } else {
               // Use existing card data
@@ -281,6 +283,7 @@ export default function DuoFinderScreen() {
                 peakRank: cardData.peakRank,
                 mainAgent: cardData.mainAgent,
                 lookingFor: cardData.lookingFor || 'Any',
+                disabled: cardData.disabled || false,
               });
             }
           } else {
@@ -294,6 +297,7 @@ export default function DuoFinderScreen() {
               peakRank: cardData.peakRank,
               mainAgent: cardData.mainAgent,
               lookingFor: cardData.lookingFor || 'Any',
+              disabled: cardData.disabled || false,
             });
           }
         } else if ((!onlyGame || onlyGame === 'valorant') && userData.enabledRankCards?.includes('valorant') && userData.valorantStats) {
@@ -364,6 +368,7 @@ export default function DuoFinderScreen() {
                 peakRank: updatedCardData.peakRank,
                 mainAgent: updatedCardData.mainAgent,
                 lookingFor: updatedCardData.lookingFor || 'Any',
+                disabled: cardData.disabled || false,
               });
             } else {
               // Use existing card data
@@ -376,6 +381,7 @@ export default function DuoFinderScreen() {
                 peakRank: cardData.peakRank,
                 mainAgent: cardData.mainAgent,
                 lookingFor: cardData.lookingFor || 'Any',
+                disabled: cardData.disabled || false,
               });
             }
           } else {
@@ -389,6 +395,7 @@ export default function DuoFinderScreen() {
               peakRank: cardData.peakRank,
               mainAgent: cardData.mainAgent,
               lookingFor: cardData.lookingFor || 'Any',
+              disabled: cardData.disabled || false,
             });
           }
         } else if ((!onlyGame || onlyGame === 'league') && userData.enabledRankCards?.includes('league') && userData.riotStats) {
@@ -875,27 +882,41 @@ export default function DuoFinderScreen() {
     }
   };
 
-  const handleDeleteFromEdit = async () => {
+  const handleDisableFromEdit = async () => {
     if (!user?.id || !editingGame) return;
 
-    try {
-      // Delete from Firebase
-      const duoCardRef = doc(db, 'duoCards', `${user.id}_${editingGame}`);
-      await deleteDoc(duoCardRef);
+    const currentCard = editingGame === 'valorant' ? valorantCard : leagueCard;
+    const newDisabledState = !(currentCard?.disabled || false);
 
-      // Update local state
-      if (editingGame === 'valorant') {
-        setValorantCard(null);
-      } else {
-        setLeagueCard(null);
+    try {
+      const duoCardRef = doc(db, 'duoCards', `${user.id}_${editingGame}`);
+      await updateDoc(duoCardRef, { disabled: newDisabledState });
+
+      // If disabling, also remove the active post from the feed
+      if (newDisabledState) {
+        const postId = `${user.id}_${editingGame}`;
+        const hasActivePost = editingGame === 'valorant' ? hasActiveValorantPost : hasActiveLeaguePost;
+        if (hasActivePost) {
+          await deleteDoc(doc(db, 'duoPosts', postId));
+          setDuoPosts(prev => prev.filter(p => p.id !== postId));
+          setDisplayedPosts(prev => prev.filter(p => p.id !== postId));
+          if (editingGame === 'valorant') setHasActiveValorantPost(false);
+          else setHasActiveLeaguePost(false);
+        }
       }
 
-      Alert.alert('Success', 'Your duo card has been deleted.');
+      if (editingGame === 'valorant') {
+        setValorantCard(prev => prev ? { ...prev, disabled: newDisabledState } : null);
+      } else {
+        setLeagueCard(prev => prev ? { ...prev, disabled: newDisabledState } : null);
+      }
+
+      Alert.alert('Success', newDisabledState ? 'Your duo card has been disabled.' : 'Your duo card has been enabled.');
       setShowEditModal(false);
       setEditingGame(null);
     } catch (error) {
-      console.error('Error deleting duo card:', error);
-      Alert.alert('Error', 'Failed to delete your duo card. Please try again.');
+      console.error('Error updating duo card:', error);
+      Alert.alert('Error', `Failed to ${newDisabledState ? 'disable' : 'enable'} your duo card. Please try again.`);
     }
   };
 
@@ -983,20 +1004,26 @@ export default function DuoFinderScreen() {
                   onPress={() => router.push('/partyPages/liveSearch')}
                   activeOpacity={0.8}
                 >
+                  <Image
+                    source={require('@/assets/images/valorant-background.png')}
+                    style={StyleSheet.absoluteFill}
+                    resizeMode="cover"
+                  />
                   <LinearGradient
-                    colors={['rgba(59, 130, 246, 0.08)', 'rgba(59, 130, 246, 0.02)']}
+                    colors={['rgba(0,0,0,0.5)', 'rgba(0,0,0,0.3)']}
                     start={{ x: 0, y: 0 }}
                     end={{ x: 1, y: 1 }}
-                    style={styles.liveSearchBannerGradient}
-                  >
+                    style={StyleSheet.absoluteFill}
+                  />
+                  <View style={styles.liveSearchBannerGradient}>
                     <View style={styles.liveSearchBannerText}>
                       <ThemedText style={styles.liveSearchBannerTitle}>LIVE SEARCH</ThemedText>
                       <ThemedText style={styles.liveSearchBannerSubtitle}>
                         Find your duo in real-time
                       </ThemedText>
                     </View>
-                    <IconSymbol size={16} name="chevron.right" color="rgba(59, 130, 246, 0.5)" />
-                  </LinearGradient>
+                    <IconSymbol size={16} name="chevron.right" color="rgba(255,255,255,0.5)" />
+                  </View>
                 </TouchableOpacity>
 
                 <View style={styles.feedContainer}>
@@ -1146,33 +1173,39 @@ export default function DuoFinderScreen() {
                         inGameIcon: valorantInGameIcon,
                         inGameName: valorantInGameName,
                         isOwnPost: true,
+                        disabled: valorantCard.disabled || false,
                       }}
                       onPress={() => {
                         setShowMyCards(false);
                         handleCardPress('valorant');
                       }}
-                      onDelete={() => {
-                        Alert.alert('Delete Card', 'Delete your Valorant duo card? This will also remove any active post.', [
-                          { text: 'Cancel', style: 'cancel' },
-                          {
-                            text: 'Delete',
-                            style: 'destructive',
-                            onPress: async () => {
-                              try {
-                                await deleteDoc(doc(db, 'duoCards', `${user?.id}_valorant`));
-                                if (hasActiveValorantPost) {
-                                  await deleteDoc(doc(db, 'duoPosts', `${user?.id}_valorant`));
-                                  setDuoPosts(prev => prev.filter(p => p.id !== `${user?.id}_valorant`));
-                                  setDisplayedPosts(prev => prev.filter(p => p.id !== `${user?.id}_valorant`));
-                                  setHasActiveValorantPost(false);
+                      onDisable={() => {
+                        const isDisabled = valorantCard?.disabled || false;
+                        Alert.alert(
+                          isDisabled ? 'Enable Card' : 'Disable Card',
+                          isDisabled ? 'Enable your Valorant duo card?' : 'Disable your Valorant duo card? This will also remove any active post.',
+                          [
+                            { text: 'Cancel', style: 'cancel' },
+                            {
+                              text: isDisabled ? 'Enable' : 'Disable',
+                              onPress: async () => {
+                                try {
+                                  const newDisabled = !isDisabled;
+                                  await updateDoc(doc(db, 'duoCards', `${user?.id}_valorant`), { disabled: newDisabled });
+                                  if (newDisabled && hasActiveValorantPost) {
+                                    await deleteDoc(doc(db, 'duoPosts', `${user?.id}_valorant`));
+                                    setDuoPosts(prev => prev.filter(p => p.id !== `${user?.id}_valorant`));
+                                    setDisplayedPosts(prev => prev.filter(p => p.id !== `${user?.id}_valorant`));
+                                    setHasActiveValorantPost(false);
+                                  }
+                                  setValorantCard(prev => prev ? { ...prev, disabled: newDisabled } : null);
+                                } catch (error) {
+                                  console.error('Error updating duo card:', error);
                                 }
-                                setValorantCard(null);
-                              } catch (error) {
-                                console.error('Error deleting duo card:', error);
-                              }
+                              },
                             },
-                          },
-                        ]);
+                          ]
+                        );
                       }}
                     />
                   )}
@@ -1194,33 +1227,39 @@ export default function DuoFinderScreen() {
                         inGameIcon: leagueInGameIcon,
                         inGameName: leagueInGameName,
                         isOwnPost: true,
+                        disabled: leagueCard.disabled || false,
                       }}
                       onPress={() => {
                         setShowMyCards(false);
                         handleCardPress('league');
                       }}
-                      onDelete={() => {
-                        Alert.alert('Delete Card', 'Delete your League duo card? This will also remove any active post.', [
-                          { text: 'Cancel', style: 'cancel' },
-                          {
-                            text: 'Delete',
-                            style: 'destructive',
-                            onPress: async () => {
-                              try {
-                                await deleteDoc(doc(db, 'duoCards', `${user?.id}_league`));
-                                if (hasActiveLeaguePost) {
-                                  await deleteDoc(doc(db, 'duoPosts', `${user?.id}_league`));
-                                  setDuoPosts(prev => prev.filter(p => p.id !== `${user?.id}_league`));
-                                  setDisplayedPosts(prev => prev.filter(p => p.id !== `${user?.id}_league`));
-                                  setHasActiveLeaguePost(false);
+                      onDisable={() => {
+                        const isDisabled = leagueCard?.disabled || false;
+                        Alert.alert(
+                          isDisabled ? 'Enable Card' : 'Disable Card',
+                          isDisabled ? 'Enable your League duo card?' : 'Disable your League duo card? This will also remove any active post.',
+                          [
+                            { text: 'Cancel', style: 'cancel' },
+                            {
+                              text: isDisabled ? 'Enable' : 'Disable',
+                              onPress: async () => {
+                                try {
+                                  const newDisabled = !isDisabled;
+                                  await updateDoc(doc(db, 'duoCards', `${user?.id}_league`), { disabled: newDisabled });
+                                  if (newDisabled && hasActiveLeaguePost) {
+                                    await deleteDoc(doc(db, 'duoPosts', `${user?.id}_league`));
+                                    setDuoPosts(prev => prev.filter(p => p.id !== `${user?.id}_league`));
+                                    setDisplayedPosts(prev => prev.filter(p => p.id !== `${user?.id}_league`));
+                                    setHasActiveLeaguePost(false);
+                                  }
+                                  setLeagueCard(prev => prev ? { ...prev, disabled: newDisabled } : null);
+                                } catch (error) {
+                                  console.error('Error updating duo card:', error);
                                 }
-                                setLeagueCard(null);
-                              } catch (error) {
-                                console.error('Error deleting duo card:', error);
-                              }
+                              },
                             },
-                          },
-                        ]);
+                          ]
+                        );
                       }}
                     />
                   )}
@@ -1319,7 +1358,8 @@ export default function DuoFinderScreen() {
           visible={showEditModal}
           onClose={handleCloseEditModal}
           onSave={handleSaveEdit}
-          onDelete={handleDeleteFromEdit}
+          onDisable={handleDisableFromEdit}
+          isDisabled={editingGame === 'valorant' ? (valorantCard?.disabled || false) : (leagueCard?.disabled || false)}
           game={editingGame}
           username={editingGame === 'valorant' ? (valorantCard?.username || '') : (leagueCard?.username || '')}
           currentRank={editingGame === 'valorant' ? (valorantCard?.currentRank || 'Unranked') : (leagueCard?.currentRank || 'Unranked')}
@@ -1505,14 +1545,16 @@ const styles = StyleSheet.create({
   liveSearchBanner: {
     borderRadius: 12,
     borderWidth: 1,
-    borderColor: 'rgba(59, 130, 246, 0.2)',
+    borderColor: 'rgba(255, 255, 255, 0.12)',
     overflow: 'hidden',
     marginBottom: 20,
+    height: 100,
   },
   liveSearchBannerGradient: {
+    flex: 1,
     flexDirection: 'row',
     alignItems: 'center',
-    paddingVertical: 16,
+    paddingVertical: 20,
     paddingHorizontal: 16,
     gap: 12,
   },

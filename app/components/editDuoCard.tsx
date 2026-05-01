@@ -19,7 +19,8 @@ interface EditDuoCardProps {
   visible: boolean;
   onClose: () => void;
   onSave: (mainRole: string, mainAgent: string, lookingFor: string) => void;
-  onDelete: () => void;
+  onDisable: () => void;
+  isDisabled?: boolean;
   game: 'valorant' | 'league';
   username: string;
   currentRank: string;
@@ -124,7 +125,8 @@ export default function EditDuoCard({
   visible,
   onClose,
   onSave,
-  onDelete,
+  onDisable,
+  isDisabled = false,
   game,
   username,
   currentRank,
@@ -149,17 +151,19 @@ export default function EditDuoCard({
 
   const MAX_AGENTS = 3;
 
-  const handleDelete = () => {
+  const handleDisable = () => {
+    const gameName = game === 'valorant' ? 'Valorant' : 'League of Legends';
     Alert.alert(
-      'Delete Duo Card',
-      `Are you sure you want to delete your ${game === 'valorant' ? 'Valorant' : 'League of Legends'} duo card?`,
+      isDisabled ? 'Enable Duo Card' : 'Disable Duo Card',
+      isDisabled
+        ? `Enable your ${gameName} duo card?`
+        : `Disable your ${gameName} duo card? It will be hidden from the feed but your settings will be saved.`,
       [
         { text: 'Cancel', style: 'cancel' },
         {
-          text: 'Delete',
-          style: 'destructive',
+          text: isDisabled ? 'Enable' : 'Disable',
           onPress: () => {
-            onDelete();
+            onDisable();
             onClose();
           },
         },
@@ -547,10 +551,15 @@ export default function EditDuoCard({
                 <ThemedText style={styles.saveButtonText}>Save Changes</ThemedText>
               </TouchableOpacity>
 
-              {/* Delete Button */}
-              <TouchableOpacity style={styles.deleteButton} onPress={handleDelete}>
-                <IconSymbol size={20} name="trash.fill" color="#ff4444" />
-                <ThemedText style={styles.deleteButtonText}>Delete Duo Card</ThemedText>
+              {/* Disable/Enable Button */}
+              <TouchableOpacity
+                style={[styles.deleteButton, isDisabled && styles.enableButton]}
+                onPress={handleDisable}
+              >
+                <IconSymbol size={20} name={isDisabled ? 'eye.fill' : 'eye.slash.fill'} color={isDisabled ? '#4ade80' : '#ff9500'} />
+                <ThemedText style={[styles.deleteButtonText, isDisabled && styles.enableButtonText]}>
+                  {isDisabled ? 'Enable Duo Card' : 'Disable Duo Card'}
+                </ThemedText>
               </TouchableOpacity>
             </View>
           </View>
@@ -849,12 +858,18 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     padding: 16,
     borderWidth: 2,
-    borderColor: '#ff4444',
+    borderColor: '#ff9500',
     marginTop: 12,
+  },
+  enableButton: {
+    borderColor: '#4ade80',
   },
   deleteButtonText: {
     fontSize: 16,
     fontWeight: '700',
-    color: '#ff4444',
+    color: '#ff9500',
+  },
+  enableButtonText: {
+    color: '#4ade80',
   },
 });
