@@ -1004,17 +1004,15 @@ export default function DuoFinderScreen() {
                   onPress={() => router.push('/partyPages/liveSearch')}
                   activeOpacity={0.8}
                 >
-                  <LinearGradient colors={['#161616', '#1a1a1a']} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={StyleSheet.absoluteFillObject} pointerEvents="none" />
-                  <LinearGradient colors={['transparent', 'rgba(59,130,246,0.12)', 'transparent']} locations={[0.3, 0.5, 0.7]} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={StyleSheet.absoluteFillObject} pointerEvents="none" />
-                  <LinearGradient colors={['rgba(255,255,255,0.06)', 'transparent']} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }} style={{ position: 'absolute', top: 0, left: 0, right: 0, height: 1 }} pointerEvents="none" />
-                  <View style={styles.liveSearchBannerGradient}>
-                    <View style={styles.liveSearchBannerText}>
-                      <ThemedText style={styles.liveSearchBannerTitle}>LIVE SEARCH</ThemedText>
-                      <ThemedText style={styles.liveSearchBannerSubtitle}>
-                        Find your duo in real-time
-                      </ThemedText>
+                  <View style={styles.liveSearchBannerLeft}>
+                    <Animated.View style={[styles.liveSearchDot, { opacity: pulseAnim }]} />
+                    <View>
+                      <ThemedText style={styles.liveSearchBannerTitle}>Live Search</ThemedText>
+                      <ThemedText style={styles.liveSearchBannerSubtitle}>Find a duo in real-time</ThemedText>
                     </View>
-                    <IconSymbol size={16} name="chevron.right" color="rgba(255,255,255,0.5)" />
+                  </View>
+                  <View style={styles.liveSearchBtn}>
+                    <ThemedText style={styles.liveSearchBtnText}>Search →</ThemedText>
                   </View>
                 </TouchableOpacity>
 
@@ -1535,34 +1533,49 @@ const styles = StyleSheet.create({
     marginBottom: 12,
   },
   liveSearchBanner: {
-    borderRadius: 12,
-    borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.12)',
-    overflow: 'hidden',
-    marginBottom: 20,
-    height: 100,
-  },
-  liveSearchBannerGradient: {
-    flex: 1,
     flexDirection: 'row',
     alignItems: 'center',
-    paddingVertical: 20,
+    justifyContent: 'space-between',
+    backgroundColor: '#161616',
+    borderRadius: 14,
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.08)',
+    paddingVertical: 14,
     paddingHorizontal: 16,
+    marginBottom: 20,
+  },
+  liveSearchBannerLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
     gap: 12,
   },
-  liveSearchBannerText: {
-    flex: 1,
+  liveSearchDot: {
+    width: 10,
+    height: 10,
+    borderRadius: 5,
+    backgroundColor: '#22c55e',
   },
   liveSearchBannerTitle: {
-    fontSize: 16,
+    fontSize: 15,
     fontWeight: '700',
     color: '#fff',
-    letterSpacing: 1,
   },
   liveSearchBannerSubtitle: {
     fontSize: 12,
-    color: '#888',
-    marginTop: 2,
+    color: '#666',
+    marginTop: 1,
+  },
+  liveSearchBtn: {
+    borderRadius: 10,
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.2)',
+    paddingVertical: 8,
+    paddingHorizontal: 16,
+  },
+  liveSearchBtnText: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: '#fff',
   },
   feedCardWrapper: {
     marginBottom: 4,

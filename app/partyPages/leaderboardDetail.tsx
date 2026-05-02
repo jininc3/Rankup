@@ -1174,7 +1174,7 @@ export default function LeaderboardDetail() {
           <View style={styles.actionButtons}>
             {(isPending || isActive) && (
               <TouchableOpacity style={[styles.challengeButton, isActive && styles.challengeButtonActive]} onPress={() => router.push({ pathname: '/partyPages/challengeDetail', params: { id: partyDocId, game } })}>
-                <IconSymbol size={14} name="trophy.fill" color={isActive ? '#0f0f0f' : '#D4A843'} />
+                <IconSymbol size={14} name="trophy.fill" color="#D4A843" />
                 <ThemedText style={[styles.challengeButtonText, isActive && styles.challengeButtonTextActive]}>Challenge</ThemedText>
               </TouchableOpacity>
             )}
@@ -2658,16 +2658,16 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 6,
-    backgroundColor: 'rgba(212, 168, 67, 0.15)',
+    backgroundColor: '#111',
     borderWidth: 1,
-    borderColor: 'rgba(212, 168, 67, 0.3)',
+    borderColor: 'rgba(255, 255, 255, 0.12)',
     paddingVertical: 10,
     paddingHorizontal: 16,
     borderRadius: 10,
   },
   challengeButtonActive: {
-    backgroundColor: '#D4A843',
-    borderColor: '#D4A843',
+    backgroundColor: '#111',
+    borderColor: 'rgba(212, 168, 67, 0.3)',
   },
   challengeButtonText: {
     fontSize: 13,
@@ -2675,7 +2675,7 @@ const styles = StyleSheet.create({
     color: '#D4A843',
   },
   challengeButtonTextActive: {
-    color: '#0f0f0f',
+    color: '#D4A843',
   },
   updateButtonSecondary: {
     flexDirection: 'row',
@@ -2886,9 +2886,9 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    backgroundColor: 'rgba(201, 168, 78, 0.08)',
+    backgroundColor: 'rgba(255, 255, 255, 0.04)',
     borderWidth: 1,
-    borderColor: 'rgba(201, 168, 78, 0.15)',
+    borderColor: 'rgba(255, 255, 255, 0.1)',
     borderRadius: 12,
     paddingVertical: 12,
     paddingHorizontal: 16,
@@ -2908,7 +2908,7 @@ const styles = StyleSheet.create({
   yourPositionRank: {
     fontSize: 16,
     fontWeight: '800',
-    color: '#C9A84E',
+    color: '#fff',
   },
   yourPositionRight: {
     alignItems: 'flex-end',

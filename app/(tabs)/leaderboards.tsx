@@ -6,7 +6,7 @@ import CachedImage from '@/components/ui/CachedImage';
 import { db } from '@/config/firebase';
 import { useAuth } from '@/contexts/AuthContext';
 import { useRouter } from '@/hooks/useRouter';
-import { collection, doc, getDoc, getDocs, query } from 'firebase/firestore';
+import { collection, doc, getDoc, getDocs, query, where, onSnapshot } from 'firebase/firestore';
 import { useEffect, useState } from 'react';
 import { ActivityIndicator, Dimensions, Image, Modal, ScrollView, StyleSheet, TouchableOpacity, View } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -142,6 +142,15 @@ export default function LeaderboardScreen() {
   const [selectedMutualGame, setSelectedMutualGame] = useState<'league' | 'valorant'>('league');
   const [showGameDropdown, setShowGameDropdown] = useState(false);
   const [updatingStats, setUpdatingStats] = useState(false);
+  const [lobbyCount, setLobbyCount] = useState(0);
+
+  // Listen for user's active lobbies count
+  useEffect(() => {
+    if (!user?.id) return;
+    const q = query(collection(db, 'parties'), where('members', 'array-contains', user.id));
+    const unsub = onSnapshot(q, (snap) => setLobbyCount(snap.size), () => {});
+    return unsub;
+  }, [user?.id]);
 
   const fetchMutualsAndStats = async (showLoading: boolean = true) => {
     if (!user?.id) return;
@@ -435,27 +444,25 @@ export default function LeaderboardScreen() {
 
       <View style={styles.header}>
         <ThemedText style={styles.headerTitle}>Leaderboards</ThemedText>
-        <View style={{ width: 36 }} />
+        <TouchableOpacity
+          style={styles.lobbiesChip}
+          onPress={() => router.push('/partyPages/lobbies')}
+          activeOpacity={0.7}
+        >
+          <IconSymbol size={16} name="hexagon" color="#e53935" />
+          <ThemedText style={styles.lobbiesChipText}>Lobbies</ThemedText>
+          {lobbyCount > 0 && (
+            <View style={styles.lobbiesChipBadge}>
+              <ThemedText style={styles.lobbiesChipBadgeText}>{lobbyCount}</ThemedText>
+            </View>
+          )}
+        </TouchableOpacity>
       </View>
 
       <ScrollView
         showsVerticalScrollIndicator={false}
         contentContainerStyle={styles.pageContent}
       >
-        {/* Lobbies CTA */}
-        <TouchableOpacity
-          style={styles.lobbiesBanner}
-          onPress={() => router.push('/partyPages/lobbies')}
-          activeOpacity={0.8}
-        >
-          <View style={styles.lobbiesBannerInner}>
-            <View style={styles.lobbiesBannerText}>
-              <ThemedText style={styles.lobbiesBannerTitle}>Play with friends</ThemedText>
-              <ThemedText style={styles.lobbiesBannerSubtitle}>Create a Lobby →</ThemedText>
-            </View>
-          </View>
-        </TouchableOpacity>
-
         {mutualLoading ? (
           <LeaderboardsTabSkeleton />
         ) : leaguePlayers.length + valorantPlayers.length === 0 ? (
@@ -599,29 +606,36 @@ const styles = StyleSheet.create({
     paddingHorizontal: 6,
     paddingTop: 20,
   },
-  lobbiesBanner: {
-    backgroundColor: '#161616',
-    borderRadius: 12,
+  lobbiesChip: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    backgroundColor: 'rgba(255, 255, 255, 0.06)',
+    paddingVertical: 10,
+    paddingLeft: 14,
+    paddingRight: 10,
+    borderRadius: 20,
     borderWidth: 1,
     borderColor: 'rgba(255, 255, 255, 0.08)',
-    marginBottom: 16,
   },
-  lobbiesBannerInner: {
-    paddingVertical: 16,
-    paddingHorizontal: 16,
-  },
-  lobbiesBannerText: {
-    flex: 1,
-  },
-  lobbiesBannerTitle: {
-    fontSize: 15,
+  lobbiesChipText: {
+    fontSize: 14,
     fontWeight: '600',
     color: '#fff',
   },
-  lobbiesBannerSubtitle: {
-    fontSize: 13,
-    color: '#666',
-    marginTop: 3,
+  lobbiesChipBadge: {
+    backgroundColor: '#e53935',
+    borderRadius: 12,
+    minWidth: 24,
+    height: 24,
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: 6,
+  },
+  lobbiesChipBadgeText: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: '#fff',
   },
   cardsContainer: {
     backgroundColor: '#1a1a1a',
@@ -765,7 +779,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: 8,
     paddingHorizontal: 16,
-    paddingVertical: 10,
+    paddingVertical: 8,
     marginBottom: 0,
     backgroundColor: '#1a1a1a',
     borderBottomWidth: 1,
@@ -790,7 +804,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 6,
-    paddingVertical: 10,
+    paddingVertical: 7,
     paddingLeft: 12,
     paddingRight: 16,
     borderBottomWidth: 1,
@@ -799,7 +813,6 @@ const styles = StyleSheet.create({
     borderLeftWidth: 3,
   },
   firstPlaceRow: {
-    paddingVertical: 14,
   },
   evenRow: {
     backgroundColor: '#141414',
@@ -835,10 +848,10 @@ const styles = StyleSheet.create({
     padding: 1,
   },
   playerAvatar: {
-    width: 32,
-    height: 32,
+    width: 28,
+    height: 28,
     backgroundColor: '#252525',
-    borderRadius: 16,
+    borderRadius: 14,
     alignItems: 'center',
     justifyContent: 'center',
     overflow: 'hidden',
@@ -846,7 +859,7 @@ const styles = StyleSheet.create({
   playerAvatarImage: {
     width: '100%',
     height: '100%',
-    borderRadius: 16,
+    borderRadius: 14,
   },
   avatarText: {
     fontSize: 12,
@@ -871,8 +884,8 @@ const styles = StyleSheet.create({
     marginLeft: 'auto',
   },
   rankIconSmall: {
-    width: 26,
-    height: 26,
+    width: 22,
+    height: 22,
   },
   rankTextContainer: {
     flex: 1,

@@ -2,6 +2,7 @@ import React from 'react';
 import { ThemedText } from '@/components/themed-text';
 import { IconSymbol } from '@/components/ui/icon-symbol';
 import { Animated, Image, Pressable, StyleSheet, View } from 'react-native';
+import { Image as ExpoImage } from 'expo-image';
 import { LinearGradient } from 'expo-linear-gradient';
 
 const GAME_LOGOS: { [key: string]: any } = {
@@ -9,12 +10,6 @@ const GAME_LOGOS: { [key: string]: any } = {
   'League of Legends': require('@/assets/images/lol-icon.png'),
   'League': require('@/assets/images/lol-icon.png'),
   'Apex Legends': require('@/assets/images/apex.png'),
-};
-
-const getOrdinal = (n: number): string => {
-  const s = ['TH', 'ST', 'ND', 'RD'];
-  const v = n % 100;
-  return n + (s[(v - 20) % 10] || s[v] || s[0]);
 };
 
 interface Leaderboard {
@@ -87,16 +82,36 @@ function LeaderboardCard({ leaderboard, onPress, currentUserId }: LeaderboardCar
   const displayMembers = (leaderboard.memberDetails || leaderboard.players || []).filter(
     (m: any) => m && (m.avatar || m.photoUrl || m.username || m.displayName)
   );
-  // Use sorted players (with rank data) for podium; fall back to memberDetails
+  // Use sorted players (with rank data) for ranking; fall back to memberDetails
   const rankedPlayers = leaderboard.players?.length && leaderboard.players[0]?.currentRank
     ? leaderboard.players
     : displayMembers;
-  // Build podium: top 2 + current user (or top 3 if user is already in top 3)
   const currentUserPlayer = rankedPlayers.find((p: any) => p.userId === currentUserId);
-  const currentUserInTop3 = rankedPlayers.slice(0, 3).some((p: any) => p.userId === currentUserId);
-  const podiumPlayers = currentUserInTop3 || !currentUserPlayer
-    ? rankedPlayers.slice(0, 3)
-    : [...rankedPlayers.slice(0, 2), currentUserPlayer];
+  const userRank = currentUserPlayer
+    ? (currentUserPlayer.rank || (rankedPlayers.indexOf(currentUserPlayer) + 1))
+    : null;
+  const getRankColor = (rank: number) => {
+    if (rank === 1) return '#FFD700';
+    if (rank === 2) return '#C0C0C0';
+    if (rank === 3) return '#CD7F32';
+    return '#fff';
+  };
+
+  // Prefetch all remote image URLs so they render together with the card
+  React.useEffect(() => {
+    const urls: string[] = [];
+    if (leaderboard.partyIcon) urls.push(leaderboard.partyIcon);
+    displayMembers.slice(0, 4).forEach((p: any) => {
+      const photo = p.avatar || p.photoUrl;
+      if (photo) urls.push(photo);
+    });
+    if (currentUserPlayer?.avatar || currentUserPlayer?.photoUrl) {
+      urls.push(currentUserPlayer.avatar || currentUserPlayer.photoUrl);
+    }
+    if (urls.length > 0) {
+      ExpoImage.prefetch(urls);
+    }
+  }, [leaderboard.partyIcon, displayMembers, currentUserPlayer]);
 
   const fadeAnim = React.useRef(new Animated.Value(1)).current;
 
@@ -143,97 +158,82 @@ function LeaderboardCard({ leaderboard, onPress, currentUserId }: LeaderboardCar
             style={styles.accentLine}
           />
 
-          {/* Main content */}
-          <View style={styles.mainSection}>
-            {leaderboard.partyIcon ? (
-              <Image source={{ uri: leaderboard.partyIcon }} style={styles.icon} resizeMode="cover" />
-            ) : gameLogo ? (
-              <Image source={gameLogo} style={styles.icon} resizeMode="contain" />
-            ) : (
-              <View style={styles.iconPlaceholder}>
-                <ThemedText style={styles.iconPlaceholderText}>
-                  {leaderboard.name.charAt(0).toUpperCase()}
+          {/* Main content row with optional rank square */}
+          <View style={styles.cardBody}>
+            <View style={styles.cardLeft}>
+              <View style={styles.mainSection}>
+                {leaderboard.partyIcon ? (
+                  <ExpoImage source={{ uri: leaderboard.partyIcon }} style={styles.icon} contentFit="cover" cachePolicy="memory-disk" recyclingKey={leaderboard.partyIcon} />
+                ) : gameLogo ? (
+                  <Image source={gameLogo} style={styles.icon} resizeMode="contain" />
+                ) : (
+                  <View style={styles.iconPlaceholder}>
+                    <ThemedText style={styles.iconPlaceholderText}>
+                      {leaderboard.name.charAt(0).toUpperCase()}
+                    </ThemedText>
+                  </View>
+                )}
+
+                <View style={styles.info}>
+                  <ThemedText style={styles.name} numberOfLines={1}>{leaderboard.name}</ThemedText>
+                  <ThemedText style={styles.meta} numberOfLines={1}>
+                    {leaderboard.game}
+                    <ThemedText style={styles.metaSep}> · </ThemedText>
+                    {leaderboard.members} player{leaderboard.members !== 1 ? 's' : ''}
+                  </ThemedText>
+                </View>
+              </View>
+
+              {/* Stacked member avatars */}
+              {displayMembers.length > 0 && (
+                <View style={styles.membersRow}>
+                  <View style={styles.stackedAvatarsInline}>
+                    {displayMembers.slice(0, 4).map((player: any, index: number) => {
+                      const photo = player.avatar || player.photoUrl;
+                      const name = player.username || player.displayName || '?';
+                      return (
+                        <View
+                          key={player.userId || index}
+                          style={[styles.avatarWrapInline, { marginLeft: index === 0 ? 0 : -8, zIndex: 10 - index }]}
+                        >
+                          {photo ? (
+                            <ExpoImage source={{ uri: photo }} style={styles.avatarImgInline} cachePolicy="memory-disk" recyclingKey={photo} />
+                          ) : (
+                            <View style={styles.avatarFallbackInline}>
+                              <ThemedText style={styles.avatarFallbackTextInline}>{name.charAt(0)}</ThemedText>
+                            </View>
+                          )}
+                        </View>
+                      );
+                    })}
+                  </View>
+                  <ThemedText style={styles.competingText}>
+                    {leaderboard.members} competing
+                  </ThemedText>
+                </View>
+              )}
+            </View>
+
+            {/* User rank square on the right */}
+            {currentUserPlayer && userRank && (
+              <View style={styles.userRankSquare}>
+                <View style={styles.userRankAvatarWrap}>
+                  {(currentUserPlayer.avatar || currentUserPlayer.photoUrl) ? (
+                    <ExpoImage source={{ uri: currentUserPlayer.avatar || currentUserPlayer.photoUrl }} style={styles.userRankAvatarImg} cachePolicy="memory-disk" recyclingKey={currentUserPlayer.avatar || currentUserPlayer.photoUrl} />
+                  ) : (
+                    <View style={styles.userRankAvatarFallback}>
+                      <ThemedText style={styles.userRankAvatarText}>
+                        {(currentUserPlayer.username || currentUserPlayer.displayName || '?').charAt(0).toUpperCase()}
+                      </ThemedText>
+                    </View>
+                  )}
+                </View>
+                <ThemedText style={[styles.userRankNumber, { color: getRankColor(userRank) }]}>
+                  #{userRank}
                 </ThemedText>
               </View>
             )}
-
-            <View style={styles.info}>
-              <ThemedText style={styles.name} numberOfLines={1}>{leaderboard.name}</ThemedText>
-              <ThemedText style={styles.meta} numberOfLines={1}>
-                {leaderboard.game}
-                <ThemedText style={styles.metaSep}> · </ThemedText>
-                {leaderboard.members} player{leaderboard.members !== 1 ? 's' : ''}
-              </ThemedText>
-            </View>
-
-            <IconSymbol size={14} name="chevron.right" color="#333" />
           </View>
-
-          {/* Stacked member avatars */}
-          {displayMembers.length > 0 && (
-            <View style={styles.membersRow}>
-              <View style={styles.stackedAvatarsInline}>
-                {displayMembers.slice(0, 4).map((player: any, index: number) => {
-                  const photo = player.avatar || player.photoUrl;
-                  const name = player.username || player.displayName || '?';
-                  return (
-                    <View
-                      key={player.userId || index}
-                      style={[styles.avatarWrapInline, { marginLeft: index === 0 ? 0 : -8, zIndex: 10 - index }]}
-                    >
-                      {photo ? (
-                        <Image source={{ uri: photo }} style={styles.avatarImgInline} />
-                      ) : (
-                        <View style={styles.avatarFallbackInline}>
-                          <ThemedText style={styles.avatarFallbackTextInline}>{name.charAt(0)}</ThemedText>
-                        </View>
-                      )}
-                    </View>
-                  );
-                })}
-              </View>
-              <ThemedText style={styles.competingText}>
-                {leaderboard.members} competing
-              </ThemedText>
-            </View>
-          )}
-
-          {/* Mini Podium Preview */}
-          {podiumPlayers.length > 0 && (
-            <View style={styles.podiumSection}>
-              {podiumPlayers.map((player: any, index: number) => {
-                const photo = player.avatar || player.photoUrl;
-                const name = player.username || player.displayName || '?';
-                const isCurrentUser = currentUserId && player.userId === currentUserId;
-                const isFirst = index === 0;
-
-                return (
-                  <View
-                    key={player.userId || index}
-                    style={[styles.podiumSlot, isFirst && styles.podiumSlotFirst]}
-                  >
-                    <ThemedText style={[styles.podiumRank, isFirst && styles.podiumRankFirst]}>
-                      {isCurrentUser
-                        ? `YOU · #${player.rank || index + 1}`
-                        : `${getOrdinal(player.rank || index + 1)}`}
-                    </ThemedText>
-                    <View style={[styles.podiumAvatarWrap, isFirst && styles.podiumAvatarFirst]}>
-                      {photo ? (
-                        <Image source={{ uri: photo }} style={styles.podiumAvatarImg} />
-                      ) : (
-                        <View style={styles.podiumAvatarFallback}>
-                          <ThemedText style={styles.podiumAvatarText}>{name.charAt(0).toUpperCase()}</ThemedText>
-                        </View>
-                      )}
-                    </View>
-                    <ThemedText style={[styles.podiumName, isCurrentUser && styles.podiumNameYou]} numberOfLines={1}>
-                      {name}
-                    </ThemedText>
-                  </View>
-                );
-              })}
-            </View>
-          )}
 
           {/* Footer */}
           <View style={styles.footerPanel}>
@@ -264,7 +264,7 @@ function LeaderboardCard({ leaderboard, onPress, currentUserId }: LeaderboardCar
                       style={[styles.avatarWrap, { marginLeft: index === 0 ? 0 : -8, zIndex: 5 - index }]}
                     >
                       {photo ? (
-                        <Image source={{ uri: photo }} style={styles.avatarImg} />
+                        <ExpoImage source={{ uri: photo }} style={styles.avatarImg} cachePolicy="memory-disk" recyclingKey={photo} />
                       ) : (
                         <View style={styles.avatarFallback}>
                           <ThemedText style={styles.avatarFallbackText}>{name.charAt(0)}</ThemedText>
@@ -310,6 +310,13 @@ const styles = StyleSheet.create({
   },
   accentLine: {
     height: 1.5,
+  },
+  cardBody: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  cardLeft: {
+    flex: 1,
   },
   mainSection: {
     flexDirection: 'row',
@@ -394,75 +401,47 @@ const styles = StyleSheet.create({
     fontWeight: '500',
     color: '#666',
   },
-  // Podium
-  podiumSection: {
-    flexDirection: 'row',
-    paddingHorizontal: 14,
-    paddingBottom: 12,
-    gap: 6,
-  },
-  podiumSlot: {
-    flex: 1,
-    aspectRatio: 1,
-    backgroundColor: '#141414',
-    borderRadius: 10,
+  // User rank square
+  userRankSquare: {
+    width: 64,
+    height: 64,
+    marginRight: 14,
+    borderRadius: 12,
+    backgroundColor: 'rgba(255, 255, 255, 0.04)',
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.12)',
     alignItems: 'center',
     justifyContent: 'center',
     gap: 4,
-    borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.04)',
   },
-  podiumSlotFirst: {
-    backgroundColor: 'rgba(255, 215, 0, 0.06)',
-    borderColor: 'rgba(255, 215, 0, 0.15)',
-  },
-  podiumRank: {
-    fontSize: 10,
-    fontWeight: '700',
-    color: '#555',
-    letterSpacing: 0.5,
-  },
-  podiumRankFirst: {
-    color: '#FFD700',
-  },
-  podiumAvatarWrap: {
-    width: 30,
-    height: 30,
-    borderRadius: 15,
+  userRankAvatarWrap: {
+    width: 28,
+    height: 28,
+    borderRadius: 14,
     overflow: 'hidden',
-  },
-  podiumAvatarFirst: {
     borderWidth: 1.5,
-    borderColor: 'rgba(255, 215, 0, 0.4)',
-    width: 32,
-    height: 32,
-    borderRadius: 16,
+    borderColor: 'rgba(255, 255, 255, 0.2)',
   },
-  podiumAvatarImg: {
+  userRankAvatarImg: {
     width: '100%',
     height: '100%',
   },
-  podiumAvatarFallback: {
+  userRankAvatarFallback: {
     width: '100%',
     height: '100%',
     backgroundColor: '#252525',
     alignItems: 'center',
     justifyContent: 'center',
   },
-  podiumAvatarText: {
-    fontSize: 12,
+  userRankAvatarText: {
+    fontSize: 10,
     fontWeight: '600',
     color: '#666',
   },
-  podiumName: {
-    fontSize: 11,
-    fontWeight: '500',
-    color: '#888',
-    maxWidth: '90%',
-  },
-  podiumNameYou: {
-    color: '#C9A84E',
-    fontWeight: '600',
+  userRankNumber: {
+    fontSize: 13,
+    fontWeight: '700',
+    color: '#fff',
   },
   // Footer
   footerPanel: {
