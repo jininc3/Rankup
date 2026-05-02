@@ -15,12 +15,45 @@ import PostDuoCard from '@/app/components/postDuoCard';
 import { DuoCardData } from '@/app/(tabs)/duoFinder';
 import { collection, getDocs, orderBy, query, Timestamp, where, onSnapshot, limit, startAfter, QueryDocumentSnapshot, DocumentData, doc, getDoc } from 'firebase/firestore';
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { ActivityIndicator, Dimensions, Image, ScrollView, StyleSheet, TouchableOpacity, View, Alert, RefreshControl, Modal, Pressable } from 'react-native';
+import { ActivityIndicator, Animated, Dimensions, Image, ScrollView, StyleSheet, TouchableOpacity, View, Alert, RefreshControl, Modal, Pressable } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useRouter } from '@/hooks/useRouter';
 import { useFocusEffect } from '@react-navigation/native';
 
 const { width, height: screenHeight } = Dimensions.get('window');
+
+// Scale-down press wrapper for tactile button feel
+const ScalePress = ({ onPress, style, children, disabled, activeOpacity, hitSlop }: {
+  onPress?: () => void;
+  style?: any;
+  children: React.ReactNode;
+  disabled?: boolean;
+  activeOpacity?: number;
+  hitSlop?: any;
+}) => {
+  const scale = useRef(new Animated.Value(1)).current;
+  const handlePressIn = () => {
+    Animated.timing(scale, { toValue: 0.96, duration: 80, useNativeDriver: true }).start();
+  };
+  const handlePressOut = () => {
+    Animated.timing(scale, { toValue: 1, duration: 120, useNativeDriver: true }).start();
+  };
+  return (
+    <TouchableOpacity
+      onPress={onPress}
+      onPressIn={handlePressIn}
+      onPressOut={handlePressOut}
+      style={style}
+      disabled={disabled}
+      activeOpacity={activeOpacity ?? 1}
+      hitSlop={hitSlop}
+    >
+      <Animated.View style={{ transform: [{ scale }] }}>
+        {children}
+      </Animated.View>
+    </TouchableOpacity>
+  );
+};
 
 // Format timestamp for comments
 const formatTimeAgo = (timestamp: any): string => {
@@ -78,12 +111,24 @@ interface Post {
   commentsCount?: number;
   leagueRank?: string;
   valorantRank?: string;
+  showRankOnPosts?: boolean;
   categories?: string[];
 }
 
 export default function HomeScreen() {
   const insets = useSafeAreaInsets();
   const router = useRouter();
+
+  // FAB hover animation
+  const fabY = useRef(new Animated.Value(0)).current;
+  useEffect(() => {
+    Animated.loop(
+      Animated.sequence([
+        Animated.timing(fabY, { toValue: -4, duration: 1500, useNativeDriver: true }),
+        Animated.timing(fabY, { toValue: 0, duration: 1500, useNativeDriver: true }),
+      ])
+    ).start();
+  }, []);
   const {
     user: currentUser,
     preloadedPosts,
@@ -98,7 +143,7 @@ export default function HomeScreen() {
     isPostReported,
     addReportedPost,
   } = useAuth();
-  const [activeTab, setActiveTab] = useState<'forYou' | 'following'>('following');
+  const [activeTab, setActiveTab] = useState<'forYou' | 'following'>('forYou');
   const [followingPosts, setFollowingPosts] = useState<Post[]>([]);
   const [forYouPosts, setForYouPosts] = useState<Post[]>([]);
   const [loading, setLoading] = useState(true);
@@ -342,7 +387,8 @@ export default function HomeScreen() {
                 ...post,
                 avatar: userData.avatar || post.avatar || null,
                 leagueRank,
-                valorantRank
+                valorantRank,
+                showRankOnPosts: userData.showRankOnPosts ?? false,
               };
             }
           } catch (error) {
@@ -521,7 +567,8 @@ export default function HomeScreen() {
                 ...post,
                 avatar: userData.avatar || post.avatar || null,
                 leagueRank,
-                valorantRank
+                valorantRank,
+                showRankOnPosts: userData.showRankOnPosts ?? false,
               };
             }
           } catch (error) {
@@ -576,8 +623,6 @@ export default function HomeScreen() {
     if (!currentUser?.id) return;
     if (isLoadMore && (!forYouHasMore || forYouLoadingMore)) return;
 
-    const interests = currentUser.interests || [];
-
     if (isLoadMore) {
       setForYouLoadingMore(true);
     } else {
@@ -597,10 +642,7 @@ export default function HomeScreen() {
         limit(POSTS_PER_PAGE * 2) // Fetch extra to account for filtering
       ];
 
-      // Filter by user's game interests if they have any
-      if (interests.length > 0 && interests.length <= 10) {
-        constraints.unshift(where('taggedGame', 'in', interests));
-      }
+      // Show posts from all public accounts regardless of game interests
 
       if (isLoadMore && forYouLastDoc) {
         constraints.push(startAfter(forYouLastDoc));
@@ -656,6 +698,7 @@ export default function HomeScreen() {
               avatar: userData.avatar || post.avatar || undefined,
               leagueRank,
               valorantRank,
+              showRankOnPosts: userData.showRankOnPosts ?? false,
             });
           } else {
             enrichedPosts.push(post);
@@ -693,7 +736,7 @@ export default function HomeScreen() {
       setForYouLoading(false);
       setForYouLoadingMore(false);
     }
-  }, [currentUser?.id, currentUser?.interests, selectedGameFilter, forYouHasMore, forYouLoadingMore, forYouLastDoc, isUserBlocked, isPostReported]);
+  }, [currentUser?.id, selectedGameFilter, forYouHasMore, forYouLoadingMore, forYouLastDoc, isUserBlocked, isPostReported]);
 
   // Initial fetch when dependencies change
   // Note: Don't fetch if we just consumed preloaded posts (hasConsumedPreload && no filter)
@@ -1067,7 +1110,8 @@ export default function HomeScreen() {
           newPost = {
             ...newPost,
             leagueRank,
-            valorantRank
+            valorantRank,
+            showRankOnPosts: userData.showRankOnPosts ?? false,
           };
         }
       }
@@ -1248,25 +1292,11 @@ export default function HomeScreen() {
       </View>
 
       <View style={styles.header}>
-        <View style={styles.headerTabs}>
-          <TouchableOpacity onPress={() => setActiveTab('following')} style={styles.headerTab} activeOpacity={0.7}>
-            <ThemedText style={[styles.headerTabText, activeTab === 'following' && styles.headerTabTextActive]}>
-              Following
-            </ThemedText>
-            {activeTab === 'following' && <View style={styles.headerTabUnderline} />}
-          </TouchableOpacity>
-          <TouchableOpacity onPress={() => setActiveTab('forYou')} style={styles.headerTab} activeOpacity={0.7}>
-            <ThemedText style={[styles.headerTabText, activeTab === 'forYou' && styles.headerTabTextActive]}>
-              For You
-            </ThemedText>
-            {activeTab === 'forYou' && <View style={styles.headerTabUnderline} />}
-          </TouchableOpacity>
-        </View>
+        <ThemedText style={styles.headerTitle}>Feed</ThemedText>
         <View style={styles.headerActions}>
-          <TouchableOpacity
+          <ScalePress
             style={styles.headerIconButton}
             onPress={() => router.push('/chatPages/chatList')}
-            activeOpacity={0.7}
           >
             <IconSymbol size={27} name="bubble.left" color="#fff" />
             {unreadMessageCount > 0 && (
@@ -1276,11 +1306,10 @@ export default function HomeScreen() {
                 </ThemedText>
               </View>
             )}
-          </TouchableOpacity>
-          <TouchableOpacity
+          </ScalePress>
+          <ScalePress
             style={styles.headerIconButton}
             onPress={() => router.push('/notifications')}
-            activeOpacity={0.7}
           >
             <IconSymbol size={27} name="bell" color="#fff" />
             {unreadNotificationCount > 0 && (
@@ -1290,7 +1319,7 @@ export default function HomeScreen() {
                 </ThemedText>
               </View>
             )}
-          </TouchableOpacity>
+          </ScalePress>
         </View>
       </View>
 
@@ -1315,40 +1344,45 @@ export default function HomeScreen() {
           />
         }
       >
-        {/* Game Filter Buttons */}
+        {/* Filter Tabs */}
         <View style={styles.gameFilterRow}>
-          <TouchableOpacity onPress={() => setSelectedGameFilter(null)} style={styles.gameFilterBtn} activeOpacity={0.7}>
-            <ThemedText style={[styles.gameFilterBtnText, selectedGameFilter === null && styles.gameFilterBtnTextActive]}>
-              All
+          <ScalePress onPress={() => { setActiveTab('forYou'); setSelectedGameFilter(null); }} style={styles.gameFilterBtn}>
+            <ThemedText style={[styles.gameFilterBtnText, activeTab === 'forYou' && selectedGameFilter === null && styles.gameFilterBtnTextActive]}>
+              For You
             </ThemedText>
-            {selectedGameFilter === null && <View style={styles.gameFilterUnderline} />}
-          </TouchableOpacity>
-          <TouchableOpacity onPress={() => setSelectedGameFilter('valorant')} style={styles.gameFilterBtn} activeOpacity={0.7}>
+            {activeTab === 'forYou' && selectedGameFilter === null && <View style={styles.gameFilterUnderline} />}
+          </ScalePress>
+          <ScalePress onPress={() => { setActiveTab('following'); setSelectedGameFilter(null); }} style={styles.gameFilterBtn}>
+            <ThemedText style={[styles.gameFilterBtnText, activeTab === 'following' && selectedGameFilter === null && styles.gameFilterBtnTextActive]}>
+              Following
+            </ThemedText>
+            {activeTab === 'following' && selectedGameFilter === null && <View style={styles.gameFilterUnderline} />}
+          </ScalePress>
+          <ScalePress onPress={() => { setActiveTab('following'); setSelectedGameFilter('valorant'); }} style={styles.gameFilterBtn}>
             <ThemedText style={[styles.gameFilterBtnText, selectedGameFilter === 'valorant' && styles.gameFilterBtnTextActive]}>
               Valorant
             </ThemedText>
             {selectedGameFilter === 'valorant' && <View style={styles.gameFilterUnderline} />}
-          </TouchableOpacity>
-          <TouchableOpacity onPress={() => setSelectedGameFilter('league')} style={styles.gameFilterBtn} activeOpacity={0.7}>
+          </ScalePress>
+          <ScalePress onPress={() => { setActiveTab('following'); setSelectedGameFilter('league'); }} style={styles.gameFilterBtn}>
             <ThemedText style={[styles.gameFilterBtnText, selectedGameFilter === 'league' && styles.gameFilterBtnTextActive]}>
               League
             </ThemedText>
             {selectedGameFilter === 'league' && <View style={styles.gameFilterUnderline} />}
-          </TouchableOpacity>
+          </ScalePress>
         </View>
 
         {hasNewPosts && activeTab === 'following' && !loading && (
-          <TouchableOpacity
+          <ScalePress
             style={styles.newPostsBanner}
             onPress={() => {
               scrollViewRef.current?.scrollTo({ y: 0, animated: true });
               handleRefresh();
             }}
-            activeOpacity={0.8}
           >
             <IconSymbol size={14} name="arrow.up" color="#fff" />
             <ThemedText style={styles.newPostsBannerText}>New posts</ThemedText>
-          </TouchableOpacity>
+          </ScalePress>
         )}
 
         {(activeTab === 'following' ? loading : forYouLoading) ? (
@@ -1456,13 +1490,14 @@ export default function HomeScreen() {
       )}
 
       {/* Floating Add Clip Button */}
-      <TouchableOpacity
-        style={styles.fabButton}
-        onPress={handleAddClip}
-        activeOpacity={0.7}
-      >
-        <IconSymbol size={26} name="plus" color="#fff" />
-      </TouchableOpacity>
+      <Animated.View style={[styles.fabWrapper, { transform: [{ translateY: fabY }] }]}>
+        <ScalePress
+          style={styles.fabButton}
+          onPress={handleAddClip}
+        >
+          <IconSymbol size={26} name="plus" color="#fff" />
+        </ScalePress>
+      </Animated.View>
 
       {/* Post Duo Card Modal */}
       <PostDuoCard
@@ -1503,13 +1538,12 @@ export default function HomeScreen() {
             <View style={styles.filterModalHandle} />
             <ThemedText style={styles.filterModalTitle}>FILTER BY GAME</ThemedText>
 
-            <TouchableOpacity
+            <ScalePress
               style={[styles.filterOption, selectedGameFilter === null && styles.filterOptionActive]}
               onPress={() => {
                 setSelectedGameFilter(null);
                 setShowFilterModal(false);
               }}
-              activeOpacity={0.7}
             >
               <View style={styles.filterOptionRadio}>
                 {selectedGameFilter === null && <View style={styles.filterOptionRadioInner} />}
@@ -1517,15 +1551,14 @@ export default function HomeScreen() {
               <ThemedText style={[styles.filterOptionText, selectedGameFilter === null && styles.filterOptionTextActive]}>
                 ALL GAMES
               </ThemedText>
-            </TouchableOpacity>
+            </ScalePress>
 
-            <TouchableOpacity
+            <ScalePress
               style={[styles.filterOption, selectedGameFilter === 'valorant' && styles.filterOptionActive]}
               onPress={() => {
                 setSelectedGameFilter('valorant');
                 setShowFilterModal(false);
               }}
-              activeOpacity={0.7}
             >
               <View style={styles.filterOptionRadio}>
                 {selectedGameFilter === 'valorant' && <View style={styles.filterOptionRadioInner} />}
@@ -1533,15 +1566,14 @@ export default function HomeScreen() {
               <ThemedText style={[styles.filterOptionText, selectedGameFilter === 'valorant' && styles.filterOptionTextActive]}>
                 VALORANT
               </ThemedText>
-            </TouchableOpacity>
+            </ScalePress>
 
-            <TouchableOpacity
+            <ScalePress
               style={[styles.filterOption, selectedGameFilter === 'league' && styles.filterOptionActive]}
               onPress={() => {
                 setSelectedGameFilter('league');
                 setShowFilterModal(false);
               }}
-              activeOpacity={0.7}
             >
               <View style={styles.filterOptionRadio}>
                 {selectedGameFilter === 'league' && <View style={styles.filterOptionRadioInner} />}
@@ -1549,7 +1581,7 @@ export default function HomeScreen() {
               <ThemedText style={[styles.filterOptionText, selectedGameFilter === 'league' && styles.filterOptionTextActive]}>
                 LEAGUE
               </ThemedText>
-            </TouchableOpacity>
+            </ScalePress>
           </Pressable>
         </Pressable>
       </Modal>
@@ -1694,6 +1726,7 @@ const styles = StyleSheet.create({
     width: 20,
     borderRadius: 1,
     backgroundColor: '#C4A44E',
+    alignSelf: 'center',
   },
   newPostsBanner: {
     flexDirection: 'row',
@@ -1928,15 +1961,24 @@ const styles = StyleSheet.create({
     height: '50%',
     pointerEvents: 'none',
   },
-  fabButton: {
+  fabWrapper: {
     position: 'absolute',
     bottom: 24,
     right: 20,
+  },
+  fabButton: {
     width: 56,
     height: 56,
     borderRadius: 28,
-    backgroundColor: '#000',
+    backgroundColor: '#1a1a1a',
     alignItems: 'center',
     justifyContent: 'center',
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.1)',
+    shadowColor: '#fff',
+    shadowOffset: { width: 0, height: 0 },
+    shadowOpacity: 0.08,
+    shadowRadius: 8,
+    elevation: 4,
   },
 });

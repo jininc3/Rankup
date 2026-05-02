@@ -26,12 +26,17 @@ export default function TabLayout() {
         },
         headerShown: false,
         tabBarButton: HapticTab,
-        tabBarShowLabel: false,
+        tabBarShowLabel: true,
+        tabBarLabelStyle: {
+          fontSize: 10,
+          fontWeight: '600',
+          marginTop: 2,
+        },
       }}>
       <Tabs.Screen
         name="index"
         options={{
-          title: 'Homepage',
+          title: 'Feed',
           tabBarIcon: ({ color }) => (
             <Image
               source={require('@/assets/images/home.png')}
@@ -57,7 +62,7 @@ export default function TabLayout() {
       <Tabs.Screen
         name="leaderboards"
         options={{
-          title: 'Leaderboards',
+          title: 'Rankings',
           tabBarIcon: ({ color }) => (
             <Image
               source={require('@/assets/images/leaderboard.png')}
@@ -70,7 +75,7 @@ export default function TabLayout() {
       <Tabs.Screen
         name="duoFinder"
         options={{
-          title: 'Duo Finder',
+          title: 'LFG',
           tabBarIcon: ({ color }) => (
             <Image
               source={require('@/assets/images/duofinder.png')}

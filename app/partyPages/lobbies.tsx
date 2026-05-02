@@ -6,12 +6,33 @@ import { LeaderboardCardSkeleton } from '@/components/ui/Skeleton';
 import { db } from '@/config/firebase';
 import { useAuth } from '@/contexts/AuthContext';
 import { useRouter } from '@/hooks/useRouter';
-import { collection, onSnapshot, query, where } from 'firebase/firestore';
+import { collection, doc, getDoc, onSnapshot, query, where } from 'firebase/firestore';
 import { useEffect, useState, useRef, useCallback } from 'react';
 import { Image, Modal, ScrollView, StyleSheet, TouchableOpacity, View } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 
 const MINIMUM_SKELETON_TIME = 400;
+
+const getLeagueRankValue = (currentRank: string, lp: number): number => {
+  const rankOrder: { [key: string]: number } = {
+    'CHALLENGER': 10, 'GRANDMASTER': 9, 'MASTER': 8, 'DIAMOND': 7,
+    'EMERALD': 6, 'PLATINUM': 5, 'GOLD': 4, 'SILVER': 3,
+    'BRONZE': 2, 'IRON': 1, 'UNRANKED': 0,
+  };
+  const divisionOrder: { [key: string]: number } = { 'I': 4, 'II': 3, 'III': 2, 'IV': 1 };
+  const parts = currentRank.toUpperCase().split(' ');
+  return (rankOrder[parts[0]] || 0) * 1000 + (divisionOrder[parts[1]] || 0) * 100 + lp;
+};
+
+const getValorantRankValue = (currentRank: string, rr: number): number => {
+  const rankOrder: { [key: string]: number } = {
+    'RADIANT': 9, 'IMMORTAL': 8, 'ASCENDANT': 7, 'DIAMOND': 6,
+    'PLATINUM': 5, 'GOLD': 4, 'SILVER': 3, 'BRONZE': 2,
+    'IRON': 1, 'UNRANKED': 0,
+  };
+  const parts = currentRank.toUpperCase().split(' ');
+  return (rankOrder[parts[0]] || 0) * 1000 + (parseInt(parts[1]) || 0) * 100 + rr;
+};
 
 // Module-level cache so data persists across navigation remounts
 let cachedLeaderboards: any[] | null = null;
@@ -110,6 +131,72 @@ export default function LobbiesScreen() {
     return () => unsubscribe();
   }, [user?.id]);
 
+  // Enrich leaderboards with sorted player rank data for podium
+  useEffect(() => {
+    if (loading || leaderboards.length === 0) return;
+
+    const enrichWithRanks = async () => {
+      const enriched = await Promise.all(
+        leaderboards.map(async (lb: any) => {
+          // Skip if already enriched
+          if (lb.players && lb.players.length > 0 && lb.players[0].currentRank) return lb;
+
+          const memberDetails = lb.memberDetails || [];
+          if (memberDetails.length === 0) return lb;
+
+          const isLeague = lb.game === 'League of Legends' || lb.game === 'League';
+          const gameStatsPath = isLeague ? 'league' : 'valorant';
+
+          try {
+            const playerPromises = memberDetails.map(async (member: any) => {
+              try {
+                const statsDoc = await getDoc(doc(db, 'users', member.userId, 'gameStats', gameStatsPath));
+                let stats = statsDoc.data();
+
+                if (!stats?.currentRank) {
+                  const userDoc = await getDoc(doc(db, 'users', member.userId));
+                  const userData = userDoc.data();
+                  if (isLeague && userData?.riotStats?.rankedSolo) {
+                    stats = { currentRank: `${userData.riotStats.rankedSolo.tier} ${userData.riotStats.rankedSolo.rank}`, lp: userData.riotStats.rankedSolo.leaguePoints || 0 };
+                  } else if (!isLeague && userData?.valorantStats) {
+                    stats = { currentRank: userData.valorantStats.currentRank || 'Unranked', rr: userData.valorantStats.rankRating || 0 };
+                  }
+                }
+
+                return {
+                  userId: member.userId,
+                  username: member.username,
+                  avatar: member.avatar,
+                  currentRank: stats?.currentRank || 'Unranked',
+                  lp: stats?.lp || 0,
+                  rr: stats?.rr || 0,
+                };
+              } catch {
+                return { userId: member.userId, username: member.username, avatar: member.avatar, currentRank: 'Unranked', lp: 0, rr: 0 };
+              }
+            });
+
+            const players = await Promise.all(playerPromises);
+            players.sort((a, b) => {
+              if (isLeague) return getLeagueRankValue(b.currentRank, b.lp) - getLeagueRankValue(a.currentRank, a.lp);
+              return getValorantRankValue(b.currentRank, b.rr) - getValorantRankValue(a.currentRank, a.rr);
+            });
+            players.forEach((p: any, i: number) => { p.rank = i + 1; });
+
+            return { ...lb, players };
+          } catch {
+            return lb;
+          }
+        })
+      );
+
+      setLeaderboards(enriched);
+      cachedLeaderboards = enriched;
+    };
+
+    enrichWithRanks();
+  }, [loading, leaderboards.length]);
+
   const handleLeaderboardPress = useCallback((leaderboard: any) => {
     if (leaderboard.challengeStatus === 'completed') {
       router.push({
@@ -186,6 +273,7 @@ export default function LobbiesScreen() {
                 leaderboard={leaderboard}
                 onPress={handleLeaderboardPress}
                 showDivider={index < leaderboards.length - 1}
+                currentUserId={user?.id}
               />
             ))}
           </View>

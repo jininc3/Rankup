@@ -1097,7 +1097,7 @@ export default function LeaderboardDetail() {
         <View style={styles.coverPhotoSection}>
           {/* Header Icons */}
           <View style={styles.headerIconsRow}>
-            <TouchableOpacity style={styles.backButton} onPress={() => router.replace('/partyPages/lobbies')}>
+            <TouchableOpacity style={styles.backButton} onPress={() => router.back()}>
               <IconSymbol size={20} name="chevron.left" color="#fff" />
             </TouchableOpacity>
             <View style={styles.headerRightButtons}>
@@ -1172,33 +1172,33 @@ export default function LeaderboardDetail() {
 
           {/* Action Buttons */}
           <View style={styles.actionButtons}>
-            <TouchableOpacity
-              style={[styles.codeButton, updatingStats && { opacity: 0.5 }]}
-              onPress={handleUpdateStats}
-              disabled={updatingStats}
-              activeOpacity={0.7}
-            >
-              {updatingStats ? (
-                <ActivityIndicator size={12} color="#4da6ff" />
-              ) : (
-                <IconSymbol size={14} name="arrow.clockwise" color="#4da6ff" />
-              )}
-              <ThemedText style={[styles.inviteButtonText, { color: '#4da6ff' }]}>
-                {updatingStats ? 'Updating...' : 'Update'}
-              </ThemedText>
-            </TouchableOpacity>
+            {(isPending || isActive) && (
+              <TouchableOpacity style={[styles.challengeButton, isActive && styles.challengeButtonActive]} onPress={() => router.push({ pathname: '/partyPages/challengeDetail', params: { id: partyDocId, game } })}>
+                <IconSymbol size={14} name="trophy.fill" color={isActive ? '#0f0f0f' : '#D4A843'} />
+                <ThemedText style={[styles.challengeButtonText, isActive && styles.challengeButtonTextActive]}>Challenge</ThemedText>
+              </TouchableOpacity>
+            )}
             {canInvite && (
               <TouchableOpacity style={styles.inviteButton} onPress={handleOpenInviteModal}>
                 <IconSymbol size={14} name="person.badge.plus" color="#fff" />
                 <ThemedText style={styles.inviteButtonText}>Invite</ThemedText>
               </TouchableOpacity>
             )}
-            {(isPending || isActive) && (
-              <TouchableOpacity style={[styles.codeButton, isActive && styles.codeButtonActive]} onPress={() => router.push({ pathname: '/partyPages/challengeDetail', params: { id: partyDocId, game } })}>
-                <IconSymbol size={14} name="trophy.fill" color={isActive ? '#0f0f0f' : '#fff'} />
-                <ThemedText style={[styles.inviteButtonText, isActive && styles.codeButtonTextActive]}>Challenge</ThemedText>
-              </TouchableOpacity>
-            )}
+            <TouchableOpacity
+              style={[styles.updateButtonSecondary, updatingStats && { opacity: 0.5 }]}
+              onPress={handleUpdateStats}
+              disabled={updatingStats}
+              activeOpacity={0.7}
+            >
+              {updatingStats ? (
+                <ActivityIndicator size={12} color="#666" />
+              ) : (
+                <IconSymbol size={14} name="arrow.clockwise" color="#666" />
+              )}
+              <ThemedText style={styles.updateButtonSecondaryText}>
+                {updatingStats ? 'Updating...' : 'Update'}
+              </ThemedText>
+            </TouchableOpacity>
           </View>
         </View>
 
@@ -1206,7 +1206,7 @@ export default function LeaderboardDetail() {
         <View style={styles.columnHeaders}>
           <ThemedText style={[styles.columnHeaderText, { width: 40 }]}>RANK</ThemedText>
           <ThemedText style={[styles.columnHeaderText, { flex: 1, paddingLeft: 40 }]}>PLAYER</ThemedText>
-          <ThemedText style={[styles.columnHeaderText, { width: 130, marginLeft: 'auto', textAlign: 'center' }]}>
+          <ThemedText style={[styles.columnHeaderText, { width: 145, marginLeft: 'auto', textAlign: 'center' }]}>
             CURRENT RANK
           </ThemedText>
         </View>
@@ -1224,33 +1224,39 @@ export default function LeaderboardDetail() {
                 style={[
                   styles.playerRow,
                   index % 2 === 0 ? styles.evenRow : styles.oddRow,
-                  player.isCurrentUser && styles.currentUserRow,
                   { borderLeftWidth: 4, borderLeftColor: getBorderColor(player.rank) },
+                  player.rank === 1 && styles.firstPlaceRow,
+                  player.isCurrentUser && styles.currentUserRow,
                 ]}
               >
                 {/* Rank Number */}
                 <View style={styles.rankContainer}>
-                  <ThemedText style={styles.rankText}>{player.rank}</ThemedText>
+                  <ThemedText style={[styles.rankText, player.rank <= 3 && { color: getBorderColor(player.rank) }]}>{player.rank}</ThemedText>
                 </View>
 
                 {/* Player Info */}
                 <View style={styles.playerInfo}>
                   <TouchableOpacity
-                    style={styles.playerAvatar}
+                    style={[
+                      styles.playerAvatarRing,
+                      player.rank <= 3 && { borderColor: getBorderColor(player.rank), borderWidth: 2 },
+                    ]}
                     onPress={() => handlePlayerPress(player)}
                     activeOpacity={0.7}
                   >
-                    {player.avatar && player.avatar.startsWith('http') ? (
-                      <CachedImage uri={player.avatar} style={styles.playerAvatarImage} />
-                    ) : (
-                      <ThemedText style={styles.avatarText}>
-                        {player.avatar || player.username[0].toUpperCase()}
-                      </ThemedText>
-                    )}
+                    <View style={styles.playerAvatar}>
+                      {player.avatar && player.avatar.startsWith('http') ? (
+                        <CachedImage uri={player.avatar} style={styles.playerAvatarImage} />
+                      ) : (
+                        <ThemedText style={styles.avatarText}>
+                          {player.avatar || player.username[0].toUpperCase()}
+                        </ThemedText>
+                      )}
+                    </View>
                   </TouchableOpacity>
                   <View style={styles.playerNameContainer}>
                     <TouchableOpacity onPress={() => handlePlayerPress(player)} activeOpacity={0.7} style={styles.playerNameRow}>
-                      <ThemedText style={styles.playerName} numberOfLines={1}>
+                      <ThemedText style={[styles.playerName, player.isCurrentUser && styles.currentUserName]} numberOfLines={1}>
                         {player.username}
                       </ThemedText>
                       {player.rank === 1 && (
@@ -1265,7 +1271,7 @@ export default function LeaderboardDetail() {
                   </View>
                 </View>
 
-                {/* Current Rank with Icon and LP/RR based on game */}
+                {/* Current Rank with Icon and LP/RR */}
                 <View style={styles.rankInfoContainer}>
                   <Image source={rankIcon} style={styles.rankIconSmall} resizeMode="contain" />
                   <View style={styles.rankTextContainer}>
@@ -1281,6 +1287,35 @@ export default function LeaderboardDetail() {
             );
           })}
         </View>
+
+        {/* Your Position Strip */}
+        {(() => {
+          const currentPlayerIndex = players.findIndex(p => p.isCurrentUser);
+          if (currentPlayerIndex < 0) return null;
+          const currentPlayer = players[currentPlayerIndex];
+          const playerAbove = currentPlayerIndex > 0 ? players[currentPlayerIndex - 1] : null;
+          const gap = playerAbove
+            ? (isLeague
+                ? (playerAbove.lp || 0) - (currentPlayer.lp || 0)
+                : (playerAbove.rr || 0) - (currentPlayer.rr || 0))
+            : 0;
+          return (
+            <View style={styles.yourPositionStrip}>
+              <View style={styles.yourPositionLeft}>
+                <ThemedText style={styles.yourPositionLabel}>Your Position</ThemedText>
+                <ThemedText style={styles.yourPositionRank}>#{currentPlayer.rank} of {players.length}</ThemedText>
+              </View>
+              {playerAbove && (
+                <View style={styles.yourPositionRight}>
+                  <ThemedText style={styles.yourPositionGapLabel}>Gap to #{currentPlayerIndex}</ThemedText>
+                  <ThemedText style={styles.yourPositionGap}>
+                    {gap > 0 ? `-${gap} ${isLeague ? 'LP' : 'RR'}` : `+${Math.abs(gap)} ${isLeague ? 'LP' : 'RR'}`}
+                  </ThemedText>
+                </View>
+              )}
+            </View>
+          );
+        })()}
 
 
         <View style={styles.bottomSpacer} />
@@ -2619,6 +2654,44 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: 10,
   },
+  challengeButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    backgroundColor: 'rgba(212, 168, 67, 0.15)',
+    borderWidth: 1,
+    borderColor: 'rgba(212, 168, 67, 0.3)',
+    paddingVertical: 10,
+    paddingHorizontal: 16,
+    borderRadius: 10,
+  },
+  challengeButtonActive: {
+    backgroundColor: '#D4A843',
+    borderColor: '#D4A843',
+  },
+  challengeButtonText: {
+    fontSize: 13,
+    fontWeight: '700',
+    color: '#D4A843',
+  },
+  challengeButtonTextActive: {
+    color: '#0f0f0f',
+  },
+  updateButtonSecondary: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 5,
+    paddingVertical: 10,
+    paddingHorizontal: 12,
+    borderRadius: 10,
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.08)',
+  },
+  updateButtonSecondaryText: {
+    fontSize: 12,
+    fontWeight: '500',
+    color: '#666',
+  },
   inviteButton: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -2697,14 +2770,20 @@ const styles = StyleSheet.create({
     position: 'relative',
     borderLeftWidth: 3,
   },
+  firstPlaceRow: {
+    paddingVertical: 14,
+  },
   evenRow: {
-    backgroundColor: 'rgba(255,255,255,0.04)',
+    backgroundColor: '#141414',
   },
   oddRow: {
     backgroundColor: '#1a1a1a',
   },
   currentUserRow: {
-    backgroundColor: 'rgba(255,255,255,0.06)',
+    backgroundColor: '#252525',
+  },
+  currentUserName: {
+    color: '#C9A84E',
   },
   rankContainer: {
     width: 40,
@@ -2721,11 +2800,17 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: 12,
   },
+  playerAvatarRing: {
+    borderRadius: 18,
+    borderWidth: 0,
+    borderColor: 'transparent',
+    padding: 1,
+  },
   playerAvatar: {
     width: 32,
     height: 32,
-    backgroundColor: 'rgba(255,255,255,0.06)',
-    borderRadius: 6,
+    backgroundColor: '#252525',
+    borderRadius: 16,
     alignItems: 'center',
     justifyContent: 'center',
     overflow: 'hidden',
@@ -2733,7 +2818,7 @@ const styles = StyleSheet.create({
   playerAvatarImage: {
     width: '100%',
     height: '100%',
-    borderRadius: 6,
+    borderRadius: 16,
   },
   avatarText: {
     fontSize: 12,
@@ -2796,6 +2881,50 @@ const styles = StyleSheet.create({
     fontWeight: '500',
     color: '#666',
     lineHeight: 13,
+  },
+  yourPositionStrip: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    backgroundColor: 'rgba(201, 168, 78, 0.08)',
+    borderWidth: 1,
+    borderColor: 'rgba(201, 168, 78, 0.15)',
+    borderRadius: 12,
+    paddingVertical: 12,
+    paddingHorizontal: 16,
+    marginTop: 10,
+    marginHorizontal: 6,
+  },
+  yourPositionLeft: {
+    gap: 2,
+  },
+  yourPositionLabel: {
+    fontSize: 10,
+    fontWeight: '600',
+    color: '#888',
+    letterSpacing: 0.5,
+    textTransform: 'uppercase',
+  },
+  yourPositionRank: {
+    fontSize: 16,
+    fontWeight: '800',
+    color: '#C9A84E',
+  },
+  yourPositionRight: {
+    alignItems: 'flex-end',
+    gap: 2,
+  },
+  yourPositionGapLabel: {
+    fontSize: 10,
+    fontWeight: '600',
+    color: '#888',
+    letterSpacing: 0.5,
+    textTransform: 'uppercase',
+  },
+  yourPositionGap: {
+    fontSize: 14,
+    fontWeight: '700',
+    color: '#fff',
   },
   bottomSpacer: {
     height: 40,

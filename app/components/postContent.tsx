@@ -1,12 +1,14 @@
 import { ThemedText } from '@/components/themed-text';
 import { IconSymbol } from '@/components/ui/icon-symbol';
 import { VideoView, useVideoPlayer } from 'expo-video';
+import { LinearGradient } from 'expo-linear-gradient';
 import { Timestamp } from 'firebase/firestore';
 import { useEffect, useState, useRef } from 'react';
 import { Alert, Animated, Dimensions, FlatList, Image, StyleSheet, TouchableOpacity, View, TextInput } from 'react-native';
 import { getComments, CommentData } from '@/services/commentService';
 import { TaggedUser } from '@/app/components/tagUsersModal';
 import { calculateTierBorderColor } from '@/utils/tierBorderUtils';
+import { formatRankDisplay } from '@/utils/formatRankDisplay';
 
 const { width: screenWidth } = Dimensions.get('window');
 const mediaHorizontalPadding = 8; // Small padding to show rounded corners
@@ -109,7 +111,7 @@ const VideoPlayerComponent = ({
     onPlayerReady(postId, player);
   }, [player, postId, onPlayerReady]);
 
-  // Notify parent when video is ready to play
+  // Notify parent when video is ready to play + capture duration
   useEffect(() => {
     if (player.status === 'readyToPlay') {
       onVideoReady?.();
@@ -223,6 +225,20 @@ const VideoPlayerComponent = ({
         contentFit="cover"
       />
 
+      {/* Bottom gradient overlay */}
+      <LinearGradient
+        colors={['transparent', 'rgba(0,0,0,0.6)']}
+        style={styles.videoGradientOverlay}
+        pointerEvents="none"
+      />
+
+      {/* Top gradient overlay (subtle) */}
+      <LinearGradient
+        colors={['rgba(0,0,0,0.35)', 'transparent']}
+        style={styles.videoGradientOverlayTop}
+        pointerEvents="none"
+      />
+
       {/* Tap overlay for play/pause and double-tap to like */}
       <TouchableOpacity
         style={styles.videoTapOverlay}
@@ -236,14 +252,14 @@ const VideoPlayerComponent = ({
           </View>
         )}
 
-        {/* Pause/Play icon */}
+        {/* Pause/Play icon - TikTok style */}
         {showPauseIcon && (
           <View style={styles.pausePlayIcon}>
             <View style={styles.pausePlayIconBackground}>
               <IconSymbol
-                size={28}
+                size={22}
                 name={pauseIconType === 'pause' ? "pause.fill" : "play.fill"}
-                color="#fff"
+                color="rgba(255,255,255,0.9)"
               />
             </View>
           </View>
@@ -289,6 +305,7 @@ interface Post {
   commentsCount?: number;
   leagueRank?: string;
   valorantRank?: string;
+  showRankOnPosts?: boolean;
   categories?: string[];
 }
 
@@ -384,6 +401,7 @@ export default function PostContent({
 
   // Like button animation
   const likeScale = useRef(new Animated.Value(1)).current;
+  const likeGlow = useRef(new Animated.Value(0)).current;
   const [showLikeAnimation, setShowLikeAnimation] = useState(false);
 
   // Caption editing state
@@ -405,10 +423,18 @@ export default function PostContent({
       }),
     ]).start();
 
-    // Show heart burst animation when liking (not unliking)
+    // Show heart burst animation + glow when liking (not unliking)
     if (!isLiked) {
       setShowLikeAnimation(true);
       setTimeout(() => setShowLikeAnimation(false), 600);
+
+      // Glow pulse
+      likeGlow.setValue(1);
+      Animated.timing(likeGlow, {
+        toValue: 0,
+        duration: 500,
+        useNativeDriver: true,
+      }).start();
     }
 
     onLikeToggle(post);
@@ -421,7 +447,7 @@ export default function PostContent({
     const fetchRecentComments = async () => {
       try {
         const allComments = await getComments(post.id);
-        setRecentComments(allComments.slice(0, 2)); // Get 2 most recent
+        setRecentComments(allComments.slice(0, 1)); // Get 1 most recent
       } catch (error) {
         console.error('Error fetching recent comments:', error);
       }
@@ -537,6 +563,19 @@ export default function PostContent({
                   <ThemedText style={styles.youBadgeText}>You</ThemedText>
                 </View>
               )}
+              {post.showRankOnPosts && (() => {
+                const rank = post.taggedGame === 'league' ? post.leagueRank
+                  : post.taggedGame === 'valorant' ? post.valorantRank
+                  : null;
+                if (!rank) return null;
+                return (
+                  <View style={styles.rankBadge}>
+                    <ThemedText style={styles.rankBadgeText}>
+                      ({formatRankDisplay(rank)})
+                    </ThemedText>
+                  </View>
+                );
+              })()}
             </View>
             <View style={styles.postMetaRow}>
               {post.taggedGame && (
@@ -677,63 +716,67 @@ export default function PostContent({
         )}
       </View>
 
-      {/* Post Actions */}
-      <View style={styles.actionsContainer} pointerEvents="box-none">
-        <View style={styles.leftActions} pointerEvents="box-none">
-          <TouchableOpacity
-            style={styles.actionButton}
-            onPress={handleLikePress}
-            disabled={isLiking}
-            activeOpacity={0.6}
-            hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
-          >
+      {/* Engagement Row */}
+      <View style={styles.engagementRow} pointerEvents="box-none">
+        {/* Like */}
+        <TouchableOpacity
+          style={styles.engagementItem}
+          onPress={handleLikePress}
+          disabled={isLiking}
+          activeOpacity={0.6}
+          hitSlop={{ top: 8, bottom: 8, left: 4, right: 4 }}
+        >
+          <View style={styles.engagementIconWrap}>
             <Animated.View style={{ transform: [{ scale: likeScale }] }}>
               <IconSymbol
-                size={26}
+                size={24}
                 name={isLiked ? "heart.fill" : "heart"}
                 color={isLiked ? "#ff3b30" : "#fff"}
               />
             </Animated.View>
+            {/* Glow ring */}
+            <Animated.View
+              style={[
+                styles.likeGlow,
+                { opacity: likeGlow },
+              ]}
+              pointerEvents="none"
+            />
             {/* Like burst animation */}
             {showLikeAnimation && (
               <View style={styles.likeBurstContainer}>
                 <LikeBurstAnimation />
               </View>
             )}
-          </TouchableOpacity>
-          <TouchableOpacity
-            style={styles.actionButton}
-            onPress={() => onOpenComments(post)}
-            activeOpacity={0.6}
-            hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
-          >
-            <IconSymbol size={26} name="bubble.left" color="#fff" />
-          </TouchableOpacity>
-          {post.userId !== currentUserId && onDirectMessage && (
-            <TouchableOpacity
-              style={styles.actionButton}
-              onPress={() => onDirectMessage(post)}
-              activeOpacity={0.6}
-              hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
-            >
-              <IconSymbol size={26} name="paperplane" color="#fff" />
-            </TouchableOpacity>
-          )}
-        </View>
-      </View>
+          </View>
+          <ThemedText style={[styles.engagementCount, styles.likeCount, isLiked && styles.likeCountActive]}>
+            {likeCount > 0 ? likeCount.toLocaleString() : ''}
+          </ThemedText>
+        </TouchableOpacity>
 
-      {/* Likes and Comments Count */}
-      <View style={styles.likesContainer}>
-        <ThemedText style={styles.likesText}>
-          {likeCount.toLocaleString()} {likeCount === 1 ? 'like' : 'likes'}
-        </ThemedText>
-        {(post.commentsCount ?? 0) > 0 && (
-          <>
-            <ThemedText style={styles.dotSeparator}>•</ThemedText>
-            <ThemedText style={styles.commentsText}>
-              {post.commentsCount!.toLocaleString()} {post.commentsCount === 1 ? 'comment' : 'comments'}
-            </ThemedText>
-          </>
+        {/* Comment */}
+        <TouchableOpacity
+          style={styles.engagementItem}
+          onPress={() => onOpenComments(post)}
+          activeOpacity={0.6}
+          hitSlop={{ top: 8, bottom: 8, left: 4, right: 4 }}
+        >
+          <IconSymbol size={24} name="bubble.left" color="#b0b0b0" />
+          <ThemedText style={[styles.engagementCount, styles.commentCount]}>
+            {(post.commentsCount ?? 0) > 0 ? post.commentsCount!.toLocaleString() : ''}
+          </ThemedText>
+        </TouchableOpacity>
+
+        {/* Share / DM */}
+        {post.userId !== currentUserId && onDirectMessage && (
+          <TouchableOpacity
+            style={styles.engagementItem}
+            onPress={() => onDirectMessage(post)}
+            activeOpacity={0.6}
+            hitSlop={{ top: 8, bottom: 8, left: 4, right: 4 }}
+          >
+            <IconSymbol size={22} name="paperplane" color="#b0b0b0" />
+          </TouchableOpacity>
         )}
       </View>
 
@@ -769,7 +812,7 @@ export default function PostContent({
               </ThemedText>
             </View>
           ))}
-          {(post.commentsCount ?? 0) > 2 && (
+          {(post.commentsCount ?? 0) > 1 && (
             <TouchableOpacity onPress={() => onOpenComments(post)}>
               <ThemedText style={styles.viewAllCommentsText}>
                 View all {post.commentsCount} comments
@@ -856,6 +899,15 @@ const styles = StyleSheet.create({
     fontSize: 11,
     fontWeight: '600',
     color: '#555',
+  },
+  rankBadge: {
+    paddingHorizontal: 0,
+    paddingVertical: 0,
+  },
+  rankBadgeText: {
+    fontSize: 12,
+    fontWeight: '500',
+    color: '#666',
   },
   postMetaRow: {
     flexDirection: 'row',
@@ -979,18 +1031,36 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     opacity: 0.9,
   },
+  videoGradientOverlay: {
+    position: 'absolute',
+    bottom: 0,
+    left: 0,
+    right: 0,
+    height: 100,
+    zIndex: 0,
+  },
+  videoGradientOverlayTop: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    height: 60,
+    zIndex: 0,
+  },
   pausePlayIcon: {
     position: 'absolute',
     justifyContent: 'center',
     alignItems: 'center',
   },
   pausePlayIconBackground: {
-    backgroundColor: 'rgba(0, 0, 0, 0.5)',
-    borderRadius: 30,
-    width: 60,
-    height: 60,
+    backgroundColor: 'rgba(255, 255, 255, 0.15)',
+    borderRadius: 24,
+    width: 48,
+    height: 48,
     justifyContent: 'center',
     alignItems: 'center',
+    borderWidth: 1.5,
+    borderColor: 'rgba(255, 255, 255, 0.25)',
   },
   muteButton: {
     position: 'absolute',
@@ -1024,23 +1094,30 @@ const styles = StyleSheet.create({
   indicatorActive: {
     backgroundColor: '#fff',
   },
-  actionsContainer: {
+  engagementRow: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
     alignItems: 'center',
-    paddingHorizontal: 12,
+    paddingHorizontal: 14,
     paddingTop: 12,
+    paddingBottom: 4,
+    gap: 20,
   },
-  leftActions: {
+  engagementItem: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 12,
+    gap: 6,
   },
-  actionButton: {
-    padding: 4,
+  engagementIconWrap: {
     position: 'relative',
     alignItems: 'center',
     justifyContent: 'center',
+  },
+  likeGlow: {
+    position: 'absolute',
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: 'rgba(255, 59, 48, 0.25)',
   },
   likeBurstContainer: {
     position: 'absolute',
@@ -1048,33 +1125,23 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     pointerEvents: 'none',
   },
-  shareButton: {
-    marginLeft: 'auto',
-    padding: 4,
+  engagementCount: {
+    fontSize: 14,
+    minWidth: 4,
+  },
+  likeCount: {
+    fontWeight: '700',
+    color: '#fff',
+  },
+  likeCountActive: {
+    color: '#ff3b30',
+  },
+  commentCount: {
+    fontWeight: '500',
+    color: '#888',
   },
   menuButton: {
     padding: 4,
-  },
-  likesContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: 16,
-    paddingTop: 8,
-    paddingBottom: 4,
-    gap: 4,
-  },
-  likesText: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: '#fff',
-  },
-  dotSeparator: {
-    fontSize: 13,
-    color: '#b9bbbe',
-  },
-  commentsText: {
-    fontSize: 13,
-    color: '#b9bbbe',
   },
   taggedUsersContainer: {
     flexDirection: 'row',

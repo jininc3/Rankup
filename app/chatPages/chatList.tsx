@@ -312,7 +312,7 @@ export default function ChatListScreen() {
           {[0, 1, 2, 3, 4, 5].map((i) => (
             <View key={i} style={styles.chatItem}>
               <View style={styles.avatarContainer}>
-                <Skeleton width={50} height={50} borderRadius={25} />
+                <Skeleton width={44} height={44} borderRadius={22} />
               </View>
               <View style={styles.chatContent}>
                 <Skeleton width={100} height={14} borderRadius={4} />
@@ -392,7 +392,7 @@ export default function ChatListScreen() {
               {[0, 1, 2, 3, 4, 5].map((i) => (
                 <View key={i} style={styles.suggestedUserItem}>
                   <View style={styles.suggestedAvatarWrapper}>
-                    <Skeleton width={50} height={50} borderRadius={25} />
+                    <Skeleton width={44} height={44} borderRadius={22} />
                   </View>
                   <View style={styles.suggestedUserInfo}>
                     <Skeleton width={120} height={14} borderRadius={4} />
@@ -504,50 +504,50 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     paddingHorizontal: 16,
-    paddingVertical: 8,
+    paddingVertical: 6,
   },
   avatarContainer: {
     marginRight: 12,
   },
   storyRing: {
-    width: 60,
-    height: 60,
-    borderRadius: 30,
+    width: 52,
+    height: 52,
+    borderRadius: 26,
     padding: 3,
     alignItems: 'center',
     justifyContent: 'center',
   },
   avatarInner: {
-    width: 54,
-    height: 54,
-    borderRadius: 27,
+    width: 46,
+    height: 46,
+    borderRadius: 23,
     backgroundColor: '#0f0f0f',
     padding: 2,
     alignItems: 'center',
     justifyContent: 'center',
   },
   avatarWrapper: {
-    width: 56,
-    height: 56,
-    borderRadius: 28,
+    width: 48,
+    height: 48,
+    borderRadius: 24,
     alignItems: 'center',
     justifyContent: 'center',
   },
   avatarImage: {
-    width: 50,
-    height: 50,
-    borderRadius: 25,
+    width: 44,
+    height: 44,
+    borderRadius: 22,
   },
   avatarPlaceholder: {
-    width: 50,
-    height: 50,
-    borderRadius: 25,
+    width: 44,
+    height: 44,
+    borderRadius: 22,
     backgroundColor: '#1a1a1a',
     alignItems: 'center',
     justifyContent: 'center',
   },
   avatarInitial: {
-    fontSize: 20,
+    fontSize: 17,
     fontWeight: '600',
     color: '#fff',
   },
@@ -556,7 +556,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   username: {
-    fontSize: 15,
+    fontSize: 14,
     fontWeight: '400',
     color: '#fff',
     marginBottom: 2,
@@ -565,7 +565,7 @@ const styles = StyleSheet.create({
     fontWeight: '600',
   },
   messagePreview: {
-    fontSize: 14,
+    fontSize: 13,
     color: '#8e8e8e',
   },
   unreadMessage: {
@@ -573,7 +573,7 @@ const styles = StyleSheet.create({
     fontWeight: '500',
   },
   timestamp: {
-    fontSize: 14,
+    fontSize: 13,
     color: '#8e8e8e',
     fontWeight: '400',
   },
@@ -680,26 +680,26 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     paddingHorizontal: 16,
-    paddingVertical: 10,
+    paddingVertical: 7,
   },
   suggestedAvatarWrapper: {
     marginRight: 12,
   },
   suggestedAvatar: {
-    width: 50,
-    height: 50,
-    borderRadius: 25,
+    width: 44,
+    height: 44,
+    borderRadius: 22,
   },
   suggestedAvatarPlaceholder: {
-    width: 50,
-    height: 50,
-    borderRadius: 25,
+    width: 44,
+    height: 44,
+    borderRadius: 22,
     backgroundColor: '#1a1a1a',
     alignItems: 'center',
     justifyContent: 'center',
   },
   suggestedAvatarInitial: {
-    fontSize: 20,
+    fontSize: 17,
     fontWeight: '600',
     color: '#fff',
   },
@@ -707,7 +707,7 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   suggestedUsername: {
-    fontSize: 15,
+    fontSize: 14,
     fontWeight: '500',
     color: '#fff',
   },

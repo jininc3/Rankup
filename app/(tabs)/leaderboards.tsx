@@ -282,10 +282,11 @@ export default function LeaderboardScreen() {
             onPress={() => otherPlayers.length > 0 && setShowGameDropdown(true)}
             activeOpacity={0.7}
           >
+            <View style={styles.gameSwitchGlow} />
             <Image source={gameLogo} style={styles.gameLogoSmall} resizeMode="contain" />
             <ThemedText style={styles.mutualSectionTitle}>{title}</ThemedText>
             {otherPlayers.length > 0 && (
-              <IconSymbol size={18} name="chevron.down" color="#888" />
+              <IconSymbol size={14} name="chevron.down" color="#666" />
             )}
           </TouchableOpacity>
           <View style={{ flex: 1 }} />
@@ -329,8 +330,9 @@ export default function LeaderboardScreen() {
                 style={[
                   styles.playerRow,
                   index % 2 === 0 ? styles.evenRow : styles.oddRow,
-                  player.isCurrentUser && styles.currentUserRow,
                   { borderLeftWidth: 4, borderLeftColor: getBorderColor(rank) },
+                  rank === 1 && styles.firstPlaceRow,
+                  player.isCurrentUser && styles.currentUserRow,
                 ]}
                 activeOpacity={player.isCurrentUser ? 1 : 0.7}
                 onPress={() => {
@@ -349,22 +351,27 @@ export default function LeaderboardScreen() {
               >
                 {/* Rank Number */}
                 <View style={styles.rankContainer}>
-                  <ThemedText style={styles.rankNumberText}>{rank}</ThemedText>
+                  <ThemedText style={[styles.rankNumberText, rank <= 3 && { color: getBorderColor(rank) }]}>{rank}</ThemedText>
                 </View>
 
                 {/* Player Info */}
                 <View style={styles.playerInfo}>
-                  <View style={styles.playerAvatar}>
-                    {player.avatar ? (
-                      <CachedImage uri={player.avatar} style={styles.playerAvatarImage} />
-                    ) : (
-                      <ThemedText style={styles.avatarText}>
-                        {player.username.charAt(0).toUpperCase()}
-                      </ThemedText>
-                    )}
+                  <View style={[
+                    styles.playerAvatarRing,
+                    rank <= 3 && { borderColor: getBorderColor(rank), borderWidth: 2 },
+                  ]}>
+                    <View style={styles.playerAvatar}>
+                      {player.avatar ? (
+                        <CachedImage uri={player.avatar} style={styles.playerAvatarImage} />
+                      ) : (
+                        <ThemedText style={styles.avatarText}>
+                          {player.username.charAt(0).toUpperCase()}
+                        </ThemedText>
+                      )}
+                    </View>
                   </View>
                   <View style={styles.playerNameContainer}>
-                    <ThemedText style={styles.playerName} numberOfLines={1}>
+                    <ThemedText style={[styles.playerName, player.isCurrentUser && styles.currentUserName]} numberOfLines={1}>
                       {player.username}{player.isCurrentUser ? ' (You)' : ''}
                     </ThemedText>
                   </View>
@@ -435,21 +442,17 @@ export default function LeaderboardScreen() {
         showsVerticalScrollIndicator={false}
         contentContainerStyle={styles.pageContent}
       >
-        {/* Lobbies Banner */}
+        {/* Lobbies CTA */}
         <TouchableOpacity
           style={styles.lobbiesBanner}
           onPress={() => router.push('/partyPages/lobbies')}
           activeOpacity={0.8}
         >
-          <LinearGradient colors={['#161616', '#1a1a1a']} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={StyleSheet.absoluteFillObject} pointerEvents="none" />
-          <LinearGradient colors={['transparent', 'rgba(59,130,246,0.12)', 'transparent']} locations={[0.3, 0.5, 0.7]} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={StyleSheet.absoluteFillObject} pointerEvents="none" />
-          <LinearGradient colors={['rgba(255,255,255,0.06)', 'transparent']} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }} style={{ position: 'absolute', top: 0, left: 0, right: 0, height: 1 }} pointerEvents="none" />
-          <View style={styles.lobbiesBannerGradient}>
+          <View style={styles.lobbiesBannerInner}>
             <View style={styles.lobbiesBannerText}>
-              <ThemedText style={styles.lobbiesBannerTitle}>LOBBIES</ThemedText>
-              <ThemedText style={styles.lobbiesBannerSubtitle}>Compete with friends in leaderboards</ThemedText>
+              <ThemedText style={styles.lobbiesBannerTitle}>Play with friends</ThemedText>
+              <ThemedText style={styles.lobbiesBannerSubtitle}>Create a Lobby →</ThemedText>
             </View>
-            <IconSymbol size={16} name="chevron.right" color="rgba(255,255,255,0.5)" />
           </View>
         </TouchableOpacity>
 
@@ -597,34 +600,28 @@ const styles = StyleSheet.create({
     paddingTop: 20,
   },
   lobbiesBanner: {
+    backgroundColor: '#161616',
     borderRadius: 12,
     borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.12)',
-    overflow: 'hidden',
+    borderColor: 'rgba(255, 255, 255, 0.08)',
     marginBottom: 16,
-    height: 100,
   },
-  lobbiesBannerGradient: {
-    flex: 1,
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingVertical: 20,
+  lobbiesBannerInner: {
+    paddingVertical: 16,
     paddingHorizontal: 16,
-    gap: 12,
   },
   lobbiesBannerText: {
     flex: 1,
   },
   lobbiesBannerTitle: {
-    fontSize: 16,
-    fontWeight: '700',
+    fontSize: 15,
+    fontWeight: '600',
     color: '#fff',
-    letterSpacing: 1,
   },
   lobbiesBannerSubtitle: {
-    fontSize: 12,
-    color: '#888',
-    marginTop: 2,
+    fontSize: 13,
+    color: '#666',
+    marginTop: 3,
   },
   cardsContainer: {
     backgroundColor: '#1a1a1a',
@@ -717,7 +714,21 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: 8,
     paddingVertical: 8,
-    paddingRight: 12,
+    paddingHorizontal: 14,
+    backgroundColor: 'rgba(255, 255, 255, 0.06)',
+    borderRadius: 20,
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.08)',
+    overflow: 'hidden',
+  },
+  gameSwitchGlow: {
+    position: 'absolute',
+    top: -10,
+    left: -10,
+    right: -10,
+    bottom: -10,
+    borderRadius: 30,
+    backgroundColor: 'rgba(255, 255, 255, 0.03)',
   },
   gameLogoSmall: {
     width: 24,
@@ -769,9 +780,6 @@ const styles = StyleSheet.create({
     letterSpacing: 0.5,
     textTransform: 'uppercase',
   },
-  alignRight: {
-    textAlign: 'right',
-  },
   playerList: {
     paddingHorizontal: 0,
     borderBottomLeftRadius: 12,
@@ -790,6 +798,9 @@ const styles = StyleSheet.create({
     position: 'relative',
     borderLeftWidth: 3,
   },
+  firstPlaceRow: {
+    paddingVertical: 14,
+  },
   evenRow: {
     backgroundColor: '#141414',
   },
@@ -798,6 +809,9 @@ const styles = StyleSheet.create({
   },
   currentUserRow: {
     backgroundColor: '#252525',
+  },
+  currentUserName: {
+    color: '#C9A84E',
   },
   rankContainer: {
     width: 40,
@@ -814,11 +828,17 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: 12,
   },
+  playerAvatarRing: {
+    borderRadius: 18,
+    borderWidth: 0,
+    borderColor: 'transparent',
+    padding: 1,
+  },
   playerAvatar: {
     width: 32,
     height: 32,
     backgroundColor: '#252525',
-    borderRadius: 6,
+    borderRadius: 16,
     alignItems: 'center',
     justifyContent: 'center',
     overflow: 'hidden',
@@ -826,7 +846,7 @@ const styles = StyleSheet.create({
   playerAvatarImage: {
     width: '100%',
     height: '100%',
-    borderRadius: 6,
+    borderRadius: 16,
   },
   avatarText: {
     fontSize: 12,

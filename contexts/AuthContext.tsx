@@ -28,6 +28,7 @@ interface User {
   isPrivate?: boolean;
   provider: 'email' | 'google' | 'apple' | 'phone' | 'discord' | 'instagram';
   interests?: string[];
+  showRankOnPosts?: boolean;
 }
 
 interface Post {
@@ -48,6 +49,7 @@ interface Post {
   commentsCount?: number;
   leagueRank?: string;
   valorantRank?: string;
+  showRankOnPosts?: boolean;
   categories?: string[];
 }
 
@@ -205,7 +207,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             ...post,
             avatar: userData.avatar || post.avatar || null,
             leagueRank,
-            valorantRank
+            valorantRank,
+            showRankOnPosts: userData.showRankOnPosts ?? false,
           };
         }
         return post;

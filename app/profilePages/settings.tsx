@@ -3,10 +3,10 @@ import { ThemedView } from '@/components/themed-view';
 import { IconSymbol } from '@/components/ui/icon-symbol';
 import { useRouter } from '@/hooks/useRouter';
 import { useFocusEffect } from '@react-navigation/native';
-import { ScrollView, StyleSheet, TouchableOpacity, View, Alert } from 'react-native';
+import { ScrollView, StyleSheet, Switch, TouchableOpacity, View, Alert } from 'react-native';
 import { useAuth } from '@/contexts/AuthContext';
 import { useState, useEffect, useCallback } from 'react';
-import { doc, getDoc } from 'firebase/firestore';
+import { doc, getDoc, updateDoc } from 'firebase/firestore';
 import { db } from '@/config/firebase';
 import { LinearGradient } from 'expo-linear-gradient';
 
@@ -84,6 +84,7 @@ export default function SettingsScreen() {
   const [riotAccount, setRiotAccount] = useState<any>(null);
   const [valorantAccount, setValorantAccount] = useState<any>(null);
   const [loadingAccounts, setLoadingAccounts] = useState(true);
+  const [showRankOnPosts, setShowRankOnPosts] = useState(false);
 
   useEffect(() => {
     checkAccounts();
@@ -125,11 +126,25 @@ export default function SettingsScreen() {
           setValorantAccount(null);
           console.log('No valorantAccount found in user data');
         }
+
+        // Load show rank on posts preference
+        setShowRankOnPosts(data.showRankOnPosts ?? false);
       }
     } catch (error) {
       console.error('Error checking accounts:', error);
     } finally {
       setLoadingAccounts(false);
+    }
+  };
+
+  const handleToggleShowRank = async (value: boolean) => {
+    if (!user?.id) return;
+    setShowRankOnPosts(value);
+    try {
+      await updateDoc(doc(db, 'users', user.id), { showRankOnPosts: value });
+    } catch (error) {
+      console.error('Error updating showRankOnPosts:', error);
+      setShowRankOnPosts(!value);
     }
   };
 
@@ -331,6 +346,27 @@ export default function SettingsScreen() {
               </View>
             )}
             <View style={styles.settingsGroup}>
+              {section.id === 'preferences' && (
+                <View style={styles.settingItem}>
+                  <View style={styles.settingLeft}>
+                    <View style={styles.iconContainer}>
+                      <IconSymbol size={20} name="trophy" color="#888" />
+                    </View>
+                    <View style={styles.settingTextContainer}>
+                      <ThemedText style={styles.settingTitle}>Show Rank on Posts</ThemedText>
+                      <ThemedText style={styles.settingSubtitle}>
+                        Display your current rank next to your name
+                      </ThemedText>
+                    </View>
+                  </View>
+                  <Switch
+                    value={showRankOnPosts}
+                    onValueChange={handleToggleShowRank}
+                    trackColor={{ false: '#333', true: '#c42743' }}
+                    thumbColor="#fff"
+                  />
+                </View>
+              )}
               {section.items.map((item, index) => (
                 <TouchableOpacity
                   key={item.id}
