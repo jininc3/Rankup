@@ -466,8 +466,8 @@ export default function ChatScreen() {
           ) : (
             <IconSymbol
               size={20}
-              name="paperplane.fill"
-              color={messageText.trim() ? '#fff' : '#000'}
+              name="arrow.up"
+              color={messageText.trim() ? '#fff' : '#888'}
             />
           )}
         </TouchableOpacity>
@@ -630,12 +630,14 @@ const styles = StyleSheet.create({
     width: 40,
     height: 40,
     borderRadius: 20,
-    backgroundColor: '#C49B27',
+    backgroundColor: 'transparent',
+    borderWidth: 1.5,
+    borderColor: '#fff',
     alignItems: 'center',
     justifyContent: 'center',
   },
   sendButtonDisabled: {
-    backgroundColor: '#2a2a2a',
+    borderColor: '#555',
   },
   loadingMoreContainer: {
     paddingVertical: 16,

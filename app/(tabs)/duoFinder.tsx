@@ -1566,16 +1566,16 @@ const styles = StyleSheet.create({
     marginTop: 1,
   },
   liveSearchBtn: {
-    borderRadius: 10,
-    borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.2)',
-    paddingVertical: 8,
-    paddingHorizontal: 16,
+    borderRadius: 20,
+    paddingVertical: 9,
+    paddingHorizontal: 18,
+    backgroundColor: '#fff',
   },
   liveSearchBtnText: {
     fontSize: 13,
-    fontWeight: '600',
-    color: '#fff',
+    fontWeight: '700',
+    color: '#000',
+    letterSpacing: -0.2,
   },
   feedCardWrapper: {
     marginBottom: 4,

@@ -1187,6 +1187,6 @@ const styles = StyleSheet.create({
   viewAllCommentsText: {
     fontSize: 12,
     color: '#b9bbbe',
-    marginTop: 4,
+    marginTop: 0,
   },
 });

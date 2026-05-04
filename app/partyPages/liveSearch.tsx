@@ -529,7 +529,7 @@ export default function LiveSearchScreen() {
             searchGamePick={searchGamePick}
             onPickGame={(game) => setSearchGamePick(game)}
             onSearch={() => searchGamePick && searchModePick && startLiveSearch(searchGamePick, searchModePick)}
-            onCreateCard={() => setShowAddCard(true)}
+            onCreateCard={() => router.push('/profilePages/rankCards')}
           />
         )}
       </ScrollView>

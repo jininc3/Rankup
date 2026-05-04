@@ -100,7 +100,7 @@ export default function SignUpScreen() {
 
         {/* Bottom section - Auth buttons */}
         <View style={styles.authSection}>
-          {/* Google signup */}
+          {/* Google signup - main CTA */}
           <TouchableOpacity
             style={[styles.googleButton, isLoading && styles.buttonDisabled]}
             onPress={handleGoogleSignUp}
@@ -111,19 +111,6 @@ export default function SignUpScreen() {
             <ThemedText style={styles.googleButtonText}>Continue with Google</ThemedText>
           </TouchableOpacity>
 
-          {/* Apple signup - iOS only */}
-          {Platform.OS === 'ios' && (
-            <TouchableOpacity
-              style={[styles.appleButton, isLoading && styles.buttonDisabled]}
-              onPress={handleAppleSignUp}
-              disabled={isLoading}
-              activeOpacity={0.8}
-            >
-              <Image source={require('@/assets/images/apple.png')} style={styles.socialIcon} />
-              <ThemedText style={styles.appleButtonText}>Continue with Apple</ThemedText>
-            </TouchableOpacity>
-          )}
-
           {/* Divider */}
           <View style={styles.divider}>
             <View style={styles.dividerLine} />
@@ -131,25 +118,35 @@ export default function SignUpScreen() {
             <View style={styles.dividerLine} />
           </View>
 
-          {/* Email signup button */}
-          <TouchableOpacity
-            style={styles.emailButton}
-            onPress={() => router.push({ pathname: '/(auth)/signUpBirthday', params: { signupMethod: 'email' } })}
-            activeOpacity={0.8}
-          >
-            <MaterialIcons name="email" size={20} color="#fff" />
-            <ThemedText style={styles.emailButtonText}>Sign up with Email</ThemedText>
-          </TouchableOpacity>
+          {/* Circular icon buttons row */}
+          <View style={styles.socialRow}>
+            {Platform.OS === 'ios' && (
+              <TouchableOpacity
+                style={[styles.socialCircle, isLoading && styles.buttonDisabled]}
+                onPress={handleAppleSignUp}
+                disabled={isLoading}
+                activeOpacity={0.7}
+              >
+                <Image source={require('@/assets/images/apple.png')} style={styles.socialCircleIcon} />
+              </TouchableOpacity>
+            )}
 
-          {/* Phone signup button */}
-          <TouchableOpacity
-            style={styles.phoneButton}
-            onPress={() => router.push({ pathname: '/(auth)/signUpBirthday', params: { signupMethod: 'phone' } })}
-            activeOpacity={0.8}
-          >
-            <IconSymbol size={20} name="phone.fill" color="#fff" />
-            <ThemedText style={styles.phoneButtonText}>Sign up with Phone</ThemedText>
-          </TouchableOpacity>
+            <TouchableOpacity
+              style={styles.socialCircle}
+              onPress={() => router.push({ pathname: '/(auth)/signUpBirthday', params: { signupMethod: 'email' } })}
+              activeOpacity={0.7}
+            >
+              <MaterialIcons name="email" size={22} color="#fff" />
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={styles.socialCircle}
+              onPress={() => router.push({ pathname: '/(auth)/signUpBirthday', params: { signupMethod: 'phone' } })}
+              activeOpacity={0.7}
+            >
+              <IconSymbol size={22} name="phone.fill" color="#fff" />
+            </TouchableOpacity>
+          </View>
 
           {/* Footer */}
           <View style={styles.footer}>
@@ -212,25 +209,9 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     gap: 10,
-    marginBottom: 10,
-  },
-  googleButtonText: {
-    color: '#0f0f0f',
-    fontSize: 16,
-    fontWeight: '700',
-  },
-
-  appleButton: {
-    backgroundColor: '#fff',
-    borderRadius: 28,
-    paddingVertical: 16,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 10,
     marginBottom: 20,
   },
-  appleButtonText: {
+  googleButtonText: {
     color: '#0f0f0f',
     fontSize: 16,
     fontWeight: '700',
@@ -239,7 +220,7 @@ const styles = StyleSheet.create({
   divider: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginBottom: 20,
+    marginBottom: 24,
   },
   dividerLine: {
     flex: 1,
@@ -252,38 +233,25 @@ const styles = StyleSheet.create({
     fontSize: 13,
   },
 
-  emailButton: {
-    borderRadius: 28,
-    paddingVertical: 16,
+  socialRow: {
     flexDirection: 'row',
-    alignItems: 'center',
     justifyContent: 'center',
-    gap: 10,
-    marginBottom: 10,
+    gap: 20,
+    marginBottom: 28,
+  },
+  socialCircle: {
+    width: 52,
+    height: 52,
+    borderRadius: 26,
     borderWidth: 1,
     borderColor: 'rgba(255, 255, 255, 0.15)',
-  },
-  emailButtonText: {
-    color: '#fff',
-    fontSize: 16,
-    fontWeight: '600',
-  },
-
-  phoneButton: {
-    borderRadius: 28,
-    paddingVertical: 16,
-    flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    gap: 10,
-    marginBottom: 20,
-    borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.15)',
   },
-  phoneButtonText: {
-    color: '#fff',
-    fontSize: 16,
-    fontWeight: '600',
+  socialCircleIcon: {
+    width: 22,
+    height: 22,
+    resizeMode: 'contain',
   },
 
   buttonDisabled: {

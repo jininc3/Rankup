@@ -2,6 +2,7 @@ import { ThemedText } from '@/components/themed-text';
 import { IconSymbol } from '@/components/ui/icon-symbol';
 import { useAuth } from '@/contexts/AuthContext';
 import { addComment, deleteComment, getComments, CommentData } from '@/services/commentService';
+import { useRouter } from '@/hooks/useRouter';
 import React, { useEffect, useState, useRef, useCallback } from 'react';
 import {
   View,
@@ -15,6 +16,7 @@ import {
   KeyboardAvoidingView,
   Platform,
 } from 'react-native';
+import { LinearGradient } from 'expo-linear-gradient';
 import { Gesture, GestureDetector, GestureHandlerRootView, ScrollView } from 'react-native-gesture-handler';
 import Animated, {
   useSharedValue,
@@ -42,11 +44,13 @@ export default function CommentModal({
   onCommentAdded,
 }: CommentModalProps) {
   const { user: currentUser } = useAuth();
+  const router = useRouter();
   const [comments, setComments] = useState<CommentData[]>([]);
   const [commentText, setCommentText] = useState('');
   const [loading, setLoading] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [isInputFocused, setIsInputFocused] = useState(false);
+  const [navigatingAway, setNavigatingAway] = useState(false);
 
   const translateY = useSharedValue(0);
   const scrollOffset = useSharedValue(0);
@@ -60,6 +64,7 @@ export default function CommentModal({
       scrollOffset.value = 0;
       fetchComments();
       setIsInputFocused(false);
+      setNavigatingAway(false);
     } else if (!visible) {
       setIsInputFocused(false);
     }
@@ -212,7 +217,7 @@ export default function CommentModal({
   return (
     <Modal
       visible={visible}
-      animationType="slide"
+      animationType={navigatingAway ? 'none' : 'slide'}
       transparent={true}
       onRequestClose={onClose}
     >
@@ -227,6 +232,38 @@ export default function CommentModal({
             animatedStyle,
           ]}
         >
+          {/* Ambient background glow (matches homepage) */}
+          <View style={styles.backgroundGlow} pointerEvents="none">
+            <View style={styles.shimmerBand} pointerEvents="none">
+              <LinearGradient
+                colors={[
+                  'transparent',
+                  'rgba(255, 255, 255, 0.03)',
+                  'rgba(255, 255, 255, 0.065)',
+                  'rgba(255, 255, 255, 0.03)',
+                  'transparent',
+                ]}
+                locations={[0, 0.37, 0.5, 0.63, 1]}
+                start={{ x: 0, y: 0.5 }}
+                end={{ x: 1, y: 0.5 }}
+                style={StyleSheet.absoluteFill}
+              />
+            </View>
+            <View style={styles.shimmerBandSecondary} pointerEvents="none">
+              <LinearGradient
+                colors={[
+                  'transparent',
+                  'rgba(255, 255, 255, 0.035)',
+                  'transparent',
+                ]}
+                locations={[0, 0.5, 1]}
+                start={{ x: 0, y: 0.5 }}
+                end={{ x: 1, y: 0.5 }}
+                style={StyleSheet.absoluteFill}
+              />
+            </View>
+          </View>
+
           <KeyboardAvoidingView
             style={styles.container}
             behavior="padding"
@@ -262,7 +299,17 @@ export default function CommentModal({
                   ) : comments.length > 0 ? (
                     comments.map((comment) => (
                       <View key={comment.id} style={styles.commentItem}>
-                        <View style={styles.commentAvatar}>
+                        <TouchableOpacity
+                          style={styles.commentAvatar}
+                          disabled={currentUser?.id === comment.userId}
+                          onPress={() => {
+                            setNavigatingAway(true);
+                            setTimeout(() => {
+                              onClose();
+                              router.push({ pathname: '/profilePages/profileView', params: { userId: comment.userId, username: comment.username, avatar: comment.userAvatar || '' } });
+                            }, 0);
+                          }}
+                        >
                           {comment.userAvatar && comment.userAvatar.startsWith('http') ? (
                             <Image source={{ uri: comment.userAvatar }} style={styles.avatarImage} />
                           ) : (
@@ -270,12 +317,23 @@ export default function CommentModal({
                               {comment.username[0].toUpperCase()}
                             </ThemedText>
                           )}
-                        </View>
+                        </TouchableOpacity>
 
                         <View style={styles.commentContent}>
                           <View style={styles.commentHeader}>
                             <View style={styles.commentHeaderLeft}>
-                              <ThemedText style={styles.commentUsername}>{comment.username}</ThemedText>
+                              <TouchableOpacity
+                                disabled={currentUser?.id === comment.userId}
+                                onPress={() => {
+                                  setNavigatingAway(true);
+                                  setTimeout(() => {
+                                    onClose();
+                                    router.push({ pathname: '/profilePages/profileView', params: { userId: comment.userId, username: comment.username, avatar: comment.userAvatar || '' } });
+                                  }, 0);
+                                }}
+                              >
+                                <ThemedText style={styles.commentUsername}>{comment.username}</ThemedText>
+                              </TouchableOpacity>
                               <ThemedText style={styles.commentTime}>{formatTimeAgo(comment.createdAt)}</ThemedText>
                             </View>
                             {/* Delete button (only for own comments) */}
@@ -334,7 +392,7 @@ export default function CommentModal({
                 {submitting ? (
                   <ActivityIndicator size="small" color="#fff" />
                 ) : (
-                  <IconSymbol size={24} name="paperplane.fill" color={commentText.trim() ? "#fff" : "#888"} />
+                  <IconSymbol size={24} name="arrow.up" color={commentText.trim() ? "#fff" : "#888"} />
                 )}
               </TouchableOpacity>
             </View>
@@ -357,6 +415,29 @@ const styles = StyleSheet.create({
     borderTopLeftRadius: 20,
     borderTopRightRadius: 20,
     height: '70%',
+    overflow: 'hidden',
+  },
+  backgroundGlow: {
+    ...StyleSheet.absoluteFillObject,
+    overflow: 'hidden',
+    borderTopLeftRadius: 20,
+    borderTopRightRadius: 20,
+  },
+  shimmerBand: {
+    position: 'absolute',
+    top: '-35%',
+    left: '-60%',
+    width: '220%',
+    height: '170%',
+    transform: [{ rotate: '20deg' }],
+  },
+  shimmerBandSecondary: {
+    position: 'absolute',
+    top: '-20%',
+    left: '-10%',
+    width: '190%',
+    height: '150%',
+    transform: [{ rotate: '-15deg' }],
   },
   container: {
     flex: 1,
@@ -524,9 +605,16 @@ const styles = StyleSheet.create({
     borderColor: '#424549',
   },
   sendButton: {
-    padding: 6,
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    borderWidth: 1.5,
+    borderColor: '#fff',
+    backgroundColor: 'transparent',
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   sendButtonDisabled: {
-    opacity: 0.5,
+    borderColor: '#555',
   },
 });

@@ -18,7 +18,7 @@ interface LiveSearchIdleProps {
   valorantCard: any;
   leagueCard: any;
   searchModePick: 'lfg' | 'duo' | null;
-  onPickMode: (mode: 'lfg' | 'duo') => void;
+  onPickMode: (mode: 'lfg' | 'duo' | null) => void;
   searchGamePick: 'valorant' | 'league' | null;
   onPickGame: (game: 'valorant' | 'league') => void;
   onSearch: () => void;
@@ -68,13 +68,17 @@ export default function LiveSearchIdle({
       {/* Top Section */}
       <View style={styles.topSection}>
         <Animated.View style={[styles.orb, orbStyle]}>
-          <Image
-            source={searchGamePick === 'league'
-              ? require('@/assets/images/lol-icon.png')
-              : require('@/assets/images/valorant-red.png')}
-            style={styles.centerLogo}
-            resizeMode="contain"
-          />
+          {searchGamePick ? (
+            <Image
+              source={searchGamePick === 'league'
+                ? require('@/assets/images/lol-icon.png')
+                : require('@/assets/images/valorant-red.png')}
+              style={styles.centerLogo}
+              resizeMode="contain"
+            />
+          ) : (
+            <IconSymbol size={40} name="gamecontroller.fill" color="#555" />
+          )}
         </Animated.View>
 
         <Animated.View style={[styles.titleGroup, contentStyle]}>
@@ -98,7 +102,7 @@ export default function LiveSearchIdle({
                 styles.modeCard,
                 searchModePick === 'lfg' && styles.modeCardActive,
               ]}
-              onPress={() => onPickMode('lfg')}
+              onPress={() => onPickMode(searchModePick === 'lfg' ? null : 'lfg')}
               activeOpacity={0.7}
             >
               <IconSymbol size={24} name="person.3.fill" color={searchModePick === 'lfg' ? '#ccc' : '#444'} />
@@ -107,20 +111,22 @@ export default function LiveSearchIdle({
                 searchModePick === 'lfg' && styles.modeCardTextActive,
               ]}>LFG</ThemedText>
             </TouchableOpacity>
-            <TouchableOpacity
-              style={[
-                styles.modeCard,
-                searchModePick === 'duo' && styles.modeCardActive,
-              ]}
-              onPress={() => onPickMode('duo')}
-              activeOpacity={0.7}
-            >
-              <IconSymbol size={24} name="person.2.fill" color={searchModePick === 'duo' ? '#ccc' : '#444'} />
-              <ThemedText style={[
-                styles.modeCardText,
-                searchModePick === 'duo' && styles.modeCardTextActive,
-              ]}>Find Duo</ThemedText>
-            </TouchableOpacity>
+            {searchModePick !== 'lfg' && (
+              <TouchableOpacity
+                style={[
+                  styles.modeCard,
+                  searchModePick === 'duo' && styles.modeCardActive,
+                ]}
+                onPress={() => onPickMode(searchModePick === 'duo' ? null : 'duo')}
+                activeOpacity={0.7}
+              >
+                <IconSymbol size={24} name="person.2.fill" color={searchModePick === 'duo' ? '#ccc' : '#444'} />
+                <ThemedText style={[
+                  styles.modeCardText,
+                  searchModePick === 'duo' && styles.modeCardTextActive,
+                ]}>Find Duo</ThemedText>
+              </TouchableOpacity>
+            )}
           </View>
         )}
 
@@ -188,7 +194,7 @@ export default function LiveSearchIdle({
         {!hasCards && (
           <TouchableOpacity style={styles.createCardBtn} onPress={onCreateCard} activeOpacity={0.7}>
             <IconSymbol size={14} name="plus" color="#999" />
-            <ThemedText style={styles.createCardText}>Create a duo card to start</ThemedText>
+            <ThemedText style={styles.createCardText}>Create a rank card to start</ThemedText>
           </TouchableOpacity>
         )}
       </Animated.View>

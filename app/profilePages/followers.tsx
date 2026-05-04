@@ -299,12 +299,12 @@ const styles = StyleSheet.create({
   followButton: {
     paddingHorizontal: 12,
     paddingVertical: 4,
-    backgroundColor: '#c42743',
+    backgroundColor: '#fff',
     borderRadius: 6,
     width: 85,
     alignItems: 'center',
     borderWidth: 1,
-    borderColor: '#c42743',
+    borderColor: '#fff',
   },
   followingButton: {
     backgroundColor: '#1a1a1a',
@@ -314,7 +314,7 @@ const styles = StyleSheet.create({
   followButtonText: {
     fontSize: 12,
     fontWeight: '600',
-    color: '#fff',
+    color: '#000',
   },
   followingButtonText: {
     color: '#b9bbbe',

@@ -1345,32 +1345,32 @@ export default function HomeScreen() {
         }
       >
         {/* Filter Tabs */}
-        <View style={styles.gameFilterRow}>
-          <ScalePress onPress={() => { setActiveTab('forYou'); setSelectedGameFilter(null); }} style={styles.gameFilterBtn}>
-            <ThemedText style={[styles.gameFilterBtnText, activeTab === 'forYou' && selectedGameFilter === null && styles.gameFilterBtnTextActive]}>
-              For You
-            </ThemedText>
-            {activeTab === 'forYou' && selectedGameFilter === null && <View style={styles.gameFilterUnderline} />}
+        <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.gameFilterRow}>
+          <ScalePress onPress={() => { setActiveTab('forYou'); setSelectedGameFilter(null); }} style={[styles.gameFilterPill, activeTab === 'forYou' && selectedGameFilter === null && styles.gameFilterPillActive]}>
+            <View style={styles.gameFilterPillInner}>
+              {activeTab === 'forYou' && selectedGameFilter === null && <View style={styles.gameFilterDot} />}
+              <ThemedText style={[styles.gameFilterPillText, activeTab === 'forYou' && selectedGameFilter === null && styles.gameFilterPillTextActive]}>For you</ThemedText>
+            </View>
           </ScalePress>
-          <ScalePress onPress={() => { setActiveTab('following'); setSelectedGameFilter(null); }} style={styles.gameFilterBtn}>
-            <ThemedText style={[styles.gameFilterBtnText, activeTab === 'following' && selectedGameFilter === null && styles.gameFilterBtnTextActive]}>
-              Following
-            </ThemedText>
-            {activeTab === 'following' && selectedGameFilter === null && <View style={styles.gameFilterUnderline} />}
+          <ScalePress onPress={() => { setActiveTab('following'); setSelectedGameFilter(null); }} style={[styles.gameFilterPill, activeTab === 'following' && selectedGameFilter === null && styles.gameFilterPillActive]}>
+            <View style={styles.gameFilterPillInner}>
+              {activeTab === 'following' && selectedGameFilter === null && <View style={styles.gameFilterDot} />}
+              <ThemedText style={[styles.gameFilterPillText, activeTab === 'following' && selectedGameFilter === null && styles.gameFilterPillTextActive]}>Following</ThemedText>
+            </View>
           </ScalePress>
-          <ScalePress onPress={() => { setActiveTab('following'); setSelectedGameFilter('valorant'); }} style={styles.gameFilterBtn}>
-            <ThemedText style={[styles.gameFilterBtnText, selectedGameFilter === 'valorant' && styles.gameFilterBtnTextActive]}>
-              Valorant
-            </ThemedText>
-            {selectedGameFilter === 'valorant' && <View style={styles.gameFilterUnderline} />}
+          <ScalePress onPress={() => { setActiveTab('following'); setSelectedGameFilter('league'); }} style={[styles.gameFilterPill, selectedGameFilter === 'league' && styles.gameFilterPillActive]}>
+            <View style={styles.gameFilterPillInner}>
+              {selectedGameFilter === 'league' && <View style={styles.gameFilterDot} />}
+              <ThemedText style={[styles.gameFilterPillText, selectedGameFilter === 'league' && styles.gameFilterPillTextActive]}>League</ThemedText>
+            </View>
           </ScalePress>
-          <ScalePress onPress={() => { setActiveTab('following'); setSelectedGameFilter('league'); }} style={styles.gameFilterBtn}>
-            <ThemedText style={[styles.gameFilterBtnText, selectedGameFilter === 'league' && styles.gameFilterBtnTextActive]}>
-              League
-            </ThemedText>
-            {selectedGameFilter === 'league' && <View style={styles.gameFilterUnderline} />}
+          <ScalePress onPress={() => { setActiveTab('following'); setSelectedGameFilter('valorant'); }} style={[styles.gameFilterPill, selectedGameFilter === 'valorant' && styles.gameFilterPillActive]}>
+            <View style={styles.gameFilterPillInner}>
+              {selectedGameFilter === 'valorant' && <View style={styles.gameFilterDot} />}
+              <ThemedText style={[styles.gameFilterPillText, selectedGameFilter === 'valorant' && styles.gameFilterPillTextActive]}>Valorant</ThemedText>
+            </View>
           </ScalePress>
-        </View>
+        </ScrollView>
 
         {hasNewPosts && activeTab === 'following' && !loading && (
           <ScalePress
@@ -1585,6 +1585,7 @@ export default function HomeScreen() {
           </Pressable>
         </Pressable>
       </Modal>
+
     </ThemedView>
   );
 }
@@ -1703,30 +1704,39 @@ const styles = StyleSheet.create({
   },
   gameFilterRow: {
     flexDirection: 'row',
-    gap: 20,
-    marginHorizontal: 20,
+    gap: 8,
+    paddingHorizontal: 16,
     marginTop: 10,
     marginBottom: 6,
   },
-  gameFilterBtn: {
-    alignItems: 'center',
-    paddingVertical: 4,
+  gameFilterPill: {
+    paddingVertical: 8,
+    paddingHorizontal: 16,
+    borderRadius: 20,
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.15)',
   },
-  gameFilterBtnText: {
+  gameFilterPillInner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+  },
+  gameFilterPillActive: {
+    borderColor: 'rgba(255, 255, 255, 0.3)',
+  },
+  gameFilterDot: {
+    width: 6,
+    height: 6,
+    borderRadius: 3,
+    backgroundColor: '#fff',
+  },
+  gameFilterPillText: {
     fontSize: 14,
     fontWeight: '600',
     color: '#555',
   },
-  gameFilterBtnTextActive: {
+  gameFilterPillTextActive: {
     color: '#fff',
-  },
-  gameFilterUnderline: {
-    marginTop: 4,
-    height: 2,
-    width: 20,
-    borderRadius: 1,
-    backgroundColor: '#C4A44E',
-    alignSelf: 'center',
   },
   newPostsBanner: {
     flexDirection: 'row',

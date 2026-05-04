@@ -61,11 +61,14 @@ interface Post {
   commentsCount?: number;
 }
 
+// Module-level cache so notifications persist across navigations
+let cachedNotifications: Notification[] | null = null;
+
 export default function NotificationsScreen() {
   const router = useRouter();
   const { user: currentUser, isUserBlocked, addReportedPost } = useAuth();
-  const [notifications, setNotifications] = useState<Notification[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [notifications, setNotifications] = useState<Notification[]>(cachedNotifications || []);
+  const [loading, setLoading] = useState(cachedNotifications === null);
   const [selectedPost, setSelectedPost] = useState<Post | null>(null);
   const [showPostViewer, setShowPostViewer] = useState(false);
   const [reportingPost, setReportingPost] = useState<Post | null>(null);
@@ -163,6 +166,7 @@ export default function NotificationsScreen() {
         (notif) => !notif.fromUserId || (!deletedUserIds.has(notif.fromUserId) && !isUserBlocked(notif.fromUserId))
       );
 
+      cachedNotifications = filteredNotifs;
       setNotifications(filteredNotifs);
       setLoading(false);
     });
@@ -765,7 +769,9 @@ export default function NotificationsScreen() {
       setNotifications(prev => {
         const existingIds = new Set(prev.map(n => n.id));
         const uniqueNewNotifs = filteredNewNotifs.filter(n => !existingIds.has(n.id));
-        return [...prev, ...uniqueNewNotifs];
+        const updated = [...prev, ...uniqueNewNotifs];
+        cachedNotifications = updated;
+        return updated;
       });
 
       // Update pagination state

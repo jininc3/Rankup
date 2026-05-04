@@ -306,8 +306,8 @@ function DuoCard({ duo, onPress, onMessage, onViewProfile, onDisable, noShadow }
               </TouchableOpacity>
             )}
             {onMessage && (
-              <TouchableOpacity style={styles.bottomBtn} onPress={onMessage} activeOpacity={0.7}>
-                <ThemedText style={styles.bottomBtnTextPrimary}>Message</ThemedText>
+              <TouchableOpacity style={[styles.bottomBtn, styles.messageBtn]} onPress={onMessage} activeOpacity={0.7}>
+                <ThemedText style={styles.messageBtnText}>Message</ThemedText>
               </TouchableOpacity>
             )}
           </>
@@ -495,6 +495,15 @@ const styles = StyleSheet.create({
     color: '#bbb',
   },
   bottomBtnTextPrimary: {
+    fontSize: 13,
+    fontWeight: '700',
+    color: '#fff',
+  },
+  messageBtn: {
+    backgroundColor: '#1a2a4a',
+    borderColor: '#1a2a4a',
+  },
+  messageBtnText: {
     fontSize: 13,
     fontWeight: '700',
     color: '#fff',

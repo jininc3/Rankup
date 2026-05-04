@@ -2243,7 +2243,7 @@ const styles = StyleSheet.create({
   },
   miniBanner: {
     flex: 1,
-    aspectRatio: 0.75,
+    aspectRatio: 1,
     backgroundColor: 'transparent',
     borderRadius: 14,
     paddingVertical: 24,

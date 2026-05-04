@@ -6,7 +6,7 @@ import { useState, useEffect } from 'react';
 import { ScrollView, StyleSheet, TextInput, TouchableOpacity, View, Alert } from 'react-native';
 import CachedImage from '@/components/ui/CachedImage';
 import { useAuth } from '@/contexts/AuthContext';
-import { getFollowing, unfollowUser, FollowingData } from '@/services/followService';
+import { getFollowing, unfollowUser, followUser, FollowingData } from '@/services/followService';
 import { LinearGradient } from 'expo-linear-gradient';
 import { FollowListSkeleton } from '@/components/ui/Skeleton';
 
@@ -14,6 +14,7 @@ interface Following {
   id: string;
   username: string;
   avatar?: string;
+  isFollowing: boolean;
 }
 
 export default function FollowingScreen() {
@@ -40,6 +41,7 @@ export default function FollowingScreen() {
         id: followingUser.followingId,
         username: followingUser.followingUsername,
         avatar: followingUser.followingAvatar,
+        isFollowing: true,
       }));
 
       setFollowing(followingList);
@@ -51,15 +53,34 @@ export default function FollowingScreen() {
     }
   };
 
-  const handleUnfollow = async (userId: string) => {
+  const handleFollowToggle = async (targetId: string, currentlyFollowing: boolean) => {
     if (!user?.id) return;
 
     try {
-      await unfollowUser(user.id, userId);
-      setFollowing(prev => prev.filter(f => f.id !== userId));
+      const target = following.find(f => f.id === targetId);
+      if (!target) return;
+
+      if (currentlyFollowing) {
+        await unfollowUser(user.id, targetId);
+      } else {
+        await followUser(
+          user.id,
+          user.username || user.email?.split('@')[0] || 'User',
+          user.avatar,
+          targetId,
+          target.username,
+          target.avatar
+        );
+      }
+
+      setFollowing(prev =>
+        prev.map(f =>
+          f.id === targetId ? { ...f, isFollowing: !currentlyFollowing } : f
+        )
+      );
     } catch (error) {
-      console.error('Error unfollowing user:', error);
-      Alert.alert('Error', 'Failed to unfollow user');
+      console.error('Error toggling follow:', error);
+      Alert.alert('Error', 'Failed to update follow status');
     }
   };
 
@@ -134,10 +155,20 @@ export default function FollowingScreen() {
                   <ThemedText style={styles.username}>{user.username}</ThemedText>
                 </TouchableOpacity>
                 <TouchableOpacity
-                  style={styles.followingButton}
-                  onPress={() => handleUnfollow(user.id)}
+                  style={[
+                    styles.followButton,
+                    user.isFollowing && styles.followingButton
+                  ]}
+                  onPress={() => handleFollowToggle(user.id, user.isFollowing)}
                 >
-                  <ThemedText style={styles.followingButtonText}>Following</ThemedText>
+                  <ThemedText
+                    style={[
+                      styles.followButtonText,
+                      user.isFollowing && styles.followingButtonText
+                    ]}
+                  >
+                    {user.isFollowing ? 'Following' : 'Follow'}
+                  </ThemedText>
                 </TouchableOpacity>
               </View>
             ))}
@@ -258,19 +289,26 @@ const styles = StyleSheet.create({
     fontWeight: '500',
     color: '#fff',
   },
-  followingButton: {
+  followButton: {
     paddingHorizontal: 12,
     paddingVertical: 4,
-    backgroundColor: '#1a1a1a',
-    borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.06)',
+    backgroundColor: '#fff',
     borderRadius: 6,
-    minWidth: 75,
+    width: 85,
     alignItems: 'center',
+    borderWidth: 1,
+    borderColor: '#fff',
   },
-  followingButtonText: {
+  followingButton: {
+    backgroundColor: '#1a1a1a',
+    borderColor: 'rgba(255, 255, 255, 0.06)',
+  },
+  followButtonText: {
     fontSize: 12,
     fontWeight: '600',
+    color: '#000',
+  },
+  followingButtonText: {
     color: '#b9bbbe',
   },
   emptyState: {
