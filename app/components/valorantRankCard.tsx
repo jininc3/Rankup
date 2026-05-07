@@ -25,6 +25,7 @@ interface MatchHistoryEntry {
   gameStart: number; // Unix timestamp
   score: string; // e.g., "13-7"
   placement?: number; // Player's rank out of 10 by combat score
+  currentRank?: string; // Player's rank at the time of this match
 }
 
 interface Game {
@@ -583,43 +584,49 @@ export default function ValorantRankCard({ game, username, viewOnly = false, use
   const dismissCardRef = useRef(dismissCardOffScreen);
   dismissCardRef.current = dismissCardOffScreen;
 
-  // Pan responder for swipe down to close modal (on statistics card)
-  const statisticsSwipePanResponder = useRef(
-    PanResponder.create({
-      onStartShouldSetPanResponder: () => false,
-      onMoveShouldSetPanResponder: (_, gestureState) => {
-        return gestureState.dy > 30 && Math.abs(gestureState.dy) > Math.abs(gestureState.dx) * 2;
-      },
-      onPanResponderGrant: () => {
-        stackCardOpacityRef.current.setValue(1);
-      },
-      onPanResponderMove: (_, gestureState) => {
-        if (gestureState.dy > 0) {
-          dragYRef.current.setValue(gestureState.dy);
-          const progress = Math.min(1, gestureState.dy / (SCREEN_HEIGHT / 4));
-          overlayOpacityRef.current.setValue(1 - progress);
-        }
-      },
-      onPanResponderRelease: (_, gestureState) => {
-        if (gestureState.dy > SCREEN_HEIGHT / 6) {
-          dismissCardRef.current();
-        } else {
-          Animated.spring(dragYRef.current, {
-            toValue: 0,
-            useNativeDriver: false,
-            tension: 200,
-            friction: 20,
-          }).start();
-          Animated.timing(overlayOpacityRef.current, {
-            toValue: 1,
-            duration: 200,
-            useNativeDriver: true,
-          }).start();
-          stackCardOpacityRef.current.setValue(0);
-        }
-      },
-    })
-  ).current;
+  // Track stats ScrollView offset for drag-to-dismiss
+  const statsScrollOffset = useRef(0);
+  const statsDragStartY = useRef(0);
+  const isStatsDragging = useRef(false);
+
+  const handleStatsTouchStart = (e: any) => {
+    statsDragStartY.current = e.nativeEvent.pageY;
+  };
+
+  const handleStatsTouchMove = (e: any) => {
+    const dy = e.nativeEvent.pageY - statsDragStartY.current;
+    if (statsScrollOffset.current <= 0 && dy > 10 && !isStatsDragging.current) {
+      isStatsDragging.current = true;
+      stackCardOpacityRef.current.setValue(1);
+    }
+    if (isStatsDragging.current && dy > 0) {
+      dragYRef.current.setValue(dy);
+      const progress = Math.min(1, dy / (SCREEN_HEIGHT / 4));
+      overlayOpacityRef.current.setValue(1 - progress);
+    }
+  };
+
+  const handleStatsTouchEnd = (e: any) => {
+    if (!isStatsDragging.current) return;
+    const dy = e.nativeEvent.pageY - statsDragStartY.current;
+    isStatsDragging.current = false;
+    if (dy > SCREEN_HEIGHT / 6) {
+      dismissCardRef.current();
+    } else {
+      Animated.spring(dragYRef.current, {
+        toValue: 0,
+        useNativeDriver: false,
+        tension: 200,
+        friction: 20,
+      }).start();
+      Animated.timing(overlayOpacityRef.current, {
+        toValue: 1,
+        duration: 200,
+        useNativeDriver: true,
+      }).start();
+      stackCardOpacityRef.current.setValue(0);
+    }
+  };
 
   // Pan responder for swipe down on rank card back to close modal
   const rankCardSwipePanResponder = useRef(
@@ -753,13 +760,13 @@ export default function ValorantRankCard({ game, username, viewOnly = false, use
 
   const getAgentIcon = (agent: string) => {
     if (!agent) return null;
-    const agentKey = agent.toLowerCase();
+    const agentKey = agent.toLowerCase().replace(/[^a-z]/g, '');
     return VALORANT_AGENT_ICONS[agentKey] || null;
   };
 
   const getAgentSmallIcon = (agent: string) => {
     if (!agent) return null;
-    const agentKey = agent.toLowerCase();
+    const agentKey = agent.toLowerCase().replace(/[^a-z]/g, '');
     return VALORANT_AGENT_SMALL_ICONS[agentKey] || null;
   };
 
@@ -896,32 +903,28 @@ export default function ValorantRankCard({ game, username, viewOnly = false, use
             </View>
           </View>
 
-          {/* Ranks Row */}
-          <View style={styles.ranksRow}>
-            {/* Current Rank */}
-            <View style={styles.rankBox}>
-              <ThemedText style={styles.rankBoxLabel}>CURRENT</ThemedText>
-              <Image
-                source={getRankIcon(game.rank)}
-                style={styles.rankBoxIcon}
-                resizeMode="contain"
-              />
-              <ThemedText style={styles.rankBoxName}>{formatRankDisplay(game.rank || 'Unranked')}</ThemedText>
-              <ThemedText style={styles.rankBoxSub}>{game.trophies} RR</ThemedText>
+          {/* Current Rank */}
+          <View style={styles.backRankRow}>
+            <View style={styles.backRankInfo}>
+              <ThemedText style={styles.backRankLabel}>Competitive</ThemedText>
+              <ThemedText style={styles.backRankValue}>
+                {formatRankDisplay(game.rank || 'Unranked')} - {game.trophies} RR
+              </ThemedText>
             </View>
+            <Image source={getRankIcon(game.rank)} style={styles.backRankIcon} resizeMode="contain" />
+          </View>
 
-            <View style={styles.ranksDivider} />
+          <View style={styles.backRankDivider} />
 
-            {/* Peak Rank */}
-            <View style={styles.rankBox}>
-              <ThemedText style={styles.rankBoxLabel}>PEAK</ThemedText>
-              <Image
-                source={getRankIcon(game.peakRank?.tier || 'Unranked')}
-                style={styles.rankBoxIcon}
-                resizeMode="contain"
-              />
-              <ThemedText style={styles.rankBoxName}>{formatRankDisplay(game.peakRank?.tier || 'N/A')}</ThemedText>
+          {/* Peak Rank */}
+          <View style={styles.backRankRow}>
+            <View style={styles.backRankInfo}>
+              <ThemedText style={styles.backRankLabel}>Peak Rank</ThemedText>
+              <ThemedText style={styles.backRankValue}>
+                {formatRankDisplay(game.peakRank?.tier || 'N/A')}
+              </ThemedText>
             </View>
+            <Image source={getRankIcon(game.peakRank?.tier || 'Unranked')} style={styles.backRankIcon} resizeMode="contain" />
           </View>
         </View>
       ) : (
@@ -1103,7 +1106,7 @@ export default function ValorantRankCard({ game, username, viewOnly = false, use
           </TouchableOpacity>
         </Animated.View>
 
-        {/* Statistics Card - Slides up to just below rank card, stretches to bottom */}
+        {/* Statistics Card */}
         <Animated.View
           style={[
             styles.statisticsCard,
@@ -1114,25 +1117,22 @@ export default function ValorantRankCard({ game, username, viewOnly = false, use
               opacity: cardsContentOpacity,
             }
           ]}
-          {...statisticsSwipePanResponder.panHandlers}
         >
-          <Pressable
-            style={{ flex: 0 }}
-            onPress={() => {
-              if (matchHistoryExpanded) {
-                setMatchHistoryExpanded(false);
-                Animated.timing(matchHistoryExpandAnimation, {
-                  toValue: 0,
-                  duration: 300,
-                  easing: Easing.out(Easing.cubic),
-                  useNativeDriver: false,
-                }).start();
-              }
-            }}
+          <ScrollView
+            style={{ flex: 1 }}
+            showsVerticalScrollIndicator={false}
+            contentContainerStyle={{ paddingBottom: 40 }}
+            scrollEventThrottle={16}
+            onScroll={(e) => { statsScrollOffset.current = e.nativeEvent.contentOffset.y; }}
+            scrollEnabled={!isStatsDragging.current}
+            bounces={false}
+            onTouchStart={handleStatsTouchStart}
+            onTouchMove={handleStatsTouchMove}
+            onTouchEnd={handleStatsTouchEnd}
           >
             <View style={styles.statisticsHeader}>
               <View style={styles.statisticsHeaderLeft}>
-                <ThemedText style={styles.statisticsTitle}>Statistics</ThemedText>
+                <ThemedText style={styles.statisticsTitle}>STATS</ThemedText>
               </View>
               {isOwnCard && (
                 <TouchableOpacity
@@ -1148,282 +1148,158 @@ export default function ValorantRankCard({ game, username, viewOnly = false, use
                 </TouchableOpacity>
               )}
             </View>
-          </Pressable>
 
-          {/* Statistics Content - Scrollable */}
-          <Animated.View style={{ flex: 1, opacity: statisticsContentOpacity }}>
-            {/* Page indicator dots */}
-            <View style={styles.pageIndicator}>
-              <View style={[styles.dot, statsPage === 0 && styles.dotActive]} />
-              <View style={[styles.dot, statsPage === 1 && styles.dotActive]} />
-            </View>
-
-            <ScrollView
-              ref={statsScrollRef}
-              horizontal
-              pagingEnabled
-              showsHorizontalScrollIndicator={false}
-              onMomentumScrollEnd={(e: NativeSyntheticEvent<NativeScrollEvent>) => {
-                const page = Math.round(e.nativeEvent.contentOffset.x / SCREEN_WIDTH);
-                setStatsPage(page);
-              }}
-              scrollEventThrottle={16}
-              style={{ flex: 1 }}
-              nestedScrollEnabled
-            >
-              {/* Page 1: Current Stats */}
-              <ScrollView
-                style={{ width: SCREEN_WIDTH }}
-                contentContainerStyle={styles.statisticsScrollContent}
-                showsVerticalScrollIndicator={false}
-                nestedScrollEnabled
-              >
-                <View style={styles.statisticsContent}>
-                  <View style={styles.statsWithChart}>
-                    <WinLossPieChart
-                      wins={game.wins}
-                      losses={game.losses}
-                      winRate={game.winRate}
-                      size={90}
-                      strokeWidth={9}
-                      winColor="#4ade80"
-                      lossColor="#ef4444"
-                    />
-                    <View style={styles.statsColumn}>
-                      <View style={styles.statRowItem}>
-                        <View style={[styles.statDot, { backgroundColor: '#4ade80' }]} />
-                        <ThemedText style={styles.statRowLabel}>Wins</ThemedText>
-                        <ThemedText style={styles.statRowValue}>{game.wins}</ThemedText>
-                      </View>
-                      <View style={styles.statRowDivider} />
-                      <View style={styles.statRowItem}>
-                        <View style={[styles.statDot, { backgroundColor: '#ef4444' }]} />
-                        <ThemedText style={styles.statRowLabel}>Losses</ThemedText>
-                        <ThemedText style={styles.statRowValue}>{game.losses}</ThemedText>
-                      </View>
-                      <View style={styles.statRowDivider} />
-                      <View style={styles.statRowItem}>
-                        <View style={[styles.statDot, { backgroundColor: 'rgba(255,255,255,0.3)' }]} />
-                        <ThemedText style={styles.statRowLabel}>Games</ThemedText>
-                        <ThemedText style={styles.statRowValue}>{game.gamesPlayed || 0}</ThemedText>
-                      </View>
-                      <View style={styles.statRowDivider} />
-                      <View style={styles.statRowItem}>
-                        <View style={[styles.statDot, { backgroundColor: 'rgba(255,255,255,0.3)' }]} />
-                        <ThemedText style={styles.statRowLabel}>MMR</ThemedText>
-                        <ThemedText style={styles.statRowValue}>{game.mmr || 0}</ThemedText>
-                      </View>
-                    </View>
+            <Animated.View style={{ opacity: statisticsContentOpacity }}>
+              {/* Win Rate */}
+              <View style={styles.rankSectionRow}>
+                <View style={styles.rankSectionInfo}>
+                  <ThemedText style={styles.rankSectionLabel}>Win Rate</ThemedText>
+                  <View style={styles.winRateRow}>
+                    <ThemedText style={styles.rankSectionValue}>{game.winRate}%</ThemedText>
+                    <ThemedText style={styles.winCount}>{game.wins}W</ThemedText>
+                    <ThemedText style={styles.lossCount}>{game.losses}L</ThemedText>
                   </View>
-
-                  {/* KDA - Last 10 Games */}
-                  {game.matchHistory && game.matchHistory.length > 0 && (() => {
-                    const matches = game.matchHistory!.slice(0, 10);
-                    const totalKills = matches.reduce((sum, m) => sum + m.kills, 0);
-                    const totalDeaths = matches.reduce((sum, m) => sum + m.deaths, 0);
-                    const totalAssists = matches.reduce((sum, m) => sum + m.assists, 0);
-                    const kdaRatio = totalDeaths === 0
-                      ? (totalKills + totalAssists).toFixed(1)
-                      : ((totalKills + totalAssists) / totalDeaths).toFixed(2);
-                    const avgK = (totalKills / matches.length).toFixed(1);
-                    const avgD = (totalDeaths / matches.length).toFixed(1);
-                    const avgA = (totalAssists / matches.length).toFixed(1);
-                    return (
-                      <View style={styles.kdaSection}>
-                        <View style={styles.kdaDivider} />
-                        <ThemedText style={styles.kdaSectionLabel}>KDA — LAST {matches.length} GAMES</ThemedText>
-                        <View style={styles.kdaRow}>
-                          <View style={styles.kdaStatItem}>
-                            <ThemedText style={styles.kdaValue}>{avgK}</ThemedText>
-                            <ThemedText style={styles.kdaLabel}>Kills</ThemedText>
-                          </View>
-                          <ThemedText style={styles.kdaSlash}>/</ThemedText>
-                          <View style={styles.kdaStatItem}>
-                            <ThemedText style={[styles.kdaValue, styles.kdaDeathsText]}>{avgD}</ThemedText>
-                            <ThemedText style={styles.kdaLabel}>Deaths</ThemedText>
-                          </View>
-                          <ThemedText style={styles.kdaSlash}>/</ThemedText>
-                          <View style={styles.kdaStatItem}>
-                            <ThemedText style={styles.kdaValue}>{avgA}</ThemedText>
-                            <ThemedText style={styles.kdaLabel}>Assists</ThemedText>
-                          </View>
-                          <View style={styles.kdaRatioBadge}>
-                            <ThemedText style={styles.kdaRatioValue}>{kdaRatio}</ThemedText>
-                            <ThemedText style={styles.kdaRatioLabel}>KDA</ThemedText>
-                          </View>
-                        </View>
-                      </View>
-                    );
-                  })()}
-
-                  {/* Recently Playing Section */}
-                  {mostPlayedAgent && (
-                    <View style={styles.recentlyPlayingSection}>
-                      <View style={styles.recentlyPlayingDivider} />
-                      <View style={styles.recentlyPlayingContent}>
-                        <View style={styles.recentlyPlayingInfo}>
-                          <ThemedText style={styles.recentlyPlayingLabel}>Recently Playing</ThemedText>
-                          <ThemedText style={styles.recentlyPlayingAgent}>{mostPlayedAgent}</ThemedText>
-                        </View>
-                        {getAgentIcon(mostPlayedAgent) && (
-                          <Image
-                            source={getAgentIcon(mostPlayedAgent)}
-                            style={styles.recentlyPlayingImage}
-                            resizeMode="contain"
-                          />
-                        )}
-                      </View>
-                    </View>
-                  )}
                 </View>
-              </ScrollView>
-
-              {/* Page 2: RR Graph */}
-              <View style={{ width: SCREEN_WIDTH, paddingHorizontal: 16, paddingTop: 12 }}>
-                <ThemedText style={styles.graphTitle}>RR PROGRESSION</ThemedText>
-                <LPLineChart
-                  data={rankHistory.map(e => ({ value: e.value, date: e.timestamp, rank: e.rank }))}
-                  width={SCREEN_WIDTH - 32}
-                  height={200}
-                  lineColor="#ef5466"
-                  label="RR"
+                <WinLossPieChart
+                  wins={game.wins}
+                  losses={game.losses}
+                  winRate={game.winRate}
+                  size={44}
+                  strokeWidth={5}
+                  winColor="#4ade80"
+                  lossColor="#ef4444"
+                  hideText={true}
                 />
               </View>
-            </ScrollView>
-          </Animated.View>
-        </Animated.View>
 
-        {/* Match History Card - Fixed at bottom, expands upward */}
-        <Animated.View
-          style={[
-            styles.matchHistoryCard,
-            {
-              borderTopColor: `rgba(${rgb}, 0.3)`,
-              height: matchHistoryHeight,
-              opacity: cardsContentOpacity,
-            }
-          ]}
-          {...matchHistorySwipeUpPanResponder.panHandlers}
-        >
-          <View
-            style={styles.matchHistoryHeader}
-            {...matchHistorySwipeDownPanResponder.panHandlers}
-          >
-            <TouchableOpacity
-              style={styles.matchHistoryHeaderContent}
-              onPress={handleMatchHistoryToggle}
-              activeOpacity={0.8}
-            >
-              <View style={styles.matchHistoryHeaderLeft}>
-                <ThemedText style={styles.matchHistoryTitle}>Match History</ThemedText>
-              </View>
-              <Animated.View style={{ transform: [{ rotate: matchHistoryChevronRotation }] }}>
-                <IconSymbol size={16} name="chevron.up" color="rgba(255,255,255,0.6)" />
-              </Animated.View>
-            </TouchableOpacity>
-          </View>
+              <View style={styles.rankSectionDivider} />
 
-          {/* Match History Content */}
-          {matchHistoryExpanded && (
-            <View style={styles.matchHistoryContentWrapper}>
-              {/* Table Header */}
-              <View style={styles.matchTableHeader}>
-                <View style={styles.matchIndicatorSpacer} />
-                <ThemedText style={[styles.matchTableHeaderText, styles.matchColAgent]}>Agent</ThemedText>
-                <ThemedText style={[styles.matchTableHeaderText, styles.matchColRank]}>Rank</ThemedText>
-                <ThemedText style={[styles.matchTableHeaderText, styles.matchColKDA]}>KDA</ThemedText>
-                <ThemedText style={[styles.matchTableHeaderText, styles.matchColResult]}>Result</ThemedText>
-                <ThemedText style={[styles.matchTableHeaderText, styles.matchColScore]}>Score</ThemedText>
-                <ThemedText style={[styles.matchTableHeaderText, styles.matchColDate]}>Date</ThemedText>
-              </View>
-              <ScrollView
-                style={styles.matchHistoryContent}
-                showsVerticalScrollIndicator={false}
-                contentContainerStyle={styles.matchHistoryScrollContent}
-              >
+              {/* Most Played Agents */}
+              <View style={styles.mostPlayedSection}>
+                <ThemedText style={styles.rankSectionLabel}>Most Played</ThemedText>
                 {game.matchHistory && game.matchHistory.length > 0 ? (
-                  game.matchHistory.map((match, index) => {
-                    // gameStart could be in seconds or milliseconds - handle both
-                    const timestamp = match.gameStart < 10000000000 ? match.gameStart * 1000 : match.gameStart;
-                    const date = new Date(timestamp);
-                    const now = Date.now();
-                    const diffMs = now - timestamp;
-                    const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
-
-                    let formattedDate: string;
-                    const diffHours = Math.floor(diffMs / (1000 * 60 * 60));
-                    if (diffHours < 1) {
-                      formattedDate = 'Just now';
-                    } else if (diffHours < 24) {
-                      formattedDate = diffHours === 1 ? '1 hr ago' : `${diffHours} hrs ago`;
-                    } else if (diffDays === 1) {
-                      formattedDate = '1 day ago';
-                    } else if (diffDays < 30) {
-                      formattedDate = `${diffDays} days ago`;
-                    } else {
-                      const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
-                      formattedDate = `${date.getDate()}${months[date.getMonth()]}`;
-                    }
-                    return (
-                      <View key={match.matchId || index} style={styles.matchItem}>
-                        <View style={[styles.matchIndicator, match.won ? styles.matchWin : styles.matchLoss]} />
-                        <View style={styles.matchColAgent}>
-                          {getAgentSmallIcon(match.agent) ? (
-                            <Image
-                              source={getAgentSmallIcon(match.agent)}
-                              style={styles.matchAgentIcon}
-                              resizeMode="contain"
-                            />
-                          ) : (
-                            <ThemedText style={styles.matchCellText} numberOfLines={1}>
-                              {match.agent}
-                            </ThemedText>
-                          )}
-                        </View>
-                        <View style={styles.matchColRank}>
-                          <View style={[
-                            styles.matchRankPill,
-                            match.placement === 1 && styles.matchRankPill1st,
-                            match.placement === 2 && styles.matchRankPill2nd,
-                            match.placement === 3 && styles.matchRankPill3rd,
-                          ]}>
-                            <ThemedText style={[
-                              styles.matchRankText,
-                              match.placement === 1 && styles.matchRank1st,
-                              match.placement === 2 && styles.matchRank2nd,
-                              match.placement === 3 && styles.matchRank3rd,
-                            ]}>
-                              {match.placement ? (match.placement === 1 ? 'MVP' : `${match.placement}${match.placement === 2 ? 'nd' : match.placement === 3 ? 'rd' : 'th'}`) : '-'}
-                            </ThemedText>
-                          </View>
-                        </View>
-                        <ThemedText style={[styles.matchCellText, styles.matchColKDA]}>
-                          {match.kills}/{match.deaths}/{match.assists}
-                        </ThemedText>
-                        <ThemedText style={[
-                          styles.matchCellText,
-                          styles.matchColResult,
-                          match.won ? styles.matchResultWin : styles.matchResultLoss
-                        ]}>
-                          {match.won ? 'Victory' : 'Defeat'}
-                        </ThemedText>
-                        <ThemedText style={[styles.matchCellText, styles.matchColScore]}>
-                          {match.score || '-'}
-                        </ThemedText>
-                        <ThemedText style={[styles.matchCellText, styles.matchColDate, styles.matchDateText]}>
-                          {formattedDate}
-                        </ThemedText>
-                      </View>
-                    );
-                  })
+                  <>
+                    <View style={styles.mostPlayedRow}>
+                      {(() => {
+                        const agentCounts: { [agent: string]: number } = {};
+                        game.matchHistory!.forEach((m) => {
+                          if (m.agent) agentCounts[m.agent] = (agentCounts[m.agent] || 0) + 1;
+                        });
+                        const sorted = Object.entries(agentCounts).sort((a, b) => b[1] - a[1]).slice(0, 3);
+                        const totalGames = game.matchHistory!.length;
+                        return sorted.map(([agent, count]) => {
+                          const percentage = Math.round((count / totalGames) * 100);
+                          const icon = getAgentSmallIcon(agent);
+                          return (
+                            <View key={agent} style={styles.mostPlayedItem}>
+                              <View style={styles.mostPlayedImageWrapper}>
+                                {icon ? (
+                                  <Image source={icon} style={styles.mostPlayedImage} resizeMode="cover" />
+                                ) : (
+                                  <ThemedText style={{ fontSize: 11, color: '#888', textAlign: 'center' }}>{agent}</ThemedText>
+                                )}
+                              </View>
+                              <ThemedText style={styles.mostPlayedPercentage}>
+                                {percentage}<ThemedText style={styles.mostPlayedPercentSign}>%</ThemedText>
+                              </ThemedText>
+                            </View>
+                          );
+                        });
+                      })()}
+                    </View>
+                  </>
                 ) : (
-                  <View style={styles.noMatchesContainer}>
-                    <ThemedText style={styles.noMatchesText}>No recent matches</ThemedText>
-                  </View>
+                  <ThemedText style={{ fontSize: 13, color: 'rgba(255,255,255,0.3)', paddingVertical: 16 }}>
+                    No agent data available
+                  </ThemedText>
                 )}
-              </ScrollView>
-            </View>
-          )}
+              </View>
+
+              {/* Match History */}
+              {game.matchHistory && game.matchHistory.length > 0 && (
+                <>
+                  <View style={styles.rankSectionDivider} />
+                  <View style={styles.matchHistorySection}>
+                    <ThemedText style={styles.rankSectionLabel}>
+                      Last {game.matchHistory.length} Games
+                    </ThemedText>
+                    <View style={styles.matchCardList}>
+                      {game.matchHistory.map((match, index) => {
+                        const agentIcon = getAgentSmallIcon(match.agent);
+                        const rankIcon = match.currentRank ? getRankIcon(match.currentRank) : null;
+                        const timestamp = match.gameStart < 10000000000 ? match.gameStart * 1000 : match.gameStart;
+                        const now = Date.now();
+                        const diffMs = now - timestamp;
+                        const diffHours = Math.floor(diffMs / (1000 * 60 * 60));
+                        const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
+                        let dateText: string;
+                        if (diffHours < 1) dateText = 'Just now';
+                        else if (diffHours < 24) dateText = 'Today';
+                        else if (diffDays === 1) dateText = 'Yesterday';
+                        else if (diffDays < 7) dateText = `${diffDays}d ago`;
+                        else {
+                          const d = new Date(timestamp);
+                          dateText = `${String(d.getDate()).padStart(2, '0')}/${String(d.getMonth() + 1).padStart(2, '0')}/${d.getFullYear()}`;
+                        }
+
+                        return (
+                          <View key={match.matchId || index} style={[styles.matchCard, { borderLeftColor: match.won ? '#4ade80' : '#ef4444' }]}>
+                            {/* Header: date + result badge */}
+                            <View style={styles.matchCardHeader}>
+                              <ThemedText style={styles.matchCardDate}>{dateText}</ThemedText>
+                              <View style={[styles.matchResultBadge, match.won ? styles.matchResultBadgeWin : styles.matchResultBadgeLoss]}>
+                                <ThemedText style={[styles.matchResultBadgeText, match.won ? { color: '#4ade80' } : { color: '#ef4444' }]}>
+                                  {match.won ? 'Victory' : 'Defeat'}
+                                </ThemedText>
+                              </View>
+                            </View>
+
+                            {/* Agent row: icon + name/map + rank */}
+                            <View style={styles.matchCardAgentRow}>
+                              <View style={styles.matchCardAgentIcon}>
+                                {agentIcon ? (
+                                  <Image source={agentIcon} style={styles.matchCardAgentImg} resizeMode="cover" />
+                                ) : (
+                                  <ThemedText style={{ fontSize: 14, color: '#888', fontWeight: '700' }}>{match.agent?.charAt(0)}</ThemedText>
+                                )}
+                              </View>
+                              <View style={{ flex: 1 }}>
+                                <ThemedText style={styles.matchCardAgentName}>{match.agent}</ThemedText>
+                                <ThemedText style={styles.matchCardMapName}>{match.map}</ThemedText>
+                              </View>
+                              {rankIcon && (
+                                <Image source={rankIcon} style={styles.matchCardRankIcon} resizeMode="contain" />
+                              )}
+                            </View>
+
+                            {/* Stats row: KDA + Score + Placement */}
+                            <View style={styles.matchCardStatsRow}>
+                              <View style={styles.matchCardStat}>
+                                <ThemedText style={styles.matchCardStatValue}>{match.kills}/{match.deaths}/{match.assists}</ThemedText>
+                                <ThemedText style={styles.matchCardStatLabel}>KDA</ThemedText>
+                              </View>
+                              <View style={styles.matchCardStat}>
+                                <ThemedText style={styles.matchCardStatValue}>{match.score || '-'}</ThemedText>
+                                <ThemedText style={styles.matchCardStatLabel}>Score</ThemedText>
+                              </View>
+                              {match.placement && (
+                                <View style={styles.matchCardStat}>
+                                  <ThemedText style={[styles.matchCardStatValue, match.placement === 1 && { color: '#FFD700' }]}>
+                                    {match.placement === 1 ? 'MVP' : `#${match.placement}`}
+                                  </ThemedText>
+                                  <ThemedText style={styles.matchCardStatLabel}>Rank</ThemedText>
+                                </View>
+                              )}
+                            </View>
+                          </View>
+                        );
+                      })}
+                    </View>
+                  </View>
+                </>
+              )}
+            </Animated.View>
+          </ScrollView>
         </Animated.View>
       </Modal>
     </>
@@ -1749,49 +1625,37 @@ const styles = StyleSheet.create({
     textTransform: 'uppercase',
     marginLeft: 8,
   },
-  // Rank containers row
-  ranksRow: {
+  // Back card rank rows
+  backRankRow: {
     flexDirection: 'row',
-    justifyContent: 'center',
-    alignItems: 'stretch',
-    paddingHorizontal: 8,
-    paddingBottom: 8,
-    gap: 10,
-  },
-  rankBox: {
-    flex: 1,
     alignItems: 'center',
-    justifyContent: 'flex-start',
+    justifyContent: 'space-between',
+    paddingHorizontal: 4,
+    paddingVertical: 6,
   },
-  ranksDivider: {
-    width: 1,
-    height: 40,
-    backgroundColor: 'rgba(255,255,255,0.15)',
-    marginTop: 40,
+  backRankInfo: {
+    flex: 1,
   },
-  rankBoxLabel: {
-    fontSize: 8,
-    fontWeight: '800',
-    color: 'rgba(255,255,255,0.5)',
-    letterSpacing: 1,
-    marginBottom: 4,
-  },
-  rankBoxIcon: {
-    width: 64,
-    height: 64,
-    marginBottom: 3,
-  },
-  rankBoxName: {
-    fontSize: 12,
-    fontWeight: '700',
-    color: '#fff',
-    textAlign: 'center',
-  },
-  rankBoxSub: {
-    fontSize: 7,
+  backRankLabel: {
+    fontSize: 10,
     fontWeight: '600',
-    color: 'rgba(255,255,255,0.5)',
-    marginTop: 1,
+    color: 'rgba(255,255,255,0.45)',
+    marginBottom: 2,
+  },
+  backRankValue: {
+    fontSize: 15,
+    fontWeight: '800',
+    color: '#fff',
+    letterSpacing: -0.3,
+  },
+  backRankIcon: {
+    width: 44,
+    height: 44,
+  },
+  backRankDivider: {
+    height: 1,
+    backgroundColor: 'rgba(255,255,255,0.08)',
+    marginHorizontal: 4,
   },
   // Bottom Stats Bar
   statsBar: {
@@ -1933,7 +1797,7 @@ const styles = StyleSheet.create({
     position: 'absolute',
     left: 0,
     right: 0,
-    backgroundColor: '#1a1d21',
+    backgroundColor: '#1a1a1a',
     borderTopLeftRadius: 24,
     borderTopRightRadius: 24,
     borderTopWidth: 2,
@@ -1953,8 +1817,6 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20,
     paddingTop: 20,
     paddingBottom: 16,
-    borderBottomWidth: 1,
-    borderBottomColor: 'rgba(239, 84, 102, 0.15)',
   },
   statisticsHeaderLeft: {
     flexDirection: 'row',
@@ -1967,359 +1829,197 @@ const styles = StyleSheet.create({
     letterSpacing: 0.5,
     textTransform: 'uppercase',
   },
-  statisticsContent: {
-    flex: 1,
-    paddingHorizontal: 16,
-  },
-  statisticsScrollContent: {
-    paddingTop: 12,
-    paddingBottom: 250,
-  },
-  pageIndicator: {
-    flexDirection: 'row' as const,
-    justifyContent: 'center' as const,
-    alignItems: 'center' as const,
-    paddingVertical: 8,
-    gap: 6,
-  },
-  dot: {
-    width: 6,
-    height: 6,
-    borderRadius: 3,
-    backgroundColor: 'rgba(255,255,255,0.2)',
-  },
-  dotActive: {
-    backgroundColor: '#ef5466',
-  },
-  graphTitle: {
-    fontSize: 11,
-    fontWeight: '800' as const,
-    color: 'rgba(255,255,255,0.5)',
-    letterSpacing: 1,
-    textTransform: 'uppercase' as const,
-    marginBottom: 12,
-  },
-  statsWithChart: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 20,
-  },
-  statsColumn: {
-    flex: 1,
-    gap: 0,
-  },
-  statRowItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingVertical: 5,
-  },
-  statDot: {
-    width: 8,
-    height: 8,
-    borderRadius: 4,
-    marginRight: 10,
-  },
-  statRowLabel: {
-    fontSize: 12,
-    fontWeight: '600',
-    color: 'rgba(255,255,255,0.6)',
-    flex: 1,
-  },
-  statRowValue: {
-    fontSize: 15,
-    fontWeight: '800',
-    color: '#fff',
-  },
-  statRowDivider: {
-    height: 1,
-    backgroundColor: 'rgba(239, 84, 102, 0.12)',
-    marginLeft: 18,
-  },
-  // KDA Section styles
-  kdaSection: {
-    marginTop: 12,
-  },
-  kdaDivider: {
-    height: 1,
-    backgroundColor: 'rgba(255,255,255,0.08)',
-    marginBottom: 10,
-  },
-  kdaSectionLabel: {
-    fontSize: 9,
-    fontWeight: '800',
-    color: 'rgba(255,255,255,0.4)',
-    letterSpacing: 1,
-    textTransform: 'uppercase',
-    marginBottom: 8,
-  },
-  kdaRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-  },
-  kdaStatItem: {
-    alignItems: 'center',
-  },
-  kdaValue: {
-    fontSize: 16,
-    fontWeight: '800',
-    color: '#fff',
-  },
-  kdaDeathsText: {
-    color: '#EF5466',
-  },
-  kdaLabel: {
-    fontSize: 8,
-    fontWeight: '600',
-    color: 'rgba(255,255,255,0.4)',
-    marginTop: 1,
-    textTransform: 'uppercase',
-  },
-  kdaSlash: {
-    fontSize: 16,
-    fontWeight: '300',
-    color: 'rgba(255,255,255,0.2)',
-    marginHorizontal: 2,
-  },
-  kdaRatioBadge: {
-    backgroundColor: 'rgba(239, 84, 102, 0.15)',
-    borderRadius: 8,
-    paddingHorizontal: 10,
-    paddingVertical: 4,
-    marginLeft: 10,
-    alignItems: 'center',
-    borderWidth: 1,
-    borderColor: 'rgba(239, 84, 102, 0.25)',
-  },
-  kdaRatioValue: {
-    fontSize: 14,
-    fontWeight: '800',
-    color: '#EF5466',
-  },
-  kdaRatioLabel: {
-    fontSize: 7,
-    fontWeight: '700',
-    color: 'rgba(255,255,255,0.4)',
-    letterSpacing: 1,
-  },
-  // Recently Playing styles
-  recentlyPlayingSection: {
-    marginTop: 12,
-  },
-  recentlyPlayingDivider: {
-    height: 1,
-    backgroundColor: 'rgba(255,255,255,0.08)',
-    marginBottom: 12,
-  },
-  recentlyPlayingContent: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    position: 'relative',
-    overflow: 'visible',
-  },
-  recentlyPlayingInfo: {
-    flex: 1,
-  },
-  recentlyPlayingLabel: {
-    fontSize: 10,
-    fontWeight: '600',
-    color: 'rgba(255,255,255,0.5)',
-    textTransform: 'uppercase',
-    letterSpacing: 0.5,
-  },
-  recentlyPlayingAgent: {
-    fontSize: 16,
-    fontWeight: '800',
-    color: '#fff',
-    marginTop: 2,
-  },
-  recentlyPlayingImage: {
-    position: 'absolute',
-    right: -30,
-    top: -100,
-    width: 260,
-    height: 400,
-    opacity: 0.9,
-  },
-  // Match History Card styles - fixed at bottom, expands upward
-  matchHistoryCard: {
-    position: 'absolute',
-    bottom: 0,
-    left: 0,
-    right: 0,
-    backgroundColor: '#22262b',
-    borderTopLeftRadius: 20,
-    borderTopRightRadius: 20,
-    borderTopWidth: 2,
-    borderTopColor: 'rgba(239, 84, 102, 0.3)',
-    zIndex: 15,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: -4 },
-    shadowOpacity: 0.3,
-    shadowRadius: 12,
-    elevation: 25,
-  },
-  matchHistoryHeader: {
-    borderBottomWidth: 1,
-    borderBottomColor: 'rgba(239, 84, 102, 0.12)',
-  },
-  matchHistoryHeaderContent: {
+  rankSectionRow: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
     paddingHorizontal: 20,
-    paddingTop: 18,
-    paddingBottom: 16,
+    paddingVertical: 18,
   },
-  matchHistoryHeaderLeft: {
-    flexDirection: 'row',
-    alignItems: 'center',
+  rankSectionInfo: {
+    flex: 1,
   },
-  matchHistoryTitle: {
+  rankSectionLabel: {
     fontSize: 14,
+    fontWeight: '600',
+    color: 'rgba(255,255,255,0.45)',
+    marginBottom: 4,
+  },
+  rankSectionValue: {
+    fontSize: 20,
     fontWeight: '800',
     color: '#fff',
-    letterSpacing: 0.5,
-    textTransform: 'uppercase',
+    letterSpacing: -0.3,
   },
-  matchHistoryContentWrapper: {
-    flex: 1,
+  rankSectionSubValue: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: 'rgba(255,255,255,0.4)',
   },
-  matchTableHeader: {
+  rankSectionIcon: {
+    width: 52,
+    height: 52,
+  },
+  winRateRow: {
     flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingHorizontal: 16,
-    paddingVertical: 10,
-    paddingLeft: 20,
-    borderBottomWidth: 1,
-    borderBottomColor: 'rgba(255, 255, 255, 0.1)',
+    alignItems: 'baseline',
+    gap: 8,
   },
-  matchTableHeaderText: {
-    fontSize: 9,
-    fontWeight: '800',
-    color: 'rgba(255,255,255,0.5)',
-    textTransform: 'uppercase',
-    letterSpacing: 0.8,
-  },
-  matchHistoryContent: {
-    flex: 1,
-  },
-  matchHistoryScrollContent: {
-    paddingHorizontal: 12,
-    paddingBottom: 30,
-  },
-  matchItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingVertical: 12,
-    paddingHorizontal: 4,
-    borderBottomWidth: 1,
-    borderBottomColor: 'rgba(255, 255, 255, 0.05)',
-  },
-  matchIndicator: {
-    width: 4,
-    height: 36,
-    borderRadius: 2,
-    marginRight: 12,
-  },
-  matchIndicatorSpacer: {
-    width: 16,
-  },
-  matchWin: {
-    backgroundColor: '#4CAF50',
-  },
-  matchLoss: {
-    backgroundColor: '#DC3D4B',
-  },
-  // Column widths
-  matchColAgent: {
-    flex: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  matchAgentIcon: {
-    width: 36,
-    height: 36,
-    borderRadius: 6,
-  },
-  matchColRank: {
-    flex: 0.8,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  matchRankPill: {
-    paddingHorizontal: 6,
-    paddingVertical: 2,
-    borderRadius: 10,
-    backgroundColor: 'rgba(255, 255, 255, 0.08)',
-  },
-  matchRankPill1st: {
-    backgroundColor: 'rgba(255, 215, 0, 0.15)',
-  },
-  matchRankPill2nd: {
-    backgroundColor: 'rgba(192, 192, 192, 0.15)',
-  },
-  matchRankPill3rd: {
-    backgroundColor: 'rgba(205, 127, 50, 0.15)',
-  },
-  matchRankText: {
-    fontSize: 10,
+  winCount: {
+    fontSize: 14,
     fontWeight: '700',
-    color: '#999',
-    textAlign: 'center',
+    color: '#4ade80',
   },
-  matchRank1st: {
-    color: '#FFD700',
-    fontWeight: '900',
+  lossCount: {
+    fontSize: 14,
+    fontWeight: '700',
+    color: '#ef4444',
   },
-  matchRank2nd: {
-    color: '#C0C0C0',
-    fontWeight: '900',
+  rankSectionDivider: {
+    height: 1,
+    backgroundColor: 'rgba(255,255,255,0.08)',
+    marginHorizontal: 20,
   },
-  matchRank3rd: {
-    color: '#CD7F32',
-    fontWeight: '900',
+  mostPlayedSection: {
+    paddingHorizontal: 20,
+    paddingTop: 18,
+    paddingBottom: 20,
   },
-  matchColKDA: {
-    flex: 1.2,
-    textAlign: 'center',
+  mostPlayedRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-around',
+    alignItems: 'center',
+    marginTop: 16,
   },
-  matchColResult: {
-    flex: 1.2,
-    textAlign: 'center',
-  },
-  matchColScore: {
+  mostPlayedItem: {
+    alignItems: 'center',
     flex: 1,
-    textAlign: 'center',
   },
-  matchColDate: {
-    flex: 1.5,
-    textAlign: 'right',
+  mostPlayedImageWrapper: {
+    width: 64,
+    height: 64,
+    borderRadius: 32,
+    overflow: 'hidden',
+    backgroundColor: '#2a2a2a',
+    marginBottom: 10,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
-  matchCellText: {
+  mostPlayedImage: {
+    width: '100%',
+    height: '100%',
+    transform: [{ scale: 1.15 }],
+  },
+  mostPlayedPercentage: {
+    fontSize: 22,
+    fontWeight: '700',
+    color: 'rgba(255,255,255,0.7)',
+  },
+  mostPlayedPercentSign: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: 'rgba(255,255,255,0.4)',
+  },
+  matchHistorySection: {
+    paddingHorizontal: 16,
+    paddingTop: 18,
+  },
+  matchCardList: {
+    marginTop: 12,
+    gap: 10,
+  },
+  matchCard: {
+    backgroundColor: '#222',
+    borderRadius: 12,
+    borderLeftWidth: 3,
+    borderLeftColor: '#4ade80',
+    overflow: 'hidden',
+    padding: 12,
+  },
+  matchCardHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: 10,
+  },
+  matchCardDate: {
+    fontSize: 12,
+    fontWeight: '500',
+    color: 'rgba(255,255,255,0.4)',
+  },
+  matchResultBadge: {
+    paddingHorizontal: 12,
+    paddingVertical: 4,
+    borderRadius: 14,
+  },
+  matchResultBadgeWin: {
+    backgroundColor: 'rgba(74, 222, 128, 0.15)',
+  },
+  matchResultBadgeLoss: {
+    backgroundColor: 'rgba(239, 68, 68, 0.15)',
+  },
+  matchResultBadgeText: {
     fontSize: 12,
     fontWeight: '700',
     color: '#fff',
   },
-  matchResultWin: {
-    color: '#4CAF50',
+  matchCardAgentRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    marginBottom: 10,
   },
-  matchResultLoss: {
-    color: '#DC3D4B',
+  matchCardAgentIcon: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    overflow: 'hidden',
+    backgroundColor: '#333',
+    alignItems: 'center',
+    justifyContent: 'center',
   },
-  matchDateText: {
-    color: 'rgba(255,255,255,0.5)',
-    fontSize: 11,
+  matchCardAgentImg: {
+    width: '100%',
+    height: '100%',
+    transform: [{ scale: 1.15 }],
   },
-  noMatchesContainer: {
-    paddingVertical: 24,
+  matchCardRankIcon: {
+    width: 28,
+    height: 28,
+  },
+  matchCardAgentName: {
+    fontSize: 15,
+    fontWeight: '700',
+    color: '#fff',
+  },
+  matchCardMapName: {
+    fontSize: 12,
+    fontWeight: '500',
+    color: 'rgba(255,255,255,0.4)',
+    marginTop: 1,
+  },
+  matchCardStatsRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 20,
+    paddingTop: 8,
+    borderTopWidth: 1,
+    borderTopColor: 'rgba(255,255,255,0.06)',
+  },
+  matchCardStat: {
     alignItems: 'center',
   },
-  noMatchesText: {
+  matchCardStatValue: {
+    fontSize: 14,
+    fontWeight: '700',
+    color: '#fff',
+  },
+  matchCardStatLabel: {
     fontSize: 10,
-    color: 'rgba(255,255,255,0.5)',
+    fontWeight: '500',
+    color: 'rgba(255,255,255,0.35)',
+    marginTop: 2,
+    textTransform: 'uppercase',
+    letterSpacing: 0.3,
   },
 });

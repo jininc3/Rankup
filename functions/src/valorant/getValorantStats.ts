@@ -25,6 +25,7 @@ export interface MatchHistoryEntry {
   playedAt: number; // Unix timestamp in milliseconds (for match history consumers)
   score: string; // e.g., "13-7"
   placement?: number; // Player's rank out of 10 by combat score (1st = highest)
+  currentRank?: string; // Player's rank at the time of this match, e.g., "Gold 3"
 }
 
 export interface ValorantStats {
@@ -255,6 +256,7 @@ export const getValorantStatsFunction = onCall(
           playedAt: gameStart * 1000,
           score,
           placement: placement > 0 ? placement : undefined,
+          currentRank: player.currenttier_patched || undefined,
         };
       }).filter((entry): entry is MatchHistoryEntry => entry !== null);
 
