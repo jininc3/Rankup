@@ -1196,7 +1196,7 @@ export default function LeaderboardDetail() {
                 <IconSymbol size={14} name="arrow.clockwise" color="#666" />
               )}
               <ThemedText style={styles.updateButtonSecondaryText}>
-                {updatingStats ? 'Updating...' : 'Update'}
+                {updatingStats ? 'Refreshing...' : 'Refresh'}
               </ThemedText>
             </TouchableOpacity>
           </View>

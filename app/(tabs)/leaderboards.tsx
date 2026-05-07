@@ -316,12 +316,12 @@ export default function LeaderboardScreen() {
             activeOpacity={0.7}
           >
             {updatingStats ? (
-              <ActivityIndicator size={12} color="#4da6ff" />
+              <ActivityIndicator size={12} color="#888" />
             ) : (
-              <IconSymbol size={14} name="arrow.clockwise" color="#4da6ff" />
+              <IconSymbol size={14} name="arrow.clockwise" color="#888" />
             )}
             <ThemedText style={styles.updateButtonText}>
-              {updatingStats ? 'Updating...' : 'Update'}
+              {updatingStats ? 'Refreshing...' : 'Refresh'}
             </ThemedText>
           </TouchableOpacity>
         </View>
@@ -721,7 +721,7 @@ const styles = StyleSheet.create({
   updateButtonText: {
     fontSize: 13,
     fontWeight: '600',
-    color: '#4da6ff',
+    color: '#888',
   },
   // Mutual leaderboard styles
   mutualSection: {

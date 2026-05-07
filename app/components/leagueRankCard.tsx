@@ -911,9 +911,9 @@ export default function LeagueRankCard({ game, username, viewOnly = false, userI
                   style={{ flexDirection: 'row', alignItems: 'center', gap: 4, opacity: updatingStats ? 0.5 : 1 }}
                   activeOpacity={0.6}
                 >
-                  <IconSymbol size={12} name="arrow.clockwise" color="#4da6ff" />
-                  <ThemedText style={{ fontSize: 12, fontWeight: '600', color: '#4da6ff' }}>
-                    {updatingStats ? 'Updating...' : 'Update'}
+                  <IconSymbol size={12} name="arrow.clockwise" color="#888" />
+                  <ThemedText style={{ fontSize: 12, fontWeight: '600', color: '#888' }}>
+                    {updatingStats ? 'Refreshing...' : 'Refresh'}
                   </ThemedText>
                 </TouchableOpacity>
               )}
@@ -1028,8 +1028,8 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   profileImageWrapper: { position: 'relative' },
-  backPlayerCard: { width: 36, height: 36, borderRadius: 6, borderWidth: 1, borderColor: 'rgba(255,255,255,0.5)' },
-  profileGlow: { position: 'absolute', top: -2, left: -2, right: -2, bottom: -2, borderRadius: 8, borderWidth: 1, borderColor: 'rgba(100,150,255,0.3)' },
+  backPlayerCard: { width: 44, height: 44, borderRadius: 8, borderWidth: 1, borderColor: 'rgba(255,255,255,0.5)' },
+  profileGlow: { position: 'absolute', top: -2, left: -2, right: -2, bottom: -2, borderRadius: 10, borderWidth: 1, borderColor: 'rgba(100,150,255,0.3)' },
   levelBadge: {
     position: 'absolute',
     bottom: -4,
@@ -1050,7 +1050,7 @@ const styles = StyleSheet.create({
     fontWeight: '800' as const,
     color: '#fff',
   },
-  backUsername: { fontSize: 12, color: '#fff', fontWeight: '700', letterSpacing: 0.5, textTransform: 'uppercase', marginLeft: 8 },
+  backUsername: { fontSize: 15, color: '#fff', fontWeight: '700', letterSpacing: 0.3, textTransform: 'uppercase', marginLeft: 10 },
   backRankRow: {
     flexDirection: 'row',
     alignItems: 'center',

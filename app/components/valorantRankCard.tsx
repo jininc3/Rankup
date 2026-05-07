@@ -131,6 +131,22 @@ const VALORANT_AGENT_SMALL_ICONS: { [key: string]: any } = {
   yoru: require('@/assets/images/valoranticons/yoru.png'),
 };
 
+// Valorant map image mapping
+const VALORANT_MAP_IMAGES: { [key: string]: any } = {
+  abyss: require('@/assets/images/valorantmaps/Abyss.png'),
+  ascent: require('@/assets/images/valorantmaps/Ascent.png'),
+  bind: require('@/assets/images/valorantmaps/Bind.png'),
+  breeze: require('@/assets/images/valorantmaps/Breeze.png'),
+  corrode: require('@/assets/images/valorantmaps/Corrode.png'),
+  fracture: require('@/assets/images/valorantmaps/Fracture.png'),
+  haven: require('@/assets/images/valorantmaps/Haven.png'),
+  icebox: require('@/assets/images/valorantmaps/Icebox.png'),
+  lotus: require('@/assets/images/valorantmaps/Lotus.png'),
+  pearl: require('@/assets/images/valorantmaps/Pearl.png'),
+  split: require('@/assets/images/valorantmaps/Split.png'),
+  sunset: require('@/assets/images/valorantmaps/Sunset.png'),
+};
+
 // Valorant agent image mapping (large, for statistics card)
 const VALORANT_AGENT_ICONS: { [key: string]: any } = {
   astra: require('@/assets/images/valorantagents/astra.png'),
@@ -906,7 +922,7 @@ export default function ValorantRankCard({ game, username, viewOnly = false, use
           {/* Current Rank */}
           <View style={styles.backRankRow}>
             <View style={styles.backRankInfo}>
-              <ThemedText style={styles.backRankLabel}>Competitive</ThemedText>
+              <ThemedText style={styles.backRankLabel}>Current Rank</ThemedText>
               <ThemedText style={styles.backRankValue}>
                 {formatRankDisplay(game.rank || 'Unranked')} - {game.trophies} RR
               </ThemedText>
@@ -1141,9 +1157,9 @@ export default function ValorantRankCard({ game, username, viewOnly = false, use
                   style={{ flexDirection: 'row', alignItems: 'center', gap: 4, opacity: updatingStats ? 0.5 : 1 }}
                   activeOpacity={0.6}
                 >
-                  <IconSymbol size={12} name="arrow.clockwise" color="#ef5466" />
-                  <ThemedText style={{ fontSize: 12, fontWeight: '600', color: '#ef5466' }}>
-                    {updatingStats ? 'Updating...' : 'Update'}
+                  <IconSymbol size={12} name="arrow.clockwise" color="#888" />
+                  <ThemedText style={{ fontSize: 12, fontWeight: '600', color: '#888' }}>
+                    {updatingStats ? 'Refreshing...' : 'Refresh'}
                   </ThemedText>
                 </TouchableOpacity>
               )}
@@ -1244,52 +1260,89 @@ export default function ValorantRankCard({ game, username, viewOnly = false, use
 
                         return (
                           <View key={match.matchId || index} style={[styles.matchCard, { borderLeftColor: match.won ? '#4ade80' : '#ef4444' }]}>
-                            {/* Header: date + result badge */}
-                            <View style={styles.matchCardHeader}>
-                              <ThemedText style={styles.matchCardDate}>{dateText}</ThemedText>
-                              <View style={[styles.matchResultBadge, match.won ? styles.matchResultBadgeWin : styles.matchResultBadgeLoss]}>
-                                <ThemedText style={[styles.matchResultBadgeText, match.won ? { color: '#4ade80' } : { color: '#ef4444' }]}>
-                                  {match.won ? 'Victory' : 'Defeat'}
-                                </ThemedText>
+                            {/* Faded map background with gradient reveal on right */}
+                            {VALORANT_MAP_IMAGES[match.map?.toLowerCase()] && (
+                              <>
+                                <Image
+                                  source={VALORANT_MAP_IMAGES[match.map.toLowerCase()]}
+                                  style={styles.matchCardMapBg}
+                                  resizeMode="cover"
+                                />
+                                {/* Left fade */}
+                                <LinearGradient
+                                  colors={['#222', 'rgba(34,34,34,0)']}
+                                  start={{ x: 0, y: 0 }}
+                                  end={{ x: 0.5, y: 0 }}
+                                  style={styles.matchCardMapGradient}
+                                  pointerEvents="none"
+                                />
+                                {/* Right fade */}
+                                <LinearGradient
+                                  colors={['rgba(34,34,34,0)', '#222']}
+                                  start={{ x: 0.7, y: 0 }}
+                                  end={{ x: 1, y: 0 }}
+                                  style={styles.matchCardMapGradient}
+                                  pointerEvents="none"
+                                />
+                                {/* Bottom fade */}
+                                <LinearGradient
+                                  colors={['rgba(34,34,34,0)', 'rgba(34,34,34,0.3)', 'rgba(34,34,34,0.8)', '#222']}
+                                  locations={[0.3, 0.5, 0.75, 1]}
+                                  start={{ x: 0, y: 0 }}
+                                  end={{ x: 0, y: 1 }}
+                                  style={styles.matchCardMapGradient}
+                                  pointerEvents="none"
+                                />
+                              </>
+                            )}
+                            <View style={styles.matchCardContent}>
+                              {/* Header: date + result badge */}
+                              <View style={styles.matchCardHeader}>
+                                <ThemedText style={styles.matchCardDate}>{dateText}</ThemedText>
+                                <View style={[styles.matchResultBadge, match.won ? styles.matchResultBadgeWin : styles.matchResultBadgeLoss]}>
+                                  <ThemedText style={[styles.matchResultBadgeText, match.won ? { color: '#4ade80' } : { color: '#ef4444' }]}>
+                                    {match.won ? 'Victory' : 'Defeat'}
+                                  </ThemedText>
+                                </View>
                               </View>
-                            </View>
 
-                            {/* Agent row: icon + name/map + rank */}
-                            <View style={styles.matchCardAgentRow}>
-                              <View style={styles.matchCardAgentIcon}>
-                                {agentIcon ? (
-                                  <Image source={agentIcon} style={styles.matchCardAgentImg} resizeMode="cover" />
-                                ) : (
-                                  <ThemedText style={{ fontSize: 14, color: '#888', fontWeight: '700' }}>{match.agent?.charAt(0)}</ThemedText>
+                              {/* Agent row: icon + name/map + rank */}
+                              <View style={styles.matchCardAgentRow}>
+                                <View style={styles.matchCardAgentIcon}>
+                                  {agentIcon ? (
+                                    <Image source={agentIcon} style={styles.matchCardAgentImg} resizeMode="cover" />
+                                  ) : (
+                                    <ThemedText style={{ fontSize: 14, color: '#888', fontWeight: '700' }}>{match.agent?.charAt(0)}</ThemedText>
+                                  )}
+                                </View>
+                                <View style={{ flex: 1 }}>
+                                  <ThemedText style={styles.matchCardAgentName}>{match.agent}</ThemedText>
+                                  <ThemedText style={styles.matchCardMapName}>{match.map}</ThemedText>
+                                </View>
+                                {rankIcon && (
+                                  <Image source={rankIcon} style={styles.matchCardRankIcon} resizeMode="contain" />
                                 )}
                               </View>
-                              <View style={{ flex: 1 }}>
-                                <ThemedText style={styles.matchCardAgentName}>{match.agent}</ThemedText>
-                                <ThemedText style={styles.matchCardMapName}>{match.map}</ThemedText>
-                              </View>
-                              {rankIcon && (
-                                <Image source={rankIcon} style={styles.matchCardRankIcon} resizeMode="contain" />
-                              )}
-                            </View>
 
-                            {/* Stats row: KDA + Score + Placement */}
-                            <View style={styles.matchCardStatsRow}>
-                              <View style={styles.matchCardStat}>
-                                <ThemedText style={styles.matchCardStatValue}>{match.kills}/{match.deaths}/{match.assists}</ThemedText>
-                                <ThemedText style={styles.matchCardStatLabel}>KDA</ThemedText>
-                              </View>
-                              <View style={styles.matchCardStat}>
-                                <ThemedText style={styles.matchCardStatValue}>{match.score || '-'}</ThemedText>
-                                <ThemedText style={styles.matchCardStatLabel}>Score</ThemedText>
-                              </View>
-                              {match.placement && (
+                              {/* Stats row: KDA + Score + Placement */}
+                              <View style={styles.matchCardStatsRow}>
                                 <View style={styles.matchCardStat}>
-                                  <ThemedText style={[styles.matchCardStatValue, match.placement === 1 && { color: '#FFD700' }]}>
-                                    {match.placement === 1 ? 'MVP' : `#${match.placement}`}
-                                  </ThemedText>
-                                  <ThemedText style={styles.matchCardStatLabel}>Rank</ThemedText>
+                                  <ThemedText style={styles.matchCardStatValue}>{match.kills}/{match.deaths}/{match.assists}</ThemedText>
+                                  <ThemedText style={styles.matchCardStatLabel}>KDA</ThemedText>
                                 </View>
-                              )}
+                                <View style={styles.matchCardStat}>
+                                  <ThemedText style={styles.matchCardStatValue}>{match.score || '-'}</ThemedText>
+                                  <ThemedText style={styles.matchCardStatLabel}>Score</ThemedText>
+                                </View>
+                                {match.placement && (
+                                  <View style={styles.matchCardStat}>
+                                    <ThemedText style={[styles.matchCardStatValue, match.placement === 1 && { color: '#FFD700' }]}>
+                                      {match.placement === 1 ? 'MVP' : `#${match.placement}`}
+                                    </ThemedText>
+                                    <ThemedText style={styles.matchCardStatLabel}>Rank</ThemedText>
+                                  </View>
+                                )}
+                              </View>
                             </View>
                           </View>
                         );
@@ -1581,9 +1634,9 @@ const styles = StyleSheet.create({
     position: 'relative',
   },
   backPlayerCard: {
-    width: 36,
-    height: 36,
-    borderRadius: 6,
+    width: 44,
+    height: 44,
+    borderRadius: 8,
     borderWidth: 1,
     borderColor: 'rgba(255,255,255,0.5)',
   },
@@ -1593,7 +1646,7 @@ const styles = StyleSheet.create({
     left: -2,
     right: -2,
     bottom: -2,
-    borderRadius: 8,
+    borderRadius: 10,
     borderWidth: 1,
     borderColor: 'rgba(255,100,100,0.3)',
   },
@@ -1618,12 +1671,12 @@ const styles = StyleSheet.create({
     color: '#fff',
   },
   backUsername: {
-    fontSize: 12,
+    fontSize: 15,
     color: '#fff',
     fontWeight: '700',
-    letterSpacing: 0.5,
+    letterSpacing: 0.3,
     textTransform: 'uppercase',
-    marginLeft: 8,
+    marginLeft: 10,
   },
   // Back card rank rows
   backRankRow: {
@@ -1926,7 +1979,7 @@ const styles = StyleSheet.create({
   },
   matchCardList: {
     marginTop: 12,
-    gap: 10,
+    gap: 8,
   },
   matchCard: {
     backgroundColor: '#222',
@@ -1934,13 +1987,35 @@ const styles = StyleSheet.create({
     borderLeftWidth: 3,
     borderLeftColor: '#4ade80',
     overflow: 'hidden',
-    padding: 12,
+    padding: 10,
+    position: 'relative',
+  },
+  matchCardMapBg: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    width: '100%',
+    height: '100%',
+    opacity: 0.3,
+  },
+  matchCardMapGradient: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    zIndex: 1,
+  },
+  matchCardContent: {
+    zIndex: 2,
   },
   matchCardHeader: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    marginBottom: 10,
+    marginBottom: 6,
   },
   matchCardDate: {
     fontSize: 12,
@@ -1966,13 +2041,13 @@ const styles = StyleSheet.create({
   matchCardAgentRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 10,
-    marginBottom: 10,
+    gap: 8,
+    marginBottom: 6,
   },
   matchCardAgentIcon: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
+    width: 34,
+    height: 34,
+    borderRadius: 17,
     overflow: 'hidden',
     backgroundColor: '#333',
     alignItems: 'center',
@@ -1988,21 +2063,20 @@ const styles = StyleSheet.create({
     height: 28,
   },
   matchCardAgentName: {
-    fontSize: 15,
+    fontSize: 14,
     fontWeight: '700',
     color: '#fff',
   },
   matchCardMapName: {
-    fontSize: 12,
+    fontSize: 11,
     fontWeight: '500',
     color: 'rgba(255,255,255,0.4)',
-    marginTop: 1,
   },
   matchCardStatsRow: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 20,
-    paddingTop: 8,
+    paddingTop: 6,
     borderTopWidth: 1,
     borderTopColor: 'rgba(255,255,255,0.06)',
   },
@@ -2010,15 +2084,15 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   matchCardStatValue: {
-    fontSize: 14,
+    fontSize: 13,
     fontWeight: '700',
     color: '#fff',
   },
   matchCardStatLabel: {
-    fontSize: 10,
+    fontSize: 9,
     fontWeight: '500',
     color: 'rgba(255,255,255,0.35)',
-    marginTop: 2,
+    marginTop: 1,
     textTransform: 'uppercase',
     letterSpacing: 0.3,
   },
