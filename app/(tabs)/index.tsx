@@ -177,6 +177,7 @@ export default function HomeScreen() {
   const [forYouFetched, setForYouFetched] = useState(false);
   const [showNewPost, setShowNewPost] = useState(false);
   const [showNewClip, setShowNewClip] = useState(false);
+  const [showTabDropdown, setShowTabDropdown] = useState(false);
   const [hasNewPosts, setHasNewPosts] = useState(false);
   const newestPostTimestampRef = useRef<Timestamp | null>(null);
   const newPostsUnsubRef = useRef<(() => void) | null>(null);
@@ -1291,37 +1292,82 @@ export default function HomeScreen() {
         </View>
       </View>
 
-      <View style={styles.header}>
-        <ThemedText style={styles.headerTitle}>Feed</ThemedText>
+      <View style={[styles.header, { paddingTop: insets.top - 10 }]}>
+        <TouchableOpacity
+          onPress={() => setShowTabDropdown(!showTabDropdown)}
+          activeOpacity={0.7}
+          style={styles.headerDropdownTrigger}
+        >
+          <ThemedText style={styles.headerTitle}>
+            {activeTab === 'forYou' ? 'FOR YOU' : 'FOLLOWING'}
+          </ThemedText>
+          <IconSymbol
+            size={14}
+            name={showTabDropdown ? 'chevron.up' : 'chevron.down'}
+            color="#fff"
+          />
+        </TouchableOpacity>
         <View style={styles.headerActions}>
-          <ScalePress
-            style={styles.headerIconButton}
-            onPress={() => router.push('/chatPages/chatList')}
-          >
-            <IconSymbol size={27} name="bubble.left" color="#fff" />
-            {unreadMessageCount > 0 && (
-              <View style={styles.notificationBadge}>
-                <ThemedText style={styles.notificationBadgeText}>
-                  {unreadMessageCount > 9 ? '9+' : unreadMessageCount}
-                </ThemedText>
-              </View>
-            )}
-          </ScalePress>
-          <ScalePress
-            style={styles.headerIconButton}
-            onPress={() => router.push('/notifications')}
-          >
-            <IconSymbol size={27} name="bell" color="#fff" />
-            {unreadNotificationCount > 0 && (
-              <View style={styles.notificationBadge}>
-                <ThemedText style={styles.notificationBadgeText}>
-                  {unreadNotificationCount > 9 ? '9+' : unreadNotificationCount}
-                </ThemedText>
-              </View>
-            )}
-          </ScalePress>
-        </View>
+            <ScalePress
+              style={styles.headerIconButton}
+              onPress={() => router.push('/chatPages/chatList')}
+            >
+              <IconSymbol size={27} name="bubble.left" color="#fff" />
+              {unreadMessageCount > 0 && (
+                <View style={styles.notificationBadge}>
+                  <ThemedText style={styles.notificationBadgeText}>
+                    {unreadMessageCount > 9 ? '9+' : unreadMessageCount}
+                  </ThemedText>
+                </View>
+              )}
+            </ScalePress>
+            <ScalePress
+              style={styles.headerIconButton}
+              onPress={() => router.push('/notifications')}
+            >
+              <IconSymbol size={27} name="bell" color="#fff" />
+              {unreadNotificationCount > 0 && (
+                <View style={styles.notificationBadge}>
+                  <ThemedText style={styles.notificationBadgeText}>
+                    {unreadNotificationCount > 9 ? '9+' : unreadNotificationCount}
+                  </ThemedText>
+                </View>
+              )}
+            </ScalePress>
+          </View>
       </View>
+
+      {/* Tab Dropdown Overlay */}
+      {showTabDropdown && (
+        <Pressable style={styles.tabDropdownOverlay} onPress={() => setShowTabDropdown(false)}>
+          <Pressable style={styles.tabDropdownSheet} onPress={(e) => e.stopPropagation()}>
+            <ScalePress
+              style={[styles.tabDropdownCard, activeTab === 'forYou' && styles.tabDropdownCardActive]}
+              onPress={() => {
+                setActiveTab('forYou');
+                setSelectedGameFilter(null);
+                setShowTabDropdown(false);
+              }}
+            >
+              <ThemedText style={[styles.tabDropdownCardText, activeTab === 'forYou' && styles.tabDropdownCardTextActive]}>
+                FOR YOU
+              </ThemedText>
+            </ScalePress>
+            <ScalePress
+              style={[styles.tabDropdownCard, activeTab === 'following' && styles.tabDropdownCardActive]}
+              onPress={() => {
+                setActiveTab('following');
+                setSelectedGameFilter(null);
+                setShowTabDropdown(false);
+              }}
+            >
+              <ThemedText style={[styles.tabDropdownCardText, activeTab === 'following' && styles.tabDropdownCardTextActive]}>
+                FOLLOWING
+              </ThemedText>
+            </ScalePress>
+          </Pressable>
+        </Pressable>
+      )}
 
       <ScrollView
         ref={scrollViewRef}
@@ -1329,6 +1375,7 @@ export default function HomeScreen() {
         contentContainerStyle={styles.scrollViewContent}
         showsVerticalScrollIndicator={false}
         onScroll={(e) => {
+          if (showTabDropdown) setShowTabDropdown(false);
           handleScroll();
           handleScrollEnd(e);
         }}
@@ -1344,27 +1391,21 @@ export default function HomeScreen() {
           />
         }
       >
-        {/* Filter Tabs */}
+        {/* Game Filter Tabs */}
         <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.gameFilterRow}>
-          <ScalePress onPress={() => { setActiveTab('forYou'); setSelectedGameFilter(null); }} style={[styles.gameFilterPill, activeTab === 'forYou' && selectedGameFilter === null && styles.gameFilterPillActive]}>
+          <ScalePress onPress={() => setSelectedGameFilter(null)} style={[styles.gameFilterPill, selectedGameFilter === null && styles.gameFilterPillActive]}>
             <View style={styles.gameFilterPillInner}>
-              {activeTab === 'forYou' && selectedGameFilter === null && <View style={styles.gameFilterDot} />}
-              <ThemedText style={[styles.gameFilterPillText, activeTab === 'forYou' && selectedGameFilter === null && styles.gameFilterPillTextActive]}>For you</ThemedText>
+              {selectedGameFilter === null && <View style={styles.gameFilterDot} />}
+              <ThemedText style={[styles.gameFilterPillText, selectedGameFilter === null && styles.gameFilterPillTextActive]}>All</ThemedText>
             </View>
           </ScalePress>
-          <ScalePress onPress={() => { setActiveTab('following'); setSelectedGameFilter(null); }} style={[styles.gameFilterPill, activeTab === 'following' && selectedGameFilter === null && styles.gameFilterPillActive]}>
-            <View style={styles.gameFilterPillInner}>
-              {activeTab === 'following' && selectedGameFilter === null && <View style={styles.gameFilterDot} />}
-              <ThemedText style={[styles.gameFilterPillText, activeTab === 'following' && selectedGameFilter === null && styles.gameFilterPillTextActive]}>Following</ThemedText>
-            </View>
-          </ScalePress>
-          <ScalePress onPress={() => { setActiveTab('following'); setSelectedGameFilter('league'); }} style={[styles.gameFilterPill, selectedGameFilter === 'league' && styles.gameFilterPillActive]}>
+          <ScalePress onPress={() => setSelectedGameFilter('league')} style={[styles.gameFilterPill, selectedGameFilter === 'league' && styles.gameFilterPillActive]}>
             <View style={styles.gameFilterPillInner}>
               {selectedGameFilter === 'league' && <View style={styles.gameFilterDot} />}
               <ThemedText style={[styles.gameFilterPillText, selectedGameFilter === 'league' && styles.gameFilterPillTextActive]}>League</ThemedText>
             </View>
           </ScalePress>
-          <ScalePress onPress={() => { setActiveTab('following'); setSelectedGameFilter('valorant'); }} style={[styles.gameFilterPill, selectedGameFilter === 'valorant' && styles.gameFilterPillActive]}>
+          <ScalePress onPress={() => setSelectedGameFilter('valorant')} style={[styles.gameFilterPill, selectedGameFilter === 'valorant' && styles.gameFilterPillActive]}>
             <View style={styles.gameFilterPillInner}>
               {selectedGameFilter === 'valorant' && <View style={styles.gameFilterDot} />}
               <ThemedText style={[styles.gameFilterPillText, selectedGameFilter === 'valorant' && styles.gameFilterPillTextActive]}>Valorant</ThemedText>
@@ -1620,15 +1661,61 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     alignItems: 'center',
     paddingHorizontal: 16,
-    paddingTop: 51,
+    paddingTop: 0,
     paddingBottom: 4,
+    zIndex: 100,
   },
   headerTitle: {
     fontSize: 22,
     fontWeight: '600',
     color: '#fff',
     letterSpacing: 0.3,
-    textTransform: 'uppercase',
+  },
+  headerDropdownTrigger: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+  },
+  tabDropdownOverlay: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    backgroundColor: 'rgba(0, 0, 0, 0.55)',
+    zIndex: 200,
+    paddingTop: 110,
+    paddingHorizontal: 16,
+  },
+  tabDropdownSheet: {
+    backgroundColor: '#161616',
+    borderRadius: 14,
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.08)',
+    padding: 6,
+    gap: 4,
+  },
+  tabDropdownCard: {
+    paddingVertical: 16,
+    paddingHorizontal: 20,
+    borderRadius: 10,
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.06)',
+    backgroundColor: 'rgba(255, 255, 255, 0.03)',
+  },
+  tabDropdownCardActive: {
+    borderColor: 'rgba(255, 255, 255, 0.2)',
+    backgroundColor: 'rgba(255, 255, 255, 0.07)',
+  },
+  tabDropdownCardText: {
+    fontSize: 15,
+    fontWeight: '600',
+    color: '#444',
+    letterSpacing: 0.5,
+  },
+  tabDropdownCardTextActive: {
+    color: '#fff',
   },
   headerTabs: {
     flexDirection: 'row',

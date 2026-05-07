@@ -152,7 +152,7 @@ export default function LeaderboardScreen() {
     return unsub;
   }, [user?.id]);
 
-  const fetchMutualsAndStats = async (showLoading: boolean = true) => {
+  const fetchMutualsAndStats = async (showLoading: boolean = true, preserveGame: boolean = false) => {
     if (!user?.id) return;
     if ((user.followersCount || 0) === 0 && (user.followingCount || 0) === 0) {
       setMutualLoading(false);
@@ -188,48 +188,56 @@ export default function LeaderboardScreen() {
             const username = userData?.username || 'User';
             const avatar = userData?.avatar || null;
 
-            const leagueStatsDoc = await getDoc(doc(db, 'users', userId, 'gameStats', 'league'));
-            let leagueStats = leagueStatsDoc.data();
+            // Skip League if this user has no Riot account linked
+            const hasRiotAccount = !!userData?.riotAccount || !!userData?.riotStats;
+            if (hasRiotAccount) {
+              const leagueStatsDoc = await getDoc(doc(db, 'users', userId, 'gameStats', 'league'));
+              let leagueStats = leagueStatsDoc.data();
 
-            if (!leagueStats?.currentRank && userData?.riotStats?.rankedSolo) {
-              leagueStats = {
-                currentRank: `${userData.riotStats.rankedSolo.tier} ${userData.riotStats.rankedSolo.rank}`,
-                lp: userData.riotStats.rankedSolo.leaguePoints || 0,
-              };
+              if (!leagueStats?.currentRank && userData?.riotStats?.rankedSolo) {
+                leagueStats = {
+                  currentRank: `${userData.riotStats.rankedSolo.tier} ${userData.riotStats.rankedSolo.rank}`,
+                  lp: userData.riotStats.rankedSolo.leaguePoints || 0,
+                };
+              }
+
+              if (leagueStats?.currentRank && leagueStats.currentRank !== 'Unranked') {
+                leagueResults.push({
+                  userId,
+                  username,
+                  avatar,
+                  currentRank: leagueStats.currentRank,
+                  lp: leagueStats.lp || 0,
+                  rr: 0,
+                  isCurrentUser: userId === user.id,
+                });
+              }
             }
 
-            if (leagueStats?.currentRank && leagueStats.currentRank !== 'Unranked') {
-              leagueResults.push({
-                userId,
-                username,
-                avatar,
-                currentRank: leagueStats.currentRank,
-                lp: leagueStats.lp || 0,
-                rr: 0,
-                isCurrentUser: userId === user.id,
-              });
-            }
+            // Skip Valorant if this user has no Valorant account linked
+            const hasValorantAccount = !!userData?.valorantAccount || !!userData?.valorantStats;
+            if (hasValorantAccount) {
+              const valStatsDoc = await getDoc(doc(db, 'users', userId, 'gameStats', 'valorant'));
+              let valStats = valStatsDoc.data();
 
-            const valStatsDoc = await getDoc(doc(db, 'users', userId, 'gameStats', 'valorant'));
-            let valStats = valStatsDoc.data();
+              if (!valStats?.currentRank && userData?.valorantStats) {
+                valStats = {
+                  currentRank: userData.valorantStats.currentRank || 'Unranked',
+                  rr: userData.valorantStats.rankRating || 0,
+                };
+              }
 
-            if (!valStats?.currentRank && userData?.valorantStats) {
-              valStats = {
-                currentRank: userData.valorantStats.currentRank || 'Unranked',
-                rr: userData.valorantStats.rankRating || 0,
-              };
-            }
-
-            if (valStats?.currentRank && valStats.currentRank !== 'Unranked') {
-              valorantResults.push({
-                userId,
-                username,
-                avatar,
-                currentRank: valStats.currentRank,
-                lp: 0,
-                rr: valStats.rr || 0,
-                isCurrentUser: userId === user.id,
-              });
+              if (valStats?.currentRank && valStats.currentRank !== 'Unranked') {
+                valorantResults.push({
+                  userId,
+                  username,
+                  avatar,
+                  currentRank: valStats.currentRank,
+                  lp: 0,
+                  rr: valStats.rr || 0,
+                  isCurrentUser: userId === user.id,
+                });
+              }
             }
           } catch (error) {
             console.error(`Error fetching stats for user ${userId}:`, error);
@@ -242,7 +250,9 @@ export default function LeaderboardScreen() {
 
       setLeaguePlayers(leagueResults);
       setValorantPlayers(valorantResults);
-      setSelectedMutualGame(valorantResults.length > leagueResults.length ? 'valorant' : 'league');
+      if (!preserveGame) {
+        setSelectedMutualGame(valorantResults.length > leagueResults.length ? 'valorant' : 'league');
+      }
       setMutualLoading(false);
     } catch (error) {
       console.error('Error fetching mutual stats:', error);
@@ -254,7 +264,7 @@ export default function LeaderboardScreen() {
     if (updatingStats) return;
     setUpdatingStats(true);
     try {
-      await fetchMutualsAndStats(false);
+      await fetchMutualsAndStats(false, true);
     } finally {
       setUpdatingStats(false);
     }

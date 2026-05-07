@@ -127,9 +127,10 @@ export default function NewRankCardScreen() {
                   await updateDoc(doc(db, 'users', user.id), { enabledRankCards: updatedCards });
                   setEnabledRankCards(updatedCards);
                 }
-                // Remove league duo card and active duo post
+                // Remove league duo card, active duo post, and leaderboard stats
                 await deleteDoc(doc(db, 'duoCards', `${user.id}_league`)).catch(() => {});
                 await deleteDoc(doc(db, 'duoPosts', `${user.id}_league`)).catch(() => {});
+                await deleteDoc(doc(db, 'users', user.id, 'gameStats', 'league')).catch(() => {});
               }
               setRiotAccount(null);
               setRiotStats(null);
@@ -177,9 +178,10 @@ export default function NewRankCardScreen() {
                   await updateDoc(doc(db, 'users', user.id), { enabledRankCards: updatedCards });
                   setEnabledRankCards(updatedCards);
                 }
-                // Remove valorant duo card and active duo post
+                // Remove valorant duo card, active duo post, and leaderboard stats
                 await deleteDoc(doc(db, 'duoCards', `${user.id}_valorant`)).catch(() => {});
                 await deleteDoc(doc(db, 'duoPosts', `${user.id}_valorant`)).catch(() => {});
+                await deleteDoc(doc(db, 'users', user.id, 'gameStats', 'valorant')).catch(() => {});
               }
               setValorantAccount(null);
               setValorantStats(null);
