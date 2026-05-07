@@ -1684,7 +1684,7 @@ const styles = StyleSheet.create({
     bottom: 0,
     backgroundColor: 'rgba(0, 0, 0, 0.55)',
     zIndex: 200,
-    paddingTop: 110,
+    paddingTop: 100,
     paddingHorizontal: 16,
   },
   tabDropdownSheet: {

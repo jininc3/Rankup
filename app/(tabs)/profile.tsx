@@ -32,6 +32,41 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { BlurView } from 'expo-blur';
 
 const { width: screenWidth, height: screenHeight } = Dimensions.get('window');
+
+// Rank icon maps for profile banner pills
+const LEAGUE_RANK_ICONS: { [key: string]: any } = {
+  iron: require('@/assets/images/leagueranks/iron.png'),
+  bronze: require('@/assets/images/leagueranks/bronze.png'),
+  silver: require('@/assets/images/leagueranks/silver.png'),
+  gold: require('@/assets/images/leagueranks/gold.png'),
+  platinum: require('@/assets/images/leagueranks/platinum.png'),
+  emerald: require('@/assets/images/leagueranks/emerald.png'),
+  diamond: require('@/assets/images/leagueranks/diamond.png'),
+  master: require('@/assets/images/leagueranks/masters.png'),
+  grandmaster: require('@/assets/images/leagueranks/grandmaster.png'),
+  challenger: require('@/assets/images/leagueranks/challenger.png'),
+  unranked: require('@/assets/images/leagueranks/unranked.png'),
+};
+const VALORANT_RANK_ICONS: { [key: string]: any } = {
+  iron: require('@/assets/images/valorantranks/iron.png'),
+  bronze: require('@/assets/images/valorantranks/bronze.png'),
+  silver: require('@/assets/images/valorantranks/silver.png'),
+  gold: require('@/assets/images/valorantranks/gold.png'),
+  platinum: require('@/assets/images/valorantranks/platinum.png'),
+  diamond: require('@/assets/images/valorantranks/diamond.png'),
+  ascendant: require('@/assets/images/valorantranks/ascendant.png'),
+  immortal: require('@/assets/images/valorantranks/immortal.png'),
+  radiant: require('@/assets/images/valorantranks/radiant.png'),
+  unranked: require('@/assets/images/valorantranks/unranked.png'),
+};
+const getRankIconForPill = (rank: string, game: string) => {
+  if (!rank || rank === 'Unranked') {
+    return game === 'Valorant' ? VALORANT_RANK_ICONS.unranked : LEAGUE_RANK_ICONS.unranked;
+  }
+  const tier = rank.split(' ')[0].toLowerCase();
+  if (game === 'Valorant') return VALORANT_RANK_ICONS[tier] || VALORANT_RANK_ICONS.unranked;
+  return LEAGUE_RANK_ICONS[tier] || LEAGUE_RANK_ICONS.unranked;
+};
 const TAB_CONTENT_MIN_HEIGHT = screenHeight * 0.4;
 const CARD_PADDING = 20;
 const CARD_GAP = 16;
@@ -1320,96 +1355,45 @@ export default function ProfileScreen() {
               onPress={() => router.push('/profilePages/rankCards')}
               activeOpacity={0.85}
             >
-              {/* Dark base + subtle red shimmer */}
               <LinearGradient
-                colors={['#161616', '#1a1a1a']}
+                colors={['transparent', 'rgba(196,39,67,0.10)', 'transparent']}
+                locations={[0.2, 0.5, 0.8]}
                 start={{ x: 0, y: 0 }}
                 end={{ x: 1, y: 1 }}
                 style={StyleSheet.absoluteFillObject}
                 pointerEvents="none"
               />
-              <LinearGradient
-                colors={['transparent', 'rgba(196,39,67,0.12)', 'transparent']}
-                locations={[0.3, 0.5, 0.7]}
-                start={{ x: 0, y: 0 }}
-                end={{ x: 1, y: 1 }}
-                style={StyleSheet.absoluteFillObject}
-                pointerEvents="none"
-              />
-              {/* Top highlight edge */}
-              <LinearGradient
-                colors={['rgba(255,255,255,0.07)', 'transparent']}
-                start={{ x: 0, y: 0 }}
-                end={{ x: 1, y: 0 }}
-                style={styles.rankCardsBannerTopEdge}
-                pointerEvents="none"
-              />
-
-              {/* Stacked mini rank card teaser */}
-              <View style={styles.rankCardsBannerPeek}>
-                {(() => {
-                  const cardOrder = enabledRankCards
-                    .filter(c => c === 'valorant' || c === 'league' || c === 'tft')
-                    .slice(0, 3);
-                  const total = cardOrder.length;
-                  return cardOrder.map((card, idx) => {
-                    const reverseIdx = total - 1 - idx;
-                    const accent =
-                      card === 'valorant' ? 'rgba(196,39,67,0.35)' :
-                      card === 'league' ? 'rgba(59,130,246,0.30)' :
-                      'rgba(212,168,67,0.30)';
-                    const img =
-                      card === 'valorant' ? require('@/assets/images/valorant-red.png') :
-                      card === 'league' ? require('@/assets/images/lol-icon.png') :
-                      require('@/assets/images/tft.png');
-                    return (
-                      <View
-                        key={card}
-                        style={[
-                          styles.rankCardsBannerMini,
-                          {
-                            left: reverseIdx * 8,
-                            top: reverseIdx * -5,
-                            zIndex: idx + 1,
-                          },
-                        ]}
-                      >
-                        <LinearGradient
-                          colors={['#2a2a2a', '#1a1a1a']}
-                          start={{ x: 0, y: 0 }}
-                          end={{ x: 1, y: 1 }}
-                          style={StyleSheet.absoluteFillObject}
-                        />
-                        <LinearGradient
-                          colors={[accent, 'transparent']}
-                          start={{ x: 0, y: 0 }}
-                          end={{ x: 1, y: 1 }}
-                          style={StyleSheet.absoluteFillObject}
-                        />
-                        <LinearGradient
-                          colors={['rgba(255,255,255,0.18)', 'transparent']}
-                          start={{ x: 0, y: 0 }}
-                          end={{ x: 1, y: 0.4 }}
-                          style={styles.rankCardsBannerMiniGloss}
-                        />
-                        <Image
-                          source={img}
-                          style={styles.rankCardsBannerMiniLogo}
-                          resizeMode="contain"
-                        />
-                      </View>
-                    );
-                  });
-                })()}
-              </View>
-
-              <View style={styles.emptyBannerTextContainer}>
+              <View style={styles.rankBannerBody}>
                 <ThemedText style={styles.rankCardsBannerTitle}>Rank Cards</ThemedText>
                 <ThemedText style={styles.rankCardsBannerSubtext}>
                   Tap to view your stacked cards
                 </ThemedText>
+                {/* Rank pills */}
+                <View style={styles.rankPillRow}>
+                  {userGames.map((game) => {
+                    const isLol = game.name === 'League of Legends';
+                    const isVal = game.name === 'Valorant';
+                    const gameIcon = isLol
+                      ? require('@/assets/images/lol-icon.png')
+                      : isVal
+                        ? require('@/assets/images/valorant-red.png')
+                        : require('@/assets/images/tft.png');
+                    const rankIcon = getRankIconForPill(game.rank, game.name);
+                    const rankShort = game.rank && game.rank !== 'Unranked'
+                      ? game.rank.split(' ').map((w: string, i: number) => i === 0 ? w.charAt(0).toUpperCase() + w.slice(1).toLowerCase() : w).join(' ')
+                      : 'Unranked';
+                    return (
+                      <View key={game.id} style={styles.rankPill}>
+                        <Image source={gameIcon} style={styles.rankPillGameIcon} resizeMode="contain" />
+                        <ThemedText style={styles.rankPillRank}>{rankShort}</ThemedText>
+                        <Image source={rankIcon} style={styles.rankPillRankIcon} resizeMode="contain" />
+                      </View>
+                    );
+                  })}
+                </View>
               </View>
-              <IconSymbol size={14} name="chevron.right" color="#aaa" />
+
+              <IconSymbol size={14} name="chevron.right" color="rgba(255,255,255,0.3)" />
             </TouchableOpacity>
           ) : (
             <TouchableOpacity
@@ -1447,42 +1431,77 @@ export default function ProfileScreen() {
             </TouchableOpacity>
           )}
 
-          {/* Clips & Achievements Banners */}
-          <View style={styles.bannerRow}>
-            <TouchableOpacity
-              style={styles.miniBanner}
-              onPress={() => router.push({ pathname: '/profilePages/clips', params: { userId: user?.id || '' } })}
-              activeOpacity={0.85}
-            >
-              {/* Dark base + subtle blue shimmer */}
-              <LinearGradient colors={['#161616', '#1a1a1a']} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={StyleSheet.absoluteFillObject} pointerEvents="none" />
-              <LinearGradient colors={['transparent', 'rgba(59,130,246,0.12)', 'transparent']} locations={[0.3, 0.5, 0.7]} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={StyleSheet.absoluteFillObject} pointerEvents="none" />
-              <LinearGradient colors={['rgba(255,255,255,0.06)', 'transparent']} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }} style={styles.miniBannerTopEdge} pointerEvents="none" />
-              <View style={styles.miniBannerContent}>
-                <IconSymbol size={28} name="video.fill" color="#fff" />
-                <ThemedText style={styles.miniBannerTitle} numberOfLines={1}>Clips</ThemedText>
-                <ThemedText style={styles.miniBannerCount}>{posts.length} {posts.length === 1 ? 'clip' : 'clips'}</ThemedText>
-              </View>
-              <IconSymbol size={12} name="chevron.right" color="rgba(255,255,255,0.4)" style={styles.miniBannerChevron} />
-            </TouchableOpacity>
+          {/* Clips Banner - Full Width */}
+          <TouchableOpacity
+            style={styles.clipsBanner}
+            onPress={() => router.push({ pathname: '/profilePages/clips', params: { userId: user?.id || '' } })}
+            activeOpacity={0.85}
+          >
+            <LinearGradient colors={['#161616', '#1a1a1a']} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={StyleSheet.absoluteFillObject} pointerEvents="none" />
+            <LinearGradient colors={['transparent', 'rgba(59,130,246,0.08)', 'transparent']} locations={[0.2, 0.5, 0.8]} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={StyleSheet.absoluteFillObject} pointerEvents="none" />
+            <View style={styles.clipsBannerLeft}>
+              <ThemedText style={styles.clipsBannerTitle}>Clips</ThemedText>
+              <ThemedText style={styles.clipsBannerCount}>{posts.length} {posts.length === 1 ? 'clip' : 'clips'}</ThemedText>
+              {posts.length > 0 && (() => {
+                const latest = posts[0];
+                const now = new Date();
+                const date = latest.createdAt?.toDate?.() || new Date();
+                const diffMs = now.getTime() - date.getTime();
+                const diffMins = Math.floor(diffMs / 60000);
+                const diffHours = Math.floor(diffMs / 3600000);
+                const diffDays = Math.floor(diffMs / 86400000);
+                let timeAgo = '';
+                if (diffMins < 1) timeAgo = 'just now';
+                else if (diffMins < 60) timeAgo = `${diffMins}m ago`;
+                else if (diffHours < 24) timeAgo = `${diffHours}h ago`;
+                else if (diffDays < 30) timeAgo = `${diffDays}d ago`;
+                else timeAgo = `${Math.floor(diffDays / 30)}mo ago`;
+                const game = latest.taggedGame === 'valorant' ? 'Valorant'
+                  : latest.taggedGame === 'league' ? 'League'
+                  : latest.taggedGame || '';
+                return (
+                  <View style={styles.miniBannerRecentPill}>
+                    <ThemedText style={styles.miniBannerRecentText} numberOfLines={1}>
+                      {timeAgo}{game ? ` · ${game}` : ''}
+                    </ThemedText>
+                  </View>
+                );
+              })()}
+            </View>
+            {/* Thumbnail previews */}
+            <View style={styles.clipsThumbnailRow}>
+              {posts.slice(0, 2).map((post) => (
+                <View key={post.id} style={styles.clipsThumbnailWrap}>
+                  <Image
+                    source={{ uri: post.thumbnailUrl || post.mediaUrl }}
+                    style={styles.clipsThumbnailImg}
+                    resizeMode="cover"
+                  />
+                </View>
+              ))}
+              {posts.length === 0 && (
+                <View style={[styles.clipsThumbnailWrap, styles.clipsThumbnailEmpty]}>
+                  <IconSymbol size={20} name="video.fill" color="rgba(255,255,255,0.2)" />
+                </View>
+              )}
+            </View>
+            <IconSymbol size={14} name="chevron.right" color="rgba(255,255,255,0.3)" />
+          </TouchableOpacity>
 
-            <TouchableOpacity
-              style={styles.miniBanner}
-              onPress={() => router.push({ pathname: '/profilePages/achievementsBadges', params: { userId: user?.id || '' } })}
-              activeOpacity={0.85}
-            >
-              {/* Dark base + subtle gold shimmer */}
-              <LinearGradient colors={['#161616', '#1a1a1a']} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={StyleSheet.absoluteFillObject} pointerEvents="none" />
-              <LinearGradient colors={['transparent', 'rgba(212,168,67,0.12)', 'transparent']} locations={[0.3, 0.5, 0.7]} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={StyleSheet.absoluteFillObject} pointerEvents="none" />
-              <LinearGradient colors={['rgba(255,255,255,0.06)', 'transparent']} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }} style={styles.miniBannerTopEdge} pointerEvents="none" />
-              <View style={styles.miniBannerContent}>
-                <IconSymbol size={28} name="trophy.fill" color="#D4A843" />
-                <ThemedText style={styles.miniBannerTitle} numberOfLines={1}>Achievements</ThemedText>
-                <ThemedText style={styles.miniBannerCount}>{achievements.length} {achievements.length === 1 ? 'badge' : 'badges'}</ThemedText>
-              </View>
-              <IconSymbol size={12} name="chevron.right" color="rgba(255,255,255,0.4)" style={styles.miniBannerChevron} />
-            </TouchableOpacity>
-          </View>
+          {/* Achievements Banner */}
+          <TouchableOpacity
+            style={styles.achievementsBanner}
+            onPress={() => router.push({ pathname: '/profilePages/achievementsBadges', params: { userId: user?.id || '' } })}
+            activeOpacity={0.85}
+          >
+            <LinearGradient colors={['#161616', '#1a1a1a']} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={StyleSheet.absoluteFillObject} pointerEvents="none" />
+            <LinearGradient colors={['transparent', 'rgba(212,168,67,0.08)', 'transparent']} locations={[0.2, 0.5, 0.8]} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={StyleSheet.absoluteFillObject} pointerEvents="none" />
+            <View style={{ flex: 1 }}>
+              <ThemedText style={styles.clipsBannerTitle}>Achievements</ThemedText>
+              <ThemedText style={styles.clipsBannerCount}>{achievements.length} {achievements.length === 1 ? 'badge' : 'badges'}</ThemedText>
+            </View>
+            <IconSymbol size={14} name="chevron.right" color="rgba(255,255,255,0.3)" />
+          </TouchableOpacity>
           </>
           )}
         </View>
@@ -2241,6 +2260,70 @@ const styles = StyleSheet.create({
     marginTop: 10,
     marginBottom: 16,
   },
+  clipsBanner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#161616',
+    borderRadius: 14,
+    paddingVertical: 14,
+    paddingHorizontal: 14,
+    marginHorizontal: 16,
+    marginTop: 10,
+    gap: 12,
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.1)',
+    overflow: 'hidden',
+  },
+  clipsBannerLeft: {
+    flex: 1,
+  },
+  clipsBannerTitle: {
+    fontSize: 16,
+    fontWeight: '700',
+    color: '#fff',
+    marginBottom: 2,
+  },
+  clipsBannerCount: {
+    fontSize: 12,
+    color: 'rgba(255,255,255,0.4)',
+    fontWeight: '500',
+  },
+  clipsThumbnailRow: {
+    flexDirection: 'column',
+    gap: 4,
+  },
+  clipsThumbnailWrap: {
+    width: 70,
+    height: 42,
+    borderRadius: 6,
+    overflow: 'hidden',
+    backgroundColor: '#222',
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.12)',
+  },
+  clipsThumbnailImg: {
+    width: '100%',
+    height: '100%',
+  },
+  clipsThumbnailEmpty: {
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  achievementsBanner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#161616',
+    borderRadius: 14,
+    paddingVertical: 14,
+    paddingHorizontal: 14,
+    marginHorizontal: 16,
+    marginTop: 8,
+    marginBottom: 16,
+    gap: 12,
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.1)',
+    overflow: 'hidden',
+  },
   miniBanner: {
     flex: 1,
     aspectRatio: 1,
@@ -2282,6 +2365,19 @@ const styles = StyleSheet.create({
     color: '#9a9a9a',
     fontWeight: '500',
   },
+  miniBannerRecentPill: {
+    marginTop: 6,
+    backgroundColor: 'rgba(255,255,255,0.06)',
+    borderRadius: 10,
+    paddingVertical: 3,
+    paddingHorizontal: 8,
+    alignSelf: 'flex-start',
+  },
+  miniBannerRecentText: {
+    fontSize: 10,
+    color: 'rgba(255,255,255,0.45)',
+    fontWeight: '600',
+  },
   miniBannerChevron: {
     position: 'absolute',
     top: 16,
@@ -2290,77 +2386,59 @@ const styles = StyleSheet.create({
   rankCardsBanner: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: 'transparent',
+    backgroundColor: '#161616',
     borderRadius: 14,
-    paddingVertical: 36,
-    paddingHorizontal: 18,
+    paddingVertical: 14,
+    paddingHorizontal: 14,
     marginHorizontal: 16,
     marginTop: 16,
     marginBottom: 4,
-    gap: 16,
+    gap: 12,
     borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.14)',
+    borderColor: 'rgba(255,255,255,0.1)',
     overflow: 'hidden',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.35,
-    shadowRadius: 8,
-    elevation: 6,
   },
-  rankCardsBannerTopEdge: {
-    position: 'absolute',
-    top: 0,
-    left: 0,
-    right: 0,
-    height: 1.5,
-  },
-  rankCardsBannerPeek: {
-    width: 110,
-    height: 78,
-    position: 'relative',
-  },
-  rankCardsBannerMini: {
-    position: 'absolute',
-    width: 90,
-    height: 60,
-    borderRadius: 7,
-    overflow: 'hidden',
-    borderWidth: 0.5,
-    borderColor: 'rgba(255,255,255,0.18)',
-    alignItems: 'center',
-    justifyContent: 'center',
-    shadowColor: '#000',
-    shadowOffset: { width: 2, height: 3 },
-    shadowOpacity: 0.5,
-    shadowRadius: 3,
-  },
-  rankCardsBannerMiniGloss: {
-    position: 'absolute',
-    top: 0,
-    left: 0,
-    right: 0,
-    height: '55%',
-  },
-  rankCardsBannerMiniLogo: {
-    width: 40,
-    height: 40,
+  rankBannerBody: {
+    flex: 1,
   },
   rankCardsBannerTitle: {
-    fontSize: 20,
-    fontWeight: '800',
+    fontSize: 16,
+    fontWeight: '700',
     color: '#fff',
-    marginBottom: 3,
-    letterSpacing: -0.3,
-    lineHeight: 24,
-    textShadowColor: 'rgba(0,0,0,0.5)',
-    textShadowOffset: { width: 0, height: 1 },
-    textShadowRadius: 3,
+    marginBottom: 2,
   },
   rankCardsBannerSubtext: {
     fontSize: 12,
-    color: '#9a9a9a',
+    color: 'rgba(255,255,255,0.4)',
     fontWeight: '500',
-    letterSpacing: 0.1,
+    marginBottom: 10,
+  },
+  rankPillRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  rankPill: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    borderRadius: 16,
+    paddingVertical: 5,
+    paddingHorizontal: 10,
+    backgroundColor: 'rgba(255,255,255,0.06)',
+  },
+  rankPillGameIcon: {
+    width: 16,
+    height: 16,
+  },
+  rankPillRankIcon: {
+    width: 20,
+    height: 20,
+  },
+  rankPillRank: {
+    fontSize: 13,
+    fontWeight: '700',
+    color: '#fff',
   },
   emptyBannerIconRow: {
     flexDirection: 'row',

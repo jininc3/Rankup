@@ -8,7 +8,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { useRouter } from '@/hooks/useRouter';
 import { collection, doc, getDoc, getDocs, query, where, onSnapshot } from 'firebase/firestore';
 import { useEffect, useState } from 'react';
-import { ActivityIndicator, Dimensions, Image, Modal, ScrollView, StyleSheet, TouchableOpacity, View } from 'react-native';
+import { ActivityIndicator, Dimensions, Image, Pressable, ScrollView, StyleSheet, TouchableOpacity, View } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { formatRankDisplay } from '@/utils/formatRankDisplay';
 
@@ -498,53 +498,40 @@ export default function LeaderboardScreen() {
         <View style={styles.bottomSpacer} />
       </ScrollView>
 
-      {/* Game Switcher Modal */}
-      <Modal
-        visible={showGameDropdown}
-        transparent
-        animationType="slide"
-        onRequestClose={() => setShowGameDropdown(false)}
-      >
-        <TouchableOpacity
-          style={styles.modalOverlay}
-          activeOpacity={1}
-          onPress={() => setShowGameDropdown(false)}
-        >
-          <View style={styles.modalContent}>
-            <View style={styles.modalHandle} />
-            <ThemedText style={styles.modalTitle}>SWITCH GAME</ThemedText>
-            <View style={styles.modalDivider} />
-
+      {/* Game Switcher Dropdown Overlay */}
+      {showGameDropdown && (
+        <Pressable style={styles.gameDropdownOverlay} onPress={() => setShowGameDropdown(false)}>
+          <Pressable style={styles.gameDropdownSheet} onPress={(e) => e.stopPropagation()}>
             <TouchableOpacity
-              style={styles.gameSwitchOption}
+              style={[styles.gameDropdownCard, selectedMutualGame === 'league' && styles.gameDropdownCardActive]}
               onPress={() => {
                 setSelectedMutualGame('league');
                 setShowGameDropdown(false);
               }}
               activeOpacity={0.7}
             >
-              <Image source={GAME_LOGOS['League of Legends']} style={styles.gameSwitchLogo} resizeMode="contain" />
-              <ThemedText style={[styles.gameSwitchText, selectedMutualGame === 'league' && styles.gameSwitchTextActive]}>
-                League of Legends
+              <Image source={GAME_LOGOS['League of Legends']} style={styles.gameDropdownLogo} resizeMode="contain" />
+              <ThemedText style={[styles.gameDropdownText, selectedMutualGame === 'league' && styles.gameDropdownTextActive]}>
+                LEAGUE OF LEGENDS
               </ThemedText>
             </TouchableOpacity>
 
             <TouchableOpacity
-              style={styles.gameSwitchOption}
+              style={[styles.gameDropdownCard, selectedMutualGame === 'valorant' && styles.gameDropdownCardActive]}
               onPress={() => {
                 setSelectedMutualGame('valorant');
                 setShowGameDropdown(false);
               }}
               activeOpacity={0.7}
             >
-              <Image source={GAME_LOGOS['Valorant']} style={styles.gameSwitchLogo} resizeMode="contain" />
-              <ThemedText style={[styles.gameSwitchText, selectedMutualGame === 'valorant' && styles.gameSwitchTextActive]}>
-                Valorant
+              <Image source={GAME_LOGOS['Valorant']} style={styles.gameDropdownLogo} resizeMode="contain" />
+              <ThemedText style={[styles.gameDropdownText, selectedMutualGame === 'valorant' && styles.gameDropdownTextActive]}>
+                VALORANT
               </ThemedText>
             </TouchableOpacity>
-          </View>
-        </TouchableOpacity>
-      </Modal>
+          </Pressable>
+        </Pressable>
+      )}
     </ThemedView>
   );
 }
@@ -913,65 +900,52 @@ const styles = StyleSheet.create({
     color: '#666',
     lineHeight: 13,
   },
-  // Modal styles
-  modalOverlay: {
-    flex: 1,
-    backgroundColor: 'rgba(0, 0, 0, 0.6)',
-    justifyContent: 'flex-end',
+  // Game dropdown overlay styles
+  gameDropdownOverlay: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    backgroundColor: 'rgba(0, 0, 0, 0.55)',
+    zIndex: 200,
+    paddingTop: 190,
+    paddingHorizontal: 6,
   },
-  modalContent: {
-    backgroundColor: '#1a1a1a',
-    borderTopLeftRadius: 20,
-    borderTopRightRadius: 20,
-    paddingHorizontal: 20,
-    paddingBottom: 40,
+  gameDropdownSheet: {
+    backgroundColor: '#161616',
+    borderRadius: 14,
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.08)',
+    padding: 6,
+    gap: 4,
   },
-  modalHandle: {
-    width: 36,
-    height: 4,
-    backgroundColor: '#444',
-    borderRadius: 2,
-    alignSelf: 'center',
-    marginTop: 12,
-    marginBottom: 16,
-  },
-  modalTitle: {
-    fontSize: 18,
-    fontWeight: '600',
-    color: '#fff',
-    textAlign: 'center',
-    marginBottom: 12,
-  },
-  modalDivider: {
-    height: 1,
-    backgroundColor: '#333',
-    marginBottom: 16,
-  },
-  modalOption: {
+  gameDropdownCard: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingVertical: 14,
-    gap: 14,
+    gap: 12,
+    paddingVertical: 16,
+    paddingHorizontal: 20,
+    borderRadius: 10,
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.06)',
+    backgroundColor: 'rgba(255, 255, 255, 0.03)',
   },
-  modalOptionIcon: {
-    width: 44,
-    height: 44,
-    borderRadius: 12,
-    backgroundColor: '#2a2a2a',
-    alignItems: 'center',
-    justifyContent: 'center',
+  gameDropdownCardActive: {
+    borderColor: 'rgba(255, 255, 255, 0.2)',
+    backgroundColor: 'rgba(255, 255, 255, 0.07)',
   },
-  modalOptionText: {
-    flex: 1,
+  gameDropdownLogo: {
+    width: 24,
+    height: 24,
   },
-  modalOptionTitle: {
-    fontSize: 16,
+  gameDropdownText: {
+    fontSize: 15,
     fontWeight: '600',
-    color: '#fff',
-    marginBottom: 2,
+    color: '#444',
+    letterSpacing: 0.5,
   },
-  modalOptionSubtitle: {
-    fontSize: 13,
-    color: '#888',
+  gameDropdownTextActive: {
+    color: '#fff',
   },
 });

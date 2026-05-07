@@ -924,24 +924,34 @@ export const ProfilePageSkeleton: React.FC = () => (
 
     {/* Rank Cards Banner placeholder */}
     <View style={profilePageStyles.rankCardsBannerSkeleton}>
-      <Skeleton width={70} height={46} borderRadius={7} />
       <View style={{ flex: 1, gap: 6 }}>
         <Skeleton width={90} height={16} borderRadius={4} />
-        <Skeleton width={130} height={11} borderRadius={3} />
+        <Skeleton width={160} height={11} borderRadius={3} />
+        <View style={{ flexDirection: 'row', gap: 8, marginTop: 6 }}>
+          <Skeleton width={100} height={28} borderRadius={14} />
+          <Skeleton width={110} height={28} borderRadius={14} />
+        </View>
       </View>
     </View>
 
-    {/* Clips & Achievements Banner row */}
-    <View style={profilePageStyles.bannerRow}>
-      <View style={profilePageStyles.miniBannerSkeleton}>
-        <Skeleton width={28} height={28} borderRadius={6} />
-        <Skeleton width={50} height={16} borderRadius={4} style={{ marginTop: 8 }} />
-        <Skeleton width={40} height={10} borderRadius={3} style={{ marginTop: 4 }} />
+    {/* Clips Banner - Full width */}
+    <View style={profilePageStyles.clipsBannerSkeleton}>
+      <View style={{ flex: 1, gap: 5 }}>
+        <Skeleton width={50} height={16} borderRadius={4} />
+        <Skeleton width={55} height={11} borderRadius={3} />
+        <Skeleton width={80} height={20} borderRadius={10} style={{ marginTop: 4 }} />
       </View>
-      <View style={profilePageStyles.miniBannerSkeleton}>
-        <Skeleton width={28} height={28} borderRadius={6} />
-        <Skeleton width={90} height={16} borderRadius={4} style={{ marginTop: 8 }} />
-        <Skeleton width={50} height={10} borderRadius={3} style={{ marginTop: 4 }} />
+      <View style={{ gap: 4 }}>
+        <Skeleton width={70} height={42} borderRadius={6} />
+        <Skeleton width={70} height={42} borderRadius={6} />
+      </View>
+    </View>
+
+    {/* Achievements Banner - Full width */}
+    <View style={profilePageStyles.achievementsBannerSkeleton}>
+      <View style={{ flex: 1, gap: 5 }}>
+        <Skeleton width={100} height={16} borderRadius={4} />
+        <Skeleton width={60} height={11} borderRadius={3} />
       </View>
     </View>
   </View>
@@ -998,29 +1008,40 @@ const profilePageStyles = StyleSheet.create({
   rankCardsBannerSkeleton: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 16,
+    gap: 12,
     marginHorizontal: 16,
     marginTop: 16,
+    marginBottom: 4,
     backgroundColor: 'rgba(255,255,255,0.03)',
     borderRadius: 14,
-    paddingVertical: 24,
-    paddingHorizontal: 18,
+    paddingVertical: 14,
+    paddingHorizontal: 14,
     borderWidth: 1,
     borderColor: 'rgba(255,255,255,0.06)',
   },
-  bannerRow: {
+  clipsBannerSkeleton: {
     flexDirection: 'row',
-    gap: 8,
+    alignItems: 'center',
+    gap: 12,
     marginHorizontal: 16,
     marginTop: 10,
-    marginBottom: 16,
-  },
-  miniBannerSkeleton: {
-    flex: 1,
-    aspectRatio: 0.75,
     backgroundColor: 'rgba(255,255,255,0.03)',
     borderRadius: 14,
-    paddingVertical: 24,
+    paddingVertical: 14,
+    paddingHorizontal: 14,
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.06)',
+  },
+  achievementsBannerSkeleton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    marginHorizontal: 16,
+    marginTop: 8,
+    marginBottom: 16,
+    backgroundColor: 'rgba(255,255,255,0.03)',
+    borderRadius: 14,
+    paddingVertical: 14,
     paddingHorizontal: 14,
     borderWidth: 1,
     borderColor: 'rgba(255,255,255,0.06)',
