@@ -1178,44 +1178,55 @@ export default function ProfileScreen() {
               </View>
           </View>
 
-          {/* Profile Info Section - avatar overlaps cover photo, stats on right */}
+          {/* Profile Info Section - TikTok style: username+handle+stats left, avatar right */}
           <View style={styles.profileInfoSection}>
             <View style={styles.avatarStatsRow}>
-              {/* Left side: Avatar stacked with Username below */}
-              <View style={styles.avatarUsernameGroup}>
-                <TouchableOpacity
-                  style={styles.profileAvatarButton}
-                  onPress={() => setShowAvatarModal(true)}
-                  activeOpacity={0.7}
-                >
-                  {tierBorderGradient ? (
-                    <GradientBorder
-                      colors={tierBorderGradient}
-                      borderWidth={2.5}
-                      borderRadius={38}
-                      shine={tierShine}
-                    >
-                      <View style={styles.profileAvatarCircleWithGradient}>
-                        {user?.avatar && user.avatar.startsWith('http') && !avatarError ? (
-                          <Image
-                            key={`avatar-${avatarKey}`}
-                            source={{ uri: `${user.avatar}&t=${avatarKey}` }}
-                            style={styles.profileAvatarImage}
-                            onLoad={() => setAvatarLoaded(true)}
-                            onError={() => {
-                              setAvatarLoaded(true);
-                              setAvatarError(true);
-                            }}
-                          />
-                        ) : (
-                          <ThemedText style={styles.profileAvatarInitial}>
-                            {user?.username?.[0]?.toUpperCase() || 'U'}
-                          </ThemedText>
-                        )}
-                      </View>
-                    </GradientBorder>
-                  ) : (
-                    <View style={styles.profileAvatarCircle}>
+              {/* Left side: Username, handle, stats */}
+              <View style={styles.usernameStatsGroup}>
+                <ThemedText style={styles.coverPhotoUsername} numberOfLines={1}>{user?.username || 'User'}</ThemedText>
+                {joinedAt && (
+                  <ThemedText style={styles.joinedText}>{formatJoinDate(joinedAt)}</ThemedText>
+                )}
+
+                {/* Stats row */}
+                <View style={styles.statsColumns}>
+                  <TouchableOpacity
+                    style={styles.statColumn}
+                    onPress={() => router.push('/profilePages/following')}
+                    activeOpacity={0.7}
+                  >
+                    <ThemedText style={styles.statNumber}>{formatCount(user?.followingCount)}</ThemedText>
+                    <ThemedText style={styles.statLabel}>Following</ThemedText>
+                  </TouchableOpacity>
+                  <TouchableOpacity
+                    style={styles.statColumn}
+                    onPress={() => router.push('/profilePages/followers')}
+                    activeOpacity={0.7}
+                  >
+                    <ThemedText style={styles.statNumber}>{formatCount(user?.followersCount)}</ThemedText>
+                    <ThemedText style={styles.statLabel}>Followers</ThemedText>
+                  </TouchableOpacity>
+                  <View style={styles.statColumn}>
+                    <ThemedText style={styles.statNumber}>{formatCount(posts.length)}</ThemedText>
+                    <ThemedText style={styles.statLabel}>Posts</ThemedText>
+                  </View>
+                </View>
+              </View>
+
+              {/* Right side: Avatar */}
+              <TouchableOpacity
+                style={styles.profileAvatarButton}
+                onPress={() => setShowAvatarModal(true)}
+                activeOpacity={0.7}
+              >
+                {tierBorderGradient ? (
+                  <GradientBorder
+                    colors={tierBorderGradient}
+                    borderWidth={2.5}
+                    borderRadius={46}
+                    shine={tierShine}
+                  >
+                    <View style={styles.profileAvatarCircleWithGradient}>
                       {user?.avatar && user.avatar.startsWith('http') && !avatarError ? (
                         <Image
                           key={`avatar-${avatarKey}`}
@@ -1233,50 +1244,31 @@ export default function ProfileScreen() {
                         </ThemedText>
                       )}
                     </View>
-                  )}
-                </TouchableOpacity>
-                <View style={styles.usernameRow}>
-                  <ThemedText style={styles.profileUsername} numberOfLines={1}>{user?.username || 'User'}</ThemedText>
-                  <View style={styles.onlineDot} />
-                </View>
-                {joinedAt && (
-                  <ThemedText style={styles.joinedText}>{formatJoinDate(joinedAt)}</ThemedText>
+                  </GradientBorder>
+                ) : (
+                  <View style={styles.profileAvatarCircle}>
+                    {user?.avatar && user.avatar.startsWith('http') && !avatarError ? (
+                      <Image
+                        key={`avatar-${avatarKey}`}
+                        source={{ uri: `${user.avatar}&t=${avatarKey}` }}
+                        style={styles.profileAvatarImage}
+                        onLoad={() => setAvatarLoaded(true)}
+                        onError={() => {
+                          setAvatarLoaded(true);
+                          setAvatarError(true);
+                        }}
+                      />
+                    ) : (
+                      <ThemedText style={styles.profileAvatarInitial}>
+                        {user?.username?.[0]?.toUpperCase() || 'U'}
+                      </ThemedText>
+                    )}
+                  </View>
                 )}
-              </View>
-
-              {/* Right side: Stats */}
-              <View style={styles.statsColumns}>
-                <TouchableOpacity
-                  style={styles.statColumn}
-                  onPress={() => router.push('/profilePages/followers')}
-                  activeOpacity={0.7}
-                >
-                  <ThemedText style={styles.statNumber}>{formatCount(user?.followersCount)}</ThemedText>
-                  <ThemedText style={styles.statLabel}>Followers</ThemedText>
-                </TouchableOpacity>
-                <TouchableOpacity
-                  style={styles.statColumn}
-                  onPress={() => router.push('/profilePages/following')}
-                  activeOpacity={0.7}
-                >
-                  <ThemedText style={styles.statNumber}>{formatCount(user?.followingCount)}</ThemedText>
-                  <ThemedText style={styles.statLabel}>Following</ThemedText>
-                </TouchableOpacity>
-                <View style={styles.statColumn}>
-                  <ThemedText style={styles.statNumber}>{formatCount(posts.length)}</ThemedText>
-                  <ThemedText style={styles.statLabel}>Posts</ThemedText>
-                </View>
-              </View>
+              </TouchableOpacity>
             </View>
 
-            {/* Bio */}
-            {user?.bio && (
-              <View style={styles.bioSection}>
-                <ThemedText style={styles.bioText}>{user.bio}</ThemedText>
-              </View>
-            )}
-
-            {/* Action Row: Edit Profile + Social Icons */}
+            {/* Action Row: Edit Profile button + Social Icons */}
             <View style={styles.actionRow}>
               <TouchableOpacity
                 style={styles.editProfileButton}
@@ -1343,6 +1335,13 @@ export default function ProfileScreen() {
                 </TouchableOpacity>
               </View>
             </View>
+
+            {/* Bio */}
+            {user?.bio && (
+              <View style={styles.bioSection}>
+                <ThemedText style={styles.bioText}>{user.bio}</ThemedText>
+              </View>
+            )}
           </View>
 
           {/* Section Divider */}
@@ -1785,25 +1784,44 @@ const styles = StyleSheet.create({
     bottom: 0,
     height: 90,
   },
+  coverPhotoUsernameRow: {
+    position: 'absolute',
+    bottom: 4,
+    left: 20,
+    right: 20,
+    zIndex: 10,
+  },
+  coverPhotoUsername: {
+    fontSize: 26,
+    fontWeight: '800',
+    color: '#fff',
+    letterSpacing: -0.5,
+  },
   // Profile info section below cover
   profileInfoSection: {
-    marginTop: -38,
+    marginTop: 12,
     paddingHorizontal: 20,
     zIndex: 3,
   },
   avatarStatsRow: {
     flexDirection: 'row',
-    alignItems: 'flex-end',
+    alignItems: 'center',
     justifyContent: 'space-between',
   },
-  avatarUsernameGroup: {
-    alignItems: 'flex-start',
+  usernameStatsGroup: {
+    flex: 1,
+    marginRight: 16,
+  },
+  profileHandle: {
+    fontSize: 14,
+    fontWeight: '500',
+    color: '#72767d',
   },
   profileUsername: {
-    fontSize: 16,
+    fontSize: 26,
     fontWeight: '800',
     color: '#fff',
-    letterSpacing: -0.3,
+    letterSpacing: -0.5,
   },
   joinedText: {
     fontSize: 12,
@@ -1814,8 +1832,7 @@ const styles = StyleSheet.create({
   usernameRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 6,
-    marginTop: 6,
+    gap: 8,
   },
   onlineDot: {
     width: 8,
@@ -1826,9 +1843,9 @@ const styles = StyleSheet.create({
   profileAvatarButton: {
   },
   profileAvatarCircle: {
-    width: 76,
-    height: 76,
-    borderRadius: 38,
+    width: 92,
+    height: 92,
+    borderRadius: 46,
     backgroundColor: '#36393e',
     alignItems: 'center',
     justifyContent: 'center',
@@ -1836,9 +1853,9 @@ const styles = StyleSheet.create({
     borderColor: '#0f0f0f',
   },
   profileAvatarCircleWithGradient: {
-    width: 76,
-    height: 76,
-    borderRadius: 38,
+    width: 92,
+    height: 92,
+    borderRadius: 46,
     backgroundColor: '#36393e',
     alignItems: 'center',
     justifyContent: 'center',
@@ -1846,35 +1863,33 @@ const styles = StyleSheet.create({
   profileAvatarImage: {
     width: '100%',
     height: '100%',
-    borderRadius: 38,
+    borderRadius: 46,
   },
   profileAvatarInitial: {
-    fontSize: 28,
+    fontSize: 32,
     fontWeight: '700',
     color: '#fff',
   },
-  // Stats columns on the right
+  // Stats row below username
   statsColumns: {
     flexDirection: 'row',
-    justifyContent: 'space-evenly',
-    flex: 1,
-    paddingBottom: 6,
+    marginTop: 12,
+    gap: 20,
   },
   statColumn: {
     alignItems: 'center',
   },
   statNumber: {
     fontSize: 17,
-    fontWeight: '700',
+    fontWeight: '800',
     color: '#fff',
     letterSpacing: -0.3,
   },
   statLabel: {
-    fontSize: 11,
+    fontSize: 12,
     fontWeight: '500',
     color: '#72767d',
     marginTop: 1,
-    letterSpacing: 0.2,
   },
   // Action row: Edit Profile + Social icons
   profileSectionDivider: {
@@ -1886,20 +1901,20 @@ const styles = StyleSheet.create({
   actionRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginTop: 12,
-    gap: 10,
+    marginTop: 16,
+    gap: 8,
   },
   editProfileButton: {
     flex: 1,
-    paddingVertical: 8,
-    backgroundColor: 'rgba(255,255,255,0.08)',
-    borderRadius: 20,
+    paddingVertical: 12,
+    backgroundColor: '#2a2a2a',
+    borderRadius: 25,
     alignItems: 'center',
     justifyContent: 'center',
   },
   editProfileButtonText: {
-    fontSize: 13,
-    fontWeight: '600',
+    fontSize: 15,
+    fontWeight: '700',
     color: '#fff',
   },
   socialIconsGroup: {
@@ -1907,10 +1922,10 @@ const styles = StyleSheet.create({
     gap: 8,
   },
   socialIconButton: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
-    backgroundColor: 'rgba(255,255,255,0.08)',
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: '#2a2a2a',
     alignItems: 'center',
     justifyContent: 'center',
   },

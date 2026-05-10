@@ -562,16 +562,40 @@ export default function ProfilePreviewScreen() {
             </View>
           </View>
 
-          {/* Profile Info Section - overlaps cover photo */}
+          {/* Profile Info Section - TikTok style: username+handle+stats left, avatar right */}
           <View style={styles.profileInfoSection}>
-            {/* Row: Avatar+Username group (left) + Stats (right) */}
             <View style={styles.avatarStatsRow}>
-              <View style={styles.avatarUsernameGroup}>
+              {/* Left side: Username, handle, stats */}
+              <View style={styles.usernameStatsGroup}>
+                <ThemedText style={styles.coverPhotoUsername} numberOfLines={1}>{viewedUser?.username || 'User'}</ThemedText>
+                {viewedUser?.createdAt && (
+                  <ThemedText style={styles.joinedText}>{formatJoinDate(viewedUser.createdAt)}</ThemedText>
+                )}
+
+                {/* Stats row */}
+                <View style={styles.statsColumns}>
+                  <View style={styles.statColumn}>
+                    <ThemedText style={styles.statNumber}>{formatCount(viewedUser?.followingCount)}</ThemedText>
+                    <ThemedText style={styles.statLabel}>Following</ThemedText>
+                  </View>
+                  <View style={styles.statColumn}>
+                    <ThemedText style={styles.statNumber}>{formatCount(viewedUser?.followersCount)}</ThemedText>
+                    <ThemedText style={styles.statLabel}>Followers</ThemedText>
+                  </View>
+                  <View style={styles.statColumn}>
+                    <ThemedText style={styles.statNumber}>{formatCount(posts.length)}</ThemedText>
+                    <ThemedText style={styles.statLabel}>Posts</ThemedText>
+                  </View>
+                </View>
+              </View>
+
+              {/* Right side: Avatar */}
+              <View>
                 {tierBorderGradient ? (
                   <GradientBorder
                     colors={tierBorderGradient}
                     borderWidth={2.5}
-                    borderRadius={38}
+                    borderRadius={46}
                     shine={tierShine}
                   >
                     <View style={styles.profileAvatarCircleWithGradient}>
@@ -595,35 +619,8 @@ export default function ProfilePreviewScreen() {
                     )}
                   </View>
                 )}
-                <ThemedText style={styles.profileUsername} numberOfLines={1}>{viewedUser?.username || 'User'}</ThemedText>
-                {viewedUser?.createdAt && (
-                  <ThemedText style={styles.joinedText}>{formatJoinDate(viewedUser.createdAt)}</ThemedText>
-                )}
-              </View>
-
-              {/* Stats columns */}
-              <View style={styles.statsColumns}>
-                <View style={styles.statColumn}>
-                  <ThemedText style={styles.statNumber}>{formatCount(viewedUser?.followersCount)}</ThemedText>
-                  <ThemedText style={styles.statLabel}>Followers</ThemedText>
-                </View>
-                <View style={styles.statColumn}>
-                  <ThemedText style={styles.statNumber}>{formatCount(viewedUser?.followingCount)}</ThemedText>
-                  <ThemedText style={styles.statLabel}>Following</ThemedText>
-                </View>
-                <View style={styles.statColumn}>
-                  <ThemedText style={styles.statNumber}>{formatCount(posts.length)}</ThemedText>
-                  <ThemedText style={styles.statLabel}>Posts</ThemedText>
-                </View>
               </View>
             </View>
-
-            {/* Bio */}
-            {viewedUser?.bio && (
-              <View style={styles.bioSection}>
-                <ThemedText style={styles.bioText}>{viewedUser.bio}</ThemedText>
-              </View>
-            )}
 
             {/* Action Row: Follow Button + Social Icons */}
             <View style={styles.actionRow}>
@@ -634,7 +631,7 @@ export default function ProfilePreviewScreen() {
                   disabled={followLoading}
                   activeOpacity={0.7}
                 >
-                  <ThemedText style={styles.followButtonText}>
+                  <ThemedText style={[styles.followButtonText, isFollowing && styles.followButtonTextFollowing]}>
                     {followLoading ? '...' : isFollowing ? 'Following' : 'Follow'}
                   </ThemedText>
                 </TouchableOpacity>
@@ -642,52 +639,57 @@ export default function ProfilePreviewScreen() {
 
               <View style={styles.socialIconsGroup}>
                 {/* Instagram */}
-                <TouchableOpacity
-                  style={[styles.socialIconButton, !viewedUser?.instagramLink && styles.socialIconInactive]}
-                  onPress={async () => {
-                    if (viewedUser?.instagramLink) {
+                {viewedUser?.instagramLink && (
+                  <TouchableOpacity
+                    style={styles.socialIconButton}
+                    onPress={async () => {
                       try {
-                        const username = viewedUser.instagramLink.replace(/^https?:\/\/(www\.)?instagram\.com\//, '').replace(/\/$/, '');
+                        const username = viewedUser.instagramLink!.replace(/^https?:\/\/(www\.)?instagram\.com\//, '').replace(/\/$/, '');
                         await Linking.openURL(`https://instagram.com/${username}`);
                       } catch (error) {
                         Alert.alert('Error', 'Failed to open Instagram');
                       }
-                    }
-                  }}
-                  disabled={!viewedUser?.instagramLink}
-                  activeOpacity={0.7}
-                >
-                  <Image
-                    source={require('@/assets/images/instagram.png')}
-                    style={styles.socialIconImage}
-                    resizeMode="contain"
-                  />
-                </TouchableOpacity>
+                    }}
+                    activeOpacity={0.7}
+                  >
+                    <Image
+                      source={require('@/assets/images/instagram.png')}
+                      style={styles.socialIconImage}
+                      resizeMode="contain"
+                    />
+                  </TouchableOpacity>
+                )}
 
                 {/* Discord */}
-                <TouchableOpacity
-                  style={[styles.socialIconButton, !viewedUser?.discordLink && styles.socialIconInactive]}
-                  onPress={async () => {
-                    if (viewedUser?.discordLink) {
+                {viewedUser?.discordLink && (
+                  <TouchableOpacity
+                    style={styles.socialIconButton}
+                    onPress={async () => {
                       try {
-                        await Clipboard.setStringAsync(viewedUser.discordLink);
+                        await Clipboard.setStringAsync(viewedUser.discordLink!);
                         Alert.alert('Copied!', `Discord username "${viewedUser.discordLink}" copied to clipboard`);
                       } catch (error) {
                         Alert.alert('Error', 'Failed to copy Discord username');
                       }
-                    }
-                  }}
-                  disabled={!viewedUser?.discordLink}
-                  activeOpacity={0.7}
-                >
-                  <Image
-                    source={require('@/assets/images/discord.png')}
-                    style={styles.socialIconImage}
-                    resizeMode="contain"
-                  />
-                </TouchableOpacity>
+                    }}
+                    activeOpacity={0.7}
+                  >
+                    <Image
+                      source={require('@/assets/images/discord.png')}
+                      style={styles.socialIconImage}
+                      resizeMode="contain"
+                    />
+                  </TouchableOpacity>
+                )}
               </View>
             </View>
+
+            {/* Bio */}
+            {viewedUser?.bio && (
+              <View style={styles.bioSection}>
+                <ThemedText style={styles.bioText}>{viewedUser.bio}</ThemedText>
+              </View>
+            )}
           </View>
 
           {/* Section Divider */}
@@ -905,26 +907,44 @@ const styles = StyleSheet.create({
     height: '60%',
     zIndex: 1,
   },
+  coverPhotoUsernameRow: {
+    position: 'absolute',
+    bottom: 4,
+    left: 20,
+    right: 20,
+    zIndex: 10,
+  },
+  coverPhotoUsername: {
+    fontSize: 26,
+    fontWeight: '800',
+    color: '#fff',
+    letterSpacing: -0.5,
+  },
   // Profile info section below cover
   profileInfoSection: {
-    marginTop: -38,
+    marginTop: 12,
     paddingHorizontal: 20,
     zIndex: 3,
   },
   avatarStatsRow: {
     flexDirection: 'row',
-    alignItems: 'flex-end',
+    alignItems: 'center',
     justifyContent: 'space-between',
   },
-  avatarUsernameGroup: {
-    alignItems: 'flex-start',
+  usernameStatsGroup: {
+    flex: 1,
+    marginRight: 16,
+  },
+  profileHandle: {
+    fontSize: 14,
+    fontWeight: '500',
+    color: '#72767d',
   },
   profileUsername: {
-    fontSize: 16,
+    fontSize: 26,
     fontWeight: '800',
     color: '#fff',
-    letterSpacing: -0.3,
-    marginTop: 6,
+    letterSpacing: -0.5,
   },
   joinedText: {
     fontSize: 12,
@@ -933,9 +953,9 @@ const styles = StyleSheet.create({
     marginTop: 2,
   },
   profileAvatarCircle: {
-    width: 76,
-    height: 76,
-    borderRadius: 38,
+    width: 92,
+    height: 92,
+    borderRadius: 46,
     backgroundColor: '#36393e',
     alignItems: 'center',
     justifyContent: 'center',
@@ -943,9 +963,9 @@ const styles = StyleSheet.create({
     borderColor: '#0f0f0f',
   },
   profileAvatarCircleWithGradient: {
-    width: 76,
-    height: 76,
-    borderRadius: 38,
+    width: 92,
+    height: 92,
+    borderRadius: 46,
     backgroundColor: '#36393e',
     alignItems: 'center',
     justifyContent: 'center',
@@ -953,35 +973,33 @@ const styles = StyleSheet.create({
   profileAvatarImage: {
     width: '100%',
     height: '100%',
-    borderRadius: 38,
+    borderRadius: 46,
   },
   profileAvatarInitial: {
-    fontSize: 28,
+    fontSize: 32,
     fontWeight: '700',
     color: '#fff',
   },
-  // Stats columns beside avatar
+  // Stats row below username
   statsColumns: {
     flexDirection: 'row',
-    flex: 1,
-    justifyContent: 'space-evenly',
-    paddingBottom: 6,
+    marginTop: 12,
+    gap: 20,
   },
   statColumn: {
     alignItems: 'center',
   },
   statNumber: {
     fontSize: 17,
-    fontWeight: '700',
+    fontWeight: '800',
     color: '#fff',
     letterSpacing: -0.3,
   },
   statLabel: {
-    fontSize: 11,
+    fontSize: 12,
     fontWeight: '500',
     color: '#72767d',
     marginTop: 1,
-    letterSpacing: 0.2,
   },
   // Bio section
   bioSection: {
@@ -996,41 +1014,39 @@ const styles = StyleSheet.create({
   actionRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginTop: 12,
-    gap: 10,
+    marginTop: 16,
+    gap: 8,
   },
   followButton: {
     flex: 1,
-    paddingVertical: 8,
-    backgroundColor: 'rgba(255,255,255,0.08)',
-    borderRadius: 20,
+    paddingVertical: 12,
+    backgroundColor: '#FF3B5C',
+    borderRadius: 25,
     alignItems: 'center',
     justifyContent: 'center',
   },
   followingButton: {
-    backgroundColor: 'rgba(255,255,255,0.04)',
-    borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.1)',
+    backgroundColor: '#2a2a2a',
   },
   followButtonText: {
-    fontSize: 13,
-    fontWeight: '600',
+    fontSize: 15,
+    fontWeight: '700',
     color: '#fff',
+  },
+  followButtonTextFollowing: {
+    fontWeight: '600',
   },
   socialIconsGroup: {
     flexDirection: 'row',
     gap: 8,
   },
   socialIconButton: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
-    backgroundColor: 'rgba(255,255,255,0.08)',
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: '#2a2a2a',
     alignItems: 'center',
     justifyContent: 'center',
-  },
-  socialIconInactive: {
-    opacity: 0.35,
   },
   socialIconImage: {
     width: 18,

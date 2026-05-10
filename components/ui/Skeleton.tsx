@@ -878,32 +878,34 @@ export const ProfileAchievementsSkeleton: React.FC = () => (
 // Matches profile.tsx layout: cover photo, username+avatar, followers, socials, bio, tab bar, clips tab content
 export const ProfilePageSkeleton: React.FC = () => (
   <View style={profilePageStyles.container}>
-    {/* Profile Info Section */}
+    {/* Profile Info Section - TikTok style */}
     <View style={profilePageStyles.profileInfoSection}>
-      {/* Avatar + Stats row */}
+      {/* Username+stats left, avatar right */}
       <View style={profilePageStyles.avatarStatsRow}>
-        <View>
-          <Skeleton width={76} height={76} borderRadius={38} style={profilePageStyles.avatar} />
-          {/* Username + joined */}
-          <Skeleton width={90} height={14} borderRadius={4} style={{ marginTop: 8 }} />
-          <Skeleton width={70} height={10} borderRadius={3} style={{ marginTop: 4 }} />
+        <View style={{ flex: 1, marginRight: 16 }}>
+          {/* Username */}
+          <Skeleton width={140} height={24} borderRadius={4} />
+          {/* Handle */}
+          <Skeleton width={100} height={12} borderRadius={3} style={{ marginTop: 4 }} />
+          {/* Joined */}
+          <Skeleton width={80} height={10} borderRadius={3} style={{ marginTop: 4 }} />
+          {/* Stats row */}
+          <View style={profilePageStyles.statsColumns}>
+            <View style={profilePageStyles.statColumn}>
+              <Skeleton width={28} height={17} borderRadius={4} />
+              <Skeleton width={48} height={11} borderRadius={3} style={profilePageStyles.statLabelSkeleton} />
+            </View>
+            <View style={profilePageStyles.statColumn}>
+              <Skeleton width={28} height={17} borderRadius={4} />
+              <Skeleton width={52} height={11} borderRadius={3} style={profilePageStyles.statLabelSkeleton} />
+            </View>
+            <View style={profilePageStyles.statColumn}>
+              <Skeleton width={20} height={17} borderRadius={4} />
+              <Skeleton width={32} height={11} borderRadius={3} style={profilePageStyles.statLabelSkeleton} />
+            </View>
+          </View>
         </View>
-
-        {/* Stats columns */}
-        <View style={profilePageStyles.statsColumns}>
-          <View style={profilePageStyles.statColumn}>
-            <Skeleton width={28} height={17} borderRadius={4} />
-            <Skeleton width={48} height={11} borderRadius={3} style={profilePageStyles.statLabelSkeleton} />
-          </View>
-          <View style={profilePageStyles.statColumn}>
-            <Skeleton width={28} height={17} borderRadius={4} />
-            <Skeleton width={52} height={11} borderRadius={3} style={profilePageStyles.statLabelSkeleton} />
-          </View>
-          <View style={profilePageStyles.statColumn}>
-            <Skeleton width={20} height={17} borderRadius={4} />
-            <Skeleton width={32} height={11} borderRadius={3} style={profilePageStyles.statLabelSkeleton} />
-          </View>
-        </View>
+        <Skeleton width={92} height={92} borderRadius={46} />
       </View>
 
       {/* Bio placeholder */}
@@ -911,11 +913,11 @@ export const ProfilePageSkeleton: React.FC = () => (
         <Skeleton width="65%" height={13} borderRadius={4} />
       </View>
 
-      {/* Action row: Edit Profile + Social icons */}
+      {/* Action row */}
       <View style={profilePageStyles.actionRow}>
-        <Skeleton width={0} height={36} borderRadius={8} style={profilePageStyles.editButtonSkeleton} />
-        <Skeleton width={36} height={36} borderRadius={8} />
-        <Skeleton width={36} height={36} borderRadius={8} />
+        <Skeleton width={0} height={44} borderRadius={25} style={profilePageStyles.editButtonSkeleton} />
+        <Skeleton width={40} height={40} borderRadius={20} />
+        <Skeleton width={40} height={40} borderRadius={20} />
       </View>
     </View>
 
@@ -968,8 +970,8 @@ const profilePageStyles = StyleSheet.create({
   },
   avatarStatsRow: {
     flexDirection: 'row',
-    alignItems: 'flex-end',
-    gap: 16,
+    alignItems: 'center',
+    justifyContent: 'space-between',
   },
   avatar: {
     borderWidth: 3,
@@ -977,9 +979,8 @@ const profilePageStyles = StyleSheet.create({
   },
   statsColumns: {
     flexDirection: 'row',
-    flex: 1,
-    justifyContent: 'space-around',
-    paddingBottom: 6,
+    marginTop: 12,
+    gap: 20,
   },
   statColumn: {
     alignItems: 'center',
@@ -993,8 +994,8 @@ const profilePageStyles = StyleSheet.create({
   actionRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginTop: 12,
-    gap: 10,
+    marginTop: 16,
+    gap: 8,
   },
   editButtonSkeleton: {
     flex: 1,
