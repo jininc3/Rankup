@@ -11,8 +11,10 @@ import { calculateTierBorderColor } from '@/utils/tierBorderUtils';
 import { formatRankDisplay } from '@/utils/formatRankDisplay';
 
 const { width: screenWidth } = Dimensions.get('window');
-const mediaHorizontalPadding = 8; // Small padding to show rounded corners
-const mediaWidth = screenWidth - (mediaHorizontalPadding * 2);
+const cardMargin = 12;
+const cardWidth = screenWidth - (cardMargin * 2);
+const mediaHorizontalPadding = 0;
+const mediaWidth = cardWidth;
 
 // Game data
 const gameData: { [key: string]: { name: string; icon?: string; image?: any } } = {
@@ -885,21 +887,20 @@ export default function PostContent({
         </View>
       )}
 
-      {/* Post Divider */}
-      <View style={styles.postDivider} />
     </View>
   );
 }
 
 const styles = StyleSheet.create({
   postContainer: {
-    width: screenWidth,
-  },
-  postDivider: {
-    height: 1,
-    backgroundColor: 'rgba(255, 255, 255, 0.1)',
-    marginHorizontal: 40,
-    marginTop: 8,
+    width: cardWidth,
+    marginHorizontal: cardMargin,
+    backgroundColor: 'transparent',
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.08)',
+    marginBottom: 12,
+    overflow: 'hidden',
   },
   postHeader: {
     flexDirection: 'row',
@@ -1066,10 +1067,9 @@ const styles = StyleSheet.create({
   },
   mediaContainer: {
     width: mediaWidth,
-    marginHorizontal: mediaHorizontalPadding,
     backgroundColor: '#000',
     position: 'relative',
-    borderRadius: 12,
+    borderRadius: 0,
     overflow: 'hidden',
   },
   mediaItem: {
@@ -1169,7 +1169,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     paddingHorizontal: 14,
     paddingTop: 12,
-    paddingBottom: 4,
+    paddingBottom: 10,
     gap: 20,
   },
   engagementItem: {
@@ -1256,7 +1256,7 @@ const styles = StyleSheet.create({
   },
   viewAllCommentsText: {
     fontSize: 12,
-    color: '#b9bbbe',
+    color: '#8B7FE8',
     marginTop: 0,
   },
 });

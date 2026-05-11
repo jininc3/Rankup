@@ -425,9 +425,9 @@ export default function LeaderboardScreen() {
           <LinearGradient
             colors={[
               'transparent',
-              'rgba(255, 255, 255, 0.03)',
-              'rgba(255, 255, 255, 0.065)',
-              'rgba(255, 255, 255, 0.03)',
+              'rgba(139, 127, 232, 0.03)',
+              'rgba(139, 127, 232, 0.06)',
+              'rgba(139, 127, 232, 0.03)',
               'transparent',
             ]}
             locations={[0, 0.37, 0.5, 0.63, 1]}
@@ -441,7 +441,7 @@ export default function LeaderboardScreen() {
           <LinearGradient
             colors={[
               'transparent',
-              'rgba(255, 255, 255, 0.035)',
+              'rgba(139, 127, 232, 0.035)',
               'transparent',
             ]}
             locations={[0, 0.5, 1]}
@@ -453,7 +453,10 @@ export default function LeaderboardScreen() {
       </View>
 
       <View style={styles.header}>
-        <ThemedText style={styles.headerTitle}>Leaderboards</ThemedText>
+        <View>
+          <ThemedText style={styles.headerTitle}>Leaderboards</ThemedText>
+          <ThemedText style={styles.headerSubtitle}>See who's climbing the ranks.</ThemedText>
+        </View>
         <TouchableOpacity
           style={styles.lobbiesChip}
           onPress={() => router.push('/partyPages/lobbies')}
@@ -570,11 +573,17 @@ const styles = StyleSheet.create({
     paddingBottom: 4,
   },
   headerTitle: {
-    fontSize: 22,
-    fontWeight: '600',
+    fontSize: 28,
+    fontWeight: '700',
     color: '#fff',
-    letterSpacing: 0.3,
-    textTransform: 'uppercase',
+    letterSpacing: -0.5,
+    lineHeight: 34,
+  },
+  headerSubtitle: {
+    fontSize: 13,
+    fontWeight: '400',
+    color: '#888',
+    marginTop: 2,
   },
   createButton: {
     width: 36,

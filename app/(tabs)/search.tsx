@@ -512,9 +512,9 @@ export default function SearchScreen() {
           <LinearGradient
             colors={[
               'transparent',
-              'rgba(255, 255, 255, 0.03)',
-              'rgba(255, 255, 255, 0.065)',
-              'rgba(255, 255, 255, 0.03)',
+              'rgba(139, 127, 232, 0.03)',
+              'rgba(139, 127, 232, 0.06)',
+              'rgba(139, 127, 232, 0.03)',
               'transparent',
             ]}
             locations={[0, 0.37, 0.5, 0.63, 1]}
@@ -528,7 +528,7 @@ export default function SearchScreen() {
           <LinearGradient
             colors={[
               'transparent',
-              'rgba(255, 255, 255, 0.035)',
+              'rgba(139, 127, 232, 0.035)',
               'transparent',
             ]}
             locations={[0, 0.5, 1]}
@@ -540,7 +540,10 @@ export default function SearchScreen() {
       </View>
 
       <View style={styles.header}>
-        <ThemedText style={styles.headerTitle}>Search</ThemedText>
+        <View>
+          <ThemedText style={styles.headerTitle}>Search</ThemedText>
+          <ThemedText style={styles.headerSubtitle}>Find players & clips.</ThemedText>
+        </View>
       </View>
       <View style={styles.searchContainer}>
         <IconSymbol size={18} name="magnifyingglass" color="#666" />
@@ -703,16 +706,22 @@ const styles = StyleSheet.create({
     paddingBottom: 4,
   },
   headerTitle: {
-    fontSize: 22,
-    fontWeight: '600',
+    fontSize: 28,
+    fontWeight: '700',
     color: '#fff',
-    letterSpacing: 0.3,
-    textTransform: 'uppercase',
+    letterSpacing: -0.5,
+    lineHeight: 34,
+  },
+  headerSubtitle: {
+    fontSize: 13,
+    fontWeight: '400',
+    color: '#888',
+    marginTop: 2,
   },
   searchContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: 'rgba(255, 255, 255, 0.06)',
+    backgroundColor: 'rgba(139, 127, 232, 0.06)',
     marginHorizontal: 16,
     marginTop: 16,
     marginBottom: 8,
@@ -720,7 +729,7 @@ const styles = StyleSheet.create({
     paddingVertical: 10,
     borderRadius: 10,
     borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.08)',
+    borderColor: 'rgba(139, 127, 232, 0.15)',
     gap: 10,
   },
   searchInput: {

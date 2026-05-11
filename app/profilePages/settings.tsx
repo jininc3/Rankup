@@ -85,6 +85,7 @@ export default function SettingsScreen() {
   const [valorantAccount, setValorantAccount] = useState<any>(null);
   const [loadingAccounts, setLoadingAccounts] = useState(true);
   const [showRankOnPosts, setShowRankOnPosts] = useState(false);
+  const [showRankCardBack, setShowRankCardBack] = useState(false);
 
   useEffect(() => {
     checkAccounts();
@@ -129,6 +130,7 @@ export default function SettingsScreen() {
 
         // Load show rank on posts preference
         setShowRankOnPosts(data.showRankOnPosts ?? false);
+        setShowRankCardBack(data.showRankCardBack ?? false);
       }
     } catch (error) {
       console.error('Error checking accounts:', error);
@@ -145,6 +147,17 @@ export default function SettingsScreen() {
     } catch (error) {
       console.error('Error updating showRankOnPosts:', error);
       setShowRankOnPosts(!value);
+    }
+  };
+
+  const handleToggleRankCardBack = async (value: boolean) => {
+    if (!user?.id) return;
+    setShowRankCardBack(value);
+    try {
+      await updateDoc(doc(db, 'users', user.id), { showRankCardBack: value });
+    } catch (error) {
+      console.error('Error updating showRankCardBack:', error);
+      setShowRankCardBack(!value);
     }
   };
 
@@ -362,6 +375,27 @@ export default function SettingsScreen() {
                   <Switch
                     value={showRankOnPosts}
                     onValueChange={handleToggleShowRank}
+                    trackColor={{ false: '#333', true: '#c42743' }}
+                    thumbColor="#fff"
+                  />
+                </View>
+              )}
+              {section.id === 'preferences' && (
+                <View style={styles.settingItem}>
+                  <View style={styles.settingLeft}>
+                    <View style={styles.iconContainer}>
+                      <IconSymbol size={20} name="rectangle.on.rectangle.angled" color="#888" />
+                    </View>
+                    <View style={styles.settingTextContainer}>
+                      <ThemedText style={styles.settingTitle}>Show Rank Card Back</ThemedText>
+                      <ThemedText style={styles.settingSubtitle}>
+                        Display the back of your rank cards on your profile
+                      </ThemedText>
+                    </View>
+                  </View>
+                  <Switch
+                    value={showRankCardBack}
+                    onValueChange={handleToggleRankCardBack}
                     trackColor={{ false: '#333', true: '#c42743' }}
                     thumbColor="#fff"
                   />

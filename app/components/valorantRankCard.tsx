@@ -55,6 +55,7 @@ interface ValorantRankCardProps {
   isFocused?: boolean; // If true, card is in focused/unstacked mode and can be flipped
   isBackOfStack?: boolean; // If true, card is behind another card in the stack
   onRefresh?: () => void; // Callback when stats are refreshed
+  initialFlipped?: boolean; // If true, show the back of the card initially
 }
 
 // Valorant rank icon mapping - Includes subdivision ranks
@@ -180,9 +181,9 @@ const VALORANT_AGENT_ICONS: { [key: string]: any } = {
   yoru: require('@/assets/images/valorantagents/yoru.png'),
 };
 
-export default function ValorantRankCard({ game, username, viewOnly = false, userId, isFocused = false, isBackOfStack = false, onRefresh }: ValorantRankCardProps) {
-  const [isFlipped, setIsFlipped] = useState(false);
-  const [showBack, setShowBack] = useState(false);
+export default function ValorantRankCard({ game, username, viewOnly = false, userId, isFocused = false, isBackOfStack = false, onRefresh, initialFlipped = false }: ValorantRankCardProps) {
+  const [isFlipped, setIsFlipped] = useState(initialFlipped);
+  const [showBack, setShowBack] = useState(initialFlipped);
   const [modalVisible, setModalVisible] = useState(false);
   const [updatingStats, setUpdatingStats] = useState(false);
   const [cardPosition, setCardPosition] = useState({ x: 20, y: SCREEN_HEIGHT - 350, width: 0 });
@@ -214,7 +215,7 @@ export default function ValorantRankCard({ game, username, viewOnly = false, use
   })();
 
   const cardRef = useRef<View>(null);
-  const flipAnimation = useRef(new Animated.Value(0)).current;
+  const flipAnimation = useRef(new Animated.Value(initialFlipped ? 1 : 0)).current;
   const slideAnimation = useRef(new Animated.Value(0)).current;
   const overlayOpacity = useRef(new Animated.Value(0)).current;
   const startY = useRef(new Animated.Value(SCREEN_HEIGHT - 350)).current;
@@ -279,6 +280,14 @@ export default function ValorantRankCard({ game, username, viewOnly = false, use
   // Track showBack in a ref so the listener always reads the latest value
   const showBackRef = useRef(showBack);
   showBackRef.current = showBack;
+
+  // Sync flip state when initialFlipped prop changes
+  useEffect(() => {
+    setIsFlipped(initialFlipped);
+    setShowBack(initialFlipped);
+    showBackRef.current = initialFlipped;
+    flipAnimation.setValue(initialFlipped ? 1 : 0);
+  }, [initialFlipped]);
 
   // Listen to animation value to swap content at midpoint (registered once)
   useEffect(() => {
@@ -1041,7 +1050,7 @@ export default function ValorantRankCard({ game, username, viewOnly = false, use
           activeOpacity={isFocused ? 0.9 : 1}
           disabled={!isFocused && viewOnly}
         >
-        {/* Stack card always shows front — no flip animation */}
+        {/* Stack card — shows back if initialFlipped */}
         <LinearGradient
           colors={[
             `rgba(${rgb}, 0.9)`,
@@ -1056,7 +1065,7 @@ export default function ValorantRankCard({ game, username, viewOnly = false, use
           style={styles.rankCard}
         >
           <View style={styles.rankCardInner}>
-            {renderCardContent(true)}
+            {renderCardContent(!initialFlipped)}
           </View>
         </LinearGradient>
         </TouchableOpacity>

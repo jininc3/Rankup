@@ -52,6 +52,7 @@ interface LeagueRankCardProps {
   isFocused?: boolean;
   isBackOfStack?: boolean;
   onRefresh?: () => void;
+  initialFlipped?: boolean;
 }
 
 // League of Legends rank icon mapping
@@ -69,9 +70,9 @@ const LEAGUE_RANK_ICONS: { [key: string]: any } = {
   unranked: require('@/assets/images/leagueranks/unranked.png'),
 };
 
-export default function LeagueRankCard({ game, username, viewOnly = false, userId, isFocused = false, isBackOfStack = false, onRefresh }: LeagueRankCardProps) {
-  const [isFlipped, setIsFlipped] = useState(false);
-  const [showBack, setShowBack] = useState(false);
+export default function LeagueRankCard({ game, username, viewOnly = false, userId, isFocused = false, isBackOfStack = false, onRefresh, initialFlipped = false }: LeagueRankCardProps) {
+  const [isFlipped, setIsFlipped] = useState(initialFlipped);
+  const [showBack, setShowBack] = useState(initialFlipped);
   const [modalVisible, setModalVisible] = useState(false);
   const [updatingStats, setUpdatingStats] = useState(false);
   const [cardPosition, setCardPosition] = useState({ x: 20, y: SCREEN_HEIGHT - 350, width: 0 });
@@ -82,7 +83,7 @@ export default function LeagueRankCard({ game, username, viewOnly = false, userI
 
   const cardRef = useRef<View>(null);
   const statsScrollRef = useRef<ScrollView>(null);
-  const flipAnimation = useRef(new Animated.Value(0)).current;
+  const flipAnimation = useRef(new Animated.Value(initialFlipped ? 1 : 0)).current;
   const slideAnimation = useRef(new Animated.Value(0)).current;
   const overlayOpacity = useRef(new Animated.Value(0)).current;
   const startY = useRef(new Animated.Value(SCREEN_HEIGHT - 350)).current;
@@ -147,6 +148,14 @@ export default function LeagueRankCard({ game, username, viewOnly = false, userI
   // Track showBack in a ref so the listener always reads the latest value
   const showBackRef = useRef(showBack);
   showBackRef.current = showBack;
+
+  // Sync flip state when initialFlipped prop changes
+  useEffect(() => {
+    setIsFlipped(initialFlipped);
+    setShowBack(initialFlipped);
+    showBackRef.current = initialFlipped;
+    flipAnimation.setValue(initialFlipped ? 1 : 0);
+  }, [initialFlipped]);
 
   // Listen to animation value to swap content at midpoint (registered once)
   useEffect(() => {
@@ -825,7 +834,7 @@ export default function LeagueRankCard({ game, username, viewOnly = false, userI
           activeOpacity={isFocused ? 0.9 : 1}
           disabled={!isFocused && viewOnly}
         >
-          {/* Stack card always shows front — no flip animation */}
+          {/* Stack card — shows back if initialFlipped */}
           <LinearGradient
             colors={[
               `rgba(${rgb}, 0.9)`,
@@ -840,7 +849,7 @@ export default function LeagueRankCard({ game, username, viewOnly = false, userI
             style={styles.rankCard}
           >
             <View style={styles.rankCardInner}>
-              {renderCardContent(true)}
+              {renderCardContent(!initialFlipped)}
             </View>
           </LinearGradient>
         </TouchableOpacity>

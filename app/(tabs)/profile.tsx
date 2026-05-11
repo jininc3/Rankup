@@ -157,6 +157,8 @@ export default function ProfileScreen() {
   const [tftStats, setTftStats] = useState<any>(null);
   const [enabledRankCards, setEnabledRankCards] = useState<string[]>([]);
   const [loadingRankCards, setLoadingRankCards] = useState(true);
+  const [activeRankCardIndex, setActiveRankCardIndex] = useState(0);
+  const [showRankCardBack, setShowRankCardBack] = useState(false);
   const [joinedAt, setJoinedAt] = useState<Date | null>(null);
   const [hasConsumedPreloadPosts, setHasConsumedPreloadPosts] = useState(false);
   const [hasConsumedPreloadRiot, setHasConsumedPreloadRiot] = useState(false);
@@ -412,6 +414,7 @@ export default function ProfileScreen() {
         if (data.createdAt) {
           setJoinedAt(data.createdAt.toDate ? data.createdAt.toDate() : new Date(data.createdAt));
         }
+        setShowRankCardBack(data.showRankCardBack ?? false);
 
         if (data.riotAccount) {
           setRiotAccount(data.riotAccount);
@@ -599,6 +602,16 @@ export default function ProfileScreen() {
           fetchRiotData();
           fetchPosts();
         }
+        // Always re-fetch lightweight preferences on focus
+        const refreshPrefs = async () => {
+          try {
+            const userDoc = await getDoc(doc(db, 'users', user.id));
+            if (userDoc.exists()) {
+              setShowRankCardBack(userDoc.data().showRankCardBack ?? false);
+            }
+          } catch {}
+        };
+        refreshPrefs();
       }
     }, [user?.id])
   );
@@ -1049,9 +1062,9 @@ export default function ProfileScreen() {
           <LinearGradient
             colors={[
               'transparent',
-              'rgba(255, 255, 255, 0.03)',
-              'rgba(255, 255, 255, 0.065)',
-              'rgba(255, 255, 255, 0.03)',
+              'rgba(139, 127, 232, 0.03)',
+              'rgba(139, 127, 232, 0.06)',
+              'rgba(139, 127, 232, 0.03)',
               'transparent',
             ]}
             locations={[0, 0.37, 0.5, 0.63, 1]}
@@ -1064,7 +1077,7 @@ export default function ProfileScreen() {
           <LinearGradient
             colors={[
               'transparent',
-              'rgba(255, 255, 255, 0.035)',
+              'rgba(139, 127, 232, 0.035)',
               'transparent',
             ]}
             locations={[0, 0.5, 1]}
@@ -1206,7 +1219,7 @@ export default function ProfileScreen() {
                     <ThemedText style={styles.statNumber}>{formatCount(user?.followersCount)}</ThemedText>
                     <ThemedText style={styles.statLabel}>Followers</ThemedText>
                   </TouchableOpacity>
-                  <View style={styles.statColumn}>
+                  <View style={[styles.statColumn, { marginLeft: 10 }]}>
                     <ThemedText style={styles.statNumber}>{formatCount(posts.length)}</ThemedText>
                     <ThemedText style={styles.statLabel}>Posts</ThemedText>
                   </View>
@@ -1347,53 +1360,74 @@ export default function ProfileScreen() {
           {/* Section Divider */}
           <View style={styles.profileSectionDivider} />
 
-          {/* Rank Cards Banner */}
+          {/* Rank Cards Preview */}
           {userGames.length > 0 ? (
-            <TouchableOpacity
-              style={styles.rankCardsBanner}
-              onPress={() => router.push('/profilePages/rankCards')}
-              activeOpacity={0.85}
-            >
-              <LinearGradient
-                colors={['transparent', 'rgba(196,39,67,0.10)', 'transparent']}
-                locations={[0.2, 0.5, 0.8]}
-                start={{ x: 0, y: 0 }}
-                end={{ x: 1, y: 1 }}
-                style={StyleSheet.absoluteFillObject}
-                pointerEvents="none"
-              />
-              <View style={styles.rankBannerBody}>
-                <ThemedText style={styles.rankCardsBannerTitle}>Rank Cards</ThemedText>
-                <ThemedText style={styles.rankCardsBannerSubtext}>
-                  Tap to view your stacked cards
-                </ThemedText>
-                {/* Rank pills */}
-                <View style={styles.rankPillRow}>
-                  {userGames.map((game) => {
-                    const isLol = game.name === 'League of Legends';
-                    const isVal = game.name === 'Valorant';
-                    const gameIcon = isLol
-                      ? require('@/assets/images/lol-icon.png')
-                      : isVal
-                        ? require('@/assets/images/valorant-red.png')
-                        : require('@/assets/images/tft.png');
-                    const rankIcon = getRankIconForPill(game.rank, game.name);
-                    const rankShort = game.rank && game.rank !== 'Unranked'
-                      ? game.rank.split(' ').map((w: string, i: number) => i === 0 ? w.charAt(0).toUpperCase() + w.slice(1).toLowerCase() : w).join(' ')
-                      : 'Unranked';
-                    return (
-                      <View key={game.id} style={styles.rankPill}>
-                        <Image source={gameIcon} style={styles.rankPillGameIcon} resizeMode="contain" />
-                        <ThemedText style={styles.rankPillRank}>{rankShort}</ThemedText>
-                        <Image source={rankIcon} style={styles.rankPillRankIcon} resizeMode="contain" />
-                      </View>
-                    );
-                  })}
+            <View style={styles.rankCardsPreview}>
+              {/* Header */}
+              <View style={styles.rankCardsPreviewHeader}>
+                <View style={styles.rankCardsPreviewHeaderLeft}>
+                  <ThemedText style={styles.rankCardsPreviewTitle}>Rank Cards</ThemedText>
+                  <IconSymbol size={16} name="sparkle" color="rgba(255,255,255,0.4)" />
                 </View>
+                <TouchableOpacity
+                  onPress={() => router.push('/profilePages/rankCards')}
+                  activeOpacity={0.7}
+                  style={styles.rankCardsViewAll}
+                >
+                  <ThemedText style={styles.rankCardsViewAllText}>View all</ThemedText>
+                  <IconSymbol size={14} name="arrow.right" color="#8B7FE8" />
+                </TouchableOpacity>
               </View>
+              <ThemedText style={styles.rankCardsPreviewSubtitle}>Your ranked journey</ThemedText>
 
-              <IconSymbol size={14} name="chevron.right" color="rgba(255,255,255,0.3)" />
-            </TouchableOpacity>
+              {/* Horizontal scrolling rank cards */}
+              <ScrollView
+                horizontal
+                pagingEnabled={false}
+                showsHorizontalScrollIndicator={false}
+                decelerationRate="fast"
+                snapToInterval={(screenWidth - 32) * 0.85 + 16}
+                snapToAlignment="start"
+                contentContainerStyle={styles.rankCardsScrollContent}
+                onScroll={(e) => {
+                  const index = Math.round(e.nativeEvent.contentOffset.x / ((screenWidth - 32) * 0.85 + 16));
+                  setActiveRankCardIndex(index);
+                }}
+                scrollEventThrottle={16}
+              >
+                {userGames.map((game) => (
+                  <View key={game.id} style={styles.rankCardPreviewItem}>
+                    <TouchableOpacity
+                      activeOpacity={0.9}
+                      onPress={() => router.push('/profilePages/rankCards')}
+                      style={styles.rankCardPreviewScale}
+                    >
+                      <RankCard
+                        game={game}
+                        username={user?.username || 'User'}
+                        viewOnly={true}
+                        initialFlipped={showRankCardBack}
+                      />
+                    </TouchableOpacity>
+                  </View>
+                ))}
+              </ScrollView>
+
+              {/* Dot indicators */}
+              {userGames.length > 1 && (
+                <View style={styles.rankCardsDots}>
+                  {userGames.map((game, index) => (
+                    <View
+                      key={game.id}
+                      style={[
+                        styles.rankCardsDot,
+                        index === activeRankCardIndex && styles.rankCardsDotActive,
+                      ]}
+                    />
+                  ))}
+                </View>
+              )}
+            </View>
           ) : (
             <TouchableOpacity
               style={styles.rankCardsBanner}
@@ -1430,77 +1464,150 @@ export default function ProfileScreen() {
             </TouchableOpacity>
           )}
 
-          {/* Clips Banner - Full Width */}
-          <TouchableOpacity
-            style={styles.clipsBanner}
-            onPress={() => router.push({ pathname: '/profilePages/clips', params: { userId: user?.id || '' } })}
-            activeOpacity={0.85}
-          >
-            <LinearGradient colors={['#161616', '#1a1a1a']} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={StyleSheet.absoluteFillObject} pointerEvents="none" />
-            <LinearGradient colors={['transparent', 'rgba(59,130,246,0.08)', 'transparent']} locations={[0.2, 0.5, 0.8]} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={StyleSheet.absoluteFillObject} pointerEvents="none" />
-            <View style={styles.clipsBannerLeft}>
-              <ThemedText style={styles.clipsBannerTitle}>Clips</ThemedText>
-              <ThemedText style={styles.clipsBannerCount}>{posts.length} {posts.length === 1 ? 'clip' : 'clips'}</ThemedText>
-              {posts.length > 0 && (() => {
-                const latest = posts[0];
-                const now = new Date();
-                const date = latest.createdAt?.toDate?.() || new Date();
-                const diffMs = now.getTime() - date.getTime();
-                const diffMins = Math.floor(diffMs / 60000);
-                const diffHours = Math.floor(diffMs / 3600000);
-                const diffDays = Math.floor(diffMs / 86400000);
-                let timeAgo = '';
-                if (diffMins < 1) timeAgo = 'just now';
-                else if (diffMins < 60) timeAgo = `${diffMins}m ago`;
-                else if (diffHours < 24) timeAgo = `${diffHours}h ago`;
-                else if (diffDays < 30) timeAgo = `${diffDays}d ago`;
-                else timeAgo = `${Math.floor(diffDays / 30)}mo ago`;
-                const game = latest.taggedGame === 'valorant' ? 'Valorant'
-                  : latest.taggedGame === 'league' ? 'League'
-                  : latest.taggedGame || '';
-                return (
-                  <View style={styles.miniBannerRecentPill}>
-                    <ThemedText style={styles.miniBannerRecentText} numberOfLines={1}>
-                      {timeAgo}{game ? ` · ${game}` : ''}
-                    </ThemedText>
-                  </View>
-                );
-              })()}
-            </View>
-            {/* Thumbnail previews */}
-            <View style={styles.clipsThumbnailRow}>
-              {posts.slice(0, 2).map((post) => (
-                <View key={post.id} style={styles.clipsThumbnailWrap}>
-                  <Image
-                    source={{ uri: post.thumbnailUrl || post.mediaUrl }}
-                    style={styles.clipsThumbnailImg}
-                    resizeMode="cover"
-                  />
-                </View>
-              ))}
-              {posts.length === 0 && (
-                <View style={[styles.clipsThumbnailWrap, styles.clipsThumbnailEmpty]}>
-                  <IconSymbol size={20} name="video.fill" color="rgba(255,255,255,0.2)" />
-                </View>
+          {/* Clips Section */}
+          <View style={styles.clipsSection}>
+            {/* Clips Header */}
+            <View style={styles.clipsSectionHeader}>
+              <View style={styles.clipsSectionHeaderLeft}>
+                <ThemedText style={styles.clipsSectionTitle}>Clips</ThemedText>
+                <IconSymbol size={18} name="film" color="rgba(255,255,255,0.4)" />
+              </View>
+              {posts.length > 0 && (
+                <TouchableOpacity
+                  onPress={() => router.push({ pathname: '/profilePages/clips', params: { userId: user?.id || '' } })}
+                  activeOpacity={0.7}
+                  style={styles.clipsViewAll}
+                >
+                  <ThemedText style={styles.clipsViewAllText}>View all</ThemedText>
+                  <IconSymbol size={14} name="arrow.right" color="#8B7FE8" />
+                </TouchableOpacity>
               )}
             </View>
-            <IconSymbol size={14} name="chevron.right" color="rgba(255,255,255,0.3)" />
-          </TouchableOpacity>
 
-          {/* Achievements Banner */}
-          <TouchableOpacity
-            style={styles.achievementsBanner}
-            onPress={() => router.push({ pathname: '/profilePages/achievementsBadges', params: { userId: user?.id || '' } })}
-            activeOpacity={0.85}
-          >
-            <LinearGradient colors={['#161616', '#1a1a1a']} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={StyleSheet.absoluteFillObject} pointerEvents="none" />
-            <LinearGradient colors={['transparent', 'rgba(212,168,67,0.08)', 'transparent']} locations={[0.2, 0.5, 0.8]} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={StyleSheet.absoluteFillObject} pointerEvents="none" />
-            <View style={{ flex: 1 }}>
-              <ThemedText style={styles.clipsBannerTitle}>Achievements</ThemedText>
-              <ThemedText style={styles.clipsBannerCount}>{achievements.length} {achievements.length === 1 ? 'badge' : 'badges'}</ThemedText>
+            {posts.length > 0 ? (
+              <View style={styles.clipsGrid}>
+                {/* Featured large clip */}
+                <View style={styles.clipsFeatured}>
+                  <TouchableOpacity
+                    style={StyleSheet.absoluteFillObject}
+                    onPress={() => router.push({ pathname: '/postViewer', params: { postId: posts[0].id } })}
+                    activeOpacity={0.85}
+                  >
+                    <Image
+                      source={{ uri: posts[0].thumbnailUrl || posts[0].mediaUrl }}
+                      style={StyleSheet.absoluteFillObject}
+                      resizeMode="cover"
+                    />
+                    <View style={styles.clipOverlay}>
+                      <View style={styles.clipPlayButton}>
+                        <IconSymbol size={16} name="play.fill" color="#fff" />
+                      </View>
+                      {posts[0].duration != null && (
+                        <View style={styles.clipDuration}>
+                          <ThemedText style={styles.clipDurationText}>
+                            {Math.floor(posts[0].duration / 60)}:{String(Math.floor(posts[0].duration % 60)).padStart(2, '0')}
+                          </ThemedText>
+                        </View>
+                      )}
+                    </View>
+                  </TouchableOpacity>
+                </View>
+
+                {/* Right side stacked clips */}
+                <View style={styles.clipsStack}>
+                  {posts.slice(1, 3).map((post) => (
+                    <View key={post.id} style={styles.clipsStackItem}>
+                      <TouchableOpacity
+                        style={StyleSheet.absoluteFillObject}
+                        onPress={() => router.push({ pathname: '/postViewer', params: { postId: post.id } })}
+                        activeOpacity={0.85}
+                      >
+                        <Image
+                          source={{ uri: post.thumbnailUrl || post.mediaUrl }}
+                          style={StyleSheet.absoluteFillObject}
+                          resizeMode="cover"
+                        />
+                        <View style={styles.clipsStackThumbOverlay}>
+                          <View style={styles.clipPlayButtonSmall}>
+                            <IconSymbol size={10} name="play.fill" color="#fff" />
+                          </View>
+                          {post.duration != null && (
+                            <View style={styles.clipDurationSmall}>
+                              <ThemedText style={styles.clipDurationTextSmall}>
+                                {Math.floor(post.duration / 60)}:{String(Math.floor(post.duration % 60)).padStart(2, '0')}
+                              </ThemedText>
+                            </View>
+                          )}
+                        </View>
+                      </TouchableOpacity>
+                    </View>
+                  ))}
+                </View>
+              </View>
+            ) : (
+              <View style={styles.clipsEmpty}>
+                <IconSymbol size={24} name="video.fill" color="rgba(255,255,255,0.2)" />
+                <ThemedText style={styles.clipsEmptyText}>No clips yet</ThemedText>
+              </View>
+            )}
+          </View>
+
+          {/* Achievements Section */}
+          <View style={styles.achievementsSection}>
+            {/* Header */}
+            <View style={styles.achievementsSectionHeader}>
+              <View style={styles.achievementsSectionHeaderLeft}>
+                <ThemedText style={styles.achievementsSectionTitle}>Achievements</ThemedText>
+                <IconSymbol size={18} name="trophy" color="rgba(255,255,255,0.4)" />
+              </View>
+              <TouchableOpacity
+                onPress={() => router.push({ pathname: '/profilePages/achievementsBadges', params: { userId: user?.id || '' } })}
+                activeOpacity={0.7}
+                style={styles.achievementsViewAll}
+              >
+                <ThemedText style={styles.achievementsViewAllText}>View all</ThemedText>
+                <IconSymbol size={14} name="arrow.right" color="#8B7FE8" />
+              </TouchableOpacity>
             </View>
-            <IconSymbol size={14} name="chevron.right" color="rgba(255,255,255,0.3)" />
-          </TouchableOpacity>
+
+            {/* Badge cards row */}
+            <View style={styles.achievementsBadgeRow}>
+              {achievements.slice(0, 4).map((achievement, index) => {
+                const isGold = achievement.placement === 1;
+                const isSilver = achievement.placement === 2;
+                const medal = isGold ? '\u{1F947}' : isSilver ? '\u{1F948}' : '\u{1F949}';
+                const placementLabel = isGold ? '1st Place' : isSilver ? '2nd Place' : '3rd Place';
+                return (
+                  <TouchableOpacity
+                    key={index}
+                    style={styles.achievementCard}
+                    onPress={() => router.push({ pathname: '/profilePages/achievementsBadges', params: { userId: user?.id || '' } })}
+                    activeOpacity={0.85}
+                  >
+                    <View style={styles.achievementCardIcon}>
+                      <ThemedText style={styles.achievementCardEmoji}>{medal}</ThemedText>
+                    </View>
+                    <ThemedText style={styles.achievementCardName} numberOfLines={1}>
+                      {achievement.partyName}
+                    </ThemedText>
+                    <ThemedText style={styles.achievementCardDesc} numberOfLines={1}>
+                      {placementLabel}
+                    </ThemedText>
+                  </TouchableOpacity>
+                );
+              })}
+              {/* Locked placeholder cards */}
+              {achievements.length < 4 && Array.from({ length: 4 - achievements.length }).map((_, i) => (
+                <View key={`locked-${i}`} style={[styles.achievementCard, styles.achievementCardLocked]}>
+                  <View style={styles.achievementCardIconLocked}>
+                    <IconSymbol size={20} name="lock.fill" color="rgba(255,255,255,0.2)" />
+                  </View>
+                  <ThemedText style={styles.achievementCardNameLocked}>Locked</ThemedText>
+                  <ThemedText style={styles.achievementCardDescLocked}>Keep playing</ThemedText>
+                </View>
+              ))}
+            </View>
+          </View>
           </>
           )}
         </View>
@@ -1906,15 +2013,15 @@ const styles = StyleSheet.create({
   },
   editProfileButton: {
     flex: 1,
-    paddingVertical: 12,
+    paddingVertical: 8,
     backgroundColor: '#2a2a2a',
-    borderRadius: 25,
+    borderRadius: 20,
     alignItems: 'center',
     justifyContent: 'center',
   },
   editProfileButtonText: {
-    fontSize: 15,
-    fontWeight: '700',
+    fontSize: 13,
+    fontWeight: '600',
     color: '#fff',
   },
   socialIconsGroup: {
@@ -2072,9 +2179,6 @@ const styles = StyleSheet.create({
   sectionContainer: {
     marginHorizontal: 0,
     marginBottom: 4,
-  },
-  clipsSection: {
-    marginBottom: 8,
   },
   rankCardsSection: {
     marginBottom: 8,
@@ -2275,69 +2379,223 @@ const styles = StyleSheet.create({
     marginTop: 10,
     marginBottom: 16,
   },
-  clipsBanner: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: '#161616',
-    borderRadius: 14,
-    paddingVertical: 14,
-    paddingHorizontal: 14,
+  clipsSection: {
     marginHorizontal: 16,
     marginTop: 10,
-    gap: 12,
-    borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.1)',
-    overflow: 'hidden',
   },
-  clipsBannerLeft: {
-    flex: 1,
+  clipsSectionHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: 10,
   },
-  clipsBannerTitle: {
-    fontSize: 16,
+  clipsSectionHeaderLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  clipsSectionTitle: {
+    fontSize: 18,
     fontWeight: '700',
     color: '#fff',
-    marginBottom: 2,
   },
-  clipsBannerCount: {
-    fontSize: 12,
-    color: 'rgba(255,255,255,0.4)',
-    fontWeight: '500',
-  },
-  clipsThumbnailRow: {
-    flexDirection: 'column',
+  clipsViewAll: {
+    flexDirection: 'row',
+    alignItems: 'center',
     gap: 4,
   },
-  clipsThumbnailWrap: {
-    width: 70,
-    height: 42,
-    borderRadius: 6,
+  clipsViewAllText: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: '#8B7FE8',
+  },
+  clipsGrid: {
+    flexDirection: 'row',
+    gap: 6,
+    height: 170,
+  },
+  clipsFeatured: {
+    flex: 2,
+    borderRadius: 12,
     overflow: 'hidden',
     backgroundColor: '#222',
-    borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.12)',
   },
-  clipsThumbnailImg: {
-    width: '100%',
-    height: '100%',
+  clipOverlay: {
+    ...StyleSheet.absoluteFillObject,
+    justifyContent: 'flex-end',
+    padding: 10,
   },
-  clipsThumbnailEmpty: {
+  clipPlayButton: {
+    position: 'absolute',
+    bottom: 10,
+    left: 10,
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    backgroundColor: 'rgba(0,0,0,0.6)',
     alignItems: 'center',
     justifyContent: 'center',
   },
-  achievementsBanner: {
+  clipDuration: {
+    position: 'absolute',
+    bottom: 10,
+    right: 10,
+    backgroundColor: 'rgba(0,0,0,0.6)',
+    borderRadius: 4,
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+  },
+  clipDurationText: {
+    fontSize: 11,
+    fontWeight: '600',
+    color: '#fff',
+  },
+  clipsStack: {
+    flex: 1,
+    gap: 6,
+  },
+  clipsStackItem: {
+    flex: 1,
+    borderRadius: 10,
+    overflow: 'hidden',
+    backgroundColor: '#222',
+  },
+  clipsStackThumbOverlay: {
+    ...StyleSheet.absoluteFillObject,
+    justifyContent: 'flex-end',
+    padding: 6,
+  },
+  clipPlayButtonSmall: {
+    position: 'absolute',
+    bottom: 6,
+    left: 6,
+    width: 22,
+    height: 22,
+    borderRadius: 11,
+    backgroundColor: 'rgba(0,0,0,0.6)',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  clipDurationSmall: {
+    position: 'absolute',
+    bottom: 6,
+    right: 6,
+    backgroundColor: 'rgba(0,0,0,0.6)',
+    borderRadius: 4,
+    paddingHorizontal: 5,
+    paddingVertical: 1,
+  },
+  clipDurationTextSmall: {
+    fontSize: 10,
+    fontWeight: '600',
+    color: '#fff',
+  },
+  clipsEmpty: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 30,
+    backgroundColor: '#161616',
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.08)',
+    gap: 8,
+  },
+  clipsEmptyText: {
+    fontSize: 13,
+    color: 'rgba(255,255,255,0.3)',
+  },
+  achievementsSection: {
+    marginHorizontal: 16,
+    marginTop: 28,
+    marginBottom: 16,
+  },
+  achievementsSectionHeader: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#161616',
+    justifyContent: 'space-between',
+    marginBottom: 10,
+  },
+  achievementsSectionHeaderLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  achievementsSectionTitle: {
+    fontSize: 18,
+    fontWeight: '700',
+    color: '#fff',
+  },
+  achievementsViewAll: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+  },
+  achievementsViewAllText: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: '#8B7FE8',
+  },
+  achievementsBadgeRow: {
+    flexDirection: 'row',
+    gap: 8,
+  },
+  achievementCard: {
+    flex: 1,
+    alignItems: 'center',
+    backgroundColor: 'rgba(255,255,255,0.04)',
     borderRadius: 14,
     paddingVertical: 14,
-    paddingHorizontal: 14,
-    marginHorizontal: 16,
-    marginTop: 8,
-    marginBottom: 16,
-    gap: 12,
+    paddingHorizontal: 4,
     borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.1)',
-    overflow: 'hidden',
+    borderColor: 'rgba(255,255,255,0.08)',
+  },
+  achievementCardLocked: {
+    opacity: 0.5,
+  },
+  achievementCardIcon: {
+    width: 48,
+    height: 48,
+    borderRadius: 12,
+    backgroundColor: 'rgba(255,255,255,0.06)',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 8,
+  },
+  achievementCardIconLocked: {
+    width: 48,
+    height: 48,
+    borderRadius: 12,
+    backgroundColor: 'rgba(255,255,255,0.04)',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 8,
+  },
+  achievementCardEmoji: {
+    fontSize: 24,
+  },
+  achievementCardName: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: '#fff',
+    textAlign: 'center',
+    marginBottom: 2,
+  },
+  achievementCardDesc: {
+    fontSize: 10,
+    color: 'rgba(255,255,255,0.4)',
+    textAlign: 'center',
+  },
+  achievementCardNameLocked: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: 'rgba(255,255,255,0.3)',
+    textAlign: 'center',
+    marginBottom: 2,
+  },
+  achievementCardDescLocked: {
+    fontSize: 10,
+    color: 'rgba(255,255,255,0.2)',
+    textAlign: 'center',
   },
   miniBanner: {
     flex: 1,
@@ -2398,35 +2656,75 @@ const styles = StyleSheet.create({
     top: 16,
     right: 14,
   },
-  rankCardsBanner: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: '#161616',
-    borderRadius: 14,
-    paddingVertical: 14,
-    paddingHorizontal: 14,
-    marginHorizontal: 16,
+  rankCardsPreview: {
     marginTop: 16,
     marginBottom: 4,
-    gap: 12,
-    borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.1)',
-    overflow: 'hidden',
   },
-  rankBannerBody: {
-    flex: 1,
-  },
-  rankCardsBannerTitle: {
-    fontSize: 16,
-    fontWeight: '700',
-    color: '#fff',
+  rankCardsPreviewHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: 16,
     marginBottom: 2,
   },
-  rankCardsBannerSubtext: {
-    fontSize: 12,
+  rankCardsPreviewHeaderLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  rankCardsPreviewTitle: {
+    fontSize: 18,
+    fontWeight: '700',
+    color: '#fff',
+  },
+  rankCardsPreviewSubtitle: {
+    fontSize: 13,
     color: 'rgba(255,255,255,0.4)',
-    fontWeight: '500',
-    marginBottom: 10,
+    paddingHorizontal: 16,
+    marginBottom: 12,
+  },
+  rankCardsViewAll: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+  },
+  rankCardsViewAllText: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: '#8B7FE8',
+  },
+  rankCardsScrollContent: {
+    paddingHorizontal: 16,
+    gap: 16,
+  },
+  rankCardPreviewItem: {
+    width: (screenWidth - 32) * 0.85,
+    height: 220 * 0.85,
+  },
+  rankCardPreviewScale: {
+    width: screenWidth - 32,
+    height: 220,
+    transform: [{ scale: 0.85 }],
+    marginTop: -220 * 0.075,
+    marginLeft: -(screenWidth - 32) * 0.075,
+  },
+  rankCardsDots: {
+    flexDirection: 'row',
+    justifyContent: 'center',
+    alignItems: 'center',
+    gap: 6,
+    marginTop: 12,
+  },
+  rankCardsDot: {
+    width: 6,
+    height: 6,
+    borderRadius: 3,
+    backgroundColor: 'rgba(255,255,255,0.2)',
+  },
+  rankCardsDotActive: {
+    width: 18,
+    borderRadius: 3,
+    backgroundColor: '#8B7FE8',
   },
   rankPillRow: {
     flexDirection: 'row',
@@ -2796,9 +3094,6 @@ const styles = StyleSheet.create({
   socialNotConfigured: {
     borderColor: '#424549',
     opacity: 0.5,
-  },
-  achievementsSection: {
-    marginBottom: 8,
   },
   achievementsList: {
     paddingHorizontal: 20,

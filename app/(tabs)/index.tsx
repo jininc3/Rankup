@@ -43,7 +43,6 @@ const ScalePress = ({ onPress, style, children, disabled, activeOpacity, hitSlop
       onPress={onPress}
       onPressIn={handlePressIn}
       onPressOut={handlePressOut}
-      style={style}
       disabled={disabled}
       activeOpacity={activeOpacity ?? 1}
       hitSlop={hitSlop}
@@ -1265,9 +1264,9 @@ export default function HomeScreen() {
           <LinearGradient
             colors={[
               'transparent',
-              'rgba(255, 255, 255, 0.03)',
-              'rgba(255, 255, 255, 0.065)',
-              'rgba(255, 255, 255, 0.03)',
+              'rgba(139, 127, 232, 0.03)',
+              'rgba(139, 127, 232, 0.06)',
+              'rgba(139, 127, 232, 0.03)',
               'transparent',
             ]}
             locations={[0, 0.37, 0.5, 0.63, 1]}
@@ -1281,7 +1280,7 @@ export default function HomeScreen() {
           <LinearGradient
             colors={[
               'transparent',
-              'rgba(255, 255, 255, 0.035)',
+              'rgba(139, 127, 232, 0.035)',
               'transparent',
             ]}
             locations={[0, 0.5, 1]}
@@ -1293,20 +1292,23 @@ export default function HomeScreen() {
       </View>
 
       <View style={[styles.header, { paddingTop: insets.top - 10 }]}>
-        <TouchableOpacity
-          onPress={() => setShowTabDropdown(!showTabDropdown)}
-          activeOpacity={0.7}
-          style={styles.headerDropdownTrigger}
-        >
-          <ThemedText style={styles.headerTitle}>
-            {activeTab === 'forYou' ? 'FOR YOU' : 'FOLLOWING'}
-          </ThemedText>
-          <IconSymbol
-            size={14}
-            name={showTabDropdown ? 'chevron.up' : 'chevron.down'}
-            color="#fff"
-          />
-        </TouchableOpacity>
+        <View>
+          <TouchableOpacity
+            onPress={() => setShowTabDropdown(!showTabDropdown)}
+            activeOpacity={0.7}
+            style={styles.headerDropdownTrigger}
+          >
+            <ThemedText style={styles.headerTitle}>
+              {activeTab === 'forYou' ? 'For You' : 'Following'}
+            </ThemedText>
+            <IconSymbol
+              size={14}
+              name={showTabDropdown ? 'chevron.up' : 'chevron.down'}
+              color="#8B7FE8"
+            />
+          </TouchableOpacity>
+          <ThemedText style={styles.headerSubtitle}>Discover clips, players & moments</ThemedText>
+        </View>
         <View style={styles.headerActions}>
             <ScalePress
               style={styles.headerIconButton}
@@ -1667,10 +1669,17 @@ const styles = StyleSheet.create({
     zIndex: 100,
   },
   headerTitle: {
-    fontSize: 22,
-    fontWeight: '600',
+    fontSize: 28,
+    fontWeight: '700',
     color: '#fff',
-    letterSpacing: 0.3,
+    letterSpacing: -0.5,
+    lineHeight: 34,
+  },
+  headerSubtitle: {
+    fontSize: 13,
+    fontWeight: '400',
+    color: '#888',
+    marginTop: 2,
   },
   headerDropdownTrigger: {
     flexDirection: 'row',
@@ -1706,8 +1715,8 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(255, 255, 255, 0.03)',
   },
   tabDropdownCardActive: {
-    borderColor: 'rgba(255, 255, 255, 0.2)',
-    backgroundColor: 'rgba(255, 255, 255, 0.07)',
+    borderColor: 'rgba(139, 127, 232, 0.3)',
+    backgroundColor: 'rgba(139, 127, 232, 0.08)',
   },
   tabDropdownCardText: {
     fontSize: 15,
@@ -1795,7 +1804,7 @@ const styles = StyleSheet.create({
     gap: 8,
     paddingHorizontal: 16,
     marginTop: 4,
-    marginBottom: 6,
+    marginBottom: 12,
   },
   gameFilterPill: {
     flexDirection: 'row',
@@ -1805,7 +1814,8 @@ const styles = StyleSheet.create({
     paddingHorizontal: 12,
     borderRadius: 16,
     backgroundColor: 'transparent',
-    borderWidth: 0,
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.1)',
     flexShrink: 0,
   },
   gameFilterPillInner: {
@@ -1814,8 +1824,8 @@ const styles = StyleSheet.create({
     gap: 6,
   },
   gameFilterPillActive: {
-    backgroundColor: 'transparent',
-    borderColor: 'transparent',
+    backgroundColor: 'rgba(139, 127, 232, 0.1)',
+    borderColor: 'rgba(139, 127, 232, 0.3)',
   },
   gameFilterIcon: {
     width: 18,
@@ -2081,11 +2091,11 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.1)',
-    shadowColor: '#fff',
+    borderColor: 'rgba(139, 127, 232, 0.25)',
+    shadowColor: '#8B7FE8',
     shadowOffset: { width: 0, height: 0 },
-    shadowOpacity: 0.08,
-    shadowRadius: 8,
+    shadowOpacity: 0.2,
+    shadowRadius: 10,
     elevation: 4,
   },
 });
