@@ -175,11 +175,49 @@ const getRankIcon = (rank: string, game: string) => {
   return VALORANT_RANK_ICONS[fullKey] || VALORANT_RANK_ICONS[tier] || VALORANT_RANK_ICONS.unranked;
 };
 
+const getTierColor = (rank: string, game: string): string => {
+  if (!rank || rank === 'Unranked') return 'rgba(255,255,255,0.1)';
+
+  const tier = rank.split(' ')[0].toLowerCase();
+
+  if (game === 'League' || game === 'League of Legends') {
+    // League tier colors
+    const leagueColors: { [key: string]: string } = {
+      iron: 'rgba(110, 105, 100, 0.6)',
+      bronze: 'rgba(158, 105, 70, 0.6)',
+      silver: 'rgba(180, 190, 200, 0.6)',
+      gold: 'rgba(230, 180, 70, 0.6)',
+      platinum: 'rgba(70, 160, 150, 0.6)',
+      emerald: 'rgba(50, 200, 130, 0.6)',
+      diamond: 'rgba(130, 150, 230, 0.6)',
+      master: 'rgba(180, 100, 230, 0.6)',
+      grandmaster: 'rgba(230, 80, 90, 0.6)',
+      challenger: 'rgba(240, 200, 100, 0.6)',
+    };
+    return leagueColors[tier] || 'rgba(255,255,255,0.1)';
+  } else {
+    // Valorant tier colors
+    const valorantColors: { [key: string]: string } = {
+      iron: 'rgba(110, 105, 100, 0.6)',
+      bronze: 'rgba(158, 105, 70, 0.6)',
+      silver: 'rgba(180, 190, 200, 0.6)',
+      gold: 'rgba(230, 180, 70, 0.6)',
+      platinum: 'rgba(70, 160, 150, 0.6)',
+      diamond: 'rgba(180, 120, 230, 0.6)',
+      ascendant: 'rgba(100, 230, 150, 0.6)',
+      immortal: 'rgba(230, 80, 90, 0.6)',
+      radiant: 'rgba(255, 230, 150, 0.6)',
+    };
+    return valorantColors[tier] || 'rgba(255,255,255,0.1)';
+  }
+};
+
 function DuoCard({ duo, onPress, onMessage, onViewProfile, onDisable, noShadow }: DuoCardProps) {
   const game = duo.game || 'Valorant';
   const isLeague = game === 'League' || game === 'League of Legends';
   const gameLogo = GAME_LOGOS[game];
   const currentRankIcon = getRankIcon(duo.currentRank, game);
+  const tierColor = getTierColor(duo.currentRank, game);
   const agentIcon = !isLeague && duo.favoriteAgent
     ? VALORANT_AGENT_ICONS[duo.favoriteAgent.toLowerCase()] || null
     : null;
@@ -199,12 +237,19 @@ function DuoCard({ duo, onPress, onMessage, onViewProfile, onDisable, noShadow }
 
   return (
     <View style={duo.disabled ? styles.disabledWrapper : undefined}>
-    <TouchableOpacity style={[styles.card, duo.isOwnPost && styles.ownCard, duo.disabled && styles.disabledCard]} onPress={onPress} activeOpacity={0.8}>
+    <TouchableOpacity style={[styles.card, duo.isOwnPost && styles.ownCard, duo.disabled && styles.disabledCard, { borderColor: tierColor }]} onPress={onPress} activeOpacity={0.8}>
+      {/* Tier accent bar */}
+      <View style={[styles.tierAccent, { backgroundColor: tierColor }]} />
       {/* Top section */}
       <View style={styles.topSection}>
         {/* Name row */}
         <View style={styles.nameRow}>
-          <View style={styles.avatarWrap}>
+          <TouchableOpacity
+            style={styles.avatarWrap}
+            onPress={onViewProfile}
+            activeOpacity={0.7}
+            disabled={!onViewProfile}
+          >
             {duo.inGameIcon ? (
               <Image source={{ uri: duo.inGameIcon }} style={styles.avatarImg} />
             ) : duo.avatar && duo.avatar.startsWith('http') ? (
@@ -214,13 +259,18 @@ function DuoCard({ duo, onPress, onMessage, onViewProfile, onDisable, noShadow }
                 {(duo.inGameName || duo.username)[0].toUpperCase()}
               </ThemedText>
             )}
-          </View>
-          <View style={styles.nameCol}>
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={styles.nameCol}
+            onPress={onViewProfile}
+            activeOpacity={0.7}
+            disabled={!onViewProfile}
+          >
             <ThemedText style={styles.name} numberOfLines={1}>{duo.inGameName || duo.username}</ThemedText>
             {duo.createdAt && (
               <ThemedText style={styles.time}>{formatTimeAgo(duo.createdAt)}</ThemedText>
             )}
-          </View>
+          </TouchableOpacity>
           {gameLogo && (
             <Image
               source={gameLogo}
@@ -278,41 +328,37 @@ function DuoCard({ duo, onPress, onMessage, onViewProfile, onDisable, noShadow }
           )}
         </View>
 
-        {/* Message */}
-        {duo.message ? (
-          <ThemedText
-            style={styles.message}
-            numberOfLines={2}
-            ellipsizeMode="tail"
-          >
-            {duo.message}
-          </ThemedText>
-        ) : null}
+        {/* Message with inline message button */}
+        {(duo.message || (!duo.isOwnPost && onMessage)) && (
+          <View style={styles.messageRow}>
+            {duo.message && (
+              <ThemedText
+                style={styles.message}
+                numberOfLines={2}
+                ellipsizeMode="tail"
+              >
+                {duo.message}
+              </ThemedText>
+            )}
+            {!duo.isOwnPost && onMessage && (
+              <TouchableOpacity style={styles.messageButton} onPress={onMessage} activeOpacity={0.7}>
+                <ThemedText style={styles.messageButtonText}>Message</ThemedText>
+              </TouchableOpacity>
+            )}
+          </View>
+        )}
       </View>
 
-      {/* Bottom section — dark actions */}
-      <View style={styles.bottomSection}>
-        {duo.isOwnPost && onDisable ? (
-          <TouchableOpacity style={styles.bottomBtn} onPress={onDisable} activeOpacity={0.7}>
+      {/* Bottom section — only for own posts */}
+      {duo.isOwnPost && onDisable && (
+        <View style={styles.bottomSection}>
+          <TouchableOpacity style={styles.disableBtn} onPress={onDisable} activeOpacity={0.7}>
             <ThemedText style={duo.disabled ? styles.enableActionText : styles.disableActionText}>
               {duo.disabled ? 'Enable Duo Card' : 'Disable Duo Card'}
             </ThemedText>
           </TouchableOpacity>
-        ) : (
-          <>
-            {onViewProfile && (
-              <TouchableOpacity style={styles.bottomBtn} onPress={onViewProfile} activeOpacity={0.7}>
-                <ThemedText style={styles.bottomBtnText}>Profile</ThemedText>
-              </TouchableOpacity>
-            )}
-            {onMessage && (
-              <TouchableOpacity style={[styles.bottomBtn, styles.messageBtn]} onPress={onMessage} activeOpacity={0.7}>
-                <ThemedText style={styles.messageBtnText}>Message</ThemedText>
-              </TouchableOpacity>
-            )}
-          </>
-        )}
-      </View>
+        </View>
+      )}
     </TouchableOpacity>
     </View>
   );
@@ -328,6 +374,15 @@ const styles = StyleSheet.create({
     backgroundColor: '#161616',
     borderWidth: 1,
     borderColor: 'rgba(255,255,255,0.04)',
+    position: 'relative',
+  },
+  tierAccent: {
+    position: 'absolute',
+    left: 0,
+    top: 0,
+    bottom: 0,
+    width: 4,
+    zIndex: 1,
   },
   ownCard: {
     borderColor: 'rgba(255,255,255,0.18)',
@@ -462,51 +517,49 @@ const styles = StyleSheet.create({
     color: '#888',
     letterSpacing: 0.6,
   },
-  // Message
+  // Message row with inline button
+  messageRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
   message: {
+    flex: 1,
     fontSize: 13,
     color: '#888',
     lineHeight: 18,
-    textAlign: 'center',
     maxHeight: 36,
     overflow: 'hidden',
   },
-  // Bottom action row
-  bottomSection: {
-    flexDirection: 'row',
-    alignItems: 'center',
+  messageButton: {
+    paddingVertical: 6,
     paddingHorizontal: 12,
-    paddingTop: 4,
-    paddingBottom: 12,
-    gap: 8,
-  },
-  bottomBtn: {
-    flex: 1,
+    borderRadius: 14,
+    backgroundColor: 'rgba(139, 127, 232, 0.12)',
+    borderWidth: 1,
+    borderColor: 'rgba(139, 127, 232, 0.2)',
     alignItems: 'center',
-    paddingVertical: 12,
-    borderRadius: 20,
+    justifyContent: 'center',
+    flexShrink: 0,
+  },
+  messageButtonText: {
+    fontSize: 11,
+    fontWeight: '600',
+    color: '#fff',
+  },
+  // Bottom action row (only for own posts)
+  bottomSection: {
+    paddingHorizontal: 12,
+    paddingTop: 8,
+    paddingBottom: 8,
+  },
+  disableBtn: {
+    alignItems: 'center',
+    paddingVertical: 8,
+    borderRadius: 16,
     backgroundColor: 'rgba(255,255,255,0.06)',
     borderWidth: 1,
     borderColor: 'rgba(255,255,255,0.08)',
-  },
-  bottomBtnText: {
-    fontSize: 13,
-    fontWeight: '600',
-    color: '#bbb',
-  },
-  bottomBtnTextPrimary: {
-    fontSize: 13,
-    fontWeight: '700',
-    color: '#fff',
-  },
-  messageBtn: {
-    backgroundColor: '#1a2a4a',
-    borderColor: '#1a2a4a',
-  },
-  messageBtnText: {
-    fontSize: 13,
-    fontWeight: '700',
-    color: '#fff',
   },
   disabledWrapper: {
     opacity: 0.5,

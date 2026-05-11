@@ -336,8 +336,8 @@ export default function PostDuoCard({
                       matchPercentage: 0,
                       currentRank: valorantCard.currentRank,
                       peakRank: valorantCard.peakRank,
-                      favoriteAgent: selectedGame === 'valorant' ? selectedAgent : (valorantCard.mainAgent || ''),
-                      favoriteRole: selectedGame === 'valorant' ? selectedRole : (valorantCard.mainRole || ''),
+                      favoriteAgent: selectedGame === 'valorant' && selectedAgent ? selectedAgent : (valorantCard.mainAgent || ''),
+                      favoriteRole: selectedGame === 'valorant' && selectedRole ? selectedRole : (valorantCard.mainRole || ''),
                       winRate: valorantWinRate || 0,
                       gamesPlayed: valorantGamesPlayed || 0,
                       game: 'Valorant',
@@ -345,6 +345,7 @@ export default function PostDuoCard({
                       inGameIcon: valorantInGameIcon,
                       inGameName: valorantInGameName,
                       message: selectedGame === 'valorant' && message.trim() ? message.trim() : undefined,
+                      region: valorantCard.region,
                     }}
                   />
                 </View>
@@ -368,8 +369,8 @@ export default function PostDuoCard({
                       matchPercentage: 0,
                       currentRank: leagueCard.currentRank,
                       peakRank: leagueCard.peakRank,
-                      favoriteAgent: selectedGame === 'league' ? selectedAgent : (leagueCard.mainAgent || ''),
-                      favoriteRole: selectedGame === 'league' ? selectedRole : (leagueCard.mainRole || ''),
+                      favoriteAgent: selectedGame === 'league' && selectedAgent ? selectedAgent : (leagueCard.mainAgent || ''),
+                      favoriteRole: selectedGame === 'league' && selectedRole ? selectedRole : (leagueCard.mainRole || ''),
                       winRate: leagueWinRate || 0,
                       gamesPlayed: leagueGamesPlayed || 0,
                       game: 'League of Legends',
@@ -377,6 +378,7 @@ export default function PostDuoCard({
                       inGameIcon: leagueInGameIcon,
                       inGameName: leagueInGameName,
                       message: selectedGame === 'league' && message.trim() ? message.trim() : undefined,
+                      region: leagueCard.region,
                     }}
                   />
                 </View>

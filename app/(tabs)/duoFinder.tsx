@@ -29,6 +29,45 @@ import { doc, getDoc, setDoc, deleteDoc, updateDoc, serverTimestamp, collection,
 import { db } from '@/config/firebase';
 import { useRouter } from '@/hooks/useRouter';
 
+// Rank icons
+const VALORANT_RANK_ICONS: { [key: string]: any } = {
+  iron: require('@/assets/images/valorantranks/iron.png'),
+  bronze: require('@/assets/images/valorantranks/bronze.png'),
+  silver: require('@/assets/images/valorantranks/silver.png'),
+  gold: require('@/assets/images/valorantranks/gold.png'),
+  platinum: require('@/assets/images/valorantranks/platinum.png'),
+  diamond: require('@/assets/images/valorantranks/diamond.png'),
+  ascendant: require('@/assets/images/valorantranks/ascendant.png'),
+  immortal: require('@/assets/images/valorantranks/immortal.png'),
+  radiant: require('@/assets/images/valorantranks/radiant.png'),
+};
+
+const LEAGUE_RANK_ICONS: { [key: string]: any } = {
+  iron: require('@/assets/images/leagueranks/iron.png'),
+  bronze: require('@/assets/images/leagueranks/bronze.png'),
+  silver: require('@/assets/images/leagueranks/silver.png'),
+  gold: require('@/assets/images/leagueranks/gold.png'),
+  platinum: require('@/assets/images/leagueranks/platinum.png'),
+  emerald: require('@/assets/images/leagueranks/emerald.png'),
+  diamond: require('@/assets/images/leagueranks/diamond.png'),
+  master: require('@/assets/images/leagueranks/masters.png'),
+  grandmaster: require('@/assets/images/leagueranks/grandmaster.png'),
+  challenger: require('@/assets/images/leagueranks/challenger.png'),
+};
+
+// Get user's current rank icon
+const getRankRange = (rank: string, game: 'valorant' | 'league'): any[] => {
+  if (!rank) return [];
+
+  const tier = rank.split(' ')[0].toLowerCase();
+  const icons = game === 'valorant' ? VALORANT_RANK_ICONS : LEAGUE_RANK_ICONS;
+
+  const icon = icons[tier];
+  if (!icon) return [];
+
+  return [icon];
+};
+
 interface DuoCardWithId extends DuoCardData {
   id: string;
   userId: string;
@@ -964,13 +1003,18 @@ export default function DuoFinderScreen() {
 
       {/* Header */}
       <View style={styles.header}>
-        <ThemedText style={styles.headerTitle}>DUO FINDER</ThemedText>
+        <View>
+          <ThemedText style={styles.headerTitle}>Duo Finder</ThemedText>
+          <ThemedText style={styles.headerSubtitle}>Find your perfect duo.</ThemedText>
+        </View>
         <TouchableOpacity
-          style={styles.headerTextButton}
+          style={styles.myCardsButton}
           onPress={() => setShowMyCards(true)}
           activeOpacity={0.7}
         >
-          <ThemedText style={styles.headerTextButtonLabel}>My Cards</ThemedText>
+          <IconSymbol size={18} name="square.stack.3d.up" color="#8B7FE8" />
+          <ThemedText style={styles.myCardsButtonText}>My Cards</ThemedText>
+          <IconSymbol size={14} name="chevron.right" color="#888" />
         </TouchableOpacity>
       </View>
 
@@ -1004,42 +1048,72 @@ export default function DuoFinderScreen() {
                   onPress={() => router.push('/partyPages/liveSearch')}
                   activeOpacity={0.8}
                 >
-                  <View style={styles.liveSearchBannerLeft}>
+                  <View style={styles.liveSearchContent}>
                     <Animated.View style={[styles.liveSearchDot, { opacity: pulseAnim }]} />
-                    <View>
-                      <ThemedText style={styles.liveSearchBannerTitle}>Live Search</ThemedText>
-                      <ThemedText style={styles.liveSearchBannerSubtitle}>Find a duo in real-time</ThemedText>
+                    <View style={styles.liveSearchTextContainer}>
+                      <View style={styles.liveSearchTitleRow}>
+                        <ThemedText style={styles.liveSearchTitle}>Live Search</ThemedText>
+                        <IconSymbol size={16} name="waveform" color="#4ADE80" />
+                      </View>
+                      <ThemedText style={styles.liveSearchSubtitle}>Find players actively looking for a duo</ThemedText>
                     </View>
                   </View>
-                  <View style={styles.liveSearchBtn}>
-                    <ThemedText style={styles.liveSearchBtnText}>Search →</ThemedText>
-                  </View>
+                  {(() => {
+                    if (!valorantCard && !leagueCard) return <IconSymbol size={20} name="chevron.right" color="#4ADE80" />;
+
+                    const allRankIcons = [];
+
+                    // Add League rank icon if card exists
+                    if (leagueCard) {
+                      const leagueIcons = getRankRange(leagueCard.currentRank, leagueCard.game);
+                      allRankIcons.push(...leagueIcons);
+                    }
+
+                    // Add Valorant rank icon if card exists
+                    if (valorantCard) {
+                      const valorantIcons = getRankRange(valorantCard.currentRank, valorantCard.game);
+                      allRankIcons.push(...valorantIcons);
+                    }
+
+                    if (!allRankIcons.length) return <IconSymbol size={20} name="chevron.right" color="#4ADE80" />;
+
+                    return (
+                      <View style={styles.rankIconsContainer}>
+                        {allRankIcons.map((icon, index) => (
+                          <Image key={index} source={icon} style={styles.rankIconSmall} resizeMode="contain" />
+                        ))}
+                      </View>
+                    );
+                  })()}
                 </TouchableOpacity>
 
-                <View style={styles.feedContainer}>
-                  <View style={styles.sectionHeader}>
-                    <View style={styles.sectionHeaderLeft}>
-                      <ThemedText style={styles.sectionHeaderTitle}>FEED</ThemedText>
-                      <ThemedText style={styles.playerCount}>{duoPosts.length}</ThemedText>
+                {/* Tabs */}
+                <View style={styles.tabsWrapper}>
+                  <View style={styles.tabsContainer}>
+                    <View style={styles.tabButton}>
+                      <ThemedText style={styles.tabButtonText}>Players</ThemedText>
+                      <View style={styles.tabBadge}>
+                        <ThemedText style={styles.tabBadgeText}>{duoPosts.length}</ThemedText>
+                      </View>
                     </View>
-                    <View style={styles.headerRightSection}>
-                      <TouchableOpacity
-                        style={styles.postToFeedButton}
-                        onPress={() => setShowPostDuoCard(true)}
-                        activeOpacity={0.7}
-                      >
-                        <ThemedText style={styles.postToFeedText}>Post to Feed</ThemedText>
-                      </TouchableOpacity>
-                      <TouchableOpacity
-                        style={[styles.filterButton, activeFilterCount > 0 && styles.filterButtonActive]}
-                        onPress={() => setShowFilterModal(true)}
-                        activeOpacity={0.7}
-                      >
-                        <IconSymbol size={14} name="line.3.horizontal.decrease" color={activeFilterCount > 0 ? '#fff' : '#999'} />
-                        <ThemedText style={[styles.filterLabel, activeFilterCount > 0 && styles.filterLabelActive]}>Advanced</ThemedText>
-                      </TouchableOpacity>
-                    </View>
+                    <View style={styles.spacer} />
+                    <TouchableOpacity
+                      style={styles.postToFeedTab}
+                      onPress={() => setShowPostDuoCard(true)}
+                      activeOpacity={0.7}
+                    >
+                      <IconSymbol size={16} name="plus.circle" color="#fff" />
+                      <ThemedText style={styles.postToFeedTabText}>Post to Feed</ThemedText>
+                    </TouchableOpacity>
+                    <TouchableOpacity
+                      style={[styles.advancedFiltersTab, activeFilterCount > 0 && styles.advancedFiltersTabActive]}
+                      onPress={() => setShowFilterModal(true)}
+                      activeOpacity={0.7}
+                    >
+                      <IconSymbol size={18} name="slider.horizontal.3" color={activeFilterCount > 0 ? '#8B7FE8' : '#fff'} />
+                    </TouchableOpacity>
                   </View>
+                  <View style={styles.tabsDivider} />
                 </View>
               </View>
             }
@@ -1439,70 +1513,126 @@ const styles = StyleSheet.create({
     height: screenHeight * 1.5,
     transform: [{ rotate: '-15deg' }],
   },
-  // Header - matching leaderboard style
+  // Header
   header: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
     paddingHorizontal: 16,
     paddingTop: 56,
-    paddingBottom: 4,
+    paddingBottom: 16,
   },
   headerTitle: {
-    fontSize: 22,
-    fontWeight: '600',
+    fontSize: 28,
+    fontWeight: '700',
     color: '#fff',
-    letterSpacing: 0.3,
-    textTransform: 'uppercase',
+    letterSpacing: -0.5,
+    lineHeight: 34,
   },
-  headerTextButton: {
-    paddingVertical: 6,
-    paddingHorizontal: 14,
-    backgroundColor: 'rgba(255,255,255,0.08)',
-    borderRadius: 16,
-  },
-  headerTextButtonLabel: {
+  headerSubtitle: {
     fontSize: 13,
+    fontWeight: '400',
+    color: '#888',
+    marginTop: 2,
+  },
+  myCardsButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    paddingVertical: 8,
+    paddingHorizontal: 14,
+    backgroundColor: 'rgba(139, 127, 232, 0.12)',
+    borderRadius: 20,
+    borderWidth: 1,
+    borderColor: 'rgba(139, 127, 232, 0.2)',
+  },
+  myCardsButtonText: {
+    fontSize: 14,
     fontWeight: '600',
     color: '#fff',
   },
   // Tabs
+  tabsWrapper: {
+    marginBottom: 16,
+  },
   tabsContainer: {
+    flexDirection: 'row',
+    alignItems: 'flex-end',
+    gap: 12,
+    paddingHorizontal: 16,
+  },
+  tabButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    paddingBottom: 8,
+    borderBottomWidth: 3,
+    borderBottomColor: '#8B7FE8',
+  },
+  tabButtonText: {
+    fontSize: 16,
+    fontWeight: '700',
+    color: '#fff',
+  },
+  tabBadge: {
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    minWidth: 22,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  tabBadgeText: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: '#fff',
+  },
+  tabsDivider: {
+    height: 1,
+    backgroundColor: 'rgba(255, 255, 255, 0.1)',
+  },
+  spacer: {
+    flex: 1,
+  },
+  postToFeedTab: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 5,
+    paddingVertical: 8,
+    paddingHorizontal: 12,
+    backgroundColor: 'rgba(255, 255, 255, 0.08)',
+    borderRadius: 18,
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.12)',
+    marginBottom: 8,
+  },
+  postToFeedTabText: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: '#fff',
+  },
+  advancedFiltersTab: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    paddingHorizontal: 20,
-    paddingTop: 8,
-    paddingBottom: 4,
-    gap: 16,
+    width: 38,
+    height: 38,
+    backgroundColor: 'rgba(255, 255, 255, 0.08)',
+    borderRadius: 19,
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.12)',
+    marginBottom: 8,
   },
-  tab: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-    paddingVertical: 6,
+  advancedFiltersTabActive: {
+    backgroundColor: 'rgba(139, 127, 232, 0.12)',
+    borderColor: 'rgba(139, 127, 232, 0.2)',
   },
-  tabText: {
-    fontSize: 16,
+  advancedFiltersText: {
+    fontSize: 13,
     fontWeight: '600',
-    color: '#555',
-    letterSpacing: 0.5,
-  },
-  tabTextActive: {
-    color: '#fff',
-  },
-  tabCount: {
-    fontSize: 16,
-    fontWeight: '500',
-    color: '#444',
-  },
-  tabCountActive: {
     color: '#888',
   },
-  tabDivider: {
-    width: 1,
-    height: 12,
-    backgroundColor: '#333',
+  advancedFiltersTextActive: {
+    color: '#8B7FE8',
   },
   // Pager
   pagerContainer: {
@@ -1532,50 +1662,76 @@ const styles = StyleSheet.create({
     paddingBottom: 4,
     marginBottom: 12,
   },
+  // Live Search Banner
   liveSearchBanner: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    backgroundColor: '#161616',
-    borderRadius: 14,
+    backgroundColor: 'rgba(14, 51, 34, 0.4)',
+    borderRadius: 16,
     borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.08)',
+    borderColor: 'rgba(74, 222, 128, 0.2)',
     paddingVertical: 14,
     paddingHorizontal: 16,
-    marginBottom: 20,
+    marginHorizontal: 16,
+    marginBottom: 16,
   },
-  liveSearchBannerLeft: {
+  liveSearchContent: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 12,
+    flex: 1,
   },
   liveSearchDot: {
-    width: 10,
-    height: 10,
-    borderRadius: 5,
-    backgroundColor: '#22c55e',
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+    backgroundColor: '#4ADE80',
   },
-  liveSearchBannerTitle: {
+  liveSearchTextContainer: {
+    flex: 1,
+  },
+  liveSearchTitleRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+  },
+  liveSearchTitle: {
     fontSize: 15,
-    fontWeight: '700',
-    color: '#fff',
+    fontWeight: '600',
+    color: '#4ADE80',
   },
-  liveSearchBannerSubtitle: {
+  liveSearchSubtitle: {
     fontSize: 12,
-    color: '#666',
-    marginTop: 1,
+    color: '#888',
+    marginTop: 2,
   },
-  liveSearchBtn: {
-    borderRadius: 20,
-    paddingVertical: 9,
-    paddingHorizontal: 18,
-    backgroundColor: '#fff',
+  rankIconsColumn: {
+    flexDirection: 'column',
+    gap: 4,
   },
-  liveSearchBtnText: {
-    fontSize: 13,
-    fontWeight: '700',
-    color: '#000',
-    letterSpacing: -0.2,
+  rankIconsContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+  },
+  rankIconSmall: {
+    width: 24,
+    height: 24,
+  },
+  refineSearchButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    backgroundColor: 'rgba(255, 255, 255, 0.08)',
+    paddingVertical: 8,
+    paddingHorizontal: 12,
+    borderRadius: 16,
+  },
+  refineSearchText: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: '#fff',
   },
   feedCardWrapper: {
     marginBottom: 4,

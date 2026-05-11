@@ -568,10 +568,73 @@ export default function PostContent({
                   : post.taggedGame === 'valorant' ? post.valorantRank
                   : null;
                 if (!rank) return null;
+
+                // Get rank icon based on game and rank
+                const getRankIcon = (rank: string, game: string) => {
+                  const tier = rank.split(' ')[0].toLowerCase();
+                  const division = rank.split(' ')[1];
+                  if (game === 'valorant') {
+                    const exactKey = division ? `${tier}${division}` : tier;
+                    const valorantRanks: {[key: string]: any} = {
+                      iron: require('@/assets/images/valorantranks/iron.png'),
+                      iron1: require('@/assets/images/valorantranks/iron1.png'),
+                      iron2: require('@/assets/images/valorantranks/iron2.png'),
+                      iron3: require('@/assets/images/valorantranks/iron3.png'),
+                      bronze: require('@/assets/images/valorantranks/bronze.png'),
+                      bronze1: require('@/assets/images/valorantranks/bronze1.png'),
+                      bronze2: require('@/assets/images/valorantranks/bronze2.png'),
+                      bronze3: require('@/assets/images/valorantranks/bronze3.png'),
+                      silver: require('@/assets/images/valorantranks/silver.png'),
+                      silver1: require('@/assets/images/valorantranks/silver1.png'),
+                      silver2: require('@/assets/images/valorantranks/silver2.png'),
+                      silver3: require('@/assets/images/valorantranks/silver3.png'),
+                      gold: require('@/assets/images/valorantranks/gold.png'),
+                      gold1: require('@/assets/images/valorantranks/gold1.png'),
+                      gold2: require('@/assets/images/valorantranks/gold2.png'),
+                      gold3: require('@/assets/images/valorantranks/gold3.png'),
+                      platinum: require('@/assets/images/valorantranks/platinum.png'),
+                      platinum1: require('@/assets/images/valorantranks/platinum1.png'),
+                      platinum2: require('@/assets/images/valorantranks/platinum2.png'),
+                      platinum3: require('@/assets/images/valorantranks/platinum3.png'),
+                      diamond: require('@/assets/images/valorantranks/diamond.png'),
+                      diamond1: require('@/assets/images/valorantranks/diamond1.png'),
+                      diamond2: require('@/assets/images/valorantranks/diamond2.png'),
+                      diamond3: require('@/assets/images/valorantranks/diamond3.png'),
+                      ascendant: require('@/assets/images/valorantranks/ascendant.png'),
+                      ascendant1: require('@/assets/images/valorantranks/ascendant1.png'),
+                      ascendant2: require('@/assets/images/valorantranks/ascendant2.png'),
+                      ascendant3: require('@/assets/images/valorantranks/ascendant3.png'),
+                      immortal: require('@/assets/images/valorantranks/immortal.png'),
+                      immortal1: require('@/assets/images/valorantranks/immortal1.png'),
+                      immortal2: require('@/assets/images/valorantranks/immortal2.png'),
+                      immortal3: require('@/assets/images/valorantranks/immortal3.png'),
+                      radiant: require('@/assets/images/valorantranks/radiant.png'),
+                    };
+                    return valorantRanks[exactKey] || valorantRanks[tier];
+                  } else {
+                    const leagueRanks: {[key: string]: any} = {
+                      iron: require('@/assets/images/leagueranks/iron.png'),
+                      bronze: require('@/assets/images/leagueranks/bronze.png'),
+                      silver: require('@/assets/images/leagueranks/silver.png'),
+                      gold: require('@/assets/images/leagueranks/gold.png'),
+                      platinum: require('@/assets/images/leagueranks/platinum.png'),
+                      emerald: require('@/assets/images/leagueranks/emerald.png'),
+                      diamond: require('@/assets/images/leagueranks/diamond.png'),
+                      master: require('@/assets/images/leagueranks/masters.png'),
+                      grandmaster: require('@/assets/images/leagueranks/grandmaster.png'),
+                      challenger: require('@/assets/images/leagueranks/challenger.png'),
+                    };
+                    return leagueRanks[tier];
+                  }
+                };
+
+                const rankIcon = getRankIcon(rank, post.taggedGame || '');
+
                 return (
                   <View style={styles.rankBadge}>
+                    {rankIcon && <Image source={rankIcon} style={styles.rankBadgeIcon} resizeMode="contain" />}
                     <ThemedText style={styles.rankBadgeText}>
-                      ({formatRankDisplay(rank)})
+                      {formatRankDisplay(rank)}
                     </ThemedText>
                   </View>
                 );
@@ -901,13 +964,20 @@ const styles = StyleSheet.create({
     color: '#555',
   },
   rankBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
     paddingHorizontal: 0,
     paddingVertical: 0,
   },
+  rankBadgeIcon: {
+    width: 14,
+    height: 14,
+  },
   rankBadgeText: {
-    fontSize: 12,
-    fontWeight: '500',
-    color: '#666',
+    fontSize: 11,
+    fontWeight: '600',
+    color: '#888',
   },
   postMetaRow: {
     flexDirection: 'row',

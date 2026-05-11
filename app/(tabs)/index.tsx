@@ -48,7 +48,7 @@ const ScalePress = ({ onPress, style, children, disabled, activeOpacity, hitSlop
       activeOpacity={activeOpacity ?? 1}
       hitSlop={hitSlop}
     >
-      <Animated.View style={{ transform: [{ scale }] }}>
+      <Animated.View style={[{ transform: [{ scale }] }, style]}>
         {children}
       </Animated.View>
     </TouchableOpacity>
@@ -1392,26 +1392,27 @@ export default function HomeScreen() {
         }
       >
         {/* Game Filter Tabs */}
-        <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.gameFilterRow}>
+        <View style={styles.gameFilterRow}>
           <ScalePress onPress={() => setSelectedGameFilter(null)} style={[styles.gameFilterPill, selectedGameFilter === null && styles.gameFilterPillActive]}>
-            <View style={styles.gameFilterPillInner}>
-              {selectedGameFilter === null && <View style={styles.gameFilterDot} />}
-              <ThemedText style={[styles.gameFilterPillText, selectedGameFilter === null && styles.gameFilterPillTextActive]}>All</ThemedText>
-            </View>
-          </ScalePress>
-          <ScalePress onPress={() => setSelectedGameFilter('league')} style={[styles.gameFilterPill, selectedGameFilter === 'league' && styles.gameFilterPillActive]}>
-            <View style={styles.gameFilterPillInner}>
-              {selectedGameFilter === 'league' && <View style={styles.gameFilterDot} />}
-              <ThemedText style={[styles.gameFilterPillText, selectedGameFilter === 'league' && styles.gameFilterPillTextActive]}>League</ThemedText>
-            </View>
+            <ThemedText style={[styles.gameFilterPillText, selectedGameFilter === null && styles.gameFilterPillTextActive]}>All</ThemedText>
           </ScalePress>
           <ScalePress onPress={() => setSelectedGameFilter('valorant')} style={[styles.gameFilterPill, selectedGameFilter === 'valorant' && styles.gameFilterPillActive]}>
-            <View style={styles.gameFilterPillInner}>
-              {selectedGameFilter === 'valorant' && <View style={styles.gameFilterDot} />}
-              <ThemedText style={[styles.gameFilterPillText, selectedGameFilter === 'valorant' && styles.gameFilterPillTextActive]}>Valorant</ThemedText>
-            </View>
+            <Image
+              source={require('@/assets/images/valorant-red.png')}
+              style={styles.gameFilterIcon}
+              resizeMode="contain"
+            />
+            <ThemedText style={[styles.gameFilterPillText, selectedGameFilter === 'valorant' && styles.gameFilterPillTextActive]}>Valorant</ThemedText>
           </ScalePress>
-        </ScrollView>
+          <ScalePress onPress={() => setSelectedGameFilter('league')} style={[styles.gameFilterPill, selectedGameFilter === 'league' && styles.gameFilterPillActive]}>
+            <Image
+              source={require('@/assets/images/lol-icon.png')}
+              style={styles.gameFilterIcon}
+              resizeMode="contain"
+            />
+            <ThemedText style={[styles.gameFilterPillText, selectedGameFilter === 'league' && styles.gameFilterPillTextActive]}>League</ThemedText>
+          </ScalePress>
+        </View>
 
         {hasNewPosts && activeTab === 'following' && !loading && (
           <ScalePress
@@ -1793,15 +1794,19 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     gap: 8,
     paddingHorizontal: 16,
-    marginTop: 10,
+    marginTop: 4,
     marginBottom: 6,
   },
   gameFilterPill: {
-    paddingVertical: 8,
-    paddingHorizontal: 16,
-    borderRadius: 20,
-    borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.15)',
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    paddingVertical: 6,
+    paddingHorizontal: 12,
+    borderRadius: 16,
+    backgroundColor: 'transparent',
+    borderWidth: 0,
+    flexShrink: 0,
   },
   gameFilterPillInner: {
     flexDirection: 'row',
@@ -1809,7 +1814,12 @@ const styles = StyleSheet.create({
     gap: 6,
   },
   gameFilterPillActive: {
-    borderColor: 'rgba(255, 255, 255, 0.3)',
+    backgroundColor: 'transparent',
+    borderColor: 'transparent',
+  },
+  gameFilterIcon: {
+    width: 18,
+    height: 18,
   },
   gameFilterDot: {
     width: 6,
@@ -1818,9 +1828,9 @@ const styles = StyleSheet.create({
     backgroundColor: '#fff',
   },
   gameFilterPillText: {
-    fontSize: 14,
+    fontSize: 12,
     fontWeight: '600',
-    color: '#555',
+    color: '#888',
   },
   gameFilterPillTextActive: {
     color: '#fff',
