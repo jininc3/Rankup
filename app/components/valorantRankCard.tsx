@@ -1682,35 +1682,6 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     marginBottom: 4,
   },
-  // Blurred ambient glow container
-  backGlowBlurWrap: {
-    position: 'absolute',
-    width: 90,
-    height: 90,
-    borderRadius: 45,
-  },
-  // Colored core inside blur
-  backGlowCore: {
-    width: '100%',
-    height: '100%',
-    borderRadius: 45,
-    opacity: 0.35,
-  },
-  // Bottom glow container
-  backGlowBottomWrap: {
-    position: 'absolute',
-    bottom: -6,
-    width: 56,
-    height: 20,
-    borderRadius: 28,
-  },
-  // Colored core for bottom glow
-  backGlowBottomCore: {
-    width: '100%',
-    height: '100%',
-    borderRadius: 28,
-    opacity: 0.5,
-  },
   backRankIcon: {
     width: 58,
     height: 58,
