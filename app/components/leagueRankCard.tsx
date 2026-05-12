@@ -53,6 +53,7 @@ interface LeagueRankCardProps {
   isBackOfStack?: boolean;
   onRefresh?: () => void;
   initialFlipped?: boolean;
+  flipOnly?: boolean;
 }
 
 // League of Legends rank icon mapping
@@ -70,7 +71,7 @@ const LEAGUE_RANK_ICONS: { [key: string]: any } = {
   unranked: require('@/assets/images/leagueranks/unranked.png'),
 };
 
-export default function LeagueRankCard({ game, username, viewOnly = false, userId, isFocused = false, isBackOfStack = false, onRefresh, initialFlipped = false }: LeagueRankCardProps) {
+export default function LeagueRankCard({ game, username, viewOnly = false, userId, isFocused = false, isBackOfStack = false, onRefresh, initialFlipped = false, flipOnly = false }: LeagueRankCardProps) {
   const [isFlipped, setIsFlipped] = useState(initialFlipped);
   const [showBack, setShowBack] = useState(initialFlipped);
   const [modalVisible, setModalVisible] = useState(false);
@@ -80,6 +81,9 @@ export default function LeagueRankCard({ game, username, viewOnly = false, userI
   const [matchHistoryExpanded, setMatchHistoryExpanded] = useState(false);
   const [statsPage, setStatsPage] = useState(0);
   const [rankHistory, setRankHistory] = useState<RankHistoryEntry[]>([]);
+  const [stackShowBack, setStackShowBack] = useState(initialFlipped);
+  const stackShowBackRef = useRef(initialFlipped);
+  const stackFlipAnim = useRef(new Animated.Value(initialFlipped ? 1 : 0)).current;
 
   const cardRef = useRef<View>(null);
   const statsScrollRef = useRef<ScrollView>(null);
@@ -145,6 +149,20 @@ export default function LeagueRankCard({ game, username, viewOnly = false, userI
     outputRange: [-SCREEN_WIDTH * 1.5, SCREEN_WIDTH * 1.5],
   });
 
+  // Stack card flip listener - swap content at midpoint
+  useEffect(() => {
+    const id = stackFlipAnim.addListener(({ value }) => {
+      if (value >= 0.5 && !stackShowBackRef.current) {
+        stackShowBackRef.current = true;
+        setStackShowBack(true);
+      } else if (value < 0.5 && stackShowBackRef.current) {
+        stackShowBackRef.current = false;
+        setStackShowBack(false);
+      }
+    });
+    return () => stackFlipAnim.removeListener(id);
+  }, []);
+
   // Track showBack in a ref so the listener always reads the latest value
   const showBackRef = useRef(showBack);
   showBackRef.current = showBack;
@@ -155,6 +173,9 @@ export default function LeagueRankCard({ game, username, viewOnly = false, userI
     setShowBack(initialFlipped);
     showBackRef.current = initialFlipped;
     flipAnimation.setValue(initialFlipped ? 1 : 0);
+    setStackShowBack(initialFlipped);
+    stackShowBackRef.current = initialFlipped;
+    stackFlipAnim.setValue(initialFlipped ? 1 : 0);
   }, [initialFlipped]);
 
   // Listen to animation value to swap content at midpoint (registered once)
@@ -630,6 +651,28 @@ export default function LeagueRankCard({ game, username, viewOnly = false, userI
     Animated.multiply(slideAnimation, 80)
   );
 
+  // Stack card flip animation
+  const stackScaleY = stackFlipAnim.interpolate({
+    inputRange: [0, 0.5, 1],
+    outputRange: [1, 0, 1],
+  });
+
+  const handleStackTap = () => {
+    if (flipOnly) {
+      // Toggle flip only (profile page)
+      const toValue = stackShowBackRef.current ? 0 : 1;
+      Animated.timing(stackFlipAnim, {
+        toValue,
+        duration: 400,
+        easing: Easing.out(Easing.cubic),
+        useNativeDriver: false,
+      }).start();
+    } else {
+      // Open modal directly (rankCards page)
+      handlePress();
+    }
+  };
+
   const animatedStyle = {
     transform: [{ scaleY }],
   };
@@ -670,9 +713,8 @@ export default function LeagueRankCard({ game, username, viewOnly = false, userI
     outputRange: ['0deg', '180deg'],
   });
 
-  // Render card content
-  // Pass forceShowFront=true for the stack card so it never shows the back
-  const renderCardContent = (forceShowFront = false) => (
+  // Render card content (shared between static card and modal card)
+  const renderCardContent = (displayBack: boolean, isModal = false) => (
     <LinearGradient
       colors={['#1a1a1a', '#1e1e1e', '#222222']}
       start={{ x: 0, y: 0 }}
@@ -694,61 +736,54 @@ export default function LeagueRankCard({ game, username, viewOnly = false, userI
 
       <View style={[styles.innerBorder, { borderColor: `rgba(${rgb}, ${tierLevel === 1 ? 0.08 : tierLevel === 2 ? 0.12 : tierLevel <= 4 ? 0.18 : 0.22})` }]} />
 
-      {showBack && !forceShowFront ? (
+      {displayBack ? (
         <View style={styles.cardBackContent}>
-          <View style={[styles.techCornerTL, { borderColor: `rgba(${rgb}, 0.3)` }]} />
-          <View style={[styles.techCornerBR, { borderColor: `rgba(${rgb}, 0.3)` }]} />
-
-          {/* Header Row - Profile + Game Icon */}
-          <View style={styles.heroHeader}>
-            <View style={styles.heroProfileSection}>
-              {game.profileIconId ? (
-                <View style={styles.profileImageWrapper}>
-                  <Image
-                    source={{ uri: getProfileIconUrl(game.profileIconId) }}
-                    defaultSource={require('@/assets/images/lol.png')}
-                    style={styles.backPlayerCard}
-                  />
-                  <View style={styles.profileGlow} />
-                  {game.summonerLevel != null && (
-                    <View style={styles.levelBadge}>
-                      <ThemedText style={styles.levelBadgeText}>{game.summonerLevel}</ThemedText>
-                    </View>
-                  )}
-                </View>
-              ) : null}
-              <ThemedText style={styles.backUsername}>{username}</ThemedText>
+          {/* Header: Logo + LEAGUE | username */}
+          <View style={styles.backHeader}>
+            <View style={styles.backHeaderLeft}>
+              <View style={styles.backLogoBox}>
+                <Image source={require('@/assets/images/lol.png')} style={styles.backLogoIcon} resizeMode="contain" />
+              </View>
+              <ThemedText style={styles.backGameTitle}>LEAGUE</ThemedText>
             </View>
-            <Image
-              source={require('@/assets/images/lol.png')}
-              style={styles.backGameIcon}
-              resizeMode="contain"
-            />
+            <ThemedText style={styles.backHeaderUsername}>{username}</ThemedText>
           </View>
 
-          {/* Current Rank */}
-          <View style={styles.backRankRow}>
-            <View style={styles.backRankInfo}>
-              <ThemedText style={styles.backRankLabel}>Solo / Duo</ThemedText>
-              <ThemedText style={styles.backRankValue}>
-                {formatRankDisplay(game.rank || 'Unranked')} - {game.trophies} LP
-              </ThemedText>
+          {/* Current Rank - centered */}
+          <View style={styles.backCurrentRank}>
+            <Image source={getRankIcon(game.rank)} style={styles.backCurrentRankIcon} resizeMode="contain" />
+            <View>
+              <ThemedText style={[styles.backCurrentRankLabel, { color: tierColor }]}>SOLO / DUO</ThemedText>
+              <ThemedText style={styles.backCurrentRankValue}>{formatRankDisplay(game.rank || 'Unranked')}</ThemedText>
             </View>
-            <Image source={getRankIcon(game.rank)} style={styles.backRankIcon} resizeMode="contain" />
           </View>
 
-          <View style={styles.backRankDivider} />
-
-          {/* Peak Rank */}
-          <View style={styles.backRankRow}>
-            <View style={styles.backRankInfo}>
-              <ThemedText style={styles.backRankLabel}>Peak Rank</ThemedText>
-              <ThemedText style={styles.backRankValue}>
-                {formatRankDisplay(game.peakRank?.tier || 'N/A')}
-              </ThemedText>
+          {/* Peak Rank + Win Rate row */}
+          <View style={styles.backBottomRow}>
+            <View style={styles.backStatItem}>
+              <Image source={getRankIcon(game.peakRank?.tier || 'Unranked')} style={styles.backPeakIcon} resizeMode="contain" />
+              <View>
+                <ThemedText style={styles.backStatValue}>{formatRankDisplay(game.peakRank?.tier || 'N/A')}</ThemedText>
+                <ThemedText style={[styles.backStatLabel, { color: tierColor }]}>PEAK RANK</ThemedText>
+              </View>
             </View>
-            <Image source={getRankIcon(game.peakRank?.tier || 'Unranked')} style={styles.backRankIcon} resizeMode="contain" />
+
+            <View style={styles.backStatDivider} />
+
+            <View style={styles.backStatItem}>
+              <View>
+                <ThemedText style={styles.backStatValue}>{game.winRate}%</ThemedText>
+                <ThemedText style={[styles.backStatLabel, { color: tierColor }]}>WIN RATE</ThemedText>
+              </View>
+            </View>
           </View>
+
+          {/* View More - only on stack card */}
+          {!isModal && (
+            <TouchableOpacity style={[styles.viewMoreButton, { borderColor: `rgba(${rgb}, 0.3)` }]} onPress={handlePress} activeOpacity={0.7}>
+              <ThemedText style={styles.viewMoreText}>More stats  ›</ThemedText>
+            </TouchableOpacity>
+          )}
         </View>
       ) : (
         <View style={styles.cardFront}>
@@ -832,32 +867,33 @@ export default function LeagueRankCard({ game, username, viewOnly = false, userI
   return (
     <>
       <Animated.View style={{ opacity: stackCardOpacity }}>
-        <TouchableOpacity
-          ref={cardRef as any}
-          style={styles.cardOuter}
-          onPress={handlePress}
-          activeOpacity={isFocused ? 0.9 : 1}
-          disabled={!isFocused && viewOnly}
-        >
-          {/* Stack card — shows back if initialFlipped */}
-          <LinearGradient
-            colors={[
-              `rgba(${rgb}, 0.9)`,
-              `rgba(${rgb}, 0.3)`,
-              `rgba(${rgb}, 0.6)`,
-              `rgba(${rgb}, 0.2)`,
-              `rgba(${rgb}, 0.8)`,
-            ]}
-            locations={[0, 0.25, 0.5, 0.75, 1]}
-            start={{ x: 0, y: 0 }}
-            end={{ x: 1, y: 1 }}
-            style={styles.rankCard}
+        <Animated.View style={{ transform: [{ scaleY: stackScaleY }] }}>
+          <TouchableOpacity
+            ref={cardRef as any}
+            style={styles.cardOuter}
+            onPress={handleStackTap}
+            activeOpacity={isFocused ? 0.9 : 1}
+            disabled={!isFocused && viewOnly}
           >
-            <View style={styles.rankCardInner}>
-              {renderCardContent(!initialFlipped)}
-            </View>
-          </LinearGradient>
-        </TouchableOpacity>
+            <LinearGradient
+              colors={[
+                `rgba(${rgb}, 0.9)`,
+                `rgba(${rgb}, 0.3)`,
+                `rgba(${rgb}, 0.6)`,
+                `rgba(${rgb}, 0.2)`,
+                `rgba(${rgb}, 0.8)`,
+              ]}
+              locations={[0, 0.25, 0.5, 0.75, 1]}
+              start={{ x: 0, y: 0 }}
+              end={{ x: 1, y: 1 }}
+              style={styles.rankCard}
+            >
+              <View style={styles.rankCardInner}>
+                {renderCardContent(stackShowBack)}
+              </View>
+            </LinearGradient>
+          </TouchableOpacity>
+        </Animated.View>
       </Animated.View>
 
       <Modal visible={modalVisible} transparent animationType="none" onRequestClose={handleCloseModal}>
@@ -892,7 +928,7 @@ export default function LeagueRankCard({ game, username, viewOnly = false, userI
               style={styles.rankCard}
             >
               <View style={styles.rankCardInner}>
-                {renderCardContent()}
+                {renderCardContent(showBack, true)}
               </View>
             </LinearGradient>
           </TouchableOpacity>
@@ -1029,80 +1065,123 @@ const styles = StyleSheet.create({
   crossLineGold: { position: 'absolute', width: 1, height: 300, backgroundColor: 'rgba(201, 168, 76, 0.04)', transform: [{ rotate: '45deg' }] },
   crossLineReverse: { position: 'absolute', width: 1, height: 300, backgroundColor: 'rgba(30, 100, 200, 0.06)', transform: [{ rotate: '-45deg' }] },
   crossLineReverseGold: { position: 'absolute', width: 1, height: 300, backgroundColor: 'rgba(201, 168, 76, 0.04)', transform: [{ rotate: '-45deg' }] },
-  cardBackContent: { flex: 1, paddingHorizontal: 16, paddingTop: 14, paddingBottom: 12 },
-  techCornerTL: { position: 'absolute', top: 16, left: 16, width: 20, height: 20, borderTopWidth: 1.5, borderLeftWidth: 1.5, borderColor: 'rgba(30, 100, 200, 0.3)', borderTopLeftRadius: 3 },
-  techCornerBR: { position: 'absolute', bottom: 16, right: 16, width: 20, height: 20, borderBottomWidth: 1.5, borderRightWidth: 1.5, borderColor: 'rgba(30, 100, 200, 0.3)', borderBottomRightRadius: 3 },
-  heroHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    marginBottom: 8,
-  },
-  heroProfileSection: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    flex: 1,
-  },
-  backGameIcon: {
-    width: 38,
-    height: 38,
-    opacity: 0.6,
-    marginLeft: -20,
-  },
-  profileImageWrapper: { position: 'relative' },
-  backPlayerCard: { width: 44, height: 44, borderRadius: 22, borderWidth: 1, borderColor: 'rgba(255,255,255,0.5)' },
-  profileGlow: { position: 'absolute', top: -2, left: -2, right: -2, bottom: -2, borderRadius: 24, borderWidth: 1, borderColor: 'rgba(100,150,255,0.3)' },
-  levelBadge: {
+  cardBackContent: { flex: 1, paddingHorizontal: 14, paddingTop: 12, paddingBottom: 8, overflow: 'hidden' },
+  backWatermark: {
     position: 'absolute',
-    bottom: -4,
-    right: -6,
-    backgroundColor: '#000',
-    borderRadius: 6,
-    borderWidth: 1,
-    borderColor: '#fff',
-    paddingHorizontal: 3,
-    height: 10,
-    justifyContent: 'center' as const,
-    minWidth: 14,
-    alignItems: 'center' as const,
+    width: 150,
+    height: 150,
+    left: '50%',
+    top: '50%',
+    marginLeft: -75,
+    marginTop: -75,
+    opacity: 0.07,
   },
-  levelBadgeText: {
-    fontSize: 5,
-    lineHeight: 10,
-    fontWeight: '800' as const,
-    color: '#fff',
-  },
-  backUsername: { fontSize: 15, color: '#fff', fontWeight: '700', letterSpacing: 0.3, textTransform: 'uppercase', marginLeft: 10 },
-  backRankRow: {
+  backHeader: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    paddingHorizontal: 4,
-    paddingVertical: 6,
-  },
-  backRankInfo: {
-    flex: 1,
-  },
-  backRankLabel: {
-    fontSize: 10,
-    fontWeight: '600',
-    color: 'rgba(255,255,255,0.45)',
     marginBottom: 2,
   },
-  backRankValue: {
+  backHeaderLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  backLogoBox: {
+    width: 28,
+    height: 28,
+    borderRadius: 7,
+    backgroundColor: 'rgba(255,255,255,0.06)',
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.12)',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  backLogoIcon: {
+    width: 17,
+    height: 17,
+  },
+  backGameTitle: {
     fontSize: 15,
     fontWeight: '800',
     color: '#fff',
-    letterSpacing: -0.3,
+    letterSpacing: 0.3,
   },
-  backRankIcon: {
-    width: 44,
-    height: 44,
+  backHeaderUsername: {
+    fontSize: 11,
+    fontWeight: '600',
+    color: 'rgba(255,255,255,0.45)',
   },
-  backRankDivider: {
-    height: 1,
+  backCurrentRank: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    flex: 1,
+    gap: 10,
+  },
+  backCurrentRankIcon: {
+    width: 68,
+    height: 68,
+  },
+  backCurrentRankLabel: {
+    fontSize: 8,
+    fontWeight: '700',
+    letterSpacing: 2,
+    marginBottom: 2,
+  },
+  backCurrentRankValue: {
+    fontSize: 24,
+    fontWeight: '900',
+    color: '#fff',
+    letterSpacing: -0.5,
+  },
+  backBottomRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingTop: 2,
+  },
+  backStatItem: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 6,
+  },
+  backStatDivider: {
+    width: 1,
+    height: 24,
     backgroundColor: 'rgba(255,255,255,0.08)',
-    marginHorizontal: 4,
+  },
+  backPeakIcon: {
+    width: 26,
+    height: 26,
+  },
+  backStatValue: {
+    fontSize: 14,
+    fontWeight: '800',
+    color: '#fff',
+  },
+  backStatLabel: {
+    fontSize: 7,
+    fontWeight: '700',
+    letterSpacing: 1.2,
+    marginTop: -1,
+  },
+  viewMoreButton: {
+    alignSelf: 'center',
+    paddingVertical: 3,
+    paddingHorizontal: 10,
+    marginTop: 4,
+    borderRadius: 6,
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.15)',
+    backgroundColor: 'rgba(255,255,255,0.04)',
+  },
+  viewMoreText: {
+    fontSize: 11,
+    fontWeight: '700',
+    color: 'rgba(255,255,255,0.5)',
+    letterSpacing: 0.3,
   },
   modalOverlay: { ...StyleSheet.absoluteFillObject, zIndex: 1 },
   overlayBackground: { ...StyleSheet.absoluteFillObject, overflow: 'hidden' },

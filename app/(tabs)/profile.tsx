@@ -1404,18 +1404,15 @@ export default function ProfileScreen() {
                   }
                   return (
                     <View key={game.id} style={styles.rankCardPreviewItem}>
-                      <TouchableOpacity
-                        activeOpacity={0.9}
-                        onPress={() => router.push('/profilePages/rankCards')}
-                        style={styles.rankCardPreviewScale}
-                      >
+                      <View style={styles.rankCardPreviewScale}>
                         <RankCard
                           game={game}
                           username={displayUsername}
-                          viewOnly={true}
+                          isFocused={true}
                           initialFlipped={showRankCardBack}
+                          flipOnly={true}
                         />
-                      </TouchableOpacity>
+                      </View>
                     </View>
                   );
                 })}
@@ -1579,42 +1576,39 @@ export default function ProfileScreen() {
             </View>
 
             {/* Badge cards row */}
-            <View style={styles.achievementsBadgeRow}>
-              {achievements.slice(0, 4).map((achievement, index) => {
-                const isGold = achievement.placement === 1;
-                const isSilver = achievement.placement === 2;
-                const medal = isGold ? '\u{1F947}' : isSilver ? '\u{1F948}' : '\u{1F949}';
-                const placementLabel = isGold ? '1st Place' : isSilver ? '2nd Place' : '3rd Place';
-                return (
-                  <TouchableOpacity
-                    key={index}
-                    style={styles.achievementCard}
-                    onPress={() => router.push({ pathname: '/profilePages/achievementsBadges', params: { userId: user?.id || '' } })}
-                    activeOpacity={0.85}
-                  >
-                    <View style={styles.achievementCardIcon}>
-                      <ThemedText style={styles.achievementCardEmoji}>{medal}</ThemedText>
-                    </View>
-                    <ThemedText style={styles.achievementCardName} numberOfLines={1}>
-                      {achievement.partyName}
-                    </ThemedText>
-                    <ThemedText style={styles.achievementCardDesc} numberOfLines={1}>
-                      {placementLabel}
-                    </ThemedText>
-                  </TouchableOpacity>
-                );
-              })}
-              {/* Locked placeholder cards */}
-              {achievements.length < 4 && Array.from({ length: 4 - achievements.length }).map((_, i) => (
-                <View key={`locked-${i}`} style={[styles.achievementCard, styles.achievementCardLocked]}>
-                  <View style={styles.achievementCardIconLocked}>
-                    <IconSymbol size={20} name="lock.fill" color="rgba(255,255,255,0.2)" />
-                  </View>
-                  <ThemedText style={styles.achievementCardNameLocked}>Locked</ThemedText>
-                  <ThemedText style={styles.achievementCardDescLocked}>Keep playing</ThemedText>
-                </View>
-              ))}
-            </View>
+            {achievements.length > 0 ? (
+              <View style={styles.achievementsBadgeRow}>
+                {achievements.slice(0, 4).map((achievement, index) => {
+                  const isGold = achievement.placement === 1;
+                  const isSilver = achievement.placement === 2;
+                  const medal = isGold ? '\u{1F947}' : isSilver ? '\u{1F948}' : '\u{1F949}';
+                  const placementLabel = isGold ? '1st Place' : isSilver ? '2nd Place' : '3rd Place';
+                  return (
+                    <TouchableOpacity
+                      key={index}
+                      style={styles.achievementCard}
+                      onPress={() => router.push({ pathname: '/profilePages/achievementsBadges', params: { userId: user?.id || '' } })}
+                      activeOpacity={0.85}
+                    >
+                      <View style={styles.achievementCardIcon}>
+                        <ThemedText style={styles.achievementCardEmoji}>{medal}</ThemedText>
+                      </View>
+                      <ThemedText style={styles.achievementCardName} numberOfLines={1}>
+                        {achievement.partyName}
+                      </ThemedText>
+                      <ThemedText style={styles.achievementCardDesc} numberOfLines={1}>
+                        {placementLabel}
+                      </ThemedText>
+                    </TouchableOpacity>
+                  );
+                })}
+              </View>
+            ) : (
+              <View style={styles.achievementsEmpty}>
+                <IconSymbol size={24} name="trophy" color="rgba(255,255,255,0.2)" />
+                <ThemedText style={styles.achievementsEmptyText}>No achievements yet</ThemedText>
+              </View>
+            )}
           </View>
           </>
           )}
@@ -2557,23 +2551,21 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: 'rgba(255,255,255,0.08)',
   },
-  achievementCardLocked: {
-    opacity: 0.5,
+  achievementsEmpty: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 24,
+    gap: 6,
+  },
+  achievementsEmptyText: {
+    fontSize: 13,
+    color: 'rgba(255,255,255,0.3)',
   },
   achievementCardIcon: {
     width: 48,
     height: 48,
     borderRadius: 12,
     backgroundColor: 'rgba(255,255,255,0.06)',
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginBottom: 8,
-  },
-  achievementCardIconLocked: {
-    width: 48,
-    height: 48,
-    borderRadius: 12,
-    backgroundColor: 'rgba(255,255,255,0.04)',
     alignItems: 'center',
     justifyContent: 'center',
     marginBottom: 8,
@@ -2591,18 +2583,6 @@ const styles = StyleSheet.create({
   achievementCardDesc: {
     fontSize: 10,
     color: 'rgba(255,255,255,0.4)',
-    textAlign: 'center',
-  },
-  achievementCardNameLocked: {
-    fontSize: 12,
-    fontWeight: '600',
-    color: 'rgba(255,255,255,0.3)',
-    textAlign: 'center',
-    marginBottom: 2,
-  },
-  achievementCardDescLocked: {
-    fontSize: 10,
-    color: 'rgba(255,255,255,0.2)',
     textAlign: 'center',
   },
   miniBanner: {

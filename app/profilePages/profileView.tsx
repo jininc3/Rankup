@@ -1034,54 +1034,31 @@ export default function ProfileViewScreen() {
         {/* Section Divider */}
         <View style={styles.profileSectionDivider} />
 
-        {/* Rank Cards Banner */}
+        {/* Rank Cards */}
         {(!isTargetPrivate || isFollowing || userId === currentUser?.id) && userGames.length > 0 && (
-          <TouchableOpacity
-            style={styles.rankCardsBanner}
-            onPress={() => router.push({
-              pathname: '/profilePages/rankCards',
-              params: { userId: viewedUser?.id || '', username: viewedUser?.username || '' },
+          <View style={styles.rankCardsSection}>
+            {userGames.map((game) => {
+              let displayUsername = viewedUser?.username || '';
+              if (game.name === 'Valorant' && valorantAccount) {
+                displayUsername = `${valorantAccount.gameName}#${valorantAccount.tagLine}`;
+              } else if ((game.name === 'League of Legends' || game.name === 'TFT') && riotAccount) {
+                displayUsername = `${riotAccount.gameName}#${riotAccount.tagLine}`;
+              }
+              const isOtherUser = userId !== currentUser?.id;
+              return (
+                <View key={game.id} style={{ paddingHorizontal: 20, marginBottom: 12 }}>
+                  <RankCard
+                    game={game}
+                    username={displayUsername}
+                    viewOnly={false}
+                    userId={isOtherUser ? userId : undefined}
+                    isFocused={true}
+                    flipOnly={true}
+                  />
+                </View>
+              );
             })}
-            activeOpacity={0.85}
-          >
-            <LinearGradient
-              colors={['transparent', 'rgba(196,39,67,0.10)', 'transparent']}
-              locations={[0.2, 0.5, 0.8]}
-              start={{ x: 0, y: 0 }}
-              end={{ x: 1, y: 1 }}
-              style={StyleSheet.absoluteFillObject}
-              pointerEvents="none"
-            />
-            <View style={styles.rankBannerBody}>
-              <ThemedText style={styles.rankCardsBannerTitle}>Rank Cards</ThemedText>
-              <ThemedText style={styles.rankCardsBannerSubtext}>
-                Tap to view stacked cards
-              </ThemedText>
-              <View style={styles.rankPillRow}>
-                {userGames.map((game) => {
-                  const isLol = game.name === 'League of Legends';
-                  const isVal = game.name === 'Valorant';
-                  const gameIcon = isLol
-                    ? require('@/assets/images/lol-icon.png')
-                    : isVal
-                      ? require('@/assets/images/valorant-red.png')
-                      : require('@/assets/images/tft.png');
-                  const rankIcon = getRankIconForPill(game.rank, game.name);
-                  const rankShort = game.rank && game.rank !== 'Unranked'
-                    ? game.rank.split(' ').map((w: string, i: number) => i === 0 ? w.charAt(0).toUpperCase() + w.slice(1).toLowerCase() : w).join(' ')
-                    : 'Unranked';
-                  return (
-                    <View key={game.id} style={styles.rankPill}>
-                      <Image source={gameIcon} style={styles.rankPillGameIcon} resizeMode="contain" />
-                      <ThemedText style={styles.rankPillRank}>{rankShort}</ThemedText>
-                      <Image source={rankIcon} style={styles.rankPillRankIcon} resizeMode="contain" />
-                    </View>
-                  );
-                })}
-              </View>
-            </View>
-            <IconSymbol size={14} name="chevron.right" color="rgba(255,255,255,0.3)" />
-          </TouchableOpacity>
+          </View>
         )}
 
         {/* Clips & Achievements Banners — hidden for non-followers of private accounts */}
