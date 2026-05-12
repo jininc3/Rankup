@@ -1386,31 +1386,39 @@ export default function ProfileScreen() {
                 pagingEnabled={false}
                 showsHorizontalScrollIndicator={false}
                 decelerationRate="fast"
-                snapToInterval={(screenWidth - 32) * 0.85 + 16}
+                snapToInterval={screenWidth - 32 + 16}
                 snapToAlignment="start"
                 contentContainerStyle={styles.rankCardsScrollContent}
                 onScroll={(e) => {
-                  const index = Math.round(e.nativeEvent.contentOffset.x / ((screenWidth - 32) * 0.85 + 16));
+                  const index = Math.round(e.nativeEvent.contentOffset.x / (screenWidth - 32 + 16));
                   setActiveRankCardIndex(index);
                 }}
                 scrollEventThrottle={16}
               >
-                {userGames.map((game) => (
-                  <View key={game.id} style={styles.rankCardPreviewItem}>
-                    <TouchableOpacity
-                      activeOpacity={0.9}
-                      onPress={() => router.push('/profilePages/rankCards')}
-                      style={styles.rankCardPreviewScale}
-                    >
-                      <RankCard
-                        game={game}
-                        username={user?.username || 'User'}
-                        viewOnly={true}
-                        initialFlipped={showRankCardBack}
-                      />
-                    </TouchableOpacity>
-                  </View>
-                ))}
+                {userGames.map((game) => {
+                  let displayUsername = user?.username || 'User';
+                  if (game.name === 'Valorant' && valorantAccount) {
+                    displayUsername = `${valorantAccount.gameName}#${valorantAccount.tag}`;
+                  } else if ((game.name === 'League of Legends' || game.name === 'TFT') && riotAccount) {
+                    displayUsername = `${riotAccount.gameName}#${riotAccount.tagLine}`;
+                  }
+                  return (
+                    <View key={game.id} style={styles.rankCardPreviewItem}>
+                      <TouchableOpacity
+                        activeOpacity={0.9}
+                        onPress={() => router.push('/profilePages/rankCards')}
+                        style={styles.rankCardPreviewScale}
+                      >
+                        <RankCard
+                          game={game}
+                          username={displayUsername}
+                          viewOnly={true}
+                          initialFlipped={showRankCardBack}
+                        />
+                      </TouchableOpacity>
+                    </View>
+                  );
+                })}
               </ScrollView>
 
               {/* Dot indicators */}
@@ -2698,15 +2706,12 @@ const styles = StyleSheet.create({
     gap: 16,
   },
   rankCardPreviewItem: {
-    width: (screenWidth - 32) * 0.85,
-    height: 220 * 0.85,
+    width: screenWidth - 32,
+    height: 220,
   },
   rankCardPreviewScale: {
     width: screenWidth - 32,
     height: 220,
-    transform: [{ scale: 0.85 }],
-    marginTop: -220 * 0.075,
-    marginLeft: -(screenWidth - 32) * 0.075,
   },
   rankCardsDots: {
     flexDirection: 'row',

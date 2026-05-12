@@ -58,6 +58,26 @@ interface ValorantRankCardProps {
   initialFlipped?: boolean; // If true, show the back of the card initially
 }
 
+// Valorant rank glow colors (matches rank icon dominant color)
+const VALORANT_RANK_GLOW: { [key: string]: string } = {
+  iron: '#8B7355',
+  bronze: '#A07040',
+  silver: '#9AA0A8',
+  gold: '#D4A843',
+  platinum: '#30CCBB',
+  diamond: '#B77FE0',
+  ascendant: '#3DAA5C',
+  immortal: '#D44060',
+  radiant: '#F5E070',
+  unranked: '#555555',
+};
+
+const getRankGlowColor = (rank: string): string => {
+  if (!rank || rank === 'Unranked' || rank === 'N/A') return VALORANT_RANK_GLOW.unranked;
+  const base = rank.split(' ')[0].toLowerCase();
+  return VALORANT_RANK_GLOW[base] || VALORANT_RANK_GLOW.unranked;
+};
+
 // Valorant rank icon mapping - Includes subdivision ranks
 const VALORANT_RANK_ICONS: { [key: string]: any } = {
   // Base ranks (fallback)
@@ -901,55 +921,56 @@ export default function ValorantRankCard({ game, username, viewOnly = false, use
       <View style={[styles.innerBorder, { borderColor: `rgba(${rgb}, ${tierLevel === 1 ? 0.08 : tierLevel === 2 ? 0.12 : tierLevel <= 4 ? 0.18 : 0.22})` }]} />
 
       {showBack && !forceShowFront ? (
-        /* Back content - Hero Rank layout */
+        /* Back content */
         <View style={styles.cardBackContent}>
-          {/* Decorative corner accents */}
-          <View style={[styles.techCornerTL, { borderColor: `rgba(${rgb}, 0.3)` }]} />
-          <View style={[styles.techCornerBR, { borderColor: `rgba(${rgb}, 0.3)` }]} />
-
-          {/* Header Row - Profile */}
-          <View style={styles.heroHeader}>
-            <View style={styles.heroProfileSection}>
-              {game.valorantCard && (
-                <View style={styles.profileImageWrapper}>
-                  <Image
-                    source={{ uri: game.valorantCard }}
-                    style={styles.backPlayerCard}
-                  />
-                  <View style={styles.profileGlow} />
-                  {game.accountLevel != null && (
-                    <View style={styles.levelBadge}>
-                      <ThemedText style={styles.levelBadgeText}>{game.accountLevel}</ThemedText>
-                    </View>
-                  )}
-                </View>
+          {/* Header: profile image + username */}
+          <View style={styles.backHeaderSection}>
+            {game.valorantCard && (
+              <Image
+                source={{ uri: game.valorantCard }}
+                style={styles.backProfileImage}
+              />
+            )}
+            <View style={styles.backNameRow}>
+              <ThemedText style={styles.backPlayerName}>{username.split('#')[0]}</ThemedText>
+              {username.includes('#') && (
+                <ThemedText style={styles.backPlayerTag}> #{username.split('#')[1]}</ThemedText>
               )}
-              <ThemedText style={styles.backUsername}>{username}</ThemedText>
             </View>
           </View>
 
-          {/* Current Rank */}
-          <View style={styles.backRankRow}>
-            <View style={styles.backRankInfo}>
-              <ThemedText style={styles.backRankLabel}>Current Rank</ThemedText>
-              <ThemedText style={styles.backRankValue}>
-                {formatRankDisplay(game.rank || 'Unranked')} - {game.trophies} RR
-              </ThemedText>
-            </View>
-            <Image source={getRankIcon(game.rank)} style={styles.backRankIcon} resizeMode="contain" />
-          </View>
+          {/* Horizontal divider */}
+          <View style={styles.backDividerH} />
 
-          <View style={styles.backRankDivider} />
-
-          {/* Peak Rank */}
-          <View style={styles.backRankRow}>
-            <View style={styles.backRankInfo}>
-              <ThemedText style={styles.backRankLabel}>Peak Rank</ThemedText>
-              <ThemedText style={styles.backRankValue}>
-                {formatRankDisplay(game.peakRank?.tier || 'N/A')}
-              </ThemedText>
+          {/* Rank panels */}
+          <View style={styles.backRankPanels}>
+            {/* Current Rank */}
+            <View style={styles.backRankColumn}>
+              <ThemedText style={styles.backRankLabel}>CURRENT RANK</ThemedText>
+              <View style={styles.backRankIconWrapper}>
+                <Image source={getRankIcon(game.rank)} style={styles.backRankIcon} resizeMode="contain" />
+              </View>
+              <ThemedText style={styles.backRankName} numberOfLines={1} adjustsFontSizeToFit>{formatRankDisplay(game.rank || 'Unranked')}</ThemedText>
+              <View style={styles.backRRRow}>
+                <ThemedText style={[styles.backRRValue, { color: tierColor }]}>{game.trophies}</ThemedText>
+                <ThemedText style={[styles.backRRLabel, { color: tierColor }]}> RR</ThemedText>
+              </View>
             </View>
-            <Image source={getRankIcon(game.peakRank?.tier || 'Unranked')} style={styles.backRankIcon} resizeMode="contain" />
+
+            {/* Vertical divider */}
+            <View style={styles.backDividerV} />
+
+            {/* Peak Rank */}
+            <View style={styles.backRankColumn}>
+              <ThemedText style={styles.backRankLabel}>PEAK RANK</ThemedText>
+              <View style={styles.backRankIconWrapper}>
+                <Image source={getRankIcon(game.peakRank?.tier || 'Unranked')} style={styles.backRankIcon} resizeMode="contain" />
+              </View>
+              <ThemedText style={styles.backRankName} numberOfLines={1} adjustsFontSizeToFit>{formatRankDisplay(game.peakRank?.tier || 'N/A')}</ThemedText>
+              <View style={styles.backRRRow}>
+                <ThemedText style={[styles.backRRValue, { color: tierColor }]}>{game.peakRank?.season || ''}</ThemedText>
+              </View>
+            </View>
           </View>
         </View>
       ) : (
@@ -1599,125 +1620,128 @@ const styles = StyleSheet.create({
     borderRadius: 2.5,
     backgroundColor: 'rgba(239, 84, 102, 0.7)',
   },
-  // Back of card styles - Modern Techy
+  // Back of card styles
   cardBackContent: {
     flex: 1,
-    paddingHorizontal: 16,
-    paddingTop: 14,
-    paddingBottom: 12,
+    paddingHorizontal: 14,
+    paddingVertical: 12,
   },
-  // Decorative corner accents (matching front style)
-  techCornerTL: {
-    position: 'absolute',
-    top: 16,
-    left: 16,
-    width: 20,
-    height: 20,
-    borderTopWidth: 1.5,
-    borderLeftWidth: 1.5,
-    borderColor: 'rgba(239, 84, 102, 0.35)',
-    borderTopLeftRadius: 3,
+  backHeaderSection: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingBottom: 10,
   },
-  techCornerBR: {
-    position: 'absolute',
-    bottom: 16,
-    right: 16,
-    width: 20,
-    height: 20,
-    borderBottomWidth: 1.5,
-    borderRightWidth: 1.5,
-    borderColor: 'rgba(239, 84, 102, 0.35)',
-    borderBottomRightRadius: 3,
+  backProfileImage: {
+    width: 50,
+    height: 50,
+    borderRadius: 10,
   },
-  // Hero Rank Layout - Header (centered)
-  heroHeader: {
+  backNameRow: {
+    flexDirection: 'row',
+    alignItems: 'baseline',
+    marginLeft: 12,
+    flexShrink: 1,
+  },
+  backPlayerName: {
+    fontSize: 17,
+    fontWeight: '800',
+    color: '#fff',
+    letterSpacing: 0.5,
+    textTransform: 'uppercase',
+    flexShrink: 1,
+  },
+  backPlayerTag: {
+    fontSize: 12,
+    fontWeight: '500',
+    color: 'rgba(255,255,255,0.3)',
+  },
+  backDividerH: {
+    height: 1,
+    backgroundColor: 'rgba(255,255,255,0.1)',
+  },
+  backRankPanels: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingTop: 8,
+  },
+  backRankColumn: {
+    flex: 1,
     alignItems: 'center',
     justifyContent: 'center',
-    flex: 1,
-  },
-  heroProfileSection: {
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
-  profileImageWrapper: {
-    position: 'relative',
-  },
-  backPlayerCard: {
-    width: 44,
-    height: 44,
-    borderRadius: 8,
-    borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.5)',
-  },
-  profileGlow: {
-    position: 'absolute',
-    top: -2,
-    left: -2,
-    right: -2,
-    bottom: -2,
-    borderRadius: 10,
-    borderWidth: 1,
-    borderColor: 'rgba(255,100,100,0.3)',
-  },
-  levelBadge: {
-    position: 'absolute',
-    bottom: -4,
-    right: -6,
-    backgroundColor: '#000',
-    borderRadius: 6,
-    borderWidth: 1,
-    borderColor: '#fff',
-    paddingHorizontal: 3,
-    height: 10,
-    justifyContent: 'center' as const,
-    minWidth: 14,
-    alignItems: 'center' as const,
-  },
-  levelBadgeText: {
-    fontSize: 5,
-    lineHeight: 10,
-    fontWeight: '800' as const,
-    color: '#fff',
-  },
-  backUsername: {
-    fontSize: 15,
-    color: '#fff',
-    fontWeight: '700',
-    letterSpacing: 0.3,
-    textTransform: 'uppercase',
-    marginLeft: 10,
-  },
-  // Back card rank rows
-  backRankRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingHorizontal: 4,
-    paddingVertical: 6,
-  },
-  backRankInfo: {
-    flex: 1,
   },
   backRankLabel: {
     fontSize: 10,
-    fontWeight: '600',
-    color: 'rgba(255,255,255,0.45)',
-    marginBottom: 2,
+    fontWeight: '700',
+    color: 'rgba(255,255,255,0.4)',
+    letterSpacing: 1.5,
+    marginBottom: 4,
   },
-  backRankValue: {
-    fontSize: 15,
-    fontWeight: '800',
-    color: '#fff',
-    letterSpacing: -0.3,
+  backRankIconWrapper: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 4,
+  },
+  // Blurred ambient glow container
+  backGlowBlurWrap: {
+    position: 'absolute',
+    width: 90,
+    height: 90,
+    borderRadius: 45,
+  },
+  // Colored core inside blur
+  backGlowCore: {
+    width: '100%',
+    height: '100%',
+    borderRadius: 45,
+    opacity: 0.35,
+  },
+  // Bottom glow container
+  backGlowBottomWrap: {
+    position: 'absolute',
+    bottom: -6,
+    width: 56,
+    height: 20,
+    borderRadius: 28,
+  },
+  // Colored core for bottom glow
+  backGlowBottomCore: {
+    width: '100%',
+    height: '100%',
+    borderRadius: 28,
+    opacity: 0.5,
   },
   backRankIcon: {
-    width: 44,
-    height: 44,
+    width: 58,
+    height: 58,
   },
-  backRankDivider: {
-    height: 1,
-    backgroundColor: 'rgba(255,255,255,0.08)',
-    marginHorizontal: 4,
+  backRankName: {
+    fontSize: 13,
+    fontWeight: '900',
+    color: '#fff',
+    letterSpacing: 0.3,
+    textTransform: 'uppercase',
+    textAlign: 'center',
+  },
+  backRRRow: {
+    flexDirection: 'row',
+    alignItems: 'baseline',
+    marginTop: 2,
+  },
+  backRRValue: {
+    fontSize: 14,
+    fontWeight: '700',
+    color: '#ef5466',
+  },
+  backRRLabel: {
+    fontSize: 14,
+    fontWeight: '700',
+    color: '#ef5466',
+  },
+  backDividerV: {
+    width: 1,
+    height: '65%',
+    backgroundColor: 'rgba(255,255,255,0.1)',
   },
   // Bottom Stats Bar
   statsBar: {
