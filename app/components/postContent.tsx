@@ -988,7 +988,7 @@ const styles = StyleSheet.create({
   postGameTag: {
     fontSize: 12,
     fontWeight: '600',
-    color: '#888',
+    color: '#8B7FE8',
   },
   postMetaDot: {
     fontSize: 12,
