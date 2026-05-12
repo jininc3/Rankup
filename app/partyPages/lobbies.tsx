@@ -7,8 +7,8 @@ import { db } from '@/config/firebase';
 import { useAuth } from '@/contexts/AuthContext';
 import { useRouter } from '@/hooks/useRouter';
 import { collection, doc, getDoc, onSnapshot, query, where } from 'firebase/firestore';
-import { useEffect, useState, useRef, useCallback } from 'react';
-import { Image, Modal, ScrollView, StyleSheet, TouchableOpacity, View } from 'react-native';
+import { useEffect, useState, useRef, useCallback, useMemo } from 'react';
+import { Image, ScrollView, StyleSheet, TouchableOpacity, View } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 
 const MINIMUM_SKELETON_TIME = 400;
@@ -43,7 +43,7 @@ export default function LobbiesScreen() {
   const { user } = useAuth();
   const [leaderboards, setLeaderboards] = useState<any[]>(cachedLeaderboards || []);
   const [loading, setLoading] = useState(!cachedLeaderboards);
-  const [showCreateModal, setShowCreateModal] = useState(false);
+  const [activeTab, setActiveTab] = useState<'active' | 'friends' | 'finished'>('active');
   const skeletonStartTime = useRef<number>(Date.now());
   const isFirstLoad = useRef(!cachedLeaderboards);
 
@@ -228,30 +228,68 @@ export default function LobbiesScreen() {
     }
   }, [router]);
 
+  const filteredLeaderboards = useMemo(() => {
+    if (activeTab === 'finished') return leaderboards.filter(lb => lb.challengeStatus === 'completed');
+    if (activeTab === 'friends') return leaderboards;
+    return leaderboards.filter(lb => lb.challengeStatus !== 'completed');
+  }, [leaderboards, activeTab]);
+
+  const activeCount = useMemo(() => leaderboards.filter(lb => lb.challengeStatus !== 'completed').length, [leaderboards]);
+
   return (
     <ThemedView style={styles.container}>
-      {/* Top background gradient */}
-      <LinearGradient
-        colors={['rgba(255, 255, 255, 0.06)', 'rgba(255, 255, 255, 0.02)', 'transparent']}
-        locations={[0, 0.5, 1]}
-        start={{ x: 0.5, y: 0 }}
-        end={{ x: 0.5, y: 1 }}
-        style={styles.topGradient}
-        pointerEvents="none"
-      />
+      {/* Purple shimmer background */}
+      <View style={styles.backgroundGlow} pointerEvents="none">
+        <View style={styles.shimmerBand} pointerEvents="none">
+          <LinearGradient
+            colors={[
+              'transparent',
+              'rgba(139, 127, 232, 0.03)',
+              'rgba(139, 127, 232, 0.06)',
+              'rgba(139, 127, 232, 0.03)',
+              'transparent',
+            ]}
+            locations={[0, 0.37, 0.5, 0.63, 1]}
+            start={{ x: 0, y: 0.5 }}
+            end={{ x: 1, y: 0.5 }}
+            style={StyleSheet.absoluteFill}
+          />
+        </View>
+      </View>
 
       <View style={styles.header}>
         <TouchableOpacity style={styles.backButton} onPress={() => router.back()}>
           <IconSymbol size={20} name="chevron.left" color="#fff" />
         </TouchableOpacity>
-        <ThemedText style={styles.headerTitle}>Lobbies</ThemedText>
+        <View style={{ flex: 1 }}>
+          <ThemedText style={styles.headerTitle}>Lobbies</ThemedText>
+          <ThemedText style={styles.headerSubtitle}>Active competitions with friends</ThemedText>
+        </View>
         <TouchableOpacity
           style={styles.createButton}
-          onPress={() => setShowCreateModal(true)}
+          onPress={() => router.push('/partyPages/createLeaderboardName')}
           activeOpacity={0.7}
         >
-          <IconSymbol size={14} name="plus" color="#fff" />
-          <ThemedText style={styles.createButtonText}>New</ThemedText>
+          <IconSymbol size={14} name="plus" color="#8B7FE8" />
+          <ThemedText style={styles.createButtonText}>New Lobby</ThemedText>
+        </TouchableOpacity>
+      </View>
+
+      {/* Tabs */}
+      <View style={styles.tabBar}>
+        <TouchableOpacity style={[styles.tab, activeTab === 'active' && styles.tabActive]} onPress={() => setActiveTab('active')}>
+          <ThemedText style={[styles.tabText, activeTab === 'active' && styles.tabTextActive]}>Active</ThemedText>
+          {activeCount > 0 && (
+            <View style={styles.tabBadge}>
+              <ThemedText style={styles.tabBadgeText}>{activeCount}</ThemedText>
+            </View>
+          )}
+        </TouchableOpacity>
+        <TouchableOpacity style={[styles.tab, activeTab === 'friends' && styles.tabActive]} onPress={() => setActiveTab('friends')}>
+          <ThemedText style={[styles.tabText, activeTab === 'friends' && styles.tabTextActive]}>Friends</ThemedText>
+        </TouchableOpacity>
+        <TouchableOpacity style={[styles.tab, activeTab === 'finished' && styles.tabActive]} onPress={() => setActiveTab('finished')}>
+          <ThemedText style={[styles.tabText, activeTab === 'finished' && styles.tabTextActive]}>Finished</ThemedText>
         </TouchableOpacity>
       </View>
 
@@ -265,14 +303,14 @@ export default function LobbiesScreen() {
               <LeaderboardCardSkeleton key={i} />
             ))}
           </View>
-        ) : leaderboards.length > 0 ? (
+        ) : filteredLeaderboards.length > 0 ? (
           <View>
-            {leaderboards.map((leaderboard, index) => (
+            {filteredLeaderboards.map((leaderboard, index) => (
               <LeaderboardCard
                 key={leaderboard.id}
                 leaderboard={leaderboard}
                 onPress={handleLeaderboardPress}
-                showDivider={index < leaderboards.length - 1}
+                showDivider={index < filteredLeaderboards.length - 1}
                 currentUserId={user?.id}
               />
             ))}
@@ -285,45 +323,28 @@ export default function LobbiesScreen() {
             </ThemedText>
           </View>
         )}
+
+        {/* Create lobby card */}
+        <TouchableOpacity
+          style={styles.createCard}
+          onPress={() => router.push('/partyPages/createLeaderboardName')}
+          activeOpacity={0.7}
+        >
+          <View style={styles.createCardIcon}>
+            <IconSymbol size={24} name="trophy.fill" color="#8B7FE8" />
+          </View>
+          <View style={styles.createCardInfo}>
+            <ThemedText style={styles.createCardTitle}>Create a new lobby</ThemedText>
+            <ThemedText style={styles.createCardSubtitle}>Start a leaderboard and challenge your friends.</ThemedText>
+          </View>
+          <View style={styles.createCardButton}>
+            <ThemedText style={styles.createCardButtonText}>Create</ThemedText>
+          </View>
+        </TouchableOpacity>
+
         <View style={{ height: 40 }} />
       </ScrollView>
 
-      {/* Create Modal */}
-      <Modal
-        visible={showCreateModal}
-        transparent
-        animationType="slide"
-        onRequestClose={() => setShowCreateModal(false)}
-      >
-        <TouchableOpacity
-          style={styles.modalOverlay}
-          activeOpacity={1}
-          onPress={() => setShowCreateModal(false)}
-        >
-          <View style={styles.modalContent}>
-            <View style={styles.modalHandle} />
-            <ThemedText style={styles.modalTitle}>CREATE</ThemedText>
-            <View style={styles.modalDivider} />
-
-            <TouchableOpacity
-              style={styles.modalOption}
-              onPress={() => {
-                setShowCreateModal(false);
-                router.push('/partyPages/createLeaderboardName');
-              }}
-              activeOpacity={0.7}
-            >
-              <View style={styles.modalOptionIcon}>
-                <IconSymbol size={22} name="trophy.fill" color="#fff" />
-              </View>
-              <View style={styles.modalOptionText}>
-                <ThemedText style={styles.modalOptionTitle}>LEADERBOARD</ThemedText>
-                <ThemedText style={styles.modalOptionSubtitle}>Compete with friends for rankings</ThemedText>
-              </View>
-            </TouchableOpacity>
-          </View>
-        </TouchableOpacity>
-      </Modal>
     </ThemedView>
   );
 }
@@ -333,43 +354,97 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: '#0f0f0f',
   },
-  topGradient: {
+  backgroundGlow: {
     position: 'absolute',
     top: 0,
     left: 0,
     right: 0,
-    height: 260,
+    bottom: 0,
+  },
+  shimmerBand: {
+    position: 'absolute',
+    top: 0,
+    left: '-30%',
+    width: '60%',
+    height: '100%',
+    transform: [{ rotate: '-20deg' }],
   },
   header: {
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'space-between',
     paddingHorizontal: 16,
     paddingTop: 60,
     paddingBottom: 12,
+    gap: 12,
   },
   backButton: {
     padding: 4,
   },
   headerTitle: {
-    fontSize: 20,
-    fontWeight: '700',
+    fontSize: 22,
+    fontWeight: '800',
     color: '#fff',
+  },
+  headerSubtitle: {
+    fontSize: 12,
+    fontWeight: '500',
+    color: '#666',
+    marginTop: 2,
   },
   createButton: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 5,
-    paddingVertical: 6,
-    paddingHorizontal: 12,
-    borderRadius: 8,
-    backgroundColor: 'rgba(255,255,255,0.08)',
-    borderWidth: 0.5,
-    borderColor: 'rgba(255,255,255,0.12)',
+    paddingVertical: 7,
+    paddingHorizontal: 14,
+    borderRadius: 20,
+    borderWidth: 1,
+    borderColor: '#8B7FE8',
   },
   createButtonText: {
     fontSize: 13,
     fontWeight: '600',
+    color: '#8B7FE8',
+  },
+  tabBar: {
+    flexDirection: 'row',
+    paddingHorizontal: 16,
+    gap: 24,
+    borderBottomWidth: 1,
+    borderBottomColor: 'rgba(255,255,255,0.06)',
+    marginBottom: 4,
+  },
+  tab: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    paddingBottom: 10,
+    borderBottomWidth: 2,
+    borderBottomColor: 'transparent',
+  },
+  tabActive: {
+    borderBottomColor: '#8B7FE8',
+  },
+  tabText: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#555',
+  },
+  tabTextActive: {
+    color: '#8B7FE8',
+  },
+  tabBadge: {
+    backgroundColor: '#8B7FE8',
+    borderRadius: 10,
+    minWidth: 20,
+    height: 20,
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: 6,
+  },
+  tabBadgeText: {
+    fontSize: 11,
+    fontWeight: '700',
     color: '#fff',
   },
   scrollContent: {
@@ -392,66 +467,49 @@ const styles = StyleSheet.create({
     color: '#444',
     textAlign: 'center',
   },
-  // Modal styles
-  modalOverlay: {
-    flex: 1,
-    backgroundColor: 'rgba(0,0,0,0.7)',
-    justifyContent: 'flex-end',
-  },
-  modalContent: {
-    backgroundColor: '#1a1a1a',
-    borderTopLeftRadius: 20,
-    borderTopRightRadius: 20,
-    paddingHorizontal: 20,
-    paddingBottom: 40,
-    paddingTop: 12,
-  },
-  modalHandle: {
-    width: 40,
-    height: 4,
-    borderRadius: 2,
-    backgroundColor: '#444',
-    alignSelf: 'center',
-    marginBottom: 16,
-  },
-  modalTitle: {
-    fontSize: 14,
-    fontWeight: '700',
-    color: '#666',
-    letterSpacing: 1,
-    marginBottom: 12,
-  },
-  modalDivider: {
-    height: 1,
-    backgroundColor: '#2a2a2a',
-    marginBottom: 12,
-  },
-  modalOption: {
+  // Create lobby card
+  createCard: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingVertical: 14,
-    gap: 14,
+    padding: 16,
+    borderRadius: 14,
+    borderWidth: 1,
+    borderColor: 'rgba(139, 127, 232, 0.25)',
+    borderStyle: 'dashed',
+    marginTop: 8,
+    gap: 12,
   },
-  modalOptionIcon: {
+  createCardIcon: {
     width: 44,
     height: 44,
     borderRadius: 12,
-    backgroundColor: '#252525',
+    backgroundColor: 'rgba(139, 127, 232, 0.1)',
     alignItems: 'center',
     justifyContent: 'center',
   },
-  modalOptionText: {
+  createCardInfo: {
     flex: 1,
   },
-  modalOptionTitle: {
+  createCardTitle: {
     fontSize: 15,
     fontWeight: '700',
     color: '#fff',
-    letterSpacing: 0.5,
   },
-  modalOptionSubtitle: {
+  createCardSubtitle: {
     fontSize: 12,
     color: '#666',
     marginTop: 2,
+  },
+  createCardButton: {
+    paddingVertical: 7,
+    paddingHorizontal: 16,
+    borderRadius: 20,
+    borderWidth: 1,
+    borderColor: '#8B7FE8',
+  },
+  createCardButtonText: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: '#8B7FE8',
   },
 });

@@ -179,7 +179,7 @@ function LeaderboardCard({ leaderboard, onPress, currentUserId }: LeaderboardCar
                   <ThemedText style={styles.meta} numberOfLines={1}>
                     {leaderboard.game}
                     <ThemedText style={styles.metaSep}> · </ThemedText>
-                    {leaderboard.members} player{leaderboard.members !== 1 ? 's' : ''}
+                    {isActive ? 'Challenge Mode' : 'Leaderboard'}
                   </ThemedText>
                 </View>
               </View>
@@ -188,7 +188,7 @@ function LeaderboardCard({ leaderboard, onPress, currentUserId }: LeaderboardCar
               {displayMembers.length > 0 && (
                 <View style={styles.membersRow}>
                   <View style={styles.stackedAvatarsInline}>
-                    {displayMembers.slice(0, 4).map((player: any, index: number) => {
+                    {displayMembers.slice(0, 3).map((player: any, index: number) => {
                       const photo = player.avatar || player.photoUrl;
                       const name = player.username || player.displayName || '?';
                       return (
@@ -206,10 +206,12 @@ function LeaderboardCard({ leaderboard, onPress, currentUserId }: LeaderboardCar
                         </View>
                       );
                     })}
+                    {displayMembers.length > 3 && (
+                      <View style={[styles.avatarWrapInline, styles.overflowBadge, { marginLeft: -8, zIndex: 6 }]}>
+                        <ThemedText style={styles.overflowText}>+{displayMembers.length - 3}</ThemedText>
+                      </View>
+                    )}
                   </View>
-                  <ThemedText style={styles.competingText}>
-                    {leaderboard.members} competing
-                  </ThemedText>
                 </View>
               )}
             </View>
@@ -238,41 +240,17 @@ function LeaderboardCard({ leaderboard, onPress, currentUserId }: LeaderboardCar
           {/* Footer */}
           <View style={styles.footerPanel}>
             <View style={styles.footerLeft}>
-              {isActive && (
-                <View style={styles.activeTag}>
-                  <View style={styles.challengeDot} />
-                  <ThemedText style={styles.challengeText}>Challenge</ThemedText>
-                </View>
-              )}
-              {!isActive && (
-                <ThemedText style={styles.memberCount}>
-                  {leaderboard.members}/{leaderboard.maxMembers || 10}
-                </ThemedText>
-              )}
+              <IconSymbol size={13} name="person.2.fill" color="#666" />
+              <ThemedText style={styles.memberCount}>
+                {leaderboard.members} player{leaderboard.members !== 1 ? 's' : ''}
+              </ThemedText>
             </View>
-
-            {daysInfo && isActive ? (
-              <ThemedText style={[styles.daysLeft, daysInfo.daysLeft < 7 && styles.daysLeftUrgent]}>{daysInfo.daysLeft} days left</ThemedText>
-            ) : (
-              <View style={styles.stackedAvatars}>
-                {allMembers.slice(0, 3).map((player: any, index: number) => {
-                  const photo = player.avatar || player.photoUrl;
-                  const name = player.username || player.displayName || '?';
-                  return (
-                    <View
-                      key={player.userId || index}
-                      style={[styles.avatarWrap, { marginLeft: index === 0 ? 0 : -8, zIndex: 5 - index }]}
-                    >
-                      {photo ? (
-                        <ExpoImage source={{ uri: photo }} style={styles.avatarImg} cachePolicy="memory-disk" recyclingKey={photo} />
-                      ) : (
-                        <View style={styles.avatarFallback}>
-                          <ThemedText style={styles.avatarFallbackText}>{name.charAt(0)}</ThemedText>
-                        </View>
-                      )}
-                    </View>
-                  );
-                })}
+            {daysInfo && (
+              <View style={styles.footerRight}>
+                <IconSymbol size={12} name="calendar" color="#666" />
+                <ThemedText style={[styles.daysLeft, daysInfo.daysLeft < 7 && styles.daysLeftUrgent]}>
+                  {daysInfo.daysLeft} days left
+                </ThemedText>
               </View>
             )}
           </View>
@@ -396,10 +374,15 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     color: '#555',
   },
-  competingText: {
-    fontSize: 12,
-    fontWeight: '500',
-    color: '#666',
+  overflowBadge: {
+    backgroundColor: '#252525',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  overflowText: {
+    fontSize: 10,
+    fontWeight: '700',
+    color: '#999',
   },
   // User rank square
   userRankSquare: {
@@ -455,7 +438,12 @@ const styles = StyleSheet.create({
   footerLeft: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 10,
+    gap: 5,
+  },
+  footerRight: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 5,
   },
   stackedAvatars: {
     flexDirection: 'row',
@@ -494,7 +482,7 @@ const styles = StyleSheet.create({
     width: 5,
     height: 5,
     borderRadius: 2.5,
-    backgroundColor: '#D4A843',
+    backgroundColor: '#8B7FE8',
   },
   challengeText: {
     fontSize: 11,

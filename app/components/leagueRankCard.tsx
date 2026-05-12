@@ -699,7 +699,7 @@ export default function LeagueRankCard({ game, username, viewOnly = false, userI
           <View style={[styles.techCornerTL, { borderColor: `rgba(${rgb}, 0.3)` }]} />
           <View style={[styles.techCornerBR, { borderColor: `rgba(${rgb}, 0.3)` }]} />
 
-          {/* Header Row - Profile */}
+          {/* Header Row - Profile + Game Icon */}
           <View style={styles.heroHeader}>
             <View style={styles.heroProfileSection}>
               {game.profileIconId ? (
@@ -719,6 +719,11 @@ export default function LeagueRankCard({ game, username, viewOnly = false, userI
               ) : null}
               <ThemedText style={styles.backUsername}>{username}</ThemedText>
             </View>
+            <Image
+              source={require('@/assets/images/lol.png')}
+              style={styles.backGameIcon}
+              resizeMode="contain"
+            />
           </View>
 
           {/* Current Rank */}
@@ -1028,17 +1033,25 @@ const styles = StyleSheet.create({
   techCornerTL: { position: 'absolute', top: 16, left: 16, width: 20, height: 20, borderTopWidth: 1.5, borderLeftWidth: 1.5, borderColor: 'rgba(30, 100, 200, 0.3)', borderTopLeftRadius: 3 },
   techCornerBR: { position: 'absolute', bottom: 16, right: 16, width: 20, height: 20, borderBottomWidth: 1.5, borderRightWidth: 1.5, borderColor: 'rgba(30, 100, 200, 0.3)', borderBottomRightRadius: 3 },
   heroHeader: {
+    flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'center',
-    flex: 1,
+    justifyContent: 'space-between',
+    marginBottom: 8,
   },
   heroProfileSection: {
     flexDirection: 'row',
     alignItems: 'center',
+    flex: 1,
+  },
+  backGameIcon: {
+    width: 38,
+    height: 38,
+    opacity: 0.6,
+    marginLeft: -20,
   },
   profileImageWrapper: { position: 'relative' },
-  backPlayerCard: { width: 44, height: 44, borderRadius: 8, borderWidth: 1, borderColor: 'rgba(255,255,255,0.5)' },
-  profileGlow: { position: 'absolute', top: -2, left: -2, right: -2, bottom: -2, borderRadius: 10, borderWidth: 1, borderColor: 'rgba(100,150,255,0.3)' },
+  backPlayerCard: { width: 44, height: 44, borderRadius: 22, borderWidth: 1, borderColor: 'rgba(255,255,255,0.5)' },
+  profileGlow: { position: 'absolute', top: -2, left: -2, right: -2, bottom: -2, borderRadius: 24, borderWidth: 1, borderColor: 'rgba(100,150,255,0.3)' },
   levelBadge: {
     position: 'absolute',
     bottom: -4,
