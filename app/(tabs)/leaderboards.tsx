@@ -401,10 +401,10 @@ export default function LeaderboardScreen() {
                   <Image source={rankIcon} style={styles.rankIconSmall} resizeMode="contain" />
                   <View style={styles.rankTextContainer}>
                     <ThemedText style={styles.currentRankText}>
-                      {formatRankDisplay(player.currentRank)}{' '}
-                      <ThemedText style={styles.rankPointsText}>
-                        {isLeague ? `(${player.lp || 0} LP)` : `(${player.rr || 0} RR)`}
-                      </ThemedText>
+                      {formatRankDisplay(player.currentRank)}
+                    </ThemedText>
+                    <ThemedText style={styles.rankPointsText}>
+                      {isLeague ? `${player.lp || 0} LP` : `${player.rr || 0} RR`}
                     </ThemedText>
                   </View>
                 </View>
@@ -462,13 +462,9 @@ export default function LeaderboardScreen() {
           onPress={() => router.push('/partyPages/lobbies')}
           activeOpacity={0.7}
         >
-          <IconSymbol size={16} name="hexagon" color="#e53935" />
+          <IconSymbol size={16} name="hexagon" color="#8B7FE8" />
           <ThemedText style={styles.lobbiesChipText}>Lobbies</ThemedText>
-          {lobbyCount > 0 && (
-            <View style={styles.lobbiesChipBadge}>
-              <ThemedText style={styles.lobbiesChipBadgeText}>{lobbyCount}</ThemedText>
-            </View>
-          )}
+          <IconSymbol size={14} name="chevron.right" color="#8B7FE8" />
         </TouchableOpacity>
       </View>
 
@@ -616,32 +612,18 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 8,
-    backgroundColor: 'rgba(255, 255, 255, 0.06)',
+    backgroundColor: 'rgba(139, 127, 232, 0.08)',
     paddingVertical: 10,
     paddingLeft: 14,
-    paddingRight: 10,
+    paddingRight: 14,
     borderRadius: 20,
     borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.08)',
+    borderColor: 'rgba(139, 127, 232, 0.2)',
   },
   lobbiesChipText: {
     fontSize: 14,
     fontWeight: '600',
     color: '#fff',
-  },
-  lobbiesChipBadge: {
-    backgroundColor: 'rgba(255, 255, 255, 0.1)',
-    borderRadius: 10,
-    minWidth: 20,
-    height: 20,
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingHorizontal: 5,
-  },
-  lobbiesChipBadgeText: {
-    fontSize: 11,
-    fontWeight: '600',
-    color: '#888',
   },
   cardsContainer: {
     backgroundColor: '#1a1a1a',
@@ -735,10 +717,10 @@ const styles = StyleSheet.create({
     gap: 8,
     paddingVertical: 8,
     paddingHorizontal: 14,
-    backgroundColor: 'rgba(255, 255, 255, 0.06)',
+    backgroundColor: 'rgba(139, 127, 232, 0.06)',
     borderRadius: 20,
     borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.08)',
+    borderColor: 'rgba(139, 127, 232, 0.15)',
     overflow: 'hidden',
   },
   gameSwitchGlow: {
@@ -830,7 +812,7 @@ const styles = StyleSheet.create({
     backgroundColor: '#252525',
   },
   currentUserName: {
-    color: '#C9A84E',
+    color: '#8B7FE8',
   },
   rankContainer: {
     width: 40,
@@ -896,18 +878,19 @@ const styles = StyleSheet.create({
   rankTextContainer: {
     flex: 1,
     alignItems: 'flex-start',
+    gap: 2,
   },
   currentRankText: {
     fontSize: 11,
     fontWeight: '600',
     color: '#fff',
-    lineHeight: 14,
+    lineHeight: 13,
   },
   rankPointsText: {
     fontSize: 10,
     fontWeight: '500',
     color: '#666',
-    lineHeight: 13,
+    lineHeight: 12,
   },
   // Game dropdown overlay styles
   gameDropdownOverlay: {
@@ -941,8 +924,8 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(255, 255, 255, 0.03)',
   },
   gameDropdownCardActive: {
-    borderColor: 'rgba(255, 255, 255, 0.2)',
-    backgroundColor: 'rgba(255, 255, 255, 0.07)',
+    borderColor: 'rgba(139, 127, 232, 0.3)',
+    backgroundColor: 'rgba(139, 127, 232, 0.1)',
   },
   gameDropdownLogo: {
     width: 24,

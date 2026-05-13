@@ -1043,49 +1043,45 @@ export default function DuoFinderScreen() {
             ListHeaderComponent={
               <View>
                 {/* Live Search Banner */}
-                <TouchableOpacity
-                  style={styles.liveSearchBanner}
-                  onPress={() => router.push('/partyPages/liveSearch')}
-                  activeOpacity={0.8}
-                >
-                  <View style={styles.liveSearchContent}>
-                    <Animated.View style={[styles.liveSearchDot, { opacity: pulseAnim }]} />
-                    <View style={styles.liveSearchTextContainer}>
-                      <View style={styles.liveSearchTitleRow}>
-                        <ThemedText style={styles.liveSearchTitle}>Live Search</ThemedText>
-                        <IconSymbol size={16} name="waveform" color="#4ADE80" />
+                <View style={styles.liveSearchBannerWrapper}>
+                  <Animated.View style={[styles.liveSearchGlow, { opacity: pulseAnim }]} />
+                  <View style={styles.liveSearchBanner}>
+                    <TouchableOpacity
+                      style={styles.liveSearchLeft}
+                      onPress={() => router.push('/partyPages/liveSearch')}
+                      activeOpacity={0.8}
+                    >
+                      <View style={styles.liveSearchHeader}>
+                        <Animated.View style={[styles.liveSearchDot, { opacity: pulseAnim }]} />
+                        <ThemedText style={styles.liveSearchLiveText}>LIVE MATCHMAKING</ThemedText>
                       </View>
-                      <ThemedText style={styles.liveSearchSubtitle}>Find players actively looking for a duo</ThemedText>
+                      <View style={styles.liveSearchTextContent}>
+                        <ThemedText style={styles.liveSearchTitle}>Find a Duo Now</ThemedText>
+                        <ThemedText style={styles.liveSearchSubtitle}>Match with players searching right now</ThemedText>
+                      </View>
+                    </TouchableOpacity>
+                    <View style={styles.liveSearchRight}>
+                      <Animated.View style={[styles.liveSearchWaveform, { opacity: pulseAnim }]}>
+                        <View style={[styles.waveformBar, { height: 16 }]} />
+                        <View style={[styles.waveformBar, { height: 24 }]} />
+                        <View style={[styles.waveformBar, { height: 20 }]} />
+                        <View style={[styles.waveformBar, { height: 32 }]} />
+                        <View style={[styles.waveformBar, { height: 28 }]} />
+                        <View style={[styles.waveformBar, { height: 22 }]} />
+                        <View style={[styles.waveformBar, { height: 26 }]} />
+                        <View style={[styles.waveformBar, { height: 18 }]} />
+                      </Animated.View>
+                      <TouchableOpacity
+                        style={styles.joinQueueButton}
+                        activeOpacity={0.9}
+                        onPress={() => router.push('/partyPages/liveSearch')}
+                      >
+                        <ThemedText style={styles.joinQueueText}>Join Queue</ThemedText>
+                        <IconSymbol size={14} name="chevron.right" color="#fff" />
+                      </TouchableOpacity>
                     </View>
                   </View>
-                  {(() => {
-                    if (!valorantCard && !leagueCard) return <IconSymbol size={20} name="chevron.right" color="#4ADE80" />;
-
-                    const allRankIcons = [];
-
-                    // Add League rank icon if card exists
-                    if (leagueCard) {
-                      const leagueIcons = getRankRange(leagueCard.currentRank, leagueCard.game);
-                      allRankIcons.push(...leagueIcons);
-                    }
-
-                    // Add Valorant rank icon if card exists
-                    if (valorantCard) {
-                      const valorantIcons = getRankRange(valorantCard.currentRank, valorantCard.game);
-                      allRankIcons.push(...valorantIcons);
-                    }
-
-                    if (!allRankIcons.length) return <IconSymbol size={20} name="chevron.right" color="#4ADE80" />;
-
-                    return (
-                      <View style={styles.rankIconsContainer}>
-                        {allRankIcons.map((icon, index) => (
-                          <Image key={index} source={icon} style={styles.rankIconSmall} resizeMode="contain" />
-                        ))}
-                      </View>
-                    );
-                  })()}
-                </TouchableOpacity>
+                </View>
 
                 {/* Tabs */}
                 <View style={styles.tabsWrapper}>
@@ -1102,7 +1098,7 @@ export default function DuoFinderScreen() {
                       onPress={() => setShowPostDuoCard(true)}
                       activeOpacity={0.7}
                     >
-                      <IconSymbol size={16} name="plus.circle" color="#fff" />
+                      <IconSymbol size={14} name="plus.circle" color="#fff" />
                       <ThemedText style={styles.postToFeedTabText}>Post to Feed</ThemedText>
                     </TouchableOpacity>
                     <TouchableOpacity
@@ -1110,7 +1106,7 @@ export default function DuoFinderScreen() {
                       onPress={() => setShowFilterModal(true)}
                       activeOpacity={0.7}
                     >
-                      <IconSymbol size={18} name="slider.horizontal.3" color={activeFilterCount > 0 ? '#8B7FE8' : '#fff'} />
+                      <IconSymbol size={16} name="slider.horizontal.3" color={activeFilterCount > 0 ? '#8B7FE8' : '#fff'} />
                     </TouchableOpacity>
                   </View>
                   <View style={styles.tabsDivider} />
@@ -1553,7 +1549,7 @@ const styles = StyleSheet.create({
   },
   // Tabs
   tabsWrapper: {
-    marginBottom: 16,
+    marginBottom: 12,
   },
   tabsContainer: {
     flexDirection: 'row',
@@ -1596,17 +1592,17 @@ const styles = StyleSheet.create({
   postToFeedTab: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 5,
-    paddingVertical: 8,
-    paddingHorizontal: 12,
+    gap: 4,
+    paddingVertical: 6,
+    paddingHorizontal: 10,
     backgroundColor: 'rgba(255, 255, 255, 0.08)',
-    borderRadius: 18,
+    borderRadius: 16,
     borderWidth: 1,
     borderColor: 'rgba(255, 255, 255, 0.12)',
     marginBottom: 8,
   },
   postToFeedTabText: {
-    fontSize: 13,
+    fontSize: 12,
     fontWeight: '600',
     color: '#fff',
   },
@@ -1614,10 +1610,10 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    width: 38,
-    height: 38,
+    width: 32,
+    height: 32,
     backgroundColor: 'rgba(255, 255, 255, 0.08)',
-    borderRadius: 19,
+    borderRadius: 16,
     borderWidth: 1,
     borderColor: 'rgba(255, 255, 255, 0.12)',
     marginBottom: 8,
@@ -1651,7 +1647,7 @@ const styles = StyleSheet.create({
   },
   feedContent: {
     paddingHorizontal: 16,
-    paddingTop: 20,
+    paddingTop: 4,
   },
   feedContainer: {
     backgroundColor: 'rgba(255,255,255,0.03)',
@@ -1663,24 +1659,47 @@ const styles = StyleSheet.create({
     marginBottom: 12,
   },
   // Live Search Banner
+  liveSearchBannerWrapper: {
+    marginHorizontal: 16,
+    marginBottom: 12,
+    position: 'relative',
+  },
+  liveSearchGlow: {
+    position: 'absolute',
+    top: -2,
+    left: -2,
+    right: -2,
+    bottom: -2,
+    borderRadius: 18,
+    backgroundColor: '#4ADE80',
+    opacity: 0.3,
+  },
   liveSearchBanner: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    backgroundColor: 'rgba(14, 51, 34, 0.4)',
+    backgroundColor: '#000',
     borderRadius: 16,
-    borderWidth: 1,
-    borderColor: 'rgba(74, 222, 128, 0.2)',
-    paddingVertical: 14,
-    paddingHorizontal: 16,
-    marginHorizontal: 16,
-    marginBottom: 16,
+    borderWidth: 1.5,
+    borderColor: 'rgba(74, 222, 128, 0.4)',
+    paddingVertical: 18,
+    paddingHorizontal: 20,
+    overflow: 'hidden',
+    position: 'relative',
+    shadowColor: '#4ADE80',
+    shadowOffset: { width: 0, height: 0 },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    elevation: 8,
   },
-  liveSearchContent: {
+  liveSearchLeft: {
+    flex: 1,
+    gap: 8,
+  },
+  liveSearchHeader: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 12,
-    flex: 1,
+    gap: 8,
   },
   liveSearchDot: {
     width: 8,
@@ -1688,23 +1707,60 @@ const styles = StyleSheet.create({
     borderRadius: 4,
     backgroundColor: '#4ADE80',
   },
-  liveSearchTextContainer: {
-    flex: 1,
+  liveSearchLiveText: {
+    fontSize: 11,
+    fontWeight: '700',
+    color: '#4ADE80',
+    letterSpacing: 0.5,
   },
-  liveSearchTitleRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
+  liveSearchTextContent: {
+    gap: 4,
   },
   liveSearchTitle: {
-    fontSize: 15,
-    fontWeight: '600',
-    color: '#4ADE80',
+    fontSize: 24,
+    fontWeight: '700',
+    color: '#fff',
+    letterSpacing: -0.5,
   },
   liveSearchSubtitle: {
-    fontSize: 12,
+    fontSize: 13,
     color: '#888',
-    marginTop: 2,
+    lineHeight: 18,
+  },
+  liveSearchRight: {
+    alignItems: 'flex-end',
+    gap: 12,
+  },
+  liveSearchWaveform: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 3,
+  },
+  waveformBar: {
+    width: 3,
+    backgroundColor: '#4ADE80',
+    borderRadius: 1.5,
+  },
+  joinQueueButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    paddingVertical: 6,
+    paddingHorizontal: 12,
+    borderRadius: 20,
+    backgroundColor: '#000',
+    borderWidth: 1.5,
+    borderColor: '#4ADE80',
+    shadowColor: '#4ADE80',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.3,
+    shadowRadius: 6,
+    elevation: 4,
+  },
+  joinQueueText: {
+    fontSize: 13,
+    fontWeight: '700',
+    color: '#fff',
   },
   rankIconsColumn: {
     flexDirection: 'column',

@@ -266,15 +266,24 @@ export default function ChatListScreen() {
 
   return (
     <ThemedView style={styles.container}>
-      {/* Top background gradient */}
-      <LinearGradient
-        colors={['rgba(255, 255, 255, 0.06)', 'rgba(255, 255, 255, 0.02)', 'transparent']}
-        locations={[0, 0.5, 1]}
-        start={{ x: 0.5, y: 0 }}
-        end={{ x: 0.5, y: 1 }}
-        style={styles.topGradient}
-        pointerEvents="none"
-      />
+      {/* Purple shimmer background */}
+      <View style={styles.backgroundGlow} pointerEvents="none">
+        <View style={styles.shimmerBand} pointerEvents="none">
+          <LinearGradient
+            colors={[
+              'transparent',
+              'rgba(139, 127, 232, 0.03)',
+              'rgba(139, 127, 232, 0.06)',
+              'rgba(139, 127, 232, 0.03)',
+              'transparent',
+            ]}
+            locations={[0, 0.37, 0.5, 0.63, 1]}
+            start={{ x: 0, y: 0.5 }}
+            end={{ x: 1, y: 0.5 }}
+            style={StyleSheet.absoluteFill}
+          />
+        </View>
+      </View>
 
       {/* Header */}
       <View style={styles.header}>
@@ -434,12 +443,20 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: '#0f0f0f',
   },
-  topGradient: {
+  backgroundGlow: {
     position: 'absolute',
     top: 0,
     left: 0,
     right: 0,
-    height: 260,
+    bottom: 0,
+  },
+  shimmerBand: {
+    position: 'absolute',
+    top: -200,
+    left: -300,
+    width: 800,
+    height: 600,
+    transform: [{ rotate: '20deg' }],
   },
   header: {
     flexDirection: 'row',

@@ -43,7 +43,7 @@ export default function LobbiesScreen() {
   const { user } = useAuth();
   const [leaderboards, setLeaderboards] = useState<any[]>(cachedLeaderboards || []);
   const [loading, setLoading] = useState(!cachedLeaderboards);
-  const [activeTab, setActiveTab] = useState<'active' | 'friends' | 'finished'>('active');
+  const [activeTab, setActiveTab] = useState<'all' | 'active'>('all');
   const skeletonStartTime = useRef<number>(Date.now());
   const isFirstLoad = useRef(!cachedLeaderboards);
 
@@ -229,9 +229,8 @@ export default function LobbiesScreen() {
   }, [router]);
 
   const filteredLeaderboards = useMemo(() => {
-    if (activeTab === 'finished') return leaderboards.filter(lb => lb.challengeStatus === 'completed');
-    if (activeTab === 'friends') return leaderboards;
-    return leaderboards.filter(lb => lb.challengeStatus !== 'completed');
+    if (activeTab === 'active') return leaderboards.filter(lb => lb.challengeStatus !== 'completed');
+    return leaderboards; // 'all' shows everything
   }, [leaderboards, activeTab]);
 
   const activeCount = useMemo(() => leaderboards.filter(lb => lb.challengeStatus !== 'completed').length, [leaderboards]);
@@ -271,12 +270,15 @@ export default function LobbiesScreen() {
           activeOpacity={0.7}
         >
           <IconSymbol size={14} name="plus" color="#8B7FE8" />
-          <ThemedText style={styles.createButtonText}>New Lobby</ThemedText>
+          <ThemedText style={styles.createButtonText}>Create</ThemedText>
         </TouchableOpacity>
       </View>
 
       {/* Tabs */}
       <View style={styles.tabBar}>
+        <TouchableOpacity style={[styles.tab, activeTab === 'all' && styles.tabActive]} onPress={() => setActiveTab('all')}>
+          <ThemedText style={[styles.tabText, activeTab === 'all' && styles.tabTextActive]}>All</ThemedText>
+        </TouchableOpacity>
         <TouchableOpacity style={[styles.tab, activeTab === 'active' && styles.tabActive]} onPress={() => setActiveTab('active')}>
           <ThemedText style={[styles.tabText, activeTab === 'active' && styles.tabTextActive]}>Active</ThemedText>
           {activeCount > 0 && (
@@ -284,12 +286,6 @@ export default function LobbiesScreen() {
               <ThemedText style={styles.tabBadgeText}>{activeCount}</ThemedText>
             </View>
           )}
-        </TouchableOpacity>
-        <TouchableOpacity style={[styles.tab, activeTab === 'friends' && styles.tabActive]} onPress={() => setActiveTab('friends')}>
-          <ThemedText style={[styles.tabText, activeTab === 'friends' && styles.tabTextActive]}>Friends</ThemedText>
-        </TouchableOpacity>
-        <TouchableOpacity style={[styles.tab, activeTab === 'finished' && styles.tabActive]} onPress={() => setActiveTab('finished')}>
-          <ThemedText style={[styles.tabText, activeTab === 'finished' && styles.tabTextActive]}>Finished</ThemedText>
         </TouchableOpacity>
       </View>
 
@@ -325,22 +321,21 @@ export default function LobbiesScreen() {
         )}
 
         {/* Create lobby card */}
-        <TouchableOpacity
-          style={styles.createCard}
-          onPress={() => router.push('/partyPages/createLeaderboardName')}
-          activeOpacity={0.7}
-        >
-          <View style={styles.createCardIcon}>
-            <IconSymbol size={24} name="trophy.fill" color="#8B7FE8" />
-          </View>
-          <View style={styles.createCardInfo}>
-            <ThemedText style={styles.createCardTitle}>Create a new lobby</ThemedText>
-            <ThemedText style={styles.createCardSubtitle}>Start a leaderboard and challenge your friends.</ThemedText>
-          </View>
-          <View style={styles.createCardButton}>
-            <ThemedText style={styles.createCardButtonText}>Create</ThemedText>
-          </View>
-        </TouchableOpacity>
+        <View style={styles.createCardWrapper}>
+          <TouchableOpacity
+            style={styles.createCard}
+            onPress={() => router.push('/partyPages/createLeaderboardName')}
+            activeOpacity={0.7}
+          >
+            <View style={styles.createCardIcon}>
+              <IconSymbol size={32} name="plus.circle.fill" color="#8B7FE8" />
+            </View>
+            <View style={styles.createCardContent}>
+              <ThemedText style={styles.createCardTitle}>Create a new lobby</ThemedText>
+              <ThemedText style={styles.createCardSubtitle}>Start a leaderboard and challenge your friends</ThemedText>
+            </View>
+          </TouchableOpacity>
+        </View>
 
         <View style={{ height: 40 }} />
       </ScrollView>
@@ -446,6 +441,8 @@ const styles = StyleSheet.create({
     fontSize: 11,
     fontWeight: '700',
     color: '#fff',
+    textAlign: 'center',
+    lineHeight: 20,
   },
   scrollContent: {
     paddingHorizontal: 16,
@@ -468,48 +465,42 @@ const styles = StyleSheet.create({
     textAlign: 'center',
   },
   // Create lobby card
+  createCardWrapper: {
+    marginBottom: 12,
+    borderRadius: 15,
+  },
   createCard: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    padding: 16,
+    backgroundColor: 'transparent',
     borderRadius: 14,
-    borderWidth: 1,
-    borderColor: 'rgba(139, 127, 232, 0.25)',
+    borderWidth: 2,
+    borderColor: 'rgba(139, 127, 232, 0.3)',
     borderStyle: 'dashed',
-    marginTop: 8,
+    paddingVertical: 24,
+    paddingHorizontal: 20,
+    flexDirection: 'column',
+    alignItems: 'center',
+    justifyContent: 'center',
     gap: 12,
+    minHeight: 120,
   },
   createCardIcon: {
-    width: 44,
-    height: 44,
-    borderRadius: 12,
-    backgroundColor: 'rgba(139, 127, 232, 0.1)',
     alignItems: 'center',
     justifyContent: 'center',
   },
-  createCardInfo: {
-    flex: 1,
+  createCardContent: {
+    alignItems: 'center',
+    gap: 4,
   },
   createCardTitle: {
-    fontSize: 15,
+    fontSize: 16,
     fontWeight: '700',
     color: '#fff',
+    textAlign: 'center',
   },
   createCardSubtitle: {
-    fontSize: 12,
-    color: '#666',
-    marginTop: 2,
-  },
-  createCardButton: {
-    paddingVertical: 7,
-    paddingHorizontal: 16,
-    borderRadius: 20,
-    borderWidth: 1,
-    borderColor: '#8B7FE8',
-  },
-  createCardButtonText: {
     fontSize: 13,
-    fontWeight: '600',
-    color: '#8B7FE8',
+    color: '#666',
+    textAlign: 'center',
+    lineHeight: 18,
   },
 });

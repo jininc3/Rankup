@@ -390,9 +390,9 @@ export default function CommentModal({
                 disabled={!commentText.trim() || submitting}
               >
                 {submitting ? (
-                  <ActivityIndicator size="small" color="#fff" />
+                  <ActivityIndicator size="small" color="#8B7FE8" />
                 ) : (
-                  <IconSymbol size={24} name="arrow.up" color={commentText.trim() ? "#fff" : "#888"} />
+                  <IconSymbol size={24} name="arrow.up" color={commentText.trim() ? "#8B7FE8" : "#888"} />
                 )}
               </TouchableOpacity>
             </View>
@@ -408,12 +408,15 @@ const styles = StyleSheet.create({
   modalOverlay: {
     flex: 1,
     justifyContent: 'flex-end',
-    backgroundColor: 'transparent',
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
   },
   modalContent: {
-    backgroundColor: '#0f0f0f',
+    backgroundColor: '#0a0a0a',
     borderTopLeftRadius: 20,
     borderTopRightRadius: 20,
+    borderWidth: 1,
+    borderBottomWidth: 0,
+    borderColor: 'rgba(255, 255, 255, 0.08)',
     height: '70%',
     overflow: 'hidden',
   },
@@ -465,7 +468,7 @@ const styles = StyleSheet.create({
   headerTitle: {
     fontSize: 18,
     fontWeight: '600',
-    color: '#fff',
+    color: '#8B7FE8',
     letterSpacing: 0.3,
   },
   headerSpacer: {
@@ -496,7 +499,7 @@ const styles = StyleSheet.create({
     width: 32,
     height: 32,
     borderRadius: 16,
-    backgroundColor: '#2c2f33',
+    backgroundColor: 'rgba(255, 255, 255, 0.06)',
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -543,8 +546,8 @@ const styles = StyleSheet.create({
   },
   deleteCommentText: {
     fontSize: 13,
-    color: '#fff',
-    fontWeight: '500',
+    color: '#ff3b30',
+    fontWeight: '600',
   },
   emptyState: {
     alignItems: 'center',
@@ -569,15 +572,15 @@ const styles = StyleSheet.create({
     paddingTop: 12,
     paddingBottom: 40,
     borderTopWidth: 1,
-    borderTopColor: 'rgba(255, 255, 255, 0.1)',
-    backgroundColor: '#0f0f0f',
+    borderTopColor: 'rgba(255, 255, 255, 0.08)',
+    backgroundColor: 'transparent',
     gap: 12,
   },
   inputAvatar: {
     width: 32,
     height: 32,
     borderRadius: 16,
-    backgroundColor: '#2c2f33',
+    backgroundColor: 'rgba(255, 255, 255, 0.06)',
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -595,26 +598,26 @@ const styles = StyleSheet.create({
     flex: 1,
     maxHeight: 100,
     minHeight: 36,
-    backgroundColor: '#2c2f33',
+    backgroundColor: 'rgba(255, 255, 255, 0.04)',
     borderRadius: 18,
     paddingHorizontal: 16,
     paddingVertical: 8,
     fontSize: 15,
     color: '#fff',
     borderWidth: 1,
-    borderColor: '#424549',
+    borderColor: 'rgba(255, 255, 255, 0.08)',
   },
   sendButton: {
     width: 36,
     height: 36,
     borderRadius: 18,
     borderWidth: 1.5,
-    borderColor: '#fff',
+    borderColor: '#8B7FE8',
     backgroundColor: 'transparent',
     alignItems: 'center',
     justifyContent: 'center',
   },
   sendButtonDisabled: {
-    borderColor: '#555',
+    borderColor: 'rgba(255, 255, 255, 0.2)',
   },
 });

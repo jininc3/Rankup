@@ -179,7 +179,9 @@ function LeaderboardCard({ leaderboard, onPress, currentUserId }: LeaderboardCar
                   <ThemedText style={styles.meta} numberOfLines={1}>
                     {leaderboard.game}
                     <ThemedText style={styles.metaSep}> · </ThemedText>
-                    {isActive ? 'Challenge Mode' : 'Leaderboard'}
+                    <ThemedText style={isActive ? styles.challengeModeActive : styles.meta}>
+                      {isActive ? 'Challenge Mode' : 'Leaderboard'}
+                    </ThemedText>
                   </ThemedText>
                 </View>
               </View>
@@ -233,6 +235,7 @@ function LeaderboardCard({ leaderboard, onPress, currentUserId }: LeaderboardCar
                 <ThemedText style={[styles.userRankNumber, { color: getRankColor(userRank) }]}>
                   #{userRank}
                 </ThemedText>
+                <ThemedText style={styles.userRankLabel}>(you)</ThemedText>
               </View>
             )}
           </View>
@@ -335,6 +338,11 @@ const styles = StyleSheet.create({
     fontSize: 13,
     color: '#666',
   },
+  challengeModeActive: {
+    fontSize: 13,
+    color: '#FFD700',
+    fontWeight: '600',
+  },
   metaSep: {
     color: '#333',
   },
@@ -387,7 +395,7 @@ const styles = StyleSheet.create({
   // User rank square
   userRankSquare: {
     width: 64,
-    height: 64,
+    height: 78,
     marginRight: 14,
     borderRadius: 12,
     backgroundColor: 'rgba(255, 255, 255, 0.04)',
@@ -395,12 +403,13 @@ const styles = StyleSheet.create({
     borderColor: 'rgba(255, 255, 255, 0.12)',
     alignItems: 'center',
     justifyContent: 'center',
-    gap: 4,
+    paddingVertical: 8,
+    gap: 2,
   },
   userRankAvatarWrap: {
-    width: 28,
-    height: 28,
-    borderRadius: 14,
+    width: 24,
+    height: 24,
+    borderRadius: 12,
     overflow: 'hidden',
     borderWidth: 1.5,
     borderColor: 'rgba(255, 255, 255, 0.2)',
@@ -408,11 +417,13 @@ const styles = StyleSheet.create({
   userRankAvatarImg: {
     width: '100%',
     height: '100%',
+    borderRadius: 12,
   },
   userRankAvatarFallback: {
     width: '100%',
     height: '100%',
     backgroundColor: '#252525',
+    borderRadius: 12,
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -422,9 +433,16 @@ const styles = StyleSheet.create({
     color: '#666',
   },
   userRankNumber: {
-    fontSize: 13,
+    fontSize: 12,
     fontWeight: '700',
     color: '#fff',
+    lineHeight: 14,
+  },
+  userRankLabel: {
+    fontSize: 8,
+    fontWeight: '600',
+    color: '#666',
+    lineHeight: 10,
   },
   // Footer
   footerPanel: {
