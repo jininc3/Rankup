@@ -1631,6 +1631,7 @@ const styles = StyleSheet.create({
     fontWeight: '800',
     color: '#fff',
     letterSpacing: -0.5,
+    lineHeight: 32,
   },
   // Profile info section below cover
   profileInfoSection: {

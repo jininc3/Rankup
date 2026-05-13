@@ -204,40 +204,106 @@ export default function NewRankCardScreen() {
     const isLinked = !!account;
     const isEnabled = enabledRankCards.includes(game);
 
+    // Determine color based on game
+    const accentColor = game === 'valorant'
+      ? 'rgba(196, 39, 67, 0.6)'
+      : game === 'league'
+      ? 'rgba(59, 130, 246, 0.6)'
+      : 'rgba(212, 168, 67, 0.6)';
+
+    const accentColorSubtle = game === 'valorant'
+      ? 'rgba(196, 39, 67, 0.15)'
+      : game === 'league'
+      ? 'rgba(59, 130, 246, 0.15)'
+      : 'rgba(212, 168, 67, 0.15)';
+
     return (
-      <TouchableOpacity
-        key={game}
-        style={[styles.gameCard, isEnabled && styles.gameCardActive]}
-        onPress={() => handleGameSelect(game)}
-        activeOpacity={0.7}
-      >
-        <Image source={logo} style={styles.gameLogo} resizeMode="contain" />
-        <View style={styles.gameInfo}>
-          <View style={styles.gameNameRow}>
-            <ThemedText style={styles.gameName}>{name}</ThemedText>
-            {isLinked && isEnabled && <View style={styles.activeDot} />}
-          </View>
-          {isLinked ? (
-            <ThemedText style={styles.accountName}>
-              {account.gameName || account.name}#{account.tagLine || account.tag}
-            </ThemedText>
-          ) : (
-            <ThemedText style={styles.notLinkedText}>Tap to link your account</ThemedText>
-          )}
-        </View>
-        {isLinked ? (
+      <View key={game} style={styles.rankCardWrapper}>
+        <TouchableOpacity
+          style={styles.rankCardContainer}
+          onPress={() => handleGameSelect(game)}
+          activeOpacity={0.85}
+        >
+          {/* Rank card shape with gradient border */}
+          <LinearGradient
+            colors={isLinked ? [accentColor, 'rgba(0,0,0,0.4)'] : ['rgba(255,255,255,0.1)', 'rgba(255,255,255,0.05)']}
+            start={{ x: 0, y: 0 }}
+            end={{ x: 1, y: 1 }}
+            style={styles.rankCardOuter}
+          >
+            <View style={[styles.rankCardInner, !isLinked && styles.rankCardSilhouette]}>
+              {/* Background gradient */}
+              <LinearGradient
+                colors={isLinked ? ['#1a1a1a', '#0f0f0f'] : ['rgba(255,255,255,0.02)', 'rgba(255,255,255,0.01)']}
+                style={StyleSheet.absoluteFillObject}
+              />
+
+              {/* Accent overlay */}
+              {isLinked && (
+                <LinearGradient
+                  colors={[accentColorSubtle, 'transparent']}
+                  start={{ x: 0, y: 0 }}
+                  end={{ x: 1, y: 1 }}
+                  style={StyleSheet.absoluteFillObject}
+                />
+              )}
+
+              {/* Content */}
+              <View style={styles.rankCardContent}>
+                {/* Top section with logo */}
+                <View style={styles.rankCardTop}>
+                  <Image source={logo} style={styles.rankCardLogo} resizeMode="contain" />
+                </View>
+
+                {/* Center section */}
+                <View style={styles.rankCardCenter}>
+                  <ThemedText style={[styles.rankCardGameName, !isLinked && styles.silhouetteText]}>
+                    {name}
+                  </ThemedText>
+                  {isLinked ? (
+                    <ThemedText style={styles.rankCardAccountName}>
+                      {account.gameName || account.name}#{account.tagLine || account.tag}
+                    </ThemedText>
+                  ) : (
+                    <ThemedText style={styles.rankCardNotLinked}>
+                      Tap to link your account
+                    </ThemedText>
+                  )}
+                </View>
+
+                {/* Bottom section with status */}
+                <View style={styles.rankCardBottom}>
+                  {isLinked ? (
+                    <View style={styles.statusRow}>
+                      <View style={styles.linkedBadge}>
+                        <IconSymbol size={12} name="checkmark" color="#22C55E" />
+                        <ThemedText style={styles.linkedText}>Linked</ThemedText>
+                      </View>
+                      {isEnabled && (
+                        <View style={styles.enabledDot} />
+                      )}
+                    </View>
+                  ) : (
+                    <IconSymbol size={20} name="chevron.right" color="rgba(255,255,255,0.2)" />
+                  )}
+                </View>
+              </View>
+            </View>
+          </LinearGradient>
+        </TouchableOpacity>
+
+        {/* Unlink button - positioned absolutely */}
+        {isLinked && (
           <TouchableOpacity
-            style={styles.unlinkIconButton}
+            style={styles.unlinkButton}
             onPress={onUnlink}
             hitSlop={8}
             activeOpacity={0.6}
           >
-            <IconSymbol size={14} name="xmark" color="#888" />
+            <IconSymbol size={16} name="xmark" color="#888" />
           </TouchableOpacity>
-        ) : (
-          <IconSymbol size={18} name="chevron.right" color="#555" />
         )}
-      </TouchableOpacity>
+      </View>
     );
   };
 
@@ -350,65 +416,114 @@ const styles = StyleSheet.create({
     marginBottom: 16,
   },
   gameList: {
-    gap: 12,
+    gap: 20,
   },
-  gameCard: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 14,
-    backgroundColor: 'rgba(255,255,255,0.04)',
-    borderRadius: 14,
-    paddingVertical: 18,
-    paddingHorizontal: 18,
-    borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.06)',
+  rankCardWrapper: {
+    position: 'relative',
   },
-  gameCardActive: {
-    backgroundColor: 'rgba(255,255,255,0.06)',
-    borderColor: 'rgba(255,255,255,0.12)',
+  rankCardContainer: {
+    width: '100%',
   },
-  gameLogo: {
-    width: 36,
-    height: 36,
-    borderRadius: 8,
+  rankCardOuter: {
+    borderRadius: 16,
+    padding: 1.5,
+    height: 220,
   },
-  gameInfo: {
+  rankCardInner: {
     flex: 1,
-    gap: 2,
+    borderRadius: 14.5,
+    overflow: 'hidden',
   },
-  gameNameRow: {
+  rankCardSilhouette: {
+    opacity: 0.4,
+  },
+  rankCardContent: {
+    flex: 1,
+    padding: 20,
+    justifyContent: 'space-between',
+  },
+  rankCardTop: {
     flexDirection: 'row',
-    alignItems: 'center',
+    justifyContent: 'flex-start',
+    alignItems: 'flex-start',
+  },
+  rankCardLogo: {
+    width: 52,
+    height: 52,
+  },
+  rankCardCenter: {
+    flex: 1,
+    justifyContent: 'center',
     gap: 8,
   },
-  gameName: {
-    fontSize: 17,
-    fontWeight: '600',
+  rankCardGameName: {
+    fontSize: 26,
+    fontWeight: '800',
     color: '#fff',
+    letterSpacing: -0.5,
   },
-  activeDot: {
-    width: 7,
-    height: 7,
+  silhouetteText: {
+    color: 'rgba(255,255,255,0.3)',
+  },
+  rankCardAccountName: {
+    fontSize: 15,
+    fontWeight: '600',
+    color: '#999',
+    letterSpacing: -0.2,
+  },
+  rankCardNotLinked: {
+    fontSize: 15,
+    fontWeight: '500',
+    color: 'rgba(255,255,255,0.25)',
+    fontStyle: 'italic',
+  },
+  rankCardBottom: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
+  statusRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+  },
+  linkedBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    backgroundColor: 'rgba(34, 197, 94, 0.1)',
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: 'rgba(34, 197, 94, 0.2)',
+  },
+  linkedText: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: '#22C55E',
+  },
+  enabledDot: {
+    width: 8,
+    height: 8,
     borderRadius: 4,
     backgroundColor: '#22C55E',
+    shadowColor: '#22C55E',
+    shadowOffset: { width: 0, height: 0 },
+    shadowOpacity: 0.5,
+    shadowRadius: 4,
   },
-  accountName: {
-    fontSize: 13,
-    color: '#888',
-  },
-  notLinkedText: {
-    fontSize: 13,
-    color: '#555',
-  },
-  unlinkIconButton: {
-    width: 30,
-    height: 30,
-    borderRadius: 15,
-    backgroundColor: 'rgba(255,255,255,0.05)',
-    borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.08)',
+  unlinkButton: {
+    position: 'absolute',
+    top: 16,
+    right: 16,
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    backgroundColor: 'rgba(0,0,0,0.6)',
     alignItems: 'center',
     justifyContent: 'center',
+    zIndex: 10,
   },
   infoText: {
     fontSize: 13,
