@@ -1,3 +1,6 @@
+import rankCard from '@/app/components/rankCard';
+const RankCard = rankCard;
+import CachedImage from '@/components/ui/CachedImage';
 import PostViewerModal from '@/app/components/postViewerModal';
 import ReportPostModal from '@/app/components/reportPostModal';
 import { ThemedText } from '@/components/themed-text';
@@ -120,6 +123,7 @@ export default function ProfilePreviewScreen() {
   const [achievements, setAchievements] = useState<{ partyName: string; game: string; placement: number; endDate: string }[]>([]);
   const [userNotFound, setUserNotFound] = useState(false);
   const [activeTab, setActiveTab] = useState<'clips' | 'achievements'>('clips');
+  const [activeRankCardIndex, setActiveRankCardIndex] = useState(0);
   const tabs: ('clips' | 'achievements')[] = ['clips', 'achievements'];
   const tabScrollRef = useRef<ScrollView>(null);
 
@@ -695,101 +699,224 @@ export default function ProfilePreviewScreen() {
           {/* Section Divider */}
           <View style={styles.profileSectionDivider} />
 
-          {/* Rank Cards Banner */}
+          {/* Rank Cards Preview */}
           {userGames.length > 0 && (
-            <TouchableOpacity
-              style={styles.rankCardsBanner}
-              onPress={() => router.push({
-                pathname: '/profilePages/rankCards',
-                params: { userId: viewedUser?.id || '', username: viewedUser?.username || '' },
-              })}
-              activeOpacity={0.85}
-            >
-              {/* Dark base + subtle red shimmer */}
-              <LinearGradient colors={['#161616', '#1a1a1a']} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={StyleSheet.absoluteFillObject} pointerEvents="none" />
-              <LinearGradient colors={['transparent', 'rgba(196,39,67,0.12)', 'transparent']} locations={[0.3, 0.5, 0.7]} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={StyleSheet.absoluteFillObject} pointerEvents="none" />
-              <LinearGradient colors={['rgba(255,255,255,0.07)', 'transparent']} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }} style={styles.rankCardsBannerTopEdge} pointerEvents="none" />
+            <View style={styles.rankCardsPreview}>
+              {/* Header */}
+              <View style={styles.rankCardsPreviewHeader}>
+                <View style={styles.rankCardsPreviewHeaderLeft}>
+                  <ThemedText style={styles.rankCardsPreviewTitle}>Rank Cards</ThemedText>
+                  <IconSymbol size={16} name="sparkle" color="rgba(255,255,255,0.4)" />
+                </View>
+                <TouchableOpacity
+                  onPress={() => router.push({ pathname: '/profilePages/rankCards', params: { userId: viewedUser?.id || '' } })}
+                  activeOpacity={0.7}
+                  style={styles.rankCardsViewAll}
+                >
+                  <ThemedText style={styles.rankCardsViewAllText}>View all</ThemedText>
+                  <IconSymbol size={14} name="arrow.right" color="#8B7FE8" />
+                </TouchableOpacity>
+              </View>
+              <ThemedText style={styles.rankCardsPreviewSubtitle}>
+                {`${viewedUser?.username}'s ranked journey`}
+              </ThemedText>
 
-              {/* Stacked mini rank card teaser */}
-              <View style={styles.rankCardsBannerPeek}>
-                {(() => {
-                  const cardOrder = enabledRankCards
-                    .filter(c => c === 'valorant' || c === 'league' || c === 'tft')
-                    .slice(0, 3);
-                  const total = cardOrder.length;
-                  return cardOrder.map((card, idx) => {
-                    const reverseIdx = total - 1 - idx;
-                    const accent =
-                      card === 'valorant' ? 'rgba(196,39,67,0.35)' :
-                      card === 'league' ? 'rgba(59,130,246,0.30)' :
-                      'rgba(212,168,67,0.30)';
-                    const img =
-                      card === 'valorant' ? require('@/assets/images/valorant-red.png') :
-                      card === 'league' ? require('@/assets/images/lol-icon.png') :
-                      require('@/assets/images/tft.png');
-                    return (
-                      <View
-                        key={card}
-                        style={[
-                          styles.rankCardsBannerMini,
-                          {
-                            left: reverseIdx * 8,
-                            top: reverseIdx * -5,
-                            zIndex: idx + 1,
-                          },
-                        ]}
-                      >
-                        <LinearGradient colors={['#2a2a2a', '#1a1a1a']} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={StyleSheet.absoluteFillObject} />
-                        <LinearGradient colors={[accent, 'transparent']} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={StyleSheet.absoluteFillObject} />
-                        <LinearGradient colors={['rgba(255,255,255,0.18)', 'transparent']} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0.4 }} style={styles.rankCardsBannerMiniGloss} />
-                        <Image source={img} style={styles.rankCardsBannerMiniLogo} resizeMode="contain" />
+              {/* Horizontal scrolling rank cards */}
+              <ScrollView
+                horizontal
+                pagingEnabled={false}
+                showsHorizontalScrollIndicator={false}
+                decelerationRate="fast"
+                snapToInterval={screenWidth - 32 + 16}
+                snapToAlignment="start"
+                contentContainerStyle={styles.rankCardsScrollContent}
+                onScroll={(e) => {
+                  const index = Math.round(e.nativeEvent.contentOffset.x / (screenWidth - 32 + 16));
+                  setActiveRankCardIndex(index);
+                }}
+                scrollEventThrottle={16}
+              >
+                {userGames.map((game) => {
+                  let displayUsername = viewedUser?.username || '';
+                  if (game.name === 'Valorant' && valorantAccount) {
+                    displayUsername = `${valorantAccount.gameName}#${valorantAccount.tagLine}`;
+                  } else if ((game.name === 'League of Legends' || game.name === 'TFT') && riotAccount) {
+                    displayUsername = `${riotAccount.gameName}#${riotAccount.tagLine}`;
+                  }
+                  return (
+                    <View key={game.id} style={styles.rankCardPreviewItem}>
+                      <View style={styles.rankCardPreviewScale}>
+                        <RankCard
+                          game={game}
+                          username={displayUsername}
+                          viewOnly={false}
+                          userId={viewedUser?.id}
+                          isFocused={true}
+                          flipOnly={true}
+                        />
                       </View>
-                    );
-                  });
-                })()}
-              </View>
+                    </View>
+                  );
+                })}
+              </ScrollView>
 
-              <View style={styles.rankCardsBannerTextContainer}>
-                <ThemedText style={styles.rankCardsBannerTitle}>Rank Cards</ThemedText>
-                <ThemedText style={styles.rankCardsBannerSubtext}>Tap to view stacked cards</ThemedText>
-              </View>
-              <IconSymbol size={14} name="chevron.right" color="#aaa" />
-            </TouchableOpacity>
+              {/* Dot indicators */}
+              {userGames.length > 1 && (
+                <View style={styles.rankCardsDots}>
+                  {userGames.map((game, index) => (
+                    <View
+                      key={game.id}
+                      style={[
+                        styles.rankCardsDot,
+                        index === activeRankCardIndex && styles.rankCardsDotActive,
+                      ]}
+                    />
+                  ))}
+                </View>
+              )}
+            </View>
           )}
 
-          {/* Clips & Achievements Banners */}
-          <View style={styles.bannerRow}>
-            <TouchableOpacity
-              style={styles.miniBanner}
-              onPress={() => router.push({ pathname: '/profilePages/clips', params: { userId: viewedUser?.id || '' } })}
-              activeOpacity={0.85}
-            >
-              <LinearGradient colors={['#161616', '#1a1a1a']} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={StyleSheet.absoluteFillObject} pointerEvents="none" />
-              <LinearGradient colors={['transparent', 'rgba(59,130,246,0.12)', 'transparent']} locations={[0.3, 0.5, 0.7]} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={StyleSheet.absoluteFillObject} pointerEvents="none" />
-              <LinearGradient colors={['rgba(255,255,255,0.06)', 'transparent']} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }} style={styles.miniBannerTopEdge} pointerEvents="none" />
-              <View style={styles.miniBannerContent}>
-                <IconSymbol size={28} name="video.fill" color="#fff" />
-                <ThemedText style={styles.miniBannerTitle}>Clips</ThemedText>
-                <ThemedText style={styles.miniBannerCount}>{posts.length} {posts.length === 1 ? 'clip' : 'clips'}</ThemedText>
+          {/* Clips Section */}
+          <View style={styles.clipsSection}>
+            {/* Clips Header */}
+            <View style={styles.clipsSectionHeader}>
+              <View style={styles.clipsSectionHeaderLeft}>
+                <ThemedText style={styles.clipsSectionTitle}>Clips</ThemedText>
+                <IconSymbol size={18} name="film" color="rgba(255,255,255,0.4)" />
               </View>
-              <IconSymbol size={12} name="chevron.right" color="rgba(255,255,255,0.4)" style={styles.miniBannerChevron} />
-            </TouchableOpacity>
+              {posts.length > 0 && (
+                <TouchableOpacity
+                  onPress={() => router.push({ pathname: '/profilePages/clips', params: { userId: viewedUser?.id || '' } })}
+                  activeOpacity={0.7}
+                  style={styles.clipsViewAll}
+                >
+                  <ThemedText style={styles.clipsViewAllText}>View all</ThemedText>
+                  <IconSymbol size={14} name="arrow.right" color="#8B7FE8" />
+                </TouchableOpacity>
+              )}
+            </View>
 
-            <TouchableOpacity
-              style={styles.miniBanner}
-              onPress={() => router.push({ pathname: '/profilePages/achievementsBadges', params: { userId: viewedUser?.id || '' } })}
-              activeOpacity={0.85}
-            >
-              <LinearGradient colors={['#161616', '#1a1a1a']} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={StyleSheet.absoluteFillObject} pointerEvents="none" />
-              <LinearGradient colors={['transparent', 'rgba(212,168,67,0.12)', 'transparent']} locations={[0.3, 0.5, 0.7]} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={StyleSheet.absoluteFillObject} pointerEvents="none" />
-              <LinearGradient colors={['rgba(255,255,255,0.06)', 'transparent']} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }} style={styles.miniBannerTopEdge} pointerEvents="none" />
-              <View style={styles.miniBannerContent}>
-                <IconSymbol size={28} name="trophy.fill" color="#D4A843" />
-                <ThemedText style={styles.miniBannerTitle}>Achievements</ThemedText>
-                <ThemedText style={styles.miniBannerCount}>{achievements.length} {achievements.length === 1 ? 'badge' : 'badges'}</ThemedText>
+            {posts.length > 0 ? (
+              <View style={styles.clipsGrid}>
+                {/* Featured large clip */}
+                <View style={styles.clipsFeatured}>
+                  <TouchableOpacity
+                    style={StyleSheet.absoluteFillObject}
+                    onPress={() => router.push({ pathname: '/postViewer', params: { postId: posts[0].id } })}
+                    activeOpacity={0.85}
+                  >
+                    <CachedImage
+                      uri={posts[0].thumbnailUrl || posts[0].mediaUrl}
+                      style={StyleSheet.absoluteFillObject}
+                      resizeMode="cover"
+                    />
+                    <View style={styles.clipOverlay}>
+                      <View style={styles.clipPlayButton}>
+                        <IconSymbol size={16} name="play.fill" color="#fff" />
+                      </View>
+                      {posts[0].duration != null && (
+                        <View style={styles.clipDuration}>
+                          <ThemedText style={styles.clipDurationText}>
+                            {Math.floor(posts[0].duration / 60)}:{String(Math.floor(posts[0].duration % 60)).padStart(2, '0')}
+                          </ThemedText>
+                        </View>
+                      )}
+                    </View>
+                  </TouchableOpacity>
+                </View>
+
+                {/* Right side stacked clips */}
+                <View style={styles.clipsStack}>
+                  {posts.slice(1, 3).map((post) => (
+                    <View key={post.id} style={styles.clipsStackItem}>
+                      <TouchableOpacity
+                        style={StyleSheet.absoluteFillObject}
+                        onPress={() => router.push({ pathname: '/postViewer', params: { postId: post.id } })}
+                        activeOpacity={0.85}
+                      >
+                        <CachedImage
+                          uri={post.thumbnailUrl || post.mediaUrl}
+                          style={StyleSheet.absoluteFillObject}
+                          resizeMode="cover"
+                        />
+                        <View style={styles.clipsStackThumbOverlay}>
+                          <View style={styles.clipPlayButtonSmall}>
+                            <IconSymbol size={10} name="play.fill" color="#fff" />
+                          </View>
+                          {post.duration != null && (
+                            <View style={styles.clipDurationSmall}>
+                              <ThemedText style={styles.clipDurationTextSmall}>
+                                {Math.floor(post.duration / 60)}:{String(Math.floor(post.duration % 60)).padStart(2, '0')}
+                              </ThemedText>
+                            </View>
+                          )}
+                        </View>
+                      </TouchableOpacity>
+                    </View>
+                  ))}
+                </View>
               </View>
-              <IconSymbol size={12} name="chevron.right" color="rgba(255,255,255,0.4)" style={styles.miniBannerChevron} />
-            </TouchableOpacity>
+            ) : (
+              <View style={styles.clipsEmpty}>
+                <IconSymbol size={24} name="video.fill" color="rgba(255,255,255,0.2)" />
+                <ThemedText style={styles.clipsEmptyText}>No clips yet</ThemedText>
+              </View>
+            )}
+          </View>
+
+          {/* Achievements Section */}
+          <View style={styles.achievementsSection}>
+            {/* Header */}
+            <View style={styles.achievementsSectionHeader}>
+              <View style={styles.achievementsSectionHeaderLeft}>
+                <ThemedText style={styles.achievementsSectionTitle}>Achievements</ThemedText>
+                <IconSymbol size={18} name="trophy" color="rgba(255,255,255,0.4)" />
+              </View>
+              <TouchableOpacity
+                onPress={() => router.push({ pathname: '/profilePages/achievementsBadges', params: { userId: viewedUser?.id || '' } })}
+                activeOpacity={0.7}
+                style={styles.achievementsViewAll}
+              >
+                <ThemedText style={styles.achievementsViewAllText}>View all</ThemedText>
+                <IconSymbol size={14} name="arrow.right" color="#8B7FE8" />
+              </TouchableOpacity>
+            </View>
+
+            {/* Badge cards row */}
+            {achievements.length > 0 ? (
+              <View style={styles.achievementsBadgeRow}>
+                {achievements.slice(0, 4).map((achievement, index) => {
+                  const isGold = achievement.placement === 1;
+                  const isSilver = achievement.placement === 2;
+                  const medal = isGold ? '\u{1F947}' : isSilver ? '\u{1F948}' : '\u{1F949}';
+                  const placementLabel = isGold ? '1st Place' : isSilver ? '2nd Place' : '3rd Place';
+                  return (
+                    <TouchableOpacity
+                      key={index}
+                      style={styles.achievementCard}
+                      onPress={() => router.push({ pathname: '/profilePages/achievementsBadges', params: { userId: viewedUser?.id || '' } })}
+                      activeOpacity={0.85}
+                    >
+                      <View style={styles.achievementCardIcon}>
+                        <ThemedText style={styles.achievementCardEmoji}>{medal}</ThemedText>
+                      </View>
+                      <ThemedText style={styles.achievementCardName} numberOfLines={1}>
+                        {achievement.partyName}
+                      </ThemedText>
+                      <ThemedText style={styles.achievementCardDesc} numberOfLines={1}>
+                        {placementLabel}
+                      </ThemedText>
+                    </TouchableOpacity>
+                  );
+                })}
+              </View>
+            ) : (
+              <View style={styles.achievementsEmpty}>
+                <IconSymbol size={24} name="trophy" color="rgba(255,255,255,0.2)" />
+                <ThemedText style={styles.achievementsEmptyText}>No achievements yet</ThemedText>
+              </View>
+            )}
           </View>
         </View>
       </ScrollView>
@@ -1059,136 +1186,279 @@ const styles = StyleSheet.create({
     marginHorizontal: 20,
     marginTop: 16,
   },
-  bannerRow: {
-    flexDirection: 'row',
-    gap: 8,
-    marginHorizontal: 16,
-    marginTop: 10,
-    marginBottom: 16,
-  },
-  miniBanner: {
-    flex: 1,
-    aspectRatio: 0.75,
-    backgroundColor: 'transparent',
-    borderRadius: 14,
-    paddingVertical: 24,
-    paddingHorizontal: 14,
-    borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.14)',
-    overflow: 'hidden',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.35,
-    shadowRadius: 8,
-    elevation: 6,
-  },
-  miniBannerTopEdge: {
-    position: 'absolute',
-    top: 0,
-    left: 0,
-    right: 0,
-    height: 1.5,
-  },
-  miniBannerContent: {
-    gap: 4,
-  },
-  miniBannerTitle: {
-    fontSize: 22,
-    fontWeight: '800',
-    color: '#fff',
-    letterSpacing: -0.3,
-    marginTop: 6,
-    textShadowColor: 'rgba(0,0,0,0.5)',
-    textShadowOffset: { width: 0, height: 1 },
-    textShadowRadius: 3,
-  },
-  miniBannerCount: {
-    fontSize: 12,
-    color: '#9a9a9a',
-    fontWeight: '500',
-  },
-  miniBannerChevron: {
-    position: 'absolute',
-    top: 16,
-    right: 14,
-  },
-  rankCardsBanner: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: 'transparent',
-    borderRadius: 14,
-    paddingVertical: 36,
-    paddingHorizontal: 18,
-    marginHorizontal: 16,
+  // Rank Cards Preview
+  rankCardsPreview: {
     marginTop: 16,
     marginBottom: 4,
+  },
+  rankCardsPreviewHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: 16,
+    marginBottom: 2,
+  },
+  rankCardsPreviewHeaderLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  rankCardsPreviewTitle: {
+    fontSize: 18,
+    fontWeight: '700',
+    color: '#fff',
+  },
+  rankCardsPreviewSubtitle: {
+    fontSize: 13,
+    color: 'rgba(255,255,255,0.4)',
+    paddingHorizontal: 16,
+    marginBottom: 12,
+  },
+  rankCardsViewAll: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+  },
+  rankCardsViewAllText: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: '#8B7FE8',
+  },
+  rankCardsScrollContent: {
+    paddingHorizontal: 16,
     gap: 16,
-    borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.14)',
+  },
+  rankCardPreviewItem: {
+    width: screenWidth - 32,
+    height: 220,
+  },
+  rankCardPreviewScale: {
+    width: screenWidth - 32,
+    height: 220,
+  },
+  rankCardsDots: {
+    flexDirection: 'row',
+    justifyContent: 'center',
+    alignItems: 'center',
+    gap: 6,
+    marginTop: 12,
+  },
+  rankCardsDot: {
+    width: 6,
+    height: 6,
+    borderRadius: 3,
+    backgroundColor: 'rgba(255,255,255,0.2)',
+  },
+  rankCardsDotActive: {
+    width: 18,
+    borderRadius: 3,
+    backgroundColor: '#8B7FE8',
+  },
+  // Clips Section
+  clipsSection: {
+    marginHorizontal: 16,
+    marginTop: 10,
+  },
+  clipsSectionHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: 10,
+  },
+  clipsSectionHeaderLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  clipsSectionTitle: {
+    fontSize: 18,
+    fontWeight: '700',
+    color: '#fff',
+  },
+  clipsViewAll: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+  },
+  clipsViewAllText: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: '#8B7FE8',
+  },
+  clipsGrid: {
+    flexDirection: 'row',
+    gap: 6,
+    height: 170,
+  },
+  clipsFeatured: {
+    flex: 2,
+    borderRadius: 12,
     overflow: 'hidden',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.35,
-    shadowRadius: 8,
-    elevation: 6,
+    backgroundColor: '#222',
   },
-  rankCardsBannerTopEdge: {
+  clipOverlay: {
+    ...StyleSheet.absoluteFillObject,
+    justifyContent: 'flex-end',
+    padding: 10,
+  },
+  clipPlayButton: {
     position: 'absolute',
-    top: 0,
-    left: 0,
-    right: 0,
-    height: 1.5,
-  },
-  rankCardsBannerPeek: {
-    width: 110,
-    height: 78,
-    position: 'relative',
-  },
-  rankCardsBannerMini: {
-    position: 'absolute',
-    width: 90,
-    height: 60,
-    borderRadius: 7,
-    overflow: 'hidden',
-    borderWidth: 0.5,
-    borderColor: 'rgba(255,255,255,0.18)',
+    bottom: 10,
+    left: 10,
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    backgroundColor: 'rgba(0,0,0,0.6)',
     alignItems: 'center',
     justifyContent: 'center',
-    shadowColor: '#000',
-    shadowOffset: { width: 2, height: 3 },
-    shadowOpacity: 0.5,
-    shadowRadius: 3,
   },
-  rankCardsBannerMiniGloss: {
+  clipDuration: {
     position: 'absolute',
-    top: 0,
-    left: 0,
-    right: 0,
-    height: '55%',
+    bottom: 10,
+    right: 10,
+    backgroundColor: 'rgba(0,0,0,0.6)',
+    borderRadius: 4,
+    paddingHorizontal: 6,
+    paddingVertical: 2,
   },
-  rankCardsBannerMiniLogo: {
-    width: 40,
-    height: 40,
-  },
-  rankCardsBannerTextContainer: {
-    flex: 1,
-  },
-  rankCardsBannerTitle: {
-    fontSize: 20,
-    fontWeight: '800',
+  clipDurationText: {
+    fontSize: 11,
+    fontWeight: '600',
     color: '#fff',
-    marginBottom: 3,
-    letterSpacing: -0.3,
-    lineHeight: 24,
-    textShadowColor: 'rgba(0,0,0,0.5)',
-    textShadowOffset: { width: 0, height: 1 },
-    textShadowRadius: 3,
   },
-  rankCardsBannerSubtext: {
+  clipsStack: {
+    flex: 1,
+    gap: 6,
+  },
+  clipsStackItem: {
+    flex: 1,
+    borderRadius: 10,
+    overflow: 'hidden',
+    backgroundColor: '#222',
+  },
+  clipsStackThumbOverlay: {
+    ...StyleSheet.absoluteFillObject,
+    justifyContent: 'flex-end',
+    padding: 6,
+  },
+  clipPlayButtonSmall: {
+    position: 'absolute',
+    bottom: 6,
+    left: 6,
+    width: 22,
+    height: 22,
+    borderRadius: 11,
+    backgroundColor: 'rgba(0,0,0,0.6)',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  clipDurationSmall: {
+    position: 'absolute',
+    bottom: 6,
+    right: 6,
+    backgroundColor: 'rgba(0,0,0,0.6)',
+    borderRadius: 4,
+    paddingHorizontal: 5,
+    paddingVertical: 1,
+  },
+  clipDurationTextSmall: {
+    fontSize: 10,
+    fontWeight: '600',
+    color: '#fff',
+  },
+  clipsEmpty: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 30,
+    backgroundColor: '#161616',
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.08)',
+    gap: 8,
+  },
+  clipsEmptyText: {
+    fontSize: 13,
+    color: 'rgba(255,255,255,0.3)',
+  },
+  // Achievements Section
+  achievementsSection: {
+    marginHorizontal: 16,
+    marginTop: 28,
+    marginBottom: 16,
+  },
+  achievementsSectionHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: 10,
+  },
+  achievementsSectionHeaderLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  achievementsSectionTitle: {
+    fontSize: 18,
+    fontWeight: '700',
+    color: '#fff',
+  },
+  achievementsViewAll: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+  },
+  achievementsViewAllText: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: '#8B7FE8',
+  },
+  achievementsBadgeRow: {
+    flexDirection: 'row',
+    gap: 8,
+  },
+  achievementCard: {
+    flex: 1,
+    alignItems: 'center',
+    backgroundColor: 'rgba(255,255,255,0.04)',
+    borderRadius: 14,
+    paddingVertical: 14,
+    paddingHorizontal: 4,
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.08)',
+  },
+  achievementsEmpty: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 24,
+    gap: 6,
+  },
+  achievementsEmptyText: {
+    fontSize: 13,
+    color: 'rgba(255,255,255,0.3)',
+  },
+  achievementCardIcon: {
+    width: 48,
+    height: 48,
+    borderRadius: 12,
+    backgroundColor: 'rgba(255,255,255,0.06)',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 8,
+  },
+  achievementCardEmoji: {
+    fontSize: 24,
+  },
+  achievementCardName: {
     fontSize: 12,
-    color: '#9a9a9a',
-    fontWeight: '500',
-    letterSpacing: 0.1,
+    fontWeight: '600',
+    color: '#fff',
+    textAlign: 'center',
+    marginBottom: 2,
+  },
+  achievementCardDesc: {
+    fontSize: 11,
+    color: 'rgba(255,255,255,0.5)',
+    textAlign: 'center',
   },
   // Tab bar
   tabBar: {
@@ -1216,9 +1486,6 @@ const styles = StyleSheet.create({
   sectionContainer: {
     marginHorizontal: 0,
     marginBottom: 4,
-  },
-  clipsSection: {
-    marginBottom: 8,
   },
   gridClipsContainer: {
     flexDirection: 'row',
@@ -1297,26 +1564,9 @@ const styles = StyleSheet.create({
     lineHeight: 17,
     maxWidth: 240,
   },
-  achievementsSection: {
-    marginBottom: 8,
-  },
   horizontalAchievementsContainer: {
     paddingHorizontal: 20,
     gap: 6,
-  },
-  achievementCard: {
-    width: 140,
-    height: 140,
-    backgroundColor: '#2c2f33',
-    borderRadius: 12,
-    alignItems: 'center',
-    justifyContent: 'center',
-    padding: 12,
-    borderWidth: 1,
-    borderTopColor: '#3a3f44',
-    borderLeftColor: '#3a3f44',
-    borderBottomColor: '#16191b',
-    borderRightColor: '#16191b',
   },
   achievementMedal: {
     fontSize: 32,

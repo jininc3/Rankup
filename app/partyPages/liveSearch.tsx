@@ -9,13 +9,15 @@ import { IconSymbol } from '@/components/ui/icon-symbol';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useAuth } from '@/contexts/AuthContext';
 import { useState, useEffect, useCallback, useRef } from 'react';
-import { Alert, StyleSheet, TouchableOpacity, View, ScrollView, AppState } from 'react-native';
+import { Alert, StyleSheet, TouchableOpacity, View, ScrollView, AppState, Dimensions } from 'react-native';
 import { doc, getDoc } from 'firebase/firestore';
 import { db } from '@/config/firebase';
 import { useRouter } from '@/hooks/useRouter';
 import { joinDuoQueue, leaveDuoQueue, subscribeToDuoQueue, getDuoMatch, acceptMatch, declineMatch, subscribeToMatch, DuoMatchCardData, DuoMatch } from '@/services/duoMatchService';
 import { createOrGetChat, sendMessage } from '@/services/chatService';
 import { DuoCardData } from '@/app/(tabs)/duoFinder';
+
+const { width: screenWidth, height: screenHeight } = Dimensions.get('window');
 
 export default function LiveSearchScreen() {
   const { user } = useAuth();
@@ -475,15 +477,37 @@ export default function LiveSearchScreen() {
 
   return (
     <ThemedView style={styles.container}>
-      {/* Top background gradient */}
-      <LinearGradient
-        colors={['rgba(255, 255, 255, 0.06)', 'rgba(255, 255, 255, 0.02)', 'transparent']}
-        locations={[0, 0.5, 1]}
-        start={{ x: 0.5, y: 0 }}
-        end={{ x: 0.5, y: 1 }}
-        style={styles.topGradient}
-        pointerEvents="none"
-      />
+      {/* Background shimmer — matches duo finder */}
+      <View style={styles.backgroundGlow} pointerEvents="none">
+        <View style={styles.shimmerBand} pointerEvents="none">
+          <LinearGradient
+            colors={[
+              'transparent',
+              'rgba(139, 127, 232, 0.03)',
+              'rgba(139, 127, 232, 0.06)',
+              'rgba(139, 127, 232, 0.03)',
+              'transparent',
+            ]}
+            locations={[0, 0.37, 0.5, 0.63, 1]}
+            start={{ x: 0, y: 0.5 }}
+            end={{ x: 1, y: 0.5 }}
+            style={StyleSheet.absoluteFill}
+          />
+        </View>
+        <View style={styles.shimmerBandSecondary} pointerEvents="none">
+          <LinearGradient
+            colors={[
+              'transparent',
+              'rgba(139, 127, 232, 0.035)',
+              'transparent',
+            ]}
+            locations={[0, 0.5, 1]}
+            start={{ x: 0, y: 0.5 }}
+            end={{ x: 1, y: 0.5 }}
+            style={StyleSheet.absoluteFill}
+          />
+        </View>
+      </View>
 
       <View style={styles.header}>
         <TouchableOpacity style={styles.backButton} onPress={() => router.back()}>
@@ -560,12 +584,25 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: '#0f0f0f',
   },
-  topGradient: {
+  backgroundGlow: {
+    ...StyleSheet.absoluteFillObject,
+    overflow: 'hidden',
+  },
+  shimmerBand: {
     position: 'absolute',
-    top: 0,
-    left: 0,
-    right: 0,
-    height: 260,
+    top: -screenHeight * 0.35,
+    left: -screenWidth * 0.6,
+    width: screenWidth * 2.2,
+    height: screenHeight * 1.7,
+    transform: [{ rotate: '20deg' }],
+  },
+  shimmerBandSecondary: {
+    position: 'absolute',
+    top: -screenHeight * 0.2,
+    left: -screenWidth * 0.1,
+    width: screenWidth * 1.9,
+    height: screenHeight * 1.5,
+    transform: [{ rotate: '-15deg' }],
   },
   header: {
     flexDirection: 'row',
@@ -576,12 +613,20 @@ const styles = StyleSheet.create({
     paddingBottom: 16,
   },
   backButton: {
-    padding: 4,
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: 'rgba(139, 127, 232, 0.12)',
+    borderWidth: 1,
+    borderColor: 'rgba(139, 127, 232, 0.2)',
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   headerTitle: {
     fontSize: 20,
     fontWeight: '700',
     color: '#fff',
+    letterSpacing: -0.5,
   },
   scrollContent: {
     flexGrow: 1,
