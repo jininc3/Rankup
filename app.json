@@ -1,7 +1,7 @@
 {
   "expo": {
     "name": "Peakd",
-    "slug": "Peakd",
+    "slug": "RankUp",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/images/applogo.png",
@@ -45,12 +45,18 @@
               "pathPrefix": "/__/auth/action"
             }
           ],
-          "category": ["BROWSABLE", "DEFAULT"]
+          "category": [
+            "BROWSABLE",
+            "DEFAULT"
+          ]
         }
       ],
       "edgeToEdgeEnabled": true,
       "predictiveBackGestureEnabled": false,
-      "package": "com.jininc3.Peakd"
+      "package": "com.jininc3.Peakd",
+      "permissions": [
+        "android.permission.RECORD_AUDIO"
+      ]
     },
     "web": {
       "output": "static",
