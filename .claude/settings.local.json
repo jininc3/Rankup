@@ -3,7 +3,10 @@
     "allow": [
       "Bash(cat:*)",
       "Bash(npm run:*)",
-      "Bash(gh repo:*)"
+      "Bash(gh repo:*)",
+      "Bash(npx expo:*)",
+      "Bash(ipconfig)",
+      "Bash(node:*)"
     ],
     "deny": [],
     "ask": []
