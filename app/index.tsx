@@ -20,5 +20,5 @@ export default function Index() {
   }, [isAuthenticated, isLoading, needsUsernameSetup]);
 
   // Return empty view - root layout already shows LoadingScreen
-  return <View />;
+  return <View style={{ flex: 1, backgroundColor: '#0f0f0f' }} />;
 }

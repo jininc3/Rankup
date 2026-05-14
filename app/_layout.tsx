@@ -249,15 +249,15 @@ function RootLayoutNav() {
           animationDuration: 200,
         }}
       >
-        <Stack.Screen name="index" options={{ headerShown: false }} />
-        <Stack.Screen name="(auth)" options={{ headerShown: false, gestureEnabled: false }} />
-        <Stack.Screen name="(tabs)" options={{ headerShown: false, gestureEnabled: false }} />
+        <Stack.Screen name="index" options={{ headerShown: false, animation: 'none' }} />
+        <Stack.Screen name="(auth)" options={{ headerShown: false, gestureEnabled: false, animation: 'none' }} />
+        <Stack.Screen name="(tabs)" options={{ headerShown: false, gestureEnabled: false, animation: 'none' }} />
         <Stack.Screen name="notifications" options={{ headerShown: false, gestureEnabled: true }} />
         <Stack.Screen name="components/gameStats" options={{ headerShown: false }} />
       </Stack>
       <StatusBar style="auto" />
       <InAppNotificationContainer />
-      {isLoading && <LoadingScreen style={StyleSheet.absoluteFill} />}
+      <LoadingScreen style={StyleSheet.absoluteFill} isVisible={isLoading} />
     </ThemeProvider>
   );
 }

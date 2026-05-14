@@ -15,12 +15,67 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { formatCount } from '@/utils/formatCount';
 import { ClipsGridSkeleton, ClipsListSkeleton } from '@/components/ui/Skeleton';
 
-const { width: screenWidth } = Dimensions.get('window');
+const { width: screenWidth, height: screenHeight } = Dimensions.get('window');
 const GRID_PADDING = 16;
 const GRID_GAP = 10;
 
+const GAME_LOGOS: { [key: string]: any } = {
+  'Valorant': require('@/assets/images/valorant-red.png'),
+  'League of Legends': require('@/assets/images/lol-icon.png'),
+  'valorant': require('@/assets/images/valorant-red.png'),
+  'league': require('@/assets/images/lol-icon.png'),
+};
+
+const VALORANT_RANK_ICONS: { [key: string]: any } = {
+  iron: require('@/assets/images/valorantranks/iron.png'),
+  bronze: require('@/assets/images/valorantranks/bronze.png'),
+  silver: require('@/assets/images/valorantranks/silver.png'),
+  gold: require('@/assets/images/valorantranks/gold.png'),
+  platinum: require('@/assets/images/valorantranks/platinum.png'),
+  diamond: require('@/assets/images/valorantranks/diamond.png'),
+  ascendant: require('@/assets/images/valorantranks/ascendant.png'),
+  immortal: require('@/assets/images/valorantranks/immortal.png'),
+  radiant: require('@/assets/images/valorantranks/radiant.png'),
+  unranked: require('@/assets/images/valorantranks/unranked.png'),
+};
+
+const LEAGUE_RANK_ICONS: { [key: string]: any } = {
+  iron: require('@/assets/images/leagueranks/iron.png'),
+  bronze: require('@/assets/images/leagueranks/bronze.png'),
+  silver: require('@/assets/images/leagueranks/silver.png'),
+  gold: require('@/assets/images/leagueranks/gold.png'),
+  platinum: require('@/assets/images/leagueranks/platinum.png'),
+  emerald: require('@/assets/images/leagueranks/emerald.png'),
+  diamond: require('@/assets/images/leagueranks/diamond.png'),
+  master: require('@/assets/images/leagueranks/masters.png'),
+  grandmaster: require('@/assets/images/leagueranks/grandmaster.png'),
+  challenger: require('@/assets/images/leagueranks/challenger.png'),
+  unranked: require('@/assets/images/leagueranks/unranked.png'),
+};
+
+const getRankIcon = (rank: string, game: string) => {
+  if (!rank || rank === 'Unranked') {
+    return game === 'Valorant' || game === 'valorant' ? VALORANT_RANK_ICONS.unranked : LEAGUE_RANK_ICONS.unranked;
+  }
+  const tier = rank.split(' ')[0].toLowerCase();
+  if (game === 'Valorant' || game === 'valorant') return VALORANT_RANK_ICONS[tier] || VALORANT_RANK_ICONS.unranked;
+  return LEAGUE_RANK_ICONS[tier] || LEAGUE_RANK_ICONS.unranked;
+};
+
+const getTimeAgo = (timestamp: Timestamp): string => {
+  const now = new Date();
+  const date = timestamp.toDate();
+  const diff = Math.floor((now.getTime() - date.getTime()) / 1000);
+  if (diff < 60) return 'just now';
+  if (diff < 3600) return `${Math.floor(diff / 60)}m ago`;
+  if (diff < 86400) return `${Math.floor(diff / 3600)}h ago`;
+  if (diff < 30 * 86400) return `${Math.floor(diff / 86400)}d ago`;
+  const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+  return `${date.getDate()} ${months[date.getMonth()]}`;
+};
+
 // Module-level cache so data persists across navigations
-const clipsCache: Record<string, { posts: Post[]; clipCategories: string[] }> = {};
+const clipsCache: Record<string, { posts: Post[]; clipCategories: string[]; userRank?: string; userGame?: string }> = {};
 
 interface Post {
   id: string;
@@ -59,6 +114,8 @@ export default function ClipsPage() {
   const [posts, setPosts] = useState<Post[]>(cached?.posts ?? []);
   const [loading, setLoading] = useState(!cached);
   const [clipCategories, setClipCategories] = useState<string[]>(cached?.clipCategories ?? []);
+  const [userRank, setUserRank] = useState<string | undefined>(cached?.userRank);
+  const [userGame, setUserGame] = useState<string | undefined>(cached?.userGame);
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
 
   const [selectedPost, setSelectedPost] = useState<Post | null>(null);
@@ -109,6 +166,25 @@ export default function ClipsPage() {
         .sort((a, b) => b.createdAt.toMillis() - a.createdAt.toMillis());
 
       const categories = userDoc.exists() ? (userDoc.data().clipCategories || []) : [];
+
+      // Extract rank data from user doc
+      if (userDoc.exists()) {
+        const userData = userDoc.data();
+        let rank: string | undefined;
+        let game: string | undefined;
+        if (userData.valorantStats?.currentRank) {
+          rank = userData.valorantStats.currentRank;
+          game = 'Valorant';
+        } else if (userData.riotStats?.rankedSolo?.tier) {
+          rank = `${userData.riotStats.rankedSolo.tier} ${userData.riotStats.rankedSolo.rank}`;
+          game = 'League of Legends';
+        }
+        setUserRank(rank);
+        setUserGame(game);
+        if (userId) {
+          clipsCache[userId] = { ...clipsCache[userId], userRank: rank, userGame: game };
+        }
+      }
 
       if (!background) {
         expectedCountRef.current = fetchedPosts.length;
@@ -190,6 +266,38 @@ export default function ClipsPage() {
 
   return (
     <ThemedView style={styles.container}>
+      {/* Ambient background glow */}
+      <View style={styles.backgroundGlow} pointerEvents="none">
+        <View style={styles.shimmerBand} pointerEvents="none">
+          <LinearGradient
+            colors={[
+              'transparent',
+              'rgba(139, 127, 232, 0.03)',
+              'rgba(139, 127, 232, 0.06)',
+              'rgba(139, 127, 232, 0.03)',
+              'transparent',
+            ]}
+            locations={[0, 0.37, 0.5, 0.63, 1]}
+            start={{ x: 0, y: 0.5 }}
+            end={{ x: 1, y: 0.5 }}
+            style={StyleSheet.absoluteFill}
+          />
+        </View>
+        <View style={styles.shimmerBandSecondary} pointerEvents="none">
+          <LinearGradient
+            colors={[
+              'transparent',
+              'rgba(139, 127, 232, 0.035)',
+              'transparent',
+            ]}
+            locations={[0, 0.5, 1]}
+            start={{ x: 0, y: 0.5 }}
+            end={{ x: 1, y: 0.5 }}
+            style={StyleSheet.absoluteFill}
+          />
+        </View>
+      </View>
+
       {/* Header */}
       <View style={styles.headerRow}>
         <TouchableOpacity style={styles.backButton} onPress={() => router.back()}>
@@ -199,12 +307,6 @@ export default function ClipsPage() {
           <ThemedText style={styles.headerTitle}>Clips</ThemedText>
         </View>
         <View style={styles.headerRight}>
-          {isOwnProfile && (
-            <TouchableOpacity style={styles.newClipButton} onPress={() => router.push('/postPages/createPostVideo')}>
-              <IconSymbol size={14} name="plus" color="#fff" />
-              <ThemedText style={styles.newClipButtonText}>New Clip</ThemedText>
-            </TouchableOpacity>
-          )}
           <TouchableOpacity style={styles.viewToggle} onPress={() => setViewMode(v => v === 'grid' ? 'list' : 'grid')}>
             <IconSymbol size={18} name={viewMode === 'grid' ? 'list.bullet' : 'square.grid.2x2'} color="#fff" />
           </TouchableOpacity>
@@ -305,10 +407,13 @@ export default function ClipsPage() {
               <View style={styles.listContainer}>
                 {filteredPosts.map((post) => {
                   const thumbUri = post.mediaType === 'video' && post.thumbnailUrl ? post.thumbnailUrl : post.mediaUrl;
+                  const gameLogo = GAME_LOGOS[post.taggedGame || ''];
+                  const gameLabel = post.taggedGame === 'valorant' ? 'Valorant' : post.taggedGame === 'league' ? 'League of Legends' : post.taggedGame;
+                  const rankForPost = post.taggedGame === (userGame === 'Valorant' ? 'valorant' : 'league') ? userRank : undefined;
                   return (
                     <TouchableOpacity
                       key={post.id}
-                      style={styles.listItem}
+                      style={styles.listCard}
                       onPress={() => handlePostPress(post)}
                       onLongPress={isOwnProfile ? () => handleCategorize(post) : undefined}
                       activeOpacity={0.85}
@@ -323,25 +428,31 @@ export default function ClipsPage() {
                         )}
                       </View>
                       <View style={styles.listInfo}>
-                        <ThemedText style={styles.listCaption} numberOfLines={2}>
-                          {post.caption || 'No caption'}
-                        </ThemedText>
-                        <View style={styles.listMeta}>
-                          {post.likes > 0 && (
-                            <View style={styles.listMetaItem}>
-                              <IconSymbol size={10} name="heart.fill" color="#666" />
-                              <ThemedText style={styles.listMetaText}>{formatCount(post.likes)}</ThemedText>
-                            </View>
-                          )}
+                        <View style={styles.listTitleRow}>
+                          {gameLogo && <Image source={gameLogo} style={styles.listGameLogo} resizeMode="contain" />}
+                          <ThemedText style={styles.listCaption} numberOfLines={1}>
+                            {post.caption || 'No caption'}
+                          </ThemedText>
+                        </View>
+                        {rankForPost && (
+                          <View style={styles.listRankRow}>
+                            <Image source={getRankIcon(rankForPost, gameLabel || '')} style={styles.listRankIcon} resizeMode="contain" />
+                            <ThemedText style={styles.listRankText}>{rankForPost}</ThemedText>
+                          </View>
+                        )}
+                        <View style={styles.listStatsRow}>
+                          <IconSymbol size={10} name="heart.fill" color="#e8587a" />
+                          <ThemedText style={styles.listStatText}>{formatCount(post.likes)}</ThemedText>
                           {(post.commentsCount ?? 0) > 0 && (
-                            <View style={styles.listMetaItem}>
+                            <>
                               <IconSymbol size={10} name="bubble.left.fill" color="#666" />
-                              <ThemedText style={styles.listMetaText}>{post.commentsCount}</ThemedText>
-                            </View>
+                              <ThemedText style={styles.listStatText}>{post.commentsCount}</ThemedText>
+                            </>
                           )}
+                          <ThemedText style={styles.listStatDot}>·</ThemedText>
+                          <ThemedText style={styles.listStatTime}>{getTimeAgo(post.createdAt)}</ThemedText>
                         </View>
                       </View>
-                      <IconSymbol size={14} name="chevron.right" color="#444" />
                     </TouchableOpacity>
                   );
                 })}
@@ -404,6 +515,16 @@ export default function ClipsPage() {
           onSave={handleSavePostCategories}
         />
       )}
+      {/* Floating New Clip button */}
+      {isOwnProfile && (
+        <TouchableOpacity
+          style={styles.fab}
+          onPress={() => router.push('/postPages/createPostVideo')}
+          activeOpacity={0.85}
+        >
+          <IconSymbol size={24} name="plus" color="#fff" />
+        </TouchableOpacity>
+      )}
     </ThemedView>
   );
 }
@@ -413,11 +534,32 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: '#0f0f0f',
   },
+  backgroundGlow: {
+    ...StyleSheet.absoluteFillObject,
+    overflow: 'hidden',
+  },
+  shimmerBand: {
+    position: 'absolute',
+    top: -screenHeight * 0.35,
+    left: -screenWidth * 0.6,
+    width: screenWidth * 2.2,
+    height: screenHeight * 1.7,
+    transform: [{ rotate: '20deg' }],
+  },
+  shimmerBandSecondary: {
+    position: 'absolute',
+    top: -screenHeight * 0.2,
+    left: -screenWidth * 0.1,
+    width: screenWidth * 1.9,
+    height: screenHeight * 1.5,
+    transform: [{ rotate: '-15deg' }],
+  },
 
   // Header — matches signup page style
   headerRow: {
     flexDirection: 'row',
     alignItems: 'center',
+    justifyContent: 'space-between',
     paddingHorizontal: 16,
     paddingTop: 60,
     paddingBottom: 8,
@@ -427,8 +569,11 @@ const styles = StyleSheet.create({
     width: 36,
   },
   headerCenter: {
-    flex: 1,
+    ...StyleSheet.absoluteFillObject,
+    top: 60,
     alignItems: 'center',
+    justifyContent: 'center',
+    pointerEvents: 'none',
   },
   headerTitle: {
     fontSize: 18,
@@ -442,21 +587,21 @@ const styles = StyleSheet.create({
   viewToggle: {
     padding: 8,
   },
-  newClipButton: {
-    flexDirection: 'row',
+  fab: {
+    position: 'absolute',
+    bottom: 32,
+    right: 20,
+    width: 52,
+    height: 52,
+    borderRadius: 26,
+    backgroundColor: '#8b7fe8',
     alignItems: 'center',
-    gap: 5,
-    paddingVertical: 6,
-    paddingHorizontal: 12,
-    borderRadius: 8,
-    backgroundColor: 'rgba(255,255,255,0.08)',
-    borderWidth: 0.5,
-    borderColor: 'rgba(255,255,255,0.12)',
-  },
-  newClipButtonText: {
-    fontSize: 13,
-    fontWeight: '600',
-    color: '#fff',
+    justifyContent: 'center',
+    shadowColor: '#8b7fe8',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.35,
+    shadowRadius: 10,
+    elevation: 8,
   },
 
   // Category filter pills — glassmorphic
@@ -465,8 +610,8 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: 8,
     paddingHorizontal: 16,
-    paddingBottom: 24,
-    paddingTop: 4,
+    paddingBottom: 12,
+    paddingTop: 0,
   },
   categoryPill: {
     paddingVertical: 8,
@@ -477,8 +622,8 @@ const styles = StyleSheet.create({
     borderColor: 'rgba(255,255,255,0.1)',
   },
   categoryPillActive: {
-    backgroundColor: '#fff',
-    borderColor: '#fff',
+    backgroundColor: 'rgba(139, 127, 232, 0.15)',
+    borderColor: 'rgba(139, 127, 232, 0.3)',
   },
   categoryPillText: {
     fontSize: 13,
@@ -486,7 +631,7 @@ const styles = StyleSheet.create({
     color: '#666',
   },
   categoryPillTextActive: {
-    color: '#0f0f0f',
+    color: '#8b7fe8',
   },
   addCategoryPill: {
     width: 36,
@@ -640,23 +785,21 @@ const styles = StyleSheet.create({
     textAlign: 'center',
   },
 
-  // List view
+  // List view — card style
   listContainer: {
-    gap: 1,
+    gap: 10,
   },
-  listItem: {
+  listCard: {
     flexDirection: 'row',
-    alignItems: 'center',
-    paddingVertical: 10,
-    gap: 12,
-    borderBottomWidth: 0.5,
-    borderBottomColor: 'rgba(255,255,255,0.06)',
+    backgroundColor: 'rgba(255,255,255,0.04)',
+    borderRadius: 14,
+    borderWidth: 0.5,
+    borderColor: 'rgba(255,255,255,0.06)',
+    overflow: 'hidden',
   },
   listThumbWrap: {
-    width: 110,
+    width: 140,
     aspectRatio: 16 / 9,
-    borderRadius: 10,
-    overflow: 'hidden',
     backgroundColor: '#161616',
   },
   listThumb: {
@@ -665,14 +808,14 @@ const styles = StyleSheet.create({
   },
   listPlayBadge: {
     position: 'absolute',
-    bottom: 4,
+    bottom: 6,
     left: 6,
     flexDirection: 'row',
     alignItems: 'center',
     gap: 3,
-    backgroundColor: 'rgba(0,0,0,0.6)',
-    paddingHorizontal: 5,
-    paddingVertical: 2,
+    backgroundColor: 'rgba(0,0,0,0.7)',
+    paddingHorizontal: 6,
+    paddingVertical: 3,
     borderRadius: 4,
   },
   listPlayText: {
@@ -682,27 +825,59 @@ const styles = StyleSheet.create({
   },
   listInfo: {
     flex: 1,
-    gap: 6,
-  },
-  listCaption: {
-    fontSize: 14,
-    fontWeight: '500',
-    color: '#fff',
-    lineHeight: 19,
-  },
-  listMeta: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 12,
-  },
-  listMetaItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    paddingVertical: 10,
+    paddingHorizontal: 12,
+    justifyContent: 'center',
     gap: 4,
   },
-  listMetaText: {
+  listTitleRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  listGameLogo: {
+    width: 20,
+    height: 20,
+    borderRadius: 4,
+  },
+  listCaption: {
+    flex: 1,
+    fontSize: 15,
+    fontWeight: '700',
+    color: '#fff',
+  },
+  listRankRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 5,
+  },
+  listRankIcon: {
+    width: 16,
+    height: 16,
+  },
+  listRankText: {
     fontSize: 12,
+    fontWeight: '600',
+    color: '#8b7fe8',
+  },
+  listStatsRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 5,
+    marginTop: 2,
+  },
+  listStatText: {
+    fontSize: 11,
     fontWeight: '500',
-    color: '#666',
+    color: '#888',
+  },
+  listStatDot: {
+    fontSize: 11,
+    color: '#444',
+  },
+  listStatTime: {
+    fontSize: 11,
+    fontWeight: '500',
+    color: '#555',
   },
 });

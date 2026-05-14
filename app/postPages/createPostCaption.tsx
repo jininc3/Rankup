@@ -11,8 +11,10 @@ import { LinearGradient } from 'expo-linear-gradient';
 import React, { useState, useEffect } from 'react';
 import {
   StyleSheet, TouchableOpacity, View, TextInput, Image, ScrollView,
-  KeyboardAvoidingView, Platform, Keyboard, TouchableWithoutFeedback,
+  KeyboardAvoidingView, Platform, Keyboard, TouchableWithoutFeedback, Dimensions,
 } from 'react-native';
+
+const { width: screenWidth, height: screenHeight } = Dimensions.get('window');
 
 export default function CreatePostCaption() {
   const router = useRouter();
@@ -63,15 +65,37 @@ export default function CreatePostCaption() {
 
   return (
     <ThemedView style={styles.container}>
-      {/* Top background gradient */}
-      <LinearGradient
-        colors={['rgba(255, 255, 255, 0.06)', 'rgba(255, 255, 255, 0.02)', 'transparent']}
-        locations={[0, 0.5, 1]}
-        start={{ x: 0.5, y: 0 }}
-        end={{ x: 0.5, y: 1 }}
-        style={styles.topGradient}
-        pointerEvents="none"
-      />
+      {/* Ambient background glow */}
+      <View style={styles.backgroundGlow} pointerEvents="none">
+        <View style={styles.shimmerBand} pointerEvents="none">
+          <LinearGradient
+            colors={[
+              'transparent',
+              'rgba(139, 127, 232, 0.03)',
+              'rgba(139, 127, 232, 0.06)',
+              'rgba(139, 127, 232, 0.03)',
+              'transparent',
+            ]}
+            locations={[0, 0.37, 0.5, 0.63, 1]}
+            start={{ x: 0, y: 0.5 }}
+            end={{ x: 1, y: 0.5 }}
+            style={StyleSheet.absoluteFill}
+          />
+        </View>
+        <View style={styles.shimmerBandSecondary} pointerEvents="none">
+          <LinearGradient
+            colors={[
+              'transparent',
+              'rgba(139, 127, 232, 0.035)',
+              'transparent',
+            ]}
+            locations={[0, 0.5, 1]}
+            start={{ x: 0, y: 0.5 }}
+            end={{ x: 1, y: 0.5 }}
+            style={StyleSheet.absoluteFill}
+          />
+        </View>
+      </View>
 
       <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
         <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={{ flex: 1 }}>
@@ -102,7 +126,7 @@ export default function CreatePostCaption() {
             <ThemedText style={styles.charCount}>{caption.length}/500</ThemedText>
 
             {/* Tag People */}
-            <ThemedText style={[styles.sectionLabel, { marginTop: 28 }]}>Tag people</ThemedText>
+            <ThemedText style={[styles.sectionLabel, { marginTop: 12 }]}>Tag people</ThemedText>
 
             <TouchableOpacity
               style={styles.tagSearchButton}
@@ -181,34 +205,47 @@ export default function CreatePostCaption() {
               <ThemedText style={styles.continueButtonText}>Continue</ThemedText>
             </TouchableOpacity>
           </View>
-
-          <TagUsersModal
-            visible={showTagModal}
-            onClose={() => setShowTagModal(false)}
-            onTagsSelected={(users) => setTaggedUsers(users)}
-            initialSelectedUsers={taggedUsers}
-          />
         </KeyboardAvoidingView>
       </TouchableWithoutFeedback>
+
+      <TagUsersModal
+        visible={showTagModal}
+        onClose={() => setShowTagModal(false)}
+        onTagsSelected={(users) => setTaggedUsers(users)}
+        initialSelectedUsers={taggedUsers}
+      />
     </ThemedView>
   );
 }
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#0f0f0f' },
-  topGradient: {
+  backgroundGlow: {
+    ...StyleSheet.absoluteFillObject,
+    overflow: 'hidden',
+  },
+  shimmerBand: {
     position: 'absolute',
-    top: 0,
-    left: 0,
-    right: 0,
-    height: 260,
+    top: -screenHeight * 0.35,
+    left: -screenWidth * 0.6,
+    width: screenWidth * 2.2,
+    height: screenHeight * 1.7,
+    transform: [{ rotate: '20deg' }],
+  },
+  shimmerBandSecondary: {
+    position: 'absolute',
+    top: -screenHeight * 0.2,
+    left: -screenWidth * 0.1,
+    width: screenWidth * 1.9,
+    height: screenHeight * 1.5,
+    transform: [{ rotate: '-15deg' }],
   },
   headerRow: { flexDirection: 'row', alignItems: 'center', marginTop: 60, paddingHorizontal: 16 },
   backButton: { padding: 8 },
   progress: { flex: 1, height: 2, marginLeft: 12, marginRight: 12, backgroundColor: 'rgba(255,255,255,0.08)', borderRadius: 1 },
   progressFill: { height: '100%', backgroundColor: '#fff', borderRadius: 1 },
   content: { flex: 1, paddingHorizontal: 28, paddingTop: 16 },
-  step: { fontSize: 13, color: '#555', marginBottom: 8 },
+  step: { fontSize: 13, color: '#8b7fe8', marginBottom: 8 },
   title: { fontSize: 28, fontWeight: '800', color: '#fff', lineHeight: 36, marginBottom: 28 },
   sectionLabel: { fontSize: 15, fontWeight: '700', color: '#fff', marginBottom: 10 },
   captionInput: {
@@ -251,7 +288,7 @@ const styles = StyleSheet.create({
   quickAddAvatarImage: { width: '100%', height: '100%', borderRadius: 22 },
   quickAddAvatarText: { fontSize: 14, fontWeight: '600', color: '#999' },
   quickAddName: { fontSize: 11, color: '#999', textAlign: 'center' },
-  bottomSection: { paddingHorizontal: 28, paddingBottom: 40 },
+  bottomSection: { paddingHorizontal: 28, paddingBottom: 16, paddingTop: 8 },
   continueButton: { backgroundColor: '#fff', borderRadius: 28, paddingVertical: 16, alignItems: 'center' },
   continueButtonText: { color: '#0f0f0f', fontSize: 16, fontWeight: '700' },
 });

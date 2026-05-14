@@ -4,7 +4,7 @@
     "slug": "peakd",
     "version": "1.0.0",
     "orientation": "portrait",
-    "icon": "./assets/images/applogo.png",
+    "icon": "./assets/images/Peakd-logo-black.png",
     "scheme": "peakd",
     "userInterfaceStyle": "automatic",
     "newArchEnabled": true,
@@ -30,9 +30,9 @@
     "android": {
       "adaptiveIcon": {
         "backgroundColor": "#E6F4FE",
-        "foregroundImage": "./assets/images/applogo.png",
-        "backgroundImage": "./assets/images/applogo.png",
-        "monochromeImage": "./assets/images/applogo.png"
+        "foregroundImage": "./assets/images/Peakd-logo-black.png",
+        "backgroundImage": "./assets/images/Peakd-logo-black.png",
+        "monochromeImage": "./assets/images/Peakd-logo-black.png"
       },
       "intentFilters": [
         {
@@ -63,7 +63,7 @@
       "favicon": "./assets/images/favicon.png"
     },
     "notification": {
-      "icon": "./assets/images/applogo.png",
+      "icon": "./assets/images/Peakd-logo-black.png",
       "color": "#ffffff",
       "androidMode": "default",
       "androidCollapsedTitle": "{{unread_notifications}} new notifications"
@@ -90,7 +90,7 @@
       [
         "expo-notifications",
         {
-          "icon": "./assets/images/applogo.png",
+          "icon": "./assets/images/Peakd-logo-black.png",
           "color": "#ffffff",
           "sounds": []
         }

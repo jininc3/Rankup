@@ -164,9 +164,9 @@ export default function CreatePostShare() {
           <LinearGradient
             colors={[
               'transparent',
-              'rgba(255, 255, 255, 0.03)',
-              'rgba(255, 255, 255, 0.065)',
-              'rgba(255, 255, 255, 0.03)',
+              'rgba(139, 127, 232, 0.03)',
+              'rgba(139, 127, 232, 0.06)',
+              'rgba(139, 127, 232, 0.03)',
               'transparent',
             ]}
             locations={[0, 0.37, 0.5, 0.63, 1]}
@@ -179,7 +179,7 @@ export default function CreatePostShare() {
           <LinearGradient
             colors={[
               'transparent',
-              'rgba(255, 255, 255, 0.035)',
+              'rgba(139, 127, 232, 0.035)',
               'transparent',
             ]}
             locations={[0, 0.5, 1]}
@@ -305,7 +305,7 @@ const styles = StyleSheet.create({
   progress: { flex: 1, height: 2, marginLeft: 12, marginRight: 12, backgroundColor: 'rgba(255,255,255,0.08)', borderRadius: 1 },
   progressFill: { height: '100%', backgroundColor: '#fff', borderRadius: 1 },
   content: { flex: 1, paddingHorizontal: 28, paddingTop: 16 },
-  step: { fontSize: 13, color: '#555', marginBottom: 8 },
+  step: { fontSize: 13, color: '#8b7fe8', marginBottom: 8 },
   title: { fontSize: 28, fontWeight: '800', color: '#fff', lineHeight: 36, marginBottom: 24 },
   previewCard: { borderRadius: 14, overflow: 'hidden', marginBottom: 20 },
   preview: { width: '100%' },

@@ -1190,6 +1190,37 @@ export default function DuoFinderScreen() {
         onRequestClose={() => setShowMyCards(false)}
       >
         <View style={styles.myCardsModal}>
+          {/* Ambient background glow */}
+          <View style={styles.backgroundGlow} pointerEvents="none">
+            <View style={styles.shimmerBand} pointerEvents="none">
+              <LinearGradient
+                colors={[
+                  'transparent',
+                  'rgba(139, 127, 232, 0.03)',
+                  'rgba(139, 127, 232, 0.06)',
+                  'rgba(139, 127, 232, 0.03)',
+                  'transparent',
+                ]}
+                locations={[0, 0.37, 0.5, 0.63, 1]}
+                start={{ x: 0, y: 0.5 }}
+                end={{ x: 1, y: 0.5 }}
+                style={StyleSheet.absoluteFill}
+              />
+            </View>
+            <View style={styles.shimmerBandSecondary} pointerEvents="none">
+              <LinearGradient
+                colors={[
+                  'transparent',
+                  'rgba(139, 127, 232, 0.035)',
+                  'transparent',
+                ]}
+                locations={[0, 0.5, 1]}
+                start={{ x: 0, y: 0.5 }}
+                end={{ x: 1, y: 0.5 }}
+                style={StyleSheet.absoluteFill}
+              />
+            </View>
+          </View>
           <View style={styles.myCardsModalHeader}>
             <ThemedText style={styles.myCardsModalTitle}>MY CARDS</ThemedText>
             <TouchableOpacity
@@ -1666,11 +1697,11 @@ const styles = StyleSheet.create({
   },
   liveSearchGlow: {
     position: 'absolute',
-    top: -2,
-    left: -2,
-    right: -2,
-    bottom: -2,
-    borderRadius: 18,
+    top: -1,
+    left: -1,
+    right: -1,
+    bottom: -1,
+    borderRadius: 17,
     backgroundColor: '#4ADE80',
     opacity: 0.3,
   },
