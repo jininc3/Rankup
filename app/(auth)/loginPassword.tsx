@@ -27,7 +27,7 @@ export default function LoginPassword() {
 
   const isEmailInput = (input: string) => input.includes('@');
 
-  const isPhoneEmail = (email: string) => email.endsWith('@rankup-phone.internal');
+  const isPhoneEmail = (email: string) => email.endsWith('@peakd-phone.internal');
 
   const getPhoneFromEmail = async (email: string): Promise<string | null> => {
     try {
@@ -36,8 +36,8 @@ export default function LoginPassword() {
       let snapshot = await getDocs(q);
       if (!snapshot.empty) return snapshot.docs[0].data().phoneNumber || null;
       // Phone users have empty email — extract phone digits from internal email and match
-      if (email.endsWith('@rankup-phone.internal')) {
-        const digits = email.replace('phone_', '').replace('@rankup-phone.internal', '');
+      if (email.endsWith('@peakd-phone.internal')) {
+        const digits = email.replace('phone_', '').replace('@peakd-phone.internal', '');
         const phoneWithPlus = '+' + digits;
         q = query(collection(db, 'users'), where('phoneNumber', '==', phoneWithPlus));
         snapshot = await getDocs(q);
@@ -90,7 +90,7 @@ export default function LoginPassword() {
         // Phone users have empty email in Firestore — derive auth email from phone number
         if (data.phoneNumber) {
           const sanitized = data.phoneNumber.replace(/[^0-9]/g, '');
-          return `phone_${sanitized}@rankup-phone.internal`;
+          return `phone_${sanitized}@peakd-phone.internal`;
         }
       }
       return null;
@@ -134,7 +134,7 @@ export default function LoginPassword() {
         <View style={styles.content}>
           <ThemedText style={styles.title}>Enter your{'\n'}password</ThemedText>
           <ThemedText style={styles.subtitle}>
-            {usernameOrEmail.endsWith('@rankup-phone.internal')
+            {usernameOrEmail.endsWith('@peakd-phone.internal')
               ? 'Signing in with phone number'
               : `Signing in as @${usernameOrEmail}`}
           </ThemedText>

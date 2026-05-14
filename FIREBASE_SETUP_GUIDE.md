@@ -1,12 +1,12 @@
-# Firebase Setup Guide for RankUp
+# Firebase Setup Guide for Peakd
 
-Complete guide to configure Firebase Authentication and Firestore for your RankUp app.
+Complete guide to configure Firebase Authentication and Firestore for your Peakd app.
 
 ## 📋 Prerequisites
 
 - Firebase project created at https://console.firebase.google.com/
 - Google account
-- RankUp app installed locally
+- Peakd app installed locally
 
 ## 🔥 Step-by-Step Setup
 
@@ -18,7 +18,7 @@ Complete guide to configure Firebase Authentication and Firestore for your RankU
 4. **Scroll down** to "Your apps" section
 5. **Click the Web icon** `</>` to add a web app
 6. **Register your app**:
-   - App nickname: "RankUp Web"
+   - App nickname: "Peakd Web"
    - Don't check "Firebase Hosting"
    - Click "Register app"
 7. **Copy the configuration** - You'll see something like this:
@@ -118,7 +118,7 @@ service cloud.firestore {
 #### For iOS:
 
 1. **In Firebase Console**, click **iOS icon** to add iOS app
-2. **Enter your iOS Bundle ID**: `com.jininc3.RankUp`
+2. **Enter your iOS Bundle ID**: `com.jininc3.Peakd`
 3. **Download `GoogleService-Info.plist`**
 4. **Add to your project**:
    - Create `ios` folder if it doesn't exist
@@ -129,7 +129,7 @@ service cloud.firestore {
      "expo": {
        "ios": {
          "googleServicesFile": "./GoogleService-Info.plist",
-         "bundleIdentifier": "com.jininc3.RankUp"
+         "bundleIdentifier": "com.jininc3.Peakd"
        }
      }
    }
@@ -138,7 +138,7 @@ service cloud.firestore {
 #### For Android:
 
 1. **In Firebase Console**, click **Android icon** to add Android app
-2. **Enter your Android package name**: `com.jininc3.RankUp`
+2. **Enter your Android package name**: `com.jininc3.Peakd`
 3. **Download `google-services.json`**
 4. **Add to your project**:
    - Create `android` folder if it doesn't exist
@@ -149,7 +149,7 @@ service cloud.firestore {
      "expo": {
        "android": {
          "googleServicesFile": "./google-services.json",
-         "package": "com.jininc3.RankUp"
+         "package": "com.jininc3.Peakd"
        }
      }
    }
@@ -197,7 +197,7 @@ service cloud.firestore {
 ## 🗂️ Understanding the File Structure
 
 ```
-RankUp/
+Peakd/
 ├── config/
 │   └── firebase.ts              # Firebase initialization
 ├── services/

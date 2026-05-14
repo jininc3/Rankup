@@ -91,8 +91,8 @@ export default function VerifyEmailLogin() {
       await rnfbAuth().sendSignInLinkToEmail(email, {
         handleCodeInApp: true,
         url: `https://${process.env.EXPO_PUBLIC_FIREBASE_AUTH_DOMAIN || 'rankup-a2a8a.firebaseapp.com'}`,
-        iOS: { bundleId: 'com.jininc3.RankUp' },
-        android: { packageName: 'com.jininc3.RankUp', installApp: false },
+        iOS: { bundleId: 'com.jininc3.Peakd' },
+        android: { packageName: 'com.jininc3.Peakd', installApp: false },
       });
       Alert.alert('Link Sent', 'A new sign-in link has been sent to your email.');
     } catch (error) {

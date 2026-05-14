@@ -40,8 +40,8 @@ export default function LoginEmail() {
       await rnfbAuth().sendSignInLinkToEmail(normalizedEmail, {
         handleCodeInApp: true,
         url: `https://${process.env.EXPO_PUBLIC_FIREBASE_AUTH_DOMAIN || 'rankup-a2a8a.firebaseapp.com'}`,
-        iOS: { bundleId: 'com.jininc3.RankUp' },
-        android: { packageName: 'com.jininc3.RankUp', installApp: false },
+        iOS: { bundleId: 'com.jininc3.Peakd' },
+        android: { packageName: 'com.jininc3.Peakd', installApp: false },
       });
 
       // Save email so we can complete sign-in when link is clicked

@@ -31,7 +31,7 @@ export const generateLoginTokenFunction = onCall(
     // Fallback: look up by the generated internal email
     if (snapshot.empty) {
       const sanitized = phoneNumber.replace(/[^0-9]/g, "");
-      const generatedEmail = `phone_${sanitized}@rankup-phone.internal`;
+      const generatedEmail = `phone_${sanitized}@peakd-phone.internal`;
       snapshot = await db.collection("users")
         .where("email", "==", generatedEmail)
         .limit(1)

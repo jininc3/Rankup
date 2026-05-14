@@ -157,7 +157,7 @@ const SIGNUP_PHONE_KEY = 'signupPhone';
 export async function createPhoneAuthAccount(phoneNumber: string): Promise<string> {
   try {
     const sanitized = phoneNumber.replace(/[^0-9]/g, '');
-    const generatedEmail = `phone_${sanitized}@rankup-phone.internal`;
+    const generatedEmail = `phone_${sanitized}@peakd-phone.internal`;
     const tempPassword = generateRandomPassword();
     const userCredential = await createUserWithEmailAndPassword(auth, generatedEmail, tempPassword);
     await AsyncStorage.setItem(SIGNUP_TEMP_PASSWORD_KEY, tempPassword);
@@ -178,7 +178,7 @@ export async function tryResumePhoneSignup(phoneNumber: string): Promise<'resume
     if (!tempPassword) return 'none';
 
     const sanitized = phoneNumber.replace(/[^0-9]/g, '');
-    const generatedEmail = `phone_${sanitized}@rankup-phone.internal`;
+    const generatedEmail = `phone_${sanitized}@peakd-phone.internal`;
 
     await signInWithEmailAndPassword(auth, generatedEmail, tempPassword);
     const profile = await getUserProfile(auth.currentUser!.uid);
@@ -250,8 +250,8 @@ export async function sendEmailSignInLink(email: string): Promise<void> {
     const actionCodeSettings = {
       url: `https://${process.env.EXPO_PUBLIC_FIREBASE_AUTH_DOMAIN}`,
       handleCodeInApp: true,
-      iOS: { bundleId: 'com.jininc3.RankUp' },
-      android: { packageName: 'com.jininc3.RankUp', installApp: true },
+      iOS: { bundleId: 'com.jininc3.Peakd' },
+      android: { packageName: 'com.jininc3.Peakd', installApp: true },
     };
     await sendSignInLinkToEmail(auth, email, actionCodeSettings);
     await AsyncStorage.setItem('emailForSignIn', email);

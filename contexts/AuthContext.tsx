@@ -356,7 +356,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       if (firebaseUser) {
         // Check email verification for email providers (skip phone users with internal emails)
         const isEmailProvider = firebaseUser.providerData.some(p => p.providerId === 'password');
-        const isPhoneUser = firebaseUser.email?.endsWith('@rankup-phone.internal');
+        const isPhoneUser = firebaseUser.email?.endsWith('@peakd-phone.internal');
         if (isEmailProvider && !isPhoneUser && !firebaseUser.emailVerified) {
           // Email signup users must verify their email first
           // Don't set user state - keeps them in auth screens
@@ -426,7 +426,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             const isEmailProvider = firebaseUser.providerData.some(p => p.providerId === 'password');
 
             // Email users without verified email should not get user state (skip phone users)
-            if (isEmailProvider && !firebaseUser.email?.endsWith('@rankup-phone.internal') && !firebaseUser.emailVerified) {
+            if (isEmailProvider && !firebaseUser.email?.endsWith('@peakd-phone.internal') && !firebaseUser.emailVerified) {
               setUser(null);
               setLoadingFalse();
               return;

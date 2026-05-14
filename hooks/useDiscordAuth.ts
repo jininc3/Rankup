@@ -11,7 +11,7 @@ const discovery = {
 
 export function useDiscordAuth() {
   const redirectUri = AuthSession.makeRedirectUri({
-    scheme: 'rankup',
+    scheme: 'peakd',
     path: 'auth/callback',
   });
 

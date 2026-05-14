@@ -1,7 +1,7 @@
 /**
- * Firebase Cloud Functions for RankUp App
+ * Firebase Cloud Functions for Peakd App
  *
- * This file exports all Cloud Functions for the RankUp application,
+ * This file exports all Cloud Functions for the Peakd application,
  * including Riot Games API integration.
  */
 

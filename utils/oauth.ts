@@ -7,7 +7,7 @@ WebBrowser.maybeCompleteAuthSession();
 export const discordConfig = {
   clientId: process.env.EXPO_PUBLIC_DISCORD_CLIENT_ID || 'YOUR_DISCORD_CLIENT_ID',
   redirectUri: AuthSession.makeRedirectUri({
-    scheme: 'rankup',
+    scheme: 'peakd',
     path: 'auth/callback',
   }),
   scopes: ['identify', 'email'],
@@ -20,7 +20,7 @@ export const discordConfig = {
 export const instagramConfig = {
   clientId: process.env.EXPO_PUBLIC_INSTAGRAM_CLIENT_ID || 'YOUR_INSTAGRAM_CLIENT_ID',
   redirectUri: AuthSession.makeRedirectUri({
-    scheme: 'rankup',
+    scheme: 'peakd',
     path: 'auth/callback',
   }),
   scopes: ['user_profile'],

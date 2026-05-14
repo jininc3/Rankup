@@ -1,16 +1,16 @@
 {
   "expo": {
-    "name": "RankdUp",
-    "slug": "RankUp",
+    "name": "Peakd",
+    "slug": "Peakd",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/images/applogo.png",
-    "scheme": "rankup",
+    "scheme": "peakd",
     "userInterfaceStyle": "automatic",
     "newArchEnabled": true,
     "ios": {
       "supportsTablet": true,
-      "bundleIdentifier": "com.jininc3.RankUp",
+      "bundleIdentifier": "com.jininc3.Peakd",
       "buildNumber": "16",
       "googleServicesFile": "./GoogleService-Info.plist",
       "entitlements": {
@@ -51,7 +51,7 @@
       ],
       "edgeToEdgeEnabled": true,
       "predictiveBackGestureEnabled": false,
-      "package": "com.jininc3.RankUp"
+      "package": "com.jininc3.Peakd"
     },
     "web": {
       "output": "static",

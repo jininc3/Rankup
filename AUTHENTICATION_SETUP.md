@@ -1,6 +1,6 @@
 # Authentication Setup Guide
 
-This guide will help you set up Discord and Instagram OAuth authentication for your RankUp app.
+This guide will help you set up Discord and Instagram OAuth authentication for your Peakd app.
 
 ## Overview
 
@@ -53,7 +53,7 @@ All required packages are already installed:
 3. Go to "OAuth2" settings
 4. Add the following redirect URI:
    ```
-   rankup://auth/callback
+   peakd://auth/callback
    ```
 5. Copy your **Client ID** and **Client Secret** to your `.env` file:
    ```
@@ -69,7 +69,7 @@ All required packages are already installed:
    - Add an Instagram Test User
    - Add OAuth Redirect URI:
      ```
-     rankup://auth/callback
+     peakd://auth/callback
      ```
 4. Copy your **App ID** (Client ID) and **App Secret** to your `.env` file:
    ```
@@ -83,7 +83,7 @@ The `app.json` already has the scheme configured:
 ```json
 {
   "expo": {
-    "scheme": "rankup"
+    "scheme": "peakd"
   }
 }
 ```
@@ -171,7 +171,7 @@ For OAuth to work properly in development:
 
 ### OAuth Not Working
 
-1. Check that your redirect URI exactly matches: `rankup://auth/callback`
+1. Check that your redirect URI exactly matches: `peakd://auth/callback`
 2. Verify your Client IDs and Secrets are correct in `.env`
 3. Make sure you're using a development build if testing on a device
 4. Check console logs for error messages
@@ -184,7 +184,7 @@ For OAuth to work properly in development:
 
 ### Redirect Issues
 
-1. Verify the `scheme` in `app.json` is set to `rankup`
+1. Verify the `scheme` in `app.json` is set to `peakd`
 2. Make sure deep linking is configured correctly
 3. Test on a physical device rather than simulator
 

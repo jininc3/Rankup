@@ -514,7 +514,9 @@ export default function LiveSearchScreen() {
           <IconSymbol size={20} name="chevron.left" color="#fff" />
         </TouchableOpacity>
         <ThemedText style={styles.headerTitle}>Live Search</ThemedText>
-        <View style={{ width: 28 }} />
+        <TouchableOpacity style={styles.helpButton}>
+          <IconSymbol size={18} name="questionmark.circle" color="#666" />
+        </TouchableOpacity>
       </View>
 
       <ScrollView
@@ -619,6 +621,16 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(139, 127, 232, 0.12)',
     borderWidth: 1,
     borderColor: 'rgba(139, 127, 232, 0.2)',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  helpButton: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: 'rgba(255, 255, 255, 0.06)',
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.1)',
     alignItems: 'center',
     justifyContent: 'center',
   },

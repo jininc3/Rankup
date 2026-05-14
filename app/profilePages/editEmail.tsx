@@ -19,7 +19,7 @@ export default function EditEmailScreen() {
   const [isChecking, setIsChecking] = useState(false);
 
   const isPhoneUser = user?.provider === 'phone';
-  const hasRealEmail = user?.email && !user.email.endsWith('@rankup-phone.internal');
+  const hasRealEmail = user?.email && !user.email.endsWith('@peakd-phone.internal');
 
   const validateEmail = (email: string): boolean => {
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;

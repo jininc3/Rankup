@@ -42,7 +42,7 @@ export const resetPhonePasswordFunction = onCall(
       // Fallback: look up by the generated internal email
       if (usersSnapshot.empty) {
         const sanitized = phoneNumber.replace(/[^0-9]/g, "");
-        const generatedEmail = `phone_${sanitized}@rankup-phone.internal`;
+        const generatedEmail = `phone_${sanitized}@peakd-phone.internal`;
         usersSnapshot = await admin.firestore()
           .collection("users")
           .where("email", "==", generatedEmail)
