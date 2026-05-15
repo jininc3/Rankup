@@ -8,7 +8,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { useRouter } from '@/hooks/useRouter';
 import { useLocalSearchParams } from 'expo-router';
 import { db } from '@/config/firebase';
-import { collection, getDocs, query, where, doc, getDoc, updateDoc, Timestamp } from 'firebase/firestore';
+import { collection, getDocs, query, where, doc, getDoc, updateDoc, deleteDoc, Timestamp } from 'firebase/firestore';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { Alert, Dimensions, Image, ScrollView, StyleSheet, TouchableOpacity, View } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -26,41 +26,6 @@ const GAME_LOGOS: { [key: string]: any } = {
   'league': require('@/assets/images/lol-icon.png'),
 };
 
-const VALORANT_RANK_ICONS: { [key: string]: any } = {
-  iron: require('@/assets/images/valorantranks/iron.png'),
-  bronze: require('@/assets/images/valorantranks/bronze.png'),
-  silver: require('@/assets/images/valorantranks/silver.png'),
-  gold: require('@/assets/images/valorantranks/gold.png'),
-  platinum: require('@/assets/images/valorantranks/platinum.png'),
-  diamond: require('@/assets/images/valorantranks/diamond.png'),
-  ascendant: require('@/assets/images/valorantranks/ascendant.png'),
-  immortal: require('@/assets/images/valorantranks/immortal.png'),
-  radiant: require('@/assets/images/valorantranks/radiant.png'),
-  unranked: require('@/assets/images/valorantranks/unranked.png'),
-};
-
-const LEAGUE_RANK_ICONS: { [key: string]: any } = {
-  iron: require('@/assets/images/leagueranks/iron.png'),
-  bronze: require('@/assets/images/leagueranks/bronze.png'),
-  silver: require('@/assets/images/leagueranks/silver.png'),
-  gold: require('@/assets/images/leagueranks/gold.png'),
-  platinum: require('@/assets/images/leagueranks/platinum.png'),
-  emerald: require('@/assets/images/leagueranks/emerald.png'),
-  diamond: require('@/assets/images/leagueranks/diamond.png'),
-  master: require('@/assets/images/leagueranks/masters.png'),
-  grandmaster: require('@/assets/images/leagueranks/grandmaster.png'),
-  challenger: require('@/assets/images/leagueranks/challenger.png'),
-  unranked: require('@/assets/images/leagueranks/unranked.png'),
-};
-
-const getRankIcon = (rank: string, game: string) => {
-  if (!rank || rank === 'Unranked') {
-    return game === 'Valorant' || game === 'valorant' ? VALORANT_RANK_ICONS.unranked : LEAGUE_RANK_ICONS.unranked;
-  }
-  const tier = rank.split(' ')[0].toLowerCase();
-  if (game === 'Valorant' || game === 'valorant') return VALORANT_RANK_ICONS[tier] || VALORANT_RANK_ICONS.unranked;
-  return LEAGUE_RANK_ICONS[tier] || LEAGUE_RANK_ICONS.unranked;
-};
 
 const getTimeAgo = (timestamp: Timestamp): string => {
   const now = new Date();
@@ -75,7 +40,7 @@ const getTimeAgo = (timestamp: Timestamp): string => {
 };
 
 // Module-level cache so data persists across navigations
-const clipsCache: Record<string, { posts: Post[]; clipCategories: string[]; userRank?: string; userGame?: string }> = {};
+const clipsCache: Record<string, { posts: Post[]; clipCategories: string[] }> = {};
 
 interface Post {
   id: string;
@@ -114,8 +79,6 @@ export default function ClipsPage() {
   const [posts, setPosts] = useState<Post[]>(cached?.posts ?? []);
   const [loading, setLoading] = useState(!cached);
   const [clipCategories, setClipCategories] = useState<string[]>(cached?.clipCategories ?? []);
-  const [userRank, setUserRank] = useState<string | undefined>(cached?.userRank);
-  const [userGame, setUserGame] = useState<string | undefined>(cached?.userGame);
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
 
   const [selectedPost, setSelectedPost] = useState<Post | null>(null);
@@ -167,24 +130,6 @@ export default function ClipsPage() {
 
       const categories = userDoc.exists() ? (userDoc.data().clipCategories || []) : [];
 
-      // Extract rank data from user doc
-      if (userDoc.exists()) {
-        const userData = userDoc.data();
-        let rank: string | undefined;
-        let game: string | undefined;
-        if (userData.valorantStats?.currentRank) {
-          rank = userData.valorantStats.currentRank;
-          game = 'Valorant';
-        } else if (userData.riotStats?.rankedSolo?.tier) {
-          rank = `${userData.riotStats.rankedSolo.tier} ${userData.riotStats.rankedSolo.rank}`;
-          game = 'League of Legends';
-        }
-        setUserRank(rank);
-        setUserGame(game);
-        if (userId) {
-          clipsCache[userId] = { ...clipsCache[userId], userRank: rank, userGame: game };
-        }
-      }
 
       if (!background) {
         expectedCountRef.current = fetchedPosts.length;
@@ -219,6 +164,40 @@ export default function ClipsPage() {
   const handleCategorize = (post: Post) => {
     setCategorizingPost(post);
     setShowAssignCategory(true);
+  };
+
+  const handleDelete = (post: Post) => {
+    Alert.alert('Delete Clip', 'Are you sure you want to delete this clip?', [
+      { text: 'Cancel', style: 'cancel' },
+      {
+        text: 'Delete',
+        style: 'destructive',
+        onPress: async () => {
+          try {
+            await deleteDoc(doc(db, 'posts', post.id));
+            setPosts(prev => {
+              const updated = prev.filter(p => p.id !== post.id);
+              if (userId) clipsCache[userId] = { ...clipsCache[userId], posts: updated };
+              return updated;
+            });
+          } catch (error) {
+            Alert.alert('Error', 'Failed to delete clip');
+          }
+        },
+      },
+    ]);
+  };
+
+  const handleLongPress = (post: Post) => {
+    Alert.alert(
+      'Clip Options',
+      undefined,
+      [
+        { text: 'Delete', style: 'destructive', onPress: () => handleDelete(post) },
+        { text: 'Categorize', onPress: () => handleCategorize(post) },
+        { text: 'Cancel', style: 'cancel' },
+      ]
+    );
   };
 
   const handleSavePostCategories = async (newCategories: string[]) => {
@@ -371,7 +350,7 @@ export default function ClipsPage() {
                       key={post.id}
                       style={styles.gridItem}
                       onPress={() => handlePostPress(post)}
-                      onLongPress={isOwnProfile ? () => handleCategorize(post) : undefined}
+                      onLongPress={isOwnProfile ? () => handleLongPress(post) : undefined}
                       activeOpacity={0.85}
                     >
                       <Image source={{ uri: thumbUri }} style={styles.gridImage} resizeMode="cover" onLoad={onThumbnailLoadOrError} onError={onThumbnailLoadOrError} />
@@ -408,14 +387,12 @@ export default function ClipsPage() {
                 {filteredPosts.map((post) => {
                   const thumbUri = post.mediaType === 'video' && post.thumbnailUrl ? post.thumbnailUrl : post.mediaUrl;
                   const gameLogo = GAME_LOGOS[post.taggedGame || ''];
-                  const gameLabel = post.taggedGame === 'valorant' ? 'Valorant' : post.taggedGame === 'league' ? 'League of Legends' : post.taggedGame;
-                  const rankForPost = post.taggedGame === (userGame === 'Valorant' ? 'valorant' : 'league') ? userRank : undefined;
                   return (
                     <TouchableOpacity
                       key={post.id}
                       style={styles.listCard}
                       onPress={() => handlePostPress(post)}
-                      onLongPress={isOwnProfile ? () => handleCategorize(post) : undefined}
+                      onLongPress={isOwnProfile ? () => handleLongPress(post) : undefined}
                       activeOpacity={0.85}
                     >
                       <View style={styles.listThumbWrap}>
@@ -434,12 +411,6 @@ export default function ClipsPage() {
                             {post.caption || 'No caption'}
                           </ThemedText>
                         </View>
-                        {rankForPost && (
-                          <View style={styles.listRankRow}>
-                            <Image source={getRankIcon(rankForPost, gameLabel || '')} style={styles.listRankIcon} resizeMode="contain" />
-                            <ThemedText style={styles.listRankText}>{rankForPost}</ThemedText>
-                          </View>
-                        )}
                         <View style={styles.listStatsRow}>
                           <IconSymbol size={10} name="heart.fill" color="#e8587a" />
                           <ThemedText style={styles.listStatText}>{formatCount(post.likes)}</ThemedText>
@@ -798,7 +769,7 @@ const styles = StyleSheet.create({
     overflow: 'hidden',
   },
   listThumbWrap: {
-    width: 140,
+    width: 120,
     aspectRatio: 16 / 9,
     backgroundColor: '#161616',
   },
@@ -825,10 +796,10 @@ const styles = StyleSheet.create({
   },
   listInfo: {
     flex: 1,
-    paddingVertical: 10,
+    paddingVertical: 8,
     paddingHorizontal: 12,
     justifyContent: 'center',
-    gap: 4,
+    gap: 3,
   },
   listTitleRow: {
     flexDirection: 'row',
@@ -845,20 +816,6 @@ const styles = StyleSheet.create({
     fontSize: 15,
     fontWeight: '700',
     color: '#fff',
-  },
-  listRankRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 5,
-  },
-  listRankIcon: {
-    width: 16,
-    height: 16,
-  },
-  listRankText: {
-    fontSize: 12,
-    fontWeight: '600',
-    color: '#8b7fe8',
   },
   listStatsRow: {
     flexDirection: 'row',
