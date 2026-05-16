@@ -13,6 +13,7 @@ import {
   ActivityIndicator,
   Alert,
   InteractionManager,
+  Image,
 } from 'react-native';
 import { useRouter } from '@/hooks/useRouter';
 import { useLocalSearchParams } from 'expo-router';
@@ -28,6 +29,7 @@ import {
   createOrGetChat,
   ChatMessage,
   Chat,
+  SharedPostData,
 } from '@/services/chatService';
 import { Timestamp, QueryDocumentSnapshot, DocumentData } from 'firebase/firestore';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -331,6 +333,71 @@ export default function ChatScreen() {
     // Show "Read" on the last sent message if the other user has read it
     const showReadReceipt = isCurrentUser && otherUserHasRead && item.id === lastSentMessageId;
 
+    // Shared post card
+    if (item.type === 'shared_post' && item.sharedPost) {
+      const sp = item.sharedPost;
+      const thumbnailUri = sp.postThumbnailUrl || sp.postMediaUrl;
+
+      return (
+        <View style={styles.messageContainer}>
+          {showTimestamp && (
+            <ThemedText style={styles.timestamp}>{formatTime(item.timestamp)}</ThemedText>
+          )}
+          <TouchableOpacity
+            style={[
+              styles.sharedPostCard,
+              isCurrentUser ? styles.sharedPostCardSent : styles.sharedPostCardReceived,
+            ]}
+            activeOpacity={0.8}
+            onPress={() => router.push({ pathname: '/postViewer', params: { postId: sp.postId } })}
+          >
+            {/* Post author header */}
+            <View style={styles.sharedPostHeader}>
+              <View style={styles.sharedPostAvatar}>
+                {sp.postAvatar && sp.postAvatar.startsWith('http') ? (
+                  <Image source={{ uri: sp.postAvatar }} style={styles.sharedPostAvatarImage} />
+                ) : (
+                  <ThemedText style={styles.sharedPostAvatarInitial}>
+                    {sp.postUsername?.[0]?.toUpperCase() || 'U'}
+                  </ThemedText>
+                )}
+              </View>
+              <ThemedText style={styles.sharedPostUsername} numberOfLines={1}>
+                {sp.postUsername}
+              </ThemedText>
+            </View>
+
+            {/* Caption preview */}
+            {sp.postCaption ? (
+              <ThemedText style={styles.sharedPostCaption} numberOfLines={2}>
+                {sp.postCaption}
+              </ThemedText>
+            ) : null}
+
+            {/* Thumbnail */}
+            {thumbnailUri ? (
+              <View style={styles.sharedPostThumbnailContainer}>
+                <Image source={{ uri: thumbnailUri }} style={styles.sharedPostThumbnail} resizeMode="cover" />
+                {sp.postMediaType === 'video' && (
+                  <View style={styles.sharedPostPlayIcon}>
+                    <IconSymbol size={32} name="play.fill" color="#fff" />
+                  </View>
+                )}
+              </View>
+            ) : null}
+
+            {/* User message */}
+            {item.text && item.text !== `Shared a post by @${sp.postUsername}` ? (
+              <ThemedText style={styles.sharedPostMessage}>{item.text}</ThemedText>
+            ) : null}
+          </TouchableOpacity>
+          {showReadReceipt && (
+            <ThemedText style={styles.readReceipt}>Read</ThemedText>
+          )}
+        </View>
+      );
+    }
+
     return (
       <View style={styles.messageContainer}>
         {showTimestamp && (
@@ -357,7 +424,7 @@ export default function ChatScreen() {
         )}
       </View>
     );
-  }, [currentUser?.id, messages, formatTime, lastSentMessageId, otherUserHasRead]);
+  }, [currentUser?.id, messages, formatTime, lastSentMessageId, otherUserHasRead, router]);
 
   return (
     <KeyboardAvoidingView
@@ -585,6 +652,82 @@ const styles = StyleSheet.create({
     alignSelf: 'flex-end',
     marginTop: 2,
     marginRight: 4,
+  },
+  sharedPostCard: {
+    maxWidth: '75%',
+    borderRadius: 14,
+    overflow: 'hidden',
+  },
+  sharedPostCardSent: {
+    alignSelf: 'flex-end',
+    backgroundColor: '#1a1a1a',
+  },
+  sharedPostCardReceived: {
+    alignSelf: 'flex-start',
+    backgroundColor: '#1a1a1a',
+  },
+  sharedPostHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: 10,
+    gap: 8,
+  },
+  sharedPostAvatar: {
+    width: 28,
+    height: 28,
+    borderRadius: 14,
+    backgroundColor: '#2c2f33',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  sharedPostAvatarImage: {
+    width: 28,
+    height: 28,
+    borderRadius: 14,
+  },
+  sharedPostAvatarInitial: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: '#fff',
+  },
+  sharedPostUsername: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#fff',
+    flex: 1,
+  },
+  sharedPostCaption: {
+    fontSize: 13,
+    color: '#ccc',
+    paddingHorizontal: 10,
+    paddingBottom: 8,
+    lineHeight: 18,
+  },
+  sharedPostThumbnailContainer: {
+    width: '100%',
+    aspectRatio: 1,
+    backgroundColor: '#000',
+    position: 'relative',
+  },
+  sharedPostThumbnail: {
+    width: '100%',
+    height: '100%',
+  },
+  sharedPostPlayIcon: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: 'rgba(0, 0, 0, 0.3)',
+  },
+  sharedPostMessage: {
+    fontSize: 14,
+    color: '#fff',
+    padding: 10,
+    lineHeight: 19,
   },
   emptyState: {
     flex: 1,

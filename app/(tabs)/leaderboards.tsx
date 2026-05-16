@@ -11,6 +11,7 @@ import { useEffect, useState } from 'react';
 import { ActivityIndicator, Dimensions, Image, Pressable, ScrollView, StyleSheet, TouchableOpacity, View } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { formatRankDisplay } from '@/utils/formatRankDisplay';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 const { width: screenWidth, height: screenHeight } = Dimensions.get('window');
 
@@ -122,6 +123,131 @@ const getValorantRankValue = (currentRank: string, rr: number): number => {
 };
 
 
+// --- Rank change tracking ---
+const RANK_HISTORY_KEY = 'leaderboard_rank_history';
+const TWENTY_FOUR_HOURS = 24 * 60 * 60 * 1000;
+
+interface RankChangeEntry {
+  previousRank: number;
+  currentRank: number;
+  changedAt: number; // timestamp ms
+  joinedAt: number;  // timestamp ms when user first appeared
+}
+
+interface RankHistory {
+  [game: string]: {
+    [userId: string]: RankChangeEntry;
+  };
+}
+
+const loadRankHistory = async (): Promise<RankHistory> => {
+  try {
+    const raw = await AsyncStorage.getItem(RANK_HISTORY_KEY);
+    return raw ? JSON.parse(raw) : {};
+  } catch {
+    return {};
+  }
+};
+
+const saveRankHistory = async (history: RankHistory) => {
+  try {
+    await AsyncStorage.setItem(RANK_HISTORY_KEY, JSON.stringify(history));
+  } catch {}
+};
+
+/**
+ * Computes rank change arrows.
+ * Returns a map of userId -> 'up' | 'down' | null
+ * - New users (joined < 24h ago with no prior position) get null (no arrow)
+ * - Position change within 24h shows arrow
+ * - After 24h the arrow disappears
+ */
+const computeRankChanges = async (
+  players: { userId: string }[],
+  game: string,
+): Promise<Record<string, 'up' | 'down' | null>> => {
+  const now = Date.now();
+  const history = await loadRankHistory();
+  if (!history[game]) history[game] = {};
+
+  const gameHistory = history[game];
+  const result: Record<string, 'up' | 'down' | null> = {};
+
+  players.forEach((player, index) => {
+    const currentPos = index + 1;
+    const entry = gameHistory[player.userId];
+
+    if (!entry) {
+      // New user — record their join time and position, no arrow
+      gameHistory[player.userId] = {
+        previousRank: currentPos,
+        currentRank: currentPos,
+        changedAt: now,
+        joinedAt: now,
+      };
+      result[player.userId] = null;
+    } else {
+      const isNewUser = (now - entry.joinedAt) < TWENTY_FOUR_HOURS && entry.previousRank === entry.currentRank;
+
+      if (isNewUser) {
+        // Still in the grace period since joining, update position silently
+        entry.currentRank = currentPos;
+        result[player.userId] = null;
+      } else if (currentPos !== entry.currentRank) {
+        // Position changed
+        entry.previousRank = entry.currentRank;
+        entry.currentRank = currentPos;
+        entry.changedAt = now;
+        result[player.userId] = currentPos < entry.previousRank ? 'up' : 'down';
+      } else if ((now - entry.changedAt) < TWENTY_FOUR_HOURS && entry.previousRank !== entry.currentRank) {
+        // Within 24h window, still show arrow
+        result[player.userId] = entry.currentRank < entry.previousRank ? 'up' : 'down';
+      } else {
+        // No change or expired — reset
+        entry.previousRank = currentPos;
+        entry.currentRank = currentPos;
+        result[player.userId] = null;
+      }
+    }
+  });
+
+  // Clean up users no longer in the leaderboard
+  const currentUserIds = new Set(players.map(p => p.userId));
+  for (const uid of Object.keys(gameHistory)) {
+    if (!currentUserIds.has(uid)) delete gameHistory[uid];
+  }
+
+  await saveRankHistory(history);
+  return result;
+};
+
+// --- Daily progress tracking ---
+const DAILY_BASELINE_KEY = 'leaderboard_daily_baseline';
+
+interface DailyBaseline {
+  [game: string]: { date: string; rr: number; lp: number };
+}
+
+const getDailyGain = async (game: string, currentRR: number, currentLP: number): Promise<number> => {
+  const today = new Date().toISOString().slice(0, 10); // YYYY-MM-DD
+  try {
+    const raw = await AsyncStorage.getItem(DAILY_BASELINE_KEY);
+    const baselines: DailyBaseline = raw ? JSON.parse(raw) : {};
+
+    if (!baselines[game] || baselines[game].date !== today) {
+      baselines[game] = { date: today, rr: currentRR, lp: currentLP };
+      await AsyncStorage.setItem(DAILY_BASELINE_KEY, JSON.stringify(baselines));
+      return 0;
+    }
+
+    return game === 'valorant'
+      ? currentRR - baselines[game].rr
+      : currentLP - baselines[game].lp;
+  } catch {
+    return 0;
+  }
+};
+
 interface MutualPlayer {
   userId: string;
   username: string;
@@ -143,6 +269,8 @@ export default function LeaderboardScreen() {
   const [showGameDropdown, setShowGameDropdown] = useState(false);
   const [updatingStats, setUpdatingStats] = useState(false);
   const [lobbyCount, setLobbyCount] = useState(0);
+  const [rankChanges, setRankChanges] = useState<Record<string, 'up' | 'down' | null>>({});
+  const [userGameStats, setUserGameStats] = useState<{ rr: number; lp: number; rrToday: number; lpToday: number } | null>(null);
 
   // Listen for user's active lobbies count
   useEffect(() => {
@@ -248,6 +376,30 @@ export default function LeaderboardScreen() {
       leagueResults.sort((a, b) => getLeagueRankValue(b.currentRank, b.lp) - getLeagueRankValue(a.currentRank, a.lp));
       valorantResults.sort((a, b) => getValorantRankValue(b.currentRank, b.rr) - getValorantRankValue(a.currentRank, a.rr));
 
+      // Compute rank change arrows
+      const activeGame = preserveGame ? selectedMutualGame : (valorantResults.length > leagueResults.length ? 'valorant' : 'league');
+      const activePlayers = activeGame === 'league' ? leagueResults : valorantResults;
+      const changes = await computeRankChanges(activePlayers, activeGame);
+      setRankChanges(changes);
+
+      // Compute daily gain for the current user
+      const currentUserInActive = activePlayers.find(p => p.isCurrentUser);
+      if (currentUserInActive) {
+        const dailyGain = await getDailyGain(
+          activeGame,
+          currentUserInActive.rr || 0,
+          currentUserInActive.lp || 0,
+        );
+        setUserGameStats({
+          rr: currentUserInActive.rr || 0,
+          lp: currentUserInActive.lp || 0,
+          rrToday: activeGame === 'valorant' ? dailyGain : 0,
+          lpToday: activeGame === 'league' ? dailyGain : 0,
+        });
+      } else {
+        setUserGameStats(null);
+      }
+
       setLeaguePlayers(leagueResults);
       setValorantPlayers(valorantResults);
       if (!preserveGame) {
@@ -274,6 +426,27 @@ export default function LeaderboardScreen() {
   useEffect(() => {
     fetchMutualsAndStats();
   }, [user?.id]);
+
+  // Recompute rank changes & daily gain when switching games
+  useEffect(() => {
+    const players = selectedMutualGame === 'league' ? leaguePlayers : valorantPlayers;
+    if (players.length === 0) return;
+    (async () => {
+      const changes = await computeRankChanges(players, selectedMutualGame);
+      setRankChanges(changes);
+      const me = players.find(p => p.isCurrentUser);
+      if (me) {
+        const dailyGain = await getDailyGain(selectedMutualGame, me.rr || 0, me.lp || 0);
+        setUserGameStats({
+          rr: me.rr || 0, lp: me.lp || 0,
+          rrToday: selectedMutualGame === 'valorant' ? dailyGain : 0,
+          lpToday: selectedMutualGame === 'league' ? dailyGain : 0,
+        });
+      } else {
+        setUserGameStats(null);
+      }
+    })();
+  }, [selectedMutualGame, leaguePlayers, valorantPlayers]);
 
   const getBorderColor = (rank: number) => {
     if (rank === 1) return '#FFD700';
@@ -368,9 +541,15 @@ export default function LeaderboardScreen() {
                   }
                 }}
               >
-                {/* Rank Number */}
+                {/* Rank Number + Arrow */}
                 <View style={styles.rankContainer}>
                   <ThemedText style={[styles.rankNumberText, rank <= 3 && { color: getBorderColor(rank) }]}>{rank}</ThemedText>
+                  {rankChanges[player.userId] === 'up' && (
+                    <IconSymbol size={10} name="arrowtriangle.up.fill" color="#22C55E" />
+                  )}
+                  {rankChanges[player.userId] === 'down' && (
+                    <IconSymbol size={10} name="arrowtriangle.down.fill" color="#EF4444" />
+                  )}
                 </View>
 
                 {/* Player Info */}
@@ -487,10 +666,92 @@ export default function LeaderboardScreen() {
               const activePlayers = selectedMutualGame === 'league' ? leaguePlayers : valorantPlayers;
               const fallbackGame = selectedMutualGame === 'league' ? 'valorant' : 'league';
               const fallbackPlayers = selectedMutualGame === 'league' ? valorantPlayers : leaguePlayers;
-              if (activePlayers.length > 0) {
-                return renderMutualLeaderboard(activePlayers, selectedMutualGame);
-              }
-              return renderMutualLeaderboard(fallbackPlayers, fallbackGame);
+              const usedPlayers = activePlayers.length > 0 ? activePlayers : fallbackPlayers;
+              const usedGame = activePlayers.length > 0 ? selectedMutualGame : fallbackGame;
+
+              const currentUser = usedPlayers.find(p => p.isCurrentUser);
+              const isLeague = usedGame === 'league';
+
+              return (
+                <>
+                  {renderMutualLeaderboard(usedPlayers, usedGame)}
+
+                  {/* Your Progress Card */}
+                  {currentUser && (
+                    <View style={styles.yourProgressWrapper}>
+                      {/* User info row */}
+                      <View style={styles.yourProgressUserRow}>
+                        <View style={styles.yourProgressUserLeft}>
+                          <View style={styles.youBadge}>
+                            <ThemedText style={styles.youBadgeText}>You</ThemedText>
+                          </View>
+                          <View style={styles.yourProgressAvatarRing}>
+                            <View style={styles.yourProgressAvatar}>
+                              {currentUser.avatar ? (
+                                <CachedImage uri={currentUser.avatar} style={styles.yourProgressAvatarImage} />
+                              ) : (
+                                <ThemedText style={styles.yourProgressAvatarFallback}>
+                                  {currentUser.username.charAt(0).toUpperCase()}
+                                </ThemedText>
+                              )}
+                            </View>
+                          </View>
+                          <ThemedText style={styles.yourProgressUsername} numberOfLines={1}>
+                            {currentUser.username}
+                          </ThemedText>
+                        </View>
+                        <View style={styles.yourProgressRankRight}>
+                          <Image
+                            source={isLeague ? getLeagueRankIcon(currentUser.currentRank) : getValorantRankIcon(currentUser.currentRank)}
+                            style={styles.yourProgressRankIcon}
+                            resizeMode="contain"
+                          />
+                          <View>
+                            <ThemedText style={styles.yourProgressRankText}>
+                              {formatRankDisplay(currentUser.currentRank)}
+                            </ThemedText>
+                            <ThemedText style={styles.yourProgressRankPoints}>
+                              {isLeague ? `${currentUser.lp || 0} LP` : `${currentUser.rr || 0} RR`}
+                            </ThemedText>
+                          </View>
+                        </View>
+                      </View>
+
+                      {/* Progress section */}
+                      <View style={styles.yourProgressBottom}>
+                        <View style={styles.yourProgressTopRow}>
+                          <ThemedText style={styles.yourProgressRankName}>
+                            {formatRankDisplay(currentUser.currentRank)}
+                          </ThemedText>
+                          {(() => {
+                            const dailyGain = isLeague ? (userGameStats?.lpToday || 0) : (userGameStats?.rrToday || 0);
+                            const unit = isLeague ? 'LP' : 'RR';
+                            if (dailyGain === 0) return null;
+                            return (
+                              <View style={[styles.dailyGainBadge, dailyGain < 0 && styles.dailyGainBadgeNegative]}>
+                                <ThemedText style={[styles.dailyGainText, dailyGain < 0 && styles.dailyGainTextNegative]}>
+                                  {dailyGain > 0 ? '+' : ''}{dailyGain} {unit} today
+                                </ThemedText>
+                              </View>
+                            );
+                          })()}
+                        </View>
+                        <View style={styles.progressBarTrack}>
+                          <View
+                            style={[
+                              styles.progressBarFill,
+                              { width: `${Math.min(100, isLeague ? (currentUser.lp || 0) : (currentUser.rr || 0))}%` },
+                            ]}
+                          />
+                        </View>
+                        <ThemedText style={styles.progressBarLabel}>
+                          {isLeague ? `${currentUser.lp || 0}` : `${currentUser.rr || 0}`} / 100 {isLeague ? 'LP' : 'RR'}
+                        </ThemedText>
+                      </View>
+                    </View>
+                  )}
+                </>
+              );
             })()}
           </View>
         )}
@@ -816,7 +1077,9 @@ const styles = StyleSheet.create({
   },
   rankContainer: {
     width: 40,
-    alignItems: 'flex-start',
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 3,
   },
   rankNumberText: {
     fontSize: 14,
@@ -939,5 +1202,144 @@ const styles = StyleSheet.create({
   },
   gameDropdownTextActive: {
     color: '#fff',
+  },
+  // Your Progress card styles
+  yourProgressWrapper: {
+    marginTop: 14,
+    borderRadius: 14,
+    backgroundColor: '#1a1a1a',
+    borderWidth: 1,
+    borderColor: 'rgba(139, 127, 232, 0.15)',
+    overflow: 'hidden',
+  },
+  yourProgressUserRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: 14,
+    paddingVertical: 10,
+  },
+  yourProgressUserLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    flex: 1,
+  },
+  youBadge: {
+    backgroundColor: 'rgba(139, 127, 232, 0.12)',
+    borderRadius: 8,
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+  },
+  youBadgeText: {
+    fontSize: 10,
+    fontWeight: '700',
+    color: '#8B7FE8',
+  },
+  yourProgressAvatarRing: {
+    borderRadius: 16,
+    borderWidth: 1.5,
+    borderColor: 'rgba(139, 127, 232, 0.35)',
+    padding: 1.5,
+  },
+  yourProgressAvatar: {
+    width: 28,
+    height: 28,
+    borderRadius: 14,
+    backgroundColor: '#252525',
+    alignItems: 'center',
+    justifyContent: 'center',
+    overflow: 'hidden',
+  },
+  yourProgressAvatarImage: {
+    width: '100%',
+    height: '100%',
+    borderRadius: 14,
+  },
+  yourProgressAvatarFallback: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: '#888',
+  },
+  yourProgressUsername: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: '#22C55E',
+    flexShrink: 1,
+  },
+  yourProgressRankRight: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+  },
+  yourProgressRankIcon: {
+    width: 22,
+    height: 22,
+  },
+  yourProgressRankText: {
+    fontSize: 11,
+    fontWeight: '600',
+    color: '#fff',
+  },
+  yourProgressRankPoints: {
+    fontSize: 10,
+    fontWeight: '500',
+    color: '#666',
+  },
+  yourProgressBottom: {
+    paddingHorizontal: 14,
+    paddingVertical: 10,
+    backgroundColor: '#151515',
+    borderTopWidth: 1,
+    borderTopColor: 'rgba(255, 255, 255, 0.04)',
+  },
+  yourProgressTopRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 8,
+  },
+  yourProgressRankName: {
+    fontSize: 14,
+    fontWeight: '700',
+    color: '#fff',
+  },
+  dailyGainBadge: {
+    backgroundColor: 'rgba(34, 197, 94, 0.1)',
+    borderWidth: 1,
+    borderColor: 'rgba(34, 197, 94, 0.2)',
+    borderRadius: 10,
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+  },
+  dailyGainBadgeNegative: {
+    backgroundColor: 'rgba(239, 68, 68, 0.1)',
+    borderColor: 'rgba(239, 68, 68, 0.2)',
+  },
+  dailyGainText: {
+    fontSize: 11,
+    fontWeight: '600',
+    color: '#22C55E',
+  },
+  dailyGainTextNegative: {
+    color: '#EF4444',
+  },
+  progressBarTrack: {
+    height: 5,
+    backgroundColor: '#252525',
+    borderRadius: 2.5,
+    overflow: 'hidden',
+    marginBottom: 6,
+  },
+  progressBarFill: {
+    height: '100%',
+    backgroundColor: '#8B7FE8',
+    borderRadius: 2.5,
+  },
+  progressBarLabel: {
+    fontSize: 11,
+    fontWeight: '500',
+    color: '#555',
+    textAlign: 'right',
   },
 });

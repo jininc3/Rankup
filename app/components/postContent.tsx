@@ -9,6 +9,7 @@ import { getComments, CommentData } from '@/services/commentService';
 import { TaggedUser } from '@/app/components/tagUsersModal';
 import { calculateTierBorderColor } from '@/utils/tierBorderUtils';
 import { formatRankDisplay } from '@/utils/formatRankDisplay';
+import SharePostModal from '@/app/components/sharePostModal';
 
 const { width: screenWidth } = Dimensions.get('window');
 const cardMargin = 12;
@@ -409,6 +410,9 @@ export default function PostContent({
   // Caption editing state
   const [isEditingCaption, setIsEditingCaption] = useState(false);
   const [editedCaption, setEditedCaption] = useState(post.caption || '');
+
+  // Share modal state
+  const [shareModalVisible, setShareModalVisible] = useState(false);
 
   const handleLikePress = () => {
     // Trigger scale animation on the button
@@ -833,16 +837,14 @@ export default function PostContent({
         </TouchableOpacity>
 
         {/* Share / DM */}
-        {post.userId !== currentUserId && onDirectMessage && (
-          <TouchableOpacity
-            style={styles.engagementItem}
-            onPress={() => onDirectMessage(post)}
-            activeOpacity={0.6}
-            hitSlop={{ top: 8, bottom: 8, left: 4, right: 4 }}
-          >
-            <IconSymbol size={22} name="paperplane" color="#b0b0b0" />
-          </TouchableOpacity>
-        )}
+        <TouchableOpacity
+          style={styles.engagementItem}
+          onPress={() => setShareModalVisible(true)}
+          activeOpacity={0.6}
+          hitSlop={{ top: 8, bottom: 8, left: 4, right: 4 }}
+        >
+          <IconSymbol size={22} name="paperplane" color="#b0b0b0" />
+        </TouchableOpacity>
       </View>
 
       {/* Tagged Users */}
@@ -886,6 +888,20 @@ export default function PostContent({
           )}
         </View>
       )}
+
+      {/* Share Post Modal */}
+      <SharePostModal
+        visible={shareModalVisible}
+        postId={post.id}
+        postUsername={post.username}
+        postAvatar={post.avatar}
+        postMediaUrl={post.mediaUrl}
+        postThumbnailUrl={post.thumbnailUrl}
+        postCaption={post.caption}
+        postMediaType={post.mediaType}
+        onClose={() => setShareModalVisible(false)}
+        onUserPress={onUserPress}
+      />
 
     </View>
   );
@@ -1218,6 +1234,7 @@ const styles = StyleSheet.create({
     flexWrap: 'wrap',
     paddingHorizontal: 16,
     paddingTop: 4,
+    paddingBottom: 12,
     alignItems: 'center',
   },
   taggedUsersLabel: {

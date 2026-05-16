@@ -21,13 +21,24 @@ import {
   DocumentData,
 } from 'firebase/firestore';
 
+export interface SharedPostData {
+  postId: string;
+  postUsername: string;
+  postAvatar?: string;
+  postMediaUrl: string;
+  postThumbnailUrl?: string;
+  postCaption?: string;
+  postMediaType: 'image' | 'video';
+}
+
 export interface ChatMessage {
   id: string;
   senderId: string;
   text: string;
   timestamp: Timestamp;
   read: boolean;
-  type?: 'text' | 'image' | 'game_invite';
+  type?: 'text' | 'image' | 'game_invite' | 'shared_post';
+  sharedPost?: SharedPostData;
 }
 
 export interface Chat {
@@ -143,7 +154,8 @@ export const sendMessage = async (
   chatId: string,
   senderId: string,
   text: string,
-  type: 'text' | 'image' | 'game_invite' = 'text'
+  type: 'text' | 'image' | 'game_invite' | 'shared_post' = 'text',
+  sharedPost?: SharedPostData
 ): Promise<string> => {
   const now = Timestamp.now();
 
@@ -166,13 +178,17 @@ export const sendMessage = async (
   }
 
   // Add message to subcollection
-  const messageData = {
+  const messageData: any = {
     senderId,
     text,
     timestamp: now,
     read: false,
     type,
   };
+
+  if (sharedPost) {
+    messageData.sharedPost = sharedPost;
+  }
 
   const docRef = await addDoc(messagesRef, messageData);
 

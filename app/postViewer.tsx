@@ -89,11 +89,7 @@ export default function PostViewerScreen() {
   }, [postId]);
 
   const handleClose = () => {
-    setShowModal(false);
-    // Small delay to allow modal close animation
-    setTimeout(() => {
-      router.back();
-    }, 200);
+    router.back();
   };
 
   if (loading) {
@@ -109,7 +105,7 @@ export default function PostViewerScreen() {
           pointerEvents="none"
         />
         <View style={styles.loadingContainer}>
-          <ActivityIndicator size="large" color="#000" />
+          <ActivityIndicator size="large" color="#fff" />
         </View>
       </ThemedView>
     );
@@ -128,7 +124,8 @@ export default function PostViewerScreen() {
       />
       {post && (
         <PostViewerModal
-          visible={showModal}
+          visible={true}
+          useModal={false}
           post={post}
           posts={[post]}
           currentIndex={0}
@@ -164,7 +161,7 @@ export default function PostViewerScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#fff',
+    backgroundColor: '#0f0f0f',
   },
   topGradient: {
     position: 'absolute',

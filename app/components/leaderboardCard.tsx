@@ -150,9 +150,42 @@ function LeaderboardCard({ leaderboard, onPress, currentUserId }: LeaderboardCar
             pointerEvents="none"
           />
 
+          {/* Inner purple glow - top */}
+          <LinearGradient
+            colors={['rgba(139,127,232,0.18)', 'transparent']}
+            start={{ x: 0.5, y: 0 }}
+            end={{ x: 0.5, y: 1 }}
+            style={styles.innerGlowTop}
+            pointerEvents="none"
+          />
+          {/* Inner purple glow - left */}
+          <LinearGradient
+            colors={['rgba(139,127,232,0.12)', 'transparent']}
+            start={{ x: 0, y: 0.5 }}
+            end={{ x: 1, y: 0.5 }}
+            style={styles.innerGlowLeft}
+            pointerEvents="none"
+          />
+          {/* Inner purple glow - right */}
+          <LinearGradient
+            colors={['rgba(139,127,232,0.12)', 'transparent']}
+            start={{ x: 1, y: 0.5 }}
+            end={{ x: 0, y: 0.5 }}
+            style={styles.innerGlowRight}
+            pointerEvents="none"
+          />
+          {/* Inner purple glow - bottom */}
+          <LinearGradient
+            colors={['rgba(139,127,232,0.10)', 'transparent']}
+            start={{ x: 0.5, y: 1 }}
+            end={{ x: 0.5, y: 0 }}
+            style={styles.innerGlowBottom}
+            pointerEvents="none"
+          />
+
           {/* Top highlight bevel */}
           <LinearGradient
-            colors={['rgba(255,255,255,0.12)', 'rgba(255,255,255,0.03)', 'transparent']}
+            colors={['rgba(139,127,232,0.4)', 'rgba(139,127,232,0.15)', 'transparent']}
             start={{ x: 0, y: 0 }}
             end={{ x: 1, y: 0 }}
             style={styles.accentLine}
@@ -285,9 +318,41 @@ const styles = StyleSheet.create({
     backgroundColor: '#1a1a1a',
     borderRadius: 14,
     overflow: 'hidden',
-    borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.05)',
-    borderTopColor: 'rgba(255,255,255,0.09)',
+    borderWidth: 1.5,
+    borderColor: 'rgba(139,127,232,0.4)',
+    borderTopColor: 'rgba(139,127,232,0.55)',
+  },
+  innerGlowTop: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    height: 40,
+    zIndex: 1,
+  },
+  innerGlowLeft: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    bottom: 0,
+    width: 30,
+    zIndex: 1,
+  },
+  innerGlowRight: {
+    position: 'absolute',
+    top: 0,
+    right: 0,
+    bottom: 0,
+    width: 30,
+    zIndex: 1,
+  },
+  innerGlowBottom: {
+    position: 'absolute',
+    bottom: 0,
+    left: 0,
+    right: 0,
+    height: 30,
+    zIndex: 1,
   },
   accentLine: {
     height: 1.5,

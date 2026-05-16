@@ -44,6 +44,7 @@ interface PostViewerModalProps {
   onArchive?: (post: Post) => void;
   onReport?: (post: Post) => void;
   onCategorize?: (post: Post) => void;
+  useModal?: boolean;
 }
 
 export default function PostViewerModal({
@@ -60,6 +61,7 @@ export default function PostViewerModal({
   onArchive,
   onReport,
   onCategorize,
+  useModal = true,
 }: PostViewerModalProps) {
   const router = useRouter();
   const { user: currentUser } = useAuth();
@@ -377,8 +379,89 @@ export default function PostViewerModal({
     );
   };
 
+  const content = (
+    <Animated.View
+      style={[
+        styles.container,
+        useModal && {
+          transform: [{ translateX }],
+          opacity: opacity
+        }
+      ]}
+    >
+      {/* Header */}
+      <View style={styles.header}>
+        <TouchableOpacity style={styles.backButton} onPress={onClose}>
+          <IconSymbol size={20} name="chevron.left" color="#fff" />
+        </TouchableOpacity>
+        <ThemedText style={styles.headerTitle}>Posts</ThemedText>
+        <View style={styles.backButton} />
+      </View>
+
+      {/* Left Edge Swipe Area - Invisible touch target (below header) */}
+      {useModal && (
+        <View
+          style={styles.leftEdgeSwipeArea}
+          {...edgePanResponder.panHandlers}
+        />
+      )}
+
+      {/* Scrollable Post Feed */}
+      <FlatList
+        ref={flatListRef}
+        data={posts}
+        renderItem={renderPost}
+        keyExtractor={(item) => item.id}
+        showsVerticalScrollIndicator={false}
+        contentContainerStyle={styles.flatListContent}
+        onScroll={handleScroll}
+        onScrollBeginDrag={() => setIsScrolling(true)}
+        onScrollEndDrag={() => {
+          setIsScrolling(false);
+          handleScroll();
+        }}
+        onMomentumScrollEnd={handleScroll}
+        removeClippedSubviews={false}
+        scrollEventThrottle={100}
+        keyboardShouldPersistTaps="handled"
+        onScrollToIndexFailed={(info) => {
+          // Wait for list to finish measuring, then try again
+          setTimeout(() => {
+            flatListRef.current?.scrollToIndex({
+              index: info.index,
+              animated: false,
+              viewPosition: 0,
+            });
+          }, 500);
+        }}
+      />
+
+      {/* Comment Modal */}
+      {selectedPostForComments && (
+        <CommentModal
+          visible={showCommentModal}
+          postId={selectedPostForComments.id}
+          postOwnerId={selectedPostForComments.userId}
+          postThumbnail={
+            selectedPostForComments.mediaType === 'video' && selectedPostForComments.thumbnailUrl
+              ? selectedPostForComments.thumbnailUrl
+              : selectedPostForComments.mediaUrl
+          }
+          onClose={() => {
+            setShowCommentModal(false);
+            setSelectedPostForComments(null);
+          }}
+          onCommentAdded={handleCommentAdded}
+        />
+      )}
+    </Animated.View>
+  );
+
+  if (!useModal) {
+    return content;
+  }
+
   return (
-    <>
     <Modal
       visible={visible}
       animationType="none"
@@ -386,81 +469,8 @@ export default function PostViewerModal({
       transparent={true}
       onRequestClose={onClose}
     >
-      <Animated.View
-        style={[
-          styles.container,
-          {
-            transform: [{ translateX }],
-            opacity: opacity
-          }
-        ]}
-      >
-        {/* Header */}
-        <View style={styles.header}>
-          <TouchableOpacity style={styles.backButton} onPress={onClose}>
-            <IconSymbol size={20} name="chevron.left" color="#fff" />
-          </TouchableOpacity>
-          <ThemedText style={styles.headerTitle}>Posts</ThemedText>
-          <View style={styles.backButton} />
-        </View>
-
-        {/* Left Edge Swipe Area - Invisible touch target (below header) */}
-        <View
-          style={styles.leftEdgeSwipeArea}
-          {...edgePanResponder.panHandlers}
-        />
-
-        {/* Scrollable Post Feed */}
-        <FlatList
-          ref={flatListRef}
-          data={posts}
-          renderItem={renderPost}
-          keyExtractor={(item) => item.id}
-          showsVerticalScrollIndicator={false}
-          contentContainerStyle={styles.flatListContent}
-          onScroll={handleScroll}
-          onScrollBeginDrag={() => setIsScrolling(true)}
-          onScrollEndDrag={() => {
-            setIsScrolling(false);
-            handleScroll();
-          }}
-          onMomentumScrollEnd={handleScroll}
-          removeClippedSubviews={false}
-          scrollEventThrottle={100}
-          keyboardShouldPersistTaps="handled"
-          onScrollToIndexFailed={(info) => {
-            // Wait for list to finish measuring, then try again
-            setTimeout(() => {
-              flatListRef.current?.scrollToIndex({
-                index: info.index,
-                animated: false,
-                viewPosition: 0,
-              });
-            }, 500);
-          }}
-        />
-
-        {/* Comment Modal */}
-        {selectedPostForComments && (
-          <CommentModal
-            visible={showCommentModal}
-            postId={selectedPostForComments.id}
-            postOwnerId={selectedPostForComments.userId}
-            postThumbnail={
-              selectedPostForComments.mediaType === 'video' && selectedPostForComments.thumbnailUrl
-                ? selectedPostForComments.thumbnailUrl
-                : selectedPostForComments.mediaUrl
-            }
-            onClose={() => {
-              setShowCommentModal(false);
-              setSelectedPostForComments(null);
-            }}
-            onCommentAdded={handleCommentAdded}
-          />
-        )}
-      </Animated.View>
+      {content}
     </Modal>
-  </>
   );
 }
 
