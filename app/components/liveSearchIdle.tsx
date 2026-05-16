@@ -1,6 +1,7 @@
 import { ThemedText } from '@/components/themed-text';
 import { IconSymbol } from '@/components/ui/icon-symbol';
-import { StyleSheet, View, Image, TouchableOpacity } from 'react-native';
+import { StyleSheet, View, Image, TouchableOpacity, Dimensions } from 'react-native';
+import { LinearGradient } from 'expo-linear-gradient';
 
 import Animated, {
   useSharedValue,
@@ -12,6 +13,8 @@ import Animated, {
   Easing,
 } from 'react-native-reanimated';
 import { useEffect } from 'react';
+
+const { width: screenWidth } = Dimensions.get('window');
 
 const VALORANT_RANK_ICONS: { [key: string]: any } = {
   iron: require('@/assets/images/valorantranks/iron.png'),
@@ -129,9 +132,18 @@ export default function LiveSearchIdle({
 
   return (
     <View style={styles.container}>
+      {/* Players Searching Banner */}
+      <View style={styles.playersBanner}>
+        <IconSymbol size={14} name="magnifyingglass" color="#4CAF50" />
+        <ThemedText style={styles.playersBannerText}>
+          <ThemedText style={styles.playersBannerCount}>12,482</ThemedText> players searching now
+        </ThemedText>
+      </View>
+
       {/* Animated Orb */}
       <View style={styles.orbContainer}>
         <Animated.View style={[styles.orbRing, ringStyle]} />
+        <Animated.View style={[styles.orbRingOuter, ringStyle]} />
         <View style={styles.orbInner}>
           {searchGamePick ? (
             <Image
@@ -166,20 +178,17 @@ export default function LiveSearchIdle({
               >
                 {searchModePick === 'lfg' && (
                   <View style={styles.modeCheckBadge}>
-                    <ThemedText style={styles.modeCheckIcon}>{'\u2713'}</ThemedText>
+                    <IconSymbol size={13} name="checkmark" color="#fff" />
                   </View>
                 )}
-                <IconSymbol size={30} name="person.3.fill" color={searchModePick === 'lfg' ? '#8b7fe8' : '#555'} />
+                <IconSymbol size={26} name="person.3.fill" color={searchModePick === 'lfg' ? '#8b7fe8' : '#555'} />
                 <ThemedText style={[styles.modeCardTitle, searchModePick === 'lfg' && styles.modeCardTitleActive]}>
                   LFG
                 </ThemedText>
                 <ThemedText style={styles.modeCardDesc}>
                   Find a full squad{'\n'}ready to compete
                 </ThemedText>
-                <View style={styles.modeCardCountRow}>
-                  <View style={styles.greenDotSmall} />
-                  <ThemedText style={styles.modeCardCount}>1.2K searching</ThemedText>
-                </View>
+                <ThemedText style={styles.modeCardWait}>~15s avg. wait</ThemedText>
               </TouchableOpacity>
 
               <TouchableOpacity
@@ -189,20 +198,17 @@ export default function LiveSearchIdle({
               >
                 {searchModePick === 'duo' && (
                   <View style={[styles.modeCheckBadge, { backgroundColor: '#5BA0D6' }]}>
-                    <ThemedText style={styles.modeCheckIcon}>{'\u2713'}</ThemedText>
+                    <IconSymbol size={13} name="checkmark" color="#fff" />
                   </View>
                 )}
-                <IconSymbol size={30} name="person.2.fill" color={searchModePick === 'duo' ? '#5BA0D6' : '#555'} />
+                <IconSymbol size={26} name="person.2.fill" color={searchModePick === 'duo' ? '#5BA0D6' : '#555'} />
                 <ThemedText style={[styles.modeCardTitle, searchModePick === 'duo' && styles.modeCardTitleActive]}>
                   Find Duo
                 </ThemedText>
                 <ThemedText style={styles.modeCardDesc}>
                   Find one teammate{'\n'}near your rank
                 </ThemedText>
-                <View style={styles.modeCardCountRow}>
-                  <View style={styles.greenDotSmall} />
-                  <ThemedText style={styles.modeCardCount}>2.1K searching</ThemedText>
-                </View>
+                <ThemedText style={styles.modeCardWait}>~20s avg. wait</ThemedText>
               </TouchableOpacity>
             </View>
           </View>
@@ -219,13 +225,16 @@ export default function LiveSearchIdle({
                 style={styles.settingItemIcon}
                 resizeMode="contain"
               />
-              <View>
+              <View style={{ flex: 1 }}>
                 <ThemedText style={styles.settingItemTitle}>
                   {searchGamePick === 'valorant' ? 'Valorant' : 'League'}
                 </ThemedText>
-                <ThemedText style={styles.settingItemSub}>
-                  {valorantCard && leagueCard ? 'Change' : 'Game'}
-                </ThemedText>
+                {valorantCard && leagueCard && (
+                  <View style={styles.settingChangeRow}>
+                    <ThemedText style={styles.settingChangeText}>Change</ThemedText>
+                    <IconSymbol size={10} name="chevron.right" color="#8b7fe8" />
+                  </View>
+                )}
               </View>
             </TouchableOpacity>
 
@@ -237,7 +246,7 @@ export default function LiveSearchIdle({
                 style={styles.settingItemIcon}
                 resizeMode="contain"
               />
-              <View>
+              <View style={{ flex: 1 }}>
                 <ThemedText style={styles.settingItemTitle}>
                   {activeCard.currentRank || 'Unranked'}
                 </ThemedText>
@@ -253,6 +262,10 @@ export default function LiveSearchIdle({
             <View style={styles.waitTimeBox}>
               <ThemedText style={styles.waitTimeLabel}>Est. wait time</ThemedText>
               <ThemedText style={styles.waitTimeValue}>~18s</ThemedText>
+              <View style={styles.waitSpeedRow}>
+                <IconSymbol size={10} name="bolt.fill" color="#4CAF50" />
+                <ThemedText style={styles.waitSpeedText}>Very fast</ThemedText>
+              </View>
             </View>
           )}
           <TouchableOpacity
@@ -264,10 +277,24 @@ export default function LiveSearchIdle({
             activeOpacity={0.8}
             disabled={hasCards && !canSearch}
           >
-            <ThemedText style={styles.searchBtnText}>
-              {hasCards ? 'Start Match Search' : 'Create a Rank Card'}
-            </ThemedText>
-            <IconSymbol size={18} name="chevron.right" color="#333" />
+            <LinearGradient
+              colors={['#5a4fcf', '#7B6FE8']}
+              start={{ x: 0, y: 0 }}
+              end={{ x: 1, y: 1 }}
+              style={styles.searchBtnGradient}
+            >
+              <View style={styles.searchBtnContent}>
+                <View>
+                  <ThemedText style={styles.searchBtnText}>
+                    {hasCards ? 'Start Match Search' : 'Create a Rank Card'}
+                  </ThemedText>
+                  {hasCards && (
+                    <ThemedText style={styles.searchBtnSub}>~18s estimated wait</ThemedText>
+                  )}
+                </View>
+                <IconSymbol size={18} name="chevron.right" color="rgba(255,255,255,0.6)" />
+              </View>
+            </LinearGradient>
           </TouchableOpacity>
         </View>
 
@@ -287,6 +314,28 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     paddingBottom: 20,
+    overflow: 'visible',
+  },
+
+  // Players Banner
+  playersBanner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    alignSelf: 'center',
+    backgroundColor: 'rgba(255, 255, 255, 0.06)',
+    borderRadius: 20,
+    paddingHorizontal: 14,
+    paddingVertical: 8,
+    gap: 8,
+    marginBottom: 12,
+  },
+  playersBannerText: {
+    fontSize: 13,
+    color: '#999',
+  },
+  playersBannerCount: {
+    color: '#4CAF50',
+    fontWeight: '700',
   },
 
   // Orb
@@ -296,40 +345,52 @@ const styles = StyleSheet.create({
     width: 150,
     height: 150,
     alignSelf: 'center',
-    marginBottom: 20,
+    marginBottom: 16,
   },
   orbRing: {
+    position: 'absolute',
+    width: 140,
+    height: 140,
+    borderRadius: 70,
+    borderWidth: 2,
+    borderColor: '#8b7fe8',
+  },
+  orbRingOuter: {
     position: 'absolute',
     width: 150,
     height: 150,
     borderRadius: 75,
-    borderWidth: 2,
-    borderColor: '#8b7fe8',
+    borderWidth: 1,
+    borderColor: 'rgba(139, 127, 232, 0.2)',
   },
   orbInner: {
-    width: 120,
-    height: 120,
-    borderRadius: 60,
+    width: 110,
+    height: 110,
+    borderRadius: 55,
     backgroundColor: '#1a1a2e',
     alignItems: 'center',
     justifyContent: 'center',
+    borderWidth: 1,
+    borderColor: 'rgba(139, 127, 232, 0.15)',
   },
   orbLogo: {
-    width: 50,
-    height: 50,
-    opacity: 0.5,
+    width: 56,
+    height: 56,
+    opacity: 0.6,
   },
 
   // Title
   titleGroup: {
     alignItems: 'center',
-    marginBottom: 14,
+    marginBottom: 20,
+    overflow: 'visible',
   },
   title: {
-    fontSize: 28,
+    fontSize: 30,
     fontWeight: '800',
     color: '#fff',
     marginBottom: 6,
+    paddingTop: 2,
   },
   subtitle: {
     fontSize: 14,
@@ -347,13 +408,13 @@ const styles = StyleSheet.create({
     fontSize: 11,
     fontWeight: '600',
     color: '#555',
-    letterSpacing: 1,
-    marginBottom: 10,
+    letterSpacing: 1.5,
+    marginBottom: 12,
   },
 
   // Mode Section
   modeSection: {
-    marginBottom: 20,
+    marginBottom: 16,
   },
   modeCards: {
     flexDirection: 'row',
@@ -362,43 +423,37 @@ const styles = StyleSheet.create({
   modeCard: {
     flex: 1,
     borderRadius: 16,
-    backgroundColor: '#161620',
+    backgroundColor: 'rgba(255, 255, 255, 0.03)',
     borderWidth: 1.5,
-    borderColor: 'rgba(255, 255, 255, 0.06)',
+    borderColor: 'rgba(255, 255, 255, 0.08)',
     padding: 16,
-    alignItems: 'center',
-    gap: 6,
+    gap: 4,
   },
   modeCardActive: {
     borderColor: 'rgba(139, 127, 232, 0.5)',
-    backgroundColor: '#1a1a2e',
+    backgroundColor: 'rgba(139, 127, 232, 0.06)',
   },
   modeCardActiveDuo: {
     borderColor: 'rgba(91, 160, 214, 0.5)',
-    backgroundColor: '#161a2e',
+    backgroundColor: 'rgba(91, 160, 214, 0.06)',
   },
   modeCheckBadge: {
     position: 'absolute',
-    top: -8,
-    right: -8,
-    width: 24,
-    height: 24,
-    borderRadius: 12,
+    top: 12,
+    right: 12,
+    width: 26,
+    height: 26,
+    borderRadius: 13,
     backgroundColor: '#8b7fe8',
     alignItems: 'center',
     justifyContent: 'center',
     zIndex: 1,
   },
-  modeCheckIcon: {
-    fontSize: 13,
-    color: '#fff',
-    fontWeight: '700',
-  },
   modeCardTitle: {
-    fontSize: 16,
+    fontSize: 18,
     fontWeight: '700',
     color: '#888',
-    marginTop: 2,
+    marginTop: 4,
   },
   modeCardTitleActive: {
     color: '#fff',
@@ -406,14 +461,30 @@ const styles = StyleSheet.create({
   modeCardDesc: {
     fontSize: 12,
     color: '#666',
-    textAlign: 'center',
     lineHeight: 17,
+    marginBottom: 8,
+  },
+  modeTagsRow: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 6,
+    marginBottom: 10,
+  },
+  modeTag: {
+    backgroundColor: 'rgba(255, 255, 255, 0.06)',
+    borderRadius: 6,
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+  },
+  modeTagText: {
+    fontSize: 11,
+    color: '#999',
+    fontWeight: '500',
   },
   modeCardCountRow: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 5,
-    marginTop: 6,
   },
   greenDotSmall: {
     width: 6,
@@ -422,90 +493,133 @@ const styles = StyleSheet.create({
     backgroundColor: '#4CAF50',
   },
   modeCardCount: {
-    fontSize: 11,
+    fontSize: 12,
     color: '#4CAF50',
-    fontWeight: '500',
+    fontWeight: '600',
+  },
+  modeCardWait: {
+    fontSize: 11,
+    color: '#555',
+    marginTop: 2,
   },
 
   // Game & Rank Bar
   settingsBar: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#161620',
+    backgroundColor: 'rgba(255, 255, 255, 0.03)',
     borderRadius: 14,
-    paddingHorizontal: 14,
-    paddingVertical: 12,
-    marginBottom: 20,
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.08)',
+    paddingHorizontal: 16,
+    paddingVertical: 14,
+    marginBottom: 16,
   },
   settingItem: {
+    flex: 1,
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 8,
-    paddingHorizontal: 4,
+    gap: 10,
   },
   settingItemIcon: {
-    width: 22,
-    height: 22,
+    width: 32,
+    height: 32,
   },
   settingItemTitle: {
-    fontSize: 12,
+    fontSize: 14,
     fontWeight: '600',
     color: '#ddd',
   },
   settingItemSub: {
-    fontSize: 10,
+    fontSize: 11,
     color: '#666',
+    marginTop: 1,
+  },
+  settingChangeRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 3,
+    marginTop: 1,
+  },
+  settingChangeText: {
+    fontSize: 12,
+    color: '#8b7fe8',
+    fontWeight: '500',
   },
   settingDivider: {
     width: 1,
-    height: 28,
-    backgroundColor: 'rgba(255, 255, 255, 0.06)',
-    marginHorizontal: 6,
+    height: 36,
+    backgroundColor: 'rgba(255, 255, 255, 0.08)',
+    marginHorizontal: 12,
   },
 
   // Bottom Bar
   bottomBar: {
     flexDirection: 'row',
-    alignItems: 'center',
-    gap: 12,
-    marginTop: 4,
-    marginBottom: 14,
+    alignItems: 'stretch',
+    gap: 10,
+    marginBottom: 16,
   },
   waitTimeBox: {
     backgroundColor: 'rgba(255, 255, 255, 0.04)',
     borderRadius: 14,
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.08)',
     paddingHorizontal: 16,
     paddingVertical: 12,
     alignItems: 'center',
+    justifyContent: 'center',
   },
   waitTimeLabel: {
     fontSize: 10,
     color: '#666',
-    marginBottom: 1,
+    marginBottom: 2,
   },
   waitTimeValue: {
-    fontSize: 18,
+    fontSize: 22,
     fontWeight: '700',
     color: '#4CAF50',
   },
+  waitSpeedRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 3,
+    marginTop: 2,
+  },
+  waitSpeedText: {
+    fontSize: 10,
+    color: '#4CAF50',
+    fontWeight: '600',
+  },
   searchBtn: {
     flex: 1,
-    flexDirection: 'row',
-    backgroundColor: '#e0e0e0',
     borderRadius: 14,
-    paddingVertical: 18,
-    paddingHorizontal: 20,
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 8,
+    overflow: 'hidden',
   },
   searchBtnDisabled: {
     opacity: 0.35,
   },
+  searchBtnGradient: {
+    flex: 1,
+    borderRadius: 14,
+    justifyContent: 'center',
+    paddingHorizontal: 20,
+    paddingVertical: 16,
+  },
+  searchBtnContent: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
   searchBtnText: {
-    fontSize: 16,
+    fontSize: 17,
     fontWeight: '700',
-    color: '#1a1a1a',
+    color: '#fff',
+  },
+  searchBtnSub: {
+    fontSize: 12,
+    color: 'rgba(255, 255, 255, 0.5)',
+    marginTop: 2,
   },
 
   // Footer

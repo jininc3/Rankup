@@ -1312,7 +1312,7 @@ export default function LeaderboardDetail() {
           })}
         </View>
 
-        {/* Your Position Strip */}
+        {/* Your Progress Card */}
         {(() => {
           const currentPlayerIndex = players.findIndex(p => p.isCurrentUser);
           if (currentPlayerIndex < 0) return null;
@@ -1323,20 +1323,73 @@ export default function LeaderboardDetail() {
                 ? (playerAbove.lp || 0) - (currentPlayer.lp || 0)
                 : (playerAbove.rr || 0) - (currentPlayer.rr || 0))
             : 0;
+          const points = isLeague ? (currentPlayer.lp || 0) : (currentPlayer.rr || 0);
+          const unit = isLeague ? 'LP' : 'RR';
+          const rankIcon = isLeague
+            ? getLeagueRankIcon(currentPlayer.currentRank)
+            : getValorantRankIcon(currentPlayer.currentRank);
           return (
-            <View style={styles.yourPositionStrip}>
-              <View style={styles.yourPositionLeft}>
-                <ThemedText style={styles.yourPositionLabel}>Your Position</ThemedText>
-                <ThemedText style={styles.yourPositionRank}>#{currentPlayer.rank} of {players.length}</ThemedText>
-              </View>
-              {playerAbove && (
-                <View style={styles.yourPositionRight}>
-                  <ThemedText style={styles.yourPositionGapLabel}>Gap to #{currentPlayerIndex}</ThemedText>
-                  <ThemedText style={styles.yourPositionGap}>
-                    {gap > 0 ? `-${gap} ${isLeague ? 'LP' : 'RR'}` : `+${Math.abs(gap)} ${isLeague ? 'LP' : 'RR'}`}
+            <View style={styles.yourProgressWrapper}>
+              {/* User info row */}
+              <View style={styles.yourProgressUserRow}>
+                <View style={styles.yourProgressUserLeft}>
+                  <View style={styles.youBadge}>
+                    <ThemedText style={styles.youBadgeText}>You</ThemedText>
+                  </View>
+                  <View style={styles.yourProgressAvatarRing}>
+                    <View style={styles.yourProgressAvatar}>
+                      {currentPlayer.avatar ? (
+                        <CachedImage uri={currentPlayer.avatar} style={styles.yourProgressAvatarImage} />
+                      ) : (
+                        <ThemedText style={styles.yourProgressAvatarFallback}>
+                          {currentPlayer.username.charAt(0).toUpperCase()}
+                        </ThemedText>
+                      )}
+                    </View>
+                  </View>
+                  <ThemedText style={styles.yourProgressUsername} numberOfLines={1}>
+                    {currentPlayer.username}
                   </ThemedText>
                 </View>
-              )}
+                <View style={styles.yourProgressRankRight}>
+                  <Image source={rankIcon} style={styles.yourProgressRankIcon} resizeMode="contain" />
+                  <View>
+                    <ThemedText style={styles.yourProgressRankText}>
+                      {formatRankDisplay(currentPlayer.currentRank)}
+                    </ThemedText>
+                    <ThemedText style={styles.yourProgressRankPoints}>
+                      {points} {unit}
+                    </ThemedText>
+                  </View>
+                </View>
+              </View>
+
+              {/* Progress section */}
+              <View style={styles.yourProgressBottom}>
+                <View style={styles.yourProgressTopRow}>
+                  <ThemedText style={styles.yourProgressRankName}>
+                    #{currentPlayer.rank} of {players.length}
+                  </ThemedText>
+                  {playerAbove && gap > 0 && (
+                    <View style={styles.gapBadge}>
+                      <ThemedText style={styles.gapBadgeText}>
+                        {gap} {unit} behind #{currentPlayerIndex}
+                      </ThemedText>
+                    </View>
+                  )}
+                </View>
+                <View style={styles.yourProgressBarTrack}>
+                  <View
+                    style={[
+                      styles.yourProgressBarFill,
+                      { width: `${Math.min(100, points)}%` },
+                    ]}
+                  />
+                </View>
+                <ThemedText style={styles.yourProgressBarLabel}>
+                  {points} / 100 {unit}
+                </ThemedText>
+              </View>
             </View>
           );
         })()}
@@ -2919,49 +2972,137 @@ const styles = StyleSheet.create({
     color: '#666',
     lineHeight: 13,
   },
-  yourPositionStrip: {
+  yourProgressWrapper: {
+    marginTop: 14,
+    marginHorizontal: 6,
+    borderRadius: 14,
+    backgroundColor: '#1a1a1a',
+    borderWidth: 1,
+    borderColor: 'rgba(139, 127, 232, 0.15)',
+    overflow: 'hidden',
+  },
+  yourProgressUserRow: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    backgroundColor: 'rgba(255, 255, 255, 0.04)',
-    borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.1)',
-    borderRadius: 12,
-    paddingVertical: 12,
-    paddingHorizontal: 16,
-    marginTop: 10,
-    marginHorizontal: 6,
+    paddingHorizontal: 14,
+    paddingVertical: 10,
   },
-  yourPositionLeft: {
-    gap: 2,
+  yourProgressUserLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    flex: 1,
   },
-  yourPositionLabel: {
+  youBadge: {
+    backgroundColor: 'rgba(139, 127, 232, 0.12)',
+    borderRadius: 8,
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+  },
+  youBadgeText: {
     fontSize: 10,
-    fontWeight: '600',
-    color: '#888',
-    letterSpacing: 0.5,
-    textTransform: 'uppercase',
+    fontWeight: '700',
+    color: '#8B7FE8',
   },
-  yourPositionRank: {
-    fontSize: 16,
-    fontWeight: '800',
+  yourProgressAvatarRing: {
+    borderRadius: 16,
+    borderWidth: 1.5,
+    borderColor: 'rgba(139, 127, 232, 0.35)',
+    padding: 1.5,
+  },
+  yourProgressAvatar: {
+    width: 28,
+    height: 28,
+    borderRadius: 14,
+    backgroundColor: '#252525',
+    alignItems: 'center',
+    justifyContent: 'center',
+    overflow: 'hidden',
+  },
+  yourProgressAvatarImage: {
+    width: '100%',
+    height: '100%',
+    borderRadius: 14,
+  },
+  yourProgressAvatarFallback: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: '#888',
+  },
+  yourProgressUsername: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: '#22C55E',
+    flexShrink: 1,
+  },
+  yourProgressRankRight: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+  },
+  yourProgressRankIcon: {
+    width: 22,
+    height: 22,
+  },
+  yourProgressRankText: {
+    fontSize: 11,
+    fontWeight: '600',
     color: '#fff',
   },
-  yourPositionRight: {
-    alignItems: 'flex-end',
-    gap: 2,
-  },
-  yourPositionGapLabel: {
+  yourProgressRankPoints: {
     fontSize: 10,
-    fontWeight: '600',
-    color: '#888',
-    letterSpacing: 0.5,
-    textTransform: 'uppercase',
+    fontWeight: '500',
+    color: '#666',
   },
-  yourPositionGap: {
+  yourProgressBottom: {
+    paddingHorizontal: 14,
+    paddingVertical: 10,
+    backgroundColor: '#151515',
+    borderTopWidth: 1,
+    borderTopColor: 'rgba(255, 255, 255, 0.04)',
+  },
+  yourProgressTopRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 8,
+  },
+  yourProgressRankName: {
     fontSize: 14,
     fontWeight: '700',
     color: '#fff',
+  },
+  gapBadge: {
+    backgroundColor: 'rgba(239, 68, 68, 0.1)',
+    borderWidth: 1,
+    borderColor: 'rgba(239, 68, 68, 0.2)',
+    borderRadius: 10,
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+  },
+  gapBadgeText: {
+    fontSize: 11,
+    fontWeight: '600',
+    color: '#EF4444',
+  },
+  yourProgressBarTrack: {
+    height: 5,
+    backgroundColor: '#252525',
+    borderRadius: 2.5,
+    overflow: 'hidden',
+    marginBottom: 6,
+  },
+  yourProgressBarFill: {
+    height: '100%',
+    backgroundColor: '#8B7FE8',
+    borderRadius: 2.5,
+  },
+  yourProgressBarLabel: {
+    fontSize: 11,
+    fontWeight: '500',
+    color: '#555',
+    textAlign: 'right',
   },
   bottomSpacer: {
     height: 40,
